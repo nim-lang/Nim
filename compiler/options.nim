@@ -215,7 +215,8 @@ type
     packageCache*: StringTableRef
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
-    outFile*: AbsoluteFile
+    outFile*: RelativeFile
+    outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*: StringTableRef
     projectName*: string # holds a name like 'nim'
@@ -316,7 +317,9 @@ proc newConfigRef*(): ConfigRef =
     packageCache: newPackageCache(),
     searchPaths: @[],
     lazyPaths: @[],
-    outFile: AbsoluteFile"", prefixDir: AbsoluteDir"",
+    outFile: RelativeFile"",
+    outDir: AbsoluteDir"",
+    prefixDir: AbsoluteDir"",
     libpath: AbsoluteDir"", nimcacheDir: AbsoluteDir"",
     dllOverrides: newStringTable(modeCaseInsensitive),
     moduleOverrides: newStringTable(modeStyleInsensitive),
@@ -451,8 +454,16 @@ proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): AbsoluteFile =
-  if not conf.outFile.isEmpty: result = conf.outFile
+  if not conf.outFile.isEmpty: result = conf.outDir / conf.outFile
   else: result = conf.projectPath / changeFileExt(filename, ext)
+
+proc absOutFile*(conf: ConfigRef): AbsoluteFile =
+  conf.outDir / conf.outFile
+
+proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
+  ## Create the output directory and returns a full path to the output file
+  createDir conf.outDir
+  return conf.outDir / conf.outFile
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.

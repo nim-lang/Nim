@@ -93,12 +93,13 @@ proc compileReloadExecute() =
   #   to be applied only for the main build - the one done from koch, but when this
   #   binary triggers rebuilding itself here it shouldn't rebuild the main module -
   #   that would lead to replacing the main binary executable which is running!
-  let cmd = "nim " & commandLineParams()[1..^1].join(" ").replace(" --forceBuild")
+  let cmd = commandLineParams()[0..^1].join(" ").replace(" --forceBuild")
   let (stdout, exitcode) = execCmdEx(cmd)
   if exitcode != 0:
     echo "COMPILATION ERROR!"
     echo "COMMAND: ", cmd
     echo "STDOUT: ", stdout
+    quit 1
   echo "main: hasAnyModuleChanged? ", hasAnyModuleChanged()
   performCodeReload()
   echo "              The answer is: ", getInt()
@@ -110,7 +111,7 @@ proc update(file: int) =
     let (path, _, _) = splitFile(currentSourcePath())
     return path & "/nimhcr_" & mid & ".nim"
   copyFile(getfile($file & "_" & $vers[file]), getfile($file))
-  vers[file].inc
+  inc vers[file]
 
 beforeCodeReload:
   echo "main: before"

@@ -68,7 +68,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   forHcr = forHcr and not isGlobalInBlock
 
   if forHcr:
-    endBlock(p)
+    if p.blocks.len > 0: endBlock(p)
     # check with the boolean if the initializing code for the tuple should be ran
     lineCg(p, cpsStmts, "if ($1)$n", hcrCond)
     startBlock(p)
@@ -366,7 +366,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   if forHcr:
     # do not close blocks for if (nim_hcr_do_init_) for locals (and globals!)
     # with a global pragma since they go in the preInitProc where we put no such guards
-    if v.owner.kind == skModule and sfPure notin v.flags:
+    if v.owner.kind == skModule and sfPure notin v.flags and targetProc.blocks.len > 0:
       endBlock(targetProc)
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)

@@ -586,10 +586,13 @@ when defined(createNimHcr):
     generation
 
   proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.} =
-    for _, module in modules:
-      for _, global in module.globals:
-        if global.markerProc != nil:
-          global.markerProc()
+    # This is gcsafe, because it will be registered
+    # only in the GC of the main thread.
+    {.gcsafe.}:
+      for _, module in modules:
+        for _, global in module.globals:
+          if global.markerProc != nil:
+            global.markerProc()
 
 elif defined(hotcodereloading) or defined(testNimHcr):
   when not defined(JS):

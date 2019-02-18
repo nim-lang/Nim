@@ -129,41 +129,34 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  var test1 = makeTest("lib/nimrtl.nim", options & " --threads:on", cat)
+  var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
   test1.spec.action = actionCompile
   testSpec c, test1
   var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
-  var test3 = makeTest("lib/nimhcr.nim", options & rpath, cat)
+  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
 
   # windows looks in the dir of the exe (yay!):
   when not defined(Windows):
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
-    const libpathenv = when defined(haiku):
-                         "LIBRARY_PATH"
-                       else:
-                         "LD_LIBRARY_PATH"
+    const libpathenv = when defined(haiku): "LIBRARY_PATH"
+                       else: "LD_LIBRARY_PATH"
     var libpath = getEnv(libpathenv).string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
 
-  for dllName in ["nimrtl", "nimhcr"]:
-    var fullDllName = DynlibFormat % dllName
-    safeCopyFile("lib" / fullDllName, "tests/dll" / fullDllName)
-
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
-
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
 
   # force build required - see the comments in the .nim file for more details
   var hcr_integration = makeTest("tests/dll/nimhcr_integration.nim",
                                  options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
-  hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd,
-    hcr_integration.name, hcr_integration.options, getTestSpecTarget())
+  hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd, hcr_integration.name,
+                                         hcr_integration.options, getTestSpecTarget())
   testSpec r, hcr_integration
 
 proc dllTests(r: var TResults, cat: Category, options: string) =

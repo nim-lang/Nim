@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils, sequtils, random
+  lineinfos, std / sha1, streams, pathutils, sequtils, times
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -468,8 +468,8 @@ proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
     rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
       cmd)
 
-proc generateScript(conf: ConfigRef; projectFile: AbsoluteFile, script: Rope) =
-  let (_, name, _) = splitFile(projectFile)
+proc generateScript(conf: ConfigRef; script: Rope) =
+  let (_, name, _) = splitFile(conf.outFile.string)
   let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
                                      platform.OS[conf.target.targetOS].scriptExt))
   if writeRope(script, filename):
@@ -650,7 +650,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 
 proc compileCFiles(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
-  var currIdx = 0  
+  var currIdx = 0
   for it in list:
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
@@ -664,26 +664,8 @@ proc compileCFiles(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var
       add(script, compileCmd)
       add(script, "\n")
 
-proc getLinkTarget(conf: ConfigRef; projectfile: AbsoluteFile,
-                   forceDynLib: bool = false): tuple[exefile: string, builddll: string] =
-  var exefile, builddll: string
-  if optGenDynLib in conf.globalOptions or forceDynLib:
-    exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
-    builddll = CC[conf.cCompiler].buildDll
-  else:
-    exefile = splitFile(projectfile).name & platform.OS[conf.target.targetOS].exeExt
-    builddll = ""
-  if not conf.outFile.isEmpty:
-    exefile = conf.outFile.string.expandTilde
-    if not exefile.isAbsolute():
-      exefile = getCurrentDir() / exefile
-  if not noAbsolutePaths(conf):
-    if not exefile.isAbsolute():
-      exefile = string(splitFile(projectfile).dir / RelativeFile(exefile))
-  return (exefile, builddll)
-
-proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
-                objfiles: string, forceDynLib: bool = false): string =
+proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
+                objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
     var libname: string
     if not conf.outFile.isEmpty:
@@ -693,7 +675,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
-                                       "objfiles", objfiles]
+                                            "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
     if len(linkerExe) == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
@@ -705,19 +687,16 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
                      CC[conf.cCompiler].buildGui
                    else:
                      ""
-    var (exefile, builddll) = getLinkTarget(conf, projectfile, forceDynLib)
+    let builddll = if isDllBuild: CC[conf.cCompiler].buildDll else: ""
+    let exefile = quoteShell(output)
+
     when false:
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
-    # add an additional .exe to prevent overwriting the main source file in nimcache
-    # of the project on unix (where there is no extension) with the executable later on
-    if conf.hcrOn and not forceDynLib and optGenDynLib notin conf.globalOptions:
-      exefile.add ".exe"
-    exefile = quoteShell(exefile)
 
     # Map files are required by Nintendo Switch compilation. They are a list
     # of all function calls in the library and where they come from.
-    let mapfile = quoteShell(getNimcacheDir(conf) / RelativeFile(splitFile(projectFile).name & ".map"))
+    let mapfile = quoteShell(getNimcacheDir(conf) / RelativeFile(splitFile(output).name & ".map"))
 
     let linkOptions = getLinkOptions(conf) & " " &
                       getConfigVar(conf, conf.cCompiler, ".options.linker")
@@ -757,7 +736,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
     # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
     # atleast 5-10mb big and will quickly accumulate. There is a hacky solution:
     # we could try to delete all .pdb files with a pattern and swallow exceptions.
-    # 
+    #
     # links about .pdb files and hot code reloading:
     # https://ourmachinery.com/post/dll-hot-reloading-in-theory-and-practice/
     # https://ourmachinery.com/post/little-machines-working-together-part-2/
@@ -769,8 +748,12 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
     # https://github.com/crosire/blink
     # http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
     if conf.hcrOn and conf.cCompiler == ccVcc:
-      randomize()
-      result.add " /link /PDB:" & projectfile.string & "." & $rand(high(int)) & ".pdb"
+      let t = now()
+      let pdb = output.string & "." & format(t, "MMMM-yyyy-HH-mm-") & $t.nanosecond & ".pdb"
+      result.add " /link /PDB:" & pdb
+
+template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
+  getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped): typed =
   try:
@@ -847,7 +830,17 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   finally:
     removeFile(linkerArgs)
 
-proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
+proc getObjFilePath(conf: ConfigRef, f: CFile): string =
+  if noAbsolutePaths(conf): f.obj.extractFilename
+  else: f.obj.string
+
+proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): AbsoluteFile =
+  let basename = splitFile(objFile).name
+  let targetName = if isMain: basename & ".exe"
+                   else: platform.OS[conf.target.targetOS].dllFrmt % basename
+  result = conf.nimcacheDir / RelativeFile(targetName)
+
+proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
   if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
@@ -873,9 +866,6 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[conf.cCompiler].objExt)))
 
-    proc getObjFilePath(conf: ConfigRef, f: CFile): string =
-      return if noAbsolutePaths(conf): f.obj.extractFilename else: f.obj.string
-
     if conf.hcrOn: # lets assume that optCompileOnly isn't on
       cmds = @[]
       let mainFileIdx = conf.toCompile.len - 1
@@ -887,8 +877,10 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
         # we pass each object file as if it is the project file - a .dll will be created for each such
         # object file in the nimcache directory, and only in the case of the main project file will
         # there be probably an executable (if the project is such) which will be copied out of the nimcache
-        let objFile = getObjFilePath(conf, x)
-        add(cmds, getLinkCmd(conf, objFile.AbsoluteFile, objfiles & " " & quoteShell(objFile), idx != mainFileIdx))
+        let objFile = conf.getObjFilePath(x)
+        let buildDll = idx != mainFileIdx
+        let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
+        add(cmds, getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
         if conf.cCompiler == ccVcc:
@@ -900,19 +892,17 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
       execCmdsInParallel(conf, cmds, prettyCb)
       # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
       if not conf.toCompile[mainFileIdx].flags.contains(CfileFlag.Cached):
-        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx]).AbsoluteFile
-        var (src, _) = getLinkTarget(conf, mainObjFile)
-        var (dst, _) = getLinkTarget(conf, projectfile)
-        # mimic the HCR-specific things being done to the main file in getLinkCmd()
-        if optGenDynLib notin conf.globalOptions: src.add ".exe"
-        copyFileWithPermissions(src, dst)
+        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
+        var src = conf.hcrLinkTargetName(mainObjFile, true)
+        var dst = conf.prepareToWriteOutput
+        copyFileWithPermissions(src.string, dst.string)
     else:
       for x in conf.toCompile:
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
         add(objfiles, ' ')
         add(objfiles, quoteShell(objFile))
 
-      linkCmd = getLinkCmd(conf, projectfile, objfiles)
+      linkCmd = getLinkCmd(conf, conf.prepareToWriteOutput, objfiles)
       if optCompileOnly notin conf.globalOptions:
         if defined(windows) and linkCmd.len > 8_000:
           # Windows's command line limit is about 8K (don't laugh...) so C compilers on
@@ -926,12 +916,12 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
   if optGenScript in conf.globalOptions:
     add(script, linkCmd)
     add(script, "\n")
-    generateScript(conf, projectfile, script)
+    generateScript(conf, script)
 
 #from json import escapeJson
 import json
 
-proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
+proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: untyped) = f.write x
   template str(x: untyped) =
     when compiles(escapeJson(x, buf)):
@@ -978,7 +968,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
   var buf = newStringOfCap(50)
 
-  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+  let jsonFile = conf.nimcacheDir / RelativeFile(conf.projectName & ".json")
 
   var f: File
   if open(f, jsonFile.string, fmWrite):
@@ -990,7 +980,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
 
     lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, projectfile, objfiles)
+    str getLinkCmd(conf, conf.absOutFile, objfiles)
     lit "\L}\L"
     close(f)
 

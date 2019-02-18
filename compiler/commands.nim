@@ -387,7 +387,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.nimcacheDir = processPath(conf, arg, info, true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    conf.outFile = AbsoluteFile arg
+    let f = splitFile(arg.expandTilde)
+    conf.outFile = RelativeFile f.name
+    conf.outDir = toAbsoluteDir f.dir
+  of "outdir":
+    expectArg(conf, switch, arg, pass, info)
+    conf.outDir = toAbsoluteDir arg.expandTilde
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
@@ -789,7 +794,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
       config.command = p.key
   else:
     if pass == passCmd1: config.commandArgs.add p.key
-    if argsCount == 1:
+    if argsCount == 1 and config.projectName.len == 0:
       # support UNIX style filenames everywhere for portable build scripts:
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)

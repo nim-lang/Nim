@@ -152,6 +152,7 @@ type
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
     hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
+    inHcrInitGuard*: bool     # We are currently withing a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation

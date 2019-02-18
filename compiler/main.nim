@@ -33,8 +33,9 @@ proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
 
-proc writeDepsFile(g: ModuleGraph; project: AbsoluteFile) =
-  let f = open(changeFileExt(project, "deps").string, fmWrite)
+proc writeDepsFile(g: ModuleGraph) =
+  let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
+  let f = open(fname.string, fmWrite)
   for m in g.modules:
     if m != nil:
       f.writeLine(toFullPath(g.config, m.position.FileIndex))
@@ -48,7 +49,7 @@ proc commandGenDepend(graph: ModuleGraph) =
   registerPass(graph, gendependPass)
   compileProject(graph)
   let project = graph.config.projectFull
-  writeDepsFile(graph, project)
+  writeDepsFile(graph)
   generateDot(graph, project)
   execExternalProgram(graph.config, "dot -Tpng -o" &
       changeFileExt(project, "png").string &
@@ -71,6 +72,16 @@ when not defined(leanCompiler):
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
+
+  if conf.outDir.isEmpty:
+    conf.outDir = conf.projectPath
+  if conf.outFile.isEmpty:
+    let targetName = if optGenDynLib in conf.globalOptions:
+      platform.OS[conf.target.targetOS].dllFrmt % conf.projectName
+    else:
+      conf.projectName & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
+
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
@@ -80,13 +91,12 @@ proc commandCompileToC(graph: ModuleGraph) =
     return # issue #9933
   cgenWriteModules(graph.backend, conf)
   if conf.cmd != cmdRun:
-    let proj = changeFileExt(conf.projectFull, "")
-    extccomp.callCCompiler(conf, proj)
+    extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
-      extccomp.writeJsonBuildInstructions(conf, proj)
+      extccomp.writeJsonBuildInstructions(conf)
     if optGenScript in graph.config.globalOptions:
-      writeDepsFile(graph, toGeneratedFile(conf, proj, ""))
+      writeDepsFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
   let proj = changeFileExt(graph.config.projectFull, "")
@@ -95,6 +105,12 @@ proc commandJsonScript(graph: ModuleGraph) =
 when not defined(leanCompiler):
   proc commandCompileToJS(graph: ModuleGraph) =
     let conf = graph.config
+
+    if conf.outDir.isEmpty:
+      conf.outDir = conf.projectPath
+    if conf.outFile.isEmpty:
+      conf.outFile = RelativeFile(conf.projectName & ".js")
+
     #incl(gGlobalOptions, optSafeCode)
     setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
@@ -104,7 +120,7 @@ when not defined(leanCompiler):
     registerPass(graph, JSgenPass)
     compileProject(graph)
     if optGenScript in graph.config.globalOptions:
-      writeDepsFile(graph, toGeneratedFile(conf, conf.projectFull, ""))
+      writeDepsFile(graph)
 
 proc interactivePasses(graph: ModuleGraph) =
   initDefines(graph.config.symbols)
@@ -295,6 +311,7 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),
         (key: "hints", val: hints),

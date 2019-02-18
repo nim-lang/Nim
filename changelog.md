@@ -192,6 +192,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 ### Compiler changes
 - The deprecated `fmod` proc is now unavailable on the VM'.
+- A new `--outdir` option was added.
 - The `--hotCodeReloading` has been implemented for the native targets.
   The compiler also provides a new more flexible API for handling the
   hot code reloading events in the code.

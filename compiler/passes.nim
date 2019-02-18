@@ -167,9 +167,9 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
         if graph.stopCompile(): break
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
-        if true or sfSystemModule notin module.flags and
+        if true or (sfSystemModule notin module.flags and
             ({sfNoForward, sfReorder} * module.flags != {} or
-            codeReordering in graph.config.features):
+            codeReordering in graph.config.features)):
           # read everything, no streaming possible
           var sl = newNodeI(nkStmtList, n.info)
           sl.add n

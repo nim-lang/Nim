@@ -1745,25 +1745,20 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   # XXX replicate this logic!
   let transformed_n = transformStmt(m.g.graph, m.module, n)
   if m.hcrOn and transformed_n.kind == nkStmtList:
-    var inGuardedBlock = false
     let p = m.initProc
     for stmt in transformed_n:
       let stmtShouldExecute = nfExecuteOnReload in stmt.flags
-      if inGuardedBlock:
+      if m.inHcrInitGuard:
         if stmtShouldExecute:
           endBlock(p)
-          inGuardedBlock = false
+          m.inHcrInitGuard = false
       else:
         if not stmtShouldExecute:
           line(p, cpsStmts, "if (nim_hcr_do_init_)\n")
           startBlock(p)
-          inGuardedBlock = true
+          m.inHcrInitGuard = true
 
       genStmts(p, stmt)
-
-    if inGuardedBlock:
-      endBlock(p)
-
   else:
     genStmts(m.initProc, transformed_n)
 
@@ -1868,6 +1863,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
     discard cgsym(m, "programResult")
+    if m.inHcrInitGuard:
+      endBlock(m.initProc)
 
   if sfMainModule in m.module.flags:
     if m.hcrOn:
@@ -1915,14 +1912,11 @@ proc genForwardedProcs(g: BModuleList) =
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
+  g.config = config
+
   # we need to process the transitive closure because recursive module
   # deps are allowed (and the system module is processed in the wrong
   # order anyway)
-  g.config = config
-  let (outDir, _, _) = splitFile(config.outfile)
-  if not outDir.isEmpty:
-    createDir(outDir)
-
   genForwardedProcs(g)
 
   for m in cgenModules(g):
