@@ -486,7 +486,9 @@ iterator listPackages(filter: PackageFilter):
             yield (name, url, defaultCmd, false)
         of pfExtraOnly:
           for n, cmd, commit, hasDeps in important_packages.packages.items:
-            if name == n: yield (name, url, cmd, hasDeps)
+            if name == n:
+              let cmd = if cmd.len == 0: defaultCmd else: cmd
+              yield (name, url, cmd, hasDeps)
         of pfAll:
           yield (name, url, defaultCmd, false)
 
