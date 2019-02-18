@@ -137,8 +137,7 @@ String handling
 * `strtabs <strtabs.html>`_
   The ``strtabs`` module implements an efficient hash table that is a mapping
   from strings to strings. Supports a case-sensitive, case-insensitive and
-  style-insensitive mode. An efficient string substitution operator ``%``
-  for the string table is also provided.
+  style-insensitive modes.
 
 * `unicode <unicode.html>`_
   This module provides support to handle the Unicode UTF-8 encoding.
