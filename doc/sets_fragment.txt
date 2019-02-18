@@ -6,6 +6,10 @@ only be an ordinal type of a certain size, namely:
   * ``char``
   * ``enum``
 
+For signed integers the set's base type is defined to be in the
+range ``0 .. MaxSetElements-1`` where ``MaxSetElements`` currently always
+2^16.
+
 or equivalent. The reason is that sets are implemented as high
 performance bit vectors. Attempting to declare a set with a larger type will
 result in an error:
