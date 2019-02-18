@@ -656,6 +656,8 @@ proc escapeJson*(s: string): string =
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
+proc toUgly*(result: var string, node: JsonNode)
+
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
   case node.kind
@@ -691,8 +693,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
   of JFloat:
     if lstArr: result.indent(currIndent)
     # Fixme: implement new system.add ops for the JS target
-    when defined(js): result.add($node.fnum)
-    else: result.add(node.fnum)
+    toUgly(result, node)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
@@ -771,7 +772,17 @@ proc toUgly*(result: var string, node: JsonNode) =
     else: result.add(node.num)
   of JFloat:
     when defined(js): result.add($node.fnum)
-    else: result.add(node.fnum)
+    else:
+      # print special values in the style of javascript
+      # see issue #10700
+      if node.fnum != node.fnum: # isNaN
+        result.add "NaN"
+      elif node.fnum == Inf:
+        result.add "Infinity"
+      elif node.fnum == -Inf:
+        result.add "-Infinity"
+      else:
+        result.add(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:

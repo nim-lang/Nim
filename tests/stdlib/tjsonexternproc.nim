@@ -1,6 +1,6 @@
 discard """
 output: '''
-{"data":[1]}
+{"data":[1],"someNaN":NaN,"someInf":Infinity,"someNegInf":-Infinity}
 '''
 """
 
