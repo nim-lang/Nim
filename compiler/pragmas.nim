@@ -875,7 +875,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfSideEffect)
       of wNoreturn:
         noVal(c, it)
-        incl(sym.flags, sfNoReturn)
+        # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
+        if not isDefined(c.config, "nimQuirky"):
+          incl(sym.flags, sfNoReturn)
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")

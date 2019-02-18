@@ -354,6 +354,8 @@ proc raiseExceptionAux(e: ref Exception) =
       raiseCounter.inc # skip zero at overflow
     e.raiseId = raiseCounter
     {.emit: "`e`->raise();".}
+  elif defined(nimQuirky):
+    pushCurrentException(e)
   else:
     if excHandler != nil:
       if not excHandler.hasRaiseAction or excHandler.raiseAction(e):

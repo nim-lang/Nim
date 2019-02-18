@@ -3015,6 +3015,9 @@ template newException*(exceptn: typedesc, message: string;
 when hostOS == "standalone":
   include "$projectpath/panicoverride"
 
+when not defined(js) and not defined(nimscript):
+  include "system/ansi_c"
+
 when not declared(sysFatal):
   {.push profiler: off.}
   when hostOS == "standalone":
@@ -3024,6 +3027,22 @@ when not declared(sysFatal):
     proc sysFatal(exceptn: typedesc, message, arg: string) {.inline.} =
       rawoutput(message)
       panic(arg)
+  elif defined(nimQuirky) and not defined(nimscript):
+    proc name(t: typedesc): string {.magic: "TypeTrait".}
+
+    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
+      var buf = newStringOfCap(200)
+      add(buf, "Error: unhandled exception: ")
+      add(buf, message)
+      add(buf, arg)
+      add(buf, " [")
+      add(buf, name exceptn)
+      add(buf, "]")
+      cstderr.rawWrite buf
+      quit 1
+
+    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
+      sysFatal(exceptn, message, "")
   else:
     proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
       var e: ref exceptn
@@ -3170,7 +3189,6 @@ when not defined(JS): #and not defined(nimscript):
       {.pop.}
 
   when not defined(nimscript):
-    include "system/ansi_c"
     include "system/memory"
 
     proc zeroMem(p: pointer, size: Natural) =
