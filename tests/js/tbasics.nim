@@ -2,7 +2,8 @@ discard """
   output: '''ABCDC
 1
 14
-ok'''
+ok
+1'''
 """
 
 type
@@ -35,3 +36,13 @@ when true:
   a.setLen(0)
 
   echo "ok"
+
+# bug #10697
+proc test2 =
+  var val = uint16(0)
+  var i = 0
+  if i < 2:
+    val += uint16(1)
+  echo int(val)
+
+test2()
