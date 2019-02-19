@@ -115,7 +115,7 @@
 ##   - rethink the closure iterators
 ##     - ability to keep old versions of dynamic libraries alive
 ##       - because of async server code
-##       - perhaps with refcounting of .dlls for unfinished clojures
+##       - perhaps with refcounting of .dlls for unfinished closures
 ##   - linking with static libs
 ##     - all shared objects for each module will (probably) have to link to them
 ##       - state in static libs gets duplicated
@@ -177,13 +177,13 @@
 ## - proper way (as proposed by Zahary):
 ##   - parse the input code and put everything in global scope except for
 ##     statements with side effects only - those go in afterCodeReload blocks
-## - my very hacky idea: just append to a clojure iterator the new statements
+## - my very hacky idea: just append to a closure iterator the new statements
 ##   followed by a yield statement. So far I can think of 2 problems:
 ##   - import and some other code cannot be written inside of a proc -
 ##     has to be parsed and extracted in the outer scope
-##   - when new variables are created they are actually locals to the clojure
-##     so the struct for the clojure state grows in memory, but it has already
-##     been allocated when the clojure was created with the previous smaller size.
+##   - when new variables are created they are actually locals to the closure
+##     so the struct for the closure state grows in memory, but it has already
+##     been allocated when the closure was created with the previous smaller size.
 ##     That would lead to working with memory outside of the initially allocated
 ##     block. Perhaps something can be done about this - some way of re-allocating
 ##     the state and transferring the old...
@@ -192,7 +192,6 @@ when not defined(JS) and (defined(hotcodereloading) or
                           defined(createNimHcr) or
                           defined(testNimHcr)):
   const
-    
     dllExt = when defined(windows): "dll"
              elif defined(macosx): "dylib"
              else: "so"
@@ -208,7 +207,8 @@ when defined(createNimHcr):
   import os, tables, sets, times, strutils, reservedmem, dynlib
 
   template trace(args: varargs[untyped]) =
-    when defined(testNimHcr): echo args
+    when defined(testNimHcr) or defined(traceHcr):
+      echo args
 
   proc sanitize(arg: Time): string =
     when defined(testNimHcr): return "<time>"

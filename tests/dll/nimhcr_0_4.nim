@@ -13,6 +13,7 @@ proc makeCounter*(): auto =
       yield i
 
 let c = makeCounter()
+
 afterCodeReload:
-  echo "   0: after - clojure iterator! after reload! does it remember? :", c()
-  echo "   0: after - clojure iterator! after reload! does it remember? :", c()
+  echo "   0: after - closure iterator! after reload! does it remember? :", c()
+  echo "   0: after - closure iterator! after reload! does it remember? :", c()

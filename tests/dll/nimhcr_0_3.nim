@@ -10,8 +10,9 @@ proc makeCounter*(): auto =
       yield i
 
 let c = makeCounter()
+
 afterCodeReload:
-  echo "   0: after - clojure iterator: ", c()
-  echo "   0: after - clojure iterator: ", c()
+  echo "   0: after - closure iterator: ", c()
+  echo "   0: after - closure iterator: ", c()
 
 proc getInt*(): int = return g_1 + g_2.len

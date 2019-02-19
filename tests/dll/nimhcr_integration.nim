@@ -31,16 +31,16 @@ main: before
    2: random string
 1
 bar
-   0: after - clojure iterator: 0
-   0: after - clojure iterator: 1
+   0: after - closure iterator: 0
+   0: after - closure iterator: 1
 main: after
               The answer is: 9
 main: hasAnyModuleChanged? true
    2: before!
 main: before
    2: after!
-   0: after - clojure iterator! after reload! does it remember? :2
-   0: after - clojure iterator! after reload! does it remember? :3
+   0: after - closure iterator! after reload! does it remember? :2
+   0: after - closure iterator! after reload! does it remember? :3
 main: after
               The answer is: 1000
 main: hasAnyModuleChanged? true

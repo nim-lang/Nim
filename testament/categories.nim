@@ -152,12 +152,13 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
 
-  # force build required - see the comments in the .nim file for more details
-  var hcr_integration = makeTest("tests/dll/nimhcr_integration.nim",
-                                 options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
-  hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd, hcr_integration.name,
-                                         hcr_integration.options, getTestSpecTarget())
-  testSpec r, hcr_integration
+  if "boehm" notin options:
+    # force build required - see the comments in the .nim file for more details
+    var hcr_integration = makeTest("tests/dll/nimhcr_integration.nim",
+                                   options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
+    hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd, hcr_integration.name,
+                                           hcr_integration.options, getTestSpecTarget())
+    testSpec r, hcr_integration
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:

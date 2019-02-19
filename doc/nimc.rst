@@ -486,9 +486,9 @@ The main module of the program is considered non-reloadable. Please note
 that procs from reloadable modules should not appear in the call stack of
 program while ``performCodeReload`` is being called. Thus, the main module
 is a suitable place for implementing a program loop capable of calling
-``performCodeReload``. Also be careful when reloading modules with clojures
+``performCodeReload``. Also be careful when reloading modules with closures
 which have been instantiated in variables and aren't finished yet - changes
-to the code of the clojures might lead to a crash if incompatible (like
+to the code of the closures might lead to a crash if incompatible (like
 removing a yield or adding more locals/changing their point of definition).
 
 **Usage in JavaScript projects:**
