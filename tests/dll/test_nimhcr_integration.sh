@@ -5,8 +5,7 @@ set -e
 rm -rf nimcache
 
 NIM_FLAGS=${*:- -d:debug}
-
-NIM=nimd
+NIM=nim
 
 $NIM c --outdir:"." $NIM_FLAGS ../../lib/nimrtl.nim
 $NIM c --outdir:"." $NIM_FLAGS ../../lib/nimhcr.nim

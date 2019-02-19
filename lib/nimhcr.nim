@@ -102,7 +102,7 @@
 ##     Example: if A imports B which imports C, then all handlers in C will be executed
 ##     first (from top to bottom) followed by all from B and lastly all from A
 ##   - after the reload all "after" handlers are executed the same way as "before"
-##   - the handlers for a reloaded module are always removed when reloading and then 
+##   - the handlers for a reloaded module are always removed when reloading and then
 ##     registered when the top-level scope is executed (thanks to `executeOnReload`)
 ##
 ## TODO - after first merge in upstream Nim:
@@ -524,7 +524,7 @@ when defined(createNimHcr):
   proc hcrHasModuleChanged*(moduleHash: string): bool {.nimhcr.} =
     let module = hashToModuleMap[moduleHash]
     return modules[module].lastModification < getLastModificationTime(module)
-  
+
   proc hcrReloadNeeded*(): bool {.nimhcr.} =
     for hash, _ in hashToModuleMap:
       if hcrHasModuleChanged(hash):
@@ -535,6 +535,15 @@ when defined(createNimHcr):
     if not hcrReloadNeeded():
       trace "HCR - no changes"
       return
+
+    # We disable the GC during the reload, because the reloading procedures
+    # will replace type info objects and GC marker procs. This seems to create
+    # problems when the GC is executed while the reload is underway.
+    # Future versions of NIMHCR won't use the GC, because all globals and the
+    # metadata needed to access them will be placed in shared memory, so they
+    # can be manipulted from external programs without reloading.
+    GC_disable()
+    defer: GC_enable()
 
     inc(generation)
     trace "HCR RELOADING: ", generation
