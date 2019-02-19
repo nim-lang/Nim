@@ -570,7 +570,10 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
-    compilePattern = joinPath(conf.ccompilerpath, exe)
+    if conf.ccompilerpath != "":
+      compilePattern = joinPath(conf.ccompilerpath, exe)
+    else:
+      compilePattern = exe
   else:
     includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
@@ -678,7 +681,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
     if len(linkerExe) == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
-    if noAbsolutePaths(conf): result = linkerExe
+    if noAbsolutePaths(conf) or conf.cCompilerpath == "": result = linkerExe
     else: result = joinPath(conf.cCompilerpath, linkerExe)
     let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
                      CC[conf.cCompiler].buildGui
