@@ -1735,13 +1735,13 @@ when false:
     readMergeInfo(getCFile(m), m)
     result = m
 
-proc addHcrInitGuards(p: BProc, stmt: PNode, inInitGuard: var bool) =
-  if stmt.kind == nkStmtList:
-    for child in stmt:
+proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
+  if n.kind == nkStmtList:
+    for child in n:
       addHcrInitGuards(p, child, inInitGuard)
   else:
-    let stmtShouldExecute = stmt.kind in {nkVarSection, nkLetSection} or
-                            nfExecuteOnReload in stmt.flags
+    let stmtShouldExecute = n.kind in {nkVarSection, nkLetSection} or
+                            nfExecuteOnReload in n.flags
     if inInitGuard:
       if stmtShouldExecute:
         endBlock(p)
@@ -1752,7 +1752,7 @@ proc addHcrInitGuards(p: BProc, stmt: PNode, inInitGuard: var bool) =
         startBlock(p)
         inInitGuard = true
 
-    genStmts(p, stmt)
+    genStmts(p, n)
 
 proc myProcess(b: PPassContext, n: PNode): PNode =
   result = n

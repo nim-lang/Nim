@@ -2426,6 +2426,29 @@ proc genHeader(): Rope =
     "if (typeof Float64Array === 'undefined') Float64Array = Array;$n") %
     [rope(VersionAsString)]
 
+proc addHcrInitGuards(p: PProc, n: PNode,
+                      moduleLoadedVar: Rope, inInitGuard: var bool) =
+  if n.kind == nkStmtList:
+    for child in n:
+      addHcrInitGuards(p, child, moduleLoadedVar, inInitGuard)
+  else:
+    let stmtShouldExecute = n.kind in {
+      nkProcDef, nkFuncDef, nkMethodDef,nkConverterDef,
+      nkVarSection, nkLetSection} or nfExecuteOnReload in n.flags
+
+    if inInitGuard:
+      if stmtShouldExecute:
+        dec p.extraIndent
+        line(p, "}\L")
+        inInitGuard = false
+    else:
+      if not stmtShouldExecute:
+        lineF(p, "if ($1 == undefined) {$n", [moduleLoadedVar])
+        inc p.extraIndent
+        inInitGuard = true
+
+    genStmt(p, n)
+
 proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     add(p.body, frameCreate(p,
@@ -2439,30 +2462,13 @@ proc genModule(p: PProc, n: PNode) =
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 
-    for stmt in n_transformed:
-      let stmtShouldExecute = stmt.kind in {
-        nkProcDef, nkFuncDef, nkMethodDef,nkConverterDef,
-        nkVarSection, nkLetSection} or nfExecuteOnReload in stmt.flags
-
-      if inGuardedBlock:
-        if stmtShouldExecute:
-          dec p.extraIndent
-          line(p, "}\L")
-          inGuardedBlock = false
-      else:
-        if not stmtShouldExecute:
-          lineF(p, "if ($1 == undefined) {$n", [moduleLoadedVar])
-          inc p.extraIndent
-          inGuardedBlock = true
-
-      genStmt(p, stmt)
+    addHcrInitGuards(p, n_transformed, moduleLoadedVar, inGuardedBlock)
 
     if inGuardedBlock:
       dec p.extraIndent
       line(p, "}\L")
 
     lineF(p, "$1 = true;$n", [moduleLoadedVar])
-
   else:
     genStmt(p, n_transformed)
 
