@@ -184,39 +184,6 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "varargs")
     addSonSkipIntLit(result, errorType(c))
 
-proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
-  if n.len < 1:
-    result = newConstraint(c, kind)
-  else:
-    let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
-    let n = if n[0].kind == nkBracket: n[0] else: n
-    checkMinSonsLen(n, 1, c.config)
-    var t = semTypeNode(c, n.lastSon, nil)
-    if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
-      t = t.base
-    if t.kind == tyVoid:
-      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
-      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
-    result = newOrPrevType(kind, prev, c)
-    var isNilable = false
-    # check every except the last is an object:
-    for i in isCall .. n.len-2:
-      let ni = n[i]
-      if ni.kind == nkNilLit:
-        isNilable = true
-      else:
-        let region = semTypeNode(c, ni, nil)
-        if region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
-              tyError, tyObject}:
-          message c.config, n[i].info, errGenerated, "region needs to be an object type"
-        else:
-          message(c.config, n.info, warnDeprecated, "region for pointer types is deprecated")
-        addSonSkipIntLit(result, region)
-    addSonSkipIntLit(result, t)
-    if tfPartial in result.flags:
-      if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
-    #if not isNilable: result.flags.incl tfNotNil
-
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 1:
     result = newOrPrevType(tyVar, prev, c)
@@ -793,7 +760,7 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
     addInheritedFields(c, check, pos, obj.sons[0].skipGenericInvocation)
   addInheritedFieldsAux(c, check, pos, obj.n)
 
-proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
+proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PType =
   if n.sonsLen == 0:
     return newConstraint(c, tyObject)
   var check = initIntSet()
@@ -825,6 +792,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, realBase)
+  if realBase == nil and isInheritable:
+    result.flags.incl tfInheritable
   if result.n.isNil:
     result.n = newNodeI(nkRecList, n.info)
   else:
@@ -838,6 +807,43 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     pragma(c, s, n.sons[0], typePragmas)
   if base == nil and tfInheritable notin result.flags:
     incl(result.flags, tfFinal)
+
+proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
+  if n.len < 1:
+    result = newConstraint(c, kind)
+  else:
+    let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
+    let n = if n[0].kind == nkBracket: n[0] else: n
+    checkMinSonsLen(n, 1, c.config)
+    let body = n.lastSon
+    var t = if prev != nil and body.kind == nkObjectTy and tfInheritable in prev.flags:
+              semObjectNode(c, body, nil, isInheritable=true)
+            else:
+              semTypeNode(c, body, nil)
+    if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
+      t = t.base
+    if t.kind == tyVoid:
+      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
+      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
+    result = newOrPrevType(kind, prev, c)
+    var isNilable = false
+    # check every except the last is an object:
+    for i in isCall .. n.len-2:
+      let ni = n[i]
+      if ni.kind == nkNilLit:
+        isNilable = true
+      else:
+        let region = semTypeNode(c, ni, nil)
+        if region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
+              tyError, tyObject}:
+          message c.config, n[i].info, errGenerated, "region needs to be an object type"
+        else:
+          message(c.config, n.info, warnDeprecated, "region for pointer types is deprecated")
+        addSonSkipIntLit(result, region)
+    addSonSkipIntLit(result, t)
+    if tfPartial in result.flags:
+      if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
+    #if not isNilable: result.flags.incl tfNotNil
 
 proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,
@@ -1705,7 +1711,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       if s.kind != skError: localError(c.config, n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
-  of nkObjectTy: result = semObjectNode(c, n, prev)
+  of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
   of nkTupleTy: result = semTuple(c, n, prev)
   of nkTupleClassTy: result = newConstraint(c, tyTuple)
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
