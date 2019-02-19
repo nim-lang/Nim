@@ -336,23 +336,23 @@ Parsers
   This is a low level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
 
-* `highlite <highlite.html>`_
+* `packages/docutils/highlite <highlite.html>`_
   Source highlighter for programming or markup languages.  Currently
   only few languages are supported, other languages may be added.
   The interface supports one language nested in another.
 
-* `rst <rst.html>`_
+* `packages/docutils/rst <rst.html>`_
   This module implements a reStructuredText parser. A large subset
   is implemented. Some features of the markdown wiki syntax are
   also supported.
 
-* `rstast <rstast.html>`_
+* `packages/docutils/rstast <rstast.html>`_
   This module implements an AST for the reStructuredText parser.
 
-* `rstgen <rstgen.html>`_
+* `packages/docutils/rstgen <rstgen.html>`_
   This module implements a generator of HTML/Latex from reStructuredText.
 
-* `sexp <sexp.html>`_
+* `packages/docutils/sexp <sexp.html>`_
   High performance sexp parser and generator, mainly for communication
   with emacs.
 
@@ -388,7 +388,7 @@ Cryptography and Hashing
 * `base64 <base64.html>`_
   This module implements a base64 encoder and decoder.
 
-* `sha1 <sha1.html>`_
+* `std/sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
 
 
