@@ -360,6 +360,34 @@ proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   assert n.k == xnElement
   result = n.s[i]
 
+proc clear*(n: var XmlNode) =
+  ## Recursively clear all children of an XmlNode.
+  runnableExamples:
+    from strutils import unindent
+
+    var g = newElement("myTag")
+    g.add newText("some text")
+    g.add newComment("this is comment")
+
+    var h = newElement("secondTag")
+    h.add newEntity("some entity")
+
+    let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
+    var k = newXmlTree("treeTag", [g, h], att)
+
+    assert ($k).unindent ==
+      """<treeTag key2="second value" key1="first value">
+         <myTag>some text<!-- this is comment --></myTag>
+         <secondTag>&some entity;</secondTag>
+         </treeTag>""".unindent
+    clear(k)
+    assert $k == """<treeTag key2="second value" key1="first value" />"""
+
+  for i in countdown(n.len - 1, 0):
+    clear(n[i])
+    n.delete(i)
+
+
 iterator items*(n: XmlNode): XmlNode {.inline.} =
   ## Iterates over any child of `n`.
   ##
