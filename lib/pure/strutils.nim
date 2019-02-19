@@ -370,7 +370,7 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
       return 1
     inc i
     inc j
-
+{.pop.}
 
 # --------- Private templates for different split separators -----------
 
@@ -1474,7 +1474,7 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
     doAssert a.endsWith("dab") == false
   var i = 0
   var j = len(s) - len(suffix)
-  while i+j <% s.len:
+  while i+j >= 0 and i+j < s.len:
     if s[i+j] != suffix[i]: return false
     inc(i)
   if i >= suffix.len: return true
@@ -2635,9 +2635,6 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
   ## * `strformat module<strformat.html>`_ for string interpolation and formatting
   result = newStringOfCap(formatstr.len + a.len)
   addf(result, formatstr, a)
-
-{.pop.}
-
 
 
 proc strip*(s: string, leading = true, trailing = true,
