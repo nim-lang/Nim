@@ -33,21 +33,21 @@ when defined(linux):
 type
   ProcessOption* = enum ## Options that can be passed to `startProcess proc
     ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
-    poEchoCmd,           ## Echo the command before execution.
-    poUsePath,           ## Asks system to search for executable using PATH environment
-                         ## variable.
-                         ## On Windows, this is the default.
-    poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
-                         ## Use it only if `command` comes from trusted source.
-    poStdErrToStdOut,    ## Merge stdout and stderr to the stdout stream.
-    poParentStreams,     ## Use the parent's streams.
-    poInteractive,       ## Optimize the buffer handling for responsiveness for
-                         ## UI applications. Currently this only affects
-                         ## Windows: Named pipes are used so that you can peek
-                         ## at the process' output streams.
-    poDaemon             ## Windows: The program creates no Window.
-                         ## Unix: Start the program as a demon. This is still
-                         ## work in progress!
+    poEchoCmd,              ## Echo the command before execution.
+    poUsePath,              ## Asks system to search for executable using PATH environment
+                            ## variable.
+                            ## On Windows, this is the default.
+    poEvalCommand,          ## Pass `command` directly to the shell, without quoting.
+                            ## Use it only if `command` comes from trusted source.
+    poStdErrToStdOut,       ## Merge stdout and stderr to the stdout stream.
+    poParentStreams,        ## Use the parent's streams.
+    poInteractive,          ## Optimize the buffer handling for responsiveness for
+                            ## UI applications. Currently this only affects
+                            ## Windows: Named pipes are used so that you can peek
+                            ## at the process' output streams.
+    poDaemon                ## Windows: The program creates no Window.
+                            ## Unix: Start the program as a daemon. This is still
+                            ## work in progress!
 
   ProcessObj = object of RootObj
     when defined(windows):
@@ -64,6 +64,11 @@ type
     options: set[ProcessOption]
 
   Process* = ref ProcessObj ## Represents an operating system process.
+
+const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
+  ## used the wrong spelling ("demon").
+  ## Now `ProcessOption` uses the correct spelling ("daemon"),
+  ## and this is needed just for backward compatibility.
 
 
 proc execProcess*(command: string,
