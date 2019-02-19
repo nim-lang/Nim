@@ -383,9 +383,10 @@ proc clear*(n: var XmlNode) =
     clear(k)
     assert $k == """<treeTag key2="second value" key1="first value" />"""
 
-  for i in countdown(n.len - 1, 0):
+  for i in 0 ..< n.len:
     clear(n[i])
-    n.delete(i)
+  if n.k == xnElement:
+    n.s.setLen(0)
 
 
 iterator items*(n: XmlNode): XmlNode {.inline.} =
