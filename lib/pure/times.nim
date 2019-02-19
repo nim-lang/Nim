@@ -23,7 +23,7 @@
     import times, os
     # Simple benchmarking
     let time = cpuTime()
-    sleep(100)   # Replace this with something to be timed
+    sleep(100) # Replace this with something to be timed
     echo "Time taken: ", cpuTime() - time
 
     # Current date & time
@@ -481,75 +481,77 @@ proc initDuration*(nanoseconds, microseconds, milliseconds,
   # Nanoseconds might be negative so we must normalize.
   result = normalize[Duration](seconds, nanoseconds)
 
-proc weeks*(dur: Duration): int64 {.inline.} =
-  ## Number of whole weeks represented by the duration.
-  runnableExamples:
-    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
-    doAssert dur.weeks == 1
-  convert(Seconds, Weeks, dur.seconds)
+template convert(dur: Duration, unit: static[FixedTimeUnit]): int64 =
+  # The correction is required due to how durations are normalized.
+  # For example,` initDuration(nanoseconds = -1)` is stored as
+  # { seconds = -1, nanoseconds = 999999999 }.
+  let correction = dur.seconds < 0 and dur.nanosecond > 0
+  when unit >= Seconds:
+    convert(Seconds, unit, dur.seconds + ord(correction))
+  else:
+    if correction:
+      convert(Seconds, unit, dur.seconds + 1) -
+        convert(Nanoseconds, unit,
+          convert(Seconds, Nanoseconds, 1) - dur.nanosecond)
+    else:
+      convert(Seconds, unit, dur.seconds) +
+        convert(Nanoseconds, unit, dur.nanosecond)
 
-proc days*(dur: Duration): int64 {.inline.} =
-  ## Number of whole days represented by the duration.
+proc inWeeks*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole weeks.
   runnableExamples:
-    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
-    doAssert dur.days == 9
-  convert(Seconds, Days, dur.seconds)
+    let dur = initDuration(days = 8)
+    doAssert dur.inWeeks == 1
+  dur.convert(Weeks)
 
-proc hours*(dur: Duration): int64 {.inline.} =
-  ## Number of whole hours represented by the duration.
+proc inDays*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole days.
   runnableExamples:
-    let dur = initDuration(days = 1, hours = 2, minutes = 3)
-    doAssert dur.hours == 26
-  convert(Seconds, Hours, dur.seconds)
+    let dur = initDuration(hours = -50)
+    doAssert dur.inDays == -2
+  dur.convert(Days)
 
-proc minutes*(dur: Duration): int64 {.inline.} =
-  ## Number of whole minutes represented by the duration.
+proc inHours*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole hours.
   runnableExamples:
-    let dur = initDuration(days = 1, hours = 2, minutes = 3)
-    doAssert dur.minutes == 1563
-  convert(Seconds, Minutes, dur.seconds)
+    let dur = initDuration(minutes = 60, days = 2)
+    doAssert dur.hours == 49
+  dur.convert(Hours)
 
-proc seconds*(dur: Duration): int64 {.inline.} =
-  ## Number of whole seconds represented by the duration.
+proc inMinutes*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole minutes.
   runnableExamples:
-    let dur = initDuration(minutes = 10, seconds = 30)
-    doAssert dur.seconds == 630
-  dur.seconds
+    let dur = initDuration(hours = 2, seconds = 10)
+    doAssert dur.minutes == 120
+  dur.convert(Minutes)
 
-proc milliseconds*(dur: Duration): int {.inline.} =
-  ## Number of whole milliseconds represented by the **fractional**
-  ## part of the duration.
+proc inSeconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole seconds.
   runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.milliseconds == 7
-  convert(Nanoseconds, Milliseconds, dur.nanosecond)
+    let dur = initDuration(hours = 2, milliseconds = 10)
+    doAssert dur.inSeconds == 2 * 60 * 60
+  dur.convert(Seconds)
 
-proc microseconds*(dur: Duration): int {.inline.} =
-  ## Number of whole microseconds represented by the **fractional**
-  ## part of the duration.
+proc inMilliseconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole milliseconds.
   runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.microseconds == 7008
-  convert(Nanoseconds, Microseconds, dur.nanosecond)
+    let dur = initDuration(seconds = -2)
+    doAssert dur.inMilliseconds == -2000
+  dur.convert(Milliseconds)
 
-proc nanoseconds*(dur: Duration): int {.inline.} =
-  ## Number of whole nanoseconds represented by the **fractional**
-  ## part of the duration.
+proc inMicroseconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole microseconds.
   runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.nanoseconds == 7008009
-  dur.nanosecond
+    let dur = initDuration(seconds = -2)
+    doAssert dur.inMicroseconds == -2000000
+  dur.convert(Microseconds)
 
-proc fractional*(dur: Duration): Duration {.inline.} =
-  ## The fractional part of duration, as a duration.
+proc inNanoseconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole nanoseconds.
   runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.fractional == initDuration(milliseconds = 7, microseconds = 8, nanoseconds = 9)
-  initDuration(nanoseconds = dur.nanosecond)
+    let dur = initDuration(seconds = -2)
+    doAssert dur.inNanoseconds == -2000000000
+  dur.convert(Nanoseconds)
 
 proc fromUnix*(unix: int64): Time
     {.benign, tags: [], raises: [], noSideEffect.} =
@@ -2502,10 +2504,10 @@ when not defined(JS):
     Clock {.importc: "clock_t".} = distinct int
 
   proc getClock(): Clock
-      {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
+      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used.}
 
   var
-    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
+    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int
 
   when not defined(useNimRtl):
     proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
@@ -2563,6 +2565,104 @@ when defined(JS):
     newDate().getTime() / 1000
 
 # Deprecated procs
+
+proc weeks*(dur: Duration): int64
+    {.inline, deprecated: "Use `inWeeks` instead".} =
+  ## Number of whole weeks represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inWeeks proc
+  ## <#inWeeks,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
+    doAssert dur.weeks == 1
+  dur.inWeeks
+
+proc days*(dur: Duration): int64
+    {.inline, deprecated: "Use `inDays` instead".} =
+  ## Number of whole days represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inDays proc
+  ## <#inDays,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
+    doAssert dur.days == 9
+  dur.inDays
+
+proc hours*(dur: Duration): int64
+    {.inline,deprecated: "Use `inHours` instead".} =
+  ## Number of whole hours represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inHours proc
+  ## <#inHours,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(days = 1, hours = 2, minutes = 3)
+    doAssert dur.hours == 26
+  dur.inHours
+
+proc minutes*(dur: Duration): int64
+    {.inline, deprecated: "Use `inMinutes` instead".} =
+  ## Number of whole minutes represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inMinutes proc
+  ## <#inMinutes,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(days = 1, hours = 2, minutes = 3)
+    doAssert dur.minutes == 1563
+  dur.inMinutes
+
+proc seconds*(dur: Duration): int64
+    {.inline, deprecated: "Use `inSeconds` instead".} =
+  ## Number of whole minutes represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inMinutes proc
+  ## <#inMinutes,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(minutes = 10, seconds = 30)
+    doAssert dur.seconds == 630
+  dur.inSeconds
+
+proc milliseconds*(dur: Duration): int {.inline, deprecated.} =
+  ## Number of whole milliseconds represented by the **fractional**
+  ## part of the duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.milliseconds == 7
+  result = convert(Nanoseconds, Milliseconds, dur.nanosecond)
+
+proc microseconds*(dur: Duration): int {.inline, deprecated.} =
+  ## Number of whole microseconds represented by the **fractional**
+  ## part of the duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.microseconds == 7008
+  result = convert(Nanoseconds, Microseconds, dur.nanosecond)
+
+proc nanoseconds*(dur: Duration): NanosecondRange {.inline.} =
+  ## Number of whole microseconds represented by the **fractional**
+  ## part of the duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.nanoseconds == 7008009
+  dur.nanosecond
+
+proc fractional*(dur: Duration): Duration {.inline, deprecated.} =
+  ## The fractional part of `dur`, as a duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.fractional == initDuration(milliseconds = 7, microseconds = 8, nanoseconds = 9)
+  initDuration(nanoseconds = dur.nanosecond)
 
 when not defined(JS):
   proc unixTimeToWinTime*(time: CTime): int64
