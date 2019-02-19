@@ -134,11 +134,13 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
-  var typ = origTyp.skipTypes(abstractInstOwned)
+  let
+    hcrOn = m.hcrOn
+    typ = origTyp.skipTypes(abstractInstOwned)
+    markerName = if hcrOn: result & "_actual" else: result
+    header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [markerName]
+    t = getTypeDesc(m, typ)
 
-  let header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [result]
-
-  let t = getTypeDesc(m, typ)
   lineF(p, cpsLocals, "$1 a;$n", [t])
   lineF(p, cpsInit, "a = ($1)p;$n", [t])
 
@@ -155,11 +157,16 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
     else:
       genTraverseProc(c, "(*a)".rope, typ.sons[0])
 
-  let generatedProc = "$1 {$n$2$3$4}$n" %
+  let generatedProc = "$1 {$n$2$3$4}\n" %
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)]
 
-  m.s[cfsProcHeaders].addf("$1;$n", [header])
+  m.s[cfsProcHeaders].addf("$1;\n", [header])
   m.s[cfsProcs].add(generatedProc)
+
+  if hcrOn:
+    addf(m.s[cfsProcHeaders], "N_NIMCALL_PTR(void, $1)(void*, NI);\n", [result])
+    addf(m.s[cfsDynLibInit], "\t$1 = (N_NIMCALL_PTR(void, )(void*, NI)) hcrRegisterProc($3, \"$1\", (void*)$2);\n",
+         [result, markerName, getModuleDllPath(m)])
 
 proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
   discard genTypeInfo(m, s.loc.t, info)

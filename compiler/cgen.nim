@@ -95,10 +95,13 @@ proc cgsym(m: BModule, name: string): Rope
 
 proc getCFile(m: BModule): AbsoluteFile
 
-proc getModuleDllPath(m: BModule, s: PSym): Rope =
-  let (dir, name, ext) = splitFile(getCFile(findPendingModule(m, s)))
+proc getModuleDllPath(m: BModule): Rope =
+  let (dir, name, ext) = splitFile(getCFile(m))
   let filename = strutils.`%`(platform.OS[m.g.config.target.targetOS].dllFrmt, [name & ext])
   return makeCString(dir.string & "/" & filename)
+
+proc getModuleDllPath(m: BModule, s: PSym): Rope =
+  return getModuleDllPath(findPendingModule(m, s))
 
 # TODO: please document
 proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =

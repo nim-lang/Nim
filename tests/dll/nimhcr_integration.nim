@@ -47,6 +47,7 @@ main: hasAnyModuleChanged? true
 main: before
 main: after
               The answer is: 42
+done
 '''
 """
 
@@ -147,3 +148,5 @@ compileReloadExecute() # versions are: 5 2 2
 update 0
 update 1
 update 2
+
+echo "done"
