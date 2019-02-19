@@ -656,7 +656,55 @@ proc escapeJson*(s: string): string =
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
-proc toUgly*(result: var string, node: JsonNode)
+proc toUgly*(result: var string, node: JsonNode) =
+  ## Converts `node` to its JSON Representation, without
+  ## regard for human readability. Meant to improve ``$`` string
+  ## conversion performance.
+  ##
+  ## JSON representation is stored in the passed `result`
+  ##
+  ## This provides higher efficiency than the ``pretty`` procedure as it
+  ## does **not** attempt to format the resulting JSON to make it human readable.
+  var comma = false
+  case node.kind:
+  of JArray:
+    result.add "["
+    for child in node.elems:
+      if comma: result.add ","
+      else:     comma = true
+      result.toUgly child
+    result.add "]"
+  of JObject:
+    result.add "{"
+    for key, value in pairs(node.fields):
+      if comma: result.add ","
+      else:     comma = true
+      key.escapeJson(result)
+      result.add ":"
+      result.toUgly value
+    result.add "}"
+  of JString:
+    node.str.escapeJson(result)
+  of JInt:
+    when defined(js): result.add($node.num)
+    else: result.add(node.num)
+  of JFloat:
+    when defined(js): result.add($node.fnum)
+    else:
+      # print special values in the style of javascript
+      # see issue #10700
+      if node.fnum != node.fnum: # isNaN
+        result.add "NaN"
+      elif node.fnum == Inf:
+        result.add "Infinity"
+      elif node.fnum == -Inf:
+        result.add "-Infinity"
+      else:
+        result.add(node.fnum)
+  of JBool:
+    result.add(if node.bval: "true" else: "false")
+  of JNull:
+    result.add "null"
 
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
@@ -737,56 +785,6 @@ proc pretty*(node: JsonNode, indent = 2): string =
 }"""
   result = ""
   toPretty(result, node, indent)
-
-proc toUgly*(result: var string, node: JsonNode) =
-  ## Converts `node` to its JSON Representation, without
-  ## regard for human readability. Meant to improve ``$`` string
-  ## conversion performance.
-  ##
-  ## JSON representation is stored in the passed `result`
-  ##
-  ## This provides higher efficiency than the ``pretty`` procedure as it
-  ## does **not** attempt to format the resulting JSON to make it human readable.
-  var comma = false
-  case node.kind:
-  of JArray:
-    result.add "["
-    for child in node.elems:
-      if comma: result.add ","
-      else:     comma = true
-      result.toUgly child
-    result.add "]"
-  of JObject:
-    result.add "{"
-    for key, value in pairs(node.fields):
-      if comma: result.add ","
-      else:     comma = true
-      key.escapeJson(result)
-      result.add ":"
-      result.toUgly value
-    result.add "}"
-  of JString:
-    node.str.escapeJson(result)
-  of JInt:
-    when defined(js): result.add($node.num)
-    else: result.add(node.num)
-  of JFloat:
-    when defined(js): result.add($node.fnum)
-    else:
-      # print special values in the style of javascript
-      # see issue #10700
-      if node.fnum != node.fnum: # isNaN
-        result.add "NaN"
-      elif node.fnum == Inf:
-        result.add "Infinity"
-      elif node.fnum == -Inf:
-        result.add "-Infinity"
-      else:
-        result.add(node.fnum)
-  of JBool:
-    result.add(if node.bval: "true" else: "false")
-  of JNull:
-    result.add "null"
 
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
