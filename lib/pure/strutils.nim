@@ -377,7 +377,7 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 proc substrEq(s: string, pos: int, substr: string): bool =
   var i = 0
   var length = substr.len
-  while i < length and s[pos+i] == substr[i]:
+  while i < length and pos+i < s.len and s[pos+i] == substr[i]:
     inc i
   return i == length
 
