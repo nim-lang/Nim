@@ -79,3 +79,11 @@ proc cmpIgnoreCase*(a, b: cstring): int {.noSideEffect,
     result = ord(aa) - ord(bb)
     if result != 0 or aa == '\0': break
     inc(i)
+
+proc substrEq*(s: cstring, pos: int, substr: string): bool =
+  ## Returns true iff ``s`` at position ``pos`` starts the substring ``substr``.
+  var i = 0
+  var length = substr.len
+  while i < length and s[pos+i] == substr[i] and s[pos+i] != '\0':
+    inc i
+  return i == length

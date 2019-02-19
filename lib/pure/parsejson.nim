@@ -12,7 +12,7 @@
 ## module, but can also be used in its own right.
 
 import
-  strutils, lexbase, streams, unicode
+  strutils, lexbase, streams, unicode, cstrutils
 
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
@@ -323,14 +323,6 @@ proc skip(my: var JsonParser) =
     else:
       break
   my.bufpos = pos
-
-proc substrEq(s: cstring, pos: int, substr: string): bool =
-  ## copy of strutils.substrEq, because that function isn't exported.
-  var i = 0
-  var length = substr.len
-  while i < length and s[pos+i] == substr[i]:
-    inc i
-  return i == length
 
 proc parseNumber(my: var JsonParser) =
   var pos = my.bufpos
