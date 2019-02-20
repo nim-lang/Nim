@@ -139,7 +139,7 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
     of def:
       if c.g[pc].sym == s:
         # the path lead to a redefinition of 's' --> abandon it.
-        return high(int) 
+        return high(int)
       inc pc
     of use:
       if c.g[pc].sym == s:
@@ -154,7 +154,7 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
       if variantA < 0: return -1
       let variantB = isLastRead(s, c, pc + c.g[pc].dest, pc)
       if variantB < 0: return -1
-      elif variantA == high(int): 
+      elif variantA == high(int):
         variantA = variantB
       pc = variantA
     of InstrKind.join:
@@ -632,7 +632,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     let params = owner.typ.n
     for i in 1 ..< params.len:
       let param = params[i].sym
-      if param.typ.kind == tySink and hasDestructor(param.typ):
+      if param.typ.kind == tySink and hasDestructor(param.typ.sons[0]):
         c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
   let body = p(n, c)
