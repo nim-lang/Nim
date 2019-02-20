@@ -187,7 +187,7 @@
   the same as 25 hours.
 ]##
 
-import strutils, algorithm, math, options, strformat
+import strutils, math, options
 
 include "system/inclrtl"
 
@@ -1757,7 +1757,7 @@ proc `$`*(f: TimeFormat): string =
 
 proc raiseParseException(f: TimeFormat, input: string, msg: string) =
   raise newException(TimeParseError,
-                     &"Failed to parse '{input}' with format '{f}'. {msg}")
+                     "Failed to parse '" & input & "' with format '" & $f & "'. " & msg)
 
 proc parseInt(s: string, b: var int, start = 0, maxLen = int.high,
               allowSign = false): int =
@@ -1809,7 +1809,7 @@ iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
 
         if i > f.high:
           raise newException(TimeFormatParseError,
-                             &"Unclosed ' in time format string. " &
+                             "Unclosed ' in time format string. " &
                              "For a literal ', use ''.")
         i.inc
         yield (tkLiteral, token)
@@ -1866,7 +1866,7 @@ proc stringToPattern(str: string): FormatPattern =
   of "zzzz": result = zzzz
   of "g": result = g
   else: raise newException(TimeFormatParseError,
-                           &"'{str}' is not a valid pattern")
+                           "'" & str & "' is not a valid pattern")
 
 proc initTimeFormat*(format: string): TimeFormat =
   ## Construct a new time format for parsing & formatting time types.
@@ -2377,7 +2377,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
         patIdx.inc
     else:
       if not parsePattern(input, pattern, inpIdx, parsed):
-        raiseParseException(f, input, &"Failed on pattern '{pattern}'")
+        raiseParseException(f, input, "Failed on pattern '" & $pattern & "'")
       patIdx.inc
 
   if inpIdx <= input.high:
