@@ -143,9 +143,6 @@ template get(t: StringTableRef, key: string) =
     else:
       raise newException(KeyError, "key not found")
 
-proc `[]=`*(t: StringTableRef, key, val: string) {.
-  rtlFunc, extern: "nstPut", noSideEffect.}
-
 proc newStringTable*(mode: StringTableMode): StringTableRef {.
   rtlFunc, extern: "nst$1".} =
   ## Creates a new empty string table.
