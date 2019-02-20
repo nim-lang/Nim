@@ -213,6 +213,9 @@ Generic Operating System Services
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
 
+* `asyncstreams <asyncstreams.htm>`_
+  This module provides `FutureStream` - a future that acts as a queue.
+
 * `distros <distros.html>`_
   This module implements the basics for OS distribution ("distro") detection
   and the OS's native package manager.
