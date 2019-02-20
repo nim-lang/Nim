@@ -407,12 +407,11 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
   ## compiler.
-  result.a = a
-  result.b = b
+  result = HSlice[T, U](a: a, b: b)
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## unary `slice`:idx: operator that constructs an interval ``[default(int), b]``
-  result.b = b
+  result = HSlice[int, T](a: 0, b: b)
 
 when not defined(niminheritable):
   {.pragma: inheritable.}
