@@ -551,7 +551,7 @@ type
     headers*: HttpHeaders ## Headers to send in requests.
     maxRedirects: int
     userAgent: string
-    timeout: int ## Only used for blocking HttpClient for now.
+    timeout*: int ## Only used for blocking HttpClient for now.
     proxy: Proxy
     ## ``nil`` or the callback to call when request progress changes.
     when SocketType is Socket:

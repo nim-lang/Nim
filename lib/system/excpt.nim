@@ -17,15 +17,15 @@ var
     ## instead of stdmsg.write when printing stacktrace.
     ## Unstable API.
 
-proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
+proc c_fwrite(buf: pointer, size, n: csize, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
-proc rawWrite(f: File, s: string|cstring) =
+proc rawWrite(f: CFilePtr, s: string|cstring) =
   # we cannot throw an exception here!
   discard c_fwrite(cstring(s), 1, s.len, f)
 
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: cstring) = rawWrite(stdmsg, msg)
+  proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
 
 else:
   proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
@@ -220,11 +220,12 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     inc(i)
     it = it.prev
   var last = i-1
-  if s.len == 0:
-    s = newSeq[StackTraceEntry](i)
-  else:
-    last = s.len + i - 1
-    s.setLen(last+1)
+  when true: # not defined(gcDestructors):
+    if s.len == 0:
+      s = newSeq[StackTraceEntry](i)
+    else:
+      last = s.len + i - 1
+      s.setLen(last+1)
   it = f
   while it != nil:
     s[last] = StackTraceEntry(procname: it.procname,
@@ -353,6 +354,8 @@ proc raiseExceptionAux(e: ref Exception) =
       raiseCounter.inc # skip zero at overflow
     e.raiseId = raiseCounter
     {.emit: "`e`->raise();".}
+  elif defined(nimQuirky):
+    pushCurrentException(e)
   else:
     if excHandler != nil:
       if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
@@ -440,11 +443,13 @@ proc getStackTrace(e: ref Exception): string =
   else:
     result = ""
 
-when not defined(gcDestructors):
-  proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
-    ## Returns the attached stack trace to the exception ``e`` as
-    ## a ``seq``. This is not yet available for the JS backend.
+proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
+  ## Returns the attached stack trace to the exception ``e`` as
+  ## a ``seq``. This is not yet available for the JS backend.
+  when not defined(gcDestructors):
     shallowCopy(result, e.trace)
+  else:
+    result = move(e.trace)
 
 const nimCallDepthLimit {.intdefine.} = 2000
 
@@ -465,6 +470,24 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl.} =
 when defined(endb):
   var
     dbgAborting: bool # whether the debugger wants to abort
+
+when defined(cpp) and appType != "lib" and
+    not defined(js) and not defined(nimscript) and
+    hostOS != "standalone" and not defined(noCppExceptions):
+  proc setTerminate(handler: proc() {.noconv.})
+    {.importc: "std::set_terminate", header: "<exception>".}
+  setTerminate proc() {.noconv.} =
+    # Remove ourself as a handler, reinstalling the default handler.
+    setTerminate(nil)
+
+    when defined(genode):
+      # stderr not available by default, use the LOG session
+      echo currException.getStackTrace() & "Error: unhandled exception: " &
+              currException.msg & " [" & $currException.name & "]\n"
+    else:
+      writeToStdErr currException.getStackTrace() & "Error: unhandled exception: " &
+              currException.msg & " [" & $currException.name & "]\n"
+    quit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =

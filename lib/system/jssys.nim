@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+import system/indexerrors
+
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
@@ -157,8 +159,8 @@ proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
 proc raiseRangeError() {.compilerproc, noreturn.} =
   raise newException(RangeError, "value out of range")
 
-proc raiseIndexError() {.compilerproc, noreturn.} =
-  raise newException(IndexError, "index out of bounds")
+proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
+  raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(FieldError, f & " is not accessible")
@@ -626,7 +628,7 @@ proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
 
 proc chckIndx(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i
-  else: raiseIndexError()
+  else: raiseIndexError(i, a, b)
 
 proc chckRange(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i

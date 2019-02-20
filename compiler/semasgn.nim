@@ -316,6 +316,11 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
   if typ.kind == tyDistinct:
     return liftBodyDistinctType(g, typ, kind, info)
+  when false:
+    var typ = typ
+    if c.config.selectedGC == gcDestructors and typ.kind == tySequence:
+      # use the canonical type to access the =sink and =destroy etc.
+      typ = c.graph.sysTypes[tySequence]
 
   var a: TLiftCtx
   a.info = info

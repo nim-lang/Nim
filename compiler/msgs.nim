@@ -171,6 +171,7 @@ proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) =
   assert fileIdx.int32 >= 0
   conf.m.fileInfos[fileIdx.int32].dirtyFile = filename
+  setLen conf.m.fileInfos[fileIdx.int32].lines, 0
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
@@ -193,6 +194,9 @@ template toFilename*(conf: ConfigRef; info: TLineInfo): string =
 
 template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
   toFullPath(conf, info.fileIndex)
+
+template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
+  string toFullPathConsiderDirty(conf, info.fileIndex)
 
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
@@ -434,7 +438,7 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
   if conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
     try:
-      for line in lines(toFullPath(conf, i)):
+      for line in lines(toFullPathConsiderDirty(conf, i)):
         addSourceLine conf, i.fileIndex, line.string
     except IOError:
       discard

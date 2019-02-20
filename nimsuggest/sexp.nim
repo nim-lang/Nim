@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## **Note:** Import ``nimsuggest/sexp`` to use this module
+
 import
   hashes, strutils, lexbase, streams, unicode, macros
 

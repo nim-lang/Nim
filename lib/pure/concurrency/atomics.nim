@@ -136,7 +136,7 @@ else:
       # A type that is known to be atomic and whose size is known at
       # compile time to be 8 bytes or less
 
-  template nonAtomicType(T: typedesc[Trivial]): untyped =
+  template nonAtomicType*(T: typedesc[Trivial]): untyped =
     # Maps types to integers of the same size
     when sizeof(T) == 1: int8
     elif sizeof(T) == 2: int16
@@ -252,7 +252,7 @@ else:
       AtomicInt32 {.importc: "_Atomic NI32".} = object
       AtomicInt64 {.importc: "_Atomic NI64".} = object
 
-    template atomicType(T: typedesc[Trivial]): untyped =
+    template atomicType*(T: typedesc[Trivial]): untyped =
       # Maps the size of a trivial type to it's internal atomic type
       when sizeof(T) == 1: AtomicInt8
       elif sizeof(T) == 2: AtomicInt16

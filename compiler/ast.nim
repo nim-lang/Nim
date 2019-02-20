@@ -271,6 +271,10 @@ type
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
+    sfCallSideLineinfo# A flag for template symbols to tell the
+                      # compiler it should use line information from
+                      # the calling side of the macro, not from the
+                      # implementation.
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
 
   TSymFlags* = set[TSymFlag]
@@ -655,7 +659,7 @@ type
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
-    mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
+    mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
     mSymIsInstantiationOf
 
@@ -1265,7 +1269,10 @@ proc `$`*(x: TLockLevel): string =
   else: result = $int16(x)
 
 proc `$`*(s: PSym): string =
-  result = s.name.s & "@" & $s.id
+  if s != nil:
+    result = s.name.s & "@" & $s.id
+  else:
+    result = "<nil>"
 
 proc newType*(kind: TTypeKind, owner: PSym): PType =
   new(result)
@@ -1352,7 +1359,6 @@ proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
-  result.id = getID()
   when debugIds: registerId(result)
   result.flags = s.flags
   result.magic = s.magic

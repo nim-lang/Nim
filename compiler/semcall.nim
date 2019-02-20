@@ -221,7 +221,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add(diag & "\n")
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
-        " suppressed; compile with --showAllMismatches:on to see them\n")
+        "suppressed; compile with --showAllMismatches:on to see them\n")
   result = (prefer, candidates)
 
 const
@@ -239,6 +239,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   if c.config.m.errorOutputs == {}:
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
+    return
   if errors.len == 0:
     localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
     return

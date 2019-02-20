@@ -26,7 +26,7 @@ There are 3 types of tests:
 2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
    ``nimble test`` also typially runs these in external nimble packages.
 
-3. testament tests, eg: tests/stdlib/tos.nim (only used for Nim repo).
+3. testament tests, eg: ``tests/stdlib/tos.nim`` (only used for Nim repo).
 
 Not all the tests follow the convention here, feel free to change the ones
 that don't. Always leave the code cleaner than you found it.
@@ -53,8 +53,8 @@ Sample test:
       seq2D[0][1] = true
       doAssert seq2D == @[@[true, true], @[true, false],
                           @[false, false], @[false, false]]
-      # doAssert with `not` can be done as follows:
-      doAssert: not 1 == 2
+      # doAssert with `not` can now be done as follows:
+      doAssert not (1 == 2)
 
 Newer tests tend to be run via ``testament`` rather than via ``when isMainModule:``,
 eg ``tests/stdlib/tos.nim``; this allows additional features such as custom
@@ -71,12 +71,12 @@ to create a file for import into another test only, use the prefix ``m``.
 At the beginning of every test is the expected behavior of the test.
 Possible keys are:
 
-- cmd: A compilation command template e.g. "nim $target --threads:on $options $file"
-- output: The expected output (stdout + stderr), most likely via ``echo``
-- exitcode: Exit code of the test (via ``exit(number)``)
-- errormsg: The expected compiler error message
-- file: The file the errormsg was produced at
-- line: The line the errormsg was produced at
+- ``cmd``: A compilation command template e.g. ``nim $target --threads:on $options $file``
+- ``output``: The expected output (stdout + stderr), most likely via ``echo``
+- ``exitcode``: Exit code of the test (via ``exit(number)``)
+- ``errormsg``: The expected compiler error message
+- ``file``: The file the errormsg was produced at
+- ``line``: The line the errormsg was produced at
 
 For a full spec, see here: ``testament/specs.nim``
 
@@ -118,15 +118,15 @@ list of these, see ``testament/categories.nim``, at the bottom.
 
 ::
 
-  ./koch tests c lib
+  ./koch tests c lib # compiles/runs stdlib modules, including `isMainModule` tests
+  ./koch tests c megatest # runs a set of tests that can be combined into 1
 
 To run a single test:
 
 ::
 
-  ./koch tests c <category>/<name>
-
-E.g. ``./koch test run stdlib/thttpclient_ssl``
+  ./koch test run <category>/<name>    # eg: tuples/ttuples_issues
+  ./koch test run tests/stdlib/tos.nim # can also provide relative path
 
 For reproducible tests (to reproduce an environment more similar to the one
 run by Continuous Integration on travis/appveyor), you may want to disable your
@@ -177,12 +177,15 @@ the old name and introduce a new name:
 .. code-block:: nim
 
   # for routines (proc/template/macro/iterator) and types:
-  proc oldProc() {.deprecated: "use `newImpl: string -> int` instead".} = ...
+  proc oldProc() {.deprecated: "use `newImpl: string -> int` instead".} = discard
 
-  # for (const/var/let) the msg is not yet supported:
+  # for (const/var/let/fields) the msg is not yet supported:
   const Foo {.deprecated.}  = 1
 
-  # for enum types ``deprecated`` is not yet supported.
+  # for enum types, you can deprecate the type or some elements
+  # (likewise with object types and their fields):
+  type Bar {.deprecated.} = enum bar0, bar1
+  type Barz  = enum baz0, baz1 {.deprecated.}, baz2
 
 
 See also `Deprecated <https://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
@@ -193,21 +196,22 @@ Documentation
 =============
 
 When contributing new procs, be sure to add documentation, especially if
-the proc is public. Documentation begins on the line
+the proc is public. Even private procs benefit from documentation and can be
+viewed using ``nim doc --docInternal foo.nim``.
+Documentation begins on the line
 following the ``proc`` definition, and is prefixed by ``##`` on each line.
 
 Runnable code examples are also encouraged, to show typical behavior with a few
-test cases (typically 1 to 3 ``doAssert`` statements, depending on complexity).
+test cases (typically 1 to 3 ``assert`` statements, depending on complexity).
 These ``runnableExamples`` are automatically run by ``nim doc mymodule.nim``
 as well as ``testament`` and guarantee they stay in sync.
 
 .. code-block:: nim
   proc addBar*(a: string): string =
-    ## Adds "Bar" to ``a``.
+    ## Adds "Bar" to `a`.
     runnableExamples:
-      doAssert "baz".addBar == "bazBar"
-
-     result = a & "Bar"
+      assert "baz".addBar == "bazBar"
+    result = a & "Bar"
 
 See `parentDir <https://nim-lang.github.io/Nim/os.html#parentDir%2Cstring>`_
 example.
@@ -221,14 +225,13 @@ not guaranteed to stay in sync, so ``runnableExamples`` is usually preferred:
   proc someproc*(): string =
     ## Return "something"
     ##
-    ## .. code-block:: nim
-    ##
+    ## .. code-block::
     ##  echo someproc() # "something"
     result = "something" # single-hash comments do not produce documentation
 
 The ``.. code-block:: nim`` followed by a newline and an indentation instructs the
 ``nim doc`` command to produce syntax-highlighted example code with the
-documentation.
+documentation (``.. code-block::`` is sufficient from inside a nim module).
 
 When forward declaration is used, the documentation should be included with the
 first appearance of the proc.
@@ -248,14 +251,14 @@ the imperative (command) form. That is, between:
 .. code-block:: nim
 
   proc hello*(): string =
-    # Return "hello"
+    ## Return "hello"
     result = "hello"
 or
 
 .. code-block:: nim
 
   proc hello*(): string =
-    # says hello
+    ## says hello
     result = "hello"
 
 the first is preferred.
@@ -294,12 +297,15 @@ rationale: https://forum.nim-lang.org/t/4089
   doAssert() # preferred
 
 .. _tests_use_doAssert:
-Use ``doAssert`` (or ``require``, etc), not ``assert`` in all tests.
+Use ``doAssert`` (or ``require``, etc), not ``assert`` in all tests so they'll
+be enabled even in release mode (except for tests in ``runnableExamples`` blocks
+which for which ``nim doc`` ignores ``-d:release``).
 
 .. code-block:: nim
 
-  runnableExamples: assert foo() # bad
-  runnableExamples: doAssert foo() # preferred
+  when isMainModule:
+    assert foo() # bad
+    doAssert foo() # preferred
 
 .. _delegate_printing:
 Delegate printing to caller: return ``string`` instead of calling ``echo``
@@ -328,7 +334,7 @@ https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
 
 .. code-block:: nim
 
-  echo foo() # adds a line in testament `discard` block.
+  echo foo() # adds a line for testament in `output:` block inside `discard`.
   doAssert foo() == [1, 2] # preferred, except when not possible to do so.
 
 The Git stuff

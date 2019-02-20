@@ -519,6 +519,7 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
     r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
   else:
     r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
+  r.kind = resExpr
 
 proc ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   var x, y, z: TCompRes
@@ -1149,7 +1150,7 @@ template isIndirect(x: PSym): bool =
   let v = x
   ({sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
-    {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
+    {sfImportc, sfExportc} * v.flags == {} and
     v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet})
 
@@ -1235,7 +1236,7 @@ proc genProcForSymIfNeeded(p: PProc, s: PSym) =
 
 proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
   let s = n.sym
-  if p.prc == s.owner or needsNoCopy(p, n): 
+  if p.prc == s.owner or needsNoCopy(p, n):
     return
   var owner = p.up
   while true:
@@ -1597,8 +1598,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     internalError(p.config, "createVar: " & $t.kind)
     result = nil
 
-template returnType: untyped =
-  ~""
+template returnType: untyped = ~""
 
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
@@ -1913,13 +1913,13 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mHigh:
     unaryExpr(p, n, r, "", "($1 != null ? ($2.length-1) : -1)")
   of mInc:
-    if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
+    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "+", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)")
   of ast.mDec:
-    if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
+    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "-", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")

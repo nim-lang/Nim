@@ -83,9 +83,12 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     elif opc < firstABxInstr:
       result.addf("\t$#\tr$#, r$#, r$#", opc.toStr, x.regA,
                   x.regB, x.regC)
-    elif opc in relativeJumps:
+    elif opc in relativeJumps + {opcTry}:
       result.addf("\t$#\tr$#, L$#", opc.toStr, x.regA,
                   i+x.regBx-wordExcess)
+    elif opc in {opcExcept}:
+      let idx = x.regBx-wordExcess
+      result.addf("\t$#\t$#, $#", opc.toStr, x.regA, $idx)
     elif opc in {opcLdConst, opcAsgnConst}:
       let idx = x.regBx-wordExcess
       result.addf("\t$#\tr$#, $# ($#)", opc.toStr, x.regA,
@@ -480,10 +483,13 @@ proc genType(c: PCtx; typ: PType): int =
 proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
-  let elsePos = c.xjmp(n, opcTry, 0)
+  let ehPos = c.xjmp(n, opcTry, 0)
   c.gen(n.sons[0], dest)
   c.clearDest(n, dest)
-  c.patch(elsePos)
+  # Add a jump past the exception handling code
+  endings.add(c.xjmp(n, opcJmp, 0))
+  # This signals where the body ends and where the exception handling begins
+  c.patch(ehPos)
   for i in 1 ..< n.len:
     let it = n.sons[i]
     if it.kind != nkFinally:
@@ -499,14 +505,14 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
         c.gABx(it, opcExcept, 0, 0)
       c.gen(it.lastSon, dest)
       c.clearDest(n, dest)
-      if i < sonsLen(n)-1:
+      if i < sonsLen(n):
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
-  for endPos in endings: c.patch(endPos)
   let fin = lastSon(n)
   # we always generate an 'opcFinally' as that pops the safepoint
-  # from the stack
+  # from the stack if no exception is raised in the body.
   c.gABx(fin, opcFinally, 0, 0)
+  for endPos in endings: c.patch(endPos)
   if fin.kind == nkFinally:
     c.gen(fin.sons[0])
     c.clearDest(n, dest)
@@ -986,11 +992,18 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
 
-  of mShlI: genBinaryABCnarrowU(c, n, dest, opcShlInt)
-  of mAshrI: genBinaryABCnarrow(c, n, dest, opcAshrInt)
-  of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
-  of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
-  of mBitxorI: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
+  of mShlI:
+    genBinaryABC(c, n, dest, opcShlInt)
+    # genNarrowU modified
+    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
+      c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
+    elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and t.size < 8):
+      c.gABC(n, opcSignExtend, dest, TRegister(t.size*8))
+  of mAshrI: genBinaryABC(c, n, dest, opcAshrInt)
+  of mBitandI: genBinaryABC(c, n, dest, opcBitandInt)
+  of mBitorI: genBinaryABC(c, n, dest, opcBitorInt)
+  of mBitxorI: genBinaryABC(c, n, dest, opcBitxorInt)
   of mAddU: genBinaryABCnarrowU(c, n, dest, opcAddu)
   of mSubU: genBinaryABCnarrowU(c, n, dest, opcSubu)
   of mMulU: genBinaryABCnarrowU(c, n, dest, opcMulu)
@@ -1009,7 +1022,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
   of mEqProc, mEqRef, mEqUntracedRef:
     genBinaryABC(c, n, dest, opcEqRef)
-  of mXor: genBinaryABCnarrowU(c, n, dest, opcXor)
+  of mXor: genBinaryABC(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
   of mUnaryMinusI, mUnaryMinusI64:
     genUnaryABC(c, n, dest, opcUnaryMinusInt)
@@ -1018,7 +1031,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
   of mBitnotI:
     genUnaryABC(c, n, dest, opcBitnotInt)
-    genNarrowU(c, n, dest)
+    #genNarrowU modified, do not narrow signed types
+    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
+      c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
   of mToFloat, mToBiggestFloat, mToInt,
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
@@ -2204,9 +2220,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "calc":
-    #  echo renderTree(body)
-    #  c.echoCode(result)
+    # if s.name.s == "fun1":
+    #   echo renderTree(body)
+    #   c.echoCode(result)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset

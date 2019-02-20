@@ -618,7 +618,12 @@ proc getNumber(L: var TLexer, result: var TToken) =
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
 
-proc handleHexChar(L: var TLexer, xi: var int) =
+proc handleHexChar(L: var TLexer, xi: var int; position: range[0..4]) =
+  template invalid() =
+    lexMessage(L, errGenerated,
+      "expected a hex digit, but found: " & L.buf[L.bufpos] &
+        "; maybe prepend with 0")
+
   case L.buf[L.bufpos]
   of '0'..'9':
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('0'))
@@ -629,10 +634,12 @@ proc handleHexChar(L: var TLexer, xi: var int) =
   of 'A'..'F':
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
     inc(L.bufpos)
+  of '"', '\'':
+    if position <= 1: invalid()
+    # do not progress the bufpos here.
+    if position == 0: inc(L.bufpos)
   else:
-    lexMessage(L, errGenerated,
-      "expected a hex digit, but found: " & L.buf[L.bufpos] &
-        " ; maybe prepend with 0")
+    invalid()
     # Need to progress for `nim check`
     inc(L.bufpos)
 
@@ -727,8 +734,8 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   of 'x', 'X':
     inc(L.bufpos)
     var xi = 0
-    handleHexChar(L, xi)
-    handleHexChar(L, xi)
+    handleHexChar(L, xi, 1)
+    handleHexChar(L, xi, 2)
     add(tok.literal, chr(xi))
   of 'u', 'U':
     if tok.tokType == tkCharLit:
@@ -739,7 +746,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
       var start = L.bufpos
       while L.buf[L.bufpos] != '}':
-        handleHexChar(L, xi)
+        handleHexChar(L, xi, 0)
       if start == L.bufpos:
         lexMessage(L, errGenerated,
           "Unicode codepoint cannot be empty")
@@ -749,10 +756,10 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
         lexMessage(L, errGenerated,
           "Unicode codepoint must be lower than 0x10FFFF, but was: " & hex)
     else:
-      handleHexChar(L, xi)
-      handleHexChar(L, xi)
-      handleHexChar(L, xi)
-      handleHexChar(L, xi)
+      handleHexChar(L, xi, 1)
+      handleHexChar(L, xi, 2)
+      handleHexChar(L, xi, 3)
+      handleHexChar(L, xi, 4)
     addUnicodeCodePoint(tok.literal, xi)
   of '0'..'9':
     if matchTwoChars(L, '0', {'0'..'9'}):

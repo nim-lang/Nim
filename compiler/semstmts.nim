@@ -168,7 +168,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
       (not hasElse and efInTypeof notin flags):
-    for it in n: 
+    for it in n:
       it.sons[^1] = discardCheck(c, it.sons[^1], flags)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
@@ -448,10 +448,14 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var def: PNode = c.graph.emptyNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
-      if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+      if def.typ.kind == tyProc and def.kind == nkSym and def.sym.kind == skMacro:
+        localError(c.config, def.info, "cannot assign macro symbol to variable here. Forgot to invoke the macro with '()'?")
+        def.typ = errorType(c)
+      elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         # prevent the all too common 'var x = int' bug:
         localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
         def.typ = errorType(c)
+
       if typ != nil:
         if typ.isMetaType:
           def = inferWithMetatype(c, typ, def)
@@ -583,7 +587,10 @@ proc semConst(c: PContext, n: PNode): PNode =
       localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
 
-    if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+    if def.typ.kind == tyProc and def.kind == nkSym and def.sym.kind == skMacro:
+        localError(c.config, def.info, "cannot assign macro symbol to constant here. Forgot to invoke the macro with '()'?")
+        def.typ = errorType(c)
+    elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
       # prevent the all too common 'const x = int' bug:
       localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
       def.typ = errorType(c)
@@ -873,6 +880,9 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if chckCovered:
     if covered == toCover(c, n.sons[0].typ):
       hasElse = true
+    elif n.sons[0].typ.kind == tyEnum:
+      localError(c.config, n.info, "not all cases are covered; missing: {$1}" %
+                 formatMissingEnums(n))
     else:
       localError(c.config, n.info, "not all cases are covered")
   closeScope(c)
@@ -1129,6 +1139,11 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         #debug s.typ
       s.ast = a
       popOwner(c)
+      # If the right hand side expression was a macro call we replace it with
+      # its evaluated result here so that we don't execute it once again in the
+      # final pass
+      if a[2].kind in nkCallKinds:
+        incl a[2].flags, nfSem # bug #10548
     if sfExportc in s.flags and s.typ.kind == tyAlias:
       localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
     let aa = a.sons[2]
@@ -1183,24 +1198,27 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty:
       var x = a[2]
-      while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
-        x = x.lastSon
-      if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
-          s.typ.kind notin {tyObject, tyEnum}:
-        # type aliases are hard:
-        var t = semTypeNode(c, x, nil)
-        assert t != nil
-        if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
-          if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
-            assignType(s.typ, t)
-            s.typ.id = t.id
-          elif t.kind in {tyObject, tyEnum, tyDistinct}:
-            assert s.typ != nil
-            assignType(s.typ, t)
-            s.typ.id = t.id     # same id
-      checkConstructedType(c.config, s.info, s.typ)
-      if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-        checkForMetaFields(c, s.typ.n)
+      if x.kind in nkCallKinds and nfSem in x.flags:
+        discard "already semchecked, see line marked with bug #10548"
+      else:
+        while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
+          x = x.lastSon
+        if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
+            s.typ.kind notin {tyObject, tyEnum}:
+          # type aliases are hard:
+          var t = semTypeNode(c, x, nil)
+          assert t != nil
+          if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
+            if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
+              assignType(s.typ, t)
+              s.typ.id = t.id
+            elif t.kind in {tyObject, tyEnum, tyDistinct}:
+              assert s.typ != nil
+              assignType(s.typ, t)
+              s.typ.id = t.id     # same id
+        checkConstructedType(c.config, s.info, s.typ)
+        if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
+          checkForMetaFields(c, s.typ.n)
   instAllTypeBoundOp(c, n.info)
 
 
@@ -1563,6 +1581,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
+        #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
         if opr[].isNil:
           opr[] = s

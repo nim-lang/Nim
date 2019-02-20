@@ -46,8 +46,8 @@ and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
 
   arrayConstructor = '[' expr ^* ',' ']'
 
-Other parts of Nim - like scoping rules or runtime semantics are only
-described in the, more easily comprehensible, informal manner for now.
+Other parts of Nim, like scoping rules or runtime semantics, are
+described informally.
 
 
 
@@ -55,7 +55,7 @@ described in the, more easily comprehensible, informal manner for now.
 Definitions
 ===========
 
-A Nim program specifies a computation that acts on a memory consisting of
+Nim code specifies a computation that acts on a memory consisting of
 components called `locations`:idx:. A variable is basically a name for a
 location. Each variable and location is of a certain `type`:idx:. The
 variable's type is called `static type`:idx:, the location's type is called
@@ -71,21 +71,40 @@ identifier is declared unless overloading resolution rules suggest otherwise.
 An expression specifies a computation that produces a value or location.
 Expressions that produce locations are called `l-values`:idx:. An l-value
 can denote either a location or the value the location contains, depending on
-the context. Expressions whose values can be determined statically are called
-`constant expressions`:idx:; they are never l-values.
+the context.
 
-A `static error`:idx: is an error that the implementation detects before
-program execution. Unless explicitly classified, an error is a static error.
+A Nim `program`:idx: consists of one or more text `source files`:idx: containing
+Nim code. It is processed by a Nim `compiler`:idx: into an `executable`:idx:.
+The nature of this executable depends on the compiler implementation; it may,
+for example, be a native binary or JavaScript source code.
+
+In a typical Nim program, most of the code is compiled into the executable.
+However, some of the code may be executed at
+`compile time`:idx:. This can include constant expressions, macro definitions,
+and Nim procedures used by macro definitions. Most of the Nim language is
+supported at compile time, but there are some restrictions -- see `Restrictions
+on Compile-Time Execution <#restrictions-on-compileminustime-execution>`_ for
+details. We use the term `runtime`:idx: to cover both compile-time execution
+and code execution in the executable.
+
+The compiler parses Nim source code into an internal data structure called the
+`abstract syntax tree`:idx: (`AST`:idx:). Then, before executing the code or
+compiling it into the executable, it transforms the AST through `semantic
+analysis`:idx:. This adds semantic information such as expression types,
+identifier meanings, and in some cases expression values. An error detected
+during semantic analysis is called a `static error`:idx:. Errors described in
+this manual are static errors when not otherwise specified.
 
 A `checked runtime error`:idx: is an error that the implementation detects
-and reports at runtime. The method for reporting such errors is via *raising
-exceptions* or *dying with a fatal error*. However, the implementation
-provides a means to disable these runtime checks. See the section pragmas_
-for details.
+and reports at runtime. The method for reporting such errors is via
+*raising exceptions* or *dying with a fatal error*. However, the implementation
+provides a means to disable these `runtime checks`:idx:. See the section
+pragmas_ for details.
 
-Whether a checked runtime error results in an exception or in a fatal error at
-runtime is implementation specific. Thus the following program is always
-invalid:
+Whether a checked runtime error results in an exception or in a fatal error is
+implementation specific. Thus the following program is invalid; even though the
+code purports to catch the `IndexError` from an out-of-bounds array access, the
+compiler may instead choose to allow the program to die with a fatal error.
 
 .. code-block:: nim
   var a: array[0..1, char]
@@ -98,8 +117,23 @@ invalid:
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
 detected, and can cause the subsequent behavior of the computation to
 be arbitrary. Unchecked runtime errors cannot occur if only `safe`:idx:
-language features are used.
+language features are used and if no runtime checks are disabled.
 
+A `constant expression`:idx: is an expression whose value can be computed during
+semantic analysis of the code in which it appears. It is never an l-value and
+never has side effects. Constant expressions are not limited to the capabilities
+of semantic analysis, such as constant folding; they can use all Nim language
+features that are supported for compile-time execution. Since constant
+expressions can be used as an input to semantic analysis (such as for defining
+array bounds), this flexibility requires the compiler to interleave semantic
+analysis and compile-time code execution.
+
+It is mostly accurate to picture semantic analysis proceeding top to bottom and
+left to right in the source code, with compile-time code execution interleaved
+when necessary to compute values that are required for subsequent semantic
+analysis. We will see much later in this document that macro invocation not only
+requires this interleaving, but also creates a situation where semantic analyis
+does not entirely proceed top to bottom and left to right.
 
 
 Lexical Analysis
@@ -250,6 +284,10 @@ A Nim-aware editor or IDE can show the identifiers as preferred.
 Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
+
+Note that this rule also applies to keywords, meaning that ``notin`` is
+the same as ``notIn`` and ``not_in`` (all-lowercase version (``notin``, ``isnot``)
+is the preferred way of writing keywords).
 
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
 it was not case-sensitive and underscores were ignored and there was not even a
@@ -673,10 +711,87 @@ Rationale: Consistency with overloaded assignment or assignment-like operations,
 ``a = b`` can be read as ``performSomeCopy(a, b)``.
 
 
+Constants and Constant Expressions
+==================================
+
+A `constant`:idx: is a symbol that is bound to the value of a constant
+expression. Constant expressions are restricted to depend only on the following
+categories of values and operations, because these are either built into the
+language or declared and evaluated before semantic analysis of the constant
+expression:
+
+* literals
+* built-in operators
+* previously declared constants and compile-time variables
+* previously declared macros and templates
+* previously declared procedures that have no side effects beyond
+  possibly modifying compile-time variables
+
+A constant expression can contain code blocks that may internally use all Nim
+features supported at compile time (as detailed in the next section below).
+Within such a code block, it is possible to declare variables and then later
+read and update them, or declare variables and pass them to procedures that
+modify them. However, the code in such a block must still adhere to the
+retrictions listed above for referencing values and operations outside the
+block.
+
+The ability to access and modify compile-time variables adds flexibility to
+constant expressions that may be surprising to those coming from other
+statically typed languages. For example, the following code echoes the beginning
+of the Fibonacci series **at compile time**. (This is a demonstration of
+flexibility in defining constants, not a recommended style for solving this
+problem!)
+
+.. code-block:: nim
+    :test: "nim c $1"
+  import strformat
+
+  var fib_n {.compileTime.}: int
+  var fib_prev {.compileTime.}: int
+  var fib_prev_prev {.compileTime.}: int
+
+  proc next_fib(): int =
+    result = if fib_n < 2:
+      fib_n
+    else:
+      fib_prev_prev + fib_prev
+    inc(fib_n)
+    fib_prev_prev = fib_prev
+    fib_prev = result
+
+  const f0 = next_fib()
+  const f1 = next_fib()
+
+  const display_fib = block:
+    const f2 = next_fib()
+    var result = fmt"Fibonacci sequence: {f0}, {f1}, {f2}"
+    for i in 3..12:
+      add(result, fmt", {next_fib()}")
+    result
+
+  static:
+    echo display_fib
+
+
+Restrictions on Compile-Time Execution
+======================================
+
+Nim code that will be executed at compile time cannot use the following
+language features:
+
+* methods
+* closure iterators
+* the ``cast`` operator
+* reference (pointer) types
+* the FFI
+
+Some or all of these restrictions are likely to be lifted over time.
+
+
 Types
 =====
 
-All expressions have a type which is known at compile time. Nim
+All expressions have a type which is known during semantic analysis. Nim
 is statically typed. One can declare new types, which is in essence defining
 an identifier that can be used to denote this custom type.
 
@@ -797,8 +912,8 @@ For further details, see `Convertible relation
 Subrange types
 --------------
 A subrange type is a range of values from an ordinal or floating point type (the base
-type). To define a subrange type, one must specify it's limiting values: the
-lowest and highest value of the type:
+type). To define a subrange type, one must specify its limiting values -- the
+lowest and highest value of the type. For example:
 
 .. code-block:: nim
   type
@@ -810,8 +925,8 @@ lowest and highest value of the type:
 to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
 NaN does not belong to any subrange of floating point types.
 Assigning any other value to a variable of type ``Subrange`` is a
-checked runtime error (or static error if it can be statically
-determined). Assignments from the base type to one of its subrange types
+checked runtime error (or static error if it can be determined during
+semantic analysis). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
 A subrange type has the same size as its base type (``int`` in the
@@ -854,7 +969,7 @@ The IEEE standard defines five types of floating-point exceptions:
 * Inexact: operation produces a result that cannot be represented with infinite
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
-The IEEE exceptions are either ignored at runtime or mapped to the
+The IEEE exceptions are either ignored during execution or mapped to the
 Nim exceptions: `FloatInvalidOpError`:idx:, `FloatDivByZeroError`:idx:,
 `FloatOverflowError`:idx:, `FloatUnderflowError`:idx:,
 and `FloatInexactError`:idx:.
@@ -881,8 +996,9 @@ The only operations that are affected by the ``floatChecks`` pragma are
 the ``+``, ``-``, ``*``, ``/`` operators for floating point types.
 
 An implementation should always use the maximum precision available to evaluate
-floating pointer values at compile time; this means expressions like
-``0.09'f32 + 0.01'f32 == 0.09'f64 + 0.01'f64`` are true.
+floating pointer values during semantic analysis; this means expressions like
+``0.09'f32 + 0.01'f32 == 0.09'f64 + 0.01'f64`` that are evaluating during
+constant folding are true.
 
 
 Boolean type
@@ -1109,9 +1225,9 @@ tuples, objects and sets belong to the structured types.
 
 Array and sequence types
 ------------------------
-Arrays are a homogeneous type, meaning that each element in the array
-has the same type. Arrays always have a fixed length which is specified at
-compile time (except for open arrays). They can be indexed by any ordinal type.
+Arrays are a homogeneous type, meaning that each element in the array has the
+same type. Arrays always have a fixed length specified as a constant expression
+(except for open arrays). They can be indexed by any ordinal type.
 A parameter ``A`` may be an *open array*, in which case it is indexed by
 integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``. The element type of this array expression is
@@ -1153,7 +1269,7 @@ operator, and remove (and get) the last element of a sequence with the
 
 The notation ``x[i]`` can be used to access the i-th element of ``x``.
 
-Arrays are always bounds checked (at compile-time or at runtime). These
+Arrays are always bounds checked (statically or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--boundChecks:off`` command line switch.
 
@@ -1316,10 +1432,10 @@ can also be defined with indentation instead of ``[]``:
       name: string   # a person consists of a name
       age: natural   # and an age
 
-Objects provide many features that tuples do not. Object provide inheritance
-and information hiding. Objects have access to their type at runtime, so that
-the ``of`` operator can be used to determine the object's type. The ``of`` operator
-is similar to the ``instanceof`` operator in Java.
+Objects provide many features that tuples do not. Object provide inheritance and
+information hiding. Objects have access to their type during at runtime, so that
+the ``of`` operator can be used to determine the object's type. The ``of``
+operator is similar to the ``instanceof`` operator in Java.
 
 .. code-block:: nim
   type
@@ -1414,8 +1530,8 @@ In the example the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
 new value must not lead to a change of the active object branch. For an object
 branch switch ``system.reset`` has to be used. Also, when the fields of a
-particular branch are specified during object construction, the correct value
-for the discriminator must be supplied at compile-time.
+particular branch are specified during object construction, the corresponding
+discriminator value must be specified as a constant expression.
 
 Package level objects
 ---------------------
@@ -1429,8 +1545,8 @@ contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
 not yet know the size of the object. To complete an incomplete object
 the ``package`` pragma has to be used. ``package`` implies ``byref``.
 
-As long as a type ``T`` is incomplete ``sizeof(T)`` or "runtime type
-information" for ``T`` is not available.
+As long as a type ``T`` is incomplete, neither ``sizeof(T)`` nor runtime
+type information for ``T`` is available.
 
 
 Example:
@@ -1859,7 +1975,7 @@ that don't. Distinct types provide a means to introduce a new string type
     username: string
 
   db.query("SELECT FROM users WHERE name = '$1'" % username)
-  # Error at compile time: `query` expects an SQL string!
+  # Static error: `query` expects an SQL string!
 
 
 It is an essential property of abstract types that they **do not** imply a
@@ -2246,7 +2362,8 @@ Overloading resolution
 ======================
 
 In a call ``p(args)`` the routine ``p`` that matches best is selected. If
-multiple routines match equally well, the ambiguity is reported at compiletime.
+multiple routines match equally well, the ambiguity is reported during
+semantic analysis.
 
 Every arg in args needs to match. There are multiple different categories how an
 argument can match. Let ``f`` be the formal parameter's type and ``a`` the type
@@ -2627,52 +2744,35 @@ identifier ``_`` can be used to ignore some parts of the tuple:
 Const section
 -------------
 
-`Constants`:idx: are symbols which are bound to a value. The constant's value
-cannot change. The compiler must be able to evaluate the expression in a
-constant declaration at compile time.
+A const section declares constants whose values are constant expressions:
 
-Nim contains a sophisticated compile-time evaluator, so procedures which
-have no side-effect can be used in constant expressions too:
-
-.. code-block:: nim
+.. code-block::
   import strutils
   const
+    roundPi = 3.1415
     constEval = contains("abc", 'b') # computed at compile time!
 
+Once declared, a constant's symbol can be used as a constant expression.
 
-The rules for compile-time computability are:
-
-1. Literals are compile-time computable.
-2. Type conversions are compile-time computable.
-3. Procedure calls of the form ``p(X)`` are compile-time computable if
-   ``p`` is a proc without side-effects (see the `noSideEffect pragma
-   <#pragmas-nosideeffect-pragma>`_ for details) and if ``X`` is a
-   (possibly empty) list of compile-time computable arguments.
-
-
-Constants cannot be of type ``ptr``, ``ref`` or ``var``, nor can
-they contain such a type.
-
+See `Constants and Constant Expressions <#constants-and-constant-expressions>`_
+for details.
 
 Static statement/expression
 ---------------------------
 
-A static statement/expression can be used to enforce compile
-time evaluation explicitly. Enforced compile time evaluation can even evaluate
-code that has side effects:
+A static statement/expression explicitly requires compile-time execution.
+Even some code that has side effects is permitted in a static block:
 
 .. code-block::
 
   static:
     echo "echo at compile time"
 
-It's a static error if the compiler cannot perform the evaluation at compile
+There are limitations on what Nim code can be executed at compile time;
+see `Restrictions on Compile-Time Execution
+<#restrictions-on-compileminustime-execution>`_ for details.
+It's a static error if the compiler cannot execute the block at compile
 time.
-
-The current implementation poses some restrictions for compile time
-evaluation: Code which contains ``cast`` or makes use of the foreign function
-interface cannot be evaluated at compile time. Later versions of Nim will
-support the FFI at compile time.
 
 
 If statement
@@ -2747,9 +2847,9 @@ empty ``discard`` statement should be used.
 For non ordinal types it is not possible to list every possible value and so
 these always require an ``else`` part.
 
-As case statements perform compile-time exhaustiveness checks, the value in
-every ``of`` branch must be known at compile time. This fact is also exploited
-to generate more performant code.
+Because case statements are checked for exhaustiveness during semantic analysis,
+the value in every ``of`` branch must be a constant expression.
+This restriction also allows the compiler to generate more performant code.
 
 As a special semantic extension, an expression in an ``of`` branch of a case
 statement may evaluate to a set or array constructor; the set or array is then
@@ -2807,17 +2907,18 @@ When nimvm statement
 --------------------
 
 ``nimvm`` is a special symbol, that may be used as expression of ``when nimvm``
-statement to differentiate execution path between runtime and compile time.
+statement to differentiate execution path between compile time and the
+executable.
 
 Example:
 
 .. code-block:: nim
   proc someProcThatMayRunInCompileTime(): bool =
     when nimvm:
-      # This code runs in compile time
+      # This branch is taken at compile time.
       result = true
     else:
-      # This code runs in runtime
+      # This branch is taken in the executable.
       result = false
   const ctValue = someProcThatMayRunInCompileTime()
   let rtValue = someProcThatMayRunInCompileTime()
@@ -3557,7 +3658,7 @@ returned value is an l-value and can be modified by the caller:
   writeAccessToG() = 6
   assert g == 6
 
-It is a compile time error if the implicitly introduced pointer could be
+It is a static error if the implicitly introduced pointer could be
 used to access a location beyond its lifetime:
 
 .. code-block:: nim
@@ -3673,7 +3774,7 @@ Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over
 collide 1 because the resolution works from left to right.
 In the example ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
-**Note**: Compile time evaluation is not (yet) supported for methods.
+**Note**: Compile-time execution is not (yet) supported for methods.
 
 
 Inhibit dynamic method resolution via procCall
@@ -3769,7 +3870,14 @@ First class iterators
 There are 2 kinds of iterators in Nim: *inline* and *closure* iterators.
 An `inline iterator`:idx: is an iterator that's always inlined by the compiler
 leading to zero overhead for the abstraction, but may result in a heavy
-increase in code size. Inline iterators are second class citizens;
+increase in code size.
+
+Caution: the body of a for loop over an inline iterator is inlined into
+each ``yield`` statement appearing in the iterator code,
+so ideally the code should be refactored to contain a single yield when possible
+to avoid code bloat.
+
+Inline iterators are second class citizens;
 They can be passed as parameters only to other inlining code facilities like
 templates, macros and other inline iterators.
 
@@ -3794,7 +3902,7 @@ In contrast to that, a `closure iterator`:idx: can be passed around more freely:
 Closure iterators have other restrictions than inline iterators:
 
 1. ``yield`` in a closure iterator can not occur in a ``try`` statement.
-2. For now, a closure iterator cannot be evaluated at compile time.
+2. For now, a closure iterator cannot be executed at compile time.
 3. ``return`` is allowed in a closure iterator (but rarely useful) and ends
    iteration.
 4. Neither inline nor closure iterators can be recursive.
@@ -4113,8 +4221,8 @@ The exception tree is defined in the `system <system.html>`_ module.
 Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
 and are stricly speaking not catchable as they can also be mapped to an operation
-that terminates the whole process. Exceptions that indicate any other runtime error
-that can be caught inherit from ``system.CatchableError``
+that terminates the whole process. Exceptions that indicate any other runtime
+error that can be caught inherit from ``system.CatchableError``
 (which is a subtype of ``Exception``).
 
 
@@ -4351,8 +4459,9 @@ a `type variable`:idx:.
 Is operator
 -----------
 
-The ``is`` operator checks for type equivalence at compile time. It is
-therefore very useful for type specialization within generic code:
+The ``is`` operator is evaluated during semantic analysis to check for type
+equivalence. It is therefore very useful for type specialization within generic
+code:
 
 .. code-block:: nim
   type
@@ -5348,14 +5457,22 @@ chance to convert it into a sequence.
 Macros
 ======
 
-A macro is a special function that is executed at compile-time.
+A macro is a special function that is executed at compile time.
 Normally the input for a macro is an abstract syntax
 tree (AST) of the code that is passed to it. The macro can then do
-transformations on it and return the transformed AST. The
-transformed AST is then passed to the compiler as if the macro
-invocation would have been replaced by its result in the source
-code. This can be used to implement `domain specific
-languages`:idx:.
+transformations on it and return the transformed AST. This can be used to
+add custom language features and implement `domain specific languages`:idx:.
+
+Macro invocation is a case where semantic analyis does **not** entirely proceed
+top to bottom and left to right. Instead, semantic analysis happens at least
+twice:
+
+* Semantic analysis recognizes and resolves the macro invocation.
+* The compiler executes the macro body (which may invoke other procs).
+* It replaces the AST of the macro invocation with the AST returned by the macro.
+* It repeats semantic analysis of that region of the code.
+* If the AST returned by the macro contains other macro invocations,
+  this process iterates.
 
 While macros enable advanced compile-time code transformations, they
 cannot change Nim's syntax. However, this is no real restriction because
@@ -5639,7 +5756,7 @@ static[T]
 
 **Note**: static[T] is still in development.
 
-As their name suggests, static parameters must be known at compile-time:
+As their name suggests, static parameters must be constant expressions:
 
 .. code-block:: nim
 
@@ -5651,7 +5768,7 @@ As their name suggests, static parameters must be known at compile-time:
                           # regex, stored in a global variable
 
   precompiledRegex(paramStr(1)) # Error, command-line options
-                                # are not known at compile-time
+                                # are not constant expressions
 
 
 For the purposes of code generation, all static params are treated as
@@ -5665,7 +5782,7 @@ Static params can also appear in the signatures of generic types:
   type
     Matrix[M,N: static int; T: Number] = array[0..(M*N - 1), T]
       # Note how `Number` is just a type constraint here, while
-      # `static int` requires us to supply a compile-time int value
+      # `static int` requires us to supply an int value
 
     AffineTransform2D[T] = Matrix[3, 3, T]
     AffineTransform3D[T] = Matrix[4, 4, T]
@@ -5673,14 +5790,13 @@ Static params can also appear in the signatures of generic types:
   var m1: AffineTransform3D[float]  # OK
   var m2: AffineTransform2D[string] # Error, `string` is not a `Number`
 
-Please note that ``static T`` is just a syntactic convenience for the
-underlying generic type ``static[T]``. The type param can be omitted
-to obtain the type class of all values known at compile-time. A more
-specific type class can be created by instantiating ``static`` with
-another type class.
+Please note that ``static T`` is just a syntactic convenience for the underlying
+generic type ``static[T]``. The type param can be omitted to obtain the type
+class of all constant expressions. A more specific type class can be created by
+instantiating ``static`` with another type class.
 
-You can force the evaluation of a certain expression at compile-time by
-coercing it to a corresponding ``static`` type:
+You can force an expression to be evaluated at compile time as a constant
+expression by coercing it to a corresponding ``static`` type:
 
 .. code-block:: nim
   import math
@@ -6537,6 +6653,13 @@ modules don't need to import a module's dependencies:
 When the exported symbol is another module, all of its definitions will
 be forwarded. You can use an ``except`` list to exclude some of the symbols.
 
+Notice that when exporting, you need to specify only the module name:
+
+.. code-block:: nim
+  import foo/bar/baz
+  export baz
+
+
 
 Scope rules
 -----------
@@ -6766,11 +6889,11 @@ pragma block can be used:
 
 compileTime pragma
 ------------------
-The ``compileTime`` pragma is used to mark a proc or variable to be used at
-compile time only. No code will be generated for it. Compile time procs are
-useful as helpers for macros. Since version 0.12.0 of the language, a proc
-that uses ``system.NimNode`` within its parameter types is implicitly declared
-``compileTime``:
+The ``compileTime`` pragma is used to mark a proc or variable to be used only
+during compile-time execution. No code will be generated for it. Compile-time
+procs are useful as helpers for macros. Since version 0.12.0 of the language, a
+proc that uses ``system.NimNode`` within its parameter types is implicitly
+declared ``compileTime``:
 
 .. code-block:: nim
   proc astHelper(n: NimNode): NimNode =
@@ -6857,8 +6980,8 @@ structure:
 
 pure pragma
 -----------
-An object type can be marked with the ``pure`` pragma so that its type
-field which is used for runtime type identification is omitted. This used to be
+An object type can be marked with the ``pure`` pragma so that its type field
+which is used for runtime type identification is omitted. This used to be
 necessary for binary compatibility with other compiled languages.
 
 An enum type can be marked as ``pure``. Then access of its fields always
@@ -6884,7 +7007,7 @@ though.
 
 The ``error`` pragma can also be used to
 annotate a symbol (like an iterator or proc). The *usage* of the symbol then
-triggers a compile-time error. This is especially useful to rule out that some
+triggers a static error. This is especially useful to rule out that some
 operation is valid due to overloading and type conversions:
 
 .. code-block:: nim
@@ -7006,7 +7129,7 @@ extension the pragma is simply ignored.
 unroll pragma
 -------------
 The ``unroll`` pragma can be used to tell the compiler that it should unroll
-a `for`:idx: or `while`:idx: loop for runtime efficiency:
+a `for`:idx: or `while`:idx: loop for execution efficiency:
 
 .. code-block:: nim
   proc searchChar(s: string, c: char): int =
@@ -7321,7 +7444,8 @@ compiler like you would using the commandline switch ``--passC``:
   {.passC: "-Wall -Werror".}
 
 Note that you can use ``gorge`` from the `system module <system.html>`_ to
-embed parameters from an external command at compile time:
+embed parameters from an external command that will be executed
+during semantic analysis:
 
 .. code-block:: Nim
   {.passC: gorge("pkg-config --cflags sdl").}
@@ -7335,7 +7459,8 @@ like you would using the commandline switch ``--passL``:
   {.passL: "-lSDLmain -lSDL".}
 
 Note that you can use ``gorge`` from the `system module <system.html>`_ to
-embed parameters from an external command at compile time:
+embed parameters from an external command that will be executed
+during semantic analysis:
 
 .. code-block:: Nim
   {.passL: gorge("pkg-config --libs sdl").}
@@ -7740,6 +7865,7 @@ pragma             description
 =================  ============================================
 `intdefine`:idx:   Reads in a build-time define as an integer
 `strdefine`:idx:   Reads in a build-time define as a string
+`booldefine`:idx:  Reads in a build-time define as a bool
 =================  ============================================
 
 .. code-block:: nim
@@ -7747,13 +7873,14 @@ pragma             description
    echo FooBar
 
 ::
-   nim c -d:FooBar=42 foobar.c
+   nim c -d:FooBar=42 foobar.nim
 
 In the above example, providing the -d flag causes the symbol
 ``FooBar`` to be overwritten at compile time, printing out 42. If the
 ``-d:FooBar=42`` were to be omitted, the default value of 5 would be
-used.
+used. To see if a value was provided, `defined(FooBar)` can be used.
 
+The syntax `-d:flag` is actually just a shortcut for `-d:flag=true`.
 
 Custom annotations
 ------------------
@@ -7946,7 +8073,7 @@ interoperability with C. Combining packed pragma with inheritance is not
 defined, and it should not be used with GC'ed memory (ref's).
 
 **Future directions**: Using GC'ed memory in packed pragma will result in
-compile-time error. Usage with inheritance should be defined and documented.
+a static error. Usage with inheritance should be defined and documented.
 
 
 Dynlib pragma for import
@@ -8227,11 +8354,11 @@ Example:
   echo formatFloat(pi(5000))
 
 
-The parallel statement is the preferred mechanism to introduce parallelism
-in a Nim program. A subset of the Nim language is valid within a
-``parallel`` section. This subset is checked to be free of data races at
-compile time. A sophisticated `disjoint checker`:idx: ensures that no data
-races are possible even though shared memory is extensively supported!
+The parallel statement is the preferred mechanism to introduce parallelism in a
+Nim program. A subset of the Nim language is valid within a ``parallel``
+section. This subset is checked during semantic analysis to be free of data
+races. A sophisticated `disjoint checker`:idx: ensures that no data races are
+possible even though shared memory is extensively supported!
 
 The subset is in fact the full language with the following
 restrictions / changes:
@@ -8263,8 +8390,8 @@ pragmas:
 1) A `guard`:idx: annotation is introduced to prevent data races.
 2) Every access of a guarded memory location needs to happen in an
    appropriate `locks`:idx: statement.
-3) Locks and routines can be annotated with `lock levels`:idx: to prevent
-   deadlocks at compile time.
+3) Locks and routines can be annotated with `lock levels`:idx: to allow
+   potential deadlocks to be detected during semantic analysis.
 
 
 Guards and the locks section
@@ -8384,9 +8511,10 @@ This means the following compiles (for now) even though it really should not:
 Lock levels
 -----------
 
-Lock levels are used to enforce a global locking order in order to prevent
-deadlocks at compile-time. A lock level is an constant integer in the range
-0..1_000. Lock level 0 means that no lock is acquired at all.
+Lock levels are used to enforce a global locking order in order to detect
+potential deadlocks during semantic analysis. A lock level is an constant
+integer in the range 0..1_000. Lock level 0 means that no lock is acquired at
+all.
 
 If a section of code holds a lock of level ``M`` than it can also acquire any
 lock of level ``N < M``. Another lock of level ``M`` cannot be acquired. Locks
