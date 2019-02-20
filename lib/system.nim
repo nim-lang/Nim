@@ -2559,7 +2559,10 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
-        result = cast[pointer](x)
+        when defined(gcDestructors):
+          result = cast[NimSeqV2[T]](x).p
+        else:
+          result = cast[pointer](x)
 
       if seqToPtr(x) == seqToPtr(y):
         return true
