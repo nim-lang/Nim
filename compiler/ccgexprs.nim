@@ -2614,20 +2614,15 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
     data.add genConstExpr(p, n.sons[i])
   data.add("}")
 
-  result = getTempName(p.module)
   let payload = getTempName(p.module)
   let base = t.skipTypes(abstractInst).sons[0]
 
   appcg(p.module, cfsData,
     "static const struct {$n" &
     "  NI cap; void* allocator; $1 data[$2];$n" &
-    "} $3 = {$2, NIM_NIL, $4};$n" &
-    "static NIM_CONST struct {$n" &
-    "  NI len;$n" &
-    "  $6 p;$n" &
-    "} $5 = {$2, ($6)&$3};$n", [
-    getTypeDesc(p.module, base), rope(len(n)), payload, data,
-    result, getTypeDesc(p.module, t)])
+    "} $3 = {$2, NIM_NIL, $4};$n", [
+    getTypeDesc(p.module, base), rope(len(n)), payload, data])
+  result = "{$1, ($2*)&$3}" % [rope(len(n)), getSeqPayloadType(p.module, t), payload]
 
 proc genConstExpr(p: BProc, n: PNode): Rope =
   case n.kind

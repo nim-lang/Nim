@@ -279,6 +279,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyString:
     case detectStrVersion(m)
     of 2:
+      discard cgsym(m, "NimStrPayload")
       discard cgsym(m, "NimStringV2")
       result = typeNameOrLiteral(m, typ, "NimStringV2")
     else:
@@ -545,7 +546,8 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
           let popExSym = magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")
           if lfDynamicLib in popExSym.loc.flags and sfImportc in popExSym.flags:
             #  echo popExSym.flags, " ma flags ", popExSym.loc.flags
-            result = "extern " & getTypeDescAux(m, popExSym.typ, check) & " " & mangleName(m, popExSym) & ";\L" & result
+            result = "extern " & getTypeDescAux(m, popExSym.typ, check) & " " &
+                mangleName(m, popExSym) & ";\L" & result
           else:
             result = genProcHeader(m, popExSym) & ";\L" & result
       hasField = true

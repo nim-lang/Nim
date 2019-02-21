@@ -1,6 +1,9 @@
 discard """
   cmd: '''nim c --gc:destructors $file'''
-  output: '''1 1'''
+  output: '''hi
+ho
+ha
+1 1'''
 """
 
 import allocators
@@ -11,6 +14,12 @@ proc main =
   for i in 0..<80: s.add "foo"
 
 main()
+
+const
+  test = @["hi", "ho", "ha"]
+
+for t in test:
+  echo t
 
 #echo s
 let (a, d) = allocCounters()
