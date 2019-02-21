@@ -3383,7 +3383,7 @@ when not defined(JS): #and not defined(nimscript):
   when not defined(nimscript) and hasAlloc:
     when not defined(gcDestructors):
       include "system/assign"
-      include "system/repr"
+    include "system/repr"
 
   when hostOS != "standalone" and not defined(nimscript):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =

@@ -2607,6 +2607,28 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
 
   result = "(($1)&$2)" % [getTypeDesc(p.module, t), result]
 
+proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
+  var data = rope"{"
+  for i in countup(0, n.len - 1):
+    if i > 0: data.addf(",$n", [])
+    data.add genConstExpr(p, n.sons[i])
+  data.add("}")
+
+  result = getTempName(p.module)
+  let payload = getTempName(p.module)
+  let base = t.skipTypes(abstractInst).sons[0]
+
+  appcg(p.module, cfsData,
+    "static const struct {$n" &
+    "  NI cap; void* allocator; $1 data[$2];$n" &
+    "} $3 = {$2, NIM_NIL, $4};$n" &
+    "static NIM_CONST struct {$n" &
+    "  NI len;$n" &
+    "  $6 p;$n" &
+    "} $5 = {$2, ($6)&$3};$n", [
+    getTypeDesc(p.module, base), rope(len(n)), payload, data,
+    result, getTypeDesc(p.module, t)])
+
 proc genConstExpr(p: BProc, n: PNode): Rope =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
@@ -2618,7 +2640,10 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkBracket, nkPar, nkTupleConstr, nkClosure:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
-      result = genConstSeq(p, n, n.typ)
+      if p.config.selectedGc == gcDestructors:
+        result = genConstSeqV2(p, n, n.typ)
+      else:
+        result = genConstSeq(p, n, n.typ)
     elif t.kind == tyProc and t.callConv == ccClosure and n.len > 1 and
          n.sons[1].kind == nkNilLit:
       # Conversion: nimcall -> closure.
