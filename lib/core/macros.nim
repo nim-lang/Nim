@@ -254,7 +254,7 @@ else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
     symbol.symbol.getImpl
 
-  proc strValOld(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
 
   proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
 
