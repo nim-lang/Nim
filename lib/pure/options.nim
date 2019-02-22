@@ -9,11 +9,11 @@
 
 ## This module implements types which encapsulate an optional value.
 ##
-## A value of type ``Option[T]`` either contains a value `x` (represented as
-## ``some(x)``) or is empty (``none(T)``).
+## A value of type `Option[T]` either contains a value `x` (represented as
+## `some(x)`) or is empty (`none(T)`).
 ##
 ## This can be useful when you have a value that can be present or not. The
-## absence of a value is often represented by ``nil``, but it is not always
+## absence of a value is often represented by `nil`, but it is not always
 ## available, nor is it always a good solution.
 ##
 ##
@@ -39,9 +39,9 @@
 ##    let found = "abc".find('c')
 ##    assert found.isSome and found.get() == 2
 ##
-## The ``get`` operation demonstrated above returns the underlying value, or
-## raises ``UnpackError`` if there is no value. Note that ``UnpackError``
-## inherits from ``system.Defect``, and should therefore never be catched.
+## The `get` operation demonstrated above returns the underlying value, or
+## raises `UnpackError` if there is no value. Note that `UnpackError`
+## inherits from `system.Defect`, and should therefore never be caught.
 ## Instead, rely on checking if the option contains a value with
 ## `isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
 ##
@@ -75,7 +75,7 @@ type
 
 proc option*[T](val: T): Option[T] =
   ## Can be used to convert a pointer type (`ptr` or `ref`) to an option type.
-  ## It converts ``nil`` to ``None``.
+  ## It converts `nil` to `None`.
   ##
   ## See also:
   ## * `some <#some,T>`_
@@ -95,7 +95,7 @@ proc option*[T](val: T): Option[T] =
     result.has = true
 
 proc some*[T](val: T): Option[T] =
-  ## Returns an ``Option`` that has the value `val`.
+  ## Returns an `Option` that has the value `val`.
   ##
   ## See also:
   ## * `option <#option,T>`_
@@ -118,7 +118,7 @@ proc some*[T](val: T): Option[T] =
     result.val = val
 
 proc none*(T: typedesc): Option[T] =
-  ## Returns an ``Option`` for this type that has no value.
+  ## Returns an `Option` for this type that has no value.
   ##
   ## See also:
   ## * `option <#option,T>`_
@@ -137,7 +137,7 @@ proc none*[T]: Option[T] =
   none(T)
 
 proc isSome*[T](self: Option[T]): bool {.inline.} =
-  ## Checks if an ``Option`` contains a value.
+  ## Checks if an `Option` contains a value.
   runnableExamples:
     var
       a = some(42)
@@ -151,7 +151,7 @@ proc isSome*[T](self: Option[T]): bool {.inline.} =
     self.has
 
 proc isNone*[T](self: Option[T]): bool {.inline.} =
-  ## Checks if an ``Option`` is empty.
+  ## Checks if an `Option` is empty.
   runnableExamples:
     var
       a = some(42)
@@ -164,7 +164,7 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
     not self.has
 
 proc get*[T](self: Option[T]): T =
-  ## Returns contents of an ``Option``. If it is ``None``, then an exception is
+  ## Returns contents of an `Option`. If it is `None`, then an exception is
   ## thrown.
   ##
   ## See also:
@@ -182,8 +182,8 @@ proc get*[T](self: Option[T]): T =
   self.val
 
 proc get*[T](self: Option[T], otherwise: T): T =
-  ## Returns the contents of the ``Option`` or an `otherwise` value if
-  ## the ``Option`` is `None`.
+  ## Returns the contents of the `Option` or an `otherwise` value if
+  ## the `Option` is `None`.
   runnableExamples:
     var
       a = some(42)
@@ -197,7 +197,7 @@ proc get*[T](self: Option[T], otherwise: T): T =
     otherwise
 
 proc get*[T](self: var Option[T]): var T =
-  ## Returns contents of the ``var Option``. If it is ``None``, then an exception
+  ## Returns contents of the `var Option`. If it is `None`, then an exception
   ## is thrown.
   runnableExamples:
     let
@@ -212,7 +212,7 @@ proc get*[T](self: var Option[T]): var T =
   return self.val
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
-  ## Applies a `callback` function to the value of the ``Option``, if it has one.
+  ## Applies a `callback` function to the value of the `Option`, if it has one.
   ##
   ## See also:
   ## * `map proc <#map,Option[T],proc(T)_2>`_ for a version with a callback
@@ -236,10 +236,10 @@ proc map*[T](self: Option[T], callback: proc (input: T)) =
     callback(self.val)
 
 proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
-  ## Applies a `callback` function to the value of the ``Option`` and returns an
-  ## ``Option`` containing the new value.
+  ## Applies a `callback` function to the value of the `Option` and returns an
+  ## `Option` containing the new value.
   ##
-  ## If the ``Option`` is `None`, `None` of the return type of the `callback`
+  ## If the `Option` is `None`, `None` of the return type of the `callback`
   ## will be returned.
   ##
   ## See also:
@@ -263,7 +263,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
     none(R)
 
 proc flatten*[A](self: Option[Option[A]]): Option[A] =
-  ## Remove one level of structure in a nested ``Option``.
+  ## Remove one level of structure in a nested `Option`.
   runnableExamples:
     let a = some(some(42))
     assert $flatten(a) == "Some(42)"
@@ -274,15 +274,15 @@ proc flatten*[A](self: Option[Option[A]]): Option[A] =
     none(A)
 
 proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Option[B] =
-  ## Applies a `callback` function to the value of the ``Option`` and returns an
-  ## ``Option`` containing the new value.
+  ## Applies a `callback` function to the value of the `Option` and returns an
+  ## `Option` containing the new value.
   ##
-  ## If the ``Option`` is `None`, `None` of the return type of the `callback`
+  ## If the `Option` is `None`, `None` of the return type of the `callback`
   ## will be returned.
   ##
-  ## Similar to ``map``, with the difference that the `callback` returns an
-  ## ``Option``, not a raw value. This allows multiple procs with a
-  ## signature of ``A -> Option[B]`` to be chained together.
+  ## Similar to `map`, with the difference that the `callback` returns an
+  ## `Option`, not a raw value. This allows multiple procs with a
+  ## signature of `A -> Option[B]` to be chained together.
   ##
   ## See also:
   ## * `flatten proc <#flatten,Option[Option[A]]>`_
@@ -304,7 +304,7 @@ proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Opti
   map(self, callback).flatten()
 
 proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
-  ## Applies a `callback` to the value of the ``Option``.
+  ## Applies a `callback` to the value of the `Option`.
   ##
   ## If the `callback` returns `true`, the option is returned as `Some`.
   ## If it returns `false`, it is returned as `None`.
@@ -329,8 +329,8 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
     self
 
 proc `==`*(a, b: Option): bool =
-  ## Returns ``true`` if both ``Option``s are ``None``,
-  ## or if they are both ``Some`` and have equal values.
+  ## Returns `true` if both `Option`s are `None`,
+  ## or if they are both `Some` and have equal values.
   runnableExamples:
     let
       a = some(42)
@@ -345,12 +345,12 @@ proc `==`*(a, b: Option): bool =
   (a.isSome and b.isSome and a.val == b.val) or (not a.isSome and not b.isSome)
 
 proc `$`*[T](self: Option[T]): string =
-  ## Get the string representation of the ``Option``.
+  ## Get the string representation of the `Option`.
   ##
-  ## If the ``Option`` has a value, the result will be `Some(x)` where `x`
+  ## If the `Option` has a value, the result will be `Some(x)` where `x`
   ## is the string representation of the contained value.
-  ## If the ``Option`` does not have a value, the result will be `None[T]`
-  ## where `T` is the name of the type contained in the ``Option``.
+  ## If the `Option` does not have a value, the result will be `None[T]`
+  ## where `T` is the name of the type contained in the `Option`.
   if self.isSome:
     result = "Some("
     result.addQuoted self.val
@@ -359,7 +359,7 @@ proc `$`*[T](self: Option[T]): string =
     result = "None[" & name(T) & "]"
 
 proc unsafeGet*[T](self: Option[T]): T =
-  ## Returns the value of a ``some``. Behavior is undefined for ``none``.
+  ## Returns the value of a `some`. Behavior is undefined for `none`.
   ##
   ## **Note:** Use it only when you are **absolutely sure** the value is present
   ## (e.g. after checking `isSome <#isSome,Option[T]>`_).
