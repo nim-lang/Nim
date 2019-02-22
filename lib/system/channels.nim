@@ -147,7 +147,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     for i in 0..(mt.size div mt.base.size)-1:
       storeAux(cast[pointer](d +% i*% mt.base.size),
                cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
-  of tyRef, tyOptAsRef:
+  of tyRef:
     var s = cast[PPointer](src)[]
     var x = cast[PPointer](dest)
     if s == nil:

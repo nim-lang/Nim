@@ -94,7 +94,8 @@ proc scopeMangledParam(p: BProc; param: PSym) =
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
-                          tyDistinct, tyRange, tyStatic, tyAlias, tySink, tyInferred}
+                          tyDistinct, tyRange, tyStatic, tyAlias, tySink,
+                          tyInferred, tyOwned}
 
 proc typeName(typ: PType): Rope =
   let typ = typ.skipTypes(irrelevantForBackend)
@@ -145,7 +146,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
     doAssert typ.isResolvedUserTypeClass
     return mapType(conf, typ.lastSon)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
-     tyTypeDesc, tyAlias, tySink, tyInferred:
+     tyTypeDesc, tyAlias, tySink, tyInferred, tyOwned:
     result = mapType(conf, lastSon(typ))
   of tyEnum:
     if firstOrd(conf, typ) < 0:
@@ -158,7 +159,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
       of 8: result = ctInt64
       else: result = ctInt32
   of tyRange: result = mapType(conf, typ.sons[0])
-  of tyPtr, tyVar, tyLent, tyRef, tyOptAsRef:
+  of tyPtr, tyVar, tyLent, tyRef:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
@@ -633,7 +634,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     excl(check, t.id)
     return
   case t.kind
-  of tyRef, tyOptAsRef, tyPtr, tyVar, tyLent:
+  of tyRef, tyPtr, tyVar, tyLent:
     var star = if t.kind == tyVar and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
@@ -844,7 +845,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       of 1, 2, 4, 8: addf(m.s[cfsTypes], "typedef NU$2 $1;$n", [result, rope(s*8)])
       else: addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
              [result, rope(getSize(m.config, t))])
-  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink,
+  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink, tyOwned,
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, lastSon(t), check)
   else:
@@ -1219,7 +1220,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
         addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
-  of tyRef, tyOptAsRef:
+  of tyRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig)

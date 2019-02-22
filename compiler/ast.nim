@@ -365,7 +365,7 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyOptAsRef, tySink, tyLent,
+    tyOwned, tySink, tyLent,
     tyVarargs,
     tyUncheckedArray
       # An array with boundaries [0,+∞]

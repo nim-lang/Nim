@@ -1054,7 +1054,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink, tyUncheckedArray,
-     tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
+     tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt, tyOwned:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c)
@@ -1077,7 +1077,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyOptAsRef: result = false
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1275,7 +1274,11 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
-  of tyOptAsRef: result = t
+  of tyOwned:
+    if t.len == 1 and t.sons[0].kind in {tyRef, tyPtr}:
+      result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+    else:
+      result = t
 
 proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
