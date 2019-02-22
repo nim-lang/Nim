@@ -186,7 +186,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)
-    ctx.instLines = sfCallSideLineinfo in tmpl.flags
+    ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
       result.info = n.info
     for i in countup(0, safeLen(body) - 1):

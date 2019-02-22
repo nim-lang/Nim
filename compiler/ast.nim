@@ -271,7 +271,7 @@ type
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
-    sfCallSideLineinfo# A flag for template symbols to tell the
+    sfCallsite        # A flag for template symbols to tell the
                       # compiler it should use line information from
                       # the calling side of the macro, not from the
                       # implementation.

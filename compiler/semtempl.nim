@@ -559,8 +559,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
 
-  if s.owner != nil and s.owner.name.s == "system" and s.name.s in ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]:
-    incl(s.flags, sfCallSideLineinfo)
+  if s.owner != nil and sfSystemModule in s.owner.flags and
+      s.name.s in ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]:
+    incl(s.flags, sfCallsite)
 
   styleCheckDef(c.config, s)
   onDef(n[0].info, s)
