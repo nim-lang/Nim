@@ -36,16 +36,15 @@ pkg "nimgame2", "nim c nimgame2/nimgame.nim", "", true
 pkg "nimongo", "nimble test_ci", "", true
 pkg "nimpy", "nim c -o:nimpyy nimpy.nim"
 pkg "nimsl", "nim c test.nim"
-pkg "nimsvg", "nim c src/nimsvg.nim"
+pkg "nimsvg"
 pkg "nimx", "nim c --threads:on test/main.nim", "", true
 pkg "parsetoml"
 pkg "patty"
 pkg "plotly", "nim c examples/all.nim", "", true
 pkg "protobuf", "nim c -o:protobuff src/protobuf.nim", "", true
 pkg "regex", "nim c src/regex"
-pkg "rosencrantz"
+pkg "rosencrantz", "nim c -o:rsncntz rosencrantz.nim"
 pkg "sdl1", "nim c src/sdl.nim"
 pkg "sdl2_nim", "nim c sdl2/sdl.nim"
 pkg "stint", "nim c -o:stintt stint.nim"
 pkg "zero_functional", "nim c test.nim"
-
