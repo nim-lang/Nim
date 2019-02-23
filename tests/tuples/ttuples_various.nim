@@ -75,10 +75,26 @@ block unpack_const:
   doAssert c == 3
 
   # bug #10098
-  const (x, y, z) = (4, 5, 6)
-  doAssert x == 4
-  doAssert y == 5
-  doAssert z == 6
+  const (d, e, f) = (4, 5, 6)
+  doAssert d == 4
+  doAssert e == 5
+  doAssert f == 6
+
+
+
+# bug #10724
+block unpack_const_named:
+  const (a, ) = (x: 1, )
+  doAssert a == 1
+
+  const (b, c) = (x: 2, y: 3)
+  doAssert b == 2
+  doAssert c == 3
+
+  const (d, e, f) = (x: 4, y: 5, z: 6)
+  doAssert d == 4
+  doAssert e == 5
+  doAssert f == 6
 
 
 
