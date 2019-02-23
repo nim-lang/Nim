@@ -52,20 +52,21 @@ const
   # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
   # replace with typedescX
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
-                   tyTypeDesc, tyAlias, tyInferred, tySink, tyLent}
+                   tyTypeDesc, tyAlias, tyInferred, tySink, tyLent, tyOwned}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc,
-                  tyAlias, tyInferred, tySink, tyLent}
+                  tyAlias, tyInferred, tySink, tyLent, tyOwned}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
-                    tyAlias, tyInferred, tySink}
+                    tyAlias, tyInferred, tySink, tyOwned}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink}
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
                    tyInferred, tySink}
+  abstractInstOwned* = abstractInst + {tyOwned}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
-               tyInferred, tySink, tyLent}
+               tyInferred, tySink, tyLent, tyOwned}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
-  typedescInst* = abstractInst + {tyTypeDesc}
+  typedescInst* = abstractInst + {tyTypeDesc, tyOwned}
 
 type
   TTypeFieldResult* = enum
@@ -323,7 +324,7 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   result = false
   if typ == nil: return
   if tfAcyclic in typ.flags: return
-  var t = skipTypes(typ, abstractInst-{tyTypeDesc})
+  var t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
   if tfAcyclic in t.flags: return
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyOpenArray, tyVarargs:
@@ -399,8 +400,8 @@ const
     "int", "int8", "int16", "int32", "int64",
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
-    "opt", "sink",
-    "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
+    "owned", "sink",
+    "lent", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
@@ -622,6 +623,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind] % typeToString(t.sons[0])
   of tySink:
     result = "sink " & typeToString(t.sons[0])
+  of tyOwned:
+    result = "owned " & typeToString(t.sons[0])
   else:
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
@@ -1328,7 +1331,7 @@ proc baseOfDistinct*(t: PType): PType =
     result = copyType(t, t.owner, false)
     var parent: PType = nil
     var it = result
-    while it.kind in {tyPtr, tyRef}:
+    while it.kind in {tyPtr, tyRef, tyOwned}:
       parent = it
       it = it.lastSon
     if it.kind == tyDistinct and parent != nil:

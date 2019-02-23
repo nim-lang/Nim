@@ -391,18 +391,18 @@ proc makeDeref(n: PNode): PNode =
   var t = n.typ
   if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
     t = t.lastSon
-  t = skipTypes(t, {tyGenericInst, tyAlias, tySink})
+  t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   result = n
   if t.kind in {tyVar, tyLent}:
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, n)
-    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink})
+    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink, tyOwned})
   while t.kind in {tyPtr, tyRef}:
     var a = result
     let baseTyp = t.lastSon
     result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
     addSon(result, a)
-    t = skipTypes(baseTyp, {tyGenericInst, tyAlias, tySink})
+    t = skipTypes(baseTyp, {tyGenericInst, tyAlias, tySink, tyOwned})
 
 proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
   if n.len == 2:
@@ -908,7 +908,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
     n[0] = semExprWithType(c, n[0])
     var typ = n[0].typ
     if not isImportedException(typ, c.config):
-      typ = typ.skipTypes({tyAlias, tyGenericInst})
+      typ = typ.skipTypes({tyAlias, tyGenericInst, tyOwned})
       if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
       if typ.len > 0 and not isException(typ.lastSon):
@@ -1059,7 +1059,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
     of tyPtr, tyRef, tyVar, tyLent:
       if t.base.kind == tyGenericParam: return true
       return traverseSubTypes(c, t.base)
-    of tyDistinct, tyAlias, tySink:
+    of tyDistinct, tyAlias, tySink, tyOwned:
       return traverseSubTypes(c, t.lastSon)
     of tyGenericInst:
       internalAssert c.config, false
@@ -1180,7 +1180,7 @@ proc checkForMetaFields(c: PContext; n: PNode) =
     let t = n.sym.typ
     case t.kind
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyLent, tyPtr, tyRef,
-       tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink:
+       tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink, tyOwned:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start ..< t.len:
         checkMeta(c, n, t.sons[i])
@@ -1636,7 +1636,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
       if t != nil and t.kind == tyGenericInvocation:
         var x = skipTypes(t.sons[0], {tyVar, tyLent, tyPtr, tyRef, tyGenericInst,
                                       tyGenericInvocation, tyGenericBody,
-                                      tyAlias, tySink})
+                                      tyAlias, tySink, tyOwned})
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
           x.methods.add((col,s))

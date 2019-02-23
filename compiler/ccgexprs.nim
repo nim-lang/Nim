@@ -679,14 +679,14 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     #if e[0].kind != nkBracketExpr:
     #  message(e.info, warnUser, "CAME HERE " & renderTree(e))
     expr(p, e.sons[0], d)
-    if e.sons[0].typ.skipTypes(abstractInst).kind == tyRef:
+    if e.sons[0].typ.skipTypes(abstractInstOwned).kind == tyRef:
       d.storage = OnHeap
   else:
     var a: TLoc
     var typ = e.sons[0].typ
     if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
       typ = typ.lastSon
-    typ = typ.skipTypes(abstractInst)
+    typ = typ.skipTypes(abstractInstOwned)
     if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
       initLocExprSingleUse(p, e[0][0], d)
       return
@@ -726,7 +726,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
-  if e.sons[0].typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+  if e.sons[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
     var a: TLoc
     initLocExpr(p, e.sons[0], a)
     putIntoDest(p, d, e, "&" & a.r, a.storage)
@@ -1158,7 +1158,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   let typ = a.t
   var b: TLoc
   initLoc(b, locExpr, a.lode, OnHeap)
-  let refType = typ.skipTypes(abstractInst)
+  let refType = typ.skipTypes(abstractInstOwned)
   assert refType.kind == tyRef
   let bt = refType.lastSon
   if sizeExpr.isNil:

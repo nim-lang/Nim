@@ -115,7 +115,7 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       t = t.lastSon
     else:
       break
-  let typ = if typ.kind in {tyAlias, tySink}: typ.lastSon else: typ
+  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
   if typ.loc.r == nil:
     typ.loc.r = typ.typeName & $sig
   else:
@@ -296,7 +296,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyStatic:
     if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
     else: internalError(m.config, "tyStatic for getSimpleTypeDesc")
-  of tyGenericInst, tyAlias, tySink:
+  of tyGenericInst, tyAlias, tySink, tyOwned:
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
@@ -619,7 +619,7 @@ proc getSeqPayloadType(m: BModule; t: PType): Rope =
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
-  var t = origTyp.skipTypes(irrelevantForBackend)
+  var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
       internalError(m.config, "cannot generate C type for: " & typeToString(origTyp))

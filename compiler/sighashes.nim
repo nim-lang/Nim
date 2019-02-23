@@ -165,7 +165,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashType t.sons[i], flags
     else:
       c.hashType t.lastSon, flags
-  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
+  of tyAlias, tySink, tyUserTypeClasses, tyInferred, tyOwned:
     c.hashType t.lastSon, flags
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
