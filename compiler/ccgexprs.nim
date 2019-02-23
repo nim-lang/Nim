@@ -752,7 +752,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
     a: TLoc
     i: int
   initLocExpr(p, e.sons[0], a)
-  let tupType = a.t.skipTypes(abstractInst)
+  let tupType = a.t.skipTypes(abstractInst+{tyVar})
   assert tupType.kind == tyTuple
   d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc

@@ -21,12 +21,20 @@ proc newDeref*(n: PNode): PNode {.inline.} =
   addSon(result, n)
 
 proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
-  result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
-                     abstractInst).sons[i])
-  addSon(result, copyTree(tup))
-  var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
-  lit.intVal = i
-  addSon(result, lit)
+  if tup.kind == nkHiddenAddr:
+    result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}))
+    result.addSon(newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}).sons[i]))
+    addSon(result[0], tup[0])
+    var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
+    lit.intVal = i
+    addSon(result[0], lit)
+  else:
+    result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
+                       abstractInst).sons[i])
+    addSon(result, copyTree(tup))
+    var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
+    lit.intVal = i
+    addSon(result, lit)
 
 proc addVar*(father, v: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
