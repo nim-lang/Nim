@@ -385,18 +385,19 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isFromIntLit
     elif f.kind == tyInt and k in {tyInt8..tyInt32}:
       result = isIntConv
+    elif f.kind == tyUInt and k in {tyUInt8..tyUInt32}:
+      result = isIntConv
     elif k >= min and k <= max:
       result = isConvertible
-    elif a.kind == tyRange and a.sons[0].kind in {tyInt..tyInt64,
-                                                  tyUInt8..tyUInt32} and
-                         a.n[0].intVal >= firstOrd(nil, f) and
-                         a.n[1].intVal <= lastOrd(nil, f):
+    elif a.kind == tyRange and
+      # Make sure the conversion happens between types w/ same signedness
+      (f.kind in {tyInt..tyInt64} and a[0].kind in {tyInt..tyInt64} or
+       f.kind in {tyUInt8..tyUInt32} and a[0].kind in {tyUInt8..tyInt32}) and
+      a.n[0].intVal >= firstOrd(nil, f) and a.n[1].intVal <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
       # not depent on the target integer size configurations!
       result = isConvertible
     else: result = isNone
-    #elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
-    #elif f.kind == tyUInt and k in {tyUInt..tyUInt32}: result = isIntConv
 
 proc isConvertibleToRange(f, a: PType): bool =
   # be less picky for tyRange, as that it is used for array indexing:
