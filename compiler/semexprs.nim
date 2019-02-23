@@ -735,7 +735,11 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
-  let a = semExpr(c, n)
+  inc c.inStaticContext
+  openScope(c)
+  let a = semExprWithType(c, n)
+  closeScope(c)
+  dec c.inStaticContext
   if a.findUnresolvedStatic != nil: return a
   result = evalStaticExpr(c.module, c.graph, a, c.p.owner)
   if result.isNil:
