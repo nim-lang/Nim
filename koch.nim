@@ -463,10 +463,17 @@ proc runCI(cmd: string) =
   # as that would weaken our testing efforts.
   when defined(posix): # appveyor (on windows) didn't run this
     kochExecFold("Boot", "boot")
+  # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
+
+  when not defined(windows):
+    # pending https://github.com/Araq/libffi/pull/2
+    # also, that PR works on win32 but not yet win64
+    execFold("nimble install -y libffi", "nimble install -y libffi")
+    kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-extra")

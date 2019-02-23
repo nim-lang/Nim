@@ -229,7 +229,9 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}: c.slots[r].inUse = false
+  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}:
+    # this seems to cause https://github.com/nim-lang/Nim/issues/10647
+    c.slots[r].inUse = false
 
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
@@ -1540,8 +1542,8 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
-    if allowFFI in c.features:
-      c.globals.add(importcSymbol(s))
+    if compiletimeFFI in c.config.features:
+      c.globals.add(importcSymbol(c.config, s))
       s.position = c.globals.len
     else:
       localError(c.config, info, "VM is not allowed to 'importc'")

@@ -498,7 +498,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     let ra = instr.regA
 
     when traceCode:
-      echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
+      template regDescr(name, r): string =
+        let kind = if r < regs.len: $regs[r].kind else: ""
+        let ret = name & ": " & $r & " " & $kind
+        alignLeft(ret, 15)
+      echo "PC:$pc $opcode $ra $rb $rc" % [
+        "pc", $pc, "opcode", alignLeft($c.code[pc].opcode, 15),
+        "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
+        "rc", regDescr("rc", instr.regC)]
 
     case instr.opcode
     of opcEof: return regs[ra]
@@ -1072,15 +1079,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif sfImportc in prc.flags:
-        if allowFFI notin c.features:
-          globalError(c.config, c.debug[pc], "VM not allowed to do FFI")
+        if compiletimeFFI notin c.config.features:
+          globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
         # 'regs' in a register:
         when hasFFI:
           let prcValue = c.globals.sons[prc.position-1]
           if prcValue.kind == nkEmpty:
             globalError(c.config, c.debug[pc], "cannot run " & prc.name.s)
-          let newValue = callForeignFunction(prcValue, prc.typ, tos.slots,
+          var slots2: TNodeSeq
+          slots2.setLen(tos.slots.len)
+          for i in 0..<tos.slots.len:
+            slots2[i] = regToNode(tos.slots[i])
+          let newValue = callForeignFunction(c.config, prcValue, prc.typ, slots2,
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
             assert instr.opcode == opcIndCallAsgn
@@ -1611,9 +1622,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.ident = getIdent(c.cache, regs[rb].node.strVal)
         regs[ra].node.flags.incl nfIsRef
     of opcSetType:
+      let typ = c.types[instr.regBx - wordExcess]
       if regs[ra].kind != rkNode:
-        internalError(c.config, c.debug[pc], "cannot set type")
-      regs[ra].node.typ = c.types[instr.regBx - wordExcess]
+        let temp = regToNode(regs[ra])
+        ensureKind(rkNode)
+        regs[ra].node = temp
+        regs[ra].node.info = c.debug[pc]
+      regs[ra].node.typ = typ
     of opcConv:
       let rb = instr.regB
       inc pc
@@ -1633,8 +1648,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let srctyp = c.types[c.code[pc].regBx - wordExcess]
 
       when hasFFI:
-        let dest = fficast(regs[rb], desttyp)
-        asgnRef(regs[ra], dest)
+        let dest = fficast(c.config, regs[rb].node, desttyp)
+        # todo: check whether this is correct
+        # asgnRef(regs[ra], dest)
+        putIntoReg(regs[ra], dest)
       else:
         globalError(c.config, c.debug[pc], "cannot evaluate cast")
     of opcNSetIntVal:
@@ -1921,14 +1938,12 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
-  #c.features = {allowCast, allowFFI, allowInfiniteLoops}
+  #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
   setupGlobalCtx(module, graph)
   result = PCtx graph.vm
-  when hasFFI:
-    PCtx(graph.vm).features = {allowFFI, allowCast}
 
 proc myProcess(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
