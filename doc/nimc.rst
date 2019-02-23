@@ -446,7 +446,7 @@ handlers registered in the previous version of the program and then all
 `afterCodeReload`:idx handlers appearing in the newly loaded code. Please note
 that any handlers appearing in modules that weren't reloaded will also be
 executed. To prevent this behavior, one can guard the code with the
-`hasModuleChanged()`:idx: magic:
+`hasModuleChanged()`:idx: API:
 
 .. code-block:: Nim
   import mydb
@@ -461,10 +461,12 @@ The hot code reloading is based on dynamic library hot swapping in the native
 targets and direct manipulation of the global namespace in the JavaScript
 target. The Nim compiler does not specify the mechanism for detecting the
 conditions when the code must be reloaded. Instead, the program code is
-expected to call `performCodeReload()`:idx every time it wishes to reload its
-code.
+expected to call `performCodeReload()`:idx every time it wishes to reload
+its code.
 
-There is also the `hasAnyModuleChanged()`:idx magic which checks all modules.
+It's expected that most projects will implement the reloading with a suitable
+build-system triggered IPC notification mechanism, but a polling solution is
+also possible through the provided `hasAnyModuleChanged()`:idx API.
 
 In order to access ``beforeCodeReload``, ``afterCodeReload``, ``hasModuleChanged``
 or ``hasAnyModuleChanged`` one must import the `hotcodereloading`:idx module.
@@ -486,10 +488,13 @@ The main module of the program is considered non-reloadable. Please note
 that procs from reloadable modules should not appear in the call stack of
 program while ``performCodeReload`` is being called. Thus, the main module
 is a suitable place for implementing a program loop capable of calling
-``performCodeReload``. Also be careful when reloading modules with closures
-which have been instantiated in variables and aren't finished yet - changes
-to the code of the closures might lead to a crash if incompatible (like
-removing a yield or adding more locals/changing their point of definition).
+``performCodeReload``.
+
+Please note that reloading won't be possible when any of the type definitions
+in the program has been changed. When closure iterators are used (directly or
+through async code), the reloaded refinitions will affect only newly created
+instances. Existing iterator instancess will execute their original code to
+completion.
 
 **Usage in JavaScript projects:**
 

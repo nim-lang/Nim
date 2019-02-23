@@ -794,9 +794,10 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
       config.command = p.key
   else:
     if pass == passCmd1: config.commandArgs.add p.key
-    if argsCount == 1 and config.projectName.len == 0:
+    if argsCount == 1:
       # support UNIX style filenames everywhere for portable build scripts:
-      config.projectName = unixToNativePath(p.key)
+      if config.projectName.len == 0:
+        config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
   inc argsCount

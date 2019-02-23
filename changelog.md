@@ -136,6 +136,9 @@ proc enumToString*(enums: openArray[enum]): string =
   slightly. The `dumpLisp` macro in this module now outputs an
   indented proper Lisp, devoid of commas.
 
+- Added `macros.signatureHash` that returns a stable identifier
+  derived from the signature of a symbol.
+
 - In `strutils` empty strings now no longer matched as substrings
   anymore.
 
@@ -193,6 +196,8 @@ proc enumToString*(enums: openArray[enum]): string =
 ### Compiler changes
 - The deprecated `fmod` proc is now unavailable on the VM'.
 - A new `--outdir` option was added.
+- The compiled JavaScript file for the project produced by executing `nim js`
+  will no longer be placed in the nimcache directory.
 - The `--hotCodeReloading` has been implemented for the native targets.
   The compiler also provides a new more flexible API for handling the
   hot code reloading events in the code.

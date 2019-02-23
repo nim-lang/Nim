@@ -314,10 +314,13 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     inc(r.passed)
 
 proc generatedFile(test: TTest, target: TTarget): string =
-  let (_, name, _) = test.name.splitFile
-  let ext = targetToExt[target]
-  result = nimcacheDir(test.name, test.options, target) /
-    ((if target == targetJS: "" else: "compiler_") & name.changeFileExt(ext))
+  if target == targetJS:
+    result = test.name.changeFileExt("js")
+  else:
+    let (_, name, _) = test.name.splitFile
+    let ext = targetToExt[target]
+    result = nimcacheDir(test.name, test.options, target) /
+             ("compiler_" & name.changeFileExt(ext))
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
@@ -424,15 +427,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         r.addResult(test, target, "", given.msg, given.err)
         continue
       let isJsTarget = target == targetJS
-      var exeFile: string
-      if isJsTarget:
-        let file = test.name.lastPathPart.changeFileExt("js")
-        exeFile = nimcacheDir(test.name, test.options, target) / file
-      else:
-        exeFile = changeFileExt(test.name, ExeExt)
-
+      var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
       if not existsFile(exeFile):
-        r.addResult(test, target, expected.output, "executable not found", reExeNotFound)
+        r.addResult(test, target, expected.output,
+                    "executable not found: " & exeFile, reExeNotFound)
         continue
 
       let nodejs = if isJsTarget: findNodeJs() else: ""
