@@ -145,7 +145,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
-  if sonsLen(n) == 2:
+  if sonsLen(n) == 2 and n.sons[1].kind != nkEmpty:
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
