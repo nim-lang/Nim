@@ -26,3 +26,9 @@ block:
   var x = 123'u16
   x -= 125
   doAssert(x == 65534'u16)
+
+block t4175:
+  let i = 0u - 1u
+  const j = 0u - 1u
+  doAssert i == j
+  doAssert j + 1u == 0u
