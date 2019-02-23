@@ -15,6 +15,8 @@ import
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
+import system/indexerrors
+
 proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
   of tyInt:
@@ -130,7 +132,9 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
           return field.name.s
         else:
           return field.ast.strVal
-    internalError(g.config, a.info, "no symbol for ordinal value: " & $x)
+    localError(g.config, a.info,
+      "Cannot convert int literal to $1. The value is invalid." %
+        [typeToString(t)])
   else:
     result = $x
 
@@ -267,12 +271,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n, g)
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
   of mDivF64:
-    if getFloat(b) == 0.0:
-      if getFloat(a) == 0.0: result = newFloatNodeT(NaN, n, g)
-      elif getFloat(b).classify == fcNegZero: result = newFloatNodeT(-Inf, n, g)
-      else: result = newFloatNodeT(Inf, n, g)
-    else:
-      result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
+    result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
   of mMaxF64:
     if getFloat(a) > getFloat(b): result = newFloatNodeT(getFloat(a), n, g)
     else: result = newFloatNodeT(getFloat(b), n, g)
@@ -413,15 +412,14 @@ proc getAppType(n: PNode; g: ModuleGraph): PNode =
     result = newStrNodeT("console", n, g)
 
 proc rangeCheck(n: PNode, value: BiggestInt; g: ModuleGraph) =
-  if tfUncheckedArray notin n.typ.flags:
-    var err = false
-    if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
-      err = value <% firstOrd(g.config, n.typ) or value >% lastOrd(g.config, n.typ, fixedUnsigned=true)
-    else:
-      err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
-    if err:
-      localError(g.config, n.info, "cannot convert " & $value &
-                                      " to " & typeToString(n.typ))
+  var err = false
+  if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
+    err = value <% firstOrd(g.config, n.typ) or value >% lastOrd(g.config, n.typ, fixedUnsigned=true)
+  else:
+    err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
+  if err:
+    localError(g.config, n.info, "cannot convert " & $value &
+                                    " to " & typeToString(n.typ))
 
 proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   let dstTyp = skipTypes(n.typ, abstractRange)
@@ -467,7 +465,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
     else:
       result = a
       result.typ = n.typ
-  of tyOpenArray, tyVarargs, tyProc:
+  of tyOpenArray, tyVarargs, tyProc, tyPointer:
     discard
   else:
     result = a
@@ -495,11 +493,11 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
-      localError(g.config, n.info, "index out of bounds: " & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, sonsLen(x)-1) & $n)
   of nkBracket:
     idx = idx - firstOrd(g.config, x.typ)
     if idx >= 0 and idx < x.len: result = x.sons[int(idx)]
-    else: localError(g.config, n.info, "index out of bounds: " & $n)
+    else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkStrLit..nkTripleStrLit:
     result = newNodeIT(nkCharLit, x.info, n.typ)
     if idx >= 0 and idx < len(x.strVal):
@@ -507,7 +505,7 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
     elif idx == len(x.strVal) and optLaxStrings in g.config.options:
       discard
     else:
-      localError(g.config, n.info, "index out of bounds: " & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, len(x.strVal)-1) & $n)
   else: discard
 
 proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
@@ -571,10 +569,20 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           try:
             result = newIntNodeT(g.config.symbols[s.name.s].parseInt, n, g)
           except ValueError:
-            localError(g.config, n.info, "expression is not an integer literal")
+            localError(g.config, s.info,
+              "{.intdefine.} const was set to an invalid integer: '" &
+                g.config.symbols[s.name.s] & "'")
       of mStrDefine:
         if isDefined(g.config, s.name.s):
           result = newStrNodeT(g.config.symbols[s.name.s], n, g)
+      of mBoolDefine:
+        if isDefined(g.config, s.name.s):
+          try:
+            result = newIntNodeT(g.config.symbols[s.name.s].parseBool.int, n, g)
+          except ValueError:
+            localError(g.config, s.info,
+              "{.booldefine.} const was set to an invalid bool: '" &
+                g.config.symbols[s.name.s] & "'")
       else:
         result = copyTree(s.ast)
     of skProc, skFunc, skMethod:
@@ -632,6 +640,14 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
         # It doesn't matter if the argument is const or not for mLengthArray.
         # This fixes bug #544.
         result = newIntNodeT(lengthOrd(g.config, n.sons[1].typ), n, g)
+      of mSizeOf:
+        let size = getSize(g.config, n[1].typ)
+        if size >= 0:
+          result = newIntNode(nkIntLit, size)
+          result.info = n.info
+          result.typ = getSysType(g, n.info, tyInt)
+        else:
+          result = nil
       of mAstToStr:
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, g)
       of mConStrStr:

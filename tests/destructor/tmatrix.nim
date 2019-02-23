@@ -52,6 +52,8 @@ proc matrix*(m, n: int, s: float): Matrix =
   for i in 0 ..< m * n:
     result.data[i] = s
 
+proc len(m: Matrix): int = m.n * m.m
+
 proc `[]`*(m: Matrix, i, j: int): float {.inline.} =
   ## Get a single element.
   m.data[i * m.n + j]
@@ -67,24 +69,26 @@ proc `[]=`*(m: var Matrix, i, j: int, s: float) =
 proc `-`*(m: sink Matrix): Matrix =
   ## Unary minus
   result = m
-  for i in 0 ..< m.m:
-    for j in 0 ..< m.n:
-      result[i, j] = -m[i, j]
+  for i in 0 ..< result.m:
+    for j in 0 ..< result.n:
+      result[i, j] = -result[i, j]
 
 proc `+`*(a: sink Matrix; b: Matrix): Matrix =
   ## ``C = A + B``
-  assert(b.m == a.m and b.n == a.n, "Matrix dimensions must agree.")
+  doAssert(b.m == a.m and b.n == a.n, "Matrix dimensions must agree.")
+  doAssert(a.len == b.len) # non destructive use before sink is ok
   result = a
-  for i in 0 ..< a.m:
-    for j in 0 ..< a.n:
-      result[i, j] = a[i, j] + b[i, j]
+  for i in 0 ..< result.m:
+    for j in 0 ..< result.n:
+      result[i, j] = result[i, j] + b[i, j]
 
 proc `-`*(a: sink Matrix; b: Matrix): Matrix =
   ## ``C = A - B``
   assert(b.m == a.m and b.n == a.n, "Matrix dimensions must agree.")
+  doAssert(a.len == b.len) # non destructive use before sink is ok
   result = a
-  for i in 0 ..< a.m:
-     for j in 0 ..< a.n:
+  for i in 0 ..< result.m:
+     for j in 0 ..< result.n:
         result[i, j] = a[i, j] - b[i, j]
 
 proc info =

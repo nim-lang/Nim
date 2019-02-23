@@ -130,12 +130,20 @@
 ##       { "name": "Susan", "age": herAge }
 ##     ]
 ##
-##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
-##    j2["details"] = %* {"age":35, "pi":3.1415}
-##    echo j2
+##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
+##   j2["details"] = %* {"age":35, "pi":3.1415}
+##   echo j2
+
+runnableExamples:
+  ## Note: for JObject, key ordering is preserved, unlike in some languages,
+  ## this is convenient for some use cases. Example:
+  type Foo = object
+    a1, a2, a0, a3, a4: int
+  doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson
+  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
+  typetraits, options
 
 export
   tables.`$`
@@ -305,6 +313,24 @@ proc `%`*(s: string): JsonNode =
   result.kind = JString
   result.str = s
 
+proc `%`*(n: uint): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
+  new(result)
+  result.kind = JInt
+  result.num  = BiggestInt(n)
+
+proc `%`*(n: int): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
+  new(result)
+  result.kind = JInt
+  result.num  = n
+
+proc `%`*(n: BiggestUInt): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
+  new(result)
+  result.kind = JInt
+  result.num  = BiggestInt(n)
+
 proc `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
   new(result)
@@ -336,6 +362,16 @@ proc `%`*[T](elements: openArray[T]): JsonNode =
   result = newJArray()
   for elem in elements: result.add(%elem)
 
+proc `%`*[T](table: Table[string, T]|OrderedTable[string, T]): JsonNode =
+  ## Generic constructor for JSON data. Creates a new ``JObject JsonNode``.
+  result = newJObject()
+  for k, v in table: result[k] = %v
+
+proc `%`*[T](opt: Option[T]): JsonNode =
+  ## Generic constructor for JSON data. Creates a new ``JNull JsonNode``
+  ## if ``opt`` is empty, otherwise it delegates to the underlying value.
+  if opt.isSome: %opt.get else: newJNull()
+
 when false:
   # For 'consistency' we could do this, but that only pushes people further
   # into that evil comfort zone where they can use Nim without understanding it
@@ -348,6 +384,25 @@ when false:
     result = newJObject()
     assert false notin elements, "usage error: only empty sets allowed"
     assert true notin elements, "usage error: only empty sets allowed"
+
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
+  ## Sets a field from a `JObject`.
+  assert(obj.kind == JObject)
+  obj.fields[key] = val
+
+#[
+Note: could use simply:
+proc `%`*(o: object|tuple): JsonNode
+but blocked by https://github.com/nim-lang/Nim/issues/10019
+]#
+proc `%`*(o: tuple): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  when isNamedTuple(type(o)):
+    result = newJObject()
+    for k, v in o.fieldPairs: result[k] = %v
+  else:
+    result = newJArray()
+    for a in o.fields: result.add(%a)
 
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
@@ -500,11 +555,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use hasKey instead".} = node.hasKey(key)
   ## **Deprecated:** use `hasKey` instead.
 
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
-  ## Sets a field from a `JObject`.
-  assert(obj.kind == JObject)
-  obj.fields[key] = val
-
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
   ## keys do not exist, returns ``nil``. Also returns ``nil`` if one of the
@@ -603,7 +653,7 @@ proc escapeJsonUnquoted*(s: string; result: var string) =
     of '\r': result.add("\\r")
     of '"': result.add("\\\"")
     of '\0'..'\7': result.add("\\u000" & $ord(c))
-    of '\14'..'\31': result.add("\\u00" & $ord(c))
+    of '\14'..'\31': result.add("\\u00" & toHex(ord(c), 2))
     of '\\': result.add("\\\\")
     else: result.add(c)
 
@@ -686,6 +736,22 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
 proc pretty*(node: JsonNode, indent = 2): string =
   ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
+  ##
+  ## Similar to prettyprint in Python.
+  runnableExamples:
+    let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
+                "details": {"age":35, "pi":3.1415}}
+    doAssert pretty(j) == """
+{
+  "name": "Isaac",
+  "books": [
+    "Robot Dreams"
+  ],
+  "details": {
+    "age": 35,
+    "pi": 3.1415
+  }
+}"""
   result = ""
   toPretty(result, node, indent)
 
@@ -1306,6 +1372,12 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
 
       let obj = getType(typeSym[1])
       result = processType(newIdentNode(typeName), obj, jsonNode, true)
+    of "range":
+      let typeNode = typeSym
+      # Deduce the base type from one of the endpoints
+      let baseType = getType(typeNode[1])
+
+      result = createConstructor(baseType, jsonNode)
     of "seq":
       let seqT = typeSym[1]
       let forLoopI = genSym(nskForVar, "i")
@@ -1664,9 +1736,9 @@ when isMainModule:
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
-  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0020" # for #7887
+  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0014" # for #7887
   doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
-  doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0020\"" # for #7887
+  doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0014\"" # for #7887
 
   # Test with extra data
   when not defined(js):
@@ -1699,3 +1771,41 @@ when isMainModule:
       foo = js.to Foo
 
     doAssert(foo.b == "abc")
+
+  # Generate constructors for range[T] types
+  block:
+    type
+      Q1 = range[0'u8  .. 50'u8]
+      Q2 = range[0'u16 .. 50'u16]
+      Q3 = range[0'u32 .. 50'u32]
+      Q4 = range[0'i8  .. 50'i8]
+      Q5 = range[0'i16 .. 50'i16]
+      Q6 = range[0'i32 .. 50'i32]
+      Q7 = range[0'f32 .. 50'f32]
+      Q8 = range[0'f64 .. 50'f64]
+      Q9 = range[0     .. 50]
+
+      X = object
+        m1: Q1
+        m2: Q2
+        m3: Q3
+        m4: Q4
+        m5: Q5
+        m6: Q6
+        m7: Q7
+        m8: Q8
+        m9: Q9
+
+    let obj = X(
+      m1: Q1(42),
+      m2: Q2(42),
+      m3: Q3(42),
+      m4: Q4(42),
+      m5: Q5(42),
+      m6: Q6(42),
+      m7: Q7(42),
+      m8: Q8(42),
+      m9: Q9(42)
+    )
+
+    doAssert(obj == to(%obj, type(obj)))

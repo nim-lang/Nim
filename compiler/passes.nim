@@ -102,9 +102,9 @@ proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNod
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
     if m.position != resolveMod(graph.config, module, relativeTo).int32:
-      var importStmt = newNodeI(nodeKind, gCmdLineInfo)
+      var importStmt = newNodeI(nodeKind, m.info)
       var str = newStrNode(nkStrLit, module)
-      str.info = gCmdLineInfo
+      str.info = m.info
       importStmt.addSon str
       if not processTopLevelStmt(graph, importStmt, a): break
 
@@ -155,7 +155,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     while true:
       openParsers(p, fileIdx, s, graph.cache, graph.config)
 
-      if sfSystemModule notin module.flags:
+      if module.owner == nil or module.owner.name.s != "stdlib" or module.name.s == "distros":
         # XXX what about caching? no processing then? what if I change the
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
@@ -167,7 +167,9 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
         if graph.stopCompile(): break
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
-        if {sfNoForward, sfReorder} * module.flags != {}:
+        if sfSystemModule notin module.flags and
+            ({sfNoForward, sfReorder} * module.flags != {} or
+            codeReordering in graph.config.features):
           # read everything, no streaming possible
           var sl = newNodeI(nkStmtList, n.info)
           sl.add n
@@ -175,7 +177,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
             var n = parseTopLevelStmt(p)
             if n.kind == nkEmpty: break
             sl.add n
-          if sfReorder in module.flags:
+          if sfReorder in module.flags or codeReordering in graph.config.features:
             sl = reorder(graph, sl, module)
           discard processTopLevelStmt(graph, sl, a)
           break

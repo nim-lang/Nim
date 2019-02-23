@@ -1,5 +1,5 @@
 discard """
-  outputsub: "All rights reserved."
+  outputsub: "Just a simple text for test"
 """
 
 type
@@ -28,7 +28,7 @@ proc consume() {.thread.} =
 proc produce() {.thread.} =
   prodId = getThreadId()
   var m: TMsg
-  var input = open("readme.txt")
+  var input = open("tests/dummy.txt")
   var line = ""
   while input.readLine(line):
     m.data = line

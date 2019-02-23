@@ -92,8 +92,7 @@ proc isCaseObj*(n: PNode): bool =
 
 proc isDeepConstExpr*(n: PNode): bool =
   case n.kind
-  of nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-      nkFloatLit..nkFloat64Lit, nkNilLit:
+  of nkCharLit..nkNilLit:
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])

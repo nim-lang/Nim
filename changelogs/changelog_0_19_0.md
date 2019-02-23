@@ -223,7 +223,7 @@
   into the namespace "Nim" in order to avoid naming conflicts with existing
   C++ code. This is done for all Nim code - internal and exported.
 
-- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
+- Added ``macros.getProjectPath`` and ``os.putEnv`` procs to Nim's virtual
   machine.
 
 - The ``deadCodeElim`` option is now always turned on and the switch has no

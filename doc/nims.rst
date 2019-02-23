@@ -26,12 +26,31 @@ previous settings):
    ``$project.nim``. This file can be skipped with the same
    ``--skipProjCfg`` command line option.
 
-The VM cannot deal with ``importc`` because the FFI is not
-available. So the stdlib modules using ``importc`` cannot be used with
-Nim's VM. However, at least the following modules are available:
+Limitations
+=================================
+
+NimScript is subject to some limitations caused by the implementation of the VM
+(virtual machine):
+
+* Nim's FFI (foreign function interface) is not available in NimScript. This
+  means that any stdlib module which relies on ``importc`` can not be used in
+  the VM.
+
+* ``ptr`` operations are are hard to emulate with the symbolic representation
+  the VM uses. They are available and tested extensively but there are bugs left.
+
+* ``var T`` function arguments rely on ``ptr`` operations internally and might
+  also be problematic in some cases.
+
+* More than one level of `ref` is generally not supported (for example, the type 
+  `ref ref int`).
+
+* multimethods are not available.
+
+Given the above restrictions, at least the following modules are available:
 
 * `macros <macros.html>`_
-* `ospaths <ospaths.html>`_
+* `os <os.html>`_
 * `strutils <strutils.html>`_
 * `math <math.html>`_
 * `distros <distros.html>`_
@@ -96,17 +115,6 @@ Task          Description
 ``tests``     Runs the tests belonging to the project.
 ``bench``     Runs benchmarks belonging to the project.
 =========     ===================================================
-
-
-If the task runs an external command via ``exec`` it should afterwards call
-``setCommand "nop"`` to tell the Nim compiler that nothing else needs to be
-done:
-
-.. code-block:: nim
-
-  task tests, "test regular expressions":
-    exec "nim c -r tests"
-    setCommand "nop"
 
 
 Look at the module `distros <distros.html>`_ for some support of the

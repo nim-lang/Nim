@@ -1,5 +1,4 @@
 discard """
-  file: "tovfint.nim"
   output: "works!"
 """
 # this tests the new overflow literals
@@ -19,5 +18,3 @@ else:
     write(stdout, "broken!\n")
 
 #OUT works!
-
-

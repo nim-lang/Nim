@@ -57,7 +57,6 @@ when defined(windows):
   type
     SysThread* = Handle
     WinThreadProc = proc (x: pointer): int32 {.stdcall.}
-  {.deprecated: [TSysThread: SysThread].}
 
   proc createThread(lpThreadAttributes: pointer, dwStackSize: int32,
                      lpStartAddress: WinThreadProc,
@@ -198,8 +197,6 @@ else:
     Timespec {.importc: "struct timespec", header: "<time.h>".} = object
       tv_sec: Time
       tv_nsec: clong
-  {.deprecated: [TSysThread: SysThread, Tpthread_attr: PThreadAttr,
-                Ttimespec: Timespec, TThreadVarSlot: ThreadVarSlot].}
 
   proc pthread_attr_init(a1: var PthreadAttr) {.
     importc, header: pthreadh.}
@@ -277,7 +274,6 @@ type
       stackSize: int
     else:
       nil
-{.deprecated: [TThreadLocalStorage: ThreadLocalStorage, TGcThread: GcThread].}
 
 when not defined(useNimRtl):
   when not useStackMaskHack:
@@ -329,11 +325,8 @@ when not defined(useNimRtl):
 
   when emulatedThreadVars:
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
-      echo "too large thread local storage size requested ",
-           "(", nimThreadVarsSize(), "/", sizeof(ThreadLocalStorage), "). ",
-           "Use -d:\"nimTlsSize=", nimThreadVarsSize(),
-           "\" to preallocate sufficient storage."
-
+      c_fprintf(cstderr, """too large thread local storage size requested,
+use -d:\"nimTlsSize=X\" to setup even more or stop using unittest.nim""")
       quit 1
 
   when hasSharedHeap and not defined(boehmgc) and not defined(gogc) and not defined(nogc):
@@ -381,8 +374,6 @@ type
     else:
       dataFn: proc (m: TArg) {.nimcall, gcsafe.}
       data: TArg
-
-{.deprecated: [TThread: Thread].}
 
 var
   threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe.}]

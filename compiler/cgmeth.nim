@@ -188,7 +188,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
   elif sfBase notin s.flags:
     message(g.config, s.info, warnUseBase)
 
-proc relevantCol(methods: TSymSeq, col: int): bool =
+proc relevantCol(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
   var t = methods[0].typ.sons[col].skipTypes(skipPtrs)
   if t.kind == tyObject:
@@ -206,7 +206,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
       if (d != high(int)) and d != 0:
         return d
 
-proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =
+proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
   # we use shellsort here; fast and simple
   var n = len(a)
   var h = 1
@@ -225,7 +225,7 @@ proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher(g: ModuleGraph; methods: TSymSeq, relevantCols: IntSet): PSym =
+proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
   var base = lastSon(methods[0].ast).sym
   result = base
   var paramLen = sonsLen(base.typ)

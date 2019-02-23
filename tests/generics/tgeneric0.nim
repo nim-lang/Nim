@@ -1,6 +1,7 @@
 discard """
   output: '''
-100 0
+100
+0
 '''
 """
 
@@ -72,7 +73,7 @@ block tgeneric1:
 
   proc print[T](heap: PBinHeap[T]) =
     for i in countup(0, heap.last):
-      stdout.write($heap.heap[i].data, " ")
+      stdout.write($heap.heap[i].data, "\n")
 
   var heap: PBinHeap[int]
 

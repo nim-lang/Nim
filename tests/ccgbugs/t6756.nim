@@ -1,3 +1,9 @@
+discard """
+output: '''
+(v: 3)
+'''
+"""
+
 import typetraits
 type
   A[T] = ref object

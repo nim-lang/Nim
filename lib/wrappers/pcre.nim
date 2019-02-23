@@ -466,14 +466,6 @@ proc study*(code: ptr Pcre,
 {.pop.}
 
 
-{.deprecated: [MAJOR: PCRE_MAJOR, MINOR: PCRE_MINOR,
-               PRERELEASE: PCRE_PRERELEASE, DATE: PCRE_DATE].}
-
-{.deprecated: [TPcre: Pcre, TJitStack: JitStack].}
 type
   PPcre* {.deprecated.} = ptr Pcre
   PJitStack* {.deprecated.} = ptr JitStack
-
-{.deprecated: [TExtra: ExtraData].}
-{.deprecated: [TCalloutBlock: CalloutBlock].}
-{.deprecated: [TJitCallback: JitCallback].}

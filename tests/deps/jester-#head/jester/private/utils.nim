@@ -188,7 +188,7 @@ when not declared(normalizePath) and not declared(normalizedPath):
     result = path
     normalizePath(result)
 
-when isMainModule:
+when false:
   var r = {:}.newStringTable
   parseUrlQuery("FirstName=Mickey", r)
   echo r

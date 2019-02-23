@@ -1,3 +1,6 @@
+discard """
+  disabled: true
+"""
 
 # This is a regression of the new lambda lifting; detected by Aporia
 import asyncio, sockets
@@ -5,8 +8,8 @@ import os
 
 type
   Window = object
-    oneInstSock*: PAsyncSocket
-    IODispatcher*: PDispatcher
+    oneInstSock*: AsyncSocket
+    IODispatcher*: Dispatcher
 
 var
   win: Window
@@ -14,9 +17,9 @@ var
 proc initSocket() =
   win.oneInstSock = asyncSocket()
   #win.oneInstSock.handleAccept =
-  proc test(s: PAsyncSocket) =
-    var client: PAsyncSocket
-    proc dummy(c: PAsyncSocket) {.closure.} =
+  proc test(s: AsyncSocket) =
+    var client: AsyncSocket
+    proc dummy(c: AsyncSocket) {.closure.} =
       discard
     client.handleRead = dummy
   test(win.oneInstSock)

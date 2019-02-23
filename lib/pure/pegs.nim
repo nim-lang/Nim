@@ -90,19 +90,19 @@ proc kind*(p: Peg): PegKind = p.kind
   ## Returns the *PegKind* of a given *Peg* object.
 
 proc term*(p: Peg): string = p.term
-  ## Returns the *string* representation of a given *Peg* variant object 
+  ## Returns the *string* representation of a given *Peg* variant object
   ## where present.
 
 proc ch*(p: Peg): char = p.ch
-  ## Returns the *char* representation of a given *Peg* variant object 
+  ## Returns the *char* representation of a given *Peg* variant object
   ## where present.
 
 proc charChoice*(p: Peg): ref set[char] = p.charChoice
-  ## Returns the *charChoice* field of a given *Peg* variant object 
+  ## Returns the *charChoice* field of a given *Peg* variant object
   ## where present.
 
 proc nt*(p: Peg): NonTerminal = p.nt
-  ## Returns the *NonTerminal* object of a given *Peg* variant object 
+  ## Returns the *NonTerminal* object of a given *Peg* variant object
   ## where present.
 
 proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
@@ -137,7 +137,7 @@ proc flags*(nt: NonTerminal): set[NonTerminalFlag] = nt.flags
 
 proc rule*(nt: NonTerminal): Peg = nt.rule
   ## Gets the *Peg* object representing the rule definition of the parent *Peg*
-  ## object variant of a given *NonTerminal*. 
+  ## object variant of a given *NonTerminal*.
 
 proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
@@ -553,8 +553,6 @@ type
     ml: int
     origStart: int
 
-{.deprecated: [TCaptures: Captures].}
-
 proc bounds*(c: Captures,
              i: range[0..MaxSubpatterns-1]): tuple[first, last: int] =
   ## returns the bounds ``[first..last]`` of the `i`'th capture.
@@ -885,7 +883,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
 macro mkHandlerTplts(handlers: untyped): untyped =
   # Transforms the handler spec in *handlers* into handler templates.
   # The AST structure of *handlers[0]*:
-  # 
+  #
   # .. code-block::
   # StmtList
   #   Call
@@ -1009,7 +1007,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ##            echo opStack
   ##
   ##  let pLen = parseArithExpr(txt)
-  ## 
+  ##
   ## The *handlers* parameter consists of code blocks for *PegKinds*,
   ## which define the grammar elements of interest. Each block can contain
   ## handler code to be executed when the parser enters and leaves text
@@ -1342,7 +1340,7 @@ when not defined(js):
                       subs: varargs[tuple[pattern: Peg, repl: string]]) {.
                       rtl, extern: "npegs$1".} =
     ## reads in the file `infile`, performs a parallel replacement (calls
-    ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+    ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
     ## error occurs. This is supposed to be used for quick scripting.
     ##
     ## **Note**: this proc does not exist while using the JS backend.

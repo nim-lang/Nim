@@ -1,7 +1,7 @@
 import macros
 
 discard """
-msg: '''
+nimout: '''
 8 9 17
 239 255
 61439 65534 65535

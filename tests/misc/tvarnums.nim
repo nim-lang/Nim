@@ -1,5 +1,4 @@
 discard """
-  file: "tvarnums.nim"
   output: "Success!"
 """
 # Test variable length binary integers
@@ -138,5 +137,3 @@ tm(low(int32))
 tm(high(int32))
 
 writeLine(stdout, "Success!") #OUT Success!
-
-

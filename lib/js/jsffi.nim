@@ -69,10 +69,25 @@ template mangleJsName(name: cstring): cstring =
   inc nameCounter
   "mangledName" & $nameCounter
 
+# only values that can be mapped 1 to 1 with cstring should be keys: they have an injective function with cstring
+
+proc toJsKey*[T: SomeInteger](text: cstring, t: type T): T {.importcpp: "parseInt(#)".}
+
+proc toJsKey*[T: enum](text: cstring, t: type T): T =
+  T(text.toJsKey(int))
+
+proc toJsKey*(text: cstring, t: type cstring): cstring =
+  text
+
+proc toJsKey*[T: SomeFloat](text: cstring, t: type T): T {.importcpp: "parseFloat(#)".}
+
 type
+  JsKey* = concept a, type T
+    cstring.toJsKey(T) is type(a)
+
   JsObject* = ref object of JsRoot
     ## Dynamically typed wrapper around a JavaScript object.
-  JsAssoc*[K, V] = ref object of JsRoot
+  JsAssoc*[K: JsKey, V] = ref object of JsRoot
     ## Statically typed wrapper around a JavaScript object.
 
   js* = JsObject
@@ -89,6 +104,12 @@ var
   jsFilename* {.importc: "__filename", nodecl.}: cstring
     ## JavaScript's __filename pseudo-variable
 
+proc isNull*[T](x: T): bool {.noSideEffect, importcpp: "(# === null)".}
+  ## check if a value is exactly null
+
+proc isUndefined*[T](x: T): bool {.noSideEffect, importcpp: "(# === undefined)".}
+  ## check if a value is exactly undefined
+
 # Exceptions
 type
   JsError* {.importc: "Error".} = object of JsRoot
@@ -104,7 +125,7 @@ type
 proc newJsObject*: JsObject {. importcpp: "{@}" .}
   ## Creates a new empty JsObject
 
-proc newJsAssoc*[K, V]: JsAssoc[K, V] {. importcpp: "{@}" .}
+proc newJsAssoc*[K: JsKey, V]: JsAssoc[K, V] {. importcpp: "{@}" .}
   ## Creates a new empty JsAssoc with key type `K` and value type `V`.
 
 # Checks
@@ -176,21 +197,19 @@ proc `[]=`*[T](obj: JsObject, field: cstring, val: T) {. importcpp: setImpl .}
 proc `[]=`*[T](obj: JsObject, field: int, val: T) {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
 
-proc `[]`*[K: not string, V](obj: JsAssoc[K, V], field: K): V
+proc `[]`*[K: JsKey, V](obj: JsAssoc[K, V], field: K): V
   {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
 
-proc `[]`*[V](obj: JsAssoc[string, V], field: cstring): V
-  {. importcpp: getImpl .}
-  ## Return the value of a property of name `field` from a JsAssoc `obj`.
-
-proc `[]=`*[K: not string, V](obj: JsAssoc[K, V], field: K, val: V)
+proc `[]=`*[K: JsKey, V](obj: JsAssoc[K, V], field: K, val: V)
   {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
 
-proc `[]=`*[V](obj: JsAssoc[string, V], field: cstring, val: V)
-  {. importcpp: setImpl .}
-  ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
+proc `[]`*[V](obj: JsAssoc[cstring, V], field: string): V =
+  obj[cstring(field)]
+
+proc `[]=`*[V](obj: JsAssoc[cstring, V], field: string, val: V) =
+  obj[cstring(field)] = val
 
 proc `==`*(x, y: JsRoot): bool {. importcpp: "(# === #)" .}
   ## Compare two JsObjects or JsAssocs. Be careful though, as this is comparison
@@ -277,7 +296,7 @@ macro `.()`*(obj: JsObject,
     result[0][3].add newIdentDefs(paramName, newIdentNode(!"JsObject"))
     result[1].add args[idx].copyNimTree
 
-macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
+macro `.`*[K: cstring, V](obj: JsAssoc[K, V],
                                    field: untyped): V =
   ## Experimental dot accessor (get) for type JsAssoc.
   ## Returns the value of a property of name `field` from a JsObject `x`.
@@ -293,7 +312,7 @@ macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
       {. importcpp: `importString`, gensym .}
     helper(`obj`)
 
-macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
+macro `.=`*[K: cstring, V](obj: JsAssoc[K, V],
                                     field: untyped,
                                     value: V): untyped =
   ## Experimental dot accessor (set) for type JsAssoc.
@@ -310,7 +329,7 @@ macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
       {. importcpp: `importString`, gensym .}
     helper(`obj`, `value`)
 
-macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V],
+macro `.()`*[K: cstring, V: proc](obj: JsAssoc[K, V],
                                            field: untyped,
                                            args: varargs[untyped]): auto =
   ## Experimental "method call" operator for type JsAssoc.
@@ -354,24 +373,18 @@ iterator keys*(obj: JsObject): cstring =
   yield k
   {.emit: "}".}
 
-iterator pairs*[K, V](assoc: JsAssoc[K, V]): (K,V) =
+iterator pairs*[K: JsKey, V](assoc: JsAssoc[K, V]): (K,V) =
   ## Yields tuples of type ``(K, V)``, with the first entry
   ## being a `key` in the JsAssoc and the second being its corresponding value.
-  when K is string:
-    var k: cstring
-  else:
-    var k: K
+  var k: cstring
   var v: V
   {.emit: "for (var `k` in `assoc`) {".}
   {.emit: "  if (!`assoc`.hasOwnProperty(`k`)) continue;".}
   {.emit: "  `v`=`assoc`[`k`];".}
-  when K is string:
-    yield ($k, v)
-  else:
-    yield (k, v)
+  yield (k.toJsKey(K), v)
   {.emit: "}".}
 
-iterator items*[K,V](assoc: JSAssoc[K,V]): V =
+iterator items*[K, V](assoc: JSAssoc[K, V]): V =
   ## Yields the `values` in a JsAssoc.
   var v: V
   {.emit: "for (var k in `assoc`) {".}
@@ -380,18 +393,12 @@ iterator items*[K,V](assoc: JSAssoc[K,V]): V =
   yield v
   {.emit: "}".}
 
-iterator keys*[K,V](assoc: JSAssoc[K,V]): K =
+iterator keys*[K: JsKey, V](assoc: JSAssoc[K, V]): K =
   ## Yields the `keys` in a JsAssoc.
-  when K is string:
-    var k: cstring
-  else:
-    var k: K
+  var k: cstring
   {.emit: "for (var `k` in `assoc`) {".}
   {.emit: "  if (!`assoc`.hasOwnProperty(`k`)) continue;".}
-  when K is string:
-    yield $k
-  else:
-    yield k
+  yield k.toJsKey(K)
   {.emit: "}".}
 
 # Literal generation

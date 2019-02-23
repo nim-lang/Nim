@@ -30,11 +30,6 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion:
     localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
-
-  t = typ.skipTypes({tyGenericInst})
-  if t.kind == tyArray and tfUncheckedArray in t.flags:
-    t[0].flags.incl tfUncheckedArray # mark range of unchecked array also unchecked
-
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags:
@@ -171,6 +166,36 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
 
   return n
 
+proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
+  result = n
+  case n.kind
+  of nkNone..nkNilLit:
+    discard
+  of nkRecWhen:
+    var branch: PNode = nil              # the branch to take
+    for i in countup(0, sonsLen(n) - 1):
+      var it = n.sons[i]
+      if it == nil: illFormedAst(n, cl.c.config)
+      case it.kind
+      of nkElifBranch:
+        checkSonsLen(it, 2, cl.c.config)
+        var cond = it.sons[0]
+        var e = cl.c.semConstExpr(cl.c, cond)
+        if e.kind != nkIntLit:
+          internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
+        if e.intVal != 0 and branch == nil: branch = it.sons[1]
+      of nkElse:
+        checkSonsLen(it, 1, cl.c.config)
+        if branch == nil: branch = it.sons[0]
+      else: illFormedAst(n, cl.c.config)
+    if branch != nil:
+      result = replaceObjBranches(cl, branch)
+    else:
+      result = newNodeI(nkRecList, n.info)
+  else:
+    for i in 0..<n.sonsLen:
+      n.sons[i] = replaceObjBranches(cl, n.sons[i])
+
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   if n == nil: return
   result = copyNode(n)
@@ -238,7 +263,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
-  result = copySym(s, false)
+  result = copySym(s)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -272,16 +297,9 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
       #result.destructor = nil
       result.sink = nil
 
-template typeBound(c, newty, oldty, field, info) =
-  let opr = newty.field
-  if opr != nil and sfFromGeneric notin opr.flags:
-    # '=' needs to be instantiated for generics when the type is constructed:
-    newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
-
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
-  const eqFlags = eqTypeFlags + {tfGcSafe}
   var body = t.sons[0]
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
@@ -292,7 +310,10 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     result = searchInstTypes(t)
 
-  if result != nil and eqFlags*result.flags == eqFlags*t.flags: return
+  if result != nil and sameFlags(result, t):
+    when defined(reportCacheHits):
+      echo "Generic instantiation cached ", typeToString(result), " for ", typeToString(t)
+    return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
     if x.kind in {tyGenericParam}:
@@ -307,7 +328,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
-    if result != nil and eqFlags*result.flags == eqFlags*t.flags: return
+    if result != nil and sameFlags(result, t):
+      when defined(reportCacheHits):
+        echo "Generic instantiation cached ", typeToString(result), " for ",
+          typeToString(t), " header ", typeToString(header)
+      return
   else:
     header = instCopyType(cl, t)
 
@@ -359,7 +384,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
   let dc = newbody.deepCopy
-  if cl.allowMetaTypes == false:
+  if not cl.allowMetaTypes:
     if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
       # 'deepCopy' needs to be instantiated for
       # generics *when the type is constructed*:
@@ -377,6 +402,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
           discard
         else:
           newbody.lastSon.typeInst = result
+    # DESTROY: adding object|opt for opt[topttree.Tree]
+    # sigmatch: Formal opt[=destroy.T] real opt[topttree.Tree]
+    # adding myseq for myseq[system.int]
+    # sigmatch: Formal myseq[=destroy.T] real myseq[system.int]
+    #echo "DESTROY: adding ", typeToString(newbody), " for ", typeToString(result, preferDesc)
     cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
@@ -407,7 +437,7 @@ proc eraseVoidParams*(t: PType) =
           inc pos
       setLen t.sons, pos
       setLen t.n.sons, pos
-      return
+      break
 
 proc skipIntLiteralParams*(t: PType) =
   for i in 0 ..< t.sonsLen:
@@ -465,7 +495,12 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
-    localError(cl.c.config, cl.info, "cannot instantiate: '" & typeToString(t) & "'")
+    localError(
+      cl.c.config,
+      cl.info,
+      "cannot instantiate: '" &
+      typeToString(t, preferDesc) &
+      "'; Maybe generic arguments are missing?")
     result = errorType(cl.c)
     #result = replaceTypeVarsT(cl, lastSon(t))
 
@@ -530,10 +565,16 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       for i in countup(0, sonsLen(result) - 1):
         if result.sons[i] != nil:
+          if result.sons[i].kind == tyGenericBody:
+            localError(cl.c.config, t.sym.info,
+              "cannot instantiate '" &
+              typeToString(result.sons[i], preferDesc) &
+              "' inside of type definition: '" &
+              t.owner.name.s & "'; Maybe generic arguments are missing?")
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
-            let r2 = r.skipTypes({tyAlias, tySink})
+            let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
           result.sons[i] = r
@@ -554,6 +595,23 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       else: discard
+    else:
+      # If this type doesn't refer to a generic type we may still want to run it
+      # trough replaceObjBranches in order to resolve any pending nkRecWhen nodes
+      result = t
+
+      # Slow path, we have some work to do
+      if result.n != nil and t.kind == tyObject:
+        # Invalidate the type size as we may alter its structure
+        result.size = -1
+        result.n = replaceObjBranches(cl, result.n)
+
+template typeBound(c, newty, oldty, field, info) =
+  let opr = newty.field
+  if opr != nil and sfFromGeneric notin opr.flags:
+    # '=' needs to be instantiated for generics when the type is constructed:
+    #echo "DESTROY: instantiating ", astToStr(field), " for ", typeToString(oldty)
+    newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
   var i = 0

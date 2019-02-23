@@ -127,7 +127,6 @@ type
       marked: CellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
-{.deprecated: [TReprClosure: ReprClosure].}
 
 when not defined(useNimRtl):
   proc initReprClosure(cl: var ReprClosure) =
@@ -161,6 +160,21 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), typ.base, cl)
     add result, "]"
 
+  when defined(gcDestructors):
+    type
+      GenericSeq = object
+        len: int
+        p: pointer
+      PGenericSeq = ptr GenericSeq
+    const payloadOffset = sizeof(int) + sizeof(pointer)
+      # see seqs.nim:    cap: int
+      #                  region: Allocator
+
+    template payloadPtr(x: untyped): untyped = cast[PGenericSeq](x).p
+  else:
+    const payloadOffset = GenericSeqSize
+    template payloadPtr(x: untyped): untyped = x
+
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
                     cl: var ReprClosure) =
     if p == nil:
@@ -171,7 +185,7 @@ when not defined(useNimRtl):
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](p) + GenericSeqSize + i*bs),
+      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + payloadOffset + i*bs),
               typ.base, cl)
     add result, "]"
 

@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 
 template withOpenFile(f: untyped, filename: string, mode: FileMode,
                       actions: untyped): untyped =

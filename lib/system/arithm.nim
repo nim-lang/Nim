@@ -197,26 +197,40 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
 
   proc divInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, ecx
-        mov ecx, edx
-        xor edx, edx
-        idiv ecx
-        jno  theEnd
-        call `raiseOverflow`
-      theEnd:
+        test  edx, edx
+        jne   L_NOT_ZERO
+        call  `raiseDivByZero`
+      L_NOT_ZERO:
+        cmp   ecx, 0x80000000
+        jne   L_DO_DIV
+        cmp   edx, -1
+        jne   L_DO_DIV
+        call  `raiseOverflow`
+      L_DO_DIV:
+        mov   eax, ecx
+        mov   ecx, edx
+        cdq
+        idiv  ecx
         ret
     """
 
   proc modInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
     asm """
-        mov eax, ecx
-        mov ecx, edx
-        xor edx, edx
-        idiv ecx
-        jno theEnd
-        call `raiseOverflow`
-      theEnd:
-        mov eax, edx
+        test  edx, edx
+        jne   L_NOT_ZERO
+        call  `raiseDivByZero`
+      L_NOT_ZERO:
+        cmp   ecx, 0x80000000
+        jne   L_DO_DIV
+        cmp   edx, -1
+        jne   L_DO_DIV
+        call  `raiseOverflow`
+      L_DO_DIV:
+        mov   eax, ecx
+        mov   ecx, edx
+        cdq
+        idiv  ecx
+        mov   eax, edx
         ret
     """
 

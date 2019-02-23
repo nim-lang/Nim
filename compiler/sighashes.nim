@@ -165,7 +165,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashType t.sons[i], flags
     else:
       c.hashType t.lastSon, flags
-  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
+  of tyAlias, tySink, tyUserTypeClasses, tyInferred, tyOwned:
     c.hashType t.lastSon, flags
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
@@ -196,18 +196,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       else:
         c.hashSym(t.sym)
       if {sfAnon, sfGenSym} * t.sym.flags != {}:
-        # generated object names can be identical, so we need to
-        # disambiguate furthermore by hashing the field types and names:
-        # mild hack to prevent endless recursions (makes nimforum compile again):
-        let oldFlags = t.sym.flags
-        t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
-        let n = t.n
-        for i in 0 ..< n.len:
-          assert n[i].kind == nkSym
-          let s = n[i].sym
-          c.hashSym s
-          c.hashType s.typ, flags
-        t.sym.flags = oldFlags
+        # Generated object names can be identical, so we need to
+        # disambiguate furthermore by hashing the field types and names.
+        if t.n.len > 0:
+          let oldFlags = t.sym.flags
+          # Mild hack to prevent endless recursion.
+          t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
+          for n in t.n:
+            assert(n.kind == nkSym)
+            let s = n.sym
+            c.hashSym s
+            c.hashType s.typ, flags
+          t.sym.flags = oldFlags
+        else:
+          # The object has no fields: we _must_ add something here in order to
+          # make the hash different from the one we produce by hashing only the
+          # type name.
+          c &= ".empty"
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:

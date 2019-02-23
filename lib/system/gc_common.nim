@@ -157,46 +157,6 @@ else:
   iterator items(first: var GcStack): ptr GcStack = yield addr(first)
   proc len(stack: var GcStack): int = 1
 
-proc stackSize(stack: ptr GcStack): int {.noinline.} =
-  when nimCoroutines:
-    var pos = stack.pos
-  else:
-    var pos {.volatile.}: pointer
-    pos = addr(pos)
-
-  if pos != nil:
-    when defined(stackIncreases):
-      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
-    else:
-      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
-  else:
-    result = 0
-
-proc stackSize(): int {.noinline.} =
-  for stack in gch.stack.items():
-    result = result + stack.stackSize()
-
-when nimCoroutines:
-  proc setPosition(stack: ptr GcStack, position: pointer) =
-    stack.pos = position
-    stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
-
-  proc setPosition(stack: var GcStack, position: pointer) =
-    setPosition(addr(stack), position)
-
-  proc getActiveStack(gch: var GcHeap): ptr GcStack =
-    return gch.activeStack
-
-  proc isActiveStack(stack: ptr GcStack): bool =
-    return gch.activeStack == stack
-else:
-  # Stack positions do not need to be tracked if coroutines are not used.
-  proc setPosition(stack: ptr GcStack, position: pointer) = discard
-  proc setPosition(stack: var GcStack, position: pointer) = discard
-  # There is just one stack - main stack of the thread. It is active always.
-  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
-  proc isActiveStack(stack: ptr GcStack): bool = true
-
 when declared(threadType):
   proc setupForeignThreadGc*() {.gcsafe.} =
     ## Call this if you registered a callback that will be run from a thread not
@@ -245,6 +205,46 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
   const stackIncreases = true
 else:
   const stackIncreases = false
+
+proc stackSize(stack: ptr GcStack): int {.noinline.} =
+  when nimCoroutines:
+    var pos = stack.pos
+  else:
+    var pos {.volatile.}: pointer
+    pos = addr(pos)
+
+  if pos != nil:
+    when stackIncreases:
+      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
+    else:
+      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
+  else:
+    result = 0
+
+proc stackSize(): int {.noinline.} =
+  for stack in gch.stack.items():
+    result = result + stack.stackSize()
+
+when nimCoroutines:
+  proc setPosition(stack: ptr GcStack, position: pointer) =
+    stack.pos = position
+    stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
+
+  proc setPosition(stack: var GcStack, position: pointer) =
+    setPosition(addr(stack), position)
+
+  proc getActiveStack(gch: var GcHeap): ptr GcStack =
+    return gch.activeStack
+
+  proc isActiveStack(stack: ptr GcStack): bool =
+    return gch.activeStack == stack
+else:
+  # Stack positions do not need to be tracked if coroutines are not used.
+  proc setPosition(stack: ptr GcStack, position: pointer) = discard
+  proc setPosition(stack: var GcStack, position: pointer) = discard
+  # There is just one stack - main stack of the thread. It is active always.
+  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
+  proc isActiveStack(stack: ptr GcStack): bool = true
 
 {.push stack_trace: off.}
 when nimCoroutines:
@@ -418,7 +418,7 @@ proc prepareDealloc(cell: PCell) =
   decTypeSize(cell, t)
 
 proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
-  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
+  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers``
   ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
   ## to ``deallocHeap``.
@@ -457,7 +457,7 @@ proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
     globalMarkers[globalMarkersLen] = markerProc
     inc globalMarkersLen
   else:
-    echo "[GC] cannot register global variable; too many global variables"
+    cstderr.rawWrite("[GC] cannot register global variable; too many global variables")
     quit 1
 
 proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
@@ -465,5 +465,5 @@ proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerProc.}
     threadLocalMarkers[threadLocalMarkersLen] = markerProc
     inc threadLocalMarkersLen
   else:
-    echo "[GC] cannot register thread local variable; too many thread local variables"
+    cstderr.rawWrite("[GC] cannot register thread local variable; too many thread local variables")
     quit 1

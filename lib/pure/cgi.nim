@@ -147,6 +147,12 @@ proc readData*(allowedMethods: set[RequestMethod] =
   for name, value in decodeData(allowedMethods):
     result[name.string] = value.string
 
+proc readData*(data: string): StringTableRef =
+  ## Read CGI data from a string.
+  result = newStringTable()
+  for name, value in decodeData(data):
+    result[name.string] = value.string
+
 proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
   ## validates data; raises `ECgi` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.
@@ -330,11 +336,6 @@ proc writeErrorMessage*(data: string) =
 proc setStackTraceStdout*() =
   ## Makes Nim output stacktraces to stdout, instead of server log.
   errorMessageWriter = writeErrorMessage
-
-proc setStackTraceNewLine*() {.deprecated.} =
-  ## Makes Nim output stacktraces to stdout, instead of server log.
-  ## Depracated alias for setStackTraceStdout.
-  setStackTraceStdout()
 
 proc setCookie*(name, value: string) =
   ## Sets a cookie.

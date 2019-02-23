@@ -37,7 +37,6 @@ type
   ByteArray = UncheckedArray[byte]
   PByte = ptr ByteArray
   PString = ptr string
-{.deprecated: [TByteArray: ByteArray].}
 
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
@@ -63,7 +62,7 @@ const
 
 proc raiseOutOfMem() {.noinline.} =
   if outOfMemHook != nil: outOfMemHook()
-  echo("out of memory")
+  cstderr.rawWrite("out of memory")
   quit(1)
 
 when defined(boehmgc):
@@ -73,6 +72,8 @@ when defined(boehmgc):
   proc boehmGCincremental {.
     importc: "GC_enable_incremental", boehmGC.}
   proc boehmGCfullCollect {.importc: "GC_gcollect", boehmGC.}
+  proc boehmGC_set_all_interior_pointers(flag: cint) {.
+    importc: "GC_set_all_interior_pointers", boehmGC.}
   proc boehmAlloc(size: int): pointer {.importc: "GC_malloc", boehmGC.}
   proc boehmAllocAtomic(size: int): pointer {.
     importc: "GC_malloc_atomic", boehmGC.}
@@ -149,6 +150,7 @@ when defined(boehmgc):
     proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() =
+    boehmGC_set_all_interior_pointers(0)
     boehmGCinit()
     when hasThreadSupport:
       boehmGC_allow_register_threads()
@@ -171,8 +173,8 @@ when defined(boehmgc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -327,8 +329,8 @@ elif defined(gogc):
     writebarrierptr(dest, src)
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     writebarrierptr(dest, src)
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    writebarrierptr(dest, src)
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -417,8 +419,8 @@ elif defined(nogc) and defined(useMalloc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -474,8 +476,8 @@ elif defined(nogc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   var allocator {.rtlThreadVar.}: MemRegion
   instantiateForRegion(allocator)

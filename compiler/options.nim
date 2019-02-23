@@ -18,7 +18,7 @@ const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   useWriteTracking* = false
-  hasFFI* = defined(useFFI)
+  hasFFI* = defined(nimHasLibFFI)
   copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
@@ -40,12 +40,13 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optHotCodeReloading,
     optLaxStrings,
-    optNilSeqs
+    optNilSeqs,
+    optOldAst
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optDeadCodeElimUnused,    # deprecated, always on
+    optWasNimscript,
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -54,7 +55,8 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
-    optCheckNep1,             # check that the names adhere to NEP-1
+    optStyleHint,             # check that the names adhere to NEP-1
+    optStyleError,            # enforce that the names adhere to NEP-1
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
     optSkipUserConfigFile,    # skip the users's cfg/nims config file
@@ -73,9 +75,11 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
+    optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
+    optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths
+    optListFullPaths          # use full paths in toMsgFilename, toFilename
     optNoNimblePath
     optDynlibOverrideAll
 
@@ -124,13 +128,17 @@ type
     forLoopMacros,
     caseStmtMacros,
     codeReordering,
+    compiletimeFFI,
+      ## This requires building nim with `-d:nimHasLibFFI`
+      ## which itself requires `nimble install libffi`, see #10150
+      ## Note: this feature can't be localized with {.push.}
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time
@@ -356,7 +364,7 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
-    result = conf.symbols[symbol] != "false"
+    result = true
   elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
     result = true
   elif cmpIgnoreStyle(symbol, platform.OS[conf.target.targetOS].name) == 0:
@@ -400,7 +408,8 @@ proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc,
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
-  conf.symbolFiles in {v2Sf, writeOnlySf}
+  false
+#  conf.symbolFiles in {v2Sf, writeOnlySf}
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions
@@ -479,16 +488,7 @@ proc setDefaultLibpath*(conf: ConfigRef) =
       conf.libpath = AbsoluteDir parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
-  # case corrections, so we have to use this convoluted way of retrieving
-  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
-  # of 'import uri'):
-  when defined(windows):
-    result = AbsoluteFile path.string.expandFilename
-    for x in walkFiles(result.string):
-      return AbsoluteFile x
-  else:
-    result = AbsoluteFile path.string.expandFilename
+  result = AbsoluteFile path.string.expandFilename
 
 proc shortenDir*(conf: ConfigRef; dir: string): string {.
     deprecated: "use 'relativeTo' instead".} =

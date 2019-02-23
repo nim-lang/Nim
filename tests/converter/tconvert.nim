@@ -26,3 +26,19 @@ block:
   var x = "101"
   var y: int = x # instantiate withVar
   doAssert(y == ord('0'))
+
+
+######################
+# bug #3503
+type Foo = object
+  r: float
+
+converter toFoo(r: float): Foo =
+  result.r = r
+
+proc `+=`*(x: var Foo, r: float) =
+  x.r += r
+
+var a: Foo
+a.r += 3.0
+

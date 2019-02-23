@@ -45,17 +45,22 @@ type
                                  ## here shouldn't be used directly. They are
                                  ## accessible so that a stream implementation
                                  ## can override them.
-    closeImpl*: proc (s: Stream) {.nimcall, tags: [], gcsafe.}
-    atEndImpl*: proc (s: Stream): bool {.nimcall, tags: [], gcsafe.}
-    setPositionImpl*: proc (s: Stream, pos: int) {.nimcall, tags: [], gcsafe.}
-    getPositionImpl*: proc (s: Stream): int {.nimcall, tags: [], gcsafe.}
-    readDataImpl*: proc (s: Stream, buffer: pointer,
-                         bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
-    peekDataImpl*: proc (s: Stream, buffer: pointer,
-                         bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
-    writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int) {.nimcall,
-      tags: [WriteIOEffect], gcsafe.}
-    flushImpl*: proc (s: Stream) {.nimcall, tags: [WriteIOEffect], gcsafe.}
+    closeImpl*: proc (s: Stream)
+      {.nimcall, raises: [Exception, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+    atEndImpl*: proc (s: Stream): bool
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+    setPositionImpl*: proc (s: Stream, pos: int)
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+    getPositionImpl*: proc (s: Stream): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+    readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+    peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+    writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int)
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+    flushImpl*: proc (s: Stream)
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
 proc flush*(s: Stream) =
   ## flushes the buffers that the stream `s` might use.
@@ -64,10 +69,6 @@ proc flush*(s: Stream) =
 proc close*(s: Stream) =
   ## closes the stream `s`.
   if not isNil(s.closeImpl): s.closeImpl(s)
-
-proc close*(s, unused: Stream) {.deprecated.} =
-  ## closes the stream `s`.
-  s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
   ## checks if more data can be read from `f`. Returns true if all data has
@@ -111,12 +112,6 @@ proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   ## to the stream `s`.
   s.writeDataImpl(s, buffer, bufLen)
 
-proc writeData*(s, unused: Stream, buffer: pointer,
-                bufLen: int) {.deprecated.} =
-  ## low level proc that writes an untyped `buffer` of `bufLen` size
-  ## to the stream `s`.
-  s.writeDataImpl(s, buffer, bufLen)
-
 proc write*[T](s: Stream, x: T) =
   ## generic write procedure. Writes `x` to the stream `s`. Implementation:
   ##
@@ -146,123 +141,123 @@ proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   for str in args: write(s, str)
   write(s, "\n")
 
-proc read[T](s: Stream, result: var T) =
+proc read*[T](s: Stream, result: var T) =
   ## generic read procedure. Reads `result` from the stream `s`.
   if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
-proc peek[T](s: Stream, result: var T) =
+proc peek*[T](s: Stream, result: var T) =
   ## generic peek procedure. Peeks `result` from the stream `s`.
   if peekData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
 proc readChar*(s: Stream): char =
-  ## reads a char from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads a char from the stream `s`. Raises `IOError` if an error occurred.
   ## Returns '\\0' as an EOF marker.
   if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc peekChar*(s: Stream): char =
-  ## peeks a char from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks a char from the stream `s`. Raises `IOError` if an error occurred.
   ## Returns '\\0' as an EOF marker.
   if peekData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc readBool*(s: Stream): bool =
-  ## reads a bool from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads a bool from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekBool*(s: Stream): bool =
-  ## peeks a bool from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks a bool from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readInt8*(s: Stream): int8 =
-  ## reads an int8 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekInt8*(s: Stream): int8 =
-  ## peeks an int8 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an int8 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readInt16*(s: Stream): int16 =
-  ## reads an int16 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an int16 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekInt16*(s: Stream): int16 =
-  ## peeks an int16 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an int16 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readInt32*(s: Stream): int32 =
-  ## reads an int32 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an int32 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekInt32*(s: Stream): int32 =
-  ## peeks an int32 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an int32 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readInt64*(s: Stream): int64 =
-  ## reads an int64 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an int64 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekInt64*(s: Stream): int64 =
-  ## peeks an int64 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an int64 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readUint8*(s: Stream): uint8 =
-  ## reads an uint8 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an uint8 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekUint8*(s: Stream): uint8 =
-  ## peeks an uint8 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an uint8 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readUint16*(s: Stream): uint16 =
-  ## reads an uint16 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an uint16 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekUint16*(s: Stream): uint16 =
-  ## peeks an uint16 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an uint16 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readUint32*(s: Stream): uint32 =
-  ## reads an uint32 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an uint32 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekUint32*(s: Stream): uint32 =
-  ## peeks an uint32 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an uint32 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readUint64*(s: Stream): uint64 =
-  ## reads an uint64 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads an uint64 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekUint64*(s: Stream): uint64 =
-  ## peeks an uint64 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks an uint64 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readFloat32*(s: Stream): float32 =
-  ## reads a float32 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads a float32 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekFloat32*(s: Stream): float32 =
-  ## peeks a float32 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks a float32 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readFloat64*(s: Stream): float64 =
-  ## reads a float64 from the stream `s`. Raises `EIO` if an error occurred.
+  ## reads a float64 from the stream `s`. Raises `IOError` if an error occurred.
   read(s, result)
 
 proc peekFloat64*(s: Stream): float64 =
-  ## peeks a float64 from the stream `s`. Raises `EIO` if an error occurred.
+  ## peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
 proc readStr*(s: Stream, length: int): TaintedString =
-  ## reads a string of length `length` from the stream `s`. Raises `EIO` if
+  ## reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   result = newString(length).TaintedString
   var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
-  ## peeks a string of length `length` from the stream `s`. Raises `EIO` if
+  ## peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   result = newString(length).TaintedString
   var L = peekData(s, cstring(result), length)
@@ -271,7 +266,7 @@ proc peekStr*(s: Stream, length: int): TaintedString =
 proc readLine*(s: Stream, line: var TaintedString): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
-  ## A line of text may be delimited by ```LF`` or ``CRLF``.
+  ## A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
@@ -301,7 +296,7 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
 
 proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises
-  ## `EIO` if an error occurred.
+  ## `IOError` if an error occurred.
   result = TaintedString""
   if s.atEnd:
     raise newEIO("cannot read from stream")
@@ -317,7 +312,7 @@ proc readLine*(s: Stream): TaintedString =
 
 proc peekLine*(s: Stream): TaintedString =
   ## Peeks a line from a stream `s`. Note: This is not very efficient. Raises
-  ## `EIO` if an error occurred.
+  ## `IOError` if an error occurred.
   let pos = getPosition(s)
   defer: setPosition(s, pos)
   result = readLine(s)

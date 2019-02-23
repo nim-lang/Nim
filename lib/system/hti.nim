@@ -56,7 +56,7 @@ type
     tyUInt16,
     tyUInt32,
     tyUInt64,
-    tyOptAsRef, tyUnused1, tyUnused2,
+    tyOwned, tyUnused1, tyUnused2,
     tyVarargsHidden,
     tyUncheckedArray,
     tyProxyHidden,

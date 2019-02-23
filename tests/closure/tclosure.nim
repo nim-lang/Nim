@@ -1,5 +1,5 @@
 discard """
-  file: "tclosure.nim"
+  target: "c"
   output: '''
 1 3 6 11 20 foo
 foo88
@@ -33,6 +33,7 @@ foo88
 11
 @[1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1]
 '''
+joinable: false
 """
 
 

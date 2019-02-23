@@ -1,7 +1,9 @@
-## Include file that implements 'getEnv' and friends. Do not import it!
+# Include file that implements 'getEnv' and friends. Do not import it!
 
-when not declared(ospaths):
-  {.error: "This is an include file for ospaths.nim!".}
+when not declared(os):
+  {.error: "This is an include file for os.nim!".}
+
+from parseutils import skipIgnoreCase
 
 proc c_getenv(env: cstring): cstring {.
   importc: "getenv", header: "<stdlib.h>".}
@@ -91,15 +93,27 @@ proc findEnvVar(key: string): int =
   getEnvVarsC()
   var temp = key & '='
   for i in 0..high(environment):
-    if startsWith(environment[i], temp): return i
+    when defined(windows):
+      if skipIgnoreCase(environment[i], temp) == len(temp): return i
+    else:
+      if startsWith(environment[i], temp): return i
   return -1
 
 proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =
   ## Returns the value of the `environment variable`:idx: named `key`.
   ##
-  ## If the variable does not exist, "" is returned. To distinguish
-  ## whether a variable exists or it's value is just "", call
-  ## `existsEnv(key)`.
+  ## If the variable does not exist, `""` is returned. To distinguish
+  ## whether a variable exists or it's value is just `""`, call
+  ## `existsEnv(key) proc <#existsEnv,string>`_.
+  ##
+  ## See also:
+  ## * `existsEnv proc <#existsEnv,string>`_
+  ## * `putEnv proc <#putEnv,string,string>`_
+  ## * `envPairs iterator <#envPairs.i>`_
+  runnableExamples:
+    assert getEnv("unknownEnv") == ""
+    assert getEnv("unknownEnv", "doesn't exist") == "doesn't exist"
+
   when nimvm:
     discard "built into the compiler"
   else:
@@ -114,6 +128,14 @@ proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].}
 proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
   ## Checks whether the environment variable named `key` exists.
   ## Returns true if it exists, false otherwise.
+  ##
+  ## See also:
+  ## * `getEnv proc <#getEnv,string,string>`_
+  ## * `putEnv proc <#putEnv,string,string>`_
+  ## * `envPairs iterator <#envPairs.i>`_
+  runnableExamples:
+    assert not existsEnv("unknownEnv")
+
   when nimvm:
     discard "built into the compiler"
   else:
@@ -122,7 +144,12 @@ proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
 
 proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   ## Sets the value of the `environment variable`:idx: named `key` to `val`.
-  ## If an error occurs, `EInvalidEnvVar` is raised.
+  ## If an error occurs, `OSError` is raised.
+  ##
+  ## See also:
+  ## * `getEnv proc <#getEnv,string,string>`_
+  ## * `existsEnv proc <#existsEnv,string>`_
+  ## * `envPairs iterator <#envPairs.i>`_
 
   # Note: by storing the string in the environment sequence,
   # we guarantee that we don't free the memory before the program
@@ -149,9 +176,15 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
         raiseOSError(osLastError())
 
 iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
-  ## Iterate over all `environments variables`:idx:. In the first component
-  ## of the tuple is the name of the current variable stored, in the second
-  ## its value.
+  ## Iterate over all `environments variables`:idx:.
+  ##
+  ## In the first component of the tuple is the name of the current variable stored,
+  ## in the second its value.
+  ##
+  ## See also:
+  ## * `getEnv proc <#getEnv,string,string>`_
+  ## * `existsEnv proc <#existsEnv,string>`_
+  ## * `putEnv proc <#putEnv,string,string>`_
   getEnvVarsC()
   for i in 0..high(environment):
     var p = find(environment[i], '=')

@@ -35,6 +35,10 @@ type
     opcAsgnStr,
     opcAsgnFloat,
     opcAsgnRef,
+    opcAsgnIntFromFloat32,    # int and float must be of the same byte size
+    opcAsgnIntFromFloat64,    # int and float must be of the same byte size
+    opcAsgnFloat32FromInt,    # int and float must be of the same byte size
+    opcAsgnFloat64FromInt,    # int and float must be of the same byte size
     opcAsgnComplex,
     opcNodeToReg,
 
@@ -69,8 +73,9 @@ type
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,
-    opcQuit, opcReset,
+    opcQuit,
     opcNarrowS, opcNarrowU,
+    opcSignExtend,
 
     opcAddStrCh,
     opcAddStrStr,
@@ -143,7 +148,8 @@ type
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
     opcToNarrowInt,
-    opcSymOwner
+    opcSymOwner,
+    opcSymIsInstantiationOf
 
   TBlock* = object
     label*: PSym
@@ -160,7 +166,6 @@ type
 
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
-    allowFFI,                 ## allow the FFI
     allowInfiniteLoops        ## allow endless loops
   TSandboxFlags* = set[TSandboxFlag]
 

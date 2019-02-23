@@ -1,5 +1,5 @@
 discard """
-  msg: "abc xyz bb"
+  nimout: "abc xyz bb"
 """
 
 # bug #2473

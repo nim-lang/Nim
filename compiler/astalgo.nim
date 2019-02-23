@@ -238,65 +238,68 @@ proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet,
 proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet,
                    indent, maxRecDepth: int): Rope
 
-proc ropeConstr(indent: int, c: openArray[Rope]): Rope =
-  # array of (name, value) pairs
-  var istr = rspaces(indent + 2)
-  result = rope("{")
-  var i = 0
-  while i <= high(c):
-    if i > 0: add(result, ",")
-    addf(result, "$N$1\"$2\": $3", [istr, c[i], c[i + 1]])
-    inc(i, 2)
-  addf(result, "$N$1}", [rspaces(indent)])
-
 proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
                   maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
   elif containsOrIncl(marker, n.id):
-    result = "\"$1 @$2\"" % [rope(n.name.s), rope(
-        strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
+    result = "\"$1\"" % [rope(n.name.s)]
   else:
     var ast = treeToYamlAux(conf, n.ast, marker, indent + 2, maxRecDepth - 1)
-    result = ropeConstr(indent, [rope("kind"),
-                                 makeYamlString($n.kind),
-                                 rope("name"), makeYamlString(n.name.s),
-                                 rope("typ"), typeToYamlAux(conf, n.typ, marker,
-                                   indent + 2, maxRecDepth - 1),
-                                 rope("info"), lineInfoToStr(conf, n.info),
-                                 rope("flags"), flagsToStr(n.flags),
-                                 rope("magic"), makeYamlString($n.magic),
-                                 rope("ast"), ast, rope("options"),
-                                 flagsToStr(n.options), rope("position"),
-                                 rope(n.position)])
+                                 #rope("typ"), typeToYamlAux(conf, n.typ, marker,
+                                 #  indent + 2, maxRecDepth - 1),
+    let istr = rspaces(indent + 2)
+    result = rope("{")
+    addf(result, "$N$1\"kind\": $2", [istr, makeYamlString($n.kind)])
+    addf(result, "$N$1\"name\": $2", [istr, makeYamlString(n.name.s)])
+    addf(result, "$N$1\"typ\": $2", [istr, typeToYamlAux(conf, n.typ, marker, indent + 2, maxRecDepth - 1)])
+    if conf != nil:
+      # if we don't pass the config, we probably don't care about the line info
+      addf(result, "$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
+    if card(n.flags) > 0:
+      addf(result, "$N$1\"flags\": $2", [istr, flagsToStr(n.flags)])
+    addf(result, "$N$1\"magic\": $2", [istr, makeYamlString($n.magic)])
+    addf(result, "$N$1\"ast\": $2", [istr, ast])
+    addf(result, "$N$1\"options\": $2", [istr, flagsToStr(n.options)])
+    addf(result, "$N$1\"position\": $2", [istr, rope(n.position)])
+    addf(result, "$N$1\"k\": $2", [istr, makeYamlString($n.loc.k)])
+    addf(result, "$N$1\"storage\": $2", [istr, makeYamlString($n.loc.storage)])
+    if card(n.loc.flags) > 0:
+      addf(result, "$N$1\"flags\": $2", [istr, makeYamlString($n.loc.flags)])
+    addf(result, "$N$1\"r\": $2", [istr, n.loc.r])
+    addf(result, "$N$1\"lode\": $2", [istr, treeToYamlAux(conf, n.loc.lode, marker, indent + 2, maxRecDepth - 1)])
+    addf(result, "$N$1}", [rspaces(indent)])
 
 proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
+  var sonsRope: Rope
   if n == nil:
-    result = rope("null")
+    sonsRope = rope("null")
   elif containsOrIncl(marker, n.id):
-    result = "\"$1 @$2\"" % [rope($n.kind), rope(
+    sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
         strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
   else:
     if sonsLen(n) > 0:
-      result = rope("[")
+      sonsRope = rope("[")
       for i in countup(0, sonsLen(n) - 1):
-        if i > 0: add(result, ",")
-        addf(result, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n.sons[i],
+        if i > 0: add(sonsRope, ",")
+        addf(sonsRope, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n.sons[i],
             marker, indent + 4, maxRecDepth - 1)])
-      addf(result, "$N$1]", [rspaces(indent + 2)])
+      addf(sonsRope, "$N$1]", [rspaces(indent + 2)])
     else:
-      result = rope("null")
-    result = ropeConstr(indent, [rope("kind"),
-                                 makeYamlString($n.kind),
-                                 rope("sym"), symToYamlAux(conf, n.sym, marker,
-        indent + 2, maxRecDepth - 1), rope("n"), treeToYamlAux(conf, n.n, marker,
-        indent + 2, maxRecDepth - 1), rope("flags"), flagsToStr(n.flags),
-                                 rope("callconv"),
-                                 makeYamlString(CallingConvToStr[n.callConv]),
-                                 rope("size"), rope(n.size),
-                                 rope("align"), rope(n.align),
-                                 rope("sons"), result])
+      sonsRope = rope("null")
+
+    let istr = rspaces(indent + 2)
+    result = rope("{")
+    addf(result, "$N$1\"kind\": $2", [istr, makeYamlString($n.kind)])
+    addf(result, "$N$1\"sym\": $2",  [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth - 1)])
+    addf(result, "$N$1\"n\": $2",     [istr, treeToYamlAux(conf, n.n, marker, indent + 2, maxRecDepth - 1)])
+    if card(n.flags) > 0:
+      addf(result, "$N$1\"flags\": $2", [istr, flagsToStr(n.flags)])
+    addf(result, "$N$1\"callconv\": $2", [istr, makeYamlString(CallingConvToStr[n.callConv])])
+    addf(result, "$N$1\"size\": $2", [istr, rope(n.size)])
+    addf(result, "$N$1\"align\": $2", [istr, rope(n.align)])
+    addf(result, "$N$1\"sons\": $2", [istr, sonsRope])
 
 proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
@@ -306,7 +309,8 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
     var istr = rspaces(indent + 2)
     result = "{$N$1\"kind\": $2" % [istr, makeYamlString($n.kind)]
     if maxRecDepth != 0:
-      addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
+      if conf != nil:
+        addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
       case n.kind
       of nkCharLit..nkInt64Lit:
         addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
@@ -357,8 +361,8 @@ proc debugType(conf: ConfigRef; n: PType, maxRecDepth=100): Rope =
       add(result, " ")
       add(result, n.sym.name.s)
     if n.kind in IntegralTypes and n.n != nil:
-      add(result, ", node: ")
-      add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=true))
+      add(result, ", n: ")
+      add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=false))
     if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
       add(result, "(")
       for i in countup(0, sonsLen(n) - 1):
@@ -368,7 +372,7 @@ proc debugType(conf: ConfigRef; n: PType, maxRecDepth=100): Rope =
         else:
           add(result, debugType(conf, n.sons[i], maxRecDepth-1))
       if n.kind == tyObject and n.n != nil:
-        add(result, ", node: ")
+        add(result, ", n: ")
         add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=true))
       add(result, ")")
 
@@ -382,9 +386,11 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
              [istr, makeYamlString($n.kind)]
     when defined(useNodeIds):
       addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
-    addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
+    if conf != nil:
+      addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
     if maxRecDepth != 0:
-      addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
+      if card(n.flags) > 0:
+        addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
       case n.kind
       of nkCharLit..nkUInt64Lit:
         addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
@@ -394,10 +400,20 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
       of nkStrLit..nkTripleStrLit:
         addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
-        addf(result, ",$N$1\"sym\": $2_$3",
-            [istr, rope(n.sym.name.s), rope(n.sym.id)])
-        #     [istr, symToYaml(n.sym, indent, maxRecDepth),
-        #     rope(n.sym.id)])
+        let s = n.sym
+        var symStr = ""
+        symStr.add "\"kind\": "
+        symStr.add $s.kind
+        symStr.add ", \"name\": "
+        symStr.add s.name.s
+        symStr.add ", \"id\": "
+        symStr.add s.id
+        if s.kind in {skField, skEnumField, skParam}:
+          symStr.add ", \"position\": "
+          symStr.add s.position
+        addf(result, ",$N$1\"sym\": {$2}", [
+             istr, rope(symStr)])
+
         if renderType and n.sym.typ != nil:
           addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.sym.typ, 2)])
       of nkIdent:
@@ -496,7 +512,7 @@ proc strTableContains*(t: TStrTable, n: PSym): bool =
     h = nextTry(h, high(t.data))
   result = false
 
-proc strTableRawInsert(data: var TSymSeq, n: PSym) =
+proc strTableRawInsert(data: var seq[PSym], n: PSym) =
   var h: Hash = n.name.h and high(data)
   if sfImmediate notin n.flags:
     # fast path:
@@ -524,7 +540,7 @@ proc strTableRawInsert(data: var TSymSeq, n: PSym) =
     data[h] = n
     if favPos >= 0: swap data[h], data[favPos]
 
-proc symTabReplaceRaw(data: var TSymSeq, prevSym: PSym, newSym: PSym) =
+proc symTabReplaceRaw(data: var seq[PSym], prevSym: PSym, newSym: PSym) =
   assert prevSym.name.h == newSym.name.h
   var h: Hash = prevSym.name.h and high(data)
   while data[h] != nil:
@@ -538,7 +554,7 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
   symTabReplaceRaw(t.data, prevSym, newSym)
 
 proc strTableEnlarge(t: var TStrTable) =
-  var n: TSymSeq
+  var n: seq[PSym]
   newSeq(n, len(t.data) * GrowthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])

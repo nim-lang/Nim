@@ -1,4 +1,3 @@
-
 import gdb
 import re
 import sys
@@ -16,8 +15,6 @@ def printErrorOnce(id, message):
     errorSet.add(id)
     gdb.write(message, gdb.STDERR)
 
-nimobjfile = gdb.current_objfile() or gdb.objfiles()[0]
-nimobjfile.type_printers = []
 
 ################################################################################
 #####  Type pretty printers
@@ -121,9 +118,6 @@ class NimTypePrinter:
   def instantiate(self):
     return NimTypeRecognizer()
 
-
-nimobjfile.type_printers = [NimTypePrinter()]
-
 ################################################################################
 #####  GDB Function, equivalent of Nim's $ operator
 ################################################################################
@@ -208,6 +202,25 @@ class NimStringPrinter:
       return self.val['data'][0].address.string("utf-8", "ignore", l)
     else:
      return ""
+
+class NimRopePrinter:
+  pattern = re.compile(r'^tyObject_RopeObj_OFzf0kSiPTcNreUIeJgWVA \*$')
+
+  def __init__(self, val):
+    self.val = val
+
+  def display_hint(self):
+    return 'string'
+
+  def to_string(self):
+    if self.val:
+      left  = NimRopePrinter(self.val["left"]).to_string()
+      data  = NimStringPrinter(self.val["data"]).to_string()
+      right = NimRopePrinter(self.val["right"]).to_string()
+      return left + data + right
+    else:
+      return ""
+
 
 ################################################################################
 
@@ -509,5 +522,20 @@ def makematcher(klass):
       printErrorOnce(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")
   return matcher
 
-nimobjfile.pretty_printers = []
-nimobjfile.pretty_printers.extend([makematcher(var) for var in list(vars().values()) if hasattr(var, 'pattern')])
+def register_nim_pretty_printers_for_object(objfile):
+  nimMainSym = gdb.lookup_global_symbol("NimMain", gdb.SYMBOL_FUNCTIONS_DOMAIN)
+  if nimMainSym and nimMainSym.symtab.objfile == objfile:
+    print("set Nim pretty printers for ", objfile.filename)
+
+    objfile.type_printers = [NimTypePrinter()]
+    objfile.pretty_printers = [makematcher(var) for var in list(globals().values()) if hasattr(var, 'pattern')]
+
+# Register pretty printers for all objfiles that are already loaded.
+for old_objfile in gdb.objfiles():
+  register_nim_pretty_printers_for_object(old_objfile)
+
+# Register an event handler to register nim pretty printers for all future objfiles.
+def new_object_handler(event):
+  register_nim_pretty_printers_for_object(event.new_objfile)
+
+gdb.events.new_objfile.connect(new_object_handler)

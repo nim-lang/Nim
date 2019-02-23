@@ -100,8 +100,8 @@ type
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
     compilesContextIdGenerator*: int
     inGenericInst*: int        # > 0 if we are instantiating a generic
-    converters*: TSymSeq       # sequence of converters
-    patterns*: TSymSeq         # sequence of pattern matchers
+    converters*: seq[PSym]
+    patterns*: seq[PSym]       # sequence of pattern matchers
     optionStack*: seq[POptionEntry]
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
@@ -239,7 +239,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.typesWithOps = @[]
   result.features = graph.config.features
 
-proc inclSym(sq: var TSymSeq, s: PSym) =
+proc inclSym(sq: var seq[PSym], s: PSym) =
   var L = len(sq)
   for i in countup(0, L - 1):
     if sq[i].id == s.id: return
@@ -284,6 +284,13 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
     result = baseType
   else:
     result = newTypeS(kind, c)
+    addSonSkipIntLit(result, baseType)
+
+proc makeVarType*(owner: PSym, baseType: PType; kind = tyVar): PType =
+  if baseType.kind == kind:
+    result = baseType
+  else:
+    result = newType(kind, owner)
     addSonSkipIntLit(result, baseType)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =

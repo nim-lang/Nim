@@ -1,5 +1,4 @@
 discard """
-  file: "tstrutil.nim"
   output: "ha/home/a1xyz/usr/bin"
 """
 # test the new strutils module

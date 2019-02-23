@@ -105,3 +105,16 @@ block tcolors:
       return rgb(red(a) +! red(b), green(a) +! green(b), blue(a) +! blue(b))
 
     rgb(34, 55, 255)
+
+block:
+  type
+    R8  = range[0'u8 .. 10'u8]
+    R16 = range[0'u16 .. 10'u16]
+    R32 = range[0'u32 .. 10'u32]
+
+  var
+    x1 = R8(4)
+    x2 = R16(4)
+    x3 = R32(4)
+
+  doAssert $x1 & $x2 & $x3 == "444"

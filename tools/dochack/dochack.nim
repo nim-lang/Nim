@@ -1,5 +1,37 @@
-import karax
+import dom
 import fuzzysearch
+
+proc textContent(e: Element): cstring {.
+  importcpp: "#.textContent", nodecl.}
+
+proc textContent(e: Node): cstring {.
+  importcpp: "#.textContent", nodecl.}
+
+proc tree(tag: string; kids: varargs[Element]): Element =
+  result = document.createElement tag
+  for k in kids:
+    result.appendChild k
+
+proc add(parent, kid: Element) =
+  if parent.nodeName == cstring"TR" and (
+      kid.nodeName == cstring"TD" or kid.nodeName == cstring"TH"):
+    let k = document.createElement("TD")
+    appendChild(k, kid)
+    appendChild(parent, k)
+  else:
+    appendChild(parent, kid)
+
+proc setClass(e: Element; value: string) =
+  e.setAttribute("class", value)
+proc text(s: string): Element = cast[Element](document.createTextNode(s))
+proc text(s: cstring): Element = cast[Element](document.createTextNode(s))
+
+proc getElementById(id: cstring): Element {.importc: "document.getElementById", nodecl.}
+
+proc replaceById(id: cstring; newTree: Node) =
+  let x = getElementById(id)
+  x.parentNode.replaceChild(newTree, x)
+  newTree.id = id
 
 proc findNodeWith(x: Element; tag, content: cstring): Element =
   if x.nodeName == tag and x.textContent == content:
@@ -182,7 +214,7 @@ proc buildToc(orig: TocEntry; types, procs: seq[Element]): TocEntry =
     t.markElement()
     for p in procs:
       if not isMarked(p):
-        let xx = karax.getElementsByClass(p.parent, cstring"attachedType")
+        let xx = getElementsByClass(p.parent, cstring"attachedType")
         if xx.len == 1 and xx[0].textContent == t.textContent:
           #kout(cstring"found ", p.nodeName)
           let q = tree("A", text(p.title))
@@ -230,7 +262,7 @@ proc groupBy*(value: cstring) {.exportc.} =
   togglevis(getElementById"toc-list")
 
 var
-  db: seq[Element]
+  db: seq[Node]
   contents: seq[cstring]
 
 template normalize(x: cstring): cstring = x.toLower.replace("_", "")
@@ -258,7 +290,7 @@ proc dosearch(value: cstring): Element =
   let ul = tree("UL")
   result = tree("DIV")
   result.setClass"search_results"
-  var matches: seq[(Element, int)] = @[]
+  var matches: seq[(Node, int)] = @[]
   for i in 0..<db.len:
     let c = contents[i]
     if c == cstring"Examples" or c == cstring"PEG construction":
@@ -270,11 +302,10 @@ proc dosearch(value: cstring): Element =
     if matched:
       matches.add((db[i], score))
 
-  matches.sort do (a, b: auto) -> int:
-    b[1] - a[1]
+  matches.sort(proc(a, b: auto): int = b[1] - a[1])
   for i in 0 ..< min(matches.len, 19):
     matches[i][0].innerHTML = matches[i][0].getAttribute("data-doc-search-tag")
-    ul.add(tree("LI", matches[i][0]))
+    ul.add(tree("LI", cast[Element](matches[i][0])))
   if ul.len == 0:
     result.add tree("B", text"no search results")
   else:

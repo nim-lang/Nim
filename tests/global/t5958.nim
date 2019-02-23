@@ -1,6 +1,6 @@
 discard """
-  line: 9
   errormsg: "undeclared identifier: 'a'"
+  line: 9
 """
 
 static:

@@ -145,8 +145,6 @@ type
     testStartTime: float
     testStackTrace: string
 
-{.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
-
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
@@ -241,7 +239,6 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of OK: fgGreen
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
-                    else: fgWhite
         styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
       else:
         rawPrint()
@@ -502,7 +499,7 @@ template test*(name, body) {.dirty.} =
 
     finally:
       if testStatusIMPL == FAILED:
-        programResult += 1
+        programResult = 1
       let testResult = TestResult(
         suiteName: when declared(testSuiteName): testSuiteName else: "",
         testName: name,
@@ -543,7 +540,7 @@ template fail* =
   when declared(testStatusIMPL):
     testStatusIMPL = FAILED
   else:
-    programResult += 1
+    programResult = 1
 
   ensureInitialized()
 

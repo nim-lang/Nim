@@ -1,6 +1,5 @@
 discard """
-  file: "tcnstseq.nim"
-  output: '''
+output: '''
 AngelikaAnneAnnaAnkaAnja
 AngelikaAnneAnnaAnkaAnja
 AngelikaAnneAnnaAnkaAnja

@@ -121,12 +121,6 @@ type
                                   para4: int32, para5: pointer): int32{.cdecl.}
   Collation_needed_func* = proc (para1: pointer, para2: PSqlite3, eTextRep: int32,
                                   para4: cstring){.cdecl.}
-{.deprecated: [TSqlite3: Sqlite3, TContext: Context, Tvalue: Value,
-    Tcallback: Callback, Tcreate_function_step_func: Create_function_step_func,
-    Tcreate_function_func_func: Create_function_func_func,
-    Tcreate_function_final_func: Create_function_final_func,
-    Tresult_func: Result_func, Tcreate_collation_func: Create_collation_func,
-    Tcollation_needed_func: Collation_needed_func].}
 
 const
   SQLITE_STATIC* = nil

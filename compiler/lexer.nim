@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, lineinfos, pathutils
+  wordrecg, lineinfos, pathutils, parseutils
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -224,7 +224,7 @@ proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
-  lex.indentAhead = - 1
+  lex.indentAhead = -1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
   lex.cache = cache
@@ -306,20 +306,6 @@ template tokenEndPrevious(tok, pos) =
     colA = 0
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
-
-{.push overflowChecks: off.}
-# We need to parse the largest uint literal without overflow checks
-proc unsafeParseUInt(s: string, b: var BiggestInt, start = 0): int =
-  var i = start
-  if i < s.len and s[i] in {'0'..'9'}:
-    b = 0
-    while i < s.len and s[i] in {'0'..'9'}:
-      b = b * 10 + (ord(s[i]) - ord('0'))
-      inc(i)
-      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
-    result = i - start
-{.pop.} # overflowChecks
-
 
 template eatChar(L: var TLexer, t: var TToken, replacementChar: char) =
   add(t.literal, replacementChar)
@@ -586,33 +572,43 @@ proc getNumber(L: var TLexer, result: var TToken) =
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
       of tkUint64Lit:
-        xi = 0
-        let len = unsafeParseUInt(result.literal, xi)
-        if len != result.literal.len or len == 0:
-          raise newException(ValueError, "invalid integer: " & $xi)
-        result.iNumber = xi
+        var iNumber: uint64
+        var len: int
+        try:
+          len = parseBiggestUInt(result.literal, iNumber)
+        except ValueError:
+          raise newException(OverflowError, "number out of range: " & $result.literal)
+        if len != result.literal.len:
+          raise newException(ValueError, "invalid integer: " & $result.literal)
+        result.iNumber = cast[int64](iNumber)
       else:
-        result.iNumber = parseBiggestInt(result.literal)
+        var iNumber: int64
+        var len: int
+        try:
+          len = parseBiggestInt(result.literal, iNumber)
+        except ValueError:
+          raise newException(OverflowError, "number out of range: " & $result.literal)
+        if len != result.literal.len:
+          raise newException(ValueError, "invalid integer: " & $result.literal)
+        result.iNumber = iNumber
 
-      # Explicit bounds checks
+      # Explicit bounds checks. Only T.high needs to be considered
+      # since result.iNumber can't be negative.
       let outOfRange =
         case result.tokType
-        of tkInt8Lit: (result.iNumber < int8.low or result.iNumber > int8.high)
-        of tkUInt8Lit: (result.iNumber < BiggestInt(uint8.low) or
-                        result.iNumber > BiggestInt(uint8.high))
-        of tkInt16Lit: (result.iNumber < int16.low or result.iNumber > int16.high)
-        of tkUInt16Lit: (result.iNumber < BiggestInt(uint16.low) or
-                        result.iNumber > BiggestInt(uint16.high))
-        of tkInt32Lit: (result.iNumber < int32.low or result.iNumber > int32.high)
-        of tkUInt32Lit: (result.iNumber < BiggestInt(uint32.low) or
-                        result.iNumber > BiggestInt(uint32.high))
+        of tkInt8Lit: result.iNumber > int8.high
+        of tkUInt8Lit: result.iNumber > BiggestInt(uint8.high)
+        of tkInt16Lit: result.iNumber > int16.high
+        of tkUInt16Lit: result.iNumber > BiggestInt(uint16.high)
+        of tkInt32Lit: result.iNumber > int32.high
+        of tkUInt32Lit: result.iNumber > BiggestInt(uint32.high)
         else: false
 
       if outOfRange: lexMessageLitNum(L, "number out of range: '$1'", startpos)
 
     # Promote int literal to int64? Not always necessary, but more consistent
     if result.tokType == tkIntLit:
-      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
+      if result.iNumber > high(int32):
         result.tokType = tkInt64Lit
 
   except ValueError:
@@ -622,7 +618,12 @@ proc getNumber(L: var TLexer, result: var TToken) =
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
 
-proc handleHexChar(L: var TLexer, xi: var int) =
+proc handleHexChar(L: var TLexer, xi: var int; position: range[0..4]) =
+  template invalid() =
+    lexMessage(L, errGenerated,
+      "expected a hex digit, but found: " & L.buf[L.bufpos] &
+        "; maybe prepend with 0")
+
   case L.buf[L.bufpos]
   of '0'..'9':
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('0'))
@@ -633,9 +634,12 @@ proc handleHexChar(L: var TLexer, xi: var int) =
   of 'A'..'F':
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
     inc(L.bufpos)
+  of '"', '\'':
+    if position <= 1: invalid()
+    # do not progress the bufpos here.
+    if position == 0: inc(L.bufpos)
   else:
-    lexMessage(L, errGenerated,
-      "expected a hex digit, but found: " & L.buf[L.bufpos])
+    invalid()
     # Need to progress for `nim check`
     inc(L.bufpos)
 
@@ -730,8 +734,8 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   of 'x', 'X':
     inc(L.bufpos)
     var xi = 0
-    handleHexChar(L, xi)
-    handleHexChar(L, xi)
+    handleHexChar(L, xi, 1)
+    handleHexChar(L, xi, 2)
     add(tok.literal, chr(xi))
   of 'u', 'U':
     if tok.tokType == tkCharLit:
@@ -742,7 +746,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
       var start = L.bufpos
       while L.buf[L.bufpos] != '}':
-        handleHexChar(L, xi)
+        handleHexChar(L, xi, 0)
       if start == L.bufpos:
         lexMessage(L, errGenerated,
           "Unicode codepoint cannot be empty")
@@ -752,10 +756,10 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
         lexMessage(L, errGenerated,
           "Unicode codepoint must be lower than 0x10FFFF, but was: " & hex)
     else:
-      handleHexChar(L, xi)
-      handleHexChar(L, xi)
-      handleHexChar(L, xi)
-      handleHexChar(L, xi)
+      handleHexChar(L, xi, 1)
+      handleHexChar(L, xi, 2)
+      handleHexChar(L, xi, 3)
+      handleHexChar(L, xi, 4)
     addUnicodeCodePoint(tok.literal, xi)
   of '0'..'9':
     if matchTwoChars(L, '0', {'0'..'9'}):
@@ -966,7 +970,7 @@ proc getPrecedence*(tok: TToken, strongSpaces: bool): int =
     of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs: result = 5
+  of tkIn, tkNotin, tkIs, tkIsnot, tkOf, tkAs: result = 5
   of tkDotDot: result = 6
   of tkAnd: result = 4
   of tkOr, tkXor, tkPtr, tkRef: result = 3
@@ -1118,8 +1122,10 @@ proc skip(L: var TLexer, tok: var TToken) =
   tok.strongSpaceA = 0
   when defined(nimpretty):
     var hasComment = false
+    var commentIndent = L.currLineIndent
     tok.commentOffsetA = L.offsetBase + pos
     tok.commentOffsetB = tok.commentOffsetA
+    tok.line = -1
   while true:
     case buf[pos]
     of ' ':
@@ -1130,9 +1136,6 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
-      when defined(nimpretty):
-        # we are not yet in a comment, so update the comment token's line information:
-        if not hasComment: inc tok.line
       pos = handleCRLF(L, pos)
       buf = L.buf
       var indent = 0
@@ -1141,13 +1144,19 @@ proc skip(L: var TLexer, tok: var TToken) =
           inc(pos)
           inc(indent)
         elif buf[pos] == '#' and buf[pos+1] == '[':
-          when defined(nimpretty): hasComment = true
+          when defined(nimpretty):
+            hasComment = true
+            if tok.line < 0:
+              tok.line = L.lineNumber
+              commentIndent = indent
           skipMultiLineComment(L, tok, pos+2, false)
           pos = L.bufpos
           buf = L.buf
         else:
           break
       tok.strongSpaceA = 0
+      when defined(nimpretty):
+        if buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#'):
         tok.indent = indent
         L.currLineIndent = indent
@@ -1155,7 +1164,11 @@ proc skip(L: var TLexer, tok: var TToken) =
     of '#':
       # do not skip documentation comment:
       if buf[pos+1] == '#': break
-      when defined(nimpretty): hasComment = true
+      when defined(nimpretty):
+        hasComment = true
+        if tok.line < 0:
+          tok.line = L.lineNumber
+
       if buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
         pos = L.bufpos
@@ -1176,6 +1189,7 @@ proc skip(L: var TLexer, tok: var TToken) =
     if hasComment:
       tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
+      tok.indent = commentIndent
     if gIndentationWidth <= 0:
       gIndentationWidth = tok.indent
 

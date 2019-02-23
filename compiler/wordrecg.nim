@@ -35,7 +35,7 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
-    wIntDefine, wStrDefine,
+    wIntDefine, wStrDefine, wBoolDefine
 
     wDestroy,
 
@@ -69,13 +69,13 @@ type
     wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
     wPartial, wExplain, wLiftLocals,
 
-    wAuto, wBool, wCatch, wChar, wClass,
+    wAuto, wBool, wCatch, wChar, wClass, wCompl
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
     wExplicit, wExtern, wFalse, wFloat, wFriend,
     wGoto, wInt, wLong, wMutable, wNamespace, wNew, wOperator,
-    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast,
+    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast, wRestrict,
     wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
-    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypename,
+    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypeof, wTypename,
     wUnion, wPacked, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
     wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
@@ -122,7 +122,8 @@ const
 
     ":", "::", "=", ".", "..",
     "*", "-",
-    "magic", "thread", "final", "profiler", "memtracker", "objchecks", "intdefine", "strdefine",
+    "magic", "thread", "final", "profiler", "memtracker", "objchecks",
+    "intdefine", "strdefine", "booldefine",
 
     "destroy",
 
@@ -156,14 +157,14 @@ const
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
     "guard", "locks", "partial", "explain", "liftlocals",
 
-    "auto", "bool", "catch", "char", "class",
+    "auto", "bool", "catch", "char", "class", "compl",
     "const_cast", "default", "delete", "double",
     "dynamic_cast", "explicit", "extern", "false",
     "float", "friend", "goto", "int", "long", "mutable",
     "namespace", "new", "operator",
-    "private", "protected", "public", "register", "reinterpret_cast",
+    "private", "protected", "public", "register", "reinterpret_cast", "restrict",
     "short", "signed", "sizeof", "static_cast", "struct", "switch",
-    "this", "throw", "true", "typedef", "typeid",
+    "this", "throw", "true", "typedef", "typeid", "typeof",
     "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
     "wchar_t",
 

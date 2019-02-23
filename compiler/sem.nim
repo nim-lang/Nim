@@ -16,12 +16,15 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins/active, rod, lineinfos
+  lowerings, pluginsupport, plugins/active, rod, lineinfos
 
-from modulegraphs import ModuleGraph, PPassContext
+from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
 when defined(nimfix):
   import nimfix/prettybase
+
+when not defined(leanCompiler):
+  import semparallel
 
 # implementation
 
@@ -201,14 +204,15 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   if n.kind == nkSym:
     # and sfGenSym in n.sym.flags:
     result = n.sym
-    if result.kind != kind:
+    if result.kind notin {kind, skTemp}:
       localError(c.config, n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
-    if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
-      # declarative context, so produce a fresh gensym:
-      result = copySym(result)
-      result.ast = n.sym.ast
-      put(c.p, n.sym, result)
+    when false:
+      if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
+        # declarative context, so produce a fresh gensym:
+        result = copySym(result)
+        result.ast = n.sym.ast
+        put(c.p, n.sym, result)
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909
@@ -446,17 +450,18 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
-  markUsed(c.config, n.info, sym, c.graph.usageSym)
-  styleCheckUse(n.info, sym)
+  let info = getCallLineInfo(n)
+  markUsed(c.config, info, sym, c.graph.usageSym)
+  onUse(info, sym)
   if sym == c.p.owner:
-    globalError(c.config, n.info, "recursive dependency: '$1'" % sym.name.s)
+    globalError(c.config, info, "recursive dependency: '$1'" % sym.name.s)
 
   let genericParams = if sfImmediate in sym.flags: 0
                       else: sym.ast[genericParamsPos].len
   let suppliedParams = max(n.safeLen - 1, 0)
 
   if suppliedParams < genericParams:
-    globalError(c.config, n.info, errMissingGenericParamsForTemplate % n.renderTree)
+    globalError(c.config, info, errMissingGenericParamsForTemplate % n.renderTree)
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
@@ -552,8 +557,6 @@ proc isEmptyTree(n: PNode): bool =
   else: result = false
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
-  if n.kind == nkDefer:
-    localError(c.config, n.info, "defer statement not supported at top level")
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
       c.importTable.addSym c.graph.systemModule # import the "System" identifier

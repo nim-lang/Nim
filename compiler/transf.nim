@@ -24,7 +24,8 @@ import
   sempass2, lowerings, destroyer, liftlocals,
   modulegraphs, lineinfos
 
-proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode
+proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
+                    noDestructors = false): PNode
 
 import closureiters, lambdalifting
 
@@ -48,7 +49,7 @@ type
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
-    deferDetected, tooEarly, needsDestroyPass: bool
+    deferDetected, tooEarly, needsDestroyPass, noDestructors: bool
     graph: ModuleGraph
   PTransf = ref TTransfContext
 
@@ -130,7 +131,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
     if s.kind in routineKinds:
-      discard transformBody(c.graph, s)
+      discard transformBody(c.graph, s, true, c.noDestructors)
     if s.kind == skIterator:
       if c.tooEarly: return n
       else: return liftIterSym(c.graph, n, getCurrOwner(c))
@@ -159,7 +160,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
       return
     tc = tc.next
   result = b
-  
+
 proc transformSym(c: PTransf, n: PNode): PTransNode =
   result = PTransNode(transformSymAux(c, n))
 
@@ -243,7 +244,7 @@ proc newLabel(c: PTransf, n: PNode): PSym =
   result.name = getIdent(c.graph.cache, genPrefix & $result.id)
 
 proc transformBlock(c: PTransf, n: PNode): PTransNode =
-  var labl: PSym 
+  var labl: PSym
   if c.inlining > 0:
     labl = newLabel(c, n[0])
     idNodeTablePut(c.transCon.mapping, n[0].sym, newSymNode(labl))
@@ -320,6 +321,38 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
     for i in countup(0, sonsLen(n)-1):
       result[i] = introduceNewLocalVars(c, n.sons[i])
 
+proc transformAsgn(c: PTransf, n: PNode): PTransNode =
+  let rhs = n[1]
+
+  if rhs.kind != nkTupleConstr:
+    return transformSons(c, n)
+
+  # Unpack the tuple assignment into N temporary variables and then pack them
+  # into a tuple: this allows us to get the correct results even when the rhs
+  # depends on the value of the lhs
+  let letSection = newTransNode(nkLetSection, n.info, rhs.len)
+  let newTupleConstr = newTransNode(nkTupleConstr, n.info, rhs.len)
+  for i, field in rhs:
+    let val = if field.kind == nkExprColonExpr: field[1] else: field
+    let def = newTransNode(nkIdentDefs, field.info, 3)
+    def[0] = PTransNode(newTemp(c, val.typ, field.info))
+    def[1] = PTransNode(newNodeI(nkEmpty, field.info))
+    def[2] = transform(c, val)
+    letSection[i] = def
+    # NOTE: We assume the constructor fields are in the correct order for the
+    # given tuple type
+    newTupleConstr[i] = def[0]
+
+  PNode(newTupleConstr).typ = rhs.typ
+
+  let asgnNode = newTransNode(nkAsgn, n.info, 2)
+  asgnNode[0] = transform(c, n[0])
+  asgnNode[1] = newTupleConstr
+
+  result = newTransNode(nkStmtList, n.info, 2)
+  result[0] = letSection
+  result[1] = asgnNode
+
 proc transformYield(c: PTransf, n: PNode): PTransNode =
   proc asgnTo(lhs: PNode, rhs: PTransNode): PTransNode =
     # Choose the right assignment instruction according to the given ``lhs``
@@ -367,6 +400,11 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
   else:
     # we need to introduce new local variables:
     add(result, introduceNewLocalVars(c, c.transCon.forLoopBody.PNode))
+  if result.len > 0:
+    var changeNode = PNode(result[0])
+    changeNode.info = c.transCon.forStmt.info
+    for i, child in changeNode:
+      child.info = changeNode.info
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)
@@ -611,7 +649,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = transformBody(c.graph, iter)
+  let body = transformBody(c.graph, iter, true, c.noDestructors)
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   add(stmtList, transform(c, body))
@@ -908,6 +946,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         let hoisted = hoistParamsUsedInDefault(c, call, hoistedParams, call[i])
         if hoisted != nil: call[i] = hoisted
       result = newTree(nkStmtListExpr, hoistedParams, call).PTransNode
+      PNode(result).typ = call.typ
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)
   of nkDerefExpr, nkHiddenDeref:
@@ -942,6 +981,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)
+  #of nkAsgn:
+  #  result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = PTransNode(n)
     result[0] = transform(c, n[0])
@@ -1029,7 +1070,8 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode =
+proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
+                    noDestructors = false): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
@@ -1037,22 +1079,22 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode =
   elif nfTransf in prc.ast[bodyPos].flags or prc.kind in {skTemplate}:
     result = prc.ast[bodyPos]
   else:
-
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "")
+    c.noDestructors = noDestructors
     result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
-    if c.needsDestroyPass: #and newDestructors:
+    if c.needsDestroyPass and not noDestructors:
       result = injectDestructorCalls(g, prc, result)
 
     if prc.isIterator:
       result = g.transformClosureIterator(prc, result)
-  
+
     incl(result.flags, nfTransf)
 
-    let cache = cache or prc.typ.callConv == ccInline 
+    let cache = cache or prc.typ.callConv == ccInline
     if cache:
       # genProc for inline procs will be called multiple times from diffrent modules,
       # it is important to transform exactly once to get sym ids and locations right
@@ -1072,7 +1114,8 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
       result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
 
-proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
+proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode;
+                    noDestructors = false): PNode =
   if nfTransf in n.flags:
     result = n
   else:
@@ -1081,6 +1124,6 @@ proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     liftDefer(c, result)
     # expressions are not to be injected with destructor calls as that
     # the list of top level statements needs to be collected before.
-    if c.needsDestroyPass:
+    if c.needsDestroyPass and not noDestructors:
       result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)

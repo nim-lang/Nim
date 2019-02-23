@@ -1,5 +1,4 @@
 discard """
-  file: "tvartup.nim"
   output: "2 3"
 """
 # Test the new tuple unpacking
@@ -9,5 +8,3 @@ proc divmod(a, b: int): tuple[di, mo: int] =
 
 var (x, y) = divmod(15, 6)
 echo x, " ", y
-
-#OUT 2 3

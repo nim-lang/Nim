@@ -15,7 +15,7 @@ Options:
                             (Optionally: Define the value for that symbol,
                             see: "compile time define pragmas")
   -u, --undef:SYMBOL        undefine a conditional symbol
-  -f, --forceBuild          force rebuilding of all modules
+  -f, --forceBuild:on|off   force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off
   --lineTrace:on|off        turn line tracing on|off
   --threads:on|off          turn support for multi-threading on|off

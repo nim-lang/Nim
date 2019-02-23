@@ -1,6 +1,6 @@
 discard """
-  file: "tcgbug.nim"
-  output: '''success
+output: '''
+success
 M1 M2
 '''
 """
@@ -74,5 +74,5 @@ proc newMyObjectRef(kind: MyKind, val: string): MyObjectRef =
     of M2: result.b = parseFloat(val)
     of M3: result.c = val
 
- 
+
 echo newMyObject(M1, "2").kind, " ", newMyObjectRef(M2, "3").kind

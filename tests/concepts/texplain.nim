@@ -63,16 +63,16 @@ texplain.nim(92, 5) NestedConcept: concept predicate failed
 
 expression: f(y)
 '''
-  line: 138
   errormsg: "type mismatch: got <MatchingType>"
+  line: 138
+
+  disabled: 32bit
 """
 
-
-
-
-
-
-
+# disabled on 32 bit, because the order of suggested alternatives ``r`` differs
+# proc r[T](a: SomeNumber; b: T; c: auto)
+# proc r(i: string): int
+# proc r(o: RegularConcept): int
 
 
 
@@ -136,4 +136,3 @@ static:
 # finally, provide multiple nested explanations for failed matching
 # of regular concepts, even when the explain pragma is not used
 f(y)
-

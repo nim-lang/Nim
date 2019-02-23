@@ -1,6 +1,5 @@
 discard """
-  file: "tcasestmt.nim"
-  output:
+output:
 '''
 Not found!
 Found!

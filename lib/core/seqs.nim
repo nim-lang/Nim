@@ -8,12 +8,14 @@
 #
 
 
-import typetraits
+# import typetraits
 # strs already imported allocators for us.
+
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
 type
-  NimSeqPayload {.core.}[T] = object
+  NimSeqPayload[T] = object
     cap: int
     region: Allocator
     data: UncheckedArray[T]
@@ -38,6 +40,7 @@ proc `=destroy`[T](s: var seq[T]) =
   var x = cast[ptr NimSeqV2[T]](addr s)
   var p = x.p
   if p != nil:
+    mixin `=destroy`
     when not supportsCopyMem(T):
       for i in 0..<x.len: `=destroy`(p.data[i])
     p.region.dealloc(p.region, p, payloadSize(p.cap))
@@ -45,11 +48,12 @@ proc `=destroy`[T](s: var seq[T]) =
     x.len = 0
 
 proc `=`[T](x: var seq[T]; y: seq[T]) =
+  mixin `=destroy`
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
 
   if a.p == b.p: return
-  `=destroy`(a)
+  `=destroy`(x)
   a.len = b.len
   if b.p != nil:
     a.p = cast[type(a.p)](alloc(payloadSize(a.len)))
@@ -61,18 +65,13 @@ proc `=`[T](x: var seq[T]; y: seq[T]) =
         a.p.data[i] = b.p.data[i]
 
 proc `=sink`[T](x: var seq[T]; y: seq[T]) =
+  mixin `=destroy`
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
   if a.p != nil and a.p != b.p:
-    `=destroy`(a)
+    `=destroy`(x)
   a.len = b.len
   a.p = b.p
-
-when false:
-  proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.}
-  proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
-      compilerRtl.}
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
 
 
 type
@@ -83,7 +82,7 @@ type
 proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
-  if cap <= 0:
+  if cap > 0:
     let region = getLocalAllocator()
     var p = cast[ptr PayloadBase](region.alloc(region, cap * elemSize + sizeof(int) + sizeof(Allocator)))
     p.region = region
@@ -92,25 +91,28 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
   else:
     result = nil
 
-proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.compilerRtl.} =
-  if len+addlen <= len:
-    result = p
-  elif p == nil:
-    result = newSeqPayload(len+addlen, elemSize)
-  else:
-    # Note: this means we cannot support things that have internal pointers as
-    # they get reallocated here. This needs to be documented clearly.
-    var p = cast[ptr PayloadBase](p)
-    let region = if p.region == nil: getLocalAllocator() else: p.region
-    let cap = max(resize(p.cap), len+addlen)
-    var q = cast[ptr PayloadBase](region.realloc(region, p,
-      sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
-      sizeof(int) + sizeof(Allocator) + elemSize * cap))
-    q.region = region
-    q.cap = cap
-    result = q
+proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
+    compilerRtl, noSideEffect.} =
+  {.noSideEffect.}:
+    if len+addlen <= len:
+      result = p
+    elif p == nil:
+      result = newSeqPayload(len+addlen, elemSize)
+    else:
+      # Note: this means we cannot support things that have internal pointers as
+      # they get reallocated here. This needs to be documented clearly.
+      var p = cast[ptr PayloadBase](p)
+      let region = if p.region == nil: getLocalAllocator() else: p.region
+      let cap = max(resize(p.cap), len+addlen)
+      var q = cast[ptr PayloadBase](region.realloc(region, p,
+        sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
+        sizeof(int) + sizeof(Allocator) + elemSize * cap))
+      q.region = region
+      q.cap = cap
+      result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
+  mixin `=destroy`
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
   when not supportsCopyMem(T):
     for i in countdown(x.len - 1, newLen - 1):
@@ -122,18 +124,19 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
-
-  xu.p = prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T))
+  if xu.p == nil or xu.p.cap < newLen:
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
-    x.data[i] = value
+    xu.p.data[i] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
-  if newlen < s.len:
-    shrink(s, newLen)
-  else:
-    var v: T # get the default value of 'v'
-    grow(s, newLen, v)
+  {.noSideEffect.}:
+    if newlen < s.len:
+      shrink(s, newLen)
+    else:
+      var v: T # get the default value of 'v'
+      grow(s, newLen, v)
 
 when false:
   proc resize[T](s: var NimSeqV2[T]) =

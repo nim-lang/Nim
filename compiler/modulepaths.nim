@@ -114,7 +114,6 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     try:
       result =
         pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
-          .replace(" ")
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal
@@ -147,7 +146,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     # hacky way to implement 'x / y /../ z':
     result = renderTree(n, {renderNoComments}).replace(" ")
   of nkDotExpr:
-    localError(conf, n.info, warnDeprecated, "using '.' instead of '/' in import paths")
+    localError(conf, n.info, warnDeprecated, "using '.' instead of '/' in import paths is deprecated")
     result = renderTree(n, {renderNoComments}).replace(".", "/")
   of nkImportAs:
     result = getModuleName(conf, n.sons[0])

@@ -116,9 +116,9 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
     var x = PSym(idTableGet(symMap, s))
     if x != nil:
       n.sym = x
-    elif s.owner.kind == skPackage:
+    elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s, false)
+      x = copySym(s)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
@@ -337,7 +337,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn, false)
+  result = copySym(fn)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n

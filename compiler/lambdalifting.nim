@@ -258,7 +258,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
   result.add makeClosure(g, iter, env, n.info)
-  
+
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.lastSon
@@ -320,17 +320,30 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
     rawAddSon(result, obj)
     c.ownerToType[owner.id] = result
 
+proc getEnvTypeForOwnerUp(c: var DetectionPass; owner: PSym;
+                          info: TLineInfo): PType =
+  var r = c.getEnvTypeForOwner(owner, info)
+  result = newType(tyPtr, owner)
+  rawAddSon(result, r.base)
+
 proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   let refObj = c.getEnvTypeForOwner(dest, info) # getHiddenParam(dest).typ
   let obj = refObj.lastSon
-  let fieldType = c.getEnvTypeForOwner(dep, info) #getHiddenParam(dep).typ
+  # The assumption here is that gcDestructors means we cannot deal
+  # with cycles properly, so it's better to produce a weak ref (=ptr) here.
+  # This seems to be generally correct but since it's a bit risky it's only
+  # enabled for gcDestructors.
+  let fieldType = if c.graph.config.selectedGc == gcDestructors:
+                    c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
+                  else:
+                    c.getEnvTypeForOwner(dep, info)
   if refObj == fieldType:
     localError(c.graph.config, dep.info, "internal error: invalid up reference computed")
 
   let upIdent = getIdent(c.graph.cache, upName)
   let upField = lookupInRecord(obj.n, upIdent)
   if upField != nil:
-    if upField.typ != fieldType:
+    if upField.typ.base != fieldType.base:
       localError(c.graph.config, dep.info, "internal error: up references do not agree")
   else:
     let result = newSym(skField, upIdent, obj.owner, obj.owner.info)
@@ -407,11 +420,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
               obj.n[0].sym.id = -s.id
             else:
               addField(obj, s, c.graph.cache)
-      # but always return because the rest of the proc is only relevant when
-      # ow != owner:
-      return
     # direct or indirect dependency:
-    if (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
+    elif (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
       discard """
         proc outer() =
           var x: int
@@ -454,11 +464,10 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           createUpField(c, w, up, n.info)
           w = up
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
-     nkTemplateDef, nkTypeSection:
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
+     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt:
     discard
-  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
-    discard
-  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
+  of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
       detectCapturedVars(n[namePos], owner, c)
   of nkReturnStmt:
@@ -559,7 +568,7 @@ proc rawClosureCreation(owner: PSym;
   let upField = lookupInRecord(env.typ.lastSon.n, getIdent(d.graph.cache, upName))
   if upField != nil:
     let up = getUpViaParam(d.graph, owner)
-    if up != nil and upField.typ == up.typ:
+    if up != nil and upField.typ.base == up.typ.base:
       result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  up, env.info))
     #elif oldenv != nil and oldenv.typ == upField.typ:
@@ -590,7 +599,7 @@ proc closureCreationForIter(iter: PNode;
   let upField = lookupInRecord(v.typ.lastSon.n, getIdent(d.graph.cache, upName))
   if upField != nil:
     let u = setupEnvVar(owner, d, c)
-    if u.typ == upField.typ:
+    if u.typ.base == upField.typ.base:
       result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
                  u, iter.info))
     else:
@@ -672,9 +681,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       else:
         result = accessViaEnvVar(n, owner, d, c)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
-     nkTemplateDef, nkTypeSection:
-    discard
-  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef, nkConverterDef,
+     nkMacroDef, nkFuncDef:
     discard
   of nkClosure:
     if n[1].kind == nkNilLit:
@@ -685,7 +693,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         # now we know better, so patch it:
         n.sons[0] = x.sons[0]
         n.sons[1] = x.sons[1]
-  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
+  of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let oldInContainer = c.inContainer
       c.inContainer = 0
@@ -720,19 +728,37 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
 # ------------------ old stuff -------------------------------------------
 
 proc semCaptureSym*(s, owner: PSym) =
+  discard """
+    proc outer() =
+      var x: int
+      proc inner() =
+        proc innerInner() =
+          echo x
+        innerInner()
+      inner()
+    # inner() takes a closure too!
+  """
+  proc propagateClosure(start, last: PSym) =
+    var o = start
+    while o != nil and o.kind != skModule:
+      if o == last: break
+      o.typ.callConv = ccClosure
+      o = o.skipGenericOwner
+
   if interestingVar(s) and s.kind != skResult:
     if owner.typ != nil and not isGenericRoutine(owner):
       # XXX: is this really safe?
       # if we capture a var from another generic routine,
       # it won't be consider captured.
       var o = owner.skipGenericOwner
-      while o.kind != skModule and o != nil:
+      while o != nil and o.kind != skModule:
         if s.owner == o:
           if owner.typ.callConv in {ccClosure, ccDefault} or owner.kind == skIterator:
             owner.typ.callConv = ccClosure
+            propagateClosure(owner.skipGenericOwner, s.owner)
           else:
             discard "do not produce an error here, but later"
-          #echo "computing .closure for ", owner.name.s, " ", owner.info, " because of ", s.name.s
+          #echo "computing .closure for ", owner.name.s, " because of ", s.name.s
         o = o.skipGenericOwner
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'
     # here

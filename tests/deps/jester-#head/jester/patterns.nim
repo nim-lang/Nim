@@ -120,7 +120,7 @@ proc match*(pattern: Pattern, s: string):
   if s.len != i:
     result.matched = false
 
-when isMainModule:
+when true:
   let f = parsePattern("/show/@id/test/@show?/?")
   doAssert match(f, "/show/12/test/hallo/").matched
   doAssert match(f, "/show/2131726/test/jjjuuwąąss").matched
