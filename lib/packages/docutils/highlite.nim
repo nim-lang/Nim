@@ -10,6 +10,8 @@
 ## Source highlighter for programming or markup languages.
 ## Currently only few languages are supported, other languages may be added.
 ## The interface supports one language nested in another.
+##
+## **Note:** Import ``packages/docutils/highlite`` to use this module
 
 import
   strutils

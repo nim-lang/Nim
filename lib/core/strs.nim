@@ -51,15 +51,12 @@ proc `=destroy`(s: var string) =
   a.len = 0
   a.p = nil
 
-template lose(a) =
-  frees(a)
-
 proc `=sink`(x: var string, y: string) =
   var a = cast[ptr NimStringV2](addr x)
   var b = cast[ptr NimStringV2](unsafeAddr y)
   # we hope this is optimized away for not yet alive objects:
   if unlikely(a.p == b.p): return
-  lose(a)
+  frees(a)
   a.len = b.len
   a.p = b.p
 
@@ -67,13 +64,13 @@ proc `=`(x: var string, y: string) =
   var a = cast[ptr NimStringV2](addr x)
   var b = cast[ptr NimStringV2](unsafeAddr y)
   if unlikely(a.p == b.p): return
-  lose(a)
+  frees(a)
   a.len = b.len
   if isLiteral(b):
     # we can shallow copy literals:
     a.p = b.p
   else:
-    let region = if a.p.region != nil: a.p.region else: getLocalAllocator()
+    let region = if a.p != nil and a.p.region != nil: a.p.region else: getLocalAllocator()
     # we have to allocate the 'cap' here, consider
     # 'let y = newStringOfCap(); var x = y'
     # on the other hand... These get turned into moves now.
@@ -136,6 +133,7 @@ proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inlin
   if src.len > 0:
     # also copy the \0 terminator:
     copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
+    inc dest.len, src.len
 
 proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   dest.p.data[dest.len] = c
@@ -166,7 +164,6 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   if newLen > s.len:
     prepareAdd(s, newLen - s.len)
-  else:
-    s.len = newLen
-    # this also only works because the destructor
-    # looks at s.p and not s.len
+  s.len = newLen
+  # this also only works because the destructor
+  # looks at s.p and not s.len

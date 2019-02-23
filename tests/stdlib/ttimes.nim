@@ -115,6 +115,13 @@ template runTimezoneTests() =
     check toTime(parsedJan).toUnix == 1451962800
     check toTime(parsedJul).toUnix == 1467342000
 
+template usingTimezone(tz: string, body: untyped) =
+  when defined(linux) or defined(macosx):
+    let oldZone = getEnv("TZ")
+    putEnv("TZ", tz)
+    body
+    putEnv("TZ", oldZone)
+
 suite "ttimes":
 
   # Generate tests for multiple timezone files where available
@@ -123,37 +130,47 @@ suite "ttimes":
     let tz_dir = getEnv("TZDIR", "/usr/share/zoneinfo")
     const f = "yyyy-MM-dd HH:mm zzz"
 
-    let orig_tz = getEnv("TZ")
     var tz_cnt = 0
-    for tz_fn in walkFiles(tz_dir & "/**/*"):
-      if symlinkExists(tz_fn) or tz_fn.endsWith(".tab") or
-          tz_fn.endsWith(".list"):
+    for timezone in walkFiles(tz_dir & "/**/*"):
+      if symlinkExists(timezone) or timezone.endsWith(".tab") or
+          timezone.endsWith(".list"):
         continue
 
-      test "test for " & tz_fn:
-        tz_cnt.inc
-        putEnv("TZ", tz_fn)
-        runTimezoneTests()
+      usingTimezone(timezone):
+        test "test for " & timezone:
+          tz_cnt.inc
+          runTimezoneTests()
 
     test "enough timezone files tested":
       check tz_cnt > 10
 
-    test "dst handling":
-      putEnv("TZ", "Europe/Stockholm")
-      # In case of an impossible time, the time is moved to after the impossible time period
-      check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) == "2017-03-26 03:30 +02:00"
+  else:
+    # not on Linux or macosx: run in the local timezone only
+    test "parseTest":
+      runTimezoneTests()
+
+  test "dst handling":
+    usingTimezone("Europe/Stockholm"):
+      # In case of an impossible time, the time is moved to after the
+      # impossible time period
+      check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) ==
+        "2017-03-26 03:30 +02:00"
       # In case of an ambiguous time, the earlier time is choosen
-      check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) == "2017-10-29 02:00 +02:00"
+      check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) ==
+        "2017-10-29 02:00 +02:00"
       # These are just dates on either side of the dst switch
-      check initDateTime(29, mOct, 2017, 01, 00, 00).format(f) == "2017-10-29 01:00 +02:00"
+      check initDateTime(29, mOct, 2017, 01, 00, 00).format(f) ==
+        "2017-10-29 01:00 +02:00"
       check initDateTime(29, mOct, 2017, 01, 00, 00).isDst
-      check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
+      check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) ==
+        "2017-10-29 03:01 +01:00"
       check (not initDateTime(29, mOct, 2017, 03, 01, 00).isDst)
 
-      check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
+      check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) ==
+        "2017-10-21 01:00 +02:00"
 
-    test "issue #6520":
-      putEnv("TZ", "Europe/Stockholm")
+  test "issue #6520":
+    usingTimezone("Europe/Stockholm"):
       var local = fromUnix(1469275200).local
       var utc = fromUnix(1469275200).utc
 
@@ -161,35 +178,28 @@ suite "ttimes":
       local.utcOffset = 0
       check claimedOffset == utc.toTime - local.toTime
 
-    test "issue #5704":
-      putEnv("TZ", "Asia/Seoul")
-      let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime - parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
+  test "issue #5704":
+    usingTimezone("Asia/Seoul"):
+      let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime -
+        parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
       check diff == initDuration(seconds = 2208986872)
 
-    test "issue #6465":
-      putEnv("TZ", "Europe/Stockholm")
+  test "issue #6465":
+    usingTimezone("Europe/Stockholm"):
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
       check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"
 
-    test "datetime before epoch":
-      check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
-
-    test "adding/subtracting time across dst":
-      putenv("TZ", "Europe/Stockholm")
-
+  test "adding/subtracting time across dst":
+    usingTimezone("Europe/Stockholm"):
       let dt1 = initDateTime(26, mMar, 2017, 03, 00, 00)
       check $(dt1 - 1.seconds) == "2017-03-26T01:59:59+01:00"
 
       var dt2 = initDateTime(29, mOct, 2017, 02, 59, 59)
       check  $(dt2 + 1.seconds) == "2017-10-29T02:00:00+01:00"
 
-    putEnv("TZ", orig_tz)
-
-  else:
-    # not on Linux or macosx: run in the local timezone only
-    test "parseTest":
-      runTimezoneTests()
+  test "datetime before epoch":
+    check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
 
   test "incorrect inputs: empty string":
     parseTestExcp("", "yyyy-MM-dd")
@@ -485,3 +495,105 @@ suite "ttimes":
     check getDayOfWeek(21, mSep, 1970) == dMon
     check getDayOfWeek(01, mJan, 2000) == dSat
     check getDayOfWeek(01, mJan, 2021) == dFri
+
+  test "between - simple":
+    let x = initDateTime(10, mJan, 2018, 13, 00, 00)
+    let y = initDateTime(11, mJan, 2018, 12, 00, 00)
+    doAssert x + between(x, y) == y
+
+  test "between - dst start":
+    usingTimezone("Europe/Stockholm"):
+      let x = initDateTime(25, mMar, 2018, 00, 00, 00)
+      let y = initDateTime(25, mMar, 2018, 04, 00, 00)
+      doAssert x + between(x, y) == y
+
+  test "between - empty interval":
+    let x = now()
+    let y = x
+    doAssert x + between(x, y) == y
+
+  test "between - dst end":
+    usingTimezone("Europe/Stockholm"):
+      let x = initDateTime(27, mOct, 2018, 02, 00, 00)
+      let y = initDateTime(28, mOct, 2018, 01, 00, 00)
+      doAssert x + between(x, y) == y
+
+  test "between - long day":
+    usingTimezone("Europe/Stockholm"):
+      # This day is 25 hours long in Europe/Stockholm
+      let x = initDateTime(28, mOct, 2018, 00, 30, 00)
+      let y = initDateTime(29, mOct, 2018, 00, 00, 00)
+      doAssert between(x, y) == 24.hours + 30.minutes
+      doAssert x + between(x, y) == y
+
+  test "between - offset change edge case":
+    # This test case is important because in this case
+    # `x + between(x.utc, y.utc) == y` is not true, which is very rare.
+    usingTimezone("America/Belem"):
+      let x = initDateTime(24, mOct, 1987, 00, 00, 00)
+      let y = initDateTime(26, mOct, 1987, 23, 00, 00)
+      doAssert x + between(x, y) == y
+      doAssert y + between(y, x) == x
+
+  test "between - all units":
+    let x = initDateTime(1, mJan, 2000, 00, 00, 00, utc())
+    let ti = initTimeInterval(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+    let y = x + ti
+    doAssert between(x, y) == ti
+    doAssert between(y, x) == -ti
+
+  test "between - monthday overflow":
+      let x = initDateTime(31, mJan, 2001, 00, 00, 00, utc())
+      let y = initDateTime(1, mMar, 2001, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+  test "between - misc":
+    block:
+      let x = initDateTime(31, mDec, 2000, 12, 00, 00, utc())
+      let y = initDateTime(01, mJan, 2001, 00, 00, 00, utc())
+      doAssert between(x, y) == 12.hours
+
+    block:
+      let x = initDateTime(31, mDec, 2000, 12, 00, 00, utc())
+      let y = initDateTime(02, mJan, 2001, 00, 00, 00, utc())
+      doAssert between(x, y) == 1.days + 12.hours
+
+    block:
+      let x = initDateTime(31, mDec, 1995, 00, 00, 00, utc())
+      let y = initDateTime(01, mFeb, 2000, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(01, mDec, 1995, 00, 00, 00, utc())
+      let y = initDateTime(31, mJan, 2000, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(31, mJan, 2000, 00, 00, 00, utc())
+      let y = initDateTime(01, mFeb, 2000, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(01, mJan, 1995, 12, 00, 00, utc())
+      let y = initDateTime(01, mFeb, 1995, 00, 00, 00, utc())
+      doAssert between(x, y) == 4.weeks + 2.days + 12.hours
+
+    block:
+      let x = initDateTime(31, mJan, 1995, 00, 00, 00, utc())
+      let y = initDateTime(10, mFeb, 1995, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(31, mJan, 1995, 00, 00, 00, utc())
+      let y = initDateTime(10, mMar, 1995, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+      doAssert between(x, y) == 1.months + 1.weeks
+
+  test "inX procs":
+    doAssert initDuration(seconds = 1).inSeconds == 1
+    doAssert initDuration(seconds = -1).inSeconds == -1
+    doAssert initDuration(seconds = -1, nanoseconds = 1).inSeconds == 0
+    doAssert initDuration(nanoseconds = -1).inSeconds == 0
+    doAssert initDuration(milliseconds = 500).inMilliseconds == 500
+    doAssert initDuration(milliseconds = -500).inMilliseconds == -500
+    doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999

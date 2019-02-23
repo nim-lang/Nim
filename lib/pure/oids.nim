@@ -60,23 +60,21 @@ proc `$`*(oid: Oid): string =
   result = newString(24)
   oidToString(oid, result)
 
+proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
+proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
+
+var t = getTime().toUnix.int32
+srand(t)
+
 var
-  incr: int
-  fuzz: int32
+  incr: int = rand()
+  fuzz: int32 = rand()
 
 proc genOid*(): Oid =
   ## generates a new OID.
-  proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
-  proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
-
-  var t = getTime().toUnix.int32
-
+  t = getTime().toUnix.int32
   var i = int32(atomicInc(incr))
 
-  if fuzz == 0:
-    # racy, but fine semantically:
-    srand(t)
-    fuzz = rand()
   bigEndian32(addr result.time, addr(t))
   result.fuzz = fuzz
   bigEndian32(addr result.count, addr(i))

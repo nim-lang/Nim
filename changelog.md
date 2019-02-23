@@ -38,6 +38,8 @@
 
 - The procs `parseutils.parseBiggsetInt`, `parseutils.parseInt`, `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a `ValueError` when the parsed integer is outside of the valid range. Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
 
+- `streams.StreamObject` now restricts its fields to only raise `system.Defect`, `system.IOError` and `system.OSError`. This change only affects custom stream implementations.
+
 - nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
   `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
   check if a group is captured, otherwise you'll recieve an exception.
@@ -121,6 +123,11 @@ proc enumToString*(enums: openArray[enum]): string =
   can be used to retrieve the currently executing compiler.
 
 - Added `xmltree.toXmlAttributes`.
+
+- Added ``std/sums`` module for fast summation functions.
+
+- Added `Rusage`, `getrusage`, `wait4` to posix interface.
+
 
 
 ### Library changes

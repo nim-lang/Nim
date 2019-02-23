@@ -104,9 +104,11 @@ when not defined(useNimRtl):
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
-      echo "[GCASSERT] ", msg
+      cstderr.rawWrite "[GCASSERT] "
+      cstderr.rawWrite msg
       when defined(logGC):
-        echo "[GCASSERT] statistics:\L", GC_getStatistics()
+        cstderr.rawWrite "[GCASSERT] statistics:\L"
+        cstderr.rawWrite GC_getStatistics()
       GC_disable()
       writeStackTrace()
       #var x: ptr int
@@ -293,7 +295,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
     for i in 0..n.len-1:
       # inlined for speed
       if n.sons[i].kind == nkSlot:
-        if n.sons[i].typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}:
+        if n.sons[i].typ.kind in {tyRef, tyString, tySequence}:
           doOperation(cast[PPointer](d +% n.sons[i].offset)[], op)
         else:
           forAllChildrenAux(cast[pointer](d +% n.sons[i].offset),
@@ -310,7 +312,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
-    of tyRef, tyOptAsRef, tyString, tySequence: # leaf:
+    of tyRef, tyString, tySequence: # leaf:
       doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
@@ -323,13 +325,13 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: cell is nil")
   gcAssert(isAllocatedPtr(gch.region, cell), "forAllChildren: pointer not part of the heap")
   gcAssert(cell.typ != nil, "forAllChildren: cell.typ is nil")
-  gcAssert cell.typ.kind in {tyRef, tyOptAsRef, tySequence, tyString}, "forAllChildren: unknown GC'ed type"
+  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: unknown GC'ed type"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
     case cell.typ.kind
-    of tyRef, tyOptAsRef: # common case
+    of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
       var d = cast[ByteAddress](cellToUsr(cell))
@@ -404,7 +406,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "rawNewObj begin")
-  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
@@ -450,7 +452,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "newObjRC1 begin")
-  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 
@@ -864,7 +866,10 @@ when not defined(useNimRtl):
       for stack in items(gch.stack):
         result.add "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & cast[pointer](stack.maxStackSize).repr & "\n"
     else:
-      result.add "[GC] stack bottom: " & gch.stack.bottom.repr
+      # this caused memory leaks, see #10488 ; find a way without `repr`
+      # maybe using a local copy of strutils.toHex or snprintf
+      when defined(logGC):
+        result.add "[GC] stack bottom: " & gch.stack.bottom.repr
       result.add "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
 
 {.pop.} # profiler: off, stackTrace: off

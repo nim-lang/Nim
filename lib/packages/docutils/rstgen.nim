@@ -22,6 +22,8 @@
 ## other lower level methods to finally build complete documents. This requires
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
+##
+## **Note:** Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils

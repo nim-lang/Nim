@@ -10,6 +10,8 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+import important_packages
+
 const
   specialCategories = [
     "assert",
@@ -448,7 +450,7 @@ if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
   #packageDir = nimbleDir / "pkgs" # not used
-  packageIndex = nimbleDir / "packages.json"
+  packageIndex = nimbleDir / "packages_official.json"
 
 proc waitForExitEx(p: Process): int =
   var outp = outputStream(p)
@@ -463,28 +465,38 @@ proc waitForExitEx(p: Process): int =
 
 proc getPackageDir(package: string): string =
   ## TODO - Replace this with dom's version comparison magic.
-  var commandOutput = execCmdEx("nimble path $#" % package)
+  let commandOutput = execCmdEx("nimble path $#" % package)
   if commandOutput.exitCode != QuitSuccess:
     return ""
   else:
     result = commandOutput[0].string
 
-iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
+iterator listPackages(filter: PackageFilter):
+                      tuple[name, url, cmd: string, hasDeps: bool] =
+  const defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
-  for package in packageList.items():
-    let
-      name = package["name"].str
-      url = package["url"].str
-      isCorePackage = "nim-lang" in normalize(url)
-    case filter:
-    of pfCoreOnly:
-      if isCorePackage:
-        yield (name, url)
-    of pfExtraOnly:
-      if not isCorePackage:
-        yield (name, url)
-    of pfAll:
-      yield (name, url)
+  for package in packageList.items:
+    if package.hasKey("url"):
+      let name = package["name"].str
+      if name notin ["nimble", "compiler"]:
+        let url = package["url"].str
+        case filter
+        of pfCoreOnly:
+          if "nim-lang" in normalize(url):
+            yield (name, url, defaultCmd, false)
+        of pfExtraOnly:
+          for n, cmd, commit, hasDeps in important_packages.packages.items:
+            if name == n:
+              let cmd = if cmd.len == 0: defaultCmd else: cmd
+              yield (name, url, cmd, hasDeps)
+        of pfAll:
+          yield (name, url, defaultCmd, false)
+
+proc makeSupTest(test, options: string, cat: Category): TTest =
+  result.cat = cat
+  result.name = test
+  result.options = options
+  result.startTime = epochTime()
 
 proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
   if nimbleExe == "":
@@ -495,31 +507,49 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
     echo("[Warning] - Cannot run nimble tests: Nimble update failed.")
     return
 
-  let packageFileTest = makeTest("PackageFileParsed", "", cat)
+  let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
+  var keepDir = false
+  var packagesDir = "pkgstemp"
   try:
-    for name, url in listPackages(filter):
-      var test = makeTest(name, "", cat)
-      echo(url)
-      let
-        installProcess = startProcess(nimbleExe, "", ["install", "-y", name])
-        installStatus = waitForExitEx(installProcess)
-      installProcess.close
-      if installStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "", reInstallFailed)
-        continue
+    for name, url, cmd, hasDep in listPackages(filter):
+      var test = makeSupTest(url, "", cat)
+      let buildPath = packagesDir / name
+      if not existsDir(buildPath):
+        if hasDep:
+          let nimbleProcess = startProcess("nimble", "", ["install", "-y", name],
+                                           options = {poUsePath, poStdErrToStdOut})
+          let nimbleStatus = waitForExitEx(nimbleProcess)
+          nimbleProcess.close
+          if nimbleStatus != QuitSuccess:
+            r.addResult(test, targetC, "", "", reInstallFailed)
+            keepDir = true
+            continue
 
-      let
-        buildPath = getPackageDir(name).strip
-        buildProcess = startProcess(nimbleExe, buildPath, ["build"])
-        buildStatus = waitForExitEx(buildProcess)
+        let installProcess = startProcess("git", "", ["clone", url, buildPath],
+                                          options = {poUsePath, poStdErrToStdOut})
+        let installStatus = waitForExitEx(installProcess)
+        installProcess.close
+        if installStatus != QuitSuccess:
+          r.addResult(test, targetC, "", "", reInstallFailed)
+          keepDir = true
+          continue
+
+      let cmdArgs = parseCmdLine(cmd)
+      let buildProcess = startProcess(cmdArgs[0], buildPath, cmdArgs[1..^1],
+                                      options = {poUsePath, poStdErrToStdOut})
+      let buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
         r.addResult(test, targetC, "", "", reBuildFailed)
-      r.addResult(test, targetC, "", "", reSuccess)
+        keepDir = true
+      else:
+        r.addResult(test, targetC, "", "", reSuccess)
     r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
     r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
+  finally:
+    if not keepDir: removeDir(packagesDir)
 
 
 # ----------------------------------------------------------------------------

@@ -33,8 +33,7 @@
 ##    import uri
 ##    let res = parseUri("sftp://127.0.0.1:4343")
 ##    if isAbsolute(res):
-##      echo "Connect to port: " & res.port
-##      # --> Connect to port: 4343
+##      assert res.port == "4343"
 ##    else:
 ##      echo "Wrong format"
 
@@ -119,6 +118,33 @@ proc decodeUrl*(s: string, decodePlus=true): string =
     inc(i)
     inc(j)
   setLen(result, j)
+
+proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true): string =
+  ## Encodes a set of (key, value) parameters into a URL query string.
+  ##
+  ## Every (key, value) pair is URL-encoded and written as ``key=value``. If the
+  ## value is an empty string then the ``=`` is omitted, unless ``omitEq`` is
+  ## false.
+  ## The pairs are joined together by a ``&`` character.
+  ##
+  ## The ``usePlus`` parameter is passed down to the `encodeUrl` function that
+  ## is used for the URL encoding of the string values.
+  ##
+  ## **See also:**
+  ## * `encodeUrl proc<#encodeUrl,string>`_
+  runnableExamples:
+    assert encodeQuery({:}) == ""
+    assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
+    assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
+  for elem in query:
+    # Encode the `key = value` pairs and separate them with a '&'
+    if result.len > 0: result.add('&')
+    let (key, val) = elem
+    result.add(encodeUrl(key, usePlus))
+    # Omit the '=' if the value string is empty
+    if not omitEq or val.len > 0:
+      result.add('=')
+      result.add(encodeUrl(val, usePlus))
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
@@ -343,9 +369,9 @@ proc combine*(uris: varargs[Uri]): Uri =
   ## **See also:**
   ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
-    let foo = combine(parseUri("https://nim-lang.org/blog.html"), parseUri("/install.html"))
+    let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"), parseUri("manual.html"))
     assert foo.hostname == "nim-lang.org"
-    assert foo.path == "/install.html"
+    assert foo.path == "/docs/manual.html"
   result = uris[0]
   for i in 1 ..< uris.len:
     result = combine(result, uris[i])
@@ -392,6 +418,14 @@ proc `/`*(x: Uri, path: string): Uri =
     if path.len == 0 or path[0] != '/':
       result.path.add '/'
     result.path.add(path)
+
+proc `?`*(u: Uri, query: openArray[(string, string)]): Uri =
+  ## Concatenates the query parameters to the specified URI object.
+  runnableExamples:
+    let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
+    assert $foo == "https://example.com/foo?bar=qux"
+  result = u
+  result.query = encodeQuery(query)
 
 proc `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
@@ -676,5 +710,26 @@ when isMainModule:
     doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
+
+  # encodeQuery tests
+  block:
+    doAssert encodeQuery({:}) == ""
+    doAssert encodeQuery({"foo": "bar"}) == "foo=bar"
+    doAssert encodeQuery({"foo": "bar & baz"}) == "foo=bar+%26+baz"
+    doAssert encodeQuery({"foo": "bar & baz"}, usePlus=false) == "foo=bar%20%26%20baz"
+    doAssert encodeQuery({"foo": ""}) == "foo"
+    doAssert encodeQuery({"foo": ""}, omitEq=false) == "foo="
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq=false) == "a=1&b=&c=3"
+
+    block:
+      var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}
+      var foo1 = parseUri("http://example.com/foo?bar=1&baz=qux")
+      doAssert foo == foo1
+
+    block:
+      var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
+      var foo1 = parseUri("http://example.com/foo?do=do&bar")
+      doAssert foo == foo1
 
   echo("All good!")

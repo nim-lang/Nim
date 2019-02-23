@@ -149,14 +149,16 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       if filename.len == 0:
         inc(d.id)
         let nameOnly = splitFile(d.filename).name
-        let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
-        createDir(subdir)
-        outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
+        outp = getNimcacheDir(conf) / RelativeDir(nameOnly) /
+               RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
       elif isAbsolute(filename):
-        outp = AbsoluteFile filename
+        outp = AbsoluteFile(filename)
       else:
         # Nim's convention: every path is relative to the file it was written in:
-        outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
+        let nameOnly = splitFile(d.filename).name
+        outp = AbsoluteDir(nameOnly) / RelativeFile(filename)
+      # Make sure the destination directory exists
+      createDir(outp.splitFile.dir)
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
       writeFile(outp, importStmt & content)
@@ -244,7 +246,7 @@ proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
   if n.comment.len > 0:
-    renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
+    renderRstToOut(d[], parseRst(n.comment, toFullPath(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
@@ -654,7 +656,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
         path = path[cwd.len+1 .. ^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
-      let commit = getConfigVar(d.conf, "git.commit", "master")
+      let defaultBranch = if NimPatch mod 2 == 1: "devel" else: "master"
+      let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
       let develBranch = getConfigVar(d.conf, "git.devel", "devel")
       dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
           ["path", "line", "url", "commit", "devel"], [rope path.string,

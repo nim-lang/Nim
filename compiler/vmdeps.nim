@@ -294,17 +294,17 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyOptAsRef: assert(false, "mapTypeToAstX")
+  of tyOwned: result = mapTypeToBracket("owned", mBuiltinType, t, info)
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
-  result = mapTypeToAstX(cache, t, info, false, true)
+  result = mapTypeToAstX(cache, t, info, inst=false, allowRecursionX=true)
 
 # the "Inst" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type declaration
 proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
-  result = mapTypeToAstX(cache, t, info, true, false)
+  result = mapTypeToAstX(cache, t, info, inst=true, allowRecursionX=false)
 
 # the "Impl" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type implementation
 proc opMapTypeImplToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
-  result = mapTypeToAstX(cache, t, info, true, true)
+  result = mapTypeToAstX(cache, t, info, inst=true, allowRecursionX=true)

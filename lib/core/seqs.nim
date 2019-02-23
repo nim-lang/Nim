@@ -15,7 +15,7 @@ proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
 type
-  NimSeqPayload {.core.}[T] = object
+  NimSeqPayload[T] = object
     cap: int
     region: Allocator
     data: UncheckedArray[T]
@@ -40,6 +40,7 @@ proc `=destroy`[T](s: var seq[T]) =
   var x = cast[ptr NimSeqV2[T]](addr s)
   var p = x.p
   if p != nil:
+    mixin `=destroy`
     when not supportsCopyMem(T):
       for i in 0..<x.len: `=destroy`(p.data[i])
     p.region.dealloc(p.region, p, payloadSize(p.cap))
@@ -47,11 +48,12 @@ proc `=destroy`[T](s: var seq[T]) =
     x.len = 0
 
 proc `=`[T](x: var seq[T]; y: seq[T]) =
+  mixin `=destroy`
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
 
   if a.p == b.p: return
-  `=destroy`(a)
+  `=destroy`(x)
   a.len = b.len
   if b.p != nil:
     a.p = cast[type(a.p)](alloc(payloadSize(a.len)))
@@ -63,10 +65,11 @@ proc `=`[T](x: var seq[T]; y: seq[T]) =
         a.p.data[i] = b.p.data[i]
 
 proc `=sink`[T](x: var seq[T]; y: seq[T]) =
+  mixin `=destroy`
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
   if a.p != nil and a.p != b.p:
-    `=destroy`(a)
+    `=destroy`(x)
   a.len = b.len
   a.p = b.p
 
@@ -109,6 +112,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
       result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
+  mixin `=destroy`
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
   when not supportsCopyMem(T):
     for i in countdown(x.len - 1, newLen - 1):

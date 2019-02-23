@@ -17,6 +17,7 @@
 ## ``http://google.com``:
 ##
 ## .. code-block:: Nim
+##   import httpClient
 ##   var client = newHttpClient()
 ##   echo client.getContent("http://google.com")
 ##
@@ -24,6 +25,7 @@
 ## ``AsyncHttpClient``:
 ##
 ## .. code-block:: Nim
+##   import httpClient
 ##   var client = newAsyncHttpClient()
 ##   echo await client.getContent("http://google.com")
 ##
@@ -549,7 +551,7 @@ type
     headers*: HttpHeaders ## Headers to send in requests.
     maxRedirects: int
     userAgent: string
-    timeout: int ## Only used for blocking HttpClient for now.
+    timeout*: int ## Only used for blocking HttpClient for now.
     proxy: Proxy
     ## ``nil`` or the callback to call when request progress changes.
     when SocketType is Socket:

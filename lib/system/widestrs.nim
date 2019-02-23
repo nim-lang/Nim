@@ -10,8 +10,8 @@
 # Nim support for C/C++'s `wide strings`:idx:. This is part of the system
 # module! Do not import it directly!
 
-when not declared(ThisIsSystem):
-  {.error: "You must not import this module explicitly".}
+#when not declared(ThisIsSystem):
+#  {.error: "You must not import this module explicitly".}
 
 type
   Utf16Char* = distinct int16

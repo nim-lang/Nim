@@ -460,7 +460,7 @@ proc binaryStmtAddr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   if d.k != locNone: internalError(p.config, e.info, "binaryStmtAddr")
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  lineCg(p, cpsStmts, frmt, addrLoc(p.config, a), rdLoc(b))
+  lineCg(p, cpsStmts, frmt, byRefLoc(p, a), rdLoc(b))
 
 proc unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -679,14 +679,14 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     #if e[0].kind != nkBracketExpr:
     #  message(e.info, warnUser, "CAME HERE " & renderTree(e))
     expr(p, e.sons[0], d)
-    if e.sons[0].typ.skipTypes(abstractInst).kind == tyRef:
+    if e.sons[0].typ.skipTypes(abstractInstOwned).kind == tyRef:
       d.storage = OnHeap
   else:
     var a: TLoc
     var typ = e.sons[0].typ
     if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
       typ = typ.lastSon
-    typ = typ.skipTypes(abstractInst)
+    typ = typ.skipTypes(abstractInstOwned)
     if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
       initLocExprSingleUse(p, e[0][0], d)
       return
@@ -726,7 +726,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
-  if e.sons[0].typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+  if e.sons[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
     var a: TLoc
     initLocExpr(p, e.sons[0], a)
     putIntoDest(p, d, e, "&" & a.r, a.storage)
@@ -1028,7 +1028,7 @@ proc gcUsage(conf: ConfigRef; n: PNode) =
 
 proc strLoc(p: BProc; d: TLoc): Rope =
   if p.config.selectedGc == gcDestructors:
-    result = addrLoc(p.config, d)
+    result = byRefLoc(p, d)
   else:
     result = rdLoc(d)
 
@@ -1110,7 +1110,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
                         strLoc(p, dest), rdLoc(a)))
   if p.config.selectedGC == gcDestructors:
     linefmt(p, cpsStmts, "#prepareAdd($1, $2$3);$n",
-            addrLoc(p.config, dest), lens, rope(L))
+            byRefLoc(p, dest), lens, rope(L))
   else:
     initLoc(call, locCall, e, OnHeap)
     call.r = ropecg(p.module, "#resizeString($1, $2$3)", [rdLoc(dest), lens, rope(L)])
@@ -1123,7 +1123,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
   let seqAppendPattern = if not p.module.compileToCpp:
-                           "($2) #incrSeqV3(&($1)->Sup, $3)"
+                           "($2) #incrSeqV3((TGenericSeq*)($1), $3)"
                          else:
                            "($2) #incrSeqV3($1, $3)"
   var a, b, dest, tmpL, call: TLoc
@@ -1158,7 +1158,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   let typ = a.t
   var b: TLoc
   initLoc(b, locExpr, a.lode, OnHeap)
-  let refType = typ.skipTypes(abstractInst)
+  let refType = typ.skipTypes(abstractInstOwned)
   assert refType.kind == tyRef
   let bt = refType.lastSon
   if sizeExpr.isNil:
@@ -1997,6 +1997,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSizeOf:
     let t = e.sons[1].typ.skipTypes({tyTypeDesc})
     putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])
+  of mAlignOf:
+    let t = e.sons[1].typ.skipTypes({tyTypeDesc})
+    if not p.module.compileToCpp:
+      p.module.includeHeader("<stdalign.h>")
+    putIntoDest(p, d, e, "((NI)alignof($1))" % [getTypeDesc(p.module, t)])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -2602,6 +2607,23 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
 
   result = "(($1)&$2)" % [getTypeDesc(p.module, t), result]
 
+proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
+  var data = rope"{"
+  for i in countup(0, n.len - 1):
+    if i > 0: data.addf(",$n", [])
+    data.add genConstExpr(p, n.sons[i])
+  data.add("}")
+
+  let payload = getTempName(p.module)
+  let base = t.skipTypes(abstractInst).sons[0]
+
+  appcg(p.module, cfsData,
+    "static const struct {$n" &
+    "  NI cap; void* allocator; $1 data[$2];$n" &
+    "} $3 = {$2, NIM_NIL, $4};$n", [
+    getTypeDesc(p.module, base), rope(len(n)), payload, data])
+  result = "{$1, ($2*)&$3}" % [rope(len(n)), getSeqPayloadType(p.module, t), payload]
+
 proc genConstExpr(p: BProc, n: PNode): Rope =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
@@ -2613,7 +2635,10 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkBracket, nkPar, nkTupleConstr, nkClosure:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
-      result = genConstSeq(p, n, n.typ)
+      if p.config.selectedGc == gcDestructors:
+        result = genConstSeqV2(p, n, n.typ)
+      else:
+        result = genConstSeq(p, n, n.typ)
     elif t.kind == tyProc and t.callConv == ccClosure and n.len > 1 and
          n.sons[1].kind == nkNilLit:
       # Conversion: nimcall -> closure.

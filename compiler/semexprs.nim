@@ -15,7 +15,7 @@ const
   errXExpectsTypeOrValue = "'$1' expects a type or value"
   errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"
   errXStackEscape = "address of '$1' may not escape its stack frame"
-  errExprHasNoAddress = "expression has no address; maybe use 'unsafeAddr'"
+  errExprHasNoAddress = "expression has no address"
   errCannotInterpretNodeX = "cannot evaluate '$1'"
   errNamedExprExpected = "named expression expected"
   errNamedExprNotAllowed = "named expression not allowed here"
@@ -39,13 +39,14 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
+template rejectEmptyNode(n: PNode) =
+  # No matter what a nkEmpty node is not what we want here
+  if n.kind == nkEmpty: illFormedAst(n, c.config)
+
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  rejectEmptyNode(n)
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
-  #if result.kind == nkEmpty and result.typ.isNil:
-    # do not produce another redundant error message:
-    #raiseRecoverableError("")
-  #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
@@ -59,10 +60,10 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
-  if result.isNil or result.kind == nkEmpty:
+  if result.kind == nkEmpty:
     # do not produce another redundant error message:
-    #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
@@ -72,7 +73,8 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  result = semExpr(c, n, flags)
+  rejectEmptyNode(n)
+  result = semExpr(c, n, flags+{efWantValue})
   if result.kind == nkEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
@@ -125,7 +127,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     s = s.lastSon
   s = skipTypes(s, abstractVar-{tyTypeDesc})
   var pointers = 0
-  while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
+  while (d != nil) and (d.kind in {tyPtr, tyRef, tyOwned}) and (d.kind == s.kind):
     d = d.lastSon
     s = s.lastSon
     inc pointers
@@ -222,7 +224,7 @@ proc semConv(c: PContext, n: PNode): PNode =
 
   maybeLiftType(targetType, c, n[0].info)
 
-  if targetType.kind in {tySink, tyLent}:
+  if targetType.kind in {tySink, tyLent, tyOwned}:
     let baseType = semTypeNode(c, n.sons[1], nil).skipTypes({tyTypeDesc})
     let t = newTypeS(targetType.kind, c)
     t.rawAddSonNoPropagationOfTypeFlags baseType
@@ -995,7 +997,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
 
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
-  tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink}
+  tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
@@ -1148,7 +1150,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       p = p.next
     if p != nil and p.selfSym != nil:
       var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef,
-                                         tyAlias, tySink})
+                                         tyAlias, tySink, tyOwned})
       while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
       var check: PNode = nil
       if ty.kind == tyObject:
@@ -1280,7 +1282,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     return nil
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
-  ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+  ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
@@ -1351,7 +1353,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n.sons[0] = semExprWithType(c, n.sons[0])
   result = n
-  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
   of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
@@ -1370,7 +1372,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # make sure we don't evaluate generic macros/templates
   n.sons[0] = semExprWithType(c, n.sons[0],
                               {efNoEvaluateGeneric})
-  var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyUserTypeClassInst,
+  var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
     if arr.base.kind == tyNone:

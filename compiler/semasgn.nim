@@ -269,9 +269,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
+     tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink, tyOwned:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyOptAsRef: internalError(c.graph.config, "liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)
@@ -316,6 +315,11 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
   if typ.kind == tyDistinct:
     return liftBodyDistinctType(g, typ, kind, info)
+  when false:
+    var typ = typ
+    if c.config.selectedGC == gcDestructors and typ.kind == tySequence:
+      # use the canonical type to access the =sink and =destroy etc.
+      typ = c.graph.sysTypes[tySequence]
 
   var a: TLiftCtx
   a.info = info

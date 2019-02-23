@@ -139,7 +139,7 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
     of def:
       if c.g[pc].sym == s:
         # the path lead to a redefinition of 's' --> abandon it.
-        return pc
+        return high(int)
       inc pc
     of use:
       if c.g[pc].sym == s:
@@ -150,14 +150,16 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
-      let variantA = isLastRead(s, c, pc+1, pc)
+      var variantA = isLastRead(s, c, pc+1, pc)
       if variantA < 0: return -1
       let variantB = isLastRead(s, c, pc + c.g[pc].dest, pc)
       if variantB < 0: return -1
-      pc = variantA+1
+      elif variantA == high(int):
+        variantA = variantB
+      pc = variantA
     of InstrKind.join:
       let dest = pc + c.g[pc].dest
-      if dest == comesFrom: return pc
+      if dest == comesFrom: return pc + 1
       inc pc
   return pc
 
@@ -242,7 +244,10 @@ proc patchHead(n: PNode) =
 
 proc patchHead(s: PSym) =
   if sfFromGeneric in s.flags:
-    patchHead(s.ast[bodyPos])
+    # do not patch the builtin type bound operators for seqs:
+    let dest = s.typ.sons[1].skipTypes(abstractVar)
+    if dest.kind != tySequence:
+      patchHead(s.ast[bodyPos])
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
@@ -265,7 +270,8 @@ template genOp(opr, opname, ri) =
     globalError(c.graph.config, dest.info, "internal error: '" & opname &
       "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
-    globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
+    globalError(c.graph.config, dest.info, "internal error: '" & opname &
+      "' operator is generic")
   patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
@@ -273,6 +279,12 @@ template genOp(opr, opname, ri) =
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
+  when false:
+    if t.kind != tyString:
+      echo "this one ", c.graph.config$dest.info, " for ", typeToString(t, preferDesc)
+      debug t.sink.typ.sons[2]
+      echo t.sink.id, " owner ", t.id
+      quit 1
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(if t.sink != nil: t.sink else: t.assignment, "=sink", ri)
 
@@ -589,6 +601,12 @@ proc p(n: PNode; c: var Con): PNode =
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     result = n
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    result = copyNode(n)
+    # Destination type
+    result.add n[0]
+    # Analyse the inner expression
+    result.add p(n[1], c)
   else:
     result = copyNode(n)
     recurse(n, result)
@@ -614,7 +632,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     let params = owner.typ.n
     for i in 1 ..< params.len:
       let param = params[i].sym
-      if param.typ.kind == tySink and hasDestructor(param.typ):
+      if param.typ.kind == tySink and hasDestructor(param.typ.sons[0]):
         c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
   let body = p(n, c)

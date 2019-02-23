@@ -188,7 +188,7 @@ proc sumGeneric(t: PType): int =
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
-        tyLent:
+        tyLent, tyOwned:
       t = t.lastSon
       inc result
     of tyOr:
@@ -476,7 +476,7 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
       inc ptrs
       skipped = skippedPtr
       r = r.lastSon
-    of tyGenericBody, tyGenericInst, tyAlias, tySink:
+    of tyGenericBody, tyGenericInst, tyAlias, tySink, tyOwned:
       r = r.lastSon
     else:
       break
@@ -919,7 +919,8 @@ proc inferStaticsInRange(c: var TCandidate,
     doInferStatic(lowerBound, upperBound.intVal + 1 - lengthOrd(c.c.config, concrete))
 
 template subtypeCheck() =
-  if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent}:
+  if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {
+      tyRef, tyPtr, tyVar, tyLent, tyOwned}:
     result = isNone
 
 proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
@@ -927,11 +928,11 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
   assert f.kind == a.kind
 
   template baseTypesCheck(lhs, rhs: PType): bool =
-    lhs.kind notin {tyPtr, tyRef, tyVar, tyLent} and
+    lhs.kind notin {tyPtr, tyRef, tyVar, tyLent, tyOwned} and
       typeRel(c, lhs, rhs, {trNoCovariance}) == isSubtype
 
   case f.kind
-  of tyRef, tyPtr:
+  of tyRef, tyPtr, tyOwned:
     return baseTypesCheck(f.base, a.base)
   of tyGenericInst:
     let body = f.base
@@ -961,6 +962,9 @@ when false:
     of tyFloat32: greater({tyFloat64, tyFloat128})
     of tyFloat64: greater({tyFloat128})
     else: discard
+
+template skipOwned(a) =
+  if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
 
 proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                  flags: TTypeRelFlags = {}): TTypeRelation =
@@ -1279,6 +1283,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     #internalError("forward type in typeRel()")
     result = isNone
   of tyNil:
+    skipOwned(a)
     if a.kind == f.kind: result = isEqual
   of tyTuple:
     if a.kind == tyTuple: result = recordRel(c, f, a)
@@ -1298,7 +1303,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif c.coerceDistincts: result = typeRel(c, f.base, a)
     elif a.kind == tyNil and f.base.kind in NilableTypes:
-      result = f.allowsNil
+      result = f.allowsNil # XXX remove this typing rule, it is not in the spec
     elif c.coerceDistincts: result = typeRel(c, f.base, a)
   of tySet:
     if a.kind == tySet:
@@ -1309,6 +1314,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if result <= isConvertible:
           result = isNone     # BUGFIX!
   of tyPtr, tyRef:
+    skipOwned(a)
     if a.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if a.len < f.len: return isNone
@@ -1322,10 +1328,18 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     elif a.kind == tyNil: result = f.allowsNil
     else: discard
   of tyProc:
+    skipOwned(a)
     result = procTypeRel(c, f, a)
     if result != isNone and tfNotNil in f.flags and tfNotNil notin a.flags:
       result = isNilConversion
+  of tyOwned:
+    case a.kind
+    of tyOwned:
+      result = typeRel(c, lastSon(f), lastSon(a))
+    of tyNil: result = f.allowsNil
+    else: discard
   of tyPointer:
+    skipOwned(a)
     case a.kind
     of tyPointer:
       if tfNotNil in f.flags and tfNotNil notin a.flags:
@@ -1917,8 +1931,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     # this will be done earlier - we just have to
     # make sure that static types enter here
 
-    # XXX: weaken tyGenericParam and call it tyGenericPlaceholder
+    # Zahary: weaken tyGenericParam and call it tyGenericPlaceholder
     # and finally start using tyTypedesc for generic types properly.
+    # Araq: This would only shift the problems around, in 'proc p[T](x: T)'
+    # the T is NOT a typedesc.
     if a.kind == tyGenericParam and tfWildcard in a.flags:
       a.assignType(f)
       # put(m.bindings, f, a)
@@ -2505,6 +2521,11 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
     if f.kind == tyVar: f = f.lastSon
+  #if c.config.selectedGC == gcDestructors and f.kind == tySequence:
+  # use the canonical type to access the =sink and =destroy etc.
+  #  f = c.graph.sysTypes[tySequence]
+  #echo "YUP_---------Formal ", typeToString(f, preferDesc), " real ", typeToString(t, preferDesc), " ", f.id, " ", t.id
+
   if typeRel(m, f, t) == isNone:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:

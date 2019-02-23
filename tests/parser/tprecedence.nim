@@ -40,3 +40,12 @@ proc getX(x: MyObject): lent MyField {.inline.} =
 
 let a = MyObject()
 echo a.getX.b.len
+
+
+# bug  #10458
+template t(x: untyped): untyped = "x"
+
+let
+  aaa = t 2 + 4
+  ccc = t (1, 1) + 6
+  ddd = t [0, 1, 2] + 5
