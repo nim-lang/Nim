@@ -2288,7 +2288,7 @@ A type ``a`` is **implicitly** convertible to type ``b`` iff the following
 algorithm returns true:
 
 .. code-block:: nim
-  # XXX range types?
+
   proc isImplicitlyConvertible(a, b: PType): bool =
     if isSubtype(a, b) or isCovariant(a, b):
       return true
@@ -2315,6 +2315,18 @@ algorithm returns true:
       result = b == pointer
     of string:
       result = b == cstring
+
+
+Implicit conversions are also performed for Nim's ``range`` type
+constructor.
+
+Let ``a0``, ``b0`` of type ``T``.
+
+Let ``A = range[a0..b0]`` be the argument's type, ``F`` the formal
+parameter's type. Then an implicit conversion from ``A`` to ``F``
+exists if ``a0 >= low(F) and b0 <= high(F)`` and both ``T`` and ``F``
+are signed integers or if both are unsigned integers.
+
 
 A type ``a`` is **explicitly** convertible to type ``b`` iff the following
 algorithm returns true:
