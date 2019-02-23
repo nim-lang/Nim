@@ -395,7 +395,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
     suggestOperations(c, n, field, typ, outputs)
   else:
     let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
     if typ.kind == tyObject:
       var t = typ
       while true:
