@@ -18,7 +18,7 @@ foo:102:103:104
 foo:0.03:asdf:103:105
 ret={s1:foobar s2:foobar age:25 pi:3.14}
 '''
-  disabled: "windows"
+  disabled: "true"
 """
 
 # re-enable for windows once libffi can be installed in koch.nim

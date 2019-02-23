@@ -469,9 +469,7 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  when not defined(windows):
-    # pending https://github.com/Araq/libffi/pull/2
-    # also, that PR works on win32 but not yet win64
+  when false:
     execFold("nimble install -y libffi", "nimble install -y libffi")
     kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
