@@ -901,8 +901,9 @@ proc callCCompiler*(conf: ConfigRef) =
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
         add(objfiles, ' ')
         add(objfiles, quoteShell(objFile))
-
-      linkCmd = getLinkCmd(conf, conf.prepareToWriteOutput, objfiles)
+      let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
+                       else: AbsoluteFile(conf.projectName)
+      linkCmd = getLinkCmd(conf, mainOutput, objfiles)
       if optCompileOnly notin conf.globalOptions:
         if defined(windows) and linkCmd.len > 8_000:
           # Windows's command line limit is about 8K (don't laugh...) so C compilers on
