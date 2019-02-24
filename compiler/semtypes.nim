@@ -80,51 +80,54 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   if isPure: initStrTable(symbols)
   var hasNull = false
   for i in countup(1, sonsLen(n) - 1):
-    if n.sons[i].kind == nkEmpty: continue
-    case n.sons[i].kind
+    let it = n[i]
+    case it.kind
+    of nkEmpty: continue
     of nkEnumFieldDef:
-      if n.sons[i].sons[0].kind == nkPragmaExpr:
-        e = newSymS(skEnumField, n.sons[i].sons[0].sons[0], c)
-        pragma(c, e, n.sons[i].sons[0].sons[1], enumFieldPragmas)
-      else:
-        e = newSymS(skEnumField, n.sons[i].sons[0], c)
-      var v = semConstExpr(c, n.sons[i].sons[1])
-      var strVal: PNode = nil
-      case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
-      of tyTuple:
-        if sonsLen(v) == 2:
-          strVal = v.sons[1] # second tuple part is the string value
-          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
-            if not isOrdinalType(v.sons[0].typ, allowEnumWithHoles=true):
-              localError(c.config, v.sons[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v.sons[0].typ, preferDesc))
-            x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
+      let it0 = it[0]
+      if it0.kind != nkExportDoc: illFormedAst(it0, c.config)
+      e = newSymS(skEnumField, it0[0], c)
+      if it.len == 3:
+        pragma(c, e, it[2], enumFieldPragmas)
+
+      if it[1].kind != nkEmpty:
+        var v = semConstExpr(c, it[1])
+        var strVal: PNode = nil
+        case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
+        of tyTuple:
+          if sonsLen(v) == 2:
+            strVal = v.sons[1] # second tuple part is the string value
+            if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
+              if not isOrdinalType(v.sons[0].typ, allowEnumWithHoles=true):
+                localError(c.config, v.sons[0].info, errOrdinalTypeExpected & "; given: " &
+                    typeToString(v.sons[0].typ, preferDesc))
+              x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
+            else:
+              localError(c.config, strVal.info, errStringLiteralExpected)
           else:
-            localError(c.config, strVal.info, errStringLiteralExpected)
-        else:
-          localError(c.config, v.info, errWrongNumberOfVariables)
-      of tyString, tyCString:
-        strVal = v
-        x = counter
-      else:
-        if not isOrdinalType(v.typ, allowEnumWithHoles=true):
-          localError(c.config, v.info, errOrdinalTypeExpected & "; given: " & typeToString(v.typ, preferDesc))
-        x = getOrdValue(v)
-      if i != 1:
-        if x != counter: incl(result.flags, tfEnumHasHoles)
-        if x < counter:
-          localError(c.config, n.sons[i].info, errInvalidOrderInEnumX % e.name.s)
+            localError(c.config, v.info, errWrongNumberOfVariables)
+        of tyString, tyCString:
+          strVal = v
           x = counter
-      e.ast = strVal # might be nil
-      counter = x
+        else:
+          if not isOrdinalType(v.typ, allowEnumWithHoles=true):
+            localError(c.config, v.info, errOrdinalTypeExpected & "; given: " &
+                typeToString(v.typ, preferDesc))
+          x = getOrdValue(v)
+        if i != 1:
+          if x != counter: incl(result.flags, tfEnumHasHoles)
+          if x < counter:
+            echo "of fuck you ", counter, " ", x
+            localError(c.config, it.info, errInvalidOrderInEnumX % e.name.s)
+            x = counter
+        e.ast = strVal # might be nil
+        counter = x
     of nkSym:
-      e = n.sons[i].sym
+      e = it.sym
     of nkExportDoc:
-      e = newSymS(skEnumField, n[i][0], c)
+      e = newSymS(skEnumField, it[0], c)
     of nkIdent, nkAccQuoted:
-      e = newSymS(skEnumField, n.sons[i], c)
-    of nkPragmaExpr:
-      e = newSymS(skEnumField, n.sons[i].sons[0], c)
-      pragma(c, e, n.sons[i].sons[1], enumFieldPragmas)
+      e = newSymS(skEnumField, it, c)
     else:
       illFormedAst(n[i], c.config)
     e.typ = result

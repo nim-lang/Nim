@@ -1802,37 +1802,32 @@ proc parseEnum(p: var TParser; typename: PNode): PNode =
     var a = parseSymbol(p)
     if a.kind == nkEmpty: return
 
-    var symPragma = a
-    var pragma: PNode
+    var pragma: PNode = nil
     if p.tok.tokType == tkCurlyDotLe:
       pragma = optPragmas(p)
-      symPragma = newNodeP(nkPragmaExpr, p)
-      addSon(symPragma, a)
-      addSon(symPragma, pragma)
 
     var edef = newNodeP(nkExportDoc, p)
-    edef.add symPragma
+    edef.add a
     edef.add newNodeP(nkEmpty, p)
     edef.add newNodeP(nkEmpty, p)
 
-    if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
-      add(result, edef)
-      break
+    let ed = newNodeP(nkEnumFieldDef, p)
+    addSon(ed, edef)
 
     if p.tok.tokType == tkEquals and p.tok.indent < 0:
       getTok(p)
-      optInd(p, symPragma)
-      var b = symPragma
-      symPragma = newNodeP(nkEnumFieldDef, p)
-      addSon(symPragma, b)
-      addSon(symPragma, parseExpr(p))
+      optInd(p, edef)
+      addSon(ed, parseExpr(p))
+    else:
+      addSon(ed, p.emptyNode)
+    if pragma != nil: addSon(ed, pragma)
     if p.tok.tokType == tkComma and p.tok.indent < 0:
       getTok(p)
       docComment(p, edef)
     else:
       if p.tok.indent < 0 or p.tok.indent >= p.currInd:
         docComment(p, edef)
-    addSon(result, edef)
+    result.add ed
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd or
         p.tok.tokType == tkEof:
       break
