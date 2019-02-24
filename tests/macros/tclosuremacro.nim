@@ -13,7 +13,7 @@ yes
 '''
 """
 
-import future, macros
+import sugar, macros
 
 proc twoParams(x: (int, int) -> int): int =
   result = x(5, 5)

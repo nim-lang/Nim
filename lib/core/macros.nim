@@ -1200,9 +1200,7 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = node.basename.strVal & "*"
   of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkSym, nnkIdent:
     result = node.strVal
-  of nnkOpenSymChoice, nnkClosedSymChoice:
-    result = $node[0]
-  of nnkAccQuoted:
+  of nnkOpenSymChoice, nnkClosedSymChoice, nnkAccQuoted, nnkExportDoc:
     result = $node[0]
   else:
     badNodeKind node, "$"

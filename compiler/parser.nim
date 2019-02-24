@@ -1186,7 +1186,7 @@ proc parseFor(p: var TParser): PNode =
   if p.tok.tokType == tkParLe:
     addSon(result, parseVarTuple(p))
   else:
-    var a = identWithPragma(p)
+    var a = identWithPragma(p, {})
     addSon(result, a)
     while p.tok.tokType == tkComma:
       getTok(p)
@@ -1194,7 +1194,7 @@ proc parseFor(p: var TParser): PNode =
       if p.tok.tokType == tkParLe:
         addSon(result, parseVarTuple(p))
         break
-      a = identWithPragma(p)
+      a = identWithPragma(p, {})
       addSon(result, a)
   eat(p, tkIn)
   addSon(result, parseExpr(p))
@@ -1875,11 +1875,13 @@ proc parseObjectCase(p: var TParser): PNode =
   #|             | IND{=} objectBranches)
   result = newNodeP(nkRecCase, p)
   getTokNoInd(p)
+  #var a = parseIdentColonEquals(p, {withPragma, withExportDoc})
   var a = newNodeP(nkIdentDefs, p)
   addSon(a, identWithPragma(p, {withExportDoc}))
   eat(p, tkColon)
   addSon(a, parseTypeDesc(p))
   addSon(a, p.emptyNode)
+  docComment(p, a[0])
   addSon(result, a)
   if p.tok.tokType == tkColon: getTok(p)
   var wasIndented = false
