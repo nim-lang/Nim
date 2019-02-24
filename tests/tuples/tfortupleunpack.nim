@@ -8,6 +8,7 @@ output: '''
 113283
 @[(88, 99, 11), (88, 99, 11)]
 @[(7, 6, -28), (7, 6, -28)]
+12
 '''
 """
 
@@ -36,4 +37,7 @@ for i, (a, b, c) in x.mpairs:
   c = -28
 echo x
 
-
+proc test[n]() =
+  for (a,b) in @[(1,2)]:
+    echo a,b
+test[string]()

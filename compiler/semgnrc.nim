@@ -352,7 +352,12 @@ proc semGenericStmt(c: PContext, n: PNode,
     openScope(c)
     n.sons[L - 2] = semGenericStmt(c, n.sons[L-2], flags, ctx)
     for i in countup(0, L - 3):
-      addTempDecl(c, n.sons[i], skForVar)
+      if (n.sons[i].kind == nkVarTuple):
+        for s in n.sons[i]:
+          if (s.kind == nkIdent):
+            addTempDecl(c,s,skForVar)
+      else:
+        addTempDecl(c, n.sons[i], skForVar)
     openScope(c)
     n.sons[L - 1] = semGenericStmt(c, n.sons[L-1], flags, ctx)
     closeScope(c)
