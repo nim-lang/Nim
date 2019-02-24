@@ -356,7 +356,7 @@ proc buildDocs*(args: string) =
   let
     a = nimArgs & " " & args
     docHackJs = "dochack.js"
-    docHackJsSource = docHackDir / "nimcache" / docHackJs
+    docHackJsSource = docHackDir / docHackJs
     docHackJsDest = docHtmlOutput / docHackJs
   buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
