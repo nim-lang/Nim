@@ -588,3 +588,12 @@ suite "ttimes":
       let y = initDateTime(10, mMar, 1995, 00, 00, 00, utc())
       doAssert x + between(x, y) == y
       doAssert between(x, y) == 1.months + 1.weeks
+
+  test "inX procs":
+    doAssert initDuration(seconds = 1).inSeconds == 1
+    doAssert initDuration(seconds = -1).inSeconds == -1
+    doAssert initDuration(seconds = -1, nanoseconds = 1).inSeconds == 0
+    doAssert initDuration(nanoseconds = -1).inSeconds == 0
+    doAssert initDuration(milliseconds = 500).inMilliseconds == 500
+    doAssert initDuration(milliseconds = -500).inMilliseconds == -500
+    doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999

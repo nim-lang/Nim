@@ -124,7 +124,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
     for i in 0..(mt.size div mt.base.size)-1:
       genericDeepCopyAux(cast[pointer](d +% i *% mt.base.size),
                          cast[pointer](s +% i *% mt.base.size), mt.base, tab)
-  of tyRef, tyOptAsRef:
+  of tyRef:
     let s2 = cast[PPointer](src)[]
     if s2 == nil:
       unsureAsgnRef(cast[PPointer](dest), s2)

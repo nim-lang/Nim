@@ -9,7 +9,7 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-var compilerPrefix* = "compiler" / "nim"  # XXX Change this, it's wrong.
+var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
@@ -206,6 +206,9 @@ proc parseSpec*(filename: string): TSpec =
           if isTravis: result.err = reDisabled
         of "appveyor":
           if isAppVeyor: result.err = reDisabled
+        of "32bit":
+          if sizeof(int) == 4:
+            result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":

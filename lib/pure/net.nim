@@ -755,21 +755,20 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   ## Binds ``address``:``port`` to the socket.
   ##
   ## If ``address`` is "" then ADDR_ANY will be bound.
+  var realaddr = address
+  if realaddr == "":
+    case socket.domain
+    of AF_INET6: realaddr = "::"
+    of AF_INET:  realaddr = "0.0.0.0"
+    else:
+      raise newException(ValueError,
+        "Unknown socket address family and no address specified to bindAddr")
 
-  if address == "":
-    var name: Sockaddr_in
-    name.sin_family = toInt(AF_INET).uint16
-    name.sin_port = htons(port.uint16)
-    name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
-                  sizeof(name).SockLen) < 0'i32:
-      raiseOSError(osLastError())
-  else:
-    var aiList = getAddrInfo(address, port, socket.domain)
-    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-      freeAddrInfo(aiList)
-      raiseOSError(osLastError())
+  var aiList = getAddrInfo(realaddr, port, socket.domain)
+  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
     freeAddrInfo(aiList)
+    raiseOSError(osLastError())
+  freeAddrInfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var Socket, address: var string,
                  flags = {SocketFlag.SafeDisconn}) {.

@@ -300,7 +300,6 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
-  const eqFlags = eqTypeFlags + {tfGcSafe}
   var body = t.sons[0]
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
@@ -311,7 +310,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     result = searchInstTypes(t)
 
-  if result != nil and eqFlags*result.flags == eqFlags*t.flags:
+  if result != nil and sameFlags(result, t):
     when defined(reportCacheHits):
       echo "Generic instantiation cached ", typeToString(result), " for ", typeToString(t)
     return
@@ -329,7 +328,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
-    if result != nil and eqFlags*result.flags == eqFlags*t.flags:
+    if result != nil and sameFlags(result, t):
       when defined(reportCacheHits):
         echo "Generic instantiation cached ", typeToString(result), " for ",
           typeToString(t), " header ", typeToString(header)
@@ -575,7 +574,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
-            let r2 = r.skipTypes({tyAlias, tySink})
+            let r2 = r.skipTypes({tyAlias, tySink, tyOwned})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
           result.sons[i] = r

@@ -16,7 +16,7 @@ import
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf
 
-import system/helpers2
+import system/indexerrors
 
 when not defined(leanCompiler):
   import semparallel
@@ -316,7 +316,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
-  if not isComplexValueType(typ):
+  if p.config.selectedGc == gcDestructors and typ.kind in {tyString, tySequence}:
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", rdLoc(loc))
+  elif not isComplexValueType(typ):
     if containsGcRef:
       var nilLoc: TLoc
       initLoc(nilLoc, locTemp, loc.lode, OnStack)

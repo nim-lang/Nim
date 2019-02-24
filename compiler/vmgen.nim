@@ -83,9 +83,12 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     elif opc < firstABxInstr:
       result.addf("\t$#\tr$#, r$#, r$#", opc.toStr, x.regA,
                   x.regB, x.regC)
-    elif opc in relativeJumps:
+    elif opc in relativeJumps + {opcTry}:
       result.addf("\t$#\tr$#, L$#", opc.toStr, x.regA,
                   i+x.regBx-wordExcess)
+    elif opc in {opcExcept}:
+      let idx = x.regBx-wordExcess
+      result.addf("\t$#\t$#, $#", opc.toStr, x.regA, $idx)
     elif opc in {opcLdConst, opcAsgnConst}:
       let idx = x.regBx-wordExcess
       result.addf("\t$#\tr$#, $# ($#)", opc.toStr, x.regA,
@@ -226,7 +229,9 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}: c.slots[r].inUse = false
+  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}:
+    # this seems to cause https://github.com/nim-lang/Nim/issues/10647
+    c.slots[r].inUse = false
 
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
@@ -480,10 +485,13 @@ proc genType(c: PCtx; typ: PType): int =
 proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
-  let elsePos = c.xjmp(n, opcTry, 0)
+  let ehPos = c.xjmp(n, opcTry, 0)
   c.gen(n.sons[0], dest)
   c.clearDest(n, dest)
-  c.patch(elsePos)
+  # Add a jump past the exception handling code
+  endings.add(c.xjmp(n, opcJmp, 0))
+  # This signals where the body ends and where the exception handling begins
+  c.patch(ehPos)
   for i in 1 ..< n.len:
     let it = n.sons[i]
     if it.kind != nkFinally:
@@ -499,14 +507,14 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
         c.gABx(it, opcExcept, 0, 0)
       c.gen(it.lastSon, dest)
       c.clearDest(n, dest)
-      if i < sonsLen(n)-1:
+      if i < sonsLen(n):
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
-  for endPos in endings: c.patch(endPos)
   let fin = lastSon(n)
   # we always generate an 'opcFinally' as that pops the safepoint
-  # from the stack
+  # from the stack if no exception is raised in the body.
   c.gABx(fin, opcFinally, 0, 0)
+  for endPos in endings: c.patch(endPos)
   if fin.kind == nkFinally:
     c.gen(fin.sons[0])
     c.clearDest(n, dest)
@@ -1329,7 +1337,7 @@ proc fitsRegister*(t: PType): bool =
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
 proc unneededIndirection(n: PNode): bool =
-  n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
+  n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 
 proc canElimAddr(n: PNode): PNode =
   case n.sons[0].kind
@@ -1389,7 +1397,7 @@ proc genDeref(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
       c.gABC(n, opcNodeToReg, dest, dest)
 
 proc whichAsgnOpc(n: PNode): TOpcode =
-  case n.typ.skipTypes(abstractRange-{tyTypeDesc}).kind
+  case n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     opcAsgnInt
   of tyString, tyCString:
@@ -1534,8 +1542,8 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
-    if allowFFI in c.features:
-      c.globals.add(importcSymbol(s))
+    if compiletimeFFI in c.config.features:
+      c.globals.add(importcSymbol(c.config, s))
       s.position = c.globals.len
     else:
       localError(c.config, info, "VM is not allowed to 'importc'")
@@ -1709,7 +1717,7 @@ proc getNullValueAux(obj: PNode, result: PNode; conf: ConfigRef) =
   else: globalError(conf, result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
-  var t = skipTypes(typ, abstractRange+{tyStatic}-{tyTypeDesc})
+  var t = skipTypes(typ, abstractRange+{tyStatic, tyOwned}-{tyTypeDesc})
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64:
     result = newNodeIT(nkIntLit, info, t)
@@ -1856,7 +1864,7 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  let t = n.typ.skipTypes(abstractRange-{tyTypeDesc})
+  let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
   if t.kind == tyRef:
     c.gABx(n, opcNew, dest, c.genType(t.sons[0]))
   else:
@@ -2214,9 +2222,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "calc":
-    #  echo renderTree(body)
-    #  c.echoCode(result)
+    # if s.name.s == "fun1":
+    #   echo renderTree(body)
+    #   c.echoCode(result)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset

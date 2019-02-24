@@ -46,7 +46,7 @@ and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
 
   arrayConstructor = '[' expr ^* ',' ']'
 
-Other parts of Nim, like scoping rules or runtime semantics, are 
+Other parts of Nim, like scoping rules or runtime semantics, are
 described informally.
 
 
@@ -724,7 +724,7 @@ expression:
 * built-in operators
 * previously declared constants and compile-time variables
 * previously declared macros and templates
-* previously declared procedures that have no side effects beyond 
+* previously declared procedures that have no side effects beyond
   possibly modifying compile-time variables
 
 A constant expression can contain code blocks that may internally use all Nim
@@ -2288,7 +2288,7 @@ A type ``a`` is **implicitly** convertible to type ``b`` iff the following
 algorithm returns true:
 
 .. code-block:: nim
-  # XXX range types?
+
   proc isImplicitlyConvertible(a, b: PType): bool =
     if isSubtype(a, b) or isCovariant(a, b):
       return true
@@ -2315,6 +2315,18 @@ algorithm returns true:
       result = b == pointer
     of string:
       result = b == cstring
+
+
+Implicit conversions are also performed for Nim's ``range`` type
+constructor.
+
+Let ``a0``, ``b0`` of type ``T``.
+
+Let ``A = range[a0..b0]`` be the argument's type, ``F`` the formal
+parameter's type. Then an implicit conversion from ``A`` to ``F``
+exists if ``a0 >= low(F) and b0 <= high(F)`` and both ``T`` and ``F``
+are signed integers or if both are unsigned integers.
+
 
 A type ``a`` is **explicitly** convertible to type ``b`` iff the following
 algorithm returns true:
@@ -2769,7 +2781,7 @@ Even some code that has side effects is permitted in a static block:
     echo "echo at compile time"
 
 There are limitations on what Nim code can be executed at compile time;
-see `Restrictions on Compile-Time Execution 
+see `Restrictions on Compile-Time Execution
 <#restrictions-on-compileminustime-execution>`_ for details.
 It's a static error if the compiler cannot execute the block at compile
 time.
@@ -2847,8 +2859,8 @@ empty ``discard`` statement should be used.
 For non ordinal types it is not possible to list every possible value and so
 these always require an ``else`` part.
 
-Because case statements are checked for exhaustiveness during semantic analysis, 
-the value in every ``of`` branch must be a constant expression. 
+Because case statements are checked for exhaustiveness during semantic analysis,
+the value in every ``of`` branch must be a constant expression.
 This restriction also allows the compiler to generate more performant code.
 
 As a special semantic extension, an expression in an ``of`` branch of a case
@@ -2907,7 +2919,7 @@ When nimvm statement
 --------------------
 
 ``nimvm`` is a special symbol, that may be used as expression of ``when nimvm``
-statement to differentiate execution path between compile time and the 
+statement to differentiate execution path between compile time and the
 executable.
 
 Example:
@@ -4459,8 +4471,8 @@ a `type variable`:idx:.
 Is operator
 -----------
 
-The ``is`` operator is evaluated during semantic analysis to check for type 
-equivalence. It is therefore very useful for type specialization within generic 
+The ``is`` operator is evaluated during semantic analysis to check for type
+equivalence. It is therefore very useful for type specialization within generic
 code:
 
 .. code-block:: nim
@@ -5460,18 +5472,18 @@ Macros
 A macro is a special function that is executed at compile time.
 Normally the input for a macro is an abstract syntax
 tree (AST) of the code that is passed to it. The macro can then do
-transformations on it and return the transformed AST. This can be used to 
+transformations on it and return the transformed AST. This can be used to
 add custom language features and implement `domain specific languages`:idx:.
 
 Macro invocation is a case where semantic analyis does **not** entirely proceed
-top to bottom and left to right. Instead, semantic analysis happens at least 
-twice: 
+top to bottom and left to right. Instead, semantic analysis happens at least
+twice:
 
 * Semantic analysis recognizes and resolves the macro invocation.
 * The compiler executes the macro body (which may invoke other procs).
 * It replaces the AST of the macro invocation with the AST returned by the macro.
 * It repeats semantic analysis of that region of the code.
-* If the AST returned by the macro contains other macro invocations, 
+* If the AST returned by the macro contains other macro invocations,
   this process iterates.
 
 While macros enable advanced compile-time code transformations, they
@@ -6653,6 +6665,13 @@ modules don't need to import a module's dependencies:
 When the exported symbol is another module, all of its definitions will
 be forwarded. You can use an ``except`` list to exclude some of the symbols.
 
+Notice that when exporting, you need to specify only the module name:
+
+.. code-block:: nim
+  import foo/bar/baz
+  export baz
+
+
 
 Scope rules
 -----------
@@ -7437,7 +7456,7 @@ compiler like you would using the commandline switch ``--passC``:
   {.passC: "-Wall -Werror".}
 
 Note that you can use ``gorge`` from the `system module <system.html>`_ to
-embed parameters from an external command that will be executed 
+embed parameters from an external command that will be executed
 during semantic analysis:
 
 .. code-block:: Nim
@@ -7452,7 +7471,7 @@ like you would using the commandline switch ``--passL``:
   {.passL: "-lSDLmain -lSDL".}
 
 Note that you can use ``gorge`` from the `system module <system.html>`_ to
-embed parameters from an external command that will be executed 
+embed parameters from an external command that will be executed
 during semantic analysis:
 
 .. code-block:: Nim

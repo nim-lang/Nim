@@ -186,9 +186,9 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)
-    #ctx.instLines = body.kind notin {nkStmtList, nkStmtListExpr,
-    #                                 nkBlockStmt, nkBlockExpr}
-    #if ctx.instLines: result.info = n.info
+    ctx.instLines = sfCallsite in tmpl.flags
+    if ctx.instLines:
+      result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
@@ -196,4 +196,3 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
-

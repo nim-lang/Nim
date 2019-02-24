@@ -194,14 +194,13 @@ proc mapType(typ: PType): TJSTypeKind =
      tyAnd, tyOr, tyNot, tyAnything, tyVoid:
     result = etyNone
   of tyGenericInst, tyInferred, tyAlias, tyUserTypeClass, tyUserTypeClassInst,
-     tySink:
+     tySink, tyOwned:
     result = mapType(typ.lastSon)
   of tyStatic:
     if t.n != nil: result = mapType(lastSon t)
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyOptAsRef: doAssert(false, "mapType")
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
@@ -519,6 +518,7 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
     r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
   else:
     r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
+  r.kind = resExpr
 
 proc ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   var x, y, z: TCompRes
@@ -927,7 +927,7 @@ proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
         ((mapType(y.typ) != etyBaseIndex or (y.kind == nkSym and y.sym.kind == skParam)) and
           (skipTypes(y.typ, abstractInst).kind in
-            {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc} + IntegralTypes))
+            {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc, tyOwned} + IntegralTypes))
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
@@ -1120,7 +1120,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-  if ty.kind in {tyRef, tyPtr, tyLent}: ty = skipTypes(ty.lastSon, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
   of tyArray, tyOpenArray, tySequence, tyString, tyCString, tyVarargs:
     genArrayAddr(p, n, r)
@@ -1149,7 +1149,7 @@ template isIndirect(x: PSym): bool =
   let v = x
   ({sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
-    {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
+    {sfImportc, sfExportc} * v.flags == {} and
     v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet})
 
@@ -1340,7 +1340,8 @@ proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int =
     add(r.res, ", ")
     add(r.res, a.res)
     if emitted != nil: inc emitted[]
-  elif n.typ.kind in {tyVar, tyPtr, tyRef, tyLent} and n.kind in nkCallKinds and mapType(param.typ) == etyBaseIndex:
+  elif n.typ.kind in {tyVar, tyPtr, tyRef, tyLent, tyOwned} and
+      n.kind in nkCallKinds and mapType(param.typ) == etyBaseIndex:
     # this fixes bug #5608:
     let tmp = getTemp(p)
     add(r.res, "($1 = $2, $1[0]), $1[1]" % [tmp, a.rdLoc])
@@ -1540,7 +1541,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("0", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
-  of tyRange, tyGenericInst, tyAlias, tySink:
+  of tyRange, tyGenericInst, tyAlias, tySink, tyOwned:
     result = createVar(p, lastSon(typ), indirect)
   of tySet:
     result = putToSeq("{}", indirect)
@@ -1597,8 +1598,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     internalError(p.config, "createVar: " & $t.kind)
     result = nil
 
-template returnType: untyped =
-  ~""
+template returnType: untyped = ~""
 
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
@@ -1620,7 +1620,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
 
   if n.kind == nkEmpty:
     if not isIndirect(v) and
-      v.typ.kind in {tyVar, tyPtr, tyLent, tyRef} and mapType(p, v.typ) == etyBaseIndex:
+      v.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and mapType(p, v.typ) == etyBaseIndex:
       lineF(p, "var $1 = null;$n", [varName])
       lineF(p, "var $1_Idx = 0;$n", [varName])
     else:
@@ -1808,7 +1808,8 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
-  let t = skipTypes(n.sons[2].typ, abstractVarRange+{tyRef, tyPtr, tyLent, tyTypeDesc})
+  let t = skipTypes(n.sons[2].typ,
+                    abstractVarRange+{tyRef, tyPtr, tyLent, tyTypeDesc, tyOwned})
   gen(p, n.sons[1], x)
   if tfFinal in t.flags:
     r.res = "($1.m_type == $2)" % [x.res, genTypeInfo(p, t)]
@@ -1913,13 +1914,13 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mHigh:
     unaryExpr(p, n, r, "", "($1 != null ? ($2.length-1) : -1)")
   of mInc:
-    if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
+    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "+", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)")
   of ast.mDec:
-    if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
+    if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "-", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
@@ -2173,7 +2174,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     resultSym = prc.ast.sons[resultPos].sym
     let mname = mangleName(p.module, resultSym)
     if not isindirect(resultSym) and
-      resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef} and
+      resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and
         mapType(p, resultSym.typ) == etyBaseIndex:
       resultAsgn = p.indentLine(("var $# = null;$n") % [mname])
       resultAsgn.add p.indentLine("var $#_Idx = 0;$n" % [mname])

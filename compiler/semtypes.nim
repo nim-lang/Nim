@@ -150,7 +150,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
-  if sonsLen(n) == 2:
+  if sonsLen(n) == 2 and n.sons[1].kind != nkEmpty:
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
@@ -188,39 +188,6 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % "varargs")
     addSonSkipIntLit(result, errorType(c))
-
-proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
-  if n.len < 1:
-    result = newConstraint(c, kind)
-  else:
-    let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
-    let n = if n[0].kind == nkBracket: n[0] else: n
-    checkMinSonsLen(n, 1, c.config)
-    var t = semTypeNode(c, n.lastSon, nil)
-    if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
-      t = t.base
-    if t.kind == tyVoid:
-      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
-      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
-    result = newOrPrevType(kind, prev, c)
-    var isNilable = false
-    # check every except the last is an object:
-    for i in isCall .. n.len-2:
-      let ni = n[i]
-      if ni.kind == nkNilLit:
-        isNilable = true
-      else:
-        let region = semTypeNode(c, ni, nil)
-        if region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
-              tyError, tyObject}:
-          message c.config, n[i].info, errGenerated, "region needs to be an object type"
-        else:
-          message(c.config, n.info, warnDeprecated, "region for pointer types is deprecated")
-        addSonSkipIntLit(result, region)
-    addSonSkipIntLit(result, t)
-    if tfPartial in result.flags:
-      if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
-    #if not isNilable: result.flags.incl tfNotNil
 
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 1:
@@ -629,6 +596,24 @@ proc toCover(c: PContext, t: PType): BiggestInt =
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
+
+proc formatMissingEnums(n: PNode): string =
+  var coveredCases = initIntSet()
+  for i in 1 ..< n.len:
+    let ofBranch = n[i]
+    for j in 0 ..< ofBranch.len - 1:
+      let child = ofBranch[j]
+      if child.kind == nkIntLit:
+        coveredCases.incl(child.intVal.int)
+      elif child.kind == nkRange:
+        for k in child[0].intVal.int .. child[1].intVal.int:
+          coveredCases.incl k
+  for child in n[0].typ.n.sons:
+    if child.sym.position notin coveredCases:
+      if result.len > 0:
+        result.add ", "
+      result.add child.sym.name.s
+
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
   var a = copyNode(n)
@@ -665,7 +650,11 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     delSon(b, sonsLen(b) - 1)
     semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != toCover(c, a.sons[0].typ):
-    localError(c.config, a.info, "not all cases are covered")
+    if a.sons[0].typ.kind == tyEnum:
+      localError(c.config, a.info, "not all cases are covered; missing: {$1}" %
+        formatMissingEnums(a))
+    else:
+      localError(c.config, a.info, "not all cases are covered")
   addSon(father, a)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
@@ -782,7 +771,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   result = t
   if result.kind == tyGenericInvocation:
     result = result.sons[0]
-  while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr, tyAlias, tySink}:
+  while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr, tyAlias, tySink, tyOwned}:
     result = lastSon(result)
 
 proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
@@ -792,7 +781,7 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
     addInheritedFields(c, check, pos, obj.sons[0].skipGenericInvocation)
   addInheritedFieldsAux(c, check, pos, obj.n)
 
-proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
+proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PType =
   if n.sonsLen == 0:
     return newConstraint(c, tyObject)
   var check = initIntSet()
@@ -824,6 +813,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, realBase)
+  if realBase == nil and isInheritable:
+    result.flags.incl tfInheritable
   if result.n.isNil:
     result.n = newNodeI(nkRecList, n.info)
   else:
@@ -837,6 +828,43 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     pragma(c, s, n.sons[0], typePragmas)
   if base == nil and tfInheritable notin result.flags:
     incl(result.flags, tfFinal)
+
+proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
+  if n.len < 1:
+    result = newConstraint(c, kind)
+  else:
+    let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
+    let n = if n[0].kind == nkBracket: n[0] else: n
+    checkMinSonsLen(n, 1, c.config)
+    let body = n.lastSon
+    var t = if prev != nil and body.kind == nkObjectTy and tfInheritable in prev.flags:
+              semObjectNode(c, body, nil, isInheritable=true)
+            else:
+              semTypeNode(c, body, nil)
+    if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
+      t = t.base
+    if t.kind == tyVoid:
+      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
+      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
+    result = newOrPrevType(kind, prev, c)
+    var isNilable = false
+    # check every except the last is an object:
+    for i in isCall .. n.len-2:
+      let ni = n[i]
+      if ni.kind == nkNilLit:
+        isNilable = true
+      else:
+        let region = semTypeNode(c, ni, nil)
+        if region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
+              tyError, tyObject}:
+          message c.config, n[i].info, errGenerated, "region needs to be an object type"
+        else:
+          message(c.config, n.info, warnDeprecated, "region for pointer types is deprecated")
+        addSonSkipIntLit(result, region)
+    addSonSkipIntLit(result, t)
+    if tfPartial in result.flags:
+      if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
+    #if not isNilable: result.flags.incl tfNotNil
 
 proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,
@@ -948,7 +976,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # disable the bindOnce behavior for the type class
       result = liftingWalk(paramType.base, true)
 
-  of tyAlias:
+  of tyAlias, tyOwned:
     result = liftingWalk(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
@@ -1521,7 +1549,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semRangeAux(c, n, prev)
     elif n[0].kind == nkNilLit and n.len == 2:
       result = semTypeNode(c, n.sons[1], prev)
-      if result.skipTypes({tyGenericInst, tyAlias, tySink}).kind in NilableTypes+GenericTypes:
+      if result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).kind in NilableTypes+GenericTypes:
         if tfNotNil in result.flags:
           result = freshType(result, prev)
           result.flags.excl(tfNotNil)
@@ -1549,7 +1577,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n.sons[1], prev)
-          if result.skipTypes({tyGenericInst, tyAlias, tySink}).kind in NilableTypes+GenericTypes+{tyForward} and
+          if result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).kind in NilableTypes+GenericTypes+{tyForward} and
               n.sons[2].kind == nkNilLit:
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)
@@ -1606,7 +1634,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         if result.len > 0:
           var base = result[0]
           if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
-          if base.kind != tyGenericParam:
+          if not containsGenericType(base):
+            # base.kind != tyGenericParam:
             c.typesWithOps.add((result, result))
       else:
         result = semContainer(c, n, tySequence, "seq", prev)
@@ -1704,7 +1733,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       if s.kind != skError: localError(c.config, n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
-  of nkObjectTy: result = semObjectNode(c, n, prev)
+  of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
   of nkTupleTy: result = semTuple(c, n, prev)
   of nkTupleClassTy: result = newConstraint(c, tyTuple)
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
@@ -1846,6 +1875,7 @@ proc processMagicType(c: PContext, m: PSym) =
     case m.name.s
     of "lent": setMagicType(c.config, m, tyLent, c.config.target.ptrSize)
     of "sink": setMagicType(c.config, m, tySink, szUncomputedSize)
+    of "owned": setMagicType(c.config, m, tyOwned, c.config.target.ptrSize)
     else: localError(c.config, m.info, errTypeExpected)
   else: localError(c.config, m.info, errTypeExpected)
 

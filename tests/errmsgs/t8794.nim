@@ -2,7 +2,7 @@ discard """
   cmd: "nim check $options $file"
   errormsg: ""
   nimout: '''
-t8794.nim(39, 27) Error: undeclared field: 'a3' for type m8794.Foo3[declared in m8794.nim(1, 6)]
+t8794.nim(39, 27) Error: undeclared field: 'a3' for type m8794.Foo3 [declared in m8794.nim(1, 6)]
 '''
 """
 

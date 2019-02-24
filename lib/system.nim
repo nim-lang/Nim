@@ -407,12 +407,11 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
   ## compiler.
-  result.a = a
-  result.b = b
+  result = HSlice[T, U](a: a, b: b)
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## unary `slice`:idx: operator that constructs an interval ``[default(int), b]``
-  result.b = b
+  result = HSlice[int, T](a: 0, b: b)
 
 when not defined(niminheritable):
   {.pragma: inheritable.}
@@ -904,37 +903,51 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # built-in operators
 
 when not defined(JS):
-  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
+  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
-  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
+  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
-    ## zero extends a smaller integer type to ``int64``. This treats `x` as
-    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect, deprecated.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
-  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
-  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 # integer calculations:
 proc `+`*(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
@@ -2546,7 +2559,10 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
-        result = cast[pointer](x)
+        when defined(gcDestructors):
+          result = cast[NimSeqV2[T]](x).p
+        else:
+          result = cast[pointer](x)
 
       if seqToPtr(x) == seqToPtr(y):
         return true
@@ -3001,6 +3017,9 @@ template newException*(exceptn: typedesc, message: string;
 when hostOS == "standalone":
   include "$projectpath/panicoverride"
 
+when not defined(js) and not defined(nimscript):
+  include "system/ansi_c"
+
 when not declared(sysFatal):
   {.push profiler: off.}
   when hostOS == "standalone":
@@ -3010,6 +3029,22 @@ when not declared(sysFatal):
     proc sysFatal(exceptn: typedesc, message, arg: string) {.inline.} =
       rawoutput(message)
       panic(arg)
+  elif defined(nimQuirky) and not defined(nimscript):
+    proc name(t: typedesc): string {.magic: "TypeTrait".}
+
+    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
+      var buf = newStringOfCap(200)
+      add(buf, "Error: unhandled exception: ")
+      add(buf, message)
+      add(buf, arg)
+      add(buf, " [")
+      add(buf, name exceptn)
+      add(buf, "]")
+      cstderr.rawWrite buf
+      quit 1
+
+    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
+      sysFatal(exceptn, message, "")
   else:
     proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
       var e: ref exceptn
@@ -3156,7 +3191,6 @@ when not defined(JS): #and not defined(nimscript):
       {.pop.}
 
   when not defined(nimscript):
-    include "system/ansi_c"
     include "system/memory"
 
     proc zeroMem(p: pointer, size: Natural) =
@@ -3349,7 +3383,7 @@ when not defined(JS): #and not defined(nimscript):
   when not defined(nimscript) and hasAlloc:
     when not defined(gcDestructors):
       include "system/assign"
-      include "system/repr"
+    include "system/repr"
 
   when hostOS != "standalone" and not defined(nimscript):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
@@ -3745,7 +3779,7 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
-    # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
+    # for stacktrace; fixes #8928; Note: `fullPaths = true` is correct
     # here, regardless of --excessiveStackTrace
     {.line: instantiationInfo(fullPaths = true).}:
       if not cond:
@@ -3859,7 +3893,7 @@ when false:
     macro payload: typed {.gensym.} = blk
     payload()
 
-when hasAlloc:
+when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## inserts `item` into `x` at position `i`.
     var xl = x.len
@@ -4165,26 +4199,6 @@ template doAssertRaises*(exception: typedesc, code: untyped): typed =
                   astToStr(code))
   if wrong:
     raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
-
-when defined(cpp) and appType != "lib" and
-    not defined(js) and not defined(nimscript) and
-    hostOS != "standalone" and not defined(noCppExceptions):
-  proc setTerminate(handler: proc() {.noconv.})
-    {.importc: "std::set_terminate", header: "<exception>".}
-  setTerminate proc() {.noconv.} =
-    # Remove ourself as a handler, reinstalling the default handler.
-    setTerminate(nil)
-
-    let ex = getCurrentException()
-    let trace = ex.getStackTrace()
-    when defined(genode):
-      # stderr not available by default, use the LOG session
-      echo trace & "Error: unhandled exception: " & ex.msg &
-                   " [" & $ex.name & "]\n"
-    else:
-      cstderr.rawWrite trace & "Error: unhandled exception: " & ex.msg &
-                   " [" & $ex.name & "]\n"
-    quit 1
 
 when not defined(js):
   proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.

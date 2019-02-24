@@ -471,7 +471,8 @@ proc getPackageDir(package: string): string =
   else:
     result = commandOutput[0].string
 
-iterator listPackages(filter: PackageFilter): tuple[name, url, cmd: string] =
+iterator listPackages(filter: PackageFilter):
+                      tuple[name, url, cmd: string, hasDeps: bool] =
   const defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
   for package in packageList.items:
@@ -482,12 +483,14 @@ iterator listPackages(filter: PackageFilter): tuple[name, url, cmd: string] =
         case filter
         of pfCoreOnly:
           if "nim-lang" in normalize(url):
-            yield (name, url, defaultCmd)
+            yield (name, url, defaultCmd, false)
         of pfExtraOnly:
-          for n, cmd, commit in important_packages.packages.items:
-            if name == n: yield (name, url, cmd)
+          for n, cmd, commit, hasDeps in important_packages.packages.items:
+            if name == n:
+              let cmd = if cmd.len == 0: defaultCmd else: cmd
+              yield (name, url, cmd, hasDeps)
         of pfAll:
-          yield (name, url, defaultCmd)
+          yield (name, url, defaultCmd, false)
 
 proc makeSupTest(test, options: string, cat: Category): TTest =
   result.cat = cat
@@ -506,32 +509,47 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
   let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
   var keepDir = false
+  var packagesDir = "pkgstemp"
   try:
-    for name, url, cmd in listPackages(filter):
+    for name, url, cmd, hasDep in listPackages(filter):
       var test = makeSupTest(url, "", cat)
-      let buildPath = "pkgstemp" / name
-      let installProcess = startProcess("git", "", ["clone", url, buildPath])
-      let installStatus = waitForExitEx(installProcess)
-      installProcess.close
-      if installStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "", reInstallFailed)
+      let buildPath = packagesDir / name
+      if not existsDir(buildPath):
+        if hasDep:
+          let nimbleProcess = startProcess("nimble", "", ["install", "-y", name],
+                                           options = {poUsePath, poStdErrToStdOut})
+          let nimbleStatus = waitForExitEx(nimbleProcess)
+          nimbleProcess.close
+          if nimbleStatus != QuitSuccess:
+            r.addResult(test, targetC, "", "", reInstallFailed)
+            keepDir = true
+            continue
+
+        let installProcess = startProcess("git", "", ["clone", url, buildPath],
+                                          options = {poUsePath, poStdErrToStdOut})
+        let installStatus = waitForExitEx(installProcess)
+        installProcess.close
+        if installStatus != QuitSuccess:
+          r.addResult(test, targetC, "", "", reInstallFailed)
+          keepDir = true
+          continue
+
+      let cmdArgs = parseCmdLine(cmd)
+      let buildProcess = startProcess(cmdArgs[0], buildPath, cmdArgs[1..^1],
+                                      options = {poUsePath, poStdErrToStdOut})
+      let buildStatus = waitForExitEx(buildProcess)
+      buildProcess.close
+      if buildStatus != QuitSuccess:
+        r.addResult(test, targetC, "", "", reBuildFailed)
         keepDir = true
       else:
-        let cmdArgs = parseCmdLine(cmd)
-        let buildProcess = startProcess(cmdArgs[0], buildPath, cmdArgs[1..^1])
-        let buildStatus = waitForExitEx(buildProcess)
-        buildProcess.close
-        if buildStatus != QuitSuccess:
-          r.addResult(test, targetC, "", "", reBuildFailed)
-          keepDir = true
-        else:
-          r.addResult(test, targetC, "", "", reSuccess)
+        r.addResult(test, targetC, "", "", reSuccess)
     r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
     r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
   finally:
-    if not keepDir: removeDir("pkgstemp")
+    if not keepDir: removeDir(packagesDir)
 
 
 # ----------------------------------------------------------------------------

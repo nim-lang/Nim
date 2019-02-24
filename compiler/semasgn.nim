@@ -269,9 +269,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
+     tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink, tyOwned:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyOptAsRef: internalError(c.graph.config, "liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)

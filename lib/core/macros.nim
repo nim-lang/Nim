@@ -12,6 +12,10 @@ include "system/helpers"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
+##
+## See also:
+## * `macros tutorial <https://nim-lang.github.io/Nim/tut3.html>`_
+## * `macros section in Nim manual <https://nim-lang.github.io/Nim/manual.html#macros>`_
 
 ## .. include:: ../../doc/astspec.txt
 
@@ -251,7 +255,7 @@ else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
     symbol.symbol.getImpl
 
-  proc strValOld(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
 
   proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
 
@@ -1028,7 +1032,10 @@ const
     nnkCallStrLit, nnkHiddenCallConv}
 
 proc expectKind*(n: NimNode; k: set[NimNodeKind]) {.compileTime.} =
-  assert n.kind in k, "Expected one of " & $k & ", got " & $n.kind
+  ## checks that `n` is of kind `k`. If this is not the case,
+  ## compilation aborts with an error message. This is useful for writing
+  ## macros that check the AST that is passed to them.
+  if n.kind notin k: error("Expected one of " & $k & ", got " & $n.kind, n)
 
 proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode()];
     body: NimNode = newStmtList(), procType = nnkProcDef): NimNode {.compileTime.} =
@@ -1036,12 +1043,13 @@ proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode(
   ##
   ## The ``params`` array must start with the return type of the proc,
   ## followed by a list of IdentDefs which specify the params.
-  assert procType in RoutineNodes
+  if procType notin RoutineNodes:
+    error("Expected one of " & $RoutineNodes & ", got " & $procType)
   result = newNimNode(procType).add(
     name,
     newEmptyNode(),
     newEmptyNode(),
-    newNimNode(nnkFormalParams).add(params), # params
+    newNimNode(nnkFormalParams).add(params),
     newEmptyNode(),  # pragmas
     newEmptyNode(),
     body)
@@ -1078,7 +1086,8 @@ proc newEnum*(name: NimNode, fields: openArray[NimNode],
   ##
 
   expectKind name, nnkIdent
-  doAssert len(fields) > 0, "Enum must contain at least one field"
+  if len(fields) < 1:
+    error("Enum must contain at least one field")
   for field in fields:
     expectKind field, {nnkIdent, nnkEnumFieldDef}
 
@@ -1134,7 +1143,7 @@ proc params*(someProc: NimNode): NimNode {.compileTime.} =
   result = someProc[3]
 proc `params=`* (someProc: NimNode; params: NimNode) {.compileTime.}=
   someProc.expectRoutine
-  assert params.kind == nnkFormalParams
+  expectKind(params, nnkFormalParams)
   someProc[3] = params
 
 proc pragma*(someProc: NimNode): NimNode {.compileTime.} =
@@ -1145,7 +1154,7 @@ proc pragma*(someProc: NimNode): NimNode {.compileTime.} =
 proc `pragma=`*(someProc: NimNode; val: NimNode){.compileTime.}=
   ## Set the pragma of a proc type
   someProc.expectRoutine
-  assert val.kind in {nnkEmpty, nnkPragma}
+  expectKind(val, {nnkEmpty, nnkPragma})
   someProc[4] = val
 
 proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
@@ -1157,8 +1166,8 @@ proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
     someProc.pragma = pragmaNode
   pragmaNode.add(pragma)
 
-template badNodeKind(k, f) =
-  assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
+template badNodeKind(n, f) =
+  error("Invalid node kind " & $n.kind & " for macros.`" & $f & "`", n)
 
 proc body*(someProc: NimNode): NimNode {.compileTime.} =
   case someProc.kind:
@@ -1169,7 +1178,7 @@ proc body*(someProc: NimNode): NimNode {.compileTime.} =
   of nnkForStmt:
     return someProc.last
   else:
-    badNodeKind someProc.kind, "body"
+    badNodeKind someProc, "body"
 
 proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   case someProc.kind
@@ -1180,7 +1189,7 @@ proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   of nnkForStmt:
     someProc[len(someProc)-1] = val
   else:
-    badNodeKind someProc.kind, "body="
+    badNodeKind someProc, "body="
 
 proc basename*(a: NimNode): NimNode {.compiletime, benign.}
 
@@ -1196,7 +1205,7 @@ proc `$`*(node: NimNode): string {.compileTime.} =
   of nnkAccQuoted:
     result = $node[0]
   else:
-    badNodeKind node.kind, "$"
+    badNodeKind node, "$"
 
 proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## Create a new ident node from a string
@@ -1282,7 +1291,7 @@ proc unpackPrefix*(node: NimNode): tuple[node: NimNode; op: string] {.
 
 proc unpackInfix*(node: NimNode): tuple[left: NimNode; op: string;
                                         right: NimNode] {.compileTime.} =
-  assert node.kind == nnkInfix
+  expectKind(node, nnkInfix)
   result = (node[1], $node[0], node[2])
 
 proc copy*(node: NimNode): NimNode {.compileTime.} =
@@ -1343,7 +1352,7 @@ else:
 
 proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
-  assert params.kind == nnkFormalParams
+  expectKind(params, nnkFormalParams)
   for i in 1 ..< params.len:
     template node: untyped = params[i]
     if name.eqIdent( $ node[0]):
@@ -1454,7 +1463,7 @@ proc customPragmaNode(n: NimNode): NimNode =
                   varName = varName[1]
                 elif varName.kind == nnkExportDoc:
                   varName = varName[0]
-                if eqIdent(varName.strVal, name):
+                if eqIdent($varName, name):
                   return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
@@ -1509,7 +1518,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       else:
         let def = p[0].getImpl[3]
         result = newTree(nnkPar)
-        for i in 1..<p.len:
+        for i in 1 ..< def.len:
           let key = def[i][0]
           let val = p[i]
           result.add newTree(nnkExprColonExpr, key, val)

@@ -1,7 +1,7 @@
 # imported by other modules, unlike helpers.nim which is included
 
 template formatErrorIndexBound*[T](i, a, b: T): string =
-  "index out of bounds: (a: " & $a & ") <= (i: " & $i & ") <= (b: " & $b & ") "
+  "index " & $i & " not in " & $a & " .. " & $b
 
 template formatErrorIndexBound*[T](i, n: T): string =
-  "index out of bounds: (i: " & $i & ") <= (n: " & $n & ") "
+  formatErrorIndexBound(i, 0, n)

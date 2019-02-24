@@ -318,6 +318,38 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
     for i in countup(0, sonsLen(n)-1):
       result[i] = introduceNewLocalVars(c, n.sons[i])
 
+proc transformAsgn(c: PTransf, n: PNode): PTransNode =
+  let rhs = n[1]
+
+  if rhs.kind != nkTupleConstr:
+    return transformSons(c, n)
+
+  # Unpack the tuple assignment into N temporary variables and then pack them
+  # into a tuple: this allows us to get the correct results even when the rhs
+  # depends on the value of the lhs
+  let letSection = newTransNode(nkLetSection, n.info, rhs.len)
+  let newTupleConstr = newTransNode(nkTupleConstr, n.info, rhs.len)
+  for i, field in rhs:
+    let val = if field.kind == nkExprColonExpr: field[1] else: field
+    let def = newTransNode(nkIdentDefs, field.info, 3)
+    def[0] = PTransNode(newTemp(c, val.typ, field.info))
+    def[1] = PTransNode(newNodeI(nkEmpty, field.info))
+    def[2] = transform(c, val)
+    letSection[i] = def
+    # NOTE: We assume the constructor fields are in the correct order for the
+    # given tuple type
+    newTupleConstr[i] = def[0]
+
+  PNode(newTupleConstr).typ = rhs.typ
+
+  let asgnNode = newTransNode(nkAsgn, n.info, 2)
+  asgnNode[0] = transform(c, n[0])
+  asgnNode[1] = newTupleConstr
+
+  result = newTransNode(nkStmtList, n.info, 2)
+  result[0] = letSection
+  result[1] = asgnNode
+
 proc transformYield(c: PTransf, n: PNode): PTransNode =
   proc asgnTo(lhs: PNode, rhs: PTransNode): PTransNode =
     # Choose the right assignment instruction according to the given ``lhs``
@@ -343,9 +375,15 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
       for i in countup(0, sonsLen(e) - 1):
         var v = e.sons[i]
         if v.kind == nkExprColonExpr: v = v.sons[1]
-        let lhs = c.transCon.forStmt.sons[i]
-        let rhs = transform(c, v)
-        add(result, asgnTo(lhs, rhs))
+        if c.transCon.forStmt[i].kind == nkVarTuple:
+          for j in 0 ..< sonsLen(c.transCon.forStmt[i])-1:
+            let lhs = c.transCon.forStmt[i][j]
+            let rhs = transform(c, newTupleAccess(c.graph, v, j))
+            add(result, asgnTo(lhs, rhs))
+        else:
+          let lhs = c.transCon.forStmt.sons[i]
+          let rhs = transform(c, v)
+          add(result, asgnTo(lhs, rhs))
     else:
       # Unpack the tuple into the loop variables
       # XXX: BUG: what if `n` is an expression with side-effects?
@@ -354,9 +392,15 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         add(result, asgnTo(lhs, rhs))
   else:
-    let lhs = c.transCon.forStmt.sons[0]
-    let rhs = transform(c, e)
-    add(result, asgnTo(lhs, rhs))
+    if c.transCon.forStmt.sons[0].kind == nkVarTuple:
+      for i in 0 ..< sonsLen(c.transCon.forStmt[0])-1:
+        let lhs = c.transCon.forStmt[0][i]
+        let rhs = transform(c, newTupleAccess(c.graph, e, i))
+        add(result, asgnTo(lhs, rhs))
+    else:
+      let lhs = c.transCon.forStmt.sons[0]
+      let rhs = transform(c, e)
+      add(result, asgnTo(lhs, rhs))
 
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
@@ -574,7 +618,11 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
 
   var v = newNodeI(nkVarSection, n.info)
   for i in countup(0, length - 3):
-    addVar(v, copyTree(n.sons[i])) # declare new vars
+    if n[i].kind == nkVarTuple:
+      for j in 0 ..< sonsLen(n[i])-1:
+        addVar(v, copyTree(n[i][j])) # declare new vars
+    else:
+      addVar(v, copyTree(n.sons[i])) # declare new vars
   add(stmtList, v.PTransNode)
 
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
@@ -946,6 +994,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)
+  #of nkAsgn:
+  #  result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = PTransNode(n)
     result[0] = transform(c, n[0])
