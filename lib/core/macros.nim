@@ -400,7 +400,7 @@ proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
 proc newCommentStmtNode*(s: string): NimNode {.compileTime, noSideEffect.} =
   ## creates a comment statement node
   result = newNimNode(nnkCommentStmt)
-  result.strVal = s
+  result.add newStrLitNode s
 
 proc newIntLitNode*(i: BiggestInt): NimNode {.compileTime.} =
   ## creates a int literal node from `i`
@@ -788,7 +788,7 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
     res.add(" " & $n.intVal)
   of nnkFloatLit .. nnkFloat64Lit:
     res.add(" " & $n.floatVal)
-  of nnkStrLit .. nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
+  of nnkStrLit .. nnkTripleStrLit, nnkIdent, nnkSym:
     res.add(" " & $n.strVal.newLit.repr)
   of nnkNone:
     assert false
@@ -817,7 +817,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## See also ``repr``, ``treeRepr``, and ``lispRepr``.
 
   const
-    NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
+    NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
@@ -836,7 +836,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
-    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
+    of nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym:
       res.add(n.strVal.newLit.repr)
     of nnkNone: assert false
     else:
@@ -1198,9 +1198,9 @@ proc `$`*(node: NimNode): string {.compileTime.} =
   case node.kind
   of nnkPostfix:
     result = node.basename.strVal & "*"
-  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkSym, nnkIdent:
+  of nnkStrLit..nnkTripleStrLit, nnkSym, nnkIdent:
     result = node.strVal
-  of nnkOpenSymChoice, nnkClosedSymChoice, nnkAccQuoted, nnkExportDoc:
+  of nnkCommentStmt, nnkOpenSymChoice, nnkClosedSymChoice, nnkAccQuoted, nnkExportDoc:
     result = $node[0]
   else:
     badNodeKind node, "$"

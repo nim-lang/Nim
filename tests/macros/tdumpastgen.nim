@@ -2,7 +2,11 @@ discard """
 nimout: '''nnkStmtList.newTree(
   nnkVarSection.newTree(
     nnkIdentDefs.newTree(
-      newIdentNode("x"),
+      nnkExportDoc.newTree(
+        newIdentNode("x"),
+        newEmptyNode(),
+        newEmptyNode()
+      ),
       newEmptyNode(),
       nnkCall.newTree(
         nnkDotExpr.newTree(
@@ -14,7 +18,11 @@ nimout: '''nnkStmtList.newTree(
     )
   ),
   nnkProcDef.newTree(
-    newIdentNode("foo"),
+    nnkExportDoc.newTree(
+      newIdentNode("foo"),
+      newEmptyNode(),
+      newEmptyNode()
+    ),
     newEmptyNode(),
     newEmptyNode(),
     nnkFormalParams.newTree(
@@ -23,7 +31,9 @@ nimout: '''nnkStmtList.newTree(
     newEmptyNode(),
     newEmptyNode(),
     nnkStmtList.newTree(
-      newCommentStmtNode("This is a docstring"),
+      nnkCommentStmt.newTree(
+        newLit("This is a docstring")
+      ),
       nnkCommand.newTree(
         newIdentNode("echo"),
         newLit("bar")
@@ -32,8 +42,6 @@ nimout: '''nnkStmtList.newTree(
   )
 )'''
 """
-
-# disabled; can't work as the output is done by the compiler
 
 import macros
 

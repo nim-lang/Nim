@@ -77,7 +77,7 @@ else:
     of nkTripleStrLit:
       result = (n.info.line.int, n.info.line.int + countLines(n.strVal))
     of nkCommentStmt:
-      result = (n.info.line.int, n.info.line.int + countLines(n.comment))
+      result = (n.info.line.int, n.info.line.int + countLines(n[0].strVal))
     else:
       result = (n.info.line.int, n.info.line.int)
     for i in 0 ..< safeLen(n):
@@ -283,7 +283,7 @@ const
 
 proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
   result = false
-  if n.kind == nkCommentStmt and n.strVal.len > 0:
+  if n.kind == nkCommentStmt and n[0].strVal.len > 0:
     result = (renderNoComments notin g.flags) or
         (renderDocComments in g.flags)
 
@@ -296,10 +296,10 @@ proc gcom(g: var TSrcGen, n: PNode) =
       # because this might be wrong. But it is no problem in practice.
     if (g.pendingNL < 0) and (len(g.buf) > 0) and
         (g.lineLen < LineCommentColumn):
-      var ml = maxLineLength(n.strVal)
+      var ml = maxLineLength(n[0].strVal)
       if ml + LineCommentColumn <= MaxLineLen:
         put(g, tkSpaces, spaces(LineCommentColumn - g.lineLen))
-    putComment(g, n.strVal)  #assert(g.comStack[high(g.comStack)] = n);
+    putComment(g, n[0].strVal)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
   for i in countup(0, high(g.comStack)): gcom(g, g.comStack[i])
@@ -409,7 +409,7 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
-  if n.kind == nkCommentStmt and n.strVal.len > 0: return MaxLineLen + 1
+  if n.kind == nkCommentStmt and n[0].strVal.len > 0: return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit:
@@ -507,7 +507,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkBreakStmt: result = lsub(g, n.sons[0]) + len("break_")
   of nkContinueStmt: result = lsub(g, n.sons[0]) + len("continue_")
   of nkPragma: result = lcomma(g, n) + 4
-  of nkCommentStmt: result = len(n.strVal)
+  of nkCommentStmt: result = len(n[0].strVal)
   of nkOfBranch: result = lcomma(g, n, 0, - 2) + lsub(g, lastSon(n)) + len("of_:_")
   of nkImportAs: result = lsub(g, n.sons[0]) + len("_as_") + lsub(g, n.sons[1])
   of nkElifBranch: result = lsons(g, n) + len("elif_:_")
@@ -546,7 +546,7 @@ proc gsub(g: var TSrcGen, n: PNode) =
 proc hasCom(n: PNode): bool =
   result = false
   if n.isNil: return false
-  if n.kind == nkCommentStmt and n.strVal.len > 0:
+  if n.kind == nkCommentStmt and n[0].strVal.len > 0:
     return true
   case n.kind
   of nkEmpty..nkNilLit: discard
@@ -610,7 +610,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
   dedent(g)
 
 proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
-  result = n.kind == nkCommentStmt and n.strVal.len > 0
+  result = n.kind == nkCommentStmt and n[0].strVal.len > 0
   if not result:
     # check further
     for i in countup(start, sonsLen(n) + theEnd):

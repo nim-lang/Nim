@@ -1434,6 +1434,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let a = regs[rb].node
       if a.kind == nkIdent:
         regs[ra].node = copyNode(a)
+      elif a.kind == nkExportDoc:
+        regs[ra].node = copyNode(a[0])
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "ident")
     of opcNGetType:
@@ -1487,6 +1489,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal = a.ident.s
       of nkSym:
         regs[ra].node.strVal = a.sym.name.s
+      of nkCommentStmt:
+        regs[ra].node.strVal = a[0].strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
     of opcSlurp:
@@ -1693,6 +1697,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind in {nkStrLit..nkTripleStrLit} and
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
+      elif dest.kind == nkCommentStmt and regs[rb].kind in {rkNode}:
+        dest[0].strVal = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
     of opcNNewNimNode:

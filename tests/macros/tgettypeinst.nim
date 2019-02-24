@@ -4,22 +4,24 @@ discard """
 import macros, strUtils
 
 proc symToIdent(x: NimNode): NimNode =
-  case x.kind:
-    of nnkCharLit..nnkUInt64Lit:
-      result = newNimNode(x.kind)
-      result.intVal = x.intVal
-    of nnkFloatLit..nnkFloat64Lit:
-      result = newNimNode(x.kind)
-      result.floatVal = x.floatVal
-    of nnkStrLit..nnkTripleStrLit:
-      result = newNimNode(x.kind)
-      result.strVal = x.strVal
-    of nnkIdent, nnkSym:
-      result = newIdentNode($x)
-    else:
-      result = newNimNode(x.kind)
-      for c in x:
-        result.add symToIdent(c)
+  case x.kind
+  of nnkCharLit..nnkUInt64Lit:
+    result = newNimNode(x.kind)
+    result.intVal = x.intVal
+  of nnkFloatLit..nnkFloat64Lit:
+    result = newNimNode(x.kind)
+    result.floatVal = x.floatVal
+  of nnkStrLit..nnkTripleStrLit:
+    result = newNimNode(x.kind)
+    result.strVal = x.strVal
+  of nnkIdent, nnkSym:
+    result = newIdentNode($x)
+  of nnkExportDoc, nnkEnumFieldDef:
+    result = symToIdent(x[0])
+  else:
+    result = newNimNode(x.kind)
+    for c in x:
+      result.add symToIdent(c)
 
 # check getTypeInst and getTypeImpl for given symbol x
 macro testX(x,inst0: typed; recurse: static[bool]; implX: typed): typed =
@@ -88,12 +90,12 @@ template test(inst, impl) =
 type
   Model = object of RootObj
   User = object of Model
-    name : string
-    password : string
+    name: string
+    password: string
 
   Tree = object of RootObj
-    value : int
-    left,right : ref Tree
+    value: int
+    left, right: ref Tree
 
   MyEnum = enum
     valueA, valueB, valueC
