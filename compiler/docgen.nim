@@ -950,13 +950,8 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    # TODO: This is wrong perhaps. The output dir cannot be empty now, because
-    # it's set in `commandDoc`. The "thmldocs" directory should be specified
-    # there perhaps or the config should gain another flag indicating whether
-    # an output path override was present
-    let dir = if d.conf.outDir.isEmpty: d.conf.projectPath / RelativeDir"htmldocs"
-              elif optWholeProject in d.conf.globalOptions: AbsoluteDir(d.conf.absOutFile)
-              else: d.conf.outDir
+    let dir = if not d.conf.outDir.isEmpty: d.conf.outDir
+              else: d.conf.projectPath / RelativeDir"htmldocs"
     createDir(dir)
     let dest = dir / changeFileExt(relativeTo(AbsoluteFile d.filename,
                                               d.conf.projectPath), IndexExt)
@@ -997,8 +992,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
                  "\" for writing")
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
-  if conf.outDir.isEmpty:
-    conf.outDir = toAbsoluteDir(conf.outFile.string)
+  conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
