@@ -390,6 +390,18 @@ proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## Use `sample[T](openArray[T])<#sample,openArray[T]>`_ instead.
   result = a[rand(a.low..a.high)]
 
+proc sample*[T](r: var Rand; s: set[T]): T =
+  ## returns a random element from a set
+  assert card(s) != 0
+  var i = rand(r, card(s) - 1)
+  for e in s:
+    if i == 0: return e
+    dec(i)
+    
+proc sample*[T](s: set[T]): T =
+  ## returns a random element from a set
+  sample(state, s)
+
 proc sample*[T](r: var Rand; a: openArray[T]): T =
   ## Returns a random element from ``a`` using the given state.
   ##
