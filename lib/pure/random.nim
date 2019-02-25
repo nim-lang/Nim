@@ -173,6 +173,7 @@ proc rand*[T](a: openArray[T]): T {.deprecated.} =
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## returns a random element from a set
+  assert card(s) != 0
   var i = rand(r, card(s) - 1)
   for e in s:
     if i == 0: return e
