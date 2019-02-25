@@ -493,7 +493,9 @@ proc lsub(g: TSrcGen; n: PNode): int =
       result = lsub(g, n.sons[0]) + lcomma(g, n, 1) + len("enum_")
     else:
       result = len("enum")
-  of nkEnumFieldDef: result = lsons(g, n) + 3
+  of nkEnumFieldDef:
+    result = lsons(g, n)
+    if n.lastSon.kind != nkEmpty: inc result, len(" = ")
   of nkVarSection, nkLetSection:
     if sonsLen(n) > 1: result = MaxLineLen + 1
     else: result = lsons(g, n) + len("var_")
@@ -1268,9 +1270,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkEnum, "enum")
   of nkEnumFieldDef:
     gsub(g, n, 0)
-    put(g, tkSpaces, Space)
-    putWithSpace(g, tkEquals, "=")
-    gsub(g, n, 1)
+    if n[1].kind != nkEmpty:
+      put(g, tkSpaces, Space)
+      putWithSpace(g, tkEquals, "=")
+      gsub(g, n, 1)
   of nkStmtList, nkStmtListExpr, nkStmtListType: gstmts(g, n, emptyContext)
   of nkIfStmt:
     putWithSpace(g, tkIf, "if")
