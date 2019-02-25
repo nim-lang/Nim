@@ -2038,6 +2038,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genConv(c, n, n.sons[1], dest)
   of nkObjDownConv:
     genConv(c, n, n.sons[0], dest)
+  of nkObjUpConv:
+    genConv(c, n, n.sons[0], dest)
   of nkVarSection, nkLetSection:
     unused(c, n, dest)
     genVarSection(c, n)
@@ -2079,6 +2081,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
   else:
+    debug(n)
     globalError(c.config, n.info, "cannot generate VM code for " & $n)
 
 proc removeLastEof(c: PCtx) =

@@ -53,12 +53,21 @@ type
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
     getPositionImpl*: proc (s: Stream): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+
+    readDataVmImpl*: proc (s: Stream, buffer: string, a,b: int): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+    peekDataVmImpl*: proc (s: Stream, buffer: string, a,b: int): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+    writeDataVmImpl*: proc (s: Stream, buffer: string, a,b: int)
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+
     readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int)
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+        {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+
     flushImpl*: proc (s: Stream)
       {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
@@ -341,8 +350,38 @@ when not defined(js):
     s.pos = clamp(pos, 0, s.data.len)
 
   proc ssGetPosition(s: Stream): int =
-    var s = StringStream(s)
+    var s = (StringStream)s
     return s.pos
+
+
+
+  proc ssReadDataVmImpl(s: Stream, buffer: string, a,b: int): int =
+    var s = StringStream(s)
+    result = min(b-a, s.data.len - s.pos)
+    if result > 0:
+      copyMem(unsafeAddr buffer[a], addr s.data[s.pos], result)
+      inc(s.pos, result)
+    else:
+      result = 0
+
+
+  proc ssPeekDataVmImpl(s: Stream, buffer: string, a,b: int): int =
+    var s = StringStream(s)
+    result = min(b-a, s.data.len - s.pos)
+    if result > 0:
+      copyMem(unsafeAddr buffer[a], addr(s.data[s.pos]), result)
+    else:
+      result = 0
+
+  proc ssWriteDataVmImpl(s: Stream, buffer: string, a,b: int) =
+    var s = StringStream(s)
+    if b-a <= 0:
+      return
+    if s.pos + b - a > s.data.len:
+      setLen(s.data, s.pos + b - a)
+    copyMem(addr s.data[s.pos], unsafeAddr buffer[a], b - a)
+    inc(s.pos, b - a)
+
 
   proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
     var s = StringStream(s)
@@ -370,6 +409,9 @@ when not defined(js):
     copyMem(addr(s.data[s.pos]), buffer, bufLen)
     inc(s.pos, bufLen)
 
+
+
+
   proc ssClose(s: Stream) =
     var s = StringStream(s)
     when defined(nimNoNilSeqs):
@@ -389,6 +431,11 @@ when not defined(js):
     result.readDataImpl = ssReadData
     result.peekDataImpl = ssPeekData
     result.writeDataImpl = ssWriteData
+    when defined(nimvm):
+      result.readDataVmImpl = ssReadDataVm
+      result.peekDataVmImpl = ssPeekDataVm
+      result.writeDataVmImpl = ssWriteDataVm
+
 
   type
     FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
