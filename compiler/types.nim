@@ -430,7 +430,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   result = ""
   if t == nil: return
   if prefer in preferToResolveSymbols and t.sym != nil and
-       sfAnon notin t.sym.flags:
+       sfAnon notin t.sym.flags and t.kind != tySequence:
     if t.kind == tyInt and isIntLit(t):
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
     elif t.kind == tyAlias and t.sons[0].kind != tyAlias:
