@@ -285,7 +285,7 @@ proc semConv(c: PContext, n: PNode): PNode =
     of convNotInRange:
       let value =
         if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
-      localError(n.info, errGenerated, value & " can't be converted to " &
+      localError(c.config, n.info, errGenerated, value & " can't be converted to " &
         result.typ.typeToString)
   else:
     for i in countup(0, sonsLen(op) - 1):
