@@ -1173,6 +1173,18 @@ proc parseEnum*[T: enum](s: string): T =
   ##
   ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
+  runnableExamples:
+    type
+      MyEnum = enum
+        first = "1st",
+        second,
+        third = "3rd"
+
+    doAssert parseEnum[MyEnum]("1_st") == first
+    doAssert parseEnum[MyEnum]("second") == second
+    doAssertRaises(ValueError):
+      echo parseEnum[MyEnum]("third")
+
   for e in low(T)..high(T):
     if cmpIgnoreStyle(s, $e) == 0:
       return e
@@ -1183,6 +1195,17 @@ proc parseEnum*[T: enum](s: string, default: T): T =
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
   ## style insensitive way.
+  runnableExamples:
+    type
+      MyEnum = enum
+        first = "1st",
+        second,
+        third = "3rd"
+
+    doAssert parseEnum[MyEnum]("1_st") == first
+    doAssert parseEnum[MyEnum]("second") == second
+    doAssert parseEnum[MyEnum]("last", third) == third
+
   for e in low(T)..high(T):
     if cmpIgnoreStyle(s, $e) == 0:
       return e
