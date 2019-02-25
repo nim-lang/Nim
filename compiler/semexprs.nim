@@ -147,11 +147,11 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     # accept conversion to integral types, unless outside of range
     if targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and
-          src.intVal notin firstOrd(targetTyp)..lastOrd(targetTyp):
+          src.intVal notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
           src.floatVal notin
-            (firstOrd(targetTyp)..lastOrd(targetTyp)).toBiggestFloatSlice:
+            (firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp)).toBiggestFloatSlice:
         result = convNotInRange
   else:
     # we use d, s here to speed up that operation a bit:
