@@ -185,14 +185,21 @@ when false:
 
 template skipComment(a, b) = discard
 
-proc docComment(p: var TParser; d: PNode) =
+proc hasDoc(p: TParser): bool {.inline.} =
+  result = false
   if p.tok.tokType == tkComment:
     if p.tok.indent < 0 or realInd(p):
-      if d == nil:
+      result = true
+
+proc docComment(p: var TParser; d: PNode) =
+  if hasDoc(p):
+    if d == nil:
+      parMessage(p, "there is no declaration the doc comment could refer to")
+    else:
+      var decl = if d.kind == nkPragmaExpr: d[0] else: d
+      if decl.kind != nkExportDoc:
         parMessage(p, "there is no declaration the doc comment could refer to")
       else:
-        var decl = if d.kind == nkPragmaExpr: d[0] else: d
-        assert decl.kind == nkExportDoc
         assert decl.len == 3
         if decl[2].kind == nkEmpty:
           decl[2] = newNodeP(nkStrLit, p)
@@ -204,7 +211,7 @@ proc docComment(p: var TParser; d: PNode) =
             add decl[2].strVal, p.tok.literal
         else:
           add(decl[2].strVal, p.tok.literal)
-      getTok(p)
+    getTok(p)
 
 const
   errInvalidIndentation = "invalid indentation"
@@ -935,6 +942,12 @@ type
     withExportDoc
   TDeclaredIdentFlags = set[TDeclaredIdentFlag]
 
+proc newExportDoc(p: TParser; orig: PNode): PNode =
+  result = newNodeP(nkExportDoc, p)
+  addSon(result, orig)
+  addSon(result, newNodeP(nkEmpty, p))
+  result.addSon newNodeP(nkEmpty, p)
+
 proc identVis(p: var TParser; flags: TDeclaredIdentFlags): PNode =
   #| identVis = symbol opr?  # postfix position
   #| identVisDot = symbol '.' optInd symbol opr?
@@ -950,10 +963,7 @@ proc identVis(p: var TParser; flags: TDeclaredIdentFlags): PNode =
   elif p.tok.tokType == tkDot and withDot in flags:
     result = dotExpr(p, a)
   elif withExportDoc in flags:
-    result = newNodeP(nkExportDoc, p)
-    addSon(result, a)
-    addSon(result, newNodeP(nkEmpty, p))
-    result.addSon newNodeP(nkEmpty, p)
+    result = newExportDoc(p, a)
   else:
     result = a
 
@@ -1002,6 +1012,8 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
     addSon(result, parseExpr(p))
   else:
     addSon(result, newNodeP(nkEmpty, p))
+  if hasDoc(p) and withExportDoc in flags and result[0].kind == nkIdent:
+    result[0] = newExportDoc(p, result[0])
   docComment(p, result[0])
 
 proc parseTuple(p: var TParser, indentAllowed = false; typename: PNode): PNode =
@@ -1018,7 +1030,7 @@ proc parseTuple(p: var TParser, indentAllowed = false; typename: PNode): PNode =
     optInd(p, result)
     # progress guaranteed
     while p.tok.tokType in {tkSymbol, tkAccent}:
-      var a = parseIdentColonEquals(p, {})
+      var a = parseIdentColonEquals(p, {withExportDoc})
       addSon(result, a)
       if p.tok.tokType notin {tkComma, tkSemiColon}: break
       when defined(nimpretty2):
@@ -1028,7 +1040,8 @@ proc parseTuple(p: var TParser, indentAllowed = false; typename: PNode): PNode =
     optPar(p)
     eat(p, tkBracketRi)
   elif indentAllowed:
-    skipComment(p, result)
+    docComment(p, typename)
+    #skipComment(p, result)
     if realInd(p):
       withInd(p):
         docComment(p, typename)
@@ -1036,7 +1049,7 @@ proc parseTuple(p: var TParser, indentAllowed = false; typename: PNode): PNode =
         while true:
           case p.tok.tokType
           of tkSymbol, tkAccent:
-            var a = parseIdentColonEquals(p, {})
+            var a = parseIdentColonEquals(p, {withExportDoc})
             addSon(result, a)
           of tkEof: break
           else:

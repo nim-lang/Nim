@@ -60,7 +60,7 @@ proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
     declares.incl a.id
     when defined(debugReorder):
       idNames[a.id] = a.s
-  of nkEnumFieldDef:
+  of nkEnumFieldDef, nkExportDoc:
     addDecl(cache, n[0], declares)
   else: discard
 

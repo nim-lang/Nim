@@ -441,7 +441,9 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
     if a.sons[length - 1].kind != nkEmpty:
       localError(c.config, a.sons[length - 1].info, errInitHereNotAllowed)
     for j in countup(0, length - 3):
-      var field = newSymG(skField, a.sons[j], c)
+      var it = a.sons[j]
+      if it.kind == nkExportDoc: it = it[0]
+      var field = newSymG(skField, it, c)
       field.typ = typ
       field.position = counter
       inc(counter)

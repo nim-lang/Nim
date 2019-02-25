@@ -1,16 +1,10 @@
 
 # bug #1799
 
-proc MyProc1*() = ## Comment behind procedure
-  discard
-
 proc MyProc2*() =
   ## Comment below procedure
   discard
 
-
-template MyTemplate1*() = ## Comment behind template
-  discard
 
 template MyTemplate2*() = discard
   ## Comment below template
@@ -45,15 +39,15 @@ type
 type
   MyTuple1* = tuple
     ## Comment below declaration
-    field1: int ## Comment behind field
-    field2: int ## Comment behind field
-    field3: int
-      ## Comment below field
-    field4: int
-      ## Comment below field
+    tfield1: int ## Comment behind field
+    tfield2: int ## Comment behind field
+    tfield3: int
+      ## Comment below tuple field3
+    tfield4: int
+      ## Comment below tuple field4
 
   MyTuple2* = tuple ## Comment behind declaration
-    field1: int
+    tfield1_2: int
 
 
 type
