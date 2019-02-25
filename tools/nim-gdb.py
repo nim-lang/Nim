@@ -174,16 +174,21 @@ DollarPrintCmd()
 ################################################################################
 
 
-import subprocess
+import subprocess, os
+
 
 class KochCmd (gdb.Command):
   """Command that invokes ``koch'', the build tool for the compiler."""
 
   def __init__ (self):
-    super (KochCmd, self).__init__ ("koch", gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    super (KochCmd, self).__init__ ("koch",
+                                    gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "koch")
 
   def invoke(self, argument, from_tty):
-    subprocess.run(["koch"] + gdb.string_to_argv(argument))
+    import os
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
 
 KochCmd()
 
@@ -192,10 +197,13 @@ class NimCmd (gdb.Command):
   """Command that invokes ``nim'', the nim compiler."""
 
   def __init__ (self):
-    super (NimCmd, self).__init__ ("nim", gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    super (NimCmd, self).__init__ ("nim",
+                                   gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "bin/nim")
 
   def invoke(self, argument, from_tty):
-    subprocess.run(["nim"] + gdb.string_to_argv(argument))
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
 
 NimCmd()
 
@@ -204,10 +212,13 @@ class NimbleCmd (gdb.Command):
   """Command that invokes ``nimble'', the nim package manager and build tool."""
 
   def __init__ (self):
-    super (NimbleCmd, self).__init__ ("nimble", gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    super (NimbleCmd, self).__init__ ("nimble",
+                                      gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "bin/nimble")
 
   def invoke(self, argument, from_tty):
-    subprocess.run(["nimble"] + gdb.string_to_argv(argument))
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
 
 NimbleCmd()
 
