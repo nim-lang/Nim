@@ -2590,7 +2590,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
-    # echo "SEM ", result
   of nkWhen:
     if efWantStmt in flags:
       result = semWhen(c, n, true)
