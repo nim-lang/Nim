@@ -111,7 +111,7 @@ proc some*[T](val: T): Option[T] =
     assert $b == "Some(42)"
 
   when T is SomePointer:
-    assert val != nil
+    assert(not val.isNil)
     result.val = val
   else:
     result.has = true
@@ -146,7 +146,7 @@ proc isSome*[T](self: Option[T]): bool {.inline.} =
     assert not b.isSome
 
   when T is SomePointer:
-    self.val != nil
+    not self.val.isNil
   else:
     self.has
 
@@ -159,7 +159,7 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
     assert not a.isNone
     assert b.isNone
   when T is SomePointer:
-    self.val == nil
+    self.val.isNil
   else:
     not self.has
 
@@ -371,6 +371,16 @@ proc unsafeGet*[T](self: Option[T]): T =
 when isMainModule:
   import unittest, sequtils
 
+  # RefPerson is used to test that overloaded `==` operator is not called by
+  # options. It is defined here in the global scope, because otherwise the test
+  # will not even consider the `==` operator. Different bug?
+  type RefPerson = ref object
+    name: string
+
+  proc `==`(a, b: RefPerson): bool =
+    assert(not a.isNil and not b.isNil)
+    a.name == b.name
+
   suite "options":
     # work around a bug in unittest
     let intNone = none(int)
@@ -489,3 +499,8 @@ when isMainModule:
 
       let noperson = none(Person)
       check($noperson == "None[Person]")
+
+    test "Ref type with overloaded `==`":
+      let p = some(RefPerson.new())
+      check p.isSome
+
