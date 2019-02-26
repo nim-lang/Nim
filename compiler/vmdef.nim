@@ -92,6 +92,7 @@ type
     opcNIdent,
     opcNGetType,
     opcNStrVal,
+    opcNSigHash,
 
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,

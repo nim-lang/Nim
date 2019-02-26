@@ -1534,6 +1534,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, n.sons[1], a)
   a.r = ropecg(p.module, frmt, [rdLoc(a)])
+  a.flags = a.flags - {lfIndirect} # this flag should not be propagated here (not just for HCR)
   if d.k == locNone: getTemp(p, n.typ, d)
   genAssignment(p, d, a, {})
   gcUsage(p.config, n)
@@ -2034,8 +2035,28 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     genCall(p, e, d)
   of mNewString, mNewStringOfCap, mExit, mParseBiggestFloat:
     var opr = e.sons[0].sym
+    # Why would anyone want to set nodecl to one of these hardcoded magics?
+    # - not sure, and it wouldn't work if the symbol behind the magic isn't
+    #   somehow forward-declared from some other usage, but it is *possible*
     if lfNoDecl notin opr.loc.flags:
+      let prc = magicsys.getCompilerProc(p.module.g.graph, $opr.loc.r)
+      # HACK:
+      # Explicitly add this proc as declared here so the cgsym call doesn't
+      # add a forward declaration - without this we could end up with the same
+      # 2 forward declarations. That happens because the magic symbol and the original
+      # one that shall be used have different ids (even though a call to one is
+      # actually a call to the other) so checking into m.declaredProtos with the 2 different ids doesn't work.
+      # Why would 2 identical forward declarations be a problem?
+      # - in the case of hot code-reloading we generate function pointers instead
+      #   of forward declarations and in C++ it is an error to redefine a global
+      let wasDeclared = containsOrIncl(p.module.declaredProtos, prc.id)
+      # Make the function behind the magic get actually generated - this will
+      # not lead to a forward declaration! The genCall will lead to one.
       discard cgsym(p.module, $opr.loc.r)
+      # make sure we have pointer-initialising code for hot code reloading
+      if not wasDeclared and p.hcrOn:
+        addf(p.module.s[cfsDynLibInit], "\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
+             [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
@@ -2292,6 +2313,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   p.currLineInfo = n.info
+
   case n.kind
   of nkSym:
     var sym = n.sym

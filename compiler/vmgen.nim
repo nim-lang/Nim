@@ -1224,6 +1224,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
   of mNStrVal: genUnaryABC(c, n, dest, opcNStrVal)
+  of mNSigHash: genUnaryABC(c, n , dest, opcNSigHash)
   of mNSetIntVal:
     unused(c, n, dest)
     genBinaryStmt(c, n, opcNSetIntVal)

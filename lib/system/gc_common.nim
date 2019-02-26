@@ -446,10 +446,10 @@ proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
 type
   GlobalMarkerProc = proc () {.nimcall, benign.}
 var
-  globalMarkersLen: int
-  globalMarkers: array[0..3499, GlobalMarkerProc]
-  threadLocalMarkersLen: int
-  threadLocalMarkers: array[0..3499, GlobalMarkerProc]
+  globalMarkersLen {.exportc.}: int
+  globalMarkers {.exportc.}: array[0..3499, GlobalMarkerProc]
+  threadLocalMarkersLen {.exportc.}: int
+  threadLocalMarkers {.exportc.}: array[0..3499, GlobalMarkerProc]
   gHeapidGenerator: int
 
 proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =

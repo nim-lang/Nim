@@ -27,8 +27,6 @@
 include "system/inclrtl.nim"
 include "system/hti.nim"
 
-import system/indexerrors
-
 {.pop.}
 
 type

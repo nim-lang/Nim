@@ -227,7 +227,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 33 flags!
+  TSymFlag* = enum    # already 34 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -276,6 +276,8 @@ type
                       # the calling side of the macro, not from the
                       # implementation.
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
+    sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
+                      # meaning that it won't be renamed and/or changed in any way
 
   TSymFlags* = set[TSymFlag]
 
@@ -468,6 +470,7 @@ type
     nfDefaultParam # an automatically inserter default parameter
     nfDefaultRefsParam # a default param value references another parameter
                        # the flag is applied to proc default values and to calls
+    nfExecuteOnReload  # A top-level statement that will be executed during reloads
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
@@ -654,7 +657,7 @@ type
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
@@ -854,7 +857,7 @@ type
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
-                              # reference to another object to safe space)
+                              # reference to another object to save space)
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
@@ -978,7 +981,8 @@ const
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfPreventCg, nfLL,
-                                      nfFromTemplate, nfDefaultRefsParam}
+                                      nfFromTemplate, nfDefaultRefsParam,
+                                      nfExecuteOnReload}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

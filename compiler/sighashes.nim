@@ -260,9 +260,13 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       for i in 0..<t.len: c.hashType(t.sons[i], flags)
     c &= char(t.callConv)
-    if CoType notin flags:
-      if tfNoSideEffect in t.flags: c &= ".noSideEffect"
-      if tfThread in t.flags: c &= ".thread"
+    # purity of functions doesn't have to affect the mangling (which is in fact
+    # problematic for HCR - someone could have cached a pointer to another
+    # function which changes its purity and suddenly the cached pointer is danglign)
+    # IMHO anything that doesn't affect the overload resolution shouldn't be part of the mangling...
+    # if CoType notin flags:
+    #   if tfNoSideEffect in t.flags: c &= ".noSideEffect"
+    #   if tfThread in t.flags: c &= ".thread"
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
@@ -343,6 +347,12 @@ proc hashOwner*(s: PSym): SigHash =
   c &= m.name.s
 
   md5Final c, result.Md5Digest
+
+proc sigHash*(s: PSym): SigHash =
+  if s.kind in routineKinds and s.typ != nil:
+    result = hashProc(s)
+  else:
+    result = hashNonProc(s)
 
 proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]): Rope =

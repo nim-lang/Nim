@@ -21,7 +21,7 @@ const
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
-    wCompilerProc, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wCompilerProc, wNonReloadable, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe, wOverride,
@@ -31,7 +31,7 @@ const
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
-    wNodecl, wMagic, wNosideeffect, wCompilerProc, wCore, wDeprecated, wExtern,
+    wNodecl, wMagic, wNosideeffect, wCompilerProc, wNonReloadable, wCore, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
     wExportNims, wUsed}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
@@ -888,6 +888,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         cppDefine(c.graph.config, sym.name.s)
         recordPragma(c, it, "cppdefine", sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(c, sym)
+      of wNonReloadable:
+        sym.flags.incl sfNonReloadable
       of wProcVar:
         noVal(c, it)
         incl(sym.flags, sfProcvar)

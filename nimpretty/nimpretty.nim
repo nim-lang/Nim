@@ -48,7 +48,7 @@ type
 proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
-  conf.outFile = AbsoluteFile outfile
+  conf.outFile = RelativeFile outfile
   when defined(nimpretty2):
     var p: TParsers
     p.parser.em.indWidth = opt.indWidth

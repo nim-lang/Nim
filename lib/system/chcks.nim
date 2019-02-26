@@ -8,7 +8,7 @@
 #
 
 # Implementation of some runtime checks.
-import system/indexerrors
+include system/indexerrors
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":

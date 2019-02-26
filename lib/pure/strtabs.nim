@@ -143,51 +143,6 @@ template get(t: StringTableRef, key: string) =
     else:
       raise newException(KeyError, "key not found")
 
-proc `[]=`*(t: StringTableRef, key, val: string) {.
-  rtlFunc, extern: "nstPut", noSideEffect.}
-
-proc newStringTable*(mode: StringTableMode): StringTableRef {.
-  rtlFunc, extern: "nst$1".} =
-  ## Creates a new empty string table.
-  ##
-  ## See also:
-  ## * `newStringTable(keyValuePairs) proc
-  ##   <#newStringTable,varargs[tuple[string,string]],StringTableMode>`_
-  new(result)
-  result.mode = mode
-  result.counter = 0
-  newSeq(result.data, startSize)
-
-proc newStringTable*(keyValuePairs: varargs[string],
-                     mode: StringTableMode): StringTableRef {.
-  rtlFunc, extern: "nst$1WithPairs".} =
-  ## Creates a new string table with given `key, value` string pairs.
-  ##
-  ## `StringTableMode` must be specified.
-  runnableExamples:
-    var mytab = newStringTable("key1", "val1", "key2", "val2",
-                               modeCaseInsensitive)
-
-  result = newStringTable(mode)
-  var i = 0
-  while i < high(keyValuePairs):
-    result[keyValuePairs[i]] = keyValuePairs[i + 1]
-    inc(i, 2)
-
-proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
-                     mode: StringTableMode = modeCaseSensitive): StringTableRef {.
-  rtlFunc, extern: "nst$1WithTableConstr".} =
-  ## Creates a new string table with given `(key, value)` tuple pairs.
-  ##
-  ## The default mode is case sensitive.
-  runnableExamples:
-    var
-      mytab1 = newStringTable({"key1": "val1", "key2": "val2"}, modeCaseInsensitive)
-      mytab2 = newStringTable([("key3", "val3"), ("key4", "val4")])
-
-  result = newStringTable(mode)
-  for key, val in items(keyValuePairs): result[key] = val
-
 proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
   ## Returns the number of keys in `t`.
   result = t.counter
@@ -291,6 +246,48 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
     if mustRehash(len(t.data), t.counter): enlarge(t)
     rawInsert(t, t.data, key, val)
     inc(t.counter)
+
+proc newStringTable*(mode: StringTableMode): StringTableRef {.
+  rtlFunc, extern: "nst$1".} =
+  ## Creates a new empty string table.
+  ##
+  ## See also:
+  ## * `newStringTable(keyValuePairs) proc
+  ##   <#newStringTable,varargs[tuple[string,string]],StringTableMode>`_
+  new(result)
+  result.mode = mode
+  result.counter = 0
+  newSeq(result.data, startSize)
+
+proc newStringTable*(keyValuePairs: varargs[string],
+                     mode: StringTableMode): StringTableRef {.
+  rtlFunc, extern: "nst$1WithPairs".} =
+  ## Creates a new string table with given `key, value` string pairs.
+  ##
+  ## `StringTableMode` must be specified.
+  runnableExamples:
+    var mytab = newStringTable("key1", "val1", "key2", "val2",
+                               modeCaseInsensitive)
+
+  result = newStringTable(mode)
+  var i = 0
+  while i < high(keyValuePairs):
+    result[keyValuePairs[i]] = keyValuePairs[i + 1]
+    inc(i, 2)
+
+proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
+                     mode: StringTableMode = modeCaseSensitive): StringTableRef {.
+  rtlFunc, extern: "nst$1WithTableConstr".} =
+  ## Creates a new string table with given `(key, value)` tuple pairs.
+  ##
+  ## The default mode is case sensitive.
+  runnableExamples:
+    var
+      mytab1 = newStringTable({"key1": "val1", "key2": "val2"}, modeCaseInsensitive)
+      mytab2 = newStringTable([("key3", "val3"), ("key4", "val4")])
+
+  result = newStringTable(mode)
+  for key, val in items(keyValuePairs): result[key] = val
 
 proc raiseFormatException(s: string) =
   var e: ref ValueError

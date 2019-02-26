@@ -417,6 +417,12 @@ when not defined(niminheritable):
   {.pragma: inheritable.}
 when not defined(nimunion):
   {.pragma: unchecked.}
+when not defined(nimHasHotCodeReloading):
+  {.pragma: nonReloadable.}
+when defined(hotCodeReloading):
+  {.pragma: hcrInline, inline.}
+else:
+  {.pragma: hcrInline.}
 
 # comparison operators:
 proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
@@ -1590,7 +1596,7 @@ when defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 else:
-  var programResult* {.exportc: "nim_program_result".}: int
+  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## modify this variable to specify the exit code of the program
     ## under normal circumstances. When the program is terminated
     ## prematurely using ``quit``, this value is ignored.
@@ -3802,6 +3808,15 @@ template doAssert*(cond: untyped, msg = "") =
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 
+when compileOption("rangechecks"):
+  template rangeCheck*(cond) =
+    ## Helper for performing user-defined range checks.
+    ## Such checks will be performed only when the ``rangechecks``
+    ## compile-time option is enabled.
+    if not cond: sysFatal(RangeError, "range check failed")
+else:
+  template rangeCheck*(cond) = discard
+
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
   var i = 0
@@ -4251,3 +4266,6 @@ export widestrs
 
 import system/io
 export io
+
+when not defined(createNimHcr):
+  include nimhcr

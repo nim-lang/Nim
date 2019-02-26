@@ -98,6 +98,7 @@ type
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
+  TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
 
   Codegenflag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
@@ -118,7 +119,7 @@ type
     generatedHeader*: BModule
     breakPointId*: int
     breakpoints*: Rope # later the breakpoints are inserted into the main proc
-    typeInfoMarker*: TypeCache
+    typeInfoMarker*: TypeCacheWithOwner
     config*: ConfigRef
     graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
@@ -150,6 +151,8 @@ type
     typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
+    hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
+    inHcrInitGuard*: bool     # We are currently withing a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation
@@ -189,8 +192,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.sigConflicts = initCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
-  BModuleList(typeInfoMarker: initTable[SigHash, Rope](), config: g.config,
-    graph: g, nimtvDeclared: initIntSet())
+  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
+    config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modules_closed:

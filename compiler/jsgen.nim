@@ -83,7 +83,6 @@ type
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
-    classes: seq[(PType, Rope)]
     unique: int    # for temp identifier generation
 
   PProc = ref TProc
@@ -133,7 +132,6 @@ proc newGlobals(): PGlobals =
   result.forwarded = @[]
   result.generatedSyms = initIntSet()
   result.typeInfoGenerated = initIntSet()
-  result.classes = @[]
 
 proc initCompRes(r: var TCompRes) =
   r.address = nil
@@ -250,7 +248,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
       result = rope(x)
     # From ES5 on reserved words can be used as object field names
     if s.kind != skField:
-      if optHotCodeReloading in m.config.options:
+      if m.config.hcrOn:
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
         add(result, idOrSig(s, m.module.name.s, m.sigConflicts))
@@ -1206,19 +1204,8 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[0].sons[0], r)
   else: internalError(p.config, n.sons[0].info, "genAddr: " & $n.sons[0].kind)
 
-proc thisParam(p: PProc; typ: PType): PType =
-  discard
-
 proc attachProc(p: PProc; content: Rope; s: PSym) =
-  let otyp = thisParam(p, s.typ)
-  if otyp != nil:
-    for i, cls in p.g.classes:
-      if sameType(cls[0], otyp):
-        add(p.g.classes[i][1], content)
-        return
-    p.g.classes.add((otyp, content))
-  else:
-    add(p.g.code, content)
+  add(p.g.code, content)
 
 proc attachProc(p: PProc; s: PSym) =
   let newp = genProc(p, s)
@@ -1460,9 +1447,6 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   genArgs(p, n, r, 2)
 
 proc genCall(p: PProc, n: PNode, r: var TCompRes) =
-  if n.sons[0].kind == nkSym and thisParam(p, n.sons[0].typ) != nil:
-    genInfixCall(p, n, r)
-    return
   gen(p, n.sons[0], r)
   genArgs(p, n, r)
   if n.typ != nil:
@@ -1606,13 +1590,14 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     s: Rope
     varCode: string
     varName = mangleName(p.module, v)
-    useReloadingGuard = sfGlobal in v.flags and optHotCodeReloading in p.config.options
+    useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
 
   if v.constraint.isNil:
     if useReloadingGuard:
       lineF(p, "var $1;$n", varName)
       lineF(p, "if ($1 === undefined) {$n", varName)
       varCode = $varName
+      inc p.extraIndent
     else:
       varCode = "var $2"
   else:
@@ -1664,6 +1649,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, s])
 
   if useReloadingGuard:
+    dec p.extraIndent
     lineF(p, "}$n")
 
 proc genVarStmt(p: PProc, n: PNode) =
@@ -2204,7 +2190,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   else:
     result = ~"\L"
 
-    if optHotCodeReloading in p.config.options:
+    if p.config.hcrOn:
       # Here, we introduce thunks that create the equivalent of a jump table
       # for all global functions, because references to them may be stored
       # in JavaScript variables. The added indirection ensures that such
@@ -2440,13 +2426,52 @@ proc genHeader(): Rope =
     "if (typeof Float64Array === 'undefined') Float64Array = Array;$n") %
     [rope(VersionAsString)]
 
+proc addHcrInitGuards(p: PProc, n: PNode,
+                      moduleLoadedVar: Rope, inInitGuard: var bool) =
+  if n.kind == nkStmtList:
+    for child in n:
+      addHcrInitGuards(p, child, moduleLoadedVar, inInitGuard)
+  else:
+    let stmtShouldExecute = n.kind in {
+      nkProcDef, nkFuncDef, nkMethodDef,nkConverterDef,
+      nkVarSection, nkLetSection} or nfExecuteOnReload in n.flags
+
+    if inInitGuard:
+      if stmtShouldExecute:
+        dec p.extraIndent
+        line(p, "}\L")
+        inInitGuard = false
+    else:
+      if not stmtShouldExecute:
+        lineF(p, "if ($1 == undefined) {$n", [moduleLoadedVar])
+        inc p.extraIndent
+        inInitGuard = true
+
+    genStmt(p, n)
+
 proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
   let n_transformed = transformStmt(p.module.graph, p.module.module, n)
-  genStmt(p, n_transformed)
+  if p.config.hcrOn and n.kind == nkStmtList:
+    let moduleSym = p.module.module
+    var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
+                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
+    lineF(p, "var $1;$n", [moduleLoadedVar])
+    var inGuardedBlock = false
+
+    addHcrInitGuards(p, n_transformed, moduleLoadedVar, inGuardedBlock)
+
+    if inGuardedBlock:
+      dec p.extraIndent
+      line(p, "}\L")
+
+    lineF(p, "$1 = true;$n", [moduleLoadedVar])
+  else:
+    genStmt(p, n_transformed)
+
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))
 
@@ -2487,44 +2512,14 @@ proc getClassName(t: PType): Rope =
   if s.loc.r != nil: result = s.loc.r
   else: result = rope(s.name.s)
 
-proc genClass(conf: ConfigRef; obj: PType; content: Rope; ext: string) =
-  let cls = getClassName(obj)
-  let t = skipTypes(obj, abstractPtrs)
-  let extends = if t.kind == tyObject and t.sons[0] != nil:
-      " extends " & getClassName(t.sons[0])
-    else: nil
-  let result = ("<?php$n" &
-            "/* Generated by the Nim Compiler v$# */$n" &
-            "/*   (c) " & copyrightYear & " Andreas Rumpf */$n$n" &
-            "require_once \"nimsystem.php\";$n" &
-            "class $#$# {$n$#$n}$n") %
-           [rope(VersionAsString), cls, extends, content]
-
-  let outfile = changeFileExt(completeCFilePath(conf, AbsoluteFile($cls)), ext)
-  discard writeRopeIfNotEqual(result, outfile)
-
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = myProcess(b, n)
   var m = BModule(b)
   if passes.skipCodegen(m.config, n): return n
   if sfMainModule in m.module.flags:
-    let globals = PGlobals(graph.backend)
-    let ext = "js"
-    let f = if globals.classes.len == 0: toFilename(m.config, FileIndex m.module.position)
-            else: "nimsystem"
     let code = wholeCode(graph, m)
-    let outfile =
-      if not m.config.outFile.isEmpty:
-        if m.config.outFile.string.isAbsolute: m.config.outFile
-        else: AbsoluteFile(getCurrentDir() / m.config.outFile.string)
-      else:
-        changeFileExt(completeCFilePath(m.config, AbsoluteFile f), ext)
-    let (outDir, _, _) = splitFile(outfile)
-    if not outDir.isEmpty:
-      createDir(outDir)
-    discard writeRopeIfNotEqual(genHeader() & code, outfile)
-    for obj, content in items(globals.classes):
-      genClass(m.config, obj, content, ext)
+    let outFile = m.config.prepareToWriteOutput()
+    discard writeRopeIfNotEqual(genHeader() & code, outFile)
 
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
