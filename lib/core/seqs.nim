@@ -43,7 +43,8 @@ proc `=destroy`[T](s: var seq[T]) =
     mixin `=destroy`
     when not supportsCopyMem(T):
       for i in 0..<x.len: `=destroy`(p.data[i])
-    p.region.dealloc(p.region, p, payloadSize(p.cap))
+    if p.region != nil:
+      p.region.dealloc(p.region, p, payloadSize(p.cap))
     x.p = nil
     x.len = 0
 
