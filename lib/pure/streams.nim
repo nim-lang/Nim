@@ -350,20 +350,15 @@ when not defined(js):
     s.pos = clamp(pos, 0, s.data.len)
 
   proc ssGetPosition(s: Stream): int =
-    var s = (StringStream)s
+    var s = StringStream(s)
     return s.pos
 
   proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
-    echo "string stream read data str: "
-    echo "buflen: ", buffer.len
-    echo "slice: ", slice
     var s = StringStream(s)
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
-    echo "result: ", result
     if result > 0:
       when nimvm:
-        # sorry, but there is no fast array string splicing on the vm.
-        for i in 0 ..< result:
+        for i in 0 ..< result: # sorry, but no fast string splicing on the vm.
           buffer[slice.a + i] = s.data[s.pos + i]
       else:
         copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
@@ -396,9 +391,6 @@ when not defined(js):
       setLen(s.data, s.pos + bufLen)
     copyMem(addr(s.data[s.pos]), buffer, bufLen)
     inc(s.pos, bufLen)
-
-
-
 
   proc ssClose(s: Stream) =
     var s = StringStream(s)

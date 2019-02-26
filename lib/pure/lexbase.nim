@@ -51,17 +51,13 @@ proc fillBuffer(L: var BaseLexer) =
   assert(L.sentinel + 1 <= L.buf.len)
   toCopy = L.buf.len - (L.sentinel + 1)
   assert(toCopy >= 0)
-
   if toCopy > 0:
     when defined(js):
       for i in 0 ..< toCopy: L.buf[i] = L.buf[L.sentinel + 1 + i]
     else:
       # "moveMem" handles overlapping regions
       moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
-
-  # test
   charsRead = L.input.readDataStr(L.buf, toCopy ..< toCopy + L.sentinel + 1)
-
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker
@@ -81,7 +77,6 @@ proc fillBuffer(L: var BaseLexer) =
         # double the buffer's size and try again:
         oldBufLen = L.buf.len
         L.buf.setLen(L.buf.len * 2)
-
         charsRead = readDataStr(L.input, L.buf, oldBufLen ..< L.buf.len)
         if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile

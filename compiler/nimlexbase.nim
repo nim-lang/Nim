@@ -81,8 +81,7 @@ proc fillBuffer(L: var TBaseLexer) =
   if toCopy > 0:
     moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
     # "moveMem" handles overlapping regions
-  charsRead = llStreamRead(L.stream, addr(L.buf[toCopy]),
-                           (L.sentinel + 1))
+  charsRead = llStreamRead(L.stream, addr L.buf[toCopy], L.sentinel + 1)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker

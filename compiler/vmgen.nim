@@ -2081,7 +2081,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
   else:
-    debug(n)
     globalError(c.config, n.info, "cannot generate VM code for " & $n)
 
 proc removeLastEof(c: PCtx) =
