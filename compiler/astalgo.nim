@@ -402,11 +402,11 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
       of nkSym:
         let s = n.sym
         var symStr = ""
-        symStr.add "\"kind\": "
+        symStr.add "\"kind\": \""
         symStr.add $s.kind
-        symStr.add ", \"name\": "
+        symStr.add "\", \"name\": \""
         symStr.add s.name.s
-        symStr.add ", \"id\": "
+        symStr.add "\", \"id\": "
         symStr.add s.id
         if s.kind in {skField, skEnumField, skParam}:
           symStr.add ", \"position\": "
