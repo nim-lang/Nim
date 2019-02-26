@@ -54,12 +54,8 @@ type
     getPositionImpl*: proc (s: Stream): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
 
-    readDataVmImpl*: proc (s: Stream, buffer: string, a,b: int): int
+    readDataStrImpl*: proc (s: Stream, buffer: var string, slice: Slice[int]): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
-    peekDataVmImpl*: proc (s: Stream, buffer: string, a,b: int): int
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
-    writeDataVmImpl*: proc (s: Stream, buffer: string, a,b: int)
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
     readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
@@ -95,6 +91,10 @@ proc getPosition*(s: Stream): int =
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
+
+proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
+  ## low level proc that reads data into a string ``buffer`` at ``slice``.
+  result = s.readDataStrImpl(s, buffer, slice)
 
 when not defined(js):
   proc readAll*(s: Stream): string =
@@ -353,35 +353,23 @@ when not defined(js):
     var s = (StringStream)s
     return s.pos
 
-
-
-  proc ssReadDataVmImpl(s: Stream, buffer: string, a,b: int): int =
+  proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
+    echo "string stream read data str: "
+    echo "buflen: ", buffer.len
+    echo "slice: ", slice
     var s = StringStream(s)
-    result = min(b-a, s.data.len - s.pos)
+    result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
+    echo "result: ", result
     if result > 0:
-      copyMem(unsafeAddr buffer[a], addr s.data[s.pos], result)
+      when nimvm:
+        # sorry, but there is no fast array string splicing on the vm.
+        for i in 0 ..< result:
+          buffer[slice.a + i] = s.data[s.pos + i]
+      else:
+        copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
       inc(s.pos, result)
     else:
       result = 0
-
-
-  proc ssPeekDataVmImpl(s: Stream, buffer: string, a,b: int): int =
-    var s = StringStream(s)
-    result = min(b-a, s.data.len - s.pos)
-    if result > 0:
-      copyMem(unsafeAddr buffer[a], addr(s.data[s.pos]), result)
-    else:
-      result = 0
-
-  proc ssWriteDataVmImpl(s: Stream, buffer: string, a,b: int) =
-    var s = StringStream(s)
-    if b-a <= 0:
-      return
-    if s.pos + b - a > s.data.len:
-      setLen(s.data, s.pos + b - a)
-    copyMem(addr s.data[s.pos], unsafeAddr buffer[a], b - a)
-    inc(s.pos, b - a)
-
 
   proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
     var s = StringStream(s)
@@ -431,11 +419,7 @@ when not defined(js):
     result.readDataImpl = ssReadData
     result.peekDataImpl = ssPeekData
     result.writeDataImpl = ssWriteData
-    when defined(nimvm):
-      result.readDataVmImpl = ssReadDataVm
-      result.peekDataVmImpl = ssPeekDataVm
-      result.writeDataVmImpl = ssWriteDataVm
-
+    result.readDataStrImpl = ssReadDataStr
 
   type
     FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
@@ -454,6 +438,9 @@ when not defined(js):
   proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
     result = readBuffer(FileStream(s).f, buffer, bufLen)
 
+  proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
+    result = readBuffer(FileStream(s).f, addr buffer[slice.a], slice.b + 1 - slice.a)
+
   proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
     let pos = fsGetPosition(s)
     defer: fsSetPosition(s, pos)
@@ -471,6 +458,7 @@ when not defined(js):
     result.atEndImpl = fsAtEnd
     result.setPositionImpl = fsSetPosition
     result.getPositionImpl = fsGetPosition
+    result.readDataStrImpl = fsReadDataStr
     result.readDataImpl = fsReadData
     result.peekDataImpl = fsPeekData
     result.writeDataImpl = fsWriteData
