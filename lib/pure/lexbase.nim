@@ -53,10 +53,15 @@ proc fillBuffer(L: var BaseLexer) =
   assert(toCopy >= 0)
   if toCopy > 0:
     when defined(js):
-      for i in 0 ..< toCopy: L.buf[i] = L.buf[L.sentinel + 1 + i]
+      for i in 0 ..< toCopy:
+        L.buf[i] = L.buf[L.sentinel + 1 + i]
     else:
-      # "moveMem" handles overlapping regions
-      moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
+      when nimvm:
+        for i in 0 ..< toCopy:
+          L.buf[i] = L.buf[L.sentinel + 1 + i]
+      else:
+        # "moveMem" handles overlapping regions
+        moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
   charsRead = L.input.readDataStr(L.buf, toCopy ..< toCopy + L.sentinel + 1)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
