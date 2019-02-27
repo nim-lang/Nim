@@ -94,7 +94,11 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
 
 proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
   ## low level proc that reads data into a string ``buffer`` at ``slice``.
-  result = s.readDataStrImpl(s, buffer, slice)
+  if s.readDataStrImpl != nil:
+    result = s.readDataStrImpl(s, buffer, slice)
+  else:
+    # fallback
+    result = s.readData(addr buffer[0], buffer.len)
 
 when not defined(js):
   proc readAll*(s: Stream): string =
