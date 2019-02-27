@@ -156,44 +156,41 @@ proc open*(my: var CsvParser, filename: string,
 
 proc parseField(my: var CsvParser, a: var string) =
   var pos = my.bufpos
-  var buf = my.buf
   if my.skipWhite:
-    while buf[pos] in {' ', '\t'}: inc(pos)
+    while my.buf[pos] in {' ', '\t'}: inc(pos)
   setLen(a, 0) # reuse memory
-  if buf[pos] == my.quote and my.quote != '\0':
+  if my.buf[pos] == my.quote and my.quote != '\0':
     inc(pos)
     while true:
-      let c = buf[pos]
+      let c = my.buf[pos]
       if c == '\0':
         my.bufpos = pos # can continue after exception?
         error(my, pos, my.quote & " expected")
         break
       elif c == my.quote:
-        if my.esc == '\0' and buf[pos+1] == my.quote:
+        if my.esc == '\0' and my.buf[pos+1] == my.quote:
           add(a, my.quote)
           inc(pos, 2)
         else:
           inc(pos)
           break
       elif c == my.esc:
-        add(a, buf[pos+1])
+        add(a, my.buf[pos+1])
         inc(pos, 2)
       else:
         case c
         of '\c':
           pos = handleCR(my, pos)
-          buf = my.buf
           add(a, "\n")
         of '\l':
           pos = handleLF(my, pos)
-          buf = my.buf
           add(a, "\n")
         else:
           add(a, c)
           inc(pos)
   else:
     while true:
-      let c = buf[pos]
+      let c = my.buf[pos]
       if c == my.sep: break
       if c in {'\c', '\l', '\0'}: break
       add(a, c)

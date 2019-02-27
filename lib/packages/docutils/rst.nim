@@ -155,18 +155,17 @@ proc getAdornment(L: var Lexer, tok: var Token) =
 
 proc getIndentAux(L: var Lexer, start: int): int =
   var pos = start
-  var buf = L.buf
   # skip the newline (but include it in the token!)
-  if buf[pos] == '\x0D':
-    if buf[pos + 1] == '\x0A': inc(pos, 2)
+  if L.buf[pos] == '\x0D':
+    if L.buf[pos + 1] == '\x0A': inc(pos, 2)
     else: inc(pos)
-  elif buf[pos] == '\x0A':
+  elif L.buf[pos] == '\x0A':
     inc(pos)
   if L.skipPounds:
-    if buf[pos] == '#': inc(pos)
-    if buf[pos] == '#': inc(pos)
+    if L.buf[pos] == '#': inc(pos)
+    if L.buf[pos] == '#': inc(pos)
   while true:
-    case buf[pos]
+    case L.buf[pos]
     of ' ', '\x0B', '\x0C':
       inc(pos)
       inc(result)
@@ -175,9 +174,9 @@ proc getIndentAux(L: var Lexer, start: int): int =
       result = result - (result mod 8) + 8
     else:
       break                   # EndOfFile also leaves the loop
-  if buf[pos] == '\0':
+  if L.buf[pos] == '\0':
     result = 0
-  elif (buf[pos] == '\x0A') or (buf[pos] == '\x0D'):
+  elif (L.buf[pos] == '\x0A') or (L.buf[pos] == '\x0D'):
     # look at the next line for proper indentation:
     result = getIndentAux(L, pos)
   L.bufpos = pos              # no need to set back buf
