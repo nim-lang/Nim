@@ -2039,6 +2039,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genConv(c, n, n.sons[1], dest)
   of nkObjDownConv:
     genConv(c, n, n.sons[0], dest)
+  of nkObjUpConv:
+    genConv(c, n, n.sons[0], dest)
   of nkVarSection, nkLetSection:
     unused(c, n, dest)
     genVarSection(c, n)

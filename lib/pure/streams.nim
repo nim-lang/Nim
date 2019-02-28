@@ -53,12 +53,17 @@ type
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
     getPositionImpl*: proc (s: Stream): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+
+    readDataStrImpl*: proc (s: Stream, buffer: var string, slice: Slice[int]): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+
     readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int)
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+        {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+
     flushImpl*: proc (s: Stream)
       {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
@@ -86,6 +91,14 @@ proc getPosition*(s: Stream): int =
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
+
+proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
+  ## low level proc that reads data into a string ``buffer`` at ``slice``.
+  if s.readDataStrImpl != nil:
+    result = s.readDataStrImpl(s, buffer, slice)
+  else:
+    # fallback
+    result = s.readData(addr buffer[0], buffer.len)
 
 when not defined(js):
   proc readAll*(s: Stream): string =
@@ -344,6 +357,19 @@ when not defined(js):
     var s = StringStream(s)
     return s.pos
 
+  proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
+    var s = StringStream(s)
+    result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
+    if result > 0:
+      when nimvm:
+        for i in 0 ..< result: # sorry, but no fast string splicing on the vm.
+          buffer[slice.a + i] = s.data[s.pos + i]
+      else:
+        copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
+      inc(s.pos, result)
+    else:
+      result = 0
+
   proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
     var s = StringStream(s)
     result = min(bufLen, s.data.len - s.pos)
@@ -389,6 +415,7 @@ when not defined(js):
     result.readDataImpl = ssReadData
     result.peekDataImpl = ssPeekData
     result.writeDataImpl = ssWriteData
+    result.readDataStrImpl = ssReadDataStr
 
   type
     FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
@@ -407,6 +434,9 @@ when not defined(js):
   proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
     result = readBuffer(FileStream(s).f, buffer, bufLen)
 
+  proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
+    result = readBuffer(FileStream(s).f, addr buffer[slice.a], slice.b + 1 - slice.a)
+
   proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
     let pos = fsGetPosition(s)
     defer: fsSetPosition(s, pos)
@@ -424,6 +454,7 @@ when not defined(js):
     result.atEndImpl = fsAtEnd
     result.setPositionImpl = fsSetPosition
     result.getPositionImpl = fsGetPosition
+    result.readDataStrImpl = fsReadDataStr
     result.readDataImpl = fsReadData
     result.peekDataImpl = fsPeekData
     result.writeDataImpl = fsWriteData
