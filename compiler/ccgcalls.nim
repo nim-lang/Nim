@@ -186,7 +186,12 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
     genParamLoop(params)
-  fixupCall(p, le, ri, d, rdLoc(op), params)
+  var callee = rdLoc(op)
+  let s = ri.sons[0].sym
+  if p.hcrOn and s.flags * {sfImportc, sfNonReloadable} == {} and
+      (s.typ.callConv == ccInline or s.owner.id == p.module.module.id):
+    callee = callee & "_actual"
+  fixupCall(p, le, ri, d, callee, params)
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
