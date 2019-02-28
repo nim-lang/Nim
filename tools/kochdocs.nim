@@ -249,6 +249,7 @@ lib/pure/bitops.nim
 lib/pure/nimtracker.nim
 lib/pure/punycode.nim
 lib/pure/volatile.nim
+lib/posix/posix_utils.nim
 """.splitWhitespace()
 
   doc0 = """

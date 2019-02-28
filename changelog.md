@@ -128,6 +128,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `Rusage`, `getrusage`, `wait4` to posix interface.
 
+- Added the `posix_utils` module.
 
 
 ### Library changes
