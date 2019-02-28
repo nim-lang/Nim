@@ -1,6 +1,6 @@
 discard """
 output: '''
-[0, 0, 0, 0, 0, 0, 48, 57]
+@[48, 57]
 '''
 """
 # bug #7238
@@ -16,4 +16,4 @@ proc toByteArrayBE*[T: SomeInteger](num: T): ByteArrayBE[sizeof(T)]=
     result[i] = byte(num shr ((N-1-i) * 8))
 
 let a = 12345.toByteArrayBE
-echo a
+echo a[^2 .. ^1] # to make it work on both 32-bit and 64-bit
