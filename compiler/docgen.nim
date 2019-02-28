@@ -992,7 +992,9 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
                  "\" for writing")
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
-  conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
+  if optWholeProject in conf.globalOptions:
+    # Backward compatibility with previous versions
+    conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
