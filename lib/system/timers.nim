@@ -8,7 +8,7 @@
 #
 
 ## Timer support for the realtime GC. Based on
-## `<https://github.com/jckarter/clay/blob/master/compiler/src/hirestimer.cpp>`_
+## `<https://github.com/jckarter/clay/blob/master/compiler/hirestimer.cpp>`_
 
 type
   Ticks = distinct int64
