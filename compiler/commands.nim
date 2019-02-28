@@ -388,7 +388,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
     let f = splitFile(arg.expandTilde)
-    conf.outFile = RelativeFile f.name
+    conf.outFile = RelativeFile f.name & f.ext
     conf.outDir = toAbsoluteDir f.dir
   of "outdir":
     expectArg(conf, switch, arg, pass, info)
