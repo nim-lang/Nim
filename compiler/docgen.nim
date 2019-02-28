@@ -991,10 +991,13 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
                  warnUser, "unable to open file \"" & d.destFile.string &
                  "\" for writing")
 
-proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
+proc handleDocOutputOptions*(conf: ConfigRef) =
   if optWholeProject in conf.globalOptions:
     # Backward compatibility with previous versions
     conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
+
+proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
+  handleDocOutputOptions conf
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)

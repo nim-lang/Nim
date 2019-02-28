@@ -63,9 +63,7 @@ proc commandCheck(graph: ModuleGraph) =
 
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; json: bool) =
-    if optWholeProject in graph.config.globalOptions:
-      # Backward compatibility with previous versions
-      graph.config.outDir = AbsoluteDir(graph.config.outDir / graph.config.outFile)
+    handleDocOutputOptions graph.config
     graph.config.errorMax = high(int)  # do not stop after first error
     semanticPasses(graph)
     if json: registerPass(graph, docgen2JsonPass)
