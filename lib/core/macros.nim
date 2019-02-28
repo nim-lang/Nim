@@ -12,6 +12,10 @@ include "system/helpers"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
+##
+## See also:
+## * `macros tutorial <https://nim-lang.github.io/Nim/tut3.html>`_
+## * `macros section in Nim manual <https://nim-lang.github.io/Nim/manual.html#macros>`_
 
 ## .. include:: ../../doc/astspec.txt
 
@@ -250,7 +254,7 @@ else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
     symbol.symbol.getImpl
 
-  proc strValOld(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
 
   proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
 
@@ -342,6 +346,13 @@ object
     doAssert(dumpTypeImpl(a) == t)
     doAssert(dumpTypeImpl(b) == t)
     doAssert(dumpTypeImpl(c) == t)
+
+when defined(nimHasSignatureHashInMacro):
+  proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
+    ## Returns a stable identifier derived from the signature of a symbol.
+    ## The signature combines many factors such as the type of the symbol,
+    ## the owning module of the symbol and others. The same identifier is
+    ## used in the back-end to produce the mangled symbol name.
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeImpl`` which takes a ``typedesc``.
@@ -1511,7 +1522,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       else:
         let def = p[0].getImpl[3]
         result = newTree(nnkPar)
-        for i in 1..<p.len:
+        for i in 1 ..< def.len:
           let key = def[i][0]
           let val = p[i]
           result.add newTree(nnkExprColonExpr, key, val)

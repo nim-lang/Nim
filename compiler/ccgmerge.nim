@@ -31,7 +31,7 @@ const
     cfsData: "NIM_merge_DATA",
     cfsProcs: "NIM_merge_PROCS",
     cfsInitProc: "NIM_merge_INIT_PROC",
-    cfsDatInitProc: "NIM_merge_DATINIT_PROC",    
+    cfsDatInitProc: "NIM_merge_DATINIT_PROC",
     cfsTypeInit1: "NIM_merge_TYPE_INIT1",
     cfsTypeInit2: "NIM_merge_TYPE_INIT2",
     cfsTypeInit3: "NIM_merge_TYPE_INIT3",

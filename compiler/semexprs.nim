@@ -127,7 +127,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     s = s.lastSon
   s = skipTypes(s, abstractVar-{tyTypeDesc})
   var pointers = 0
-  while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
+  while (d != nil) and (d.kind in {tyPtr, tyRef, tyOwned}) and (d.kind == s.kind):
     d = d.lastSon
     s = s.lastSon
     inc pointers
@@ -224,7 +224,7 @@ proc semConv(c: PContext, n: PNode): PNode =
 
   maybeLiftType(targetType, c, n[0].info)
 
-  if targetType.kind in {tySink, tyLent}:
+  if targetType.kind in {tySink, tyLent, tyOwned}:
     let baseType = semTypeNode(c, n.sons[1], nil).skipTypes({tyTypeDesc})
     let t = newTypeS(targetType.kind, c)
     t.rawAddSonNoPropagationOfTypeFlags baseType
@@ -735,7 +735,11 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
-  let a = semExpr(c, n)
+  inc c.inStaticContext
+  openScope(c)
+  let a = semExprWithType(c, n)
+  closeScope(c)
+  dec c.inStaticContext
   if a.findUnresolvedStatic != nil: return a
   result = evalStaticExpr(c.module, c.graph, a, c.p.owner)
   if result.isNil:
@@ -997,7 +1001,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
 
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
-  tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink}
+  tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
@@ -1150,7 +1154,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       p = p.next
     if p != nil and p.selfSym != nil:
       var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef,
-                                         tyAlias, tySink})
+                                         tyAlias, tySink, tyOwned})
       while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
       var check: PNode = nil
       if ty.kind == tyObject:
@@ -1282,7 +1286,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     return nil
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
-  ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+  ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
@@ -1353,7 +1357,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n.sons[0] = semExprWithType(c, n.sons[0])
   result = n
-  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
   of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
@@ -1372,7 +1376,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # make sure we don't evaluate generic macros/templates
   n.sons[0] = semExprWithType(c, n.sons[0],
                               {efNoEvaluateGeneric})
-  var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyUserTypeClassInst,
+  var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
     if arr.base.kind == tyNone:
@@ -2531,19 +2535,22 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "{}")), flags)
   of nkPragmaExpr:
     var
-      expr = n[0]
       pragma = n[1]
       pragmaName = considerQuotedIdent(c, pragma[0])
       flags = flags
+      finalNodeFlags: TNodeFlags = {}
 
     case whichKeyword(pragmaName)
     of wExplain:
       flags.incl efExplain
+    of wExecuteOnReload:
+      finalNodeFlags.incl nfExecuteOnReload
     else:
       # what other pragmas are allowed for expressions? `likely`, `unlikely`
       invalidPragma(c, n)
 
     result = semExpr(c, n[0], flags)
+    result.flags.incl finalNodeFlags
   of nkPar, nkTupleConstr:
     case checkPar(c, n)
     of paNone: result = errorNode(c, n)

@@ -40,6 +40,11 @@ static:
     let a2 = arcsin 0.3
     doAssert a1 == a2
 
+  block bitxor:
+    let x = -1'i32
+    let y = 1'i32
+    doAssert (x xor y) == -2
+
 block:
   # Check against bugs like #9176
   doAssert getCurrentCompilerExe() == forceConst(getCurrentCompilerExe())

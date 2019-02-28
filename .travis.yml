@@ -1,9 +1,11 @@
 sudo: false
 language: c
 
-dist: trusty
+dist: xenial
 
 matrix:
+  fast_finish: true
+
   include:
     - os: linux
       env: NIM_COMPILE_TO_CPP=false
@@ -45,10 +47,12 @@ before_script:
   - set +e   # prevents breaking after_failure
 
 script:
+  - set -e
   - echo "travis_fold:start:nim_c_koch"
   - nim c koch
   - echo "travis_fold:end:nim_c_koch"
   - ./koch runCI
+  - set +e
 
 before_deploy:
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html

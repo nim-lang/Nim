@@ -1,6 +1,8 @@
 # bug #3799
-discard """
-output: '''
+
+import strutils
+
+const output = splitLines("""
 00000000000000000000000000000000000000000
 00000000000001111111111111110000000000000
 00000000001111111111111111111110000000000
@@ -28,11 +30,7 @@ output: '''
 00000000111111111111111111111111100000000
 00000000000111111111111111111100000000000
 00000000000000111111111111100000000000000
-'''
-"""
-
-
-import macros
+""")
 
 const nmax = 500
 
@@ -63,19 +61,25 @@ proc julia*[T](z0, c: Complex[T], er2: T, nmax: int): int =
 template dendriteFractal*[T](z0: Complex[T], er2: T, nmax: int): int =
   julia(z0, (T(0.0), T(1.0)), er2, nmax)
 
-iterator stepIt[T](start, step: T, iterations: int): T =
+iterator stepIt[T](start, step: T, iterations: int): (int, T) =
   for i in 0 .. iterations:
-    yield start + T(i) * step
+    yield (i, start + T(i) * step)
 
+var errors = 0
 
 let c = (0.36237, 0.32)
-for y in stepIt(2.0, -0.0375 * 4, 107 div 4):
+for j, y in stepIt(2.0, -0.0375 * 4, 107 div 4):
   var row = ""
-  for x in stepIt(-2.0, 0.025 * 4, 160 div 4):
+  for i, x in stepIt(-2.0, 0.025 * 4, 160 div 4):
     #let n = julia((x, y), c, 4.0, nmax)         ### this works
     let n = dendriteFractal((x, y), 4.0, nmax)
-    if n < nmax:
-      row.add($(n mod 10))
-    else:
-      row.add(' ')
-  echo row
+    let c = char(int('0') + n mod 10)
+    let e = output[j][i]  # expected
+    if c != e:
+      errors += 1
+    row.add(c)
+
+  # Printing aparently makes the test fail when joined.
+  # echo row
+
+doAssert errors < 10, "total errors: " & $errors

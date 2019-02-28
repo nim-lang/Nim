@@ -98,7 +98,7 @@ when defined(upcoming):
         var process = startProcess("ping.exe", "",
                                    ["127.0.0.1", "-n", "2", "-w", "100"], nil,
                                    {poStdErrToStdOut, poUsePath, poInteractive,
-                                   poDemon})
+                                   poDaemon})
       else:
         var process = startProcess("sleep", "", ["1"], nil,
                                    {poStdErrToStdOut, poUsePath})

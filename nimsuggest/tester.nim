@@ -251,7 +251,7 @@ proc runEpcTest(filename: string): int =
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
@@ -293,7 +293,7 @@ proc runTest(filename: string): int =
   let cl = parseCmdLine(s.cmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""

@@ -12,8 +12,6 @@
 type
   UncheckedCharArray = UncheckedArray[char]
 
-import system/helpers2
-
 type
   Buffer = ptr object
     refcount: int

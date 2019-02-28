@@ -80,7 +80,7 @@ proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type
   # Execute vcvarsall with its command-line arguments
   # and then execute the SET command to list all environment variables
   let comSpecExec = "\"$1\" /C \"$2 && SET\"" % [comSpecCmd, vcvarsExec]
-  var comSpecOpts = {poEvalCommand, poDemon, poStdErrToStdOut}
+  var comSpecOpts = {poEvalCommand, poDaemon, poStdErrToStdOut}
   if verbose:
     comSpecOpts.incl poEchoCmd
   let comSpecOut = execProcess(comSpecExec, options = comSpecOpts)

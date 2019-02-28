@@ -125,7 +125,7 @@ proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
   if str == nil: toNimStr(str, 0)
   else: toNimStr(str, str.len)
 
-proc nimToCStringConv(s: NimStringV2): cstring {.compilerProc, inline.} =
+proc nimToCStringConv(s: NimStringV2): cstring {.compilerProc, nonReloadable, inline.} =
   if s.len == 0: result = cstring""
   else: result = cstring(unsafeAddr s.p.data)
 
@@ -164,6 +164,7 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   if newLen > s.len:
     prepareAdd(s, newLen - s.len)
+  # XXX This is wrong for const strings that got moved into 's'!
   s.len = newLen
   # this also only works because the destructor
   # looks at s.p and not s.len

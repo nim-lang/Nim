@@ -112,7 +112,7 @@ when defineSsl:
 type
   # TODO: I would prefer to just do:
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
-  AsyncSocketDesc  = object
+  AsyncSocketDesc = object
     fd: SocketHandle
     closed: bool ## determines whether this socket has been closed
     case isBuffered: bool ## determines whether this socket is buffered.
@@ -165,6 +165,18 @@ proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
   if fd.SocketHandle == osInvalidSocket:
     raiseOSError(osLastError())
   result = newAsyncSocket(fd, domain, sockType, protocol, buffered)
+
+proc getLocalAddr*(socket: AsyncSocket): (string, Port) =
+  ## Get the socket's local address and port number.
+  ##
+  ## This is high-level interface for `getsockname`:idx:.
+  getLocalAddr(socket.fd, socket.domain)
+
+proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
+  ## Get the socket's peer address and port number.
+  ##
+  ## This is high-level interface for `getpeername`:idx:.
+  getPeerAddr(socket.fd, socket.domain)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
     buffered = true): AsyncSocket =
@@ -630,7 +642,7 @@ when defined(posix):
     when not defined(nimdoc):
       let retFuture = newFuture[void]("connectUnix")
       result = retFuture
-  
+
       proc cb(fd: AsyncFD): bool =
         let ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
         if ret == 0:
@@ -641,7 +653,7 @@ when defined(posix):
         else:
           retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
           return true
-  
+
       var socketAddr = makeUnixAddr(path)
       let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
                        (sizeof(socketAddr.sun_family) + path.len).Socklen)
@@ -671,7 +683,7 @@ elif defined(nimdoc):
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     discard
-  
+
   proc bindUnix*(socket: AsyncSocket, path: string) =
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux

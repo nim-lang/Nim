@@ -42,6 +42,10 @@ proc cmpPaths*(x, y: AbsoluteDir): int {.borrow.}
 
 proc createDir*(x: AbsoluteDir) {.borrow.}
 
+proc toAbsoluteDir*(path: string): AbsoluteDir =
+  result = if path.isAbsolute: AbsoluteDir(path)
+           else: AbsoluteDir(getCurrentDir() / path)
+
 proc `$`*(x: AnyPath): string = x.string
 
 when true:

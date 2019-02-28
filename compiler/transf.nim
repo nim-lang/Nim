@@ -378,9 +378,15 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
       for i in countup(0, sonsLen(e) - 1):
         var v = e.sons[i]
         if v.kind == nkExprColonExpr: v = v.sons[1]
-        let lhs = c.transCon.forStmt.sons[i]
-        let rhs = transform(c, v)
-        add(result, asgnTo(lhs, rhs))
+        if c.transCon.forStmt[i].kind == nkVarTuple:
+          for j in 0 ..< sonsLen(c.transCon.forStmt[i])-1:
+            let lhs = c.transCon.forStmt[i][j]
+            let rhs = transform(c, newTupleAccess(c.graph, v, j))
+            add(result, asgnTo(lhs, rhs))
+        else:
+          let lhs = c.transCon.forStmt.sons[i]
+          let rhs = transform(c, v)
+          add(result, asgnTo(lhs, rhs))
     else:
       # Unpack the tuple into the loop variables
       # XXX: BUG: what if `n` is an expression with side-effects?
@@ -389,9 +395,15 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         add(result, asgnTo(lhs, rhs))
   else:
-    let lhs = c.transCon.forStmt.sons[0]
-    let rhs = transform(c, e)
-    add(result, asgnTo(lhs, rhs))
+    if c.transCon.forStmt.sons[0].kind == nkVarTuple:
+      for i in 0 ..< sonsLen(c.transCon.forStmt[0])-1:
+        let lhs = c.transCon.forStmt[0][i]
+        let rhs = transform(c, newTupleAccess(c.graph, e, i))
+        add(result, asgnTo(lhs, rhs))
+    else:
+      let lhs = c.transCon.forStmt.sons[0]
+      let rhs = transform(c, e)
+      add(result, asgnTo(lhs, rhs))
 
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
@@ -609,7 +621,11 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
 
   var v = newNodeI(nkVarSection, n.info)
   for i in countup(0, length - 3):
-    addVar(v, copyTree(n.sons[i])) # declare new vars
+    if n[i].kind == nkVarTuple:
+      for j in 0 ..< sonsLen(n[i])-1:
+        addVar(v, copyTree(n[i][j])) # declare new vars
+    else:
+      addVar(v, copyTree(n.sons[i])) # declare new vars
   add(stmtList, v.PTransNode)
 
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
@@ -798,8 +814,9 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
   # inlined, unless it's the empty array:
-  result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
-      cnst.len != 0
+  result = orig.kind == nkSym and
+           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
+           cnst.len != 0
 
 proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
   result = n
@@ -1007,10 +1024,15 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   when false:
     if oldDeferAnchor != nil: c.deferAnchor = oldDeferAnchor
 
-  var cnst = getConstExpr(c.module, PNode(result), c.graph)
-  # we inline constants if they are not complex constants:
-  if cnst != nil and not dontInlineConstant(n, cnst):
-    result = PTransNode(cnst) # do not miss an optimization
+  # Constants can be inlined here, but only if they cannot result in a cast
+  # in the back-end (e.g. var p: pointer = someProc)
+  let exprIsPointerCast = n.kind in {nkCast, nkConv, nkHiddenStdConv} and
+                          n.typ.kind == tyPointer
+  if not exprIsPointerCast:
+    var cnst = getConstExpr(c.module, PNode(result), c.graph)
+    # we inline constants if they are not complex constants:
+    if cnst != nil and not dontInlineConstant(n, cnst):
+      result = PTransNode(cnst) # do not miss an optimization
 
 proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip

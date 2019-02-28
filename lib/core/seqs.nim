@@ -43,7 +43,8 @@ proc `=destroy`[T](s: var seq[T]) =
     mixin `=destroy`
     when not supportsCopyMem(T):
       for i in 0..<x.len: `=destroy`(p.data[i])
-    p.region.dealloc(p.region, p, payloadSize(p.cap))
+    if p.region != nil:
+      p.region.dealloc(p.region, p, payloadSize(p.cap))
     x.p = nil
     x.len = 0
 
@@ -117,7 +118,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) =
   when not supportsCopyMem(T):
     for i in countdown(x.len - 1, newLen - 1):
       `=destroy`(x[i])
-
+  # XXX This is wrong for const seqs that were moved into 'x'!
   cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =

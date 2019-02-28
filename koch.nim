@@ -192,11 +192,11 @@ proc zip(latest: bool; args: string) =
        ["tools/niminst/niminst".exe, VersionAsString])
 
 proc ensureCleanGit() =
-   let (outp, status) = osproc.execCmdEx("git diff")
-   if outp.len != 0:
-     quit "Not a clean git repository; 'git diff' not empty!"
-   if status != 0:
-     quit "Not a clean git repository; 'git diff' returned non-zero!"
+  let (outp, status) = osproc.execCmdEx("git diff")
+  if outp.len != 0:
+    quit "Not a clean git repository; 'git diff' not empty!"
+  if status != 0:
+    quit "Not a clean git repository; 'git diff' returned non-zero!"
 
 proc xz(latest: bool; args: string) =
   ensureCleanGit()
@@ -291,25 +291,26 @@ proc boot(args: string) =
                       hostOs & "_" & hostCpu
 
   let nimStart = findStartNim()
-  copyExe(nimStart, 0.thVersion)
   for i in 0..2:
     let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
+    var nimi = i.thVersion
     if i == 0:
+      nimi = nimStart
       extraOption.add " --skipUserCfg --skipParentCfg"
-        # Note(D20190115T162028:here): the configs are skipped for bootstrap
+        # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
-        # fixes #10030.
       let ret = execCmdEx(nimStart & " --version")
       doAssert ret.exitCode == 0
       let version = ret.output.splitLines[0]
       if version.startsWith "Nim Compiler Version 0.19.0":
         extraOption.add " -d:nimBoostrapCsources0_19_0"
         # remove this when csources get updated
-    exec i.thVersion & " $# $# $# --nimcache:$# compiler" / "nim.nim" %
-      [bootOptions, extraOption, args, smartNimcache]
+
+    exec "$# $# $# $# --nimcache:$# compiler" / "nim.nim" %
+      [nimi, bootOptions, extraOption, args, smartNimcache]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -462,10 +463,15 @@ proc runCI(cmd: string) =
   # as that would weaken our testing efforts.
   when defined(posix): # appveyor (on windows) didn't run this
     kochExecFold("Boot", "boot")
+  # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
+
+  when false:
+    execFold("nimble install -y libffi", "nimble install -y libffi")
+    kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-extra")
@@ -542,7 +548,7 @@ proc testUnixInstall(cmdLineRest: string) =
       execCleanPath("./koch --latest tools")
       # check the tests work:
       putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
-      execCleanPath("./koch tests cat megatest", destDir / "bin")
+      execCleanPath("./koch tests --nim:./bin/nim cat megatest", destDir / "bin")
     else:
       echo "Version check: failure"
   finally:

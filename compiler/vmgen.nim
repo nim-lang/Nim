@@ -229,7 +229,9 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}: c.slots[r].inUse = false
+  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}:
+    # this seems to cause https://github.com/nim-lang/Nim/issues/10647
+    c.slots[r].inUse = false
 
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
@@ -1222,6 +1224,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
   of mNStrVal: genUnaryABC(c, n, dest, opcNStrVal)
+  of mNSigHash: genUnaryABC(c, n , dest, opcNSigHash)
   of mNSetIntVal:
     unused(c, n, dest)
     genBinaryStmt(c, n, opcNSetIntVal)
@@ -1335,7 +1338,7 @@ proc fitsRegister*(t: PType): bool =
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
 proc unneededIndirection(n: PNode): bool =
-  n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
+  n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 
 proc canElimAddr(n: PNode): PNode =
   case n.sons[0].kind
@@ -1395,7 +1398,7 @@ proc genDeref(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
       c.gABC(n, opcNodeToReg, dest, dest)
 
 proc whichAsgnOpc(n: PNode): TOpcode =
-  case n.typ.skipTypes(abstractRange-{tyTypeDesc}).kind
+  case n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     opcAsgnInt
   of tyString, tyCString:
@@ -1540,8 +1543,8 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
-    if allowFFI in c.features:
-      c.globals.add(importcSymbol(s))
+    if compiletimeFFI in c.config.features:
+      c.globals.add(importcSymbol(c.config, s))
       s.position = c.globals.len
     else:
       localError(c.config, info, "VM is not allowed to 'importc'")
@@ -1715,7 +1718,7 @@ proc getNullValueAux(obj: PNode, result: PNode; conf: ConfigRef) =
   else: globalError(conf, result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
-  var t = skipTypes(typ, abstractRange+{tyStatic}-{tyTypeDesc})
+  var t = skipTypes(typ, abstractRange+{tyStatic, tyOwned}-{tyTypeDesc})
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64:
     result = newNodeIT(nkIntLit, info, t)
@@ -1862,7 +1865,7 @@ proc genSetConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  let t = n.typ.skipTypes(abstractRange-{tyTypeDesc})
+  let t = n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc})
   if t.kind == tyRef:
     c.gABx(n, opcNew, dest, c.genType(t.sons[0]))
   else:

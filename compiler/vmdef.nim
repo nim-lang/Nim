@@ -92,6 +92,7 @@ type
     opcNIdent,
     opcNGetType,
     opcNStrVal,
+    opcNSigHash,
 
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
@@ -166,7 +167,6 @@ type
 
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
-    allowFFI,                 ## allow the FFI
     allowInfiniteLoops        ## allow endless loops
   TSandboxFlags* = set[TSandboxFlag]
 

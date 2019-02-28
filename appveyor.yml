@@ -1,10 +1,5 @@
 version: '{build}'
 
-cache:
-- x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
-- sqlite-dll-win64-x64-3160200.zip
-# - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
-
 environment:
   MINGW_URL64: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
   MINGW_ARCHIVE64: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
@@ -15,6 +10,8 @@ environment:
   MINGW_ARCHIVE32: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
   SQLITE_URL32: http://www.sqlite.org/2017/sqlite-dll-win32-x86-3160200.zip
   SQLITE_ARCHIVE32: sqlite-dll-win32-x86-3160200.zip
+  OPENBLAS_URL: https://sourceforge.net/projects/openblas/files/v0.3.5/OpenBLAS%200.3.5%20version.zip/download
+  OPENBLAS_ARCHIVE: OpenBLAS-0.3.5.zip
 
   platform: x64
 
@@ -25,6 +22,11 @@ environment:
       NIM_BITS: 64
     - NIM_TEST_PACKAGES: false
       NIM_BITS: 32
+
+cache:
+    - '%MINGW_ARCHIVE%'
+    - '%SQLITE_ARCHIVE%'
+    - '%OPENBLAS_ARCHIVE%'
 
 matrix:
   allow_failures:
@@ -40,6 +42,8 @@ install:
   - 7z x -y "%SQLITE_ARCHIVE%%NIM_BITS%" -o"%CD%\DIST"> nul
   - IF not exist "%MINGW_ARCHIVE%%NIM_BITS%" appveyor DownloadFile "%MINGW_URL%%NIM_BITS%" -FileName "%MINGW_ARCHIVE%%NIM_BITS%"
   - 7z x -y "%MINGW_ARCHIVE%%NIM_BITS%" -o"%CD%\DIST"> nul
+  - IF not exist "%OPENBLAS_ARCHIVE%" appveyor DownloadFile "%OPENBLAS_URL%" -FileName "%OPENBLAS_ARCHIVE%"
+  - 7z x -y "%OPENBLAS_ARCHIVE%" -o"%CD%\DIST"> nul
   - SET PATH=%CD%\DIST\mingw%NIM_BITS%\BIN;%CD%\BIN;%PATH%
   - IF "%NIM_BITS%" == "64" ( copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay64.dll & copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl64.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl32.dll )
     ELSE ( copy C:\OpenSSL-Win32\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win32\libssl32.dll %CD%\BIN\libssl32.dll )

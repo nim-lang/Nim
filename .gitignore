@@ -11,7 +11,9 @@ dnimcache/
 !/icons/*.o
 *.obj
 *.ilk
+*.exp
 *.pdb
+*.lib
 *.dll
 *.exe
 *.so
@@ -19,7 +21,6 @@ dnimcache/
 *.zip
 *.iss
 *.log
-*.ilk
 *.pdb
 
 mapping.txt
@@ -42,6 +43,7 @@ bin/*
 *.perspectivev3
 *.swp
 .DS_Store
+.tags
 project.xcworkspace/
 xcuserdata/
 

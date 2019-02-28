@@ -1,14 +1,17 @@
 The set type models the mathematical notion of a set. The set's basetype can
 only be an ordinal type of a certain size, namely:
 
-  * ``int8``-``int16``
-  * ``uint8``/``byte``-``uint16``
-  * ``char``
-  * ``enum``
+* ``int8``-``int16``
+* ``uint8``/``byte``-``uint16``
+* ``char``
+* ``enum``
 
-or equivalent. The reason is that sets are implemented as high
-performance bit vectors. Attempting to declare a set with a larger type will
-result in an error:
+or equivalent. For signed integers the set's base type is defined to be in the
+range ``0 .. MaxSetElements-1`` where ``MaxSetElements`` is currently always
+2^16.
+
+The reason is that sets are implemented as high performance bit vectors.
+Attempting to declare a set with a larger type will result in an error:
 
 .. code-block:: nim
 

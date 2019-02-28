@@ -16,9 +16,12 @@ proc rsplit(s: string; sep: string; maxsplit: int = -1): seq[string]
 
 expression: rsplit("abc:def", {':'}, maxsplits = 1)
 '''
+disabled: 32bit
 """
 
 # bug #8043
+
+# disabled on 32 bit systems because the order of suggested proc alternatives is different.
 
 import strutils
 "abc:def".rsplit({':'}, maxsplits = 1)
