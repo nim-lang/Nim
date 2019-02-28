@@ -454,7 +454,7 @@ proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): AbsoluteFile =
-  result = (if conf.outFile.isEmpty: conf.projectPath else: conf.outDir) /
+  result = (if conf.outDir.isEmpty: conf.projectPath else: conf.outDir) /
             changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
