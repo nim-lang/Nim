@@ -164,6 +164,7 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   if newLen > s.len:
     prepareAdd(s, newLen - s.len)
+  # XXX This is wrong for const strings that got moved into 's'!
   s.len = newLen
   # this also only works because the destructor
   # looks at s.p and not s.len
