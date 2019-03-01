@@ -223,7 +223,6 @@ compiler bcc:
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
-
 # Digital Mars C Compiler
 compiler dmc:
   result = (
@@ -375,6 +374,11 @@ proc nameToCC*(name: string): TSystemCC =
     if cmpIgnoreStyle(name, CC[i].name) == 0:
       return i
   result = ccNone
+
+proc isVSCompatible*(conf: ConfigRef): bool =
+  return conf.cCompiler == ccVcc or 
+          conf.cCompiler == ccClangCl or
+          (conf.cCompiler == ccIcl and conf.target.hostOS in osDos..osWindows)
 
 proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
@@ -748,7 +752,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     # and a bit about the .pdb format in case that is ever needed:
     # https://github.com/crosire/blink
     # http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
-    if conf.hcrOn and conf.cCompiler == ccVcc:
+    if conf.hcrOn and isVSCompatible(conf):
       let t = now()
       let pdb = output.string & "." & format(t, "MMMM-yyyy-HH-mm-") & $t.nanosecond & ".pdb"
       result.add " /link /PDB:" & pdb
@@ -884,7 +888,7 @@ proc callCCompiler*(conf: ConfigRef) =
         add(cmds, getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
-        if conf.cCompiler == ccVcc:
+        if isVSCompatible(conf):
           for pdb in walkFiles(objFile & ".*.pdb"):
             discard tryRemoveFile(pdb)
       # execute link commands in parallel - output will be a bit different
