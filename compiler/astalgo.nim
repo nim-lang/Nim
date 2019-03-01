@@ -352,29 +352,32 @@ proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1
   result = symToYamlAux(conf, n, marker, indent, maxRecDepth)
 
 proc debugTree*(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int; renderType=false): Rope
-proc debugType(conf: ConfigRef; n: PType, maxRecDepth=100): Rope =
+
+proc debugType(conf: ConfigRef; n: PType, indent: int, maxRecDepth=100): Rope =
   if n == nil:
     result = rope("null")
   else:
-    result = rope($n.kind)
+    var istr = rspaces(indent + 2)
+    result.addf("{", [])
+    result.addf("$N$1\"kind\": \"$2\",", [istr, rope($n.kind)])
     if n.sym != nil:
-      add(result, " ")
-      add(result, n.sym.name.s)
+      result.addf("$N$1\"sym\": \"$2\",", [istr, rope(n.sym.name.s)])
+
     if n.kind in IntegralTypes and n.n != nil:
-      add(result, ", n: ")
-      add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=false))
+      result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, n.n, indent+2, maxRecDepth-1, renderType=false)])
+
     if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
-      add(result, "(")
-      for i in countup(0, sonsLen(n) - 1):
-        if i > 0: add(result, ", ")
-        if n.sons[i] == nil:
-          add(result, "null")
+      result.addf("$N$1\"sons\": [", [istr])
+      for i in 0 ..< sonsLen(n):
+        result.add(debugType(conf, n.sons[i], indent + 2, maxRecDepth-1))
+        if i == sonsLen(n) - 1:
+          result.addf("],", [])
         else:
-          add(result, debugType(conf, n.sons[i], maxRecDepth-1))
+          result.add(",")
+
       if n.kind == tyObject and n.n != nil:
-        add(result, ", n: ")
-        add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=true))
-      add(result, ")")
+        result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, n.n, indent+2, maxRecDepth-1, renderType=true)])
+    result.addf("$N$1}", [rspaces(indent)])
 
 proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
                renderType=false): Rope =
@@ -415,7 +418,7 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
              istr, rope(symStr)])
 
         if renderType and n.sym.typ != nil:
-          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.sym.typ, 2)])
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.sym.typ, indent+2, 2)])
       of nkIdent:
         if n.ident != nil:
           addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
@@ -423,15 +426,17 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
         if renderType and n.typ != nil:
-          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, 2)])
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, indent+2, 2)])
         if sonsLen(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
-          for i in countup(0, sonsLen(n) - 1):
-            if i > 0: add(result, ",")
-            addf(result, "$N$1$2", [rspaces(indent + 4), debugTree(conf, n.sons[i],
-                indent + 4, maxRecDepth - 1, renderType)])
-          addf(result, "$N$1]", [istr])
-    addf(result, "$N$1}", [rspaces(indent)])
+          for i in 0 ..< sonsLen(n):
+            result.add debugTree(conf, n.sons[i], indent + 2, maxRecDepth - 1, renderType)
+            if i == sonsLen(n) - 1:
+              result.addf("],", [])
+            else:
+              result.add(",")
+
+    result.addf "$N$1}", [rspaces(indent)]
 
 when declared(echo):
   proc debug(n: PSym; conf: ConfigRef) =
@@ -446,7 +451,7 @@ when declared(echo):
         $lineInfoToStr(conf, n.info), $n.kind])
 
   proc debug(n: PType; conf: ConfigRef) =
-    echo($debugType(conf, n))
+    echo($debugType(conf, n, 0))
 
   proc debug(n: PNode; conf: ConfigRef) =
     echo($debugTree(conf, n, 0, 100))
