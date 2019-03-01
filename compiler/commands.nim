@@ -494,6 +494,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.hcrOn:
       defineSymbol(conf.symbols, "hotcodereloading")
       defineSymbol(conf.symbols, "useNimRtl")
+      # hardcoded linking with dynamic runtime for MSVC for smaller binaries
+      # should do the same for all compilers (wherever applicable)
+      if conf.cCompiler == ccVcc:
+        extccomp.addCompileOptionCmd(conf, "/MD")
     else:
       undefSymbol(conf.symbols, "hotcodereloading")
       undefSymbol(conf.symbols, "useNimRtl")

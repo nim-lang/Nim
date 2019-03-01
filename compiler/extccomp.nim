@@ -734,8 +734,9 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     # way of being able to debug and rebuild the program at the same time. This
     # is accomplished using the /PDB:<filename> flag (there also exists the
     # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
-    # atleast 5-10mb big and will quickly accumulate. There is a hacky solution:
-    # we could try to delete all .pdb files with a pattern and swallow exceptions.
+    # atleast 300kb big (when linking statically to the runtime - or else 5mb+) 
+    # and will quickly accumulate. There is a hacky solution: we could try to
+    # delete all .pdb files with a pattern and swallow exceptions.
     #
     # links about .pdb files and hot code reloading:
     # https://ourmachinery.com/post/dll-hot-reloading-in-theory-and-practice/
