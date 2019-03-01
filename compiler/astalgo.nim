@@ -351,92 +351,110 @@ proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1
   var marker = initIntSet()
   result = symToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-proc debugTree*(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int; renderType=false): Rope
 
-proc debugType(conf: ConfigRef; n: PType, indent: int, maxRecDepth=100): Rope =
+import tables
+
+template earlyExit(visited : var Table[pointer, int]; n: PType | PNode | PSym) =
   if n == nil:
-    result = rope("null")
+    return rope("null")
+  let index = visited.getOrDefault(cast[pointer](n), -1)
+  if index < 0:
+    visited[cast[pointer](n)] = 13 # current line
   else:
-    var istr = rspaces(indent + 2)
-    result.addf("{", [])
-    result.addf("$N$1\"kind\": \"$2\",", [istr, rope($n.kind)])
-    if n.sym != nil:
-      result.addf("$N$1\"sym\": \"$2\",", [istr, rope(n.sym.name.s)])
+    return rope("<line: " & $index & ">")
 
-    if n.kind in IntegralTypes and n.n != nil:
-      result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, n.n, indent+2, maxRecDepth-1, renderType=false)])
 
-    if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
-      result.addf("$N$1\"sons\": [", [istr])
+proc debugType(conf: ConfigRef; visited: var Table[pointer, int]; n: PType, indent: int; renderSymType: bool): Rope
+proc debugTree(conf: ConfigRef; visited: var Table[pointer, int]; n: PNode, indent: int; renderSymType: bool): Rope
+proc debugSym(conf: ConfigRef; visited: var Table[pointer, int]; s: PSym; indent: int; renderSymType: bool): Rope =
+  earlyExit(visited, s)
+
+  result = rope("{")
+  result.add "\"kind\": "
+  result.add $s.kind
+  result.add ", \"name\": "
+  result.add s.name.s
+  result.add ", \"id\": "
+  result.add $s.id
+  if s.kind in {skField, skEnumField, skParam}:
+    result.add ", \"position\": "
+    result.add $s.position
+
+  if card(s.flags) > 0:
+    result.add ", \"flags\": "
+    result.add $s.flags
+
+  if renderSymType and s.typ != nil:
+    result.addf ",$N$1\"typ\": $2", [rspaces(indent+2), debugType(conf, visited, s.typ, indent+2, renderSymType)]
+
+  result.add "}"
+
+proc debugType(conf: ConfigRef; visited: var Table[pointer, int]; n: PType, indent: int; renderSymType: bool): Rope =
+  earlyExit(visited, n)
+
+  var istr = rspaces(indent + 2)
+  result.addf("{", [])
+  result.addf("$N$1\"kind\": \"$2\",", [istr, rope($n.kind)])
+  if n.sym != nil:
+    result.addf("$N$1\"sym\": \"$2\",", [istr, rope(n.sym.name.s)])
+
+  if n.kind in IntegralTypes and n.n != nil:
+    result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, visited, n.n, indent+2, renderSymType)])
+
+  if (n.kind != tyString) and (sonsLen(n) > 0):
+    result.addf("$N$1\"sons\": [", [istr])
+    for i in 0 ..< sonsLen(n):
+      result.add(debugType(conf, visited, n.sons[i], indent + 2, renderSymType))
+      if i == sonsLen(n) - 1:
+        result.addf("],", [])
+      else:
+        result.add(",")
+
+    if n.kind == tyObject and n.n != nil:
+      result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, visited, n.n, indent+2, renderSymType)])
+  result.addf("$N$1}", [rspaces(indent)])
+
+proc debugTree(conf: ConfigRef; visited: var Table[pointer, int]; n: PNode, indent: int; renderSymType: bool): Rope =
+  earlyExit(visited, n)
+
+  var istr = rspaces(indent + 2)
+  result = "{$N$1\"kind\": $2" %
+           [istr, makeYamlString($n.kind)]
+  when defined(useNodeIds):
+    addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
+  if conf != nil:
+    addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
+
+  if card(n.flags) > 0:
+    addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
+  case n.kind
+  of nkCharLit..nkUInt64Lit:
+    addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
+  of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
+    addf(result, ",$N$1\"floatVal\": $2",
+        [istr, rope(n.floatVal.toStrMaxPrecision)])
+  of nkStrLit..nkTripleStrLit:
+    addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+  of nkSym:
+    addf(result, ",$N$1\"sym\": $2", [istr, debugSym(conf, visited, n.sym, indent+2, renderSymType)])
+  of nkIdent:
+    if n.ident != nil:
+      addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
+    else:
+      addf(result, ",$N$1\"ident\": null", [istr])
+  else:
+    if renderSymType and n.typ != nil:
+      addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, visited, n.typ, indent+2, renderSymType)])
+    if sonsLen(n) > 0:
+      addf(result, ",$N$1\"sons\": [", [istr])
       for i in 0 ..< sonsLen(n):
-        result.add(debugType(conf, n.sons[i], indent + 2, maxRecDepth-1))
+        result.add debugTree(conf, visited, n.sons[i], indent + 2, renderSymType)
         if i == sonsLen(n) - 1:
           result.addf("],", [])
         else:
           result.add(",")
 
-      if n.kind == tyObject and n.n != nil:
-        result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, n.n, indent+2, maxRecDepth-1, renderType=true)])
-    result.addf("$N$1}", [rspaces(indent)])
-
-proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
-               renderType=false): Rope =
-  if n == nil:
-    result = rope("null")
-  else:
-    var istr = rspaces(indent + 2)
-    result = "{$N$1\"kind\": $2" %
-             [istr, makeYamlString($n.kind)]
-    when defined(useNodeIds):
-      addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
-    if conf != nil:
-      addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
-    if maxRecDepth != 0:
-      if card(n.flags) > 0:
-        addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
-      case n.kind
-      of nkCharLit..nkUInt64Lit:
-        addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
-      of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
-        addf(result, ",$N$1\"floatVal\": $2",
-            [istr, rope(n.floatVal.toStrMaxPrecision)])
-      of nkStrLit..nkTripleStrLit:
-        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
-      of nkSym:
-        let s = n.sym
-        var symStr = ""
-        symStr.add "\"kind\": \""
-        symStr.add $s.kind
-        symStr.add "\", \"name\": \""
-        symStr.add s.name.s
-        symStr.add "\", \"id\": "
-        symStr.add s.id
-        if s.kind in {skField, skEnumField, skParam}:
-          symStr.add ", \"position\": "
-          symStr.add s.position
-        addf(result, ",$N$1\"sym\": {$2}", [
-             istr, rope(symStr)])
-
-        if renderType and n.sym.typ != nil:
-          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.sym.typ, indent+2, 2)])
-      of nkIdent:
-        if n.ident != nil:
-          addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
-        else:
-          addf(result, ",$N$1\"ident\": null", [istr])
-      else:
-        if renderType and n.typ != nil:
-          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, indent+2, 2)])
-        if sonsLen(n) > 0:
-          addf(result, ",$N$1\"sons\": [", [istr])
-          for i in 0 ..< sonsLen(n):
-            result.add debugTree(conf, n.sons[i], indent + 2, maxRecDepth - 1, renderType)
-            if i == sonsLen(n) - 1:
-              result.addf("],", [])
-            else:
-              result.add(",")
-
-    result.addf "$N$1}", [rspaces(indent)]
+  result.addf "$N$1}", [rspaces(indent)]
 
 when declared(echo):
   proc debug(n: PSym; conf: ConfigRef) =
@@ -451,10 +469,12 @@ when declared(echo):
         $lineInfoToStr(conf, n.info), $n.kind])
 
   proc debug(n: PType; conf: ConfigRef) =
-    echo($debugType(conf, n, 0))
+    var table = initTable[pointer, int]()
+    echo($debugType(conf, table, n, indent=0, renderSymType=true))
 
   proc debug(n: PNode; conf: ConfigRef) =
-    echo($debugTree(conf, n, 0, 100))
+    var table = initTable[pointer, int]()
+    echo($debugTree(conf, table, n, indent=0, renderSymType=true))
 
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
