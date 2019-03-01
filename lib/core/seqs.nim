@@ -80,7 +80,7 @@ type
     cap: int
     region: Allocator
 
-proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
+proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
@@ -93,7 +93,7 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
     result = nil
 
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
-    compilerRtl, noSideEffect.} =
+    compilerRtl, noSideEffect, raises: [].} =
   {.noSideEffect.}:
     if len+addlen <= len:
       result = p

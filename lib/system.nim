@@ -1898,14 +1898,14 @@ when not defined(nimscript) and not defined(JS):
 
 when not defined(nimscript):
   when hasAlloc:
-    proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
+    proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
-    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
+    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``dealloc(block)``. The block is not initialized, so reading
@@ -1913,14 +1913,14 @@ when not defined(nimscript):
       ## The allocated memory belongs to its allocating thread!
       ## Use `createSharedU` to allocate from a shared heap.
       cast[ptr T](alloc(T.sizeof * size))
-    proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
+    proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
+    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``dealloc(block)``. The block is initialized with all bytes
@@ -1929,7 +1929,7 @@ when not defined(nimscript):
       ## Use `createShared` to allocate from a shared heap.
       cast[ptr T](alloc0(sizeof(T) * size))
     proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
-                                                           benign.}
+                                                           benign, raises: [].}
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
@@ -1937,7 +1937,7 @@ when not defined(nimscript):
       ## be freed with ``dealloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared` to reallocate from a shared heap.
-    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign.} =
+    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign, raises: [].} =
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
@@ -1946,7 +1946,7 @@ when not defined(nimscript):
       ## its allocating thread!
       ## Use `resizeShared` to reallocate from a shared heap.
       cast[ptr T](realloc(p, T.sizeof * newSize))
-    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign.}
+    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
       ## frees the memory allocated with ``alloc``, ``alloc0`` or
       ## ``realloc``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -1955,27 +1955,27 @@ when not defined(nimscript):
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared` to deallocate from a shared heap.
 
-    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign.}
+    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is
       ## undefined behaviour!
     proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline,
-                                                                 benign.} =
+                                                                 benign, raises: [].} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is
       ## undefined behaviour!
       cast[ptr T](allocShared(T.sizeof * size))
-    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign.}
+    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline, raises: [].} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``.
@@ -1983,26 +1983,26 @@ when not defined(nimscript):
       ## containing zero, so it is somewhat safer than ``createSharedU``.
       cast[ptr T](allocShared0(T.sizeof * size))
     proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl,
-                                                                 benign.}
+                                                                 benign, raises: [].}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
       ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
       ## block has to be freed with ``deallocShared``.
-    proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline.} =
+    proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].} =
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is
       ## not **nil** ``resizeShared`` calls ``freeShared(p)``. In other
       ## cases the block has to be freed with ``freeShared``.
       cast[ptr T](reallocShared(p, T.sizeof * newSize))
-    proc deallocShared*(p: pointer) {.noconv, rtl, benign.}
+    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [].}
       ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
       ## memory (or just freeing it twice!) a core dump may happen
       ## or other memory may be corrupted.
-    proc freeShared*[T](p: ptr T) {.inline, benign.} =
+    proc freeShared*[T](p: ptr T) {.inline, benign, raises: [].} =
       ## frees the memory allocated with ``createShared``, ``createSharedU`` or
       ## ``resizeShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -2929,7 +2929,7 @@ var
     ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
 
-  outOfMemHook*: proc () {.nimcall, tags: [], benign.}
+  outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
     ## set this variable to provide a procedure that should be called
     ## in case of an `out of memory`:idx: event. The standard handler
     ## writes an error message and terminates the program. `outOfMemHook` can
