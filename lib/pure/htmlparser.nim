@@ -30,6 +30,7 @@
 ## ending with the extension ``.rst`` and convert them to ``.html``.
 ##
 ## .. code-block:: Nim
+##     :test:
 ##
 ##   import htmlparser
 ##   import xmltree  # To use '$' for XmlNode
@@ -41,9 +42,8 @@
 ##     let html = loadHTML("input.html")
 ##
 ##     for a in html.findAll("a"):
-##       let href = a.attrs["href"]
-##       if not href.isNil:
-##         let (dir, filename, ext) = splitFile(href)
+##       if a.attrs.hasKey "href":
+##         let (dir, filename, ext) = splitFile(a.attrs["href"])
 ##         if cmpIgnoreCase(ext, ".rst") == 0:
 ##           a.attrs["href"] = dir / filename & ".html"
 ##
