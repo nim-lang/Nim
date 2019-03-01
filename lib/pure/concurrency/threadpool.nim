@@ -8,6 +8,12 @@
 #
 
 ## Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
+##
+## **See also:**
+## * `threads module <threads.html>`_
+## * `chanels module <channels.html>`_
+## * `locks module <locks.html>`_
+## * `asyncdispatch module <asyncdispatch.html>`_
 
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}
@@ -93,11 +99,10 @@ type
     cv: Semaphore
     idx: int
 
-  FlowVarBase* = ref FlowVarBaseObj ## Untyped base class for 'FlowVar[T]'.
+  FlowVarBase* = ref FlowVarBaseObj ## Untyped base class for ``FlowVar[T]``.
   FlowVarBaseObj = object of RootObj
     ready, usesSemaphore, awaited: bool
-    cv: Semaphore #\
-    # for 'blockUntilAny' support
+    cv: Semaphore  # for 'blockUntilAny' support
     ai: ptr AwaitInfo
     idx: int
     data: pointer  # we incRef and unref it to keep it alive; note this MUST NOT
@@ -129,8 +134,9 @@ type
     readyForTask: Semaphore
 
 proc blockUntil*(fv: FlowVarBase) =
-  ## Waits until the value for the flowVar arrives. Usually it is not necessary
-  ## to call this explicitly.
+  ## Waits until the value for the ``fv`` arrives.
+  ##
+  ## Usually it is not necessary to call this explicitly.
   if fv.usesSemaphore and not fv.awaited:
     fv.awaited = true
     blockUntil(fv.cv)
@@ -220,8 +226,8 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## to ``action``.
   ##
   ## Note that due to Nim's parameter passing semantics this
-  ## means that ``T`` doesn't need to be copied and so ``awaitAndThen`` can
-  ## sometimes be more efficient than ``^``.
+  ## means that ``T`` doesn't need to be copied so ``awaitAndThen`` can
+  ## sometimes be more efficient than `^ proc <#^,FlowVar[T]>`_.
   blockUntil(fv)
   when T is string or T is seq:
     action(cast[T](fv.data))
@@ -252,13 +258,13 @@ proc `^`*[T](fv: FlowVar[T]): T =
     result = fv.blob
 
 proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
-  ## Awaits any of the given flowVars. Returns the index of one flowVar for
-  ## which a value arrived.
+  ## Awaits any of the given ``flowVars``. Returns the index of one ``flowVar``
+  ## for which a value arrived.
   ##
-  ## A flowVar only supports one call to 'blockUntilAny' at the same time.
-  ## That means if you `blockUntilAny([a,b])` and `blockUntilAny([b,c])` the second
-  ## call will only blockUntil 'c'. If there is no flowVar left to be able to wait
-  ## on, -1 is returned.
+  ## A ``flowVar`` only supports one call to ``blockUntilAny`` at the same time.
+  ## That means if you ``blockUntilAny([a,b])`` and ``blockUntilAny([b,c])``
+  ## the second call will only block until ``c``. If there is no ``flowVar`` left
+  ## to be able to wait on, -1 is returned.
   ##
   ## **Note**: This results in non-deterministic behaviour and should be avoided.
   var ai: AwaitInfo
@@ -283,7 +289,7 @@ proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
 proc isReady*(fv: FlowVarBase): bool =
   ## Determines whether the specified ``FlowVarBase``'s value is available.
   ##
-  ## If ``true`` awaiting ``fv`` will not block.
+  ## If ``true``, awaiting ``fv`` will not block.
   if fv.usesSemaphore and not fv.awaited:
     acquire(fv.cv.L)
     result = fv.cv.counter > 0
@@ -296,9 +302,9 @@ proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   signal(w.taskStarted)
 
 const
-  MaxThreadPoolSize* = 256 ## Maximal size of the thread pool. 256 threads
+  MaxThreadPoolSize* = 256 ## Maximum size of the thread pool. 256 threads
                            ## should be good enough for anybody ;-)
-  MaxDistinguishedThread* = 32 ## Maximal number of "distinguished" threads.
+  MaxDistinguishedThread* = 32 ## Maximum number of "distinguished" threads.
 
 type
   ThreadId* = range[0..MaxDistinguishedThread-1]
@@ -373,12 +379,12 @@ when defined(nimPinToCpu):
   var gCpus: Natural
 
 proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
-  ## Sets the minimal thread pool size. The default value of this is 4.
+  ## Sets the minimum thread pool size. The default value of this is 4.
   minPoolSize = size
 
 proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
-  ## Sets the maximal thread pool size. The default value of this
-  ## is ``MaxThreadPoolSize``.
+  ## Sets the maximum thread pool size. The default value of this
+  ## is ``MaxThreadPoolSize`` (256).
   maxPoolSize = size
   if currentPoolSize > maxPoolSize:
     for i in maxPoolSize..currentPoolSize-1:
@@ -418,42 +424,46 @@ proc setup() =
   for i in 0..<currentPoolSize: activateWorkerThread(i)
 
 proc preferSpawn*(): bool =
-  ## Use this proc to determine quickly if a 'spawn' or a direct call is
+  ## Use this proc to determine quickly if a ``spawn`` or a direct call is
   ## preferable.
   ##
-  ## If it returns 'true' a 'spawn' may make sense. In general
-  ## it is not necessary to call this directly; use 'spawnX' instead.
+  ## If it returns ``true``, a ``spawn`` may make sense. In general
+  ## it is not necessary to call this directly; use `spawnX template
+  ## <#spawnX.t>`_ instead.
   result = gSomeReady.counter > 0
 
 proc spawn*(call: typed): void {.magic: "Spawn".}
-  ## Always spawns a new task, so that the 'call' is never executed on
+  ## Always spawns a new task, so that the ``call`` is never executed on
   ## the calling thread.
   ##
-  ## 'call' has to be proc call 'p(...)' where 'p' is gcsafe and has a
-  ## return type that is either 'void' or compatible with ``FlowVar[T]``.
+  ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
+  ## return type that is either ``void`` or compatible with ``FlowVar[T]``.
 
 proc pinnedSpawn*(id: ThreadId; call: typed): void {.magic: "Spawn".}
   ## Always spawns a new task on the worker thread with ``id``, so that
-  ## the 'call' is **always** executed on the thread.
+  ## the ``call`` is **always** executed on the thread.
   ##
-  ## 'call' has to be proc call 'p(...)' where 'p' is gcsafe and has a
-  ## return type that is either 'void' or compatible with ``FlowVar[T]``.
+  ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
+  ## return type that is either ``void`` or compatible with ``FlowVar[T]``.
 
 template spawnX*(call): void =
   ## Spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread.
   ##
-  ## Usually it is advised to use 'spawn' in order to not block the producer
-  ## for an unknown amount of time. 'call' has to be proc call 'p(...)' where
-  ## 'p' is gcsafe and has a return type that is either 'void' or compatible
-  ## with ``FlowVar[T]``.
+  ## Usually it is advised to use `spawn proc <#spawn,typed>`_ in order to
+  ## not block the producer for an unknown amount of time.
+  ##
+  ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
+  ## return type that is either 'void' or compatible with ``FlowVar[T]``.
   (if preferSpawn(): spawn call else: call)
 
 proc parallel*(body: untyped) {.magic: "Parallel".}
-  ## A parallel section can be used to execute a block in parallel. ``body``
-  ## has to be in a DSL that is a particular subset of the language.
+  ## A parallel section can be used to execute a block in parallel.
   ##
-  ## Please refer to the manual for further information.
+  ## ``body`` has to be in a DSL that is a particular subset of the language.
+  ##
+  ## Please refer to `the manual <manual.html#parallel-amp-spawn>`_
+  ## for further information.
 
 var
   state: ThreadPoolState
@@ -557,8 +567,9 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
 
 
 proc sync*() =
-  ## A simple barrier to wait for all spawn'ed tasks. If you need more elaborate
-  ## waiting, you have to use an explicit barrier.
+  ## A simple barrier to wait for all ``spawn``'ed tasks.
+  ##
+  ## If you need more elaborate waiting, you have to use an explicit barrier.
   var toRelease = 0
   while true:
     var allReady = true
