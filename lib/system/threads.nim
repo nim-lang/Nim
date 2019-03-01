@@ -7,8 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-## Thread support for Nim. **Note**: This is part of the system module.
-## Do not import it directly. To activate thread support you need to compile
+## Thread support for Nim.
+##
+## **Note**: This is part of the system module. Do not import it directly.
+## To activate thread support you need to compile
 ## with the ``--threads:on`` command line switch.
 ##
 ## Nim's memory model for threads is quite different from other common
@@ -381,6 +383,7 @@ var
 proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
   ## Registers a *thread local* handler that is called at the thread's
   ## destruction.
+  ##
   ## A thread is destructed when the ``.thread`` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
@@ -481,22 +484,22 @@ else:
 {.pop.}
 
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
-  ## returns true if `t` is running.
+  ## Returns true if `t` is running.
   result = t.dataFn != nil
 
 proc handle*[TArg](t: Thread[TArg]): SysThread {.inline.} =
-  ## returns the thread handle of `t`.
+  ## Returns the thread handle of `t`.
   result = t.sys
 
 when hostOS == "windows":
   const MAXIMUM_WAIT_OBJECTS = 64
 
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
-    ## waits for the thread `t` to finish.
+    ## Waits for the thread `t` to finish.
     discard waitForSingleObject(t.sys, -1'i32)
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
-    ## waits for every thread in `t` to finish.
+    ## Waits for every thread in `t` to finish.
     var a: array[MAXIMUM_WAIT_OBJECTS, SysThread]
     var k = 0
     while k < len(t):
@@ -508,25 +511,25 @@ when hostOS == "windows":
 
 elif defined(genode):
   proc joinThread*[TArg](t: Thread[TArg]) {.importcpp.}
-    ## waits for the thread `t` to finish.
+    ## Waits for the thread `t` to finish.
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
-    ## waits for every thread in `t` to finish.
+    ## Waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
 else:
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
-    ## waits for the thread `t` to finish.
+    ## Waits for the thread `t` to finish.
     discard pthread_join(t.sys, nil)
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
-    ## waits for every thread in `t` to finish.
+    ## Waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
 when false:
   # XXX a thread should really release its heap here somehow:
   proc destroyThread*[TArg](t: var Thread[TArg]) =
-    ## forces the thread `t` to terminate. This is potentially dangerous if
+    ## Forces the thread `t` to terminate. This is potentially dangerous if
     ## you don't have full control over `t` and its acquired resources.
     when hostOS == "windows":
       discard TerminateThread(t.sys, 1'i32)
@@ -543,8 +546,10 @@ when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
-    ## creates a new thread `t` and starts its execution. Entry point is the
-    ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## Creates a new thread `t` and starts its execution.
+    ##
+    ## Entry point is the proc `tp`.
+    ## `param` is passed to `tp`. `TArg` can be ``void`` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
@@ -558,14 +563,15 @@ when hostOS == "windows":
       raise newException(ResourceExhaustedError, "cannot create thread")
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
-    ## pins a thread to a `CPU`:idx:. In other words sets a
-    ## thread's `affinity`:idx:. If you don't know what this means, you
-    ## shouldn't use this proc.
+    ## Pins a thread to a `CPU`:idx:.
+    ##
+    ## In other words sets a thread's `affinity`:idx:.
+    ## If you don't know what this means, you shouldn't use this proc.
     setThreadAffinityMask(t.sys, uint(1 shl cpu))
 
 elif defined(genode):
   var affinityOffset: cuint = 1
-    ## CPU affinity offset for next thread, safe to roll-over
+    ## CPU affinity offset for next thread, safe to roll-over.
 
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
@@ -589,8 +595,10 @@ else:
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
-    ## creates a new thread `t` and starts its execution. Entry point is the
-    ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## Creates a new thread `t` and starts its execution.
+    ##
+    ## Entry point is the proc `tp`. `param` is passed to `tp`.
+    ## `TArg` can be ``void`` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
@@ -604,9 +612,10 @@ else:
       raise newException(ResourceExhaustedError, "cannot create thread")
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
-    ## pins a thread to a `CPU`:idx:. In other words sets a
-    ## thread's `affinity`:idx:. If you don't know what this means, you
-    ## shouldn't use this proc.
+    ## Pins a thread to a `CPU`:idx:.
+    ##
+    ## In other words sets a thread's `affinity`:idx:.
+    ## If you don't know what this means, you shouldn't use this proc.
     when not defined(macosx):
       var s {.noinit.}: CpuSet
       cpusetZero(s)
@@ -618,7 +627,7 @@ proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
 
 when false:
   proc mainThreadId*[TArg](): ThreadId[TArg] =
-    ## returns the thread ID of the main thread.
+    ## Returns the thread ID of the main thread.
     result = cast[ThreadId[TArg]](addr(mainThread))
 
 when useStackMaskHack:
@@ -632,7 +641,7 @@ var threadId {.threadvar.}: int
 
 when defined(windows):
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(getCurrentThreadId())
     result = threadId
@@ -645,7 +654,7 @@ elif defined(linux):
     var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(syscall(NR_gettid))
     result = threadId
@@ -654,7 +663,7 @@ elif defined(dragonfly):
   proc lwp_gettid(): int32 {.importc, header: "unistd.h".}
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(lwp_gettid())
     result = threadId
@@ -672,7 +681,7 @@ elif defined(netbsd):
   proc lwp_self(): int32 {.importc: "_lwp_self", header: "<lwp.h>".}
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(lwp_self())
     result = threadId
@@ -682,7 +691,7 @@ elif defined(freebsd):
   var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>"}: cint
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     var tid = 0.cint
     if threadId == 0:
       discard syscall(SYS_thr_self, addr tid)
@@ -694,7 +703,7 @@ elif defined(macosx):
   var SYS_thread_selfid {.importc:"SYS_thread_selfid", header:"<sys/syscall.h>".}: cint
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(syscall(SYS_thread_selfid))
     result = threadId
@@ -704,7 +713,7 @@ elif defined(solaris):
   proc thr_self(): thread_t {.importc, header: "<thread.h>".}
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(thr_self())
     result = threadId
@@ -714,7 +723,7 @@ elif defined(haiku):
   proc find_thread(name: cstring): thr_id {.importc, header: "<OS.h>".}
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(find_thread(nil))
     result = threadId
