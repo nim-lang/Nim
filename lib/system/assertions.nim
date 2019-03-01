@@ -38,7 +38,7 @@ template assert*(cond: untyped, msg = "") =
   assertImpl(cond, msg, expr, compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
-  ## same as ``assert`` but is always turned on regardless of ``--assertions``
+  ## Similar to ``assert`` but is always turned on regardless of ``--assertions``.
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 
