@@ -641,7 +641,7 @@ var threadId {.threadvar.}: int
 
 when defined(windows):
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(getCurrentThreadId())
     result = threadId
@@ -654,7 +654,7 @@ elif defined(linux):
     var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
 
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(syscall(NR_gettid))
     result = threadId
@@ -663,7 +663,7 @@ elif defined(dragonfly):
   proc lwp_gettid(): int32 {.importc, header: "unistd.h".}
 
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(lwp_gettid())
     result = threadId
@@ -681,7 +681,7 @@ elif defined(netbsd):
   proc lwp_self(): int32 {.importc: "_lwp_self", header: "<lwp.h>".}
 
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(lwp_self())
     result = threadId
@@ -691,7 +691,7 @@ elif defined(freebsd):
   var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>"}: cint
 
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     var tid = 0.cint
     if threadId == 0:
       discard syscall(SYS_thr_self, addr tid)
@@ -703,7 +703,7 @@ elif defined(macosx):
   var SYS_thread_selfid {.importc:"SYS_thread_selfid", header:"<sys/syscall.h>".}: cint
 
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(syscall(SYS_thread_selfid))
     result = threadId
@@ -713,7 +713,7 @@ elif defined(solaris):
   proc thr_self(): thread_t {.importc, header: "<thread.h>".}
 
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(thr_self())
     result = threadId
@@ -723,7 +723,7 @@ elif defined(haiku):
   proc find_thread(name: cstring): thr_id {.importc, header: "<OS.h>".}
 
   proc getThreadId*(): int =
-    ## Get the ID of the currently running thread.
+    ## Gets the ID of the currently running thread.
     if threadId == 0:
       threadId = int(find_thread(nil))
     result = threadId

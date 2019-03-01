@@ -168,6 +168,57 @@ proc transform(buffer: pointer, state: var MD5State) =
   state[2] = state[2] + c
   state[3] = state[3] + d
 
+proc md5Init*(c: var MD5Context)
+proc md5Update*(c: var MD5Context, input: cstring, len: int)
+proc md5Final*(c: var MD5Context, digest: var MD5Digest)
+
+
+proc toMD5*(s: string): MD5Digest =
+  ## Computes the `MD5Digest` value for a string `s`.
+  ##
+  ## See also:
+  ## * `getMD5 proc <#getMD5,string>`_ which returns a string representation
+  ##   of the `MD5Digest`
+  ## * `$ proc <#$,MD5Digest>`_ for converting MD5Digest to string
+  runnableExamples:
+    assert $toMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
+
+  var c: MD5Context
+  md5Init(c)
+  md5Update(c, cstring(s), len(s))
+  md5Final(c, result)
+
+proc `$`*(d: MD5Digest): string =
+  ## Converts a `MD5Digest` value into its string representation.
+  const digits = "0123456789abcdef"
+  result = ""
+  for i in 0..15:
+    add(result, digits[(d[i].int shr 4) and 0xF])
+    add(result, digits[d[i].int and 0xF])
+
+proc getMD5*(s: string): string =
+  ## Computes an MD5 value of `s` and returns its string representation.
+  ##
+  ## See also:
+  ## * `toMD5 proc <#toMD5,string>`_ which returns the `MD5Digest` of a string
+  runnableExamples:
+    assert getMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
+
+  var
+    c: MD5Context
+    d: MD5Digest
+  md5Init(c)
+  md5Update(c, cstring(s), len(s))
+  md5Final(c, d)
+  result = $d
+
+proc `==`*(D1, D2: MD5Digest): bool =
+  ## Checks if two `MD5Digest` values are identical.
+  for i in 0..15:
+    if D1[i] != D2[i]: return false
+  return true
+
+
 proc md5Init*(c: var MD5Context) =
   ## Initializes a `MD5Context`.
   ##
@@ -220,50 +271,6 @@ proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
   decode(digest, c.state)
   zeroMem(addr(c), sizeof(MD5Context))
 
-proc toMD5*(s: string): MD5Digest =
-  ## Computes the `MD5Digest` value for a string `s`.
-  ##
-  ## See also:
-  ## * `getMD5 proc <#getMD5,string>`_ which returns a string representation
-  ##   of the `MD5Digest`
-  ## * `$ proc <#$,MD5Digest>`_ for converting MD5Digest to string
-  runnableExamples:
-    assert $toMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
-
-  var c: MD5Context
-  md5Init(c)
-  md5Update(c, cstring(s), len(s))
-  md5Final(c, result)
-
-proc `$`*(d: MD5Digest): string =
-  ## Converts a `MD5Digest` value into its string representation.
-  const digits = "0123456789abcdef"
-  result = ""
-  for i in 0..15:
-    add(result, digits[(d[i].int shr 4) and 0xF])
-    add(result, digits[d[i].int and 0xF])
-
-proc getMD5*(s: string): string =
-  ## Computes an MD5 value of `s` and returns its string representation.
-  ##
-  ## See also:
-  ## * `toMD5 proc <#toMD5,string>`_ which returns the `MD5Digest` of a string
-  runnableExamples:
-    assert getMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
-
-  var
-    c: MD5Context
-    d: MD5Digest
-  md5Init(c)
-  md5Update(c, cstring(s), len(s))
-  md5Final(c, d)
-  result = $d
-
-proc `==`*(D1, D2: MD5Digest): bool =
-  ## Checks if two `MD5Digest` values are identical.
-  for i in 0..15:
-    if D1[i] != D2[i]: return false
-  return true
 
 when isMainModule:
   assert(getMD5("Franz jagt im komplett verwahrlosten Taxi quer durch Bayern") ==
