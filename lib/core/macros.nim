@@ -703,6 +703,17 @@ when compiles(float128):
     result = newNimNode(nnkFloat128Lit)
     result.floatVal = f
 
+proc newLit*(arg: enum): NimNode {.compileTime.} =
+  result = newCall(
+    arg.type.getTypeInst[1],
+    newLit(int(arg))
+  )
+
+proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.}
+proc newLit*[T](arg: seq[T]): NimNode {.compileTime.}
+proc newLit*[T](s: set[T]): NimNode {.compileTime.}
+proc newLit*(arg: tuple): NimNode {.compileTime.}
+
 proc newLit*(arg: object): NimNode {.compileTime.} =
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
   for a, b in arg.fieldPairs:
@@ -724,11 +735,6 @@ proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
       getTypeInst( bindSym"T" )
     ),
     bracket
-  )
-proc newLit*(arg: enum): NimNode {.compileTime.} =
-  result = newCall(
-    arg.type.getTypeInst[1],
-    newLit(int(arg))
   )
 
 proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
