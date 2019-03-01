@@ -351,130 +351,203 @@ proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1
   var marker = initIntSet()
   result = symToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-
 import tables
 
-template earlyExit(visited : var Table[pointer, int]; n: PType | PNode | PSym) =
+type
+  DebugPrinter = object
+    conf: ConfigRef
+    visited: Table[pointer, int]
+    renderSymType: bool
+    indent: int
+    res: Rope
+
+proc indentMore(this: var DebugPrinter) =
+  this.indent += 2
+
+proc indentLess(this: var DebugPrinter) =
+  this.indent -= 2
+
+proc newlineAndIndent(this: var DebugPrinter) =
+  this.res.addf "$N$1", [rspaces(this.indent)]
+
+proc openCurly(this: var DebugPrinter) =
+  this.res.add "{"
+  this.indentMore
+
+proc closeCurly(this: var DebugPrinter) =
+  this.indentLess
+  this.newlineAndIndent
+  this.res.add "}"
+
+proc openBracket(this: var DebugPrinter) =
+  this.res.add "["
+  #this.indentMore
+
+proc closeBracket(this: var DebugPrinter) =
+  #this.indentLess
+  this.res.add "]"
+
+proc key(this: var DebugPrinter; key: string) =
+  #if this.res[^1] != '{':
+  this.res.add ","
+  this.newlineAndIndent
+  this.res.add "\""
+  this.res.add key
+  this.res.add "\": "
+
+proc value(this: var DebugPrinter; value: string) =
+  this.res.add "\""
+  this.res.add value
+  this.res.add "\""
+
+proc value(this: var DebugPrinter; value: BiggestInt) =
+  this.res.add $value
+
+proc value[T: enum](this: var DebugPrinter; value: T) =
+  this.res.add $value
+
+proc value[T: enum](this: var DebugPrinter; value: set[T]) =
+  this.openBracket
+  for v in value:
+    this.value v
+  this.closeBracket
+
+template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
   if n == nil:
-    return rope("null")
-  let index = visited.getOrDefault(cast[pointer](n), -1)
+    this.res.add "null"
+    return
+  let index = this.visited.getOrDefault(cast[pointer](n), -1)
   if index < 0:
-    visited[cast[pointer](n)] = 13 # current line
+    this.visited[cast[pointer](n)] = 13 # current line
   else:
-    return rope("<line: " & $index & ">")
+    this.res.add "<line: "
+    this.res.add $index
+    this.res.add ">"
+    return
 
+proc debugType(this: var DebugPrinter; n: PType): void
+proc debugTree(this: var DebugPrinter; n: PNode): void
+proc debugSym(this: var DebugPrinter; s: PSym): void =
+  earlyExit(this, s)
 
-proc debugType(conf: ConfigRef; visited: var Table[pointer, int]; n: PType, indent: int; renderSymType: bool): Rope
-proc debugTree(conf: ConfigRef; visited: var Table[pointer, int]; n: PNode, indent: int; renderSymType: bool): Rope
-proc debugSym(conf: ConfigRef; visited: var Table[pointer, int]; s: PSym; indent: int; renderSymType: bool): Rope =
-  earlyExit(visited, s)
-
-  result = rope("{")
-  result.add "\"kind\": "
-  result.add $s.kind
-  result.add ", \"name\": "
-  result.add s.name.s
-  result.add ", \"id\": "
-  result.add $s.id
+  this.openCurly
+  this.key("kind")
+  this.value($s.kind)
+  this.key("name")
+  this.value(s.name.s)
+  this.key("id")
+  this.value(s.id)
   if s.kind in {skField, skEnumField, skParam}:
-    result.add ", \"position\": "
-    result.add $s.position
+    this.key("position")
+    this.value(s.position)
 
   if card(s.flags) > 0:
-    result.add ", \"flags\": "
-    result.add $s.flags
+    this.key("flags")
+    this.value(s.flags)
 
-  if renderSymType and s.typ != nil:
-    result.addf ",$N$1\"typ\": $2", [rspaces(indent+2), debugType(conf, visited, s.typ, indent+2, renderSymType)]
+  if this.renderSymType and s.typ != nil:
+    this.key "typ"
+    this.debugType(s.typ)
 
-  result.add "}"
+  this.closeCurly
 
-proc debugType(conf: ConfigRef; visited: var Table[pointer, int]; n: PType, indent: int; renderSymType: bool): Rope =
-  earlyExit(visited, n)
+proc debugType(this: var DebugPrinter; n: PType): void =
+  earlyExit(this, n)
 
-  var istr = rspaces(indent + 2)
-  result.addf("{", [])
-  result.addf("$N$1\"kind\": \"$2\",", [istr, rope($n.kind)])
+  this.openCurly
+  this.key "kind"
+  this.value n.kind
+
   if n.sym != nil:
-    result.addf("$N$1\"sym\": \"$2\",", [istr, rope(n.sym.name.s)])
+    this.key "sym"
+    this.debugSym n.sym
 
   if n.kind in IntegralTypes and n.n != nil:
-    result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, visited, n.n, indent+2, renderSymType)])
+    this.key "n"
+    this.debugTree n.n
 
-  if (n.kind != tyString) and (sonsLen(n) > 0):
-    result.addf("$N$1\"sons\": [", [istr])
+  if sonsLen(n) > 0:
+    this.key "sons"
+    this.openBracket
     for i in 0 ..< sonsLen(n):
-      result.add(debugType(conf, visited, n.sons[i], indent + 2, renderSymType))
-      if i == sonsLen(n) - 1:
-        result.addf("],", [])
-      else:
-        result.add(",")
+      this.debugType n.sons[i]
+    this.closeBracket
 
-    if n.kind == tyObject and n.n != nil:
-      result.addf("$N$1\"n\": $2,", [istr, debugTree(conf, visited, n.n, indent+2, renderSymType)])
-  result.addf("$N$1}", [rspaces(indent)])
+  if n.n != nil:
+    this.key "n"
+    this.debugTree n.n
 
-proc debugTree(conf: ConfigRef; visited: var Table[pointer, int]; n: PNode, indent: int; renderSymType: bool): Rope =
-  earlyExit(visited, n)
+  this.closeCurly
 
-  var istr = rspaces(indent + 2)
-  result = "{$N$1\"kind\": $2" %
-           [istr, makeYamlString($n.kind)]
+proc debugTree(this: var DebugPrinter; n: PNode): void =
+  earlyExit(this, n)
+
+  this.openCurly
+  this.key "kind"
+  this.value  n.kind
   when defined(useNodeIds):
-    addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
-  if conf != nil:
-    addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
+    this.key "id"
+    this.value n.id
+  if this.conf != nil:
+    this.key "info"
+    this.value $lineInfoToStr(this.conf, n.info)
 
   if card(n.flags) > 0:
-    addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
+    this.key "flags"
+    this.value n.flags
+
+
   case n.kind
   of nkCharLit..nkUInt64Lit:
-    addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
+    this.key "intVal"
+    this.value n.intVal
   of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
-    addf(result, ",$N$1\"floatVal\": $2",
-        [istr, rope(n.floatVal.toStrMaxPrecision)])
+    this.key "floatVal"
+    this.value n.floatVal.toStrMaxPrecision
   of nkStrLit..nkTripleStrLit:
-    addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+    this.key "strVal"
+    this.value n.strVal
   of nkSym:
-    addf(result, ",$N$1\"sym\": $2", [istr, debugSym(conf, visited, n.sym, indent+2, renderSymType)])
+    this.key "sym"
+    this.debugSym(n.sym)
   of nkIdent:
     if n.ident != nil:
-      addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
-    else:
-      addf(result, ",$N$1\"ident\": null", [istr])
+      this.key "ident"
+      this.value n.ident.s
   else:
-    if renderSymType and n.typ != nil:
-      addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, visited, n.typ, indent+2, renderSymType)])
+    if this.renderSymType and n.typ != nil:
+      this.key "typ"
+      this.debugType n.typ
     if sonsLen(n) > 0:
-      addf(result, ",$N$1\"sons\": [", [istr])
+      this.key "sons"
+      this.openBracket
       for i in 0 ..< sonsLen(n):
-        result.add debugTree(conf, visited, n.sons[i], indent + 2, renderSymType)
-        if i == sonsLen(n) - 1:
-          result.addf("],", [])
-        else:
-          result.add(",")
+        this.debugTree n.sons[i]
+      this.closeBracket
 
-  result.addf "$N$1}", [rspaces(indent)]
+  this.closeCurly
 
 when declared(echo):
   proc debug(n: PSym; conf: ConfigRef) =
-    if n == nil:
-      echo("null")
-    elif n.kind == skUnknown:
-      echo("skUnknown")
-    else:
-      #writeLine(stdout, $symToYaml(n, 0, 1))
-      echo("$1_$2: $3, $4, $5, $6" % [
-        n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
-        $lineInfoToStr(conf, n.info), $n.kind])
+    var this: DebugPrinter
+    this.visited = initTable[pointer, int]()
+    this.renderSymType = true
+    this.debugSym(n)
+    echo($this.res)
 
   proc debug(n: PType; conf: ConfigRef) =
-    var table = initTable[pointer, int]()
-    echo($debugType(conf, table, n, indent=0, renderSymType=true))
+    var this: DebugPrinter
+    this.visited = initTable[pointer, int]()
+    this.renderSymType = true
+    this.debugType(n)
+    echo($this.res)
 
   proc debug(n: PNode; conf: ConfigRef) =
-    var table = initTable[pointer, int]()
-    echo($debugTree(conf, table, n, indent=0, renderSymType=true))
+    var this: DebugPrinter
+    this.visited = initTable[pointer, int]()
+    this.renderSymType = true
+    this.debugTree(n)
+    echo($this.res)
 
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
