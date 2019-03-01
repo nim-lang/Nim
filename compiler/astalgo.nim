@@ -359,7 +359,9 @@ type
     visited: Table[pointer, int]
     renderSymType: bool
     indent: int
-    res: Rope
+    currentLine: int
+    firstItem: bool
+    res: string
 
 proc indentMore(this: var DebugPrinter) =
   this.indent += 2
@@ -368,16 +370,26 @@ proc indentLess(this: var DebugPrinter) =
   this.indent -= 2
 
 proc newlineAndIndent(this: var DebugPrinter) =
-  this.res.addf "$N$1", [rspaces(this.indent)]
+  this.res.add "\n"
+  this.currentLine += 1
+  for i in 0 ..< this.indent:
+    this.res.add ' '
 
 proc openCurly(this: var DebugPrinter) =
   this.res.add "{"
+  this.res.add "          <line: "
+  this.res.add this.currentLine
+  this.res.add ">"
   this.indentMore
+  this.firstItem = true
 
 proc closeCurly(this: var DebugPrinter) =
   this.indentLess
   this.newlineAndIndent
   this.res.add "}"
+
+proc comma(this: var DebugPrinter) =
+  this.res.add ", "
 
 proc openBracket(this: var DebugPrinter) =
   this.res.add "["
@@ -388,8 +400,10 @@ proc closeBracket(this: var DebugPrinter) =
   this.res.add "]"
 
 proc key(this: var DebugPrinter; key: string) =
-  #if this.res[^1] != '{':
-  this.res.add ","
+  if not this.firstItem:
+    this.res.add ","
+  this.firstItem = false
+
   this.newlineAndIndent
   this.res.add "\""
   this.res.add key
@@ -401,15 +415,20 @@ proc value(this: var DebugPrinter; value: string) =
   this.res.add "\""
 
 proc value(this: var DebugPrinter; value: BiggestInt) =
-  this.res.add $value
+  this.res.add value
 
 proc value[T: enum](this: var DebugPrinter; value: T) =
   this.res.add $value
 
 proc value[T: enum](this: var DebugPrinter; value: set[T]) =
   this.openBracket
+  let high = card(value)-1
+  var i = 0
   for v in value:
     this.value v
+    if i != high:
+      this.comma
+    inc i
   this.closeBracket
 
 template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
@@ -418,7 +437,7 @@ template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
     return
   let index = this.visited.getOrDefault(cast[pointer](n), -1)
   if index < 0:
-    this.visited[cast[pointer](n)] = 13 # current line
+    this.visited[cast[pointer](n)] = this.currentLine
   else:
     this.res.add "<line: "
     this.res.add $index
@@ -471,6 +490,8 @@ proc debugType(this: var DebugPrinter; n: PType): void =
     this.openBracket
     for i in 0 ..< sonsLen(n):
       this.debugType n.sons[i]
+      if i != sonsLen(n) - 1:
+        this.comma
     this.closeBracket
 
   if n.n != nil:
@@ -523,6 +544,8 @@ proc debugTree(this: var DebugPrinter; n: PNode): void =
       this.openBracket
       for i in 0 ..< sonsLen(n):
         this.debugTree n.sons[i]
+        if i != sonsLen(n) - 1:
+          this.comma
       this.closeBracket
 
   this.closeCurly
