@@ -515,14 +515,14 @@ proc inHours*(dur: Duration): int64 =
   ## Convert the duration to the number of whole hours.
   runnableExamples:
     let dur = initDuration(minutes = 60, days = 2)
-    doAssert dur.hours == 49
+    doAssert dur.inHours == 49
   dur.convert(Hours)
 
 proc inMinutes*(dur: Duration): int64 =
   ## Convert the duration to the number of whole minutes.
   runnableExamples:
     let dur = initDuration(hours = 2, seconds = 10)
-    doAssert dur.minutes == 120
+    doAssert dur.inMinutes == 120
   dur.convert(Minutes)
 
 proc inSeconds*(dur: Duration): int64 =
@@ -2612,10 +2612,10 @@ proc minutes*(dur: Duration): int64
 
 proc seconds*(dur: Duration): int64
     {.inline, deprecated: "Use `inSeconds` instead".} =
-  ## Number of whole minutes represented by the duration.
+  ## Number of whole seconds represented by the duration.
   ##
-  ## **Deprecated since version v0.20.0**: Use the `inMinutes proc
-  ## <#inMinutes,Duration>`_ instead.
+  ## **Deprecated since version v0.20.0**: Use the `inSeconds proc
+  ## <#inSeconds,Duration>`_ instead.
   runnableExamples:
     let dur = initDuration(minutes = 10, seconds = 30)
     doAssert dur.seconds == 630
