@@ -377,9 +377,6 @@ proc newlineAndIndent(this: var DebugPrinter) =
 
 proc openCurly(this: var DebugPrinter) =
   this.res.add "{"
-  this.res.add "          <line: "
-  this.res.add this.currentLine
-  this.res.add ">"
   this.indentMore
   this.firstItem = true
 
@@ -439,112 +436,114 @@ template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
   if index < 0:
     this.visited[cast[pointer](n)] = this.currentLine
   else:
-    this.res.add "<line: "
-    this.res.add $index
-    this.res.add ">"
+    this.res.add "<defined "
+    this.res.add(this.currentLine - index)
+    this.res.add " lines upwards>"
     return
 
-proc debugType(this: var DebugPrinter; n: PType): void
-proc debugTree(this: var DebugPrinter; n: PNode): void
-proc debugSym(this: var DebugPrinter; s: PSym): void =
-  earlyExit(this, s)
+proc value(this: var DebugPrinter; value: PType): void
+proc value(this: var DebugPrinter; value: PNode): void
+proc value(this: var DebugPrinter; value: PSym): void =
+  earlyExit(this, value)
 
   this.openCurly
   this.key("kind")
-  this.value($s.kind)
+  this.value($value.kind)
   this.key("name")
-  this.value(s.name.s)
+  this.value(value.name.s)
   this.key("id")
-  this.value(s.id)
-  if s.kind in {skField, skEnumField, skParam}:
+  this.value(value.id)
+  if value.kind in {skField, skEnumField, skParam}:
     this.key("position")
-    this.value(s.position)
+    this.value(value.position)
 
-  if card(s.flags) > 0:
+  if card(value.flags) > 0:
     this.key("flags")
-    this.value(s.flags)
+    this.value(value.flags)
 
-  if this.renderSymType and s.typ != nil:
+  if this.renderSymType and value.typ != nil:
     this.key "typ"
-    this.debugType(s.typ)
+    this.value(value.typ)
 
   this.closeCurly
 
-proc debugType(this: var DebugPrinter; n: PType): void =
-  earlyExit(this, n)
+proc value(this: var DebugPrinter; value: PType): void =
+  earlyExit(this, value)
 
   this.openCurly
   this.key "kind"
-  this.value n.kind
+  this.value value.kind
 
-  if n.sym != nil:
+  if value.sym != nil:
     this.key "sym"
-    this.debugSym n.sym
+    this.value value.sym
 
-  if n.kind in IntegralTypes and n.n != nil:
+  if card(value.flags) > 0:
+    this.key "flags"
+    this.value value.flags
+
+  if value.kind in IntegralTypes and value.n != nil:
     this.key "n"
-    this.debugTree n.n
+    this.value value.n
 
-  if sonsLen(n) > 0:
+  if sonsLen(value) > 0:
     this.key "sons"
     this.openBracket
-    for i in 0 ..< sonsLen(n):
-      this.debugType n.sons[i]
-      if i != sonsLen(n) - 1:
+    for i in 0 ..< sonsLen(value):
+      this.value value.sons[i]
+      if i != sonsLen(value) - 1:
         this.comma
     this.closeBracket
 
-  if n.n != nil:
+  if value.n != nil:
     this.key "n"
-    this.debugTree n.n
+    this.value value.n
 
   this.closeCurly
 
-proc debugTree(this: var DebugPrinter; n: PNode): void =
-  earlyExit(this, n)
+proc value(this: var DebugPrinter; value: PNode): void =
+  earlyExit(this, value)
 
   this.openCurly
   this.key "kind"
-  this.value  n.kind
+  this.value  value.kind
   when defined(useNodeIds):
     this.key "id"
-    this.value n.id
+    this.value value.id
   if this.conf != nil:
     this.key "info"
-    this.value $lineInfoToStr(this.conf, n.info)
-
-  if card(n.flags) > 0:
+    this.value $lineInfoToStr(this.conf, value.info)
+  if card(value.flags) > 0:
     this.key "flags"
-    this.value n.flags
+    this.value value.flags
 
-
-  case n.kind
+  case value.kind
   of nkCharLit..nkUInt64Lit:
     this.key "intVal"
-    this.value n.intVal
+    this.value value.intVal
   of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
     this.key "floatVal"
-    this.value n.floatVal.toStrMaxPrecision
+    this.value value.floatVal.toStrMaxPrecision
   of nkStrLit..nkTripleStrLit:
     this.key "strVal"
-    this.value n.strVal
+    this.value value.strVal
   of nkSym:
     this.key "sym"
-    this.debugSym(n.sym)
+    this.value(value.sym)
   of nkIdent:
-    if n.ident != nil:
+    if value.ident != nil:
       this.key "ident"
-      this.value n.ident.s
+      this.value value.ident.s
   else:
-    if this.renderSymType and n.typ != nil:
+    if this.renderSymType and value.typ != nil:
       this.key "typ"
-      this.debugType n.typ
-    if sonsLen(n) > 0:
+      this.value value.typ
+    if sonsLen(value) > 0:
       this.key "sons"
       this.openBracket
-      for i in 0 ..< sonsLen(n):
-        this.debugTree n.sons[i]
-        if i != sonsLen(n) - 1:
+      for i in 0 ..< sonsLen(value):
+        this.value value.sons[i]
+        if i != sonsLen(value) - 1:
           this.comma
       this.closeBracket
 
@@ -555,21 +554,21 @@ when declared(echo):
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
-    this.debugSym(n)
+    this.value(n)
     echo($this.res)
 
   proc debug(n: PType; conf: ConfigRef) =
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
-    this.debugType(n)
+    this.value(n)
     echo($this.res)
 
   proc debug(n: PNode; conf: ConfigRef) =
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
-    this.debugTree(n)
+    this.value(n)
     echo($this.res)
 
 proc nextTry(h, maxHash: Hash): Hash =
