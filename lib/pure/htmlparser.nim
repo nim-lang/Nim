@@ -39,7 +39,7 @@
 ##   import strutils # To use cmpIgnoreCase
 ##
 ##   proc transformHyperlinks() =
-##     let html = loadHTML("input.html")
+##     let html = loadHtml("input.html")
 ##
 ##     for a in html.findAll("a"):
 ##       if a.attrs.hasKey "href":
