@@ -102,10 +102,8 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
                {msgStdout})
     msgQuit(0)
 
-proc writeCommandLineUsage*(conf: ConfigRef; helpWritten: var bool) =
-  if not helpWritten:
-    msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
-    helpWritten = true
+proc writeCommandLineUsage*(conf: ConfigRef) =
+  msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
 
 proc addPrefix(switch: string): string =
   if len(switch) == 1: result = "-" & switch
