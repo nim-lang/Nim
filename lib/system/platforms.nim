@@ -32,6 +32,7 @@ type
     avr,                       ## AVR based processor
     msp430,                    ## TI MSP430 microcontroller
     riscv64                    ## RISC-V 64-bit processor
+    wasm32                     ## WASM, 32-bit
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
@@ -87,5 +88,6 @@ const
                elif defined(avr): CpuPlatform.avr
                elif defined(msp430): CpuPlatform.msp430
                elif defined(riscv64): CpuPlatform.riscv64
+               elif defined(wasm32): CpuPlatform.wasm32
                else: CpuPlatform.none
     ## the CPU this program will run on.
