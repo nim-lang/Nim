@@ -1,3 +1,8 @@
+discard """
+  output: '''OK
+'''
+"""
+
 import "../../compiler" / [llstream, nimeval]
 
 proc myRepl(s: PLLStream, buf: pointer, bufLen: int): int =
