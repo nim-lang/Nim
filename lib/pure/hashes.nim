@@ -143,8 +143,7 @@ proc hash*(x: string): Hash =
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
-    doAssert hash("abracadabra") == -5600162842546114722
-    doAssert hash("Abracadabra") == 2068684413884279454
+    doAssert hash("abracadabra") != hash("AbracadabrA")
 
   var h: Hash = 0
   for i in 0..x.len-1:
@@ -154,8 +153,8 @@ proc hash*(x: string): Hash =
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
   runnableExamples:
-    doAssert hash(cstring"abracadabra") == -5600162842546114722
-    doAssert hash(cstring"Abracadabra") == 2068684413884279454
+    doAssert hash(cstring"abracadabra") == hash("abracadabra")
+    doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
 
   var h: Hash = 0
   var i = 0
