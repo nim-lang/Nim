@@ -236,16 +236,15 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## resets an object `obj` to its initial (binary zero) value. This needs to
   ## be called before any possible `object branch transition`:idx:.
 
-when defined(nimNewRuntime):
-  proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
-    ## resets an object `obj` to its initial (binary zero) value to signify
-    ## it was "moved" and to signify its destructor should do nothing and
-    ## ideally be optimized away.
-    discard
+proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+  ## resets an object `obj` to its initial (binary zero) value to signify
+  ## it was "moved" and to signify its destructor should do nothing and
+  ## ideally be optimized away.
+  discard
 
-  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-    result = x
-    wasMoved(x)
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+  result = x
+  wasMoved(x)
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
@@ -268,12 +267,8 @@ else:
     UncheckedArray*{.unchecked.}[T] = array[0,T]
     ## Array with no bounds checking
 
-when defined(nimHasOpt):
-  type opt*{.magic: "Opt".}[T]
-
-when defined(nimNewRuntime):
-  type sink*{.magic: "BuiltinType".}[T]
-  type lent*{.magic: "BuiltinType".}[T]
+type sink*{.magic: "BuiltinType".}[T]
+type lent*{.magic: "BuiltinType".}[T]
 
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible value of an ordinal value `x`. As a special
@@ -388,13 +383,12 @@ when defined(nimArrIdx):
   proc arrPut[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
 
-  when defined(nimNewRuntime):
-    proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-      ## generic `destructor`:idx: implementation that can be overriden.
-      discard
-    proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
-      ## generic `sink`:idx: implementation that can be overriden.
-      shallowCopy(x, y)
+  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+    ## generic `destructor`:idx: implementation that can be overriden.
+    discard
+  proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
+    ## generic `sink`:idx: implementation that can be overriden.
+    shallowCopy(x, y)
 
 type
   HSlice*[T, U] = object ## "heterogenous" slice type
@@ -675,11 +669,6 @@ type
     ## Raised on dereferences of ``nil`` pointers.
     ##
     ## This is only raised if the ``segfaults.nim`` module was imported!
-
-when defined(nimNewRuntime):
-  type
-    MoveError* = object of Defect ## \
-      ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
 
 when defined(js) or defined(nimdoc):
   type
