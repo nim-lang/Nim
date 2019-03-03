@@ -415,7 +415,7 @@ proc value(this: var DebugPrinter; value: BiggestInt) =
   this.res.add value
 
 proc value[T: enum](this: var DebugPrinter; value: T) =
-  this.res.add $value
+  this.value $value
 
 proc value[T: enum](this: var DebugPrinter; value: set[T]) =
   this.openBracket
