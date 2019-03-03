@@ -1341,22 +1341,42 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `isnot`*(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
-proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it in ``a``.
+when defined(nimV2):
+  type owned*[T]{.magic: "BuiltinType".}
 
-proc new*(t: typedesc): auto =
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it as result value.
-  ##
-  ## When ``T`` is a ref type then the resulting type will be ``T``,
-  ## otherwise it will be ``ref T``.
-  when (t is ref):
-    var r: t
-  else:
-    var r: ref t
-  new(r)
-  return r
+  proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it in ``a``.
+
+  proc new*(t: typedesc): auto =
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it as result value.
+    ##
+    ## When ``T`` is a ref type then the resulting type will be ``T``,
+    ## otherwise it will be ``ref T``.
+    when (t is ref):
+      var r: owned t
+    else:
+      var r: owned(ref t)
+    new(r)
+    return r
+else:
+  proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it in ``a``.
+
+  proc new*(t: typedesc): auto =
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it as result value.
+    ##
+    ## When ``T`` is a ref type then the resulting type will be ``T``,
+    ## otherwise it will be ``ref T``.
+    when (t is ref):
+      var r: t
+    else:
+      var r: ref t
+    new(r)
+    return r
 
 proc `of`*[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
