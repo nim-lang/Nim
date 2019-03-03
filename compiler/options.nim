@@ -19,7 +19,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2018"
+  copyrightYear* = "2019"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -82,6 +82,7 @@ type                          # please make sure we have under 32 options
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll
+    optNimV2
 
   TGlobalOptions* = set[TGlobalOption]
 

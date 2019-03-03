@@ -738,7 +738,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     doAssert(conf != nil)
     incl(conf.features, destructor)
-    defineSymbol(conf.symbols, "nimNewRuntime")
+    incl(conf.globalOptions, optNimV2)
+    defineSymbol(conf.symbols, "nimV2")
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
