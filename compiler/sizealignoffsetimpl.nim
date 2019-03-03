@@ -387,7 +387,12 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       headerAlign = 1
     let (offset, align) =
       if tfUnion in typ.flags:
-        computeUnionObjectOffsetsFoldFunction(conf, typ.n, false)
+        if tfPacked in typ.flags:
+          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+          localError(conf, info, "type may not be packed and union at the same time.")
+          (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
+        else:
+          computeUnionObjectOffsetsFoldFunction(conf, typ.n, false)
       elif tfPacked in typ.flags:
         (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(1))
       else:
