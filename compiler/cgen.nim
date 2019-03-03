@@ -699,23 +699,24 @@ proc generateHeaders(m: BModule) =
   for it in m.headerFiles:
     if it[0] == '#':
       add(m.s[cfsHeaders], rope(it.replace('`', '"') & "\L"))
-    elif it[0] notin {'\"', '<'}:
+    elif it[0] notin {'"', '<'}:
       addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it)])
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it)])
-  add(m.s[cfsHeaders], "#undef LANGUAGE_C\L")
-  add(m.s[cfsHeaders], "#undef MIPSEB\L")
-  add(m.s[cfsHeaders], "#undef MIPSEL\L")
-  add(m.s[cfsHeaders], "#undef PPC\L")
-  add(m.s[cfsHeaders], "#undef R3000\L")
-  add(m.s[cfsHeaders], "#undef R4000\L")
-  add(m.s[cfsHeaders], "#undef i386\L")
-  add(m.s[cfsHeaders], "#undef linux\L")
-  add(m.s[cfsHeaders], "#undef mips\L")
-  add(m.s[cfsHeaders], "#undef near\L")
-  add(m.s[cfsHeaders], "#undef far\L")
-  add(m.s[cfsHeaders], "#undef powerpc\L")
-  add(m.s[cfsHeaders], "#undef unix\L")
+  add(m.s[cfsHeaders], """#undef LANGUAGE_C
+#undef MIPSEB
+#undef MIPSEL
+#undef PPC
+#undef R3000
+#undef R4000
+#undef i386
+#undef linux
+#undef mips
+#undef near
+#undef far
+#undef powerpc
+#undef unix
+""")
 
 proc openNamespaceNim(namespace: string): Rope =
   result.add("namespace ")
@@ -1358,7 +1359,8 @@ proc genMainProc(m: BModule) =
       m.s[cfsProcs].add closeNamespaceNim() & "using namespace " & m.config.cppCustomNamespace & ";\L"
 
     appcg(m, m.s[cfsProcs], otherMain, [])
-    if m.config.cppCustomNamespace.len > 0: m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
+    if m.config.cppCustomNamespace.len > 0:
+      m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
 
 proc registerModuleToMain(g: BModuleList; m: BModule) =
   let
