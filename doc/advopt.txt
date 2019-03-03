@@ -16,6 +16,17 @@ Advanced commands:
                             see also: --dump.format:json (useful with: ` | jq`)
   //check                   checks the project for syntax and semantic
 
+Runtime checks (see -x):
+  --objChecks:on|off        turn obj conversion checks on|off
+  --fieldChecks:on|off      turn case variant field checks on|off
+  --rangeChecks:on|off      turn range checks on|off
+  --boundChecks:on|off      turn bound checks on|off
+  --overflowChecks:on|off   turn int over-/underflow checks on|off
+  --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
+  --nanChecks:on|off        turn NaN checks on|off
+  --infChecks:on|off        turn Inf checks on|off
+  --nilChecks:on|off        turn nil checks on|off
+
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
@@ -109,7 +120,6 @@ Advanced options:
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --experimental:$1
                             enable experimental language feature
-  -v, --version             show detailed version information
   --profiler:on|off         Enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
