@@ -12,9 +12,8 @@
 ## make this easier to handle: There are only 2 different branching
 ## instructions: 'goto X' is an unconditional goto, 'fork X'
 ## is a conditional goto (either the next instruction or 'X' can be
-## taken). Exhaustive case statements could be translated
-## so that the last branch is transformed into an 'else' branch, but
-## this is currently not done.
+## taken). Exhaustive case statements are translated
+## so that the last branch is transformed into an 'else' branch.
 ## ``return`` and ``break`` are all covered by 'goto'.
 ##
 ## Control flow through exception handling:
@@ -596,6 +595,9 @@ proc genCall(c: var Con; n: PNode) =
   for i in 1..<n.len:
     gen(c, n[i])
     if t != nil and i < t.len and t.sons[i].kind == tyVar:
+      # XXX This is wrong! Pass by var is a 'might def', not a 'must def'
+      # like the other defs we emit. This is not good enough for a move
+      # optimizer.
       genDef(c, n[i])
   # every call can potentially raise:
   if c.inTryStmt > 0 and canRaise(n[0]):
