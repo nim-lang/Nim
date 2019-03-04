@@ -1342,7 +1342,7 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
 when defined(nimV2):
-  type owned*[T]{.magic: "BuiltinType".}
+  type owned*{.magic: "BuiltinType".}[T]
 
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
     ## creates a new object of type ``T`` and returns a safe (traced)
