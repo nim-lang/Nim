@@ -1723,11 +1723,16 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
     lookupOpr: array[mLeSet..mSymDiffSet, string] = [
       "for ($1 = 0; $1 < $2; $1++) { $n" &
-        "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
-        "  if (!$3) break;}$n", "for ($1 = 0; $1 < $2; $1++) { $n" &
-        "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" & "  if (!$3) break;}$n" &
-        "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
-      "&", "|", "& ~", "^"]
+      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
+      "  if (!$3) break;}$n",
+      "for ($1 = 0; $1 < $2; $1++) { $n" &
+      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
+      "  if (!$3) break;}$n" &
+      "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
+      "&",
+      "|",
+      "& ~",
+      "^"]
   var a, b, i: TLoc
   var setType = skipTypes(e.sons[1].typ, abstractVar)
   var size = int(getSize(p.config, setType))
