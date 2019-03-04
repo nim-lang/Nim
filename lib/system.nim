@@ -4264,8 +4264,9 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
 import system/widestrs
 export widestrs
 
-import system/io
-export io
+when not defined(nimnoio):
+  import system/io
+  export io
 
 when not defined(createNimHcr):
   include nimhcr
