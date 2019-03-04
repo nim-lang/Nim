@@ -8,6 +8,7 @@ Command:
 
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
+
 Options:
   -p, --path:PATH           add path to search paths
   -d, --define:SYMBOL(:VAL)
@@ -20,16 +21,7 @@ Options:
   --lineTrace:on|off        turn line tracing on|off
   --threads:on|off          turn support for multi-threading on|off
   -x, --checks:on|off       turn all runtime checks on|off
-  --objChecks:on|off        turn obj conversion checks on|off
-  --fieldChecks:on|off      turn case variant field checks on|off
-  --rangeChecks:on|off      turn range checks on|off
-  --boundChecks:on|off      turn bound checks on|off
-  --overflowChecks:on|off   turn int over-/underflow checks on|off
   -a, --assertions:on|off   turn assertions on|off
-  --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
-  --nanChecks:on|off        turn NaN checks on|off
-  --infChecks:on|off        turn Inf checks on|off
-  --nilChecks:on|off        turn nil checks on|off
   --opt:none|speed|size     optimize not at all or for speed|size
                             Note: use -d:release for a release build!
   --debugger:native|endb    use native debugger (gdb) | ENDB (experimental)
@@ -38,5 +30,6 @@ Options:
   -r, --run                 run the compiled program with given arguments
   --fullhelp                show all command line switches
   -h, --help                show this help
+  -v, --version             show detailed version information
 
 Note, single letter options that take an argument require a colon. E.g. -p:PATH.

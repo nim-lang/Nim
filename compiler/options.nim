@@ -195,7 +195,6 @@ type
     features*: set[Feature]
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
-    helpWritten*: bool
     ideCmd*: IdeCmd
     oldNewlines*: bool
     cCompiler*: TSystemCC
