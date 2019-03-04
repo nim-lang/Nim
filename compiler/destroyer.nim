@@ -98,9 +98,16 @@ Rule      Pattern                 Transformed into
 ----      -------                 ----------------
 1.1	      var x: T; stmts	        var x: T; try stmts
                                   finally: `=destroy`(x)
-1.2       var x: sink T; stmts    var x: sink T; stmts; ensureEmpty(x)
 2         x = f()                 `=sink`(x, f())
 3         x = lastReadOf z        `=sink`(x, z); wasMoved(z)
+3.2       x = path z; body        ``x = bitwiseCopy(path z);``
+                                  do not emit `=destroy(x)`. Note: body
+                                  must not mutate ``z`` nor ``x``. All
+                                  assignments to ``x`` must be of the form
+                                  ``path z`` but the ``z`` can differ.
+                                  Neither ``z`` nor ``x`` can have the
+                                  flag ``sfAddrTaken`` to ensure no other
+                                  aliasing is going on.
 4.1       y = sinkParam           `=sink`(y, sinkParam)
 4.2       x = y                   `=`(x, y) # a copy
 5.1       f_sink(g())             f_sink(g())
@@ -108,10 +115,33 @@ Rule      Pattern                 Transformed into
 5.3       f_sink(move y)          f_sink(y); wasMoved(y) # explicit moves empties 'y'
 5.4       f_noSink(g())           var tmp = bitwiseCopy(g()); f(tmp); `=destroy`(tmp)
 
-Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
-  not allowed as a local variable.
+Rule 3.2 describes a "cursor" variable, a variable that is only used as a
+view into some data structure. Rule 3.2 applies to value based
+datatypes like strings and sequences and also ``ref`` cursors. We
+seek to allow most forms of "scan" loops like::
 
-``move`` builtin needs to be implemented.
+  var x = it
+  # scan loop:
+  while x != nil:
+    x.foo = value
+    x = x.next
+
+The difference is that ``s[i] = y`` needs to be turned into a ``mut(s)``
+for seqs and ``r.field = y`` is NOT turned into ``mut(r)`` as it doesn't
+mutate the ``r`` itself. So the above loop is turned into something like::
+
+    use it
+    def x
+  L1:
+    fork L2
+    use value
+    use x
+    def x
+  L2:
+
+Which means that ``x`` is detected as a "cursor". Rule 3.2 is not yet
+implemented and requires either DFA changes or a different analysis.
+Write-tracking also helps to compute this.
 ]##
 
 import

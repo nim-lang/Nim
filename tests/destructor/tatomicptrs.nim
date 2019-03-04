@@ -11,7 +11,6 @@ deallocating
 allocating
 deallocating
 '''
-  cmd: '''nim c --newruntime $file'''
 """
 
 type
@@ -125,7 +124,7 @@ proc `=`*[T](m: var MySeq[T], m2: MySeq[T]) =
     `=destroy`(m)
 
   m.len = m2.len
-  let bytes = m.len.int * sizeof(float) 
+  let bytes = m.len.int * sizeof(float)
   if bytes > 0:
     m.data = cast[ptr UncheckedArray[T]](allocShared(bytes))
     copyMem(m.data, m2.data, bytes)

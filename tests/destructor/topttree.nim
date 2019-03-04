@@ -8,7 +8,6 @@ discard """
 90.0
 120.0
 8 8'''
-  cmd: '''nim c --newruntime $file'''
 """
 
 import typetraits

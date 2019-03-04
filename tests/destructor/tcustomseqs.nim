@@ -16,7 +16,6 @@ discard """
 1 2 6
 1 3 7
 after 6 6'''
-  cmd: '''nim c --newruntime $file'''
 """
 
 import typetraits
