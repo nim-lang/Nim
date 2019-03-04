@@ -969,7 +969,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
   var buf = newStringOfCap(50)
 
-  let jsonFile = conf.nimcacheDir / RelativeFile(conf.projectName & ".json")
+  let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
 
   var f: File
   if open(f, jsonFile.string, fmWrite):
