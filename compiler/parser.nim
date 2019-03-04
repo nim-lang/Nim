@@ -1153,18 +1153,26 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
     result.addSon list
     parseSymbolList(p, list)
 
+proc parseVarTuple(p: var TParser): PNode
+
 proc parseFor(p: var TParser): PNode =
   #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
   #| forExpr = forStmt
-  result = newNodeP(nkForStmt, p)
   getTokNoInd(p)
-  var a = identWithPragma(p)
-  addSon(result, a)
-  while p.tok.tokType == tkComma:
-    getTok(p)
-    optInd(p, a)
-    a = identWithPragma(p)
+  result = newNodeP(nkForStmt, p)
+  if p.tok.tokType == tkParLe:
+    addSon(result, parseVarTuple(p))
+  else:
+    var a = identWithPragma(p)
     addSon(result, a)
+    while p.tok.tokType == tkComma:
+      getTok(p)
+      optInd(p, a)
+      if p.tok.tokType == tkParLe:
+        addSon(result, parseVarTuple(p))
+        break
+      a = identWithPragma(p)
+      addSon(result, a)
   eat(p, tkIn)
   addSon(result, parseExpr(p))
   colcom(p, result)
@@ -2048,14 +2056,15 @@ proc parseVarTuple(p: var TParser): PNode =
   addSon(result, p.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
-  eat(p, tkEquals)
-  optInd(p, result)
-  addSon(result, parseExpr(p))
 
 proc parseVariable(p: var TParser): PNode =
   #| colonBody = colcom stmt doBlocks?
   #| variable = (varTuple / identColonEquals) colonBody? indAndComment
-  if p.tok.tokType == tkParLe: result = parseVarTuple(p)
+  if p.tok.tokType == tkParLe:
+    result = parseVarTuple(p)
+    eat(p, tkEquals)
+    optInd(p, result)
+    addSon(result, parseExpr(p))
   else: result = parseIdentColonEquals(p, {withPragma, withDot})
   result[^1] = postExprBlocks(p, result[^1])
   indAndComment(p, result)
@@ -2072,10 +2081,10 @@ proc parseConstant(p: var TParser): PNode =
       addSon(result, parseTypeDesc(p))
     else:
       addSon(result, p.emptyNode)
-    eat(p, tkEquals)
-    optInd(p, result)
-    addSon(result, parseExpr(p))
-    indAndComment(p, result)
+  eat(p, tkEquals)
+  optInd(p, result)
+  addSon(result, parseExpr(p))
+  indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
   #| bindStmt = 'bind' optInd qualifiedIdent ^+ comma

@@ -65,14 +65,14 @@ expression: f(y)
 '''
   errormsg: "type mismatch: got <MatchingType>"
   line: 138
+
+  disabled: 32bit
 """
 
-
-
-
-
-
-
+# disabled on 32 bit, because the order of suggested alternatives ``r`` differs
+# proc r[T](a: SomeNumber; b: T; c: auto)
+# proc r(i: string): int
+# proc r(o: RegularConcept): int
 
 
 

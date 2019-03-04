@@ -196,6 +196,8 @@ when not (defined(linux) and defined(amd64)) and not defined(nintendoswitch):
 proc glob*(a1: cstring, a2: cint,
           a3: proc (x1: cstring, x2: cint): cint {.noconv.},
           a4: ptr Glob): cint {.importc, header: "<glob.h>".}
+  ## Filename globbing. Use `os.walkPattern() <os.html#glob_1>`_ and similar.
+
 proc globfree*(a1: ptr Glob) {.importc, header: "<glob.h>".}
 
 proc getgrgid*(a1: Gid): ptr Group {.importc, header: "<grp.h>".}
@@ -260,6 +262,8 @@ proc getpwent*(): ptr Passwd {.importc, header: "<pwd.h>".}
 proc setpwent*() {.importc, header: "<pwd.h>".}
 
 proc uname*(a1: var Utsname): cint {.importc, header: "<sys/utsname.h>".}
+
+proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 
 proc pthread_atfork*(a1, a2, a3: proc () {.noconv.}): cint {.
   importc, header: "<pthread.h>".}
@@ -459,11 +463,21 @@ proc fdatasync*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc fork*(): Pid {.importc, header: "<unistd.h>".}
 proc fpathconf*(a1, a2: cint): int {.importc, header: "<unistd.h>".}
 proc fsync*(a1: cint): cint {.importc, header: "<unistd.h>".}
+ ## synchronize a file's buffer cache to the storage device
+
 proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
 proc getcwd*(a1: cstring, a2: int): cstring {.importc, header: "<unistd.h>".}
-proc getegid*(): Gid {.importc, header: "<unistd.h>".}
+proc getuid*(): Uid {.importc, header: "<unistd.h>".}
+ ## returns the real user ID of the calling process
+
 proc geteuid*(): Uid {.importc, header: "<unistd.h>".}
+ ## returns the effective user ID of the calling process
+
 proc getgid*(): Gid {.importc, header: "<unistd.h>".}
+ ## returns the real group ID of the calling process
+
+proc getegid*(): Gid {.importc, header: "<unistd.h>".}
+ ## returns the effective group ID of the calling process
 
 proc getgroups*(a1: cint, a2: ptr array[0..255, Gid]): cint {.
   importc, header: "<unistd.h>".}
@@ -477,9 +491,14 @@ proc getopt*(a1: cint, a2: cstringArray, a3: cstring): cint {.
 proc getpgid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
 proc getpgrp*(): Pid {.importc, header: "<unistd.h>".}
 proc getpid*(): Pid {.importc, header: "<unistd.h>".}
+ ## returns  the process ID (PID) of the calling process
+
 proc getppid*(): Pid {.importc, header: "<unistd.h>".}
+ ## returns the process ID of the parent of the calling process
+
 proc getsid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
-proc getuid*(): Uid {.importc, header: "<unistd.h>".}
+ ## returns the session ID of the calling process
+
 proc getwd*(a1: cstring): cstring {.importc, header: "<unistd.h>".}
 proc isatty*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc lchown*(a1: cstring, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>".}
@@ -560,6 +579,8 @@ proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
 proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
 proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
 proc mkdir*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
+  ## Use `os.createDir() <os.html#createDir>`_ and similar.
+
 proc mkfifo*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
 proc mknod*(a1: cstring, a2: Mode, a3: Dev): cint {.
   importc, header: "<sys/stat.h>".}
@@ -598,6 +619,7 @@ proc mmap*(a1: pointer, a2: int, a3, a4, a5: cint, a6: Off): pointer {.
 proc mprotect*(a1: pointer, a2: int, a3: cint): cint {.
   importc, header: "<sys/mman.h>".}
 proc msync*(a1: pointer, a2: int, a3: cint): cint {.importc, header: "<sys/mman.h>".}
+
 proc munlock*(a1: pointer, a2: int): cint {.importc, header: "<sys/mman.h>".}
 proc munlockall*(): cint {.importc, header: "<sys/mman.h>".}
 proc munmap*(a1: pointer, a2: int): cint {.importc, header: "<sys/mman.h>".}
@@ -755,7 +777,6 @@ proc sched_setscheduler*(a1: Pid, a2: cint, a3: var Sched_param): cint {.
   importc, header: "<sched.h>".}
 proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 
-proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 proc hstrerror*(herrnum: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>".}
 
 proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
@@ -990,10 +1011,12 @@ proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
 
 proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>".}
-  ## Create a temporary file.
+  ## Creates a unique temporary file.
   ##
   ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
   ## can't be a string literal. If in doubt copy the string before passing it.
+
+proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>".}
 
 proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>".}

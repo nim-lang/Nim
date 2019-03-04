@@ -34,7 +34,7 @@ bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedNativeStacktrace,
   defined(nativeStackTrace) and nativeStackTraceSupported,
   "-d:nativeStackTrace")
-bootSwitch(usedFFI, hasFFI, "-d:useFFI")
+bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
 
 type
   TCmdLinePass* = enum
@@ -387,7 +387,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.nimcacheDir = processPath(conf, arg, info, true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    conf.outFile = AbsoluteFile arg
+    let f = splitFile(arg.expandTilde)
+    conf.outFile = RelativeFile f.name & f.ext
+    conf.outDir = toAbsoluteDir f.dir
+  of "outdir":
+    expectArg(conf, switch, arg, pass, info)
+    conf.outDir = toAbsoluteDir arg.expandTilde
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
@@ -487,9 +492,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if optMemTracker in conf.options: defineSymbol(conf.symbols, "memtracker")
     else: undefSymbol(conf.symbols, "memtracker")
   of "hotcodereloading":
-    processOnOffSwitch(conf, {optHotCodeReloading}, arg, pass, info)
-    if optHotCodeReloading in conf.options: defineSymbol(conf.symbols, "hotcodereloading")
-    else: undefSymbol(conf.symbols, "hotcodereloading")
+    processOnOffSwitchG(conf, {optHotCodeReloading}, arg, pass, info)
+    if conf.hcrOn:
+      defineSymbol(conf.symbols, "hotcodereloading")
+      defineSymbol(conf.symbols, "useNimRtl")
+    else:
+      undefSymbol(conf.symbols, "hotcodereloading")
+      undefSymbol(conf.symbols, "useNimRtl")
   of "oldnewlines":
     case arg.normalize
     of "","on":
@@ -731,7 +740,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     doAssert(conf != nil)
     incl(conf.features, destructor)
-    defineSymbol(conf.symbols, "nimNewRuntime")
+    incl(conf.globalOptions, optNimV2)
+    defineSymbol(conf.symbols, "nimV2")
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
@@ -787,7 +797,8 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
       # support UNIX style filenames everywhere for portable build scripts:
-      config.projectName = unixToNativePath(p.key)
+      if config.projectName.len == 0:
+        config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
   inc argsCount

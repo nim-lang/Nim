@@ -679,14 +679,14 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     #if e[0].kind != nkBracketExpr:
     #  message(e.info, warnUser, "CAME HERE " & renderTree(e))
     expr(p, e.sons[0], d)
-    if e.sons[0].typ.skipTypes(abstractInst).kind == tyRef:
+    if e.sons[0].typ.skipTypes(abstractInstOwned).kind == tyRef:
       d.storage = OnHeap
   else:
     var a: TLoc
     var typ = e.sons[0].typ
     if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
       typ = typ.lastSon
-    typ = typ.skipTypes(abstractInst)
+    typ = typ.skipTypes(abstractInstOwned)
     if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
       initLocExprSingleUse(p, e[0][0], d)
       return
@@ -726,7 +726,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
-  if e.sons[0].typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+  if e.sons[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
     var a: TLoc
     initLocExpr(p, e.sons[0], a)
     putIntoDest(p, d, e, "&" & a.r, a.storage)
@@ -752,7 +752,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
     a: TLoc
     i: int
   initLocExpr(p, e.sons[0], a)
-  let tupType = a.t.skipTypes(abstractInst)
+  let tupType = a.t.skipTypes(abstractInst+{tyVar})
   assert tupType.kind == tyTuple
   d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
@@ -1158,7 +1158,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   let typ = a.t
   var b: TLoc
   initLoc(b, locExpr, a.lode, OnHeap)
-  let refType = typ.skipTypes(abstractInst)
+  let refType = typ.skipTypes(abstractInstOwned)
   assert refType.kind == tyRef
   let bt = refType.lastSon
   if sizeExpr.isNil:
@@ -1534,6 +1534,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, n.sons[1], a)
   a.r = ropecg(p.module, frmt, [rdLoc(a)])
+  a.flags = a.flags - {lfIndirect} # this flag should not be propagated here (not just for HCR)
   if d.k == locNone: getTemp(p, n.typ, d)
   genAssignment(p, d, a, {})
   gcUsage(p.config, n)
@@ -1722,11 +1723,16 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
     lookupOpr: array[mLeSet..mSymDiffSet, string] = [
       "for ($1 = 0; $1 < $2; $1++) { $n" &
-        "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
-        "  if (!$3) break;}$n", "for ($1 = 0; $1 < $2; $1++) { $n" &
-        "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" & "  if (!$3) break;}$n" &
-        "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
-      "&", "|", "& ~", "^"]
+      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
+      "  if (!$3) break;}$n",
+      "for ($1 = 0; $1 < $2; $1++) { $n" &
+      "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
+      "  if (!$3) break;}$n" &
+      "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
+      "&",
+      "|",
+      "& ~",
+      "^"]
   var a, b, i: TLoc
   var setType = skipTypes(e.sons[1].typ, abstractVar)
   var size = int(getSize(p.config, setType))
@@ -1997,6 +2003,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSizeOf:
     let t = e.sons[1].typ.skipTypes({tyTypeDesc})
     putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])
+  of mAlignOf:
+    let t = e.sons[1].typ.skipTypes({tyTypeDesc})
+    if not p.module.compileToCpp:
+      p.module.includeHeader("<stdalign.h>")
+    putIntoDest(p, d, e, "((NI)alignof($1))" % [getTypeDesc(p.module, t)])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -2029,8 +2040,28 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     genCall(p, e, d)
   of mNewString, mNewStringOfCap, mExit, mParseBiggestFloat:
     var opr = e.sons[0].sym
+    # Why would anyone want to set nodecl to one of these hardcoded magics?
+    # - not sure, and it wouldn't work if the symbol behind the magic isn't
+    #   somehow forward-declared from some other usage, but it is *possible*
     if lfNoDecl notin opr.loc.flags:
+      let prc = magicsys.getCompilerProc(p.module.g.graph, $opr.loc.r)
+      # HACK:
+      # Explicitly add this proc as declared here so the cgsym call doesn't
+      # add a forward declaration - without this we could end up with the same
+      # 2 forward declarations. That happens because the magic symbol and the original
+      # one that shall be used have different ids (even though a call to one is
+      # actually a call to the other) so checking into m.declaredProtos with the 2 different ids doesn't work.
+      # Why would 2 identical forward declarations be a problem?
+      # - in the case of hot code-reloading we generate function pointers instead
+      #   of forward declarations and in C++ it is an error to redefine a global
+      let wasDeclared = containsOrIncl(p.module.declaredProtos, prc.id)
+      # Make the function behind the magic get actually generated - this will
+      # not lead to a forward declaration! The genCall will lead to one.
       discard cgsym(p.module, $opr.loc.r)
+      # make sure we have pointer-initialising code for hot code reloading
+      if not wasDeclared and p.hcrOn:
+        addf(p.module.s[cfsDynLibInit], "\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
+             [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
@@ -2287,6 +2318,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   p.currLineInfo = n.info
+
   case n.kind
   of nkSym:
     var sym = n.sym
@@ -2602,6 +2634,23 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
 
   result = "(($1)&$2)" % [getTypeDesc(p.module, t), result]
 
+proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
+  var data = rope"{"
+  for i in countup(0, n.len - 1):
+    if i > 0: data.addf(",$n", [])
+    data.add genConstExpr(p, n.sons[i])
+  data.add("}")
+
+  let payload = getTempName(p.module)
+  let base = t.skipTypes(abstractInst).sons[0]
+
+  appcg(p.module, cfsData,
+    "static const struct {$n" &
+    "  NI cap; void* allocator; $1 data[$2];$n" &
+    "} $3 = {$2, NIM_NIL, $4};$n", [
+    getTypeDesc(p.module, base), rope(len(n)), payload, data])
+  result = "{$1, ($2*)&$3}" % [rope(len(n)), getSeqPayloadType(p.module, t), payload]
+
 proc genConstExpr(p: BProc, n: PNode): Rope =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
@@ -2613,7 +2662,10 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkBracket, nkPar, nkTupleConstr, nkClosure:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
-      result = genConstSeq(p, n, n.typ)
+      if p.config.selectedGc == gcDestructors:
+        result = genConstSeqV2(p, n, n.typ)
+      else:
+        result = genConstSeq(p, n, n.typ)
     elif t.kind == tyProc and t.callConv == ccClosure and n.len > 1 and
          n.sons[1].kind == nkNilLit:
       # Conversion: nimcall -> closure.

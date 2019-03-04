@@ -451,7 +451,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ##
   ## .. code-block:: nim
   ##
-  ## "var1<-keykey; val2<-key2key2"
+  ## "var1<-keykey; var2<-key2key2"
   result = ""
   var caps: array[MaxSubpatterns, string]
   var prev = 0

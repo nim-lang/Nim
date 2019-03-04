@@ -85,3 +85,24 @@ block tfefobjsyntax:
 
   var y: ref FooBar = (ref Baz)(n: "n", m: "m")
   invoke((ref Baz)(y))
+
+
+
+block t3012:
+  type
+    A {.inheritable.} = object
+    C {.inheritable.} = ref object
+
+  type
+    AA = ref object of A
+    CC = ref object of C
+
+
+
+block t7244:
+  type
+    Foo = ref object of RootRef
+    Bar = ref object of Foo
+
+  proc test(foo: var Foo) = discard
+  proc test(bar: var Bar) = test(Foo(bar))

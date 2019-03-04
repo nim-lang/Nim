@@ -8,7 +8,7 @@
 #
 
 ## This module defines compile-time reflection procs for
-## working with types
+## working with types.
 
 include "system/helpers" # for `isNamedTuple`
 
@@ -16,11 +16,13 @@ export system.`$`
 export isNamedTuple
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
-  ## Alias for system.`$`(t) since Nim v0.20.0.
+  ## Returns the name of the given type.
+  ##
+  ## Alias for system.`$`(t) since Nim v0.20.
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
-  ## Returns the arity of the given type. This is the number of "type" components or
-  ## the number of generic parameters a given type ``t`` has.
+  ## Returns the arity of the given type. This is the number of "type"
+  ## components or the number of generic parameters a given type ``t`` has.
   runnableExamples:
     assert arity(seq[string]) == 1
     assert arity(array[3, int]) == 2
@@ -31,19 +33,35 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## uninstantiated form.
   ##
   ## For example:
-  ##   seq[int].genericHead will be just seq
-  ##   seq[int].genericHead[float] will be seq[float]
+  ## * `seq[int].genericHead` will be just `seq`
+  ## * `seq[int].genericHead[float]` will be `seq[float]`
   ##
   ## A compile-time error will be produced if the supplied type
   ## is not generic.
+  ##
+  ## See also:
+  ## * `stripGenericParams <#stripGenericParams,typedesc>`_
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   type
+  ##     Functor[A] = concept f
+  ##       type MatchedGenericType = genericHead(f.type)
+  ##         # `f` will be a value of a type such as `Option[T]`
+  ##         # `MatchedGenericType` will become the `Option` type
+
 
 proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
-  ## This trait is similar to `genericHead`, but instead of producing
-  ## error for non-generic types, it will just return them unmodified.
+  ## This trait is similar to `genericHead <#genericHead,typedesc>`_, but
+  ## instead of producing error for non-generic types, it will just return
+  ## them unmodified.
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true iff the type ``t`` is safe to use for
-  ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
+  ## `copyMem`:idx:.
+  ##
+  ## Other languages name a type like these `blob`:idx:.
 
 
 when isMainModule:

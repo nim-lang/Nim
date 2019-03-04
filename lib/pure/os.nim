@@ -1648,6 +1648,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## Moves a file from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised.
+  ## If `dest` already exists, it will be overwritten.
   ##
   ## Can be used to `rename files`:idx:.
   ##
@@ -2551,7 +2552,7 @@ elif defined(windows):
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
-    raise newException(IndexError, "invalid index")
+    raise newException(IndexError, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
   proc paramStr*(i: int): TaintedString =
@@ -2570,7 +2571,7 @@ elif not defined(createNimRtl) and
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
-    raise newException(IndexError, "invalid index")
+    raise newException(IndexError, formatErrorIndexBound(i, cmdCount-1))
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.

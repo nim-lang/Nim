@@ -101,14 +101,12 @@ proc parseRst(text, filename: string,
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
   if optWholeProject in conf.globalOptions:
-    # This is correct, for 'nim doc --project' we interpret the '--out' option as an
-    # absolute directory, not as a filename!
-    let d = if conf.outFile.isEmpty: conf.projectPath / dir else: AbsoluteDir(conf.outFile)
+    let d = if conf.outDir.isEmpty: conf.projectPath / dir else: conf.outDir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif guessTarget:
-    let d = if not conf.outFile.isEmpty: splitFile(conf.outFile).dir
-    else: conf.projectPath
+    let d = if not conf.outDir.isEmpty: conf.outDir
+            else: conf.projectPath
     createDir(d)
     result = d / changeFileExt(filename, ext)
   else:
@@ -953,9 +951,8 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = if d.conf.outFile.isEmpty: d.conf.projectPath / RelativeDir"htmldocs"
-              elif optWholeProject in d.conf.globalOptions: AbsoluteDir(d.conf.outFile)
-              else: AbsoluteDir(d.conf.outFile.string.splitFile.dir)
+    let dir = if not d.conf.outDir.isEmpty: d.conf.outDir
+              else: d.conf.projectPath / RelativeDir"htmldocs"
     createDir(dir)
     let dest = dir / changeFileExt(relativeTo(AbsoluteFile d.filename,
                                               d.conf.projectPath), IndexExt)
@@ -996,6 +993,9 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
                  "\" for writing")
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
+  if optWholeProject in conf.globalOptions:
+    # Backward compatibility with previous versions
+    conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)

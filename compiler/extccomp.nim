@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils
+  lineinfos, std / sha1, streams, pathutils, sequtils, times
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -468,8 +468,8 @@ proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
     rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
       cmd)
 
-proc generateScript(conf: ConfigRef; projectFile: AbsoluteFile, script: Rope) =
-  let (_, name, _) = splitFile(projectFile)
+proc generateScript(conf: ConfigRef; script: Rope) =
+  let (_, name, _) = splitFile(conf.outFile.string)
   let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
                                      platform.OS[conf.target.targetOS].scriptExt))
   if writeRope(script, filename):
@@ -551,14 +551,14 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
            elif optMixedMode in conf.globalOptions and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
            else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
-proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
+proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): string =
   var c = conf.cCompiler
   var options = cFileSpecificOptions(conf, cfile.cname)
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
   if needsExeExt(conf): exe = addFileExt(exe, "exe")
-  if optGenDynLib in conf.globalOptions and
+  if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     add(options, ' ' & CC[c].pic)
 
@@ -648,12 +648,14 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
-proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var TStringSeq,
+proc compileCFiles(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
+  var currIdx = 0
   for it in list:
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
-    var compileCmd = getCompileCFileCmd(conf, it)
+    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1)
+    inc currIdx
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
@@ -662,7 +664,8 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
       add(script, compileCmd)
       add(script, "\n")
 
-proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): string =
+proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
+                objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
     var libname: string
     if not conf.outFile.isEmpty:
@@ -672,7 +675,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
-                                       "objfiles", objfiles]
+                                            "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
     if len(linkerExe) == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
@@ -684,28 +687,16 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
                      CC[conf.cCompiler].buildGui
                    else:
                      ""
-    var exefile, builddll: string
-    if optGenDynLib in conf.globalOptions:
-      exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
-      builddll = CC[conf.cCompiler].buildDll
-    else:
-      exefile = splitFile(projectfile).name & platform.OS[conf.target.targetOS].exeExt
-      builddll = ""
-    if not conf.outFile.isEmpty:
-      exefile = conf.outFile.string.expandTilde
-      if not exefile.isAbsolute():
-        exefile = getCurrentDir() / exefile
-    if not noAbsolutePaths(conf):
-      if not exefile.isAbsolute():
-        exefile = string(splitFile(projectfile).dir / RelativeFile(exefile))
+    let builddll = if isDllBuild: CC[conf.cCompiler].buildDll else: ""
+    let exefile = quoteShell(output)
+
     when false:
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
-    exefile = quoteShell(exefile)
 
     # Map files are required by Nintendo Switch compilation. They are a list
     # of all function calls in the library and where they come from.
-    let mapfile = quoteShell(getNimcacheDir(conf) / RelativeFile(splitFile(projectFile).name & ".map"))
+    let mapfile = quoteShell(getNimcacheDir(conf) / RelativeFile(splitFile(output).name & ".map"))
 
     let linkOptions = getLinkOptions(conf) & " " &
                       getConfigVar(conf, conf.cCompiler, ".options.linker")
@@ -723,6 +714,46 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),
         "lib", quoteShell(conf.libpath)])
+    # On windows the debug information for binaries is emitted in a separate .pdb
+    # file and the binaries (.dll and .exe) contain a full path to that .pdb file.
+    # This is a problem for hot code reloading because even when we copy the .dll
+    # and load the copy so the build process may overwrite the original .dll on
+    # the disk (windows locks the files of running binaries) the copy still points
+    # to the original .pdb (and a simple copy of the .pdb won't help). This is a
+    # problem when a debugger is attached to the program we are hot-reloading.
+    # This problem is nonexistent on Unix since there by default debug symbols
+    # are embedded in the binaries so loading a copy of a .so will be fine. There
+    # is the '/Z7' flag for the MSVC compiler to embed the debug info of source
+    # files into their respective .obj files but the linker still produces a .pdb
+    # when a final .dll or .exe is linked so the debug info isn't embedded.
+    # There is also the issue that even when a .dll is unloaded the debugger
+    # still keeps the .pdb for that .dll locked. This is a major problem and
+    # because of this we cannot just alternate between 2 names for a .pdb file
+    # when rebuilding a .dll - instead we need to accumulate differently named
+    # .pdb files in the nimcache folder - this is the easiest and most reliable
+    # way of being able to debug and rebuild the program at the same time. This
+    # is accomplished using the /PDB:<filename> flag (there also exists the
+    # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
+    # atleast 5-10mb big and will quickly accumulate. There is a hacky solution:
+    # we could try to delete all .pdb files with a pattern and swallow exceptions.
+    #
+    # links about .pdb files and hot code reloading:
+    # https://ourmachinery.com/post/dll-hot-reloading-in-theory-and-practice/
+    # https://ourmachinery.com/post/little-machines-working-together-part-2/
+    # https://github.com/fungos/cr
+    # https://fungos.github.io/blog/2017/11/20/cr.h-a-simple-c-hot-reload-header-only-library/
+    # on forcing the debugger to unlock a locked .pdb of an unloaded library:
+    # https://blog.molecular-matters.com/2017/05/09/deleting-pdb-files-locked-by-visual-studio/
+    # and a bit about the .pdb format in case that is ever needed:
+    # https://github.com/crosire/blink
+    # http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
+    if conf.hcrOn and conf.cCompiler == ccVcc:
+      let t = now()
+      let pdb = output.string & "." & format(t, "MMMM-yyyy-HH-mm-") & $t.nanosecond & ".pdb"
+      result.add " /link /PDB:" & pdb
+
+template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
+  getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped): typed =
   try:
@@ -799,7 +830,17 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   finally:
     removeFile(linkerArgs)
 
-proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
+proc getObjFilePath(conf: ConfigRef, f: CFile): string =
+  if noAbsolutePaths(conf): f.obj.extractFilename
+  else: f.obj.string
+
+proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): AbsoluteFile =
+  let basename = splitFile(objFile).name
+  let targetName = if isMain: basename & ".exe"
+                   else: platform.OS[conf.target.targetOS].dllFrmt % basename
+  result = conf.nimcacheDir / RelativeFile(targetName)
+
+proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
   if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
@@ -813,7 +854,7 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
     when declared(echo):
       let cmd = prettyCmds[idx]
       if cmd != "": echo cmd
-  compileCFile(conf, conf.toCompile, script, cmds, prettyCmds)
+  compileCFiles(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
   if optNoLinking notin conf.globalOptions:
@@ -824,31 +865,64 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
       add(objfiles, ' ')
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[conf.cCompiler].objExt)))
-    for x in conf.toCompile:
-      let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
-      add(objfiles, ' ')
-      add(objfiles, quoteShell(objFile))
 
-    linkCmd = getLinkCmd(conf, projectfile, objfiles)
-    if optCompileOnly notin conf.globalOptions:
-      if defined(windows) and linkCmd.len > 8_000:
-        # Windows's command line limit is about 8K (don't laugh...) so C compilers on
-        # Windows support a feature where the command line can be passed via ``@linkcmd``
-        # to them.
-        linkViaResponseFile(conf, linkCmd)
-      else:
-        execLinkCmd(conf, linkCmd)
+    if conf.hcrOn: # lets assume that optCompileOnly isn't on
+      cmds = @[]
+      let mainFileIdx = conf.toCompile.len - 1
+      for idx, x in conf.toCompile:
+        # don't relink each of the many binaries (one for each source file) if the nim code is
+        # cached because that would take too much time for small changes - the only downside to
+        # this is that if an external-to-link file changes the final target wouldn't be relinked
+        if x.flags.contains(CfileFlag.Cached): continue
+        # we pass each object file as if it is the project file - a .dll will be created for each such
+        # object file in the nimcache directory, and only in the case of the main project file will
+        # there be probably an executable (if the project is such) which will be copied out of the nimcache
+        let objFile = conf.getObjFilePath(x)
+        let buildDll = idx != mainFileIdx
+        let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
+        add(cmds, getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
+        # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
+        # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
+        if conf.cCompiler == ccVcc:
+          for pdb in walkFiles(objFile & ".*.pdb"):
+            discard tryRemoveFile(pdb)
+      # execute link commands in parallel - output will be a bit different
+      # if it fails than that from execLinkCmd() but that doesn't matter
+      prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
+      execCmdsInParallel(conf, cmds, prettyCb)
+      # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
+      if not conf.toCompile[mainFileIdx].flags.contains(CfileFlag.Cached):
+        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
+        var src = conf.hcrLinkTargetName(mainObjFile, true)
+        var dst = conf.prepareToWriteOutput
+        copyFileWithPermissions(src.string, dst.string)
+    else:
+      for x in conf.toCompile:
+        let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
+        add(objfiles, ' ')
+        add(objfiles, quoteShell(objFile))
+      let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
+                       else: AbsoluteFile(conf.projectName)
+      linkCmd = getLinkCmd(conf, mainOutput, objfiles)
+      if optCompileOnly notin conf.globalOptions:
+        if defined(windows) and linkCmd.len > 8_000:
+          # Windows's command line limit is about 8K (don't laugh...) so C compilers on
+          # Windows support a feature where the command line can be passed via ``@linkcmd``
+          # to them.
+          linkViaResponseFile(conf, linkCmd)
+        else:
+          execLinkCmd(conf, linkCmd)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
     add(script, linkCmd)
     add(script, "\n")
-    generateScript(conf, projectfile, script)
+    generateScript(conf, script)
 
 #from json import escapeJson
 import json
 
-proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
+proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: untyped) = f.write x
   template str(x: untyped) =
     when compiles(escapeJson(x, buf)):
@@ -895,7 +969,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
   var buf = newStringOfCap(50)
 
-  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+  let jsonFile = conf.nimcacheDir / RelativeFile(conf.projectName & ".json")
 
   var f: File
   if open(f, jsonFile.string, fmWrite):
@@ -907,7 +981,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
 
     lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, projectfile, objfiles)
+    str getLinkCmd(conf, conf.absOutFile, objfiles)
     lit "\L}\L"
     close(f)
 

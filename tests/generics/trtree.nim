@@ -3,8 +3,10 @@ discard """
 [0, 0]'''
   target: "c"
   joinable: false
+disabled: 32bit
 """
 
+# this test wasn't written for 32 bit
 # don't join because the code is too messy.
 
 # Nim RTree and R*Tree implementation

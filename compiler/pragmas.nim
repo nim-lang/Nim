@@ -21,7 +21,7 @@ const
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
-    wCompilerProc, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wCompilerProc, wNonReloadable, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe, wOverride,
@@ -31,7 +31,7 @@ const
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
-    wNodecl, wMagic, wNosideeffect, wCompilerProc, wCore, wDeprecated, wExtern,
+    wNodecl, wMagic, wNosideeffect, wCompilerProc, wNonReloadable, wCore, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
     wExportNims, wUsed}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
@@ -241,7 +241,7 @@ proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
 
   # deprecated as of 0.18.1
   message(c.config, n.info, warnDeprecated,
-          "use {.experimental: \"codeReordering.\".} instead; " &
+          "use {.experimental: \"codeReordering\".} instead; " &
           (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}") & " is deprecated")
 
 proc processCallConv(c: PContext, n: PNode) =
@@ -719,26 +719,34 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc semCustomPragma(c: PContext, n: PNode): PNode =
+  var callNode: PNode
+
   if n.kind == nkIdent:
-    result = newTree(nkCall, n)
+    # pragma -> pragma()
+    callNode = newTree(nkCall, n)
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
-    result = newTree(nkCall, n[0], n[1])
+    callNode = newTree(nkCall, n[0], n[1])
   elif n.kind in nkPragmaCallKinds:
-    result = n
+    callNode = n
   else:
     invalidPragma(c, n)
     return n
 
-  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {efNoUndeclared})
+  let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
+
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
-  else:
-    result = r
-    if n.kind == nkIdent:
-      result = result[0]
-    elif n.kind == nkExprColonExpr:
-      result.kind = n.kind # pragma(arg) -> pragma: arg
+    return n
+
+  result = r
+  # Transform the nkCall node back to its original form if possible
+  if n.kind == nkIdent and r.len == 1:
+    # pragma() -> pragma
+    result = result[0]
+  elif n.kind == nkExprColonExpr and r.len == 2:
+    # pragma(arg) -> pragma: arg
+    result.kind = n.kind
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords, comesFromPush: bool) : bool =
@@ -803,12 +811,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
-        if not isPowerOfTwo(size) or size <= 0 or size > 8:
-          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
-        else:
+        case size
+        of 1, 2, 4, 8:
           sym.typ.size = size
-          # TODO, this is not correct
-          sym.typ.align = int16(size)
+          if size == 8 and c.config.target.targetCPU == cpuI386:
+            sym.typ.align = 4
+          else:
+            sym.typ.align = int16(size)
+        else:
+          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
@@ -864,7 +875,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfSideEffect)
       of wNoreturn:
         noVal(c, it)
-        incl(sym.flags, sfNoReturn)
+        # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
+        if not isDefined(c.config, "nimQuirky"):
+          incl(sym.flags, sfNoReturn)
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")
@@ -875,6 +888,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         cppDefine(c.graph.config, sym.name.s)
         recordPragma(c, it, "cppdefine", sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(c, sym)
+      of wNonReloadable:
+        sym.flags.incl sfNonReloadable
       of wProcVar:
         noVal(c, it)
         incl(sym.flags, sfProcvar)

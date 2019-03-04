@@ -33,7 +33,7 @@ proc nimLoadLibraryError(path: string) =
     discard MessageBoxA(0, msg[0].addr, nil, 0)
   quit(1)
 
-proc procAddrError(name: cstring) {.noinline.} =
+proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
   cstderr.rawWrite("could not import: ")
   cstderr.rawWrite(name)

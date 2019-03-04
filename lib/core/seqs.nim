@@ -43,7 +43,8 @@ proc `=destroy`[T](s: var seq[T]) =
     mixin `=destroy`
     when not supportsCopyMem(T):
       for i in 0..<x.len: `=destroy`(p.data[i])
-    p.region.dealloc(p.region, p, payloadSize(p.cap))
+    if p.region != nil:
+      p.region.dealloc(p.region, p, payloadSize(p.cap))
     x.p = nil
     x.len = 0
 
@@ -79,7 +80,7 @@ type
     cap: int
     region: Allocator
 
-proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
+proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
@@ -92,7 +93,7 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
     result = nil
 
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
-    compilerRtl, noSideEffect.} =
+    compilerRtl, noSideEffect, raises: [].} =
   {.noSideEffect.}:
     if len+addlen <= len:
       result = p
@@ -117,7 +118,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) =
   when not supportsCopyMem(T):
     for i in countdown(x.len - 1, newLen - 1):
       `=destroy`(x[i])
-
+  # XXX This is wrong for const seqs that were moved into 'x'!
   cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =

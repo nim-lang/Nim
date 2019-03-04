@@ -31,7 +31,7 @@ const
     cfsData: "NIM_merge_DATA",
     cfsProcs: "NIM_merge_PROCS",
     cfsInitProc: "NIM_merge_INIT_PROC",
-    cfsDatInitProc: "NIM_merge_DATINIT_PROC",    
+    cfsDatInitProc: "NIM_merge_DATINIT_PROC",
     cfsTypeInit1: "NIM_merge_TYPE_INIT1",
     cfsTypeInit2: "NIM_merge_TYPE_INIT2",
     cfsTypeInit3: "NIM_merge_TYPE_INIT3",
@@ -145,38 +145,34 @@ proc atEndMark(buf: cstring, pos: int): bool =
 
 proc readVerbatimSection(L: var TBaseLexer): Rope =
   var pos = L.bufpos
-  var buf = L.buf
   var r = newStringOfCap(30_000)
   while true:
-    case buf[pos]
+    case L.buf[pos]
     of CR:
       pos = nimlexbase.handleCR(L, pos)
-      buf = L.buf
       r.add('\L')
     of LF:
       pos = nimlexbase.handleLF(L, pos)
-      buf = L.buf
       r.add('\L')
     of '\0':
       doAssert(false, "ccgmerge: expected: " & NimMergeEndMark)
       break
     else:
-      if atEndMark(buf, pos):
+      if atEndMark(L.buf, pos):
         inc pos, NimMergeEndMark.len
         break
-      r.add(buf[pos])
+      r.add(L.buf[pos])
       inc pos
   L.bufpos = pos
   result = r.rope
 
 proc readKey(L: var TBaseLexer, result: var string) =
   var pos = L.bufpos
-  var buf = L.buf
   setLen(result, 0)
-  while buf[pos] in IdentChars:
-    result.add(buf[pos])
+  while L.buf[pos] in IdentChars:
+    result.add(L.buf[pos])
     inc pos
-  if buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
+  if L.buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
 proc newFakeType(id: int): PType =

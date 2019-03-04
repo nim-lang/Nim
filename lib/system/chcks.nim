@@ -8,7 +8,7 @@
 #
 
 # Implementation of some runtime checks.
-import system/indexerrors
+include system/indexerrors
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
@@ -58,11 +58,6 @@ proc chckRangeF(x, a, b: float): float =
 proc chckNil(p: pointer) =
   if p == nil:
     sysFatal(NilAccessError, "attempt to write to a nil address")
-
-when defined(nimNewRuntime):
-  proc chckMove(b: bool) {.compilerproc.} =
-    if not b:
-      sysFatal(MoveError, "attempt to access an object that was moved")
 
 proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:

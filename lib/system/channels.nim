@@ -7,12 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-## Channel support for threads. **Note**: This is part of the system module.
-## Do not import it directly. To activate thread support you need to compile
-## with the ``--threads:on`` command line switch.
+## Channel support for threads.
+##
+## **Note**: This is part of the system module. Do not import it directly.
+## To activate thread support compile with the ``--threads:on`` command line switch.
+##
+## **Note:** Channels are designed for the ``Thread`` type. They are unstable when
+## used with ``spawn``
 ##
 ## **Note:** The current implementation of message passing does
 ## not work with cyclic data structures.
+##
 ## **Note:** Channels cannot be passed between threads. Use globals or pass
 ## them by `ptr`.
 
@@ -142,7 +147,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     for i in 0..(mt.size div mt.base.size)-1:
       storeAux(cast[pointer](d +% i*% mt.base.size),
                cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
-  of tyRef, tyOptAsRef:
+  of tyRef:
     var s = cast[PPointer](src)[]
     var x = cast[PPointer](dest)
     if s == nil:
@@ -173,7 +178,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     copyMem(dest, src, mt.size) # copy raw bits
 
 proc rawSend(q: PRawChannel, data: pointer, typ: PNimType) =
-  ## adds an `item` to the end of the queue `q`.
+  ## Adds an `item` to the end of the queue `q`.
   var cap = q.mask+1
   if q.count >= cap:
     # start with capacity for 2 entries in the queue:
@@ -227,11 +232,14 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
   result = true
 
 proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) {.inline.} =
-  ## sends a message to a thread. `msg` is deeply copied.
+  ## Sends a message to a thread. `msg` is deeply copied.
   discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
 
 proc trySend*[TMsg](c: var Channel[TMsg], msg: TMsg): bool {.inline.} =
-  ## Tries to send a message to a thread. `msg` is deeply copied. Doesn't block.
+  ## Tries to send a message to a thread.
+  ##
+  ## `msg` is deeply copied. Doesn't block.
+  ##
   ## Returns `false` if the message was not sent because number of pending items
   ## in the channel exceeded `maxItems`.
   sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
@@ -250,8 +258,10 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
     signalSysCond(q.cond)
 
 proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
-  ## receives a message from the channel `c`. This blocks until
-  ## a message has arrived! You may use ``peek`` to avoid the blocking.
+  ## Receives a message from the channel `c`.
+  ##
+  ## This blocks until a message has arrived!
+  ## You may use `peek proc <#peek,Channel[TMsg]>`_ to avoid the blocking.
   var q = cast[PRawChannel](addr(c))
   acquireSys(q.lock)
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
@@ -260,8 +270,9 @@ proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
 proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
                                                   msg: TMsg] =
   ## Tries to receive a message from the channel `c`, but this can fail
-  ## for all sort of reasons, including contention. If it fails,
-  ## it returns ``(false, default(msg))`` otherwise it
+  ## for all sort of reasons, including contention.
+  ##
+  ## If it fails, it returns ``(false, default(msg))`` otherwise it
   ## returns ``(true, msg)``.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
@@ -272,9 +283,12 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
       releaseSys(q.lock)
 
 proc peek*[TMsg](c: var Channel[TMsg]): int =
-  ## returns the current number of messages in the channel `c`. Returns -1
-  ## if the channel has been closed. **Note**: This is dangerous to use
-  ## as it encourages races. It's much better to use ``tryRecv`` instead.
+  ## Returns the current number of messages in the channel `c`.
+  ##
+  ## Returns -1 if the channel has been closed.
+  ##
+  ## **Note**: This is dangerous to use as it encourages races.
+  ## It's much better to use `tryRecv proc <#tryRecv,Channel[TMsg]>`_ instead.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     lockChannel(q):
@@ -283,17 +297,20 @@ proc peek*[TMsg](c: var Channel[TMsg]): int =
     result = -1
 
 proc open*[TMsg](c: var Channel[TMsg], maxItems: int = 0) =
-  ## opens a channel `c` for inter thread communication. The `send` operation
-  ## will block until number of unprocessed items is less than `maxItems`.
+  ## Opens a channel `c` for inter thread communication.
+  ##
+  ## The `send` operation will block until number of unprocessed items is
+  ## less than `maxItems`.
+  ##
   ## For unlimited queue set `maxItems` to 0.
   initRawChannel(addr(c), maxItems)
 
 proc close*[TMsg](c: var Channel[TMsg]) =
-  ## closes a channel `c` and frees its associated resources.
+  ## Closes a channel `c` and frees its associated resources.
   deinitRawChannel(addr(c))
 
 proc ready*[TMsg](c: var Channel[TMsg]): bool =
-  ## returns true iff some thread is waiting on the channel `c` for
+  ## Returns true iff some thread is waiting on the channel `c` for
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready

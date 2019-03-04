@@ -22,7 +22,7 @@ proc countBits64(n: int64): int {.compilerproc.} =
   result = countBits32(toU32(n and 0xffffffff'i64)) +
            countBits32(toU32(n shr 32'i64))
 
-proc cardSet(s: NimSet, len: int): int {.compilerproc.} =
-  result = 0
-  for i in countup(0, len-1):
+proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
+  for i in 0..<len:
+    if likely(s[i] == 0): continue
     inc(result, countBits32(int32(s[i])))

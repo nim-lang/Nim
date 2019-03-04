@@ -148,35 +148,33 @@ proc handleCRLF(c: var SqlLexer, pos: int): int =
 
 proc skip(c: var SqlLexer) =
   var pos = c.bufpos
-  var buf = c.buf
   var nested = 0
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of ' ', '\t':
       inc(pos)
     of '-':
-      if buf[pos+1] == '-':
-        while not (buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
+      if c.buf[pos+1] == '-':
+        while not (c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
       else:
         break
     of '/':
-      if buf[pos+1] == '*':
+      if c.buf[pos+1] == '*':
         inc(pos,2)
         while true:
-          case buf[pos]
+          case c.buf[pos]
           of '\0': break
           of '\c', '\L':
             pos = handleCRLF(c, pos)
-            buf = c.buf
           of '*':
-            if buf[pos+1] == '/':
+            if c.buf[pos+1] == '/':
               inc(pos, 2)
               if nested <= 0: break
               dec(nested)
             else:
               inc(pos)
           of '/':
-            if buf[pos+1] == '*':
+            if c.buf[pos+1] == '*':
               inc(pos, 2)
               inc(nested)
             else:
@@ -185,21 +183,19 @@ proc skip(c: var SqlLexer) =
       else: break
     of '\c', '\L':
       pos = handleCRLF(c, pos)
-      buf = c.buf
     else:
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
 
 proc getString(c: var SqlLexer, tok: var Token, kind: TokKind) =
   var pos = c.bufpos + 1
-  var buf = c.buf
   tok.kind = kind
   block parseLoop:
     while true:
       while true:
-        var ch = buf[pos]
+        var ch = c.buf[pos]
         if ch == '\'':
-          if buf[pos+1] == '\'':
+          if c.buf[pos+1] == '\'':
             inc(pos, 2)
             add(tok.literal, '\'')
           else:
@@ -221,30 +217,27 @@ proc getString(c: var SqlLexer, tok: var Token, kind: TokKind) =
       if c.lineNumber > line:
         # a new line whitespace has been parsed, so we check if the string
         # continues after the whitespace:
-        buf = c.buf # may have been reallocated
         pos = c.bufpos
-        if buf[pos] == '\'': inc(pos)
+        if c.buf[pos] == '\'': inc(pos)
         else: break parseLoop
       else: break parseLoop
   c.bufpos = pos
 
 proc getDollarString(c: var SqlLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  var buf = c.buf
   tok.kind = tkDollarQuotedConstant
   var tag = "$"
-  while buf[pos] in IdentChars:
-    add(tag, buf[pos])
+  while c.buf[pos] in IdentChars:
+    add(tag, c.buf[pos])
     inc(pos)
-  if buf[pos] == '$': inc(pos)
+  if c.buf[pos] == '$': inc(pos)
   else:
     tok.kind = tkInvalid
     return
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of '\c', '\L':
       pos = handleCRLF(c, pos)
-      buf = c.buf
       add(tok.literal, "\L")
     of '\0':
       tok.kind = tkInvalid
@@ -252,37 +245,35 @@ proc getDollarString(c: var SqlLexer, tok: var Token) =
     of '$':
       inc(pos)
       var tag2 = "$"
-      while buf[pos] in IdentChars:
-        add(tag2, buf[pos])
+      while c.buf[pos] in IdentChars:
+        add(tag2, c.buf[pos])
         inc(pos)
-      if buf[pos] == '$': inc(pos)
+      if c.buf[pos] == '$': inc(pos)
       if tag2 == tag: break
       add(tok.literal, tag2)
       add(tok.literal, '$')
     else:
-      add(tok.literal, buf[pos])
+      add(tok.literal, c.buf[pos])
       inc(pos)
   c.bufpos = pos
 
 proc getSymbol(c: var SqlLexer, tok: var Token) =
   var pos = c.bufpos
-  var buf = c.buf
   while true:
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if buf[pos] notin {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}:
+    if c.buf[pos] notin {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}:
       break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
 proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote='\"') =
   var pos = c.bufpos + 1
-  var buf = c.buf
   tok.kind = tkQuotedIdentifier
   while true:
-    var ch = buf[pos]
+    var ch = c.buf[pos]
     if ch == quote:
-      if buf[pos+1] == quote:
+      if c.buf[pos+1] == quote:
         inc(pos, 2)
         add(tok.literal, quote)
       else:
@@ -298,11 +289,10 @@ proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote='\"') =
 
 proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
   var pos = c.bufpos + 1
-  var buf = c.buf
   block parseLoop:
     while true:
       while true:
-        var ch = buf[pos]
+        var ch = c.buf[pos]
         if ch in validChars:
           add(tok.literal, ch)
           inc(pos)
@@ -318,9 +308,8 @@ proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
       if c.lineNumber > line:
         # a new line whitespace has been parsed, so we check if the string
         # continues after the whitespace:
-        buf = c.buf # may have been reallocated
         pos = c.bufpos
-        if buf[pos] == '\'': inc(pos)
+        if c.buf[pos] == '\'': inc(pos)
         else: break parseLoop
       else: break parseLoop
   c.bufpos = pos
@@ -328,29 +317,28 @@ proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
 proc getNumeric(c: var SqlLexer, tok: var Token) =
   tok.kind = tkInteger
   var pos = c.bufpos
-  var buf = c.buf
-  while buf[pos] in Digits:
-    add(tok.literal, buf[pos])
+  while c.buf[pos] in Digits:
+    add(tok.literal, c.buf[pos])
     inc(pos)
-  if buf[pos] == '.':
+  if c.buf[pos] == '.':
     tok.kind = tkNumeric
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    while buf[pos] in Digits:
-      add(tok.literal, buf[pos])
+    while c.buf[pos] in Digits:
+      add(tok.literal, c.buf[pos])
       inc(pos)
-  if buf[pos] in {'E', 'e'}:
+  if c.buf[pos] in {'E', 'e'}:
     tok.kind = tkNumeric
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if buf[pos] == '+':
+    if c.buf[pos] == '+':
       inc(pos)
-    elif buf[pos] == '-':
-      add(tok.literal, buf[pos])
+    elif c.buf[pos] == '-':
+      add(tok.literal, c.buf[pos])
       inc(pos)
-    if buf[pos] in Digits:
-      while buf[pos] in Digits:
-        add(tok.literal, buf[pos])
+    if c.buf[pos] in Digits:
+      while c.buf[pos] in Digits:
+        add(tok.literal, c.buf[pos])
         inc(pos)
     else:
       tok.kind = tkInvalid
@@ -361,24 +349,23 @@ proc getOperator(c: var SqlLexer, tok: var Token) =
                      '^', '&', '|', '`', '?'}
   tok.kind = tkOperator
   var pos = c.bufpos
-  var buf = c.buf
   var trailingPlusMinus = false
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of '-':
-      if buf[pos] == '-': break
-      if not trailingPlusMinus and buf[pos+1] notin operators and
+      if c.buf[pos] == '-': break
+      if not trailingPlusMinus and c.buf[pos+1] notin operators and
            tok.literal.len > 0: break
     of '/':
-      if buf[pos] == '*': break
+      if c.buf[pos] == '*': break
     of '~', '!', '@', '#', '%', '^', '&', '|', '`', '?':
       trailingPlusMinus = true
     of '+':
-      if not trailingPlusMinus and buf[pos+1] notin operators and
+      if not trailingPlusMinus and c.buf[pos+1] notin operators and
            tok.literal.len > 0: break
     of '*', '<', '>', '=': discard
     else: break
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
   c.bufpos = pos
 

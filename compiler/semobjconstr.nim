@@ -263,8 +263,11 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     localError(c.config, n.info, errGenerated, "object constructor needs an object type")
     return
 
-  t = skipTypes(t, {tyGenericInst, tyAlias, tySink})
-  if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink})
+  t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
+  if t.kind == tyRef:
+    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink, tyOwned})
+    if optNimV2 in c.config.globalOptions:
+      result.typ = makeVarType(c, result.typ, tyOwned)
   if t.kind != tyObject:
     localError(c.config, n.info, errGenerated, "object constructor needs an object type")
     return

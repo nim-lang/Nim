@@ -261,35 +261,32 @@ proc handleCRLF(c: var CfgParser, pos: int): int =
 
 proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
   var pos = c.bufpos + 1          # skip "
-  var buf = c.buf                 # put `buf` in a register
   tok.kind = tkSymbol
-  if (buf[pos] == '"') and (buf[pos + 1] == '"'):
+  if (c.buf[pos] == '"') and (c.buf[pos + 1] == '"'):
     # long string literal:
     inc(pos, 2)               # skip ""
                               # skip leading newline:
     pos = handleCRLF(c, pos)
-    buf = c.buf
     while true:
-      case buf[pos]
+      case c.buf[pos]
       of '"':
-        if (buf[pos + 1] == '"') and (buf[pos + 2] == '"'): break
+        if (c.buf[pos + 1] == '"') and (c.buf[pos + 2] == '"'): break
         add(tok.literal, '"')
         inc(pos)
       of '\c', '\L':
         pos = handleCRLF(c, pos)
-        buf = c.buf
         add(tok.literal, "\n")
       of lexbase.EndOfFile:
         tok.kind = tkInvalid
         break
       else:
-        add(tok.literal, buf[pos])
+        add(tok.literal, c.buf[pos])
         inc(pos)
     c.bufpos = pos + 3       # skip the three """
   else:
     # ordinary string literal
     while true:
-      var ch = buf[pos]
+      var ch = c.buf[pos]
       if ch == '"':
         inc(pos)              # skip '"'
         break
@@ -307,26 +304,23 @@ proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
 
 proc getSymbol(c: var CfgParser, tok: var Token) =
   var pos = c.bufpos
-  var buf = c.buf
   while true:
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if not (buf[pos] in SymChars): break
+    if not (c.buf[pos] in SymChars): break
   c.bufpos = pos
   tok.kind = tkSymbol
 
 proc skip(c: var CfgParser) =
   var pos = c.bufpos
-  var buf = c.buf
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of ' ', '\t':
       inc(pos)
     of '#', ';':
-      while not (buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
+      while not (c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
     of '\c', '\L':
       pos = handleCRLF(c, pos)
-      buf = c.buf
     else:
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos

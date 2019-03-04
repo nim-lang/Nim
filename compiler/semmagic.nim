@@ -353,9 +353,17 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely, type: " & n[1].typ.typeToString)
       result = n
   of mAlignOf:
-    result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
-    result.info = n.info
-    result.typ = n.typ
+    # this is 100% analog to mSizeOf, could be made more dry.
+    let align = getAlign(c.config, n[1].typ)
+    if align == szUnknownSize:
+      result = n
+    elif align >= 0:
+      result = newIntNode(nkIntLit, align)
+      result.info = n.info
+      result.typ = n.typ
+    else:
+      localError(c.config, n.info, "cannot evaluate 'alignof' because its type is not defined completely, type: " & n[1].typ.typeToString)
+      result = n
   of mOffsetOf:
     var dotExpr: PNode
 

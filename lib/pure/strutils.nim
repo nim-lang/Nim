@@ -370,14 +370,14 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
       return 1
     inc i
     inc j
-
+{.pop.}
 
 # --------- Private templates for different split separators -----------
 
 proc substrEq(s: string, pos: int, substr: string): bool =
   var i = 0
   var length = substr.len
-  while i < length and s[pos+i] == substr[i]:
+  while i < length and pos+i < s.len and s[pos+i] == substr[i]:
     inc i
   return i == length
 
@@ -1173,6 +1173,18 @@ proc parseEnum*[T: enum](s: string): T =
   ##
   ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
+  runnableExamples:
+    type
+      MyEnum = enum
+        first = "1st",
+        second,
+        third = "3rd"
+
+    doAssert parseEnum[MyEnum]("1_st") == first
+    doAssert parseEnum[MyEnum]("second") == second
+    doAssertRaises(ValueError):
+      echo parseEnum[MyEnum]("third")
+
   for e in low(T)..high(T):
     if cmpIgnoreStyle(s, $e) == 0:
       return e
@@ -1183,6 +1195,17 @@ proc parseEnum*[T: enum](s: string, default: T): T =
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
   ## style insensitive way.
+  runnableExamples:
+    type
+      MyEnum = enum
+        first = "1st",
+        second,
+        third = "3rd"
+
+    doAssert parseEnum[MyEnum]("1_st") == first
+    doAssert parseEnum[MyEnum]("second") == second
+    doAssert parseEnum[MyEnum]("last", third) == third
+
   for e in low(T)..high(T):
     if cmpIgnoreStyle(s, $e) == 0:
       return e
@@ -1474,7 +1497,7 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
     doAssert a.endsWith("dab") == false
   var i = 0
   var j = len(s) - len(suffix)
-  while i+j <% s.len:
+  while i+j >= 0 and i+j < s.len:
     if s[i+j] != suffix[i]: return false
     inc(i)
   if i >= suffix.len: return true
@@ -2635,9 +2658,6 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
   ## * `strformat module<strformat.html>`_ for string interpolation and formatting
   result = newStringOfCap(formatstr.len + a.len)
   addf(result, formatstr, a)
-
-{.pop.}
-
 
 
 proc strip*(s: string, leading = true, trailing = true,

@@ -22,7 +22,7 @@ import custom_pragma
 block: # A bit more advanced case
   type
     Subfield {.defaultValue: "catman".} = object
-      c* {.serializationKey: "cc".}: float
+      `c`* {.serializationKey: "cc".}: float
 
     MySerializable = object
       a {.serializationKey"asdf", defaultValue: 5.} : int
@@ -233,3 +233,10 @@ block:
   doAssert ps.first == ps[0] and ps.first == "one"
   doAssert ps.second == ps[1] and ps.second == 2
   doAssert ps.third == ps[2] and ps.third == 3.0
+
+# pragma with implicit&explicit generic types
+block:
+  template fooBar[T](x: T; c: static[int] = 42; m: char) {.pragma.}
+  var e {.fooBar("foo", 123, 'u').}: int
+  doAssert(hasCustomPragma(e, fooBar))
+  doAssert(getCustomPragmaVal(e, fooBar).c == 123)

@@ -437,10 +437,14 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   else: err()
   var dirtyfile = ""
   var orig = ""
-  i = parseQuoted(cmd, orig, i)
-  if i < cmd.len and cmd[i] == ';':
-    i = parseQuoted(cmd, dirtyfile, i+1)
-  i += skipWhile(cmd, seps, i)
+  i += skipWhitespace(cmd, i)
+  if i < cmd.len and cmd[i] in {'0'..'9'}:
+    orig = string conf.projectFull
+  else:
+    i = parseQuoted(cmd, orig, i)
+    if i < cmd.len and cmd[i] == ';':
+      i = parseQuoted(cmd, dirtyfile, i+1)
+    i += skipWhile(cmd, seps, i)
   var line = -1
   var col = 0
   i += parseInt(cmd, line, i)
@@ -520,7 +524,7 @@ proc mainCommand(graph: ModuleGraph) =
   # do not stop after the first error:
   conf.errorMax = high(int)
   # do not print errors, but log them
-  conf.writelnHook = proc (s: string) = log(s)
+  conf.writelnHook = myLog
   conf.structuredErrorHook = nil
 
   # compile the project before showing any input so that we already
@@ -661,7 +665,7 @@ else:
       # do not stop after the first error:
       conf.errorMax = high(int)
       # do not print errors, but log them
-      conf.writelnHook = proc (s: string) = log(s)
+      conf.writelnHook = myLog
       conf.structuredErrorHook = nil
 
       # compile the project before showing any input so that we already

@@ -23,7 +23,7 @@
     import times, os
     # Simple benchmarking
     let time = cpuTime()
-    sleep(100)   # Replace this with something to be timed
+    sleep(100) # Replace this with something to be timed
     echo "Time taken: ", cpuTime() - time
 
     # Current date & time
@@ -130,7 +130,8 @@
   Duration vs TimeInterval
   ----------------------------
   The ``times`` module exports two similiar types that are both used to
-  represent some amount of time: ``Duration`` and ``TimeInterval``.
+  represent some amount of time: `Duration <#Duration>`_ and
+  `TimeInterval <#TimeInterval>`_.
   This section explains how they differ and when one should be prefered over the
   other (short answer: use ``Duration`` unless support for months and years is
   needed).
@@ -186,7 +187,7 @@
   the same as 25 hours.
 ]##
 
-import strutils, algorithm, math, options, strformat
+import strutils, math, options
 
 include "system/inclrtl"
 
@@ -302,9 +303,10 @@ type
       ## they should never be mutated directly. Doing so is unsafe and will
       ## result in the ``DateTime`` ending up in an invalid state.
       ##
-      ## Instead of mutating the fields directly, use the ``Duration``
-      ## and ``TimeInterval`` types for arithmetic and use the ``initDateTime``
-      ## procedure for changing a specific field.
+      ## Instead of mutating the fields directly, use the `Duration <#Duration>`_
+      ## and `TimeInterval <#TimeInterval>`_ types for arithmetic and use the
+      ## `initDateTime proc <#initDateTime,MonthdayRange,Month,int,HourRange,MinuteRange,SecondRange,NanosecondRange,Timezone>`_
+      ## for changing a specific field.
     nanosecond*: NanosecondRange ## The number of nanoseconds after the second,
                                  ## in the range 0 to 999_999_999.
     second*: SecondRange      ## The number of seconds after the minute,
@@ -334,7 +336,10 @@ type
                               ## ``-3600``).
 
   Duration* = object ## Represents a fixed duration of time, meaning a duration
-                     ## that has constant length independent of the context.
+      ## that has constant length independent of the context.
+      ##
+      ## To create a new ``Duration``, use `initDuration proc
+      ## <#initDuration,int64,int64,int64,int64,int64,int64,int64,int64>`_.
     seconds: int64
     nanosecond: NanosecondRange
 
@@ -348,15 +353,20 @@ type
 
   TimeInterval* = object ## \
       ## Represents a non-fixed duration of time. Can be used to add and
-      ## subtract non-fixed time units from a ``DateTime`` or ``Time``.
+      ## subtract non-fixed time units from a `DateTime <#DateTime>`_ or
+      ## `Time <#Time>`_.
+      ##
+      ## Create a new ``TimeInterval`` with `initTimeInterval proc
+      ## <#initTimeInterval,int,int,int,int,int,int,int,int,int,int>`_.
+      ##
       ## Note that ``TimeInterval`` doesn't represent a fixed duration of time,
       ## since the duration of some units depend on the context (e.g a year
       ## can be either 365 or 366 days long). The non-fixed time units are
       ## years, months, days and week.
       ##
       ## Note that ``TimeInterval``'s returned from the ``times`` module are
-      ## never normalized. If you want to normalize a time unit, ``Duration``
-      ## should be used instead.
+      ## never normalized. If you want to normalize a time unit,
+      ## `Duration <#Duration>`_ should be used instead.
     nanoseconds*: int  ## The number of nanoseconds
     microseconds*: int ## The number of microseconds
     milliseconds*: int ## The number of milliseconds
@@ -369,7 +379,7 @@ type
     years*: int        ## The number of years
 
   Timezone* = ref object ## \
-      ## Timezone interface for supporting ``DateTime``'s of arbritary
+      ## Timezone interface for supporting `DateTime <#DateTime>`_\s of arbritary
       ## timezones. The ``times`` module only supplies implementations for the
       ## systems local time and UTC.
     zonedTimeFromTimeImpl: proc (x: Time): ZonedTime
@@ -451,7 +461,7 @@ proc nanosecond*(time: Time): NanosecondRange =
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration =
-  ## Create a new duration.
+  ## Create a new `Duration <#Duration>`_.
   runnableExamples:
     let dur = initDuration(seconds = 1, milliseconds = 1)
     doAssert dur.milliseconds == 1
@@ -471,56 +481,77 @@ proc initDuration*(nanoseconds, microseconds, milliseconds,
   # Nanoseconds might be negative so we must normalize.
   result = normalize[Duration](seconds, nanoseconds)
 
-proc weeks*(dur: Duration): int64 {.inline.} =
-  ## Number of whole weeks represented by the duration.
-  convert(Seconds, Weeks, dur.seconds)
+template convert(dur: Duration, unit: static[FixedTimeUnit]): int64 =
+  # The correction is required due to how durations are normalized.
+  # For example,` initDuration(nanoseconds = -1)` is stored as
+  # { seconds = -1, nanoseconds = 999999999 }.
+  let correction = dur.seconds < 0 and dur.nanosecond > 0
+  when unit >= Seconds:
+    convert(Seconds, unit, dur.seconds + ord(correction))
+  else:
+    if correction:
+      convert(Seconds, unit, dur.seconds + 1) -
+        convert(Nanoseconds, unit,
+          convert(Seconds, Nanoseconds, 1) - dur.nanosecond)
+    else:
+      convert(Seconds, unit, dur.seconds) +
+        convert(Nanoseconds, unit, dur.nanosecond)
 
-proc days*(dur: Duration): int64 {.inline.} =
-  ## Number of whole days represented by the duration.
-  convert(Seconds, Days, dur.seconds)
-
-proc minutes*(dur: Duration): int64 {.inline.} =
-  ## Number of whole minutes represented by the duration.
-  convert(Seconds, Minutes, dur.seconds)
-
-proc hours*(dur: Duration): int64 {.inline.} =
-  ## Number of whole hours represented by the duration.
-  convert(Seconds, Hours, dur.seconds)
-
-proc seconds*(dur: Duration): int64 {.inline.} =
-  ## Number of whole seconds represented by the duration.
-  dur.seconds
-
-proc milliseconds*(dur: Duration): int {.inline.} =
-  ## Number of whole milliseconds represented by the **fractional**
-  ## part of the duration.
+proc inWeeks*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole weeks.
   runnableExamples:
-    let dur = initDuration(seconds = 1, milliseconds = 1)
-    doAssert dur.milliseconds == 1
-  convert(Nanoseconds, Milliseconds, dur.nanosecond)
+    let dur = initDuration(days = 8)
+    doAssert dur.inWeeks == 1
+  dur.convert(Weeks)
 
-proc microseconds*(dur: Duration): int {.inline.} =
-  ## Number of whole microseconds represented by the **fractional**
-  ## part of the duration.
+proc inDays*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole days.
   runnableExamples:
-    let dur = initDuration(seconds = 1, microseconds = 1)
-    doAssert dur.microseconds == 1
-  convert(Nanoseconds, Microseconds, dur.nanosecond)
+    let dur = initDuration(hours = -50)
+    doAssert dur.inDays == -2
+  dur.convert(Days)
 
-proc nanoseconds*(dur: Duration): int {.inline.} =
-  ## Number of whole nanoseconds represented by the **fractional**
-  ## part of the duration.
+proc inHours*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole hours.
   runnableExamples:
-    let dur = initDuration(seconds = 1, nanoseconds = 1)
-    doAssert dur.nanoseconds == 1
-  dur.nanosecond
+    let dur = initDuration(minutes = 60, days = 2)
+    doAssert dur.inHours == 49
+  dur.convert(Hours)
 
-proc fractional*(dur: Duration): Duration {.inline.} =
-  ## The fractional part of duration, as a duration.
+proc inMinutes*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole minutes.
   runnableExamples:
-    let dur = initDuration(seconds = 1, nanoseconds = 5)
-    doAssert dur.fractional == initDuration(nanoseconds = 5)
-  initDuration(nanoseconds = dur.nanosecond)
+    let dur = initDuration(hours = 2, seconds = 10)
+    doAssert dur.inMinutes == 120
+  dur.convert(Minutes)
+
+proc inSeconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole seconds.
+  runnableExamples:
+    let dur = initDuration(hours = 2, milliseconds = 10)
+    doAssert dur.inSeconds == 2 * 60 * 60
+  dur.convert(Seconds)
+
+proc inMilliseconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole milliseconds.
+  runnableExamples:
+    let dur = initDuration(seconds = -2)
+    doAssert dur.inMilliseconds == -2000
+  dur.convert(Milliseconds)
+
+proc inMicroseconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole microseconds.
+  runnableExamples:
+    let dur = initDuration(seconds = -2)
+    doAssert dur.inMicroseconds == -2000000
+  dur.convert(Microseconds)
+
+proc inNanoseconds*(dur: Duration): int64 =
+  ## Convert the duration to the number of whole nanoseconds.
+  runnableExamples:
+    let dur = initDuration(seconds = -2)
+    doAssert dur.inNanoseconds == -2000000000
+  dur.convert(Nanoseconds)
 
 proc fromUnix*(unix: int64): Time
     {.benign, tags: [], raises: [], noSideEffect.} =
@@ -551,11 +582,17 @@ proc toWinTime*(t: Time): int64 =
 
 proc isLeapYear*(year: int): bool =
   ## Returns true if ``year`` is a leap year.
+  runnableExamples:
+    doAssert isLeapYear(2000)
+    doAssert not isLeapYear(1900)
   year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
 
 proc getDaysInMonth*(month: Month, year: int): int =
   ## Get the number of days in ``month`` of ``year``.
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
+  runnableExamples:
+    doAssert getDaysInMonth(mFeb, 2000) == 29
+    doAssert getDaysInMonth(mFeb, 2001) == 28
   case month
   of mFeb: result = if isLeapYear(year): 29 else: 28
   of mApr, mJun, mSep, mNov: result = 30
@@ -563,6 +600,9 @@ proc getDaysInMonth*(month: Month, year: int): int =
 
 proc getDaysInYear*(year: int): int =
   ## Get the number of days in a ``year``
+  runnableExamples:
+    doAssert getDaysInYear(2000) == 366
+    doAssert getDaysInYear(2001) == 365
   result = 365 + (if isLeapYear(year): 1 else: 0)
 
 proc assertValidDate(monthday: MonthdayRange, month: Month, year: int)
@@ -609,6 +649,11 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int):
     YeardayRange {.tags: [], raises: [], benign.} =
   ## Returns the day of the year.
   ## Equivalent with ``initDateTime(monthday, month, year, 0, 0, 0).yearday``.
+  runnableExamples:
+    doAssert getDayOfYear(1, mJan, 2000) == 0
+    doAssert getDayOfYear(10, mJan, 2000) == 9
+    doAssert getDayOfYear(10, mFeb, 2000) == 40
+
   assertValidDate monthday, month, year
   const daysUntilMonth: array[Month, int] =
     [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
@@ -624,6 +669,10 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay
     {.tags: [], raises: [], benign.} =
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with ``initDateTime(monthday, month, year, 0, 0, 0).weekday``.
+  runnableExamples:
+    doAssert getDayOfWeek(13, mJun, 1990) == dWed
+    doAssert $getDayOfWeek(13, mJun, 1990) == "Wednesday"
+
   assertValidDate monthday, month, year
   # 1970-01-01 is a Thursday, we adjust to the previous Monday
   let days = toEpochday(monthday, month, year) - 3
@@ -670,6 +719,7 @@ proc toParts*(dur: Duration): DurationParts =
     var dp = toParts(initDuration(weeks = 2, days = 1))
     doAssert dp[Days] == 1
     doAssert dp[Weeks] == 2
+    doAssert dp[Minutes] == 0
     dp = toParts(initDuration(days = -1))
     doAssert dp[Days] == -1
 
@@ -766,24 +816,32 @@ proc `<`*(a, b: Duration): bool {.operator.} =
   runnableExamples:
     doAssert initDuration(seconds = 1) < initDuration(seconds = 2)
     doAssert initDuration(seconds = -2) < initDuration(seconds = 1)
+    doAssert initDuration(seconds = -2).abs < initDuration(seconds = 1).abs == false
   ltImpl(a, b)
 
 proc `<=`*(a, b: Duration): bool {.operator.} =
   lqImpl(a, b)
 
 proc `==`*(a, b: Duration): bool {.operator.} =
+  runnableExamples:
+    let
+      d1 = initDuration(weeks = 1)
+      d2 = initDuration(days = 7)
+    doAssert d1 == d2
   eqImpl(a, b)
 
 proc `*`*(a: int64, b: Duration): Duration {.operator.} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
+    doAssert 3 * initDuration(minutes = 45) == initDuration(hours = 2, minutes = 15)
   normalize[Duration](a * b.seconds, a * b.nanosecond)
 
 proc `*`*(a: Duration, b: int64): Duration {.operator.} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert initDuration(seconds = 1) * 5 == initDuration(seconds = 5)
+    doAssert initDuration(minutes = 45) * 3 == initDuration(hours = 2, minutes = 15)
   b * a
 
 proc `div`*(a: Duration, b: int64): Duration {.operator.} =
@@ -791,18 +849,23 @@ proc `div`*(a: Duration, b: int64): Duration {.operator.} =
   runnableExamples:
     doAssert initDuration(seconds = 3) div 2 ==
       initDuration(milliseconds = 1500)
+    doAssert initDuration(minutes = 45) div 30 ==
+      initDuration(minutes = 1, seconds = 30)
     doAssert initDuration(nanoseconds = 3) div 2 ==
       initDuration(nanoseconds = 1)
   let carryOver = convert(Seconds, Nanoseconds, a.seconds mod b)
   normalize[Duration](a.seconds div b, (a.nanosecond + carryOver) div b)
 
 proc initTime*(unix: int64, nanosecond: NanosecondRange): Time =
-  ## Create a ``Time`` from a unix timestamp and a nanosecond part.
+  ## Create a `Time <#Time>`_ from a unix timestamp and a nanosecond part.
   result.seconds = unix
   result.nanosecond = nanosecond
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
+  runnableExamples:
+    doAssert initTime(1000, 100) - initTime(500, 20) ==
+      initDuration(minutes = 8, seconds = 20, nanoseconds = 80)
   subImpl[Duration](a, b)
 
 proc `+`*(a: Time, b: Duration): Time {.operator, extern: "ntAddTime".} =
@@ -819,6 +882,8 @@ proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
 
 proc `<`*(a, b: Time): bool {.operator, extern: "ntLtTime".} =
   ## Returns true iff ``a < b``, that is iff a happened before b.
+  runnableExamples:
+    doAssert initTime(50, 0) < initTime(99, 0)
   ltImpl(a, b)
 
 proc `<=`*(a, b: Time): bool {.operator, extern: "ntLeTime".} =
@@ -1134,7 +1199,7 @@ proc now*(): DateTime {.tags: [TimeEffect], benign.} =
 proc initTimeInterval*(nanoseconds, microseconds, milliseconds,
                        seconds, minutes, hours,
                        days, weeks, months, years: int = 0): TimeInterval =
-  ## Creates a new ``TimeInterval``.
+  ## Creates a new `TimeInterval <#TimeInterval>`_.
   ##
   ## This proc doesn't perform any normalization! For example,
   ## ``initTimeInterval(hours = 24)`` and ``initTimeInterval(days = 1)`` are
@@ -1342,7 +1407,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
                    zone: Timezone = local()): DateTime =
-  ## Create a new ``DateTime`` in the specified timezone.
+  ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc())
     doAssert $dt1 == "2017-03-30T00:00:00Z"
@@ -1362,7 +1427,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    zone: Timezone = local()): DateTime =
-  ## Create a new ``DateTime`` in the specified timezone.
+  ## Create a new `DateTime <#DateTime>`_ in the specified timezone.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
     doAssert $dt1 == "2017-03-30T00:00:00Z"
@@ -1663,7 +1728,10 @@ type
     Lit
 
   TimeFormat* = object ## Represents a format for parsing and printing
-                       ## time types.
+      ## time types.
+      ##
+      ## To create a new ``TimeFormat`` use `initTimeFormat proc
+      ## <#initTimeFormat,string>`_.
     patterns: seq[byte] ## \
       ## Contains the patterns encoded as bytes.
       ## Literal values are encoded in a special way.
@@ -1689,7 +1757,7 @@ proc `$`*(f: TimeFormat): string =
 
 proc raiseParseException(f: TimeFormat, input: string, msg: string) =
   raise newException(TimeParseError,
-                     &"Failed to parse '{input}' with format '{f}'. {msg}")
+                     "Failed to parse '" & input & "' with format '" & $f & "'. " & msg)
 
 proc parseInt(s: string, b: var int, start = 0, maxLen = int.high,
               allowSign = false): int =
@@ -1741,7 +1809,7 @@ iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
 
         if i > f.high:
           raise newException(TimeFormatParseError,
-                             &"Unclosed ' in time format string. " &
+                             "Unclosed ' in time format string. " &
                              "For a literal ', use ''.")
         i.inc
         yield (tkLiteral, token)
@@ -1798,7 +1866,7 @@ proc stringToPattern(str: string): FormatPattern =
   of "zzzz": result = zzzz
   of "g": result = g
   else: raise newException(TimeFormatParseError,
-                           &"'{str}' is not a valid pattern")
+                           "'" & str & "' is not a valid pattern")
 
 proc initTimeFormat*(format: string): TimeFormat =
   ## Construct a new time format for parsing & formatting time types.
@@ -2309,7 +2377,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
         patIdx.inc
     else:
       if not parsePattern(input, pattern, inpIdx, parsed):
-        raiseParseException(f, input, &"Failed on pattern '{pattern}'")
+        raiseParseException(f, input, "Failed on pattern '" & $pattern & "'")
       patIdx.inc
 
   if inpIdx <= input.high:
@@ -2436,10 +2504,10 @@ when not defined(JS):
     Clock {.importc: "clock_t".} = distinct int
 
   proc getClock(): Clock
-      {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
+      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used.}
 
   var
-    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
+    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int
 
   when not defined(useNimRtl):
     proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
@@ -2457,7 +2525,7 @@ when not defined(JS):
           fib.add(fib[^1] + fib[^2])
         echo "CPU time [s] ", cpuTime() - t0
         echo "Fib is [s] ", fib
-      when defined(posix):
+      when defined(posix) and not defined(osx):
         # 'clocksPerSec' is a compile-time constant, possibly a
         # rather awful one, so use clock_gettime instead
         var ts: Timespec
@@ -2497,6 +2565,104 @@ when defined(JS):
     newDate().getTime() / 1000
 
 # Deprecated procs
+
+proc weeks*(dur: Duration): int64
+    {.inline, deprecated: "Use `inWeeks` instead".} =
+  ## Number of whole weeks represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inWeeks proc
+  ## <#inWeeks,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
+    doAssert dur.weeks == 1
+  dur.inWeeks
+
+proc days*(dur: Duration): int64
+    {.inline, deprecated: "Use `inDays` instead".} =
+  ## Number of whole days represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inDays proc
+  ## <#inDays,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
+    doAssert dur.days == 9
+  dur.inDays
+
+proc hours*(dur: Duration): int64
+    {.inline,deprecated: "Use `inHours` instead".} =
+  ## Number of whole hours represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inHours proc
+  ## <#inHours,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(days = 1, hours = 2, minutes = 3)
+    doAssert dur.hours == 26
+  dur.inHours
+
+proc minutes*(dur: Duration): int64
+    {.inline, deprecated: "Use `inMinutes` instead".} =
+  ## Number of whole minutes represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inMinutes proc
+  ## <#inMinutes,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(days = 1, hours = 2, minutes = 3)
+    doAssert dur.minutes == 1563
+  dur.inMinutes
+
+proc seconds*(dur: Duration): int64
+    {.inline, deprecated: "Use `inSeconds` instead".} =
+  ## Number of whole seconds represented by the duration.
+  ##
+  ## **Deprecated since version v0.20.0**: Use the `inSeconds proc
+  ## <#inSeconds,Duration>`_ instead.
+  runnableExamples:
+    let dur = initDuration(minutes = 10, seconds = 30)
+    doAssert dur.seconds == 630
+  dur.inSeconds
+
+proc milliseconds*(dur: Duration): int {.inline, deprecated.} =
+  ## Number of whole milliseconds represented by the **fractional**
+  ## part of the duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.milliseconds == 7
+  result = convert(Nanoseconds, Milliseconds, dur.nanosecond)
+
+proc microseconds*(dur: Duration): int {.inline, deprecated.} =
+  ## Number of whole microseconds represented by the **fractional**
+  ## part of the duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.microseconds == 7008
+  result = convert(Nanoseconds, Microseconds, dur.nanosecond)
+
+proc nanoseconds*(dur: Duration): NanosecondRange {.inline.} =
+  ## Number of whole microseconds represented by the **fractional**
+  ## part of the duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.nanoseconds == 7008009
+  dur.nanosecond
+
+proc fractional*(dur: Duration): Duration {.inline, deprecated.} =
+  ## The fractional part of `dur`, as a duration.
+  ##
+  ## **Deprecated since version v0.20.0**.
+  runnableExamples:
+    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
+                           microseconds = 8, nanoseconds = 9)
+    doAssert dur.fractional == initDuration(milliseconds = 7, microseconds = 8, nanoseconds = 9)
+  initDuration(nanoseconds = dur.nanosecond)
 
 when not defined(JS):
   proc unixTimeToWinTime*(time: CTime): int64

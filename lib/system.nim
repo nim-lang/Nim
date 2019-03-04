@@ -236,16 +236,15 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## resets an object `obj` to its initial (binary zero) value. This needs to
   ## be called before any possible `object branch transition`:idx:.
 
-when defined(nimNewRuntime):
-  proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
-    ## resets an object `obj` to its initial (binary zero) value to signify
-    ## it was "moved" and to signify its destructor should do nothing and
-    ## ideally be optimized away.
-    discard
+proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+  ## resets an object `obj` to its initial (binary zero) value to signify
+  ## it was "moved" and to signify its destructor should do nothing and
+  ## ideally be optimized away.
+  discard
 
-  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-    result = x
-    wasMoved(x)
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+  result = x
+  wasMoved(x)
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
@@ -268,12 +267,8 @@ else:
     UncheckedArray*{.unchecked.}[T] = array[0,T]
     ## Array with no bounds checking
 
-when defined(nimHasOpt):
-  type opt*{.magic: "Opt".}[T]
-
-when defined(nimNewRuntime):
-  type sink*{.magic: "BuiltinType".}[T]
-  type lent*{.magic: "BuiltinType".}[T]
+type sink*{.magic: "BuiltinType".}[T]
+type lent*{.magic: "BuiltinType".}[T]
 
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible value of an ordinal value `x`. As a special
@@ -388,13 +383,12 @@ when defined(nimArrIdx):
   proc arrPut[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
 
-  when defined(nimNewRuntime):
-    proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-      ## generic `destructor`:idx: implementation that can be overriden.
-      discard
-    proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
-      ## generic `sink`:idx: implementation that can be overriden.
-      shallowCopy(x, y)
+  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+    ## generic `destructor`:idx: implementation that can be overriden.
+    discard
+  proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
+    ## generic `sink`:idx: implementation that can be overriden.
+    shallowCopy(x, y)
 
 type
   HSlice*[T, U] = object ## "heterogenous" slice type
@@ -407,17 +401,22 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
   ## compiler.
-  result.a = a
-  result.b = b
+  result = HSlice[T, U](a: a, b: b)
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## unary `slice`:idx: operator that constructs an interval ``[default(int), b]``
-  result.b = b
+  result = HSlice[int, T](a: 0, b: b)
 
 when not defined(niminheritable):
   {.pragma: inheritable.}
 when not defined(nimunion):
   {.pragma: unchecked.}
+when not defined(nimHasHotCodeReloading):
+  {.pragma: nonReloadable.}
+when defined(hotCodeReloading):
+  {.pragma: hcrInline, inline.}
+else:
+  {.pragma: hcrInline.}
 
 # comparison operators:
 proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
@@ -671,11 +670,6 @@ type
     ##
     ## This is only raised if the ``segfaults.nim`` module was imported!
 
-when defined(nimNewRuntime):
-  type
-    MoveError* = object of Defect ## \
-      ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
-
 when defined(js) or defined(nimdoc):
   type
     JsRoot* = ref object of RootObj
@@ -904,37 +898,51 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # built-in operators
 
 when not defined(JS):
-  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
+  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
-  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
+  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
-    ## zero extends a smaller integer type to ``int64``. This treats `x` as
-    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect, deprecated.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
-  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
-  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 # integer calculations:
 proc `+`*(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
@@ -1333,22 +1341,42 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `isnot`*(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
-proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it in ``a``.
+when defined(nimV2):
+  type owned*[T]{.magic: "BuiltinType".}
 
-proc new*(t: typedesc): auto =
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it as result value.
-  ##
-  ## When ``T`` is a ref type then the resulting type will be ``T``,
-  ## otherwise it will be ``ref T``.
-  when (t is ref):
-    var r: t
-  else:
-    var r: ref t
-  new(r)
-  return r
+  proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it in ``a``.
+
+  proc new*(t: typedesc): auto =
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it as result value.
+    ##
+    ## When ``T`` is a ref type then the resulting type will be ``T``,
+    ## otherwise it will be ``ref T``.
+    when (t is ref):
+      var r: owned t
+    else:
+      var r: owned(ref t)
+    new(r)
+    return r
+else:
+  proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it in ``a``.
+
+  proc new*(t: typedesc): auto =
+    ## creates a new object of type ``T`` and returns a safe (traced)
+    ## reference to it as result value.
+    ##
+    ## When ``T`` is a ref type then the resulting type will be ``T``,
+    ## otherwise it will be ``ref T``.
+    when (t is ref):
+      var r: t
+    else:
+      var r: ref t
+    new(r)
+    return r
 
 proc `of`*[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
@@ -1577,7 +1605,7 @@ when defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 else:
-  var programResult* {.exportc: "nim_program_result".}: int
+  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## modify this variable to specify the exit code of the program
     ## under normal circumstances. When the program is terminated
     ## prematurely using ``quit``, this value is ignored.
@@ -1879,14 +1907,14 @@ when not defined(nimscript) and not defined(JS):
 
 when not defined(nimscript):
   when hasAlloc:
-    proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
+    proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
-    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
+    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``dealloc(block)``. The block is not initialized, so reading
@@ -1894,14 +1922,14 @@ when not defined(nimscript):
       ## The allocated memory belongs to its allocating thread!
       ## Use `createSharedU` to allocate from a shared heap.
       cast[ptr T](alloc(T.sizeof * size))
-    proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
+    proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
+    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``dealloc(block)``. The block is initialized with all bytes
@@ -1910,7 +1938,7 @@ when not defined(nimscript):
       ## Use `createShared` to allocate from a shared heap.
       cast[ptr T](alloc0(sizeof(T) * size))
     proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
-                                                           benign.}
+                                                           benign, raises: [].}
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
@@ -1918,7 +1946,7 @@ when not defined(nimscript):
       ## be freed with ``dealloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared` to reallocate from a shared heap.
-    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign.} =
+    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign, raises: [].} =
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
@@ -1927,7 +1955,7 @@ when not defined(nimscript):
       ## its allocating thread!
       ## Use `resizeShared` to reallocate from a shared heap.
       cast[ptr T](realloc(p, T.sizeof * newSize))
-    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign.}
+    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
       ## frees the memory allocated with ``alloc``, ``alloc0`` or
       ## ``realloc``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -1936,27 +1964,27 @@ when not defined(nimscript):
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared` to deallocate from a shared heap.
 
-    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign.}
+    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is
       ## undefined behaviour!
     proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline,
-                                                                 benign.} =
+                                                                 benign, raises: [].} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is
       ## undefined behaviour!
       cast[ptr T](allocShared(T.sizeof * size))
-    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign.}
+    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline, raises: [].} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``.
@@ -1964,26 +1992,26 @@ when not defined(nimscript):
       ## containing zero, so it is somewhat safer than ``createSharedU``.
       cast[ptr T](allocShared0(T.sizeof * size))
     proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl,
-                                                                 benign.}
+                                                                 benign, raises: [].}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
       ## ``reallocShared`` calls ``deallocShared(p)``. In other cases the
       ## block has to be freed with ``deallocShared``.
-    proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline.} =
+    proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].} =
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is
       ## not **nil** ``resizeShared`` calls ``freeShared(p)``. In other
       ## cases the block has to be freed with ``freeShared``.
       cast[ptr T](reallocShared(p, T.sizeof * newSize))
-    proc deallocShared*(p: pointer) {.noconv, rtl, benign.}
+    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [].}
       ## frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
       ## memory (or just freeing it twice!) a core dump may happen
       ## or other memory may be corrupted.
-    proc freeShared*[T](p: ptr T) {.inline, benign.} =
+    proc freeShared*[T](p: ptr T) {.inline, benign, raises: [].} =
       ## frees the memory allocated with ``createShared``, ``createSharedU`` or
       ## ``resizeShared``. This procedure is dangerous! If one forgets to
       ## free the memory a leak occurs; if one tries to access freed
@@ -2546,7 +2574,10 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
-        result = cast[pointer](x)
+        when defined(gcDestructors):
+          result = cast[NimSeqV2[T]](x).p
+        else:
+          result = cast[pointer](x)
 
       if seqToPtr(x) == seqToPtr(y):
         return true
@@ -2907,7 +2938,7 @@ var
     ## do when setting this. If ``localRaiseHook`` returns false, the exception
     ## is caught and does not propagate further through the call stack.
 
-  outOfMemHook*: proc () {.nimcall, tags: [], benign.}
+  outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
     ## set this variable to provide a procedure that should be called
     ## in case of an `out of memory`:idx: event. The standard handler
     ## writes an error message and terminates the program. `outOfMemHook` can
@@ -3001,6 +3032,9 @@ template newException*(exceptn: typedesc, message: string;
 when hostOS == "standalone":
   include "$projectpath/panicoverride"
 
+when not defined(js) and not defined(nimscript):
+  include "system/ansi_c"
+
 when not declared(sysFatal):
   {.push profiler: off.}
   when hostOS == "standalone":
@@ -3010,6 +3044,22 @@ when not declared(sysFatal):
     proc sysFatal(exceptn: typedesc, message, arg: string) {.inline.} =
       rawoutput(message)
       panic(arg)
+  elif defined(nimQuirky) and not defined(nimscript):
+    proc name(t: typedesc): string {.magic: "TypeTrait".}
+
+    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
+      var buf = newStringOfCap(200)
+      add(buf, "Error: unhandled exception: ")
+      add(buf, message)
+      add(buf, arg)
+      add(buf, " [")
+      add(buf, name exceptn)
+      add(buf, "]")
+      cstderr.rawWrite buf
+      quit 1
+
+    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
+      sysFatal(exceptn, message, "")
   else:
     proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
       var e: ref exceptn
@@ -3156,7 +3206,6 @@ when not defined(JS): #and not defined(nimscript):
       {.pop.}
 
   when not defined(nimscript):
-    include "system/ansi_c"
     include "system/memory"
 
     proc zeroMem(p: pointer, size: Natural) =
@@ -3349,7 +3398,7 @@ when not defined(JS): #and not defined(nimscript):
   when not defined(nimscript) and hasAlloc:
     when not defined(gcDestructors):
       include "system/assign"
-      include "system/repr"
+    include "system/repr"
 
   when hostOS != "standalone" and not defined(nimscript):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
@@ -3745,7 +3794,7 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
-    # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
+    # for stacktrace; fixes #8928; Note: `fullPaths = true` is correct
     # here, regardless of --excessiveStackTrace
     {.line: instantiationInfo(fullPaths = true).}:
       if not cond:
@@ -3767,6 +3816,15 @@ template doAssert*(cond: untyped, msg = "") =
   ## same as ``assert`` but is always turned on regardless of ``--assertions``
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
+
+when compileOption("rangechecks"):
+  template rangeCheck*(cond) =
+    ## Helper for performing user-defined range checks.
+    ## Such checks will be performed only when the ``rangechecks``
+    ## compile-time option is enabled.
+    if not cond: sysFatal(RangeError, "range check failed")
+else:
+  template rangeCheck*(cond) = discard
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -3859,7 +3917,7 @@ when false:
     macro payload: typed {.gensym.} = blk
     payload()
 
-when hasAlloc:
+when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## inserts `item` into `x` at position `i`.
     var xl = x.len
@@ -4215,5 +4273,9 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
 import system/widestrs
 export widestrs
 
-import system/io
-export io
+when not defined(nimnoio):
+  import system/io
+  export io
+
+when not defined(createNimHcr):
+  include nimhcr

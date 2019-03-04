@@ -306,7 +306,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)
+  cl.isReturnType = true
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
+  cl.isReturnType = false
   result.n.sons[0] = originalParams[0].copyTree
   if result.sons[0] != nil:
     propagateToOwner(result, result.sons[0])

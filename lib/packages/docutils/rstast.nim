@@ -8,6 +8,8 @@
 #
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
+##
+## **Note:** Import ``packages/docutils/rstast`` to use this module
 
 import strutils, json
 

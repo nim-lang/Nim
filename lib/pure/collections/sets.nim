@@ -15,8 +15,8 @@
 ## `hashed <hashes.html>`_ and they don't contain duplicate entries.
 ##
 ## Common usages of sets:
-## * removing duplicates from a container by converting it with `toSet proc
-##   <#toSet,openArray[A]>`_ (see also `sequtils.deduplicate proc
+## * removing duplicates from a container by converting it with `toHashSet proc
+##   <#toHashSet,openArray[A]>`_ (see also `sequtils.deduplicate proc
 ##   <sequtils.html#deduplicate,openArray[T],bool>`_)
 ## * membership testing
 ## * mathematical operations on two sets, such as
@@ -26,12 +26,12 @@
 ##   `symmetric difference <#symmetricDifference,HashSet[A],HashSet[A]>`_
 ##
 ## .. code-block::
-##   echo toSet([9, 5, 1])         # {9, 1, 5}
+##   echo toHashSet([9, 5, 1])         # {9, 1, 5}
 ##   echo toOrderedSet([9, 5, 1])  # {9, 5, 1}
 ##
 ##   let
-##     s1 = toSet([9, 5, 1])
-##     s2 = toSet([3, 5, 7])
+##     s1 = toHashSet([9, 5, 1])
+##     s2 = toHashSet([3, 5, 7])
 ##
 ##   echo s1 + s2    # {9, 1, 3, 5, 7}
 ##   echo s1 - s2    # {1, 9}
@@ -64,7 +64,7 @@ type
   HashSet* {.myShallow.} [A] = object ## \
     ## A generic hash set.
     ##
-    ## Use `init proc <#init,HashSet[A],int>`_ or `initSet proc <#initSet,int>`_
+    ## Use `init proc <#init,HashSet[A],int>`_ or `initHashSet proc <#initHashSet,int>`_
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
@@ -230,8 +230,8 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   ## existing values and calling `excl() <#excl,HashSet[A],A>`_ on them.
   ##
   ## See also:
-  ## * `initSet proc <#initSet,int>`_
-  ## * `toSet proc <#toSet,openArray[A]>`_
+  ## * `initHashSet proc <#initHashSet,int>`_
+  ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
     var a: HashSet[int]
     assert(not a.isValid)
@@ -242,7 +242,7 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   s.counter = 0
   newSeq(s.data, initialSize)
 
-proc initSet*[A](initialSize=64): HashSet[A] =
+proc initHashSet*[A](initialSize=64): HashSet[A] =
   ## Wrapper around `init proc <#init,HashSet[A],int>`_ for initialization of
   ## hash sets.
   ##
@@ -250,37 +250,45 @@ proc initSet*[A](initialSize=64): HashSet[A] =
   ## single line.
   ##
   ## See also:
-  ## * `toSet proc <#toSet,openArray[A]>`_
+  ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
-    var a = initSet[int]()
+    var a = initHashSet[int]()
     assert a.isValid
     a.incl(3)
     assert len(a) == 1
   result.init(initialSize)
 
-proc toSet*[A](keys: openArray[A]): HashSet[A] =
+proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
   ## Creates a new hash set that contains the members of the given
   ## collection (seq, array, or string) `keys`.
   ##
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initSet proc <#initSet,int>`_
+  ## * `initHashSet proc <#initHashSet,int>`_
   runnableExamples:
     let
-      a = toSet([5, 3, 2])
-      b = toSet("abracadabra")
+      a = toHashSet([5, 3, 2])
+      b = toHashSet("abracadabra")
     assert len(a) == 3
     ## a == {2, 3, 5}
     assert len(b) == 5
     ## b == {'a', 'b', 'c', 'd', 'r'}
 
-  result = initSet[A](rightSize(keys.len))
+  result = initHashSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
+proc initSet*[A](initialSize=64): HashSet[A] {.deprecated:
+     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
+  ## Deprecated since v0.20, use `initHashSet`.
+
+proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
+     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
+  ## Deprecated since v0.20, use `toHashSet`.
+
 proc isValid*[A](s: HashSet[A]): bool =
-  ## Returns `true` if the set has been initialized (with `initSet proc
-  ## <#initSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  ## Returns `true` if the set has been initialized (with `initHashSet proc
+  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
   ##
   ## Most operations over an uninitialized set will crash at runtime and
   ## `assert <system.html#assert>`_ in debug builds. You can use this proc in
@@ -320,7 +328,7 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   ## * `incl proc <#incl,HashSet[A],A>`_
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
-    var values = initSet[int]()
+    var values = initHashSet[int]()
     assert(not values.contains(2))
     assert 2 notin values
 
@@ -343,7 +351,7 @@ proc incl*[A](s: var HashSet[A], key: A) =
   ## * `incl proc <#incl,HashSet[A],HashSet[A]>`_ for including other set
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
-    var values = initSet[int]()
+    var values = initHashSet[int]()
     values.incl(2)
     values.incl(2)
     assert values.len == 1
@@ -362,8 +370,8 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
     var
-      values = toSet([1, 2, 3])
-      others = toSet([3, 4, 5])
+      values = toHashSet([1, 2, 3])
+      others = toHashSet([3, 4, 5])
     values.incl(others)
     assert values.len == 5
 
@@ -384,7 +392,7 @@ proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## * `incl proc <#incl,HashSet[A],HashSet[A]>`_ for including other set
   ## * `missingOrExcl proc <#missingOrExcl,HashSet[A],A>`_
   runnableExamples:
-    var values = initSet[int]()
+    var values = initHashSet[int]()
     assert values.containsOrIncl(2) == false
     assert values.containsOrIncl(2) == true
     assert values.containsOrIncl(3) == false
@@ -402,7 +410,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
   ## * `excl proc <#excl,HashSet[A],HashSet[A]>`_ for excluding other set
   ## * `missingOrExcl proc <#missingOrExcl,HashSet[A],A>`_
   runnableExamples:
-    var s = toSet([2, 3, 6, 7])
+    var s = toHashSet([2, 3, 6, 7])
     s.excl(2)
     s.excl(2)
     assert s.len == 3
@@ -419,8 +427,8 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## * `missingOrExcl proc <#missingOrExcl,HashSet[A],A>`_
   runnableExamples:
     var
-      numbers = toSet([1, 2, 3, 4, 5])
-      even = toSet([2, 4, 6, 8])
+      numbers = toHashSet([1, 2, 3, 4, 5])
+      even = toHashSet([2, 4, 6, 8])
     numbers.excl(even)
     assert len(numbers) == 3
     ## numbers == {1, 3, 5}
@@ -442,7 +450,7 @@ proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
   ## * `excl proc <#excl,HashSet[A],HashSet[A]>`_ for excluding other set
   ## * `containsOrIncl proc <#containsOrIncl,HashSet[A],A>`_
   runnableExamples:
-    var s = toSet([2, 3, 6, 7])
+    var s = toHashSet([2, 3, 6, 7])
     assert s.missingOrExcl(4) == true
     assert s.missingOrExcl(6) == false
     assert s.missingOrExcl(6) == true
@@ -456,7 +464,7 @@ proc pop*[A](s: var HashSet[A]): A =
   ## See also:
   ## * `clear proc <#clear,HashSet[A]>`_
   runnableExamples:
-    var s = toSet([2, 1])
+    var s = toHashSet([2, 1])
     assert s.pop == 1
     assert s.pop == 2
     doAssertRaises(KeyError, echo s.pop)
@@ -477,7 +485,7 @@ proc clear*[A](s: var HashSet[A]) =
   ## See also:
   ## * `pop proc <#pop,HashSet[A]>`_
   runnableExamples:
-    var s = toSet([3, 5, 7])
+    var s = toHashSet([3, 5, 7])
     clear(s)
     assert len(s) == 0
 
@@ -495,7 +503,7 @@ proc len*[A](s: HashSet[A]): int =
   runnableExamples:
     var a: HashSet[string]
     assert len(a) == 0
-    let s = toSet([3, 5, 7])
+    let s = toHashSet([3, 5, 7])
     assert len(s) == 3
   result = s.counter
 
@@ -521,10 +529,10 @@ proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `symmetricDifference proc <#symmetricDifference,HashSet[A],HashSet[A]>`_
   runnableExamples:
     let
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
+      a = toHashSet(["a", "b"])
+      b = toHashSet(["b", "c"])
       c = union(a, b)
-    assert c == toSet(["a", "b", "c"])
+    assert c == toHashSet(["a", "b", "c"])
 
   assert s1.isValid, "The set `s1` needs to be initialized."
   assert s2.isValid, "The set `s2` needs to be initialized."
@@ -546,14 +554,14 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `symmetricDifference proc <#symmetricDifference,HashSet[A],HashSet[A]>`_
   runnableExamples:
     let
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
+      a = toHashSet(["a", "b"])
+      b = toHashSet(["b", "c"])
       c = intersection(a, b)
-    assert c == toSet(["b"])
+    assert c == toHashSet(["b"])
 
   assert s1.isValid, "The set `s1` needs to be initialized."
   assert s2.isValid, "The set `s2` needs to be initialized."
-  result = initSet[A](min(s1.data.len, s2.data.len))
+  result = initHashSet[A](min(s1.data.len, s2.data.len))
   for item in s1:
     if item in s2: incl(result, item)
 
@@ -571,14 +579,14 @@ proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `symmetricDifference proc <#symmetricDifference,HashSet[A],HashSet[A]>`_
   runnableExamples:
     let
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
+      a = toHashSet(["a", "b"])
+      b = toHashSet(["b", "c"])
       c = difference(a, b)
-    assert c == toSet(["a"])
+    assert c == toHashSet(["a"])
 
   assert s1.isValid, "The set `s1` needs to be initialized."
   assert s2.isValid, "The set `s2` needs to be initialized."
-  result = initSet[A]()
+  result = initHashSet[A]()
   for item in s1:
     if not contains(s2, item):
       incl(result, item)
@@ -598,10 +606,10 @@ proc symmetricDifference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## * `difference proc <#difference,HashSet[A],HashSet[A]>`_
   runnableExamples:
     let
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
+      a = toHashSet(["a", "b"])
+      b = toHashSet(["b", "c"])
       c = symmetricDifference(a, b)
-    assert c == toSet(["a", "c"])
+    assert c == toHashSet(["a", "c"])
 
   assert s1.isValid, "The set `s1` needs to be initialized."
   assert s2.isValid, "The set `s2` needs to be initialized."
@@ -630,8 +638,8 @@ proc disjoint*[A](s1, s2: HashSet[A]): bool =
   ## Returns `true` if the sets `s1` and `s2` have no items in common.
   runnableExamples:
     let
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
+      a = toHashSet(["a", "b"])
+      b = toHashSet(["b", "c"])
     assert disjoint(a, b) == false
     assert disjoint(a, b - a) == true
 
@@ -648,8 +656,8 @@ proc `<`*[A](s, t: HashSet[A]): bool =
   ## more elements than `s`.
   runnableExamples:
     let
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
+      a = toHashSet(["a", "b"])
+      b = toHashSet(["b", "c"])
       c = intersection(a, b)
     assert c < a and c < b
     assert(not (a < a))
@@ -662,8 +670,8 @@ proc `<=`*[A](s, t: HashSet[A]): bool =
   ## have more members than `s`. That is, `s` can be equal to `t`.
   runnableExamples:
     let
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
+      a = toHashSet(["a", "b"])
+      b = toHashSet(["b", "c"])
       c = intersection(a, b)
     assert c <= a and c <= b
     assert a <= a
@@ -680,8 +688,8 @@ proc `==`*[A](s, t: HashSet[A]): bool =
   ## Returns true if both `s` and `t` have the same members and set size.
   runnableExamples:
     var
-      a = toSet([1, 2])
-      b = toSet([2, 1])
+      a = toHashSet([1, 2])
+      b = toHashSet([2, 1])
     assert a == b
   s.counter == t.counter and s <= t
 
@@ -692,11 +700,11 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
   ## You can use this proc to transform the elements from a set.
   runnableExamples:
     let
-      a = toSet([1, 2, 3])
+      a = toHashSet([1, 2, 3])
       b = a.map(proc (x: int): string = $x)
-    assert b == toSet(["1", "2", "3"])
+    assert b == toHashSet(["1", "2", "3"])
 
-  result = initSet[B]()
+  result = initHashSet[B]()
   for item in data: result.incl(op(item))
 
 proc hash*[A](s: HashSet[A]): Hash =
@@ -715,9 +723,9 @@ proc `$`*[A](s: HashSet[A]): string =
   ## **Examples:**
   ##
   ## .. code-block::
-  ##   echo toSet([2, 4, 5])
+  ##   echo toHashSet([2, 4, 5])
   ##   # --> {2, 4, 5}
-  ##   echo toSet(["no", "esc'aping", "is \" provided"])
+  ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
   assert s.isValid, "The set needs to be initialized."
   dollarImpl()
@@ -743,7 +751,7 @@ iterator items*[A](s: HashSet[A]): A =
   ##   type
   ##     pair = tuple[a, b: int]
   ##   var
-  ##     a, b = initSet[pair]()
+  ##     a, b = initHashSet[pair]()
   ##   a.incl((2, 3))
   ##   a.incl((3, 2))
   ##   a.incl((2, 3))
@@ -917,7 +925,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   for key in items(keys): result.incl(key)
 
 proc isValid*[A](s: OrderedSet[A]): bool =
-  ## Returns `true` if the set has been initialized (with `initSet proc
+  ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
   ##
   ## Most operations over an uninitialized set will crash at runtime and
@@ -982,7 +990,7 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
   ## * `containsOrIncl proc <#containsOrIncl,OrderedSet[A],A>`_
   runnableExamples:
     var
-      values = toSet([1, 2, 3])
+      values = toHashSet([1, 2, 3])
       others = toOrderedSet([3, 4, 5])
     values.incl(others)
     assert values.len == 5
@@ -1071,7 +1079,7 @@ proc len*[A](s: OrderedSet[A]): int {.inline.} =
   runnableExamples:
     var a: OrderedSet[string]
     assert len(a) == 0
-    let s = toSet([3, 5, 7])
+    let s = toHashSet([3, 5, 7])
     assert len(s) == 3
   result = s.counter
 
@@ -1181,7 +1189,7 @@ when isMainModule and not defined(release):
       var options: HashSet[string]
       proc savePreferences(options: HashSet[string]) =
         assert options.isValid, "Pass an initialized set!"
-      options = initSet[string]()
+      options = initHashSet[string]()
       options.savePreferences
 
     block lenTest:
@@ -1192,7 +1200,7 @@ when isMainModule and not defined(release):
 
     block setIterator:
       type pair = tuple[a, b: int]
-      var a, b = initSet[pair]()
+      var a, b = initHashSet[pair]()
       a.incl((2, 3))
       a.incl((3, 2))
       a.incl((2, 3))
@@ -1203,7 +1211,7 @@ when isMainModule and not defined(release):
       #echo b
 
     block setContains:
-      var values = initSet[int]()
+      var values = initHashSet[int]()
       assert(not values.contains(2))
       values.incl(2)
       assert values.contains(2)
@@ -1211,7 +1219,7 @@ when isMainModule and not defined(release):
       assert(not values.contains(2))
 
       values.incl(4)
-      var others = toSet([6, 7])
+      var others = toHashSet([6, 7])
       values.incl(others)
       assert values.len == 3
 
@@ -1219,31 +1227,31 @@ when isMainModule and not defined(release):
       assert values.containsOrIncl(2) == false
       assert values.containsOrIncl(2) == true
       var
-        a = toSet([1, 2])
-        b = toSet([1])
+        a = toHashSet([1, 2])
+        b = toHashSet([1])
       b.incl(2)
       assert a == b
 
     block exclusions:
-      var s = toSet([2, 3, 6, 7])
+      var s = toHashSet([2, 3, 6, 7])
       s.excl(2)
       s.excl(2)
       assert s.len == 3
 
       var
-        numbers = toSet([1, 2, 3, 4, 5])
-        even = toSet([2, 4, 6, 8])
+        numbers = toHashSet([1, 2, 3, 4, 5])
+        even = toHashSet([2, 4, 6, 8])
       numbers.excl(even)
       #echo numbers
       # --> {1, 3, 5}
 
     block toSeqAndString:
-      var a = toSet([2, 4, 5])
-      var b = initSet[int]()
+      var a = toHashSet([2, 4, 5])
+      var b = initHashSet[int]()
       for x in [2, 4, 5]: b.incl(x)
       assert($a == $b)
       #echo a
-      #echo toSet(["no", "esc'aping", "is \" provided"])
+      #echo toHashSet(["no", "esc'aping", "is \" provided"])
 
     #block orderedToSeqAndString:
     #  echo toOrderedSet([2, 4, 5])
@@ -1251,32 +1259,32 @@ when isMainModule and not defined(release):
 
     block setOperations:
       var
-        a = toSet(["a", "b"])
-        b = toSet(["b", "c"])
+        a = toHashSet(["a", "b"])
+        b = toHashSet(["b", "c"])
         c = union(a, b)
-      assert c == toSet(["a", "b", "c"])
+      assert c == toHashSet(["a", "b", "c"])
       var d = intersection(a, b)
-      assert d == toSet(["b"])
+      assert d == toHashSet(["b"])
       var e = difference(a, b)
-      assert e == toSet(["a"])
+      assert e == toHashSet(["a"])
       var f = symmetricDifference(a, b)
-      assert f == toSet(["a", "c"])
+      assert f == toHashSet(["a", "c"])
       assert d < a and d < b
       assert((a < a) == false)
       assert d <= a and d <= b
       assert((a <= a))
       # Alias test.
-      assert a + b == toSet(["a", "b", "c"])
-      assert a * b == toSet(["b"])
-      assert a - b == toSet(["a"])
-      assert a -+- b == toSet(["a", "c"])
+      assert a + b == toHashSet(["a", "b", "c"])
+      assert a * b == toHashSet(["b"])
+      assert a - b == toHashSet(["a"])
+      assert a -+- b == toHashSet(["a", "c"])
       assert disjoint(a, b) == false
       assert disjoint(a, b - a) == true
 
     block mapSet:
-      var a = toSet([1, 2, 3])
+      var a = toHashSet([1, 2, 3])
       var b = a.map(proc (x: int): string = $x)
-      assert b == toSet(["1", "2", "3"])
+      assert b == toHashSet(["1", "2", "3"])
 
     block isValidTest:
       var cards: OrderedSet[string]
@@ -1361,7 +1369,7 @@ when isMainModule and not defined(release):
       b.incl(2)
       b.init
       assert b.len == 0 and b.isValid
-      b = initSet[int](4)
+      b = initHashSet[int](4)
       b.incl(2)
       assert b.len == 1
 
