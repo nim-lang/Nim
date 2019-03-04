@@ -1,6 +1,6 @@
 discard """
   errmsg: "unhandled exception:"
-  file: "system/assertions_helpers.nim"
+  file: "system/fatal.nim"
   nimout: '''
 stack trace: (most recent call last)
 t9768.nim(28, 33)        main

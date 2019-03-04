@@ -7,7 +7,7 @@ tfailedassert_stacktrace.nim(34) tfailedassert_stacktrace
 tfailedassert_stacktrace.nim(33) foo
 assertions.nim(*)       failedAssertImpl
 assertions.nim(*)        raiseAssert
-assertions_helpers.nim(*) sysFatal"""
+fatal.nim(*)            sysFatal"""
 
 proc tmatch(x, p: string): bool =
   var i = 0

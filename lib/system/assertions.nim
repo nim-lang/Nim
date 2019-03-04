@@ -1,4 +1,7 @@
-include "system/assertions_helpers"
+include "system/helpers"
+
+when not declared(sysFatal):
+  include "system/fatal"
 
 
 proc raiseAssert*(msg: string) {.noinline, noReturn.} =

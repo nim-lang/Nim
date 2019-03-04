@@ -2458,6 +2458,45 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
 
   return true
 
+proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
+  ## converts the AST of `x` into a string representation. This is very useful
+  ## for debugging.
+
+proc instantiationInfo*(index = -1, fullPaths = false): tuple[
+  filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
+  ## provides access to the compiler's instantiation stack line information
+  ## of a template.
+  ##
+  ## While similar to the `caller info`:idx: of other languages, it is determined
+  ## at compile time.
+  ##
+  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
+  ## to retrieve information about the current filename and line number.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   import strutils
+  ##
+  ##   template testException(exception, code: untyped): typed =
+  ##     try:
+  ##       let pos = instantiationInfo()
+  ##       discard(code)
+  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
+  ##         $pos.line, astToStr(code)]
+  ##       assert false, "A test expecting failure succeeded?"
+  ##     except exception:
+  ##       discard
+  ##
+  ##   proc tester(pos: int): int =
+  ##     let
+  ##       a = @[1, 2, 3]
+  ##     result = a[pos]
+  ##
+  ##   when isMainModule:
+  ##     testException(IndexError, tester(30))
+  ##     testException(IndexError, tester(1))
+  ##     # --> Test failure at example.nim:20 with 'tester(1)'
+
 
 import system/assertions
 export assertions
@@ -2850,55 +2889,11 @@ when hostOS == "standalone":
     if s == nil or s.len == 0: result = cstring""
     else: result = cstring(addr s.data)
 
-  include "$projectpath/panicoverride"
-
 when not defined(js) and not defined(nimscript):
   include "system/ansi_c"
 
 when not declared(sysFatal):
-  {.push profiler: off.}
-  when hostOS == "standalone":
-    proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
-      panic(message)
-
-    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline.} =
-      rawoutput(message)
-      panic(arg)
-  elif defined(nimQuirky) and not defined(nimscript):
-    proc name(t: typedesc): string {.magic: "TypeTrait".}
-
-    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
-      var buf = newStringOfCap(200)
-      add(buf, "Error: unhandled exception: ")
-      add(buf, message)
-      add(buf, arg)
-      add(buf, " [")
-      add(buf, name exceptn)
-      add(buf, "]")
-      cstderr.rawWrite buf
-      quit 1
-
-    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
-      sysFatal(exceptn, message, "")
-  else:
-    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
-      when declared(owned):
-        var e: owned(ref exceptn)
-      else:
-        var e: ref exceptn
-      new(e)
-      e.msg = message
-      raise e
-
-    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
-      when declared(owned):
-        var e: owned(ref exceptn)
-      else:
-        var e: ref exceptn
-      new(e)
-      e.msg = message & arg
-      raise e
-  {.pop.}
+  include "system/fatal"
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## get type information for `x`. Ordinary code should not use this, but
@@ -3551,47 +3546,17 @@ template `&=`*(x, y: typed) =
 when declared(File):
   template `&=`*(f: File, x: typed) = write(f, x)
 
-proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
-  ## converts the AST of `x` into a string representation. This is very useful
-  ## for debugging.
-
-proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
-  ## provides access to the compiler's instantiation stack line information
-  ## of a template.
-  ##
-  ## While similar to the `caller info`:idx: of other languages, it is determined
-  ## at compile time.
-  ##
-  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
-  ## to retrieve information about the current filename and line number.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   import strutils
-  ##
-  ##   template testException(exception, code: untyped): typed =
-  ##     try:
-  ##       let pos = instantiationInfo()
-  ##       discard(code)
-  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
-  ##         $pos.line, astToStr(code)]
-  ##       assert false, "A test expecting failure succeeded?"
-  ##     except exception:
-  ##       discard
-  ##
-  ##   proc tester(pos: int): int =
-  ##     let
-  ##       a = @[1, 2, 3]
-  ##     result = a[pos]
-  ##
-  ##   when isMainModule:
-  ##     testException(IndexError, tester(30))
-  ##     testException(IndexError, tester(1))
-  ##     # --> Test failure at example.nim:20 with 'tester(1)'
-
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## returns the full file-system path of the current source
+
+when compileOption("rangechecks"):
+  template rangeCheck*(cond) =
+    ## Helper for performing user-defined range checks.
+    ## Such checks will be performed only when the ``rangechecks``
+    ## compile-time option is enabled.
+    if not cond: sysFatal(RangeError, "range check failed")
+else:
+  template rangeCheck*(cond) = discard
 
 when not defined(nimhygiene):
   {.pragma: inject.}
