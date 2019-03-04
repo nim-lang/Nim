@@ -1516,6 +1516,10 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       n.sons[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
+  # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
+  if ri.typ != nil and ri.typ.skipTypes(abstractInst).kind == tyOwned and
+      le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned:
+    localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer")
 
 template resultTypeIsInferrable(typ: PType): untyped =
   typ.isMetaType and typ.kind != tyTypeDesc

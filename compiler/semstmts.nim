@@ -474,6 +474,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
                      ($typ.kind).substr(2).toLowerAscii)
         elif typ.kind == tyProc and tfUnresolved in typ.flags:
           localError(c.config, def.info, errProcHasNoConcreteType % def.renderTree)
+        elif symkind == skVar and typ.kind == tyOwned and def.kind notin nkCallKinds:
+          # special type inference rule: 'var it = ownedPointer' is turned
+          # into an unowned pointer.
+          typ = typ.lastSon
     else:
       if symkind == skLet: localError(c.config, a.info, errLetNeedsInit)
 
