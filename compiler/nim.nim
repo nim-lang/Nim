@@ -68,7 +68,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   )
   self.initDefinesProg(conf, "nim_compiler")
   if paramCount() == 0:
-    writeCommandLineUsage(conf, conf.helpWritten)
+    writeCommandLineUsage(conf)
     return
 
   self.processCmdLineAndProjectPath(conf)
