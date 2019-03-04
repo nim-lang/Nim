@@ -7,7 +7,6 @@ test destroyed 0
 3
 4
 Pony is dying!'''
-  cmd: '''nim c --newruntime $file'''
 """
 
 # bug #4214
@@ -68,7 +67,7 @@ for x in getPony():
 
 type
   MySeqNonCopyable* = object
-    len: int 
+    len: int
     data: ptr UncheckedArray[float]
 
 proc `=destroy`*(m: var MySeqNonCopyable) {.inline.} =
@@ -93,7 +92,7 @@ proc `[]`*(m: MySeqNonCopyable; i: int): float {.inline.} =
 proc `[]=`*(m: var MySeqNonCopyable; i, val: float) {.inline.} =
   m.data[i.int] = val
 
-proc setTo(s: var MySeqNonCopyable, val: float) = 
+proc setTo(s: var MySeqNonCopyable, val: float) =
   for i in 0..<s.len.int:
     s.data[i] = val
 
@@ -110,18 +109,18 @@ proc myfunc(x, y: int): (MySeqNonCopyable, MySeqNonCopyable) =
 proc myfunc2(x, y: int): tuple[a: MySeqNonCopyable, b:int, c:MySeqNonCopyable] =
   var cc = newMySeq(y, 5.0)
   (a: case x:
-    of 1: 
+    of 1:
       let (z1, z2) = myfunc(x,y)
       z2
     elif x > 5: raise newException(ValueError, "new error")
-    else: newMySeq(x, 1.0), 
-   b: 0, 
+    else: newMySeq(x, 1.0),
+   b: 0,
    c: block:
         var tmp = if y > 0: move(cc) else: newMySeq(1, 3.0)
         tmp[0] = 5
-        tmp 
+        tmp
   )
-   
+
 
 let (seq1, seq2) = myfunc(2, 3)
 doAssert seq1.len == 2
@@ -141,20 +140,20 @@ seq4 = block:
   tmp[0] = 3.0
   tmp
 
-doAssert seq4[0] == 3.0 
+doAssert seq4[0] == 3.0
 
 import macros
 
-seq4 = 
-  if i > 0: newMySeq(2, 5.0) 
+seq4 =
+  if i > 0: newMySeq(2, 5.0)
   elif i < -100: raise newException(ValueError, "Parse Error")
   else: newMySeq(2, 3.0)
 
-seq4 = 
+seq4 =
   case (char) i:
-    of 'A', {'W'..'Z'}: newMySeq(2, 5.0) 
+    of 'A', {'W'..'Z'}: newMySeq(2, 5.0)
     of 'B': quit(-1)
-    else: 
+    else:
       let (x1, x2, x3) = myfunc2(2, 3)
       x3
 

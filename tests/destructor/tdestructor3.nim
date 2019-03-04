@@ -6,7 +6,6 @@ destroy
 123
 destroy Foo: 5
 destroy Foo: 123'''
-  cmd: '''nim c --newruntime $file'''
 """
 
 # bug #2821
