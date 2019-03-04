@@ -2525,7 +2525,7 @@ when not defined(JS):
           fib.add(fib[^1] + fib[^2])
         echo "CPU time [s] ", cpuTime() - t0
         echo "Fib is [s] ", fib
-      when defined(posix):
+      when defined(posix) and not defined(osx):
         # 'clocksPerSec' is a compile-time constant, possibly a
         # rather awful one, so use clock_gettime instead
         var ts: Timespec
