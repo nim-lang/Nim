@@ -130,6 +130,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added the `posix_utils` module.
 
+- Added `system.default`.
 
 ### Library changes
 

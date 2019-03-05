@@ -4278,6 +4278,10 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
     doAssert $(type("Foo")) == "string"
     static: doAssert $(type(@['A', 'B'])) == "seq[char]"
 
+when defined(nimHasDefault):
+  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
+    ## returns the default value of the type ``T``.
+
 import system/widestrs
 export widestrs
 
