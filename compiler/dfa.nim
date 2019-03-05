@@ -624,8 +624,9 @@ proc genMagic(c: var Con; n: PNode; m: TMagic) =
 
 proc genVarSection(c: var Con; n: PNode) =
   for a in n:
-    if a.kind == nkCommentStmt: continue
-    if a.kind == nkVarTuple:
+    if a.kind == nkCommentStmt:
+      discard
+    elif a.kind == nkVarTuple:
       gen(c, a.lastSon)
       for i in 0 .. a.len-3: genDef(c, a[i])
     else:
