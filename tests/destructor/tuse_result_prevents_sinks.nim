@@ -1,5 +1,6 @@
 discard """
   output: ""
+  target: "C"
 """
 
 # bug #9594

@@ -8,6 +8,7 @@ test destroyed 0
 4
 Pony is dying!'''
 joinable: false
+target: "C"
 """
 
 # bug #4214

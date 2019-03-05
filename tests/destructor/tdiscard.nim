@@ -1,5 +1,6 @@
 discard """
 joinable: false
+target: "C"
 """
 
 type
