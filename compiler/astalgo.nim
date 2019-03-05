@@ -353,6 +353,12 @@ proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1
 
 import tables
 
+const backrefStyle = "\e[90m"
+const enumStyle = "\e[34m"
+const numberStyle = "\e[33m"
+const stringStyle = "\e[32m"
+const resetStyle  = "\e[0m"
+
 type
   DebugPrinter = object
     conf: ConfigRef
@@ -361,6 +367,7 @@ type
     indent: int
     currentLine: int
     firstItem: bool
+    useColor: bool
     res: string
 
 proc indentMore(this: var DebugPrinter) =
@@ -407,15 +414,29 @@ proc key(this: var DebugPrinter; key: string) =
   this.res.add "\": "
 
 proc value(this: var DebugPrinter; value: string) =
+  if this.useColor:
+    this.res.add stringStyle
   this.res.add "\""
   this.res.add value
   this.res.add "\""
+  if this.useColor:
+    this.res.add resetStyle
 
 proc value(this: var DebugPrinter; value: BiggestInt) =
+  if this.useColor:
+     this.res.add numberStyle
   this.res.add value
+  if this.useColor:
+     this.res.add resetStyle
 
 proc value[T: enum](this: var DebugPrinter; value: T) =
-  this.value $value
+  if this.useColor:
+     this.res.add enumStyle
+  this.res.add "\""
+  this.res.add $value
+  this.res.add "\""
+  if this.useColor:
+     this.res.add resetStyle
 
 proc value[T: enum](this: var DebugPrinter; value: set[T]) =
   this.openBracket
@@ -436,9 +457,13 @@ template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
   if index < 0:
     this.visited[cast[pointer](n)] = this.currentLine
   else:
+    if this.useColor:
+      this.res.add backrefStyle
     this.res.add "<defined "
     this.res.add(this.currentLine - index)
     this.res.add " lines upwards>"
+    if this.useColor:
+       this.res.add resetStyle
     return
 
 proc value(this: var DebugPrinter; value: PType): void
@@ -448,7 +473,7 @@ proc value(this: var DebugPrinter; value: PSym): void =
 
   this.openCurly
   this.key("kind")
-  this.value($value.kind)
+  this.value(value.kind)
   this.key("name")
   this.value(value.name.s)
   this.key("id")
@@ -477,6 +502,7 @@ proc value(this: var DebugPrinter; value: PType): void =
   if value.sym != nil:
     this.key "sym"
     this.value value.sym
+    #this.value value.sym.name.s
 
   if card(value.flags) > 0:
     this.key "flags"
@@ -529,7 +555,8 @@ proc value(this: var DebugPrinter; value: PNode): void =
     this.value value.strVal
   of nkSym:
     this.key "sym"
-    this.value(value.sym)
+    this.value value.sym
+    #this.value value.sym.name.s
   of nkIdent:
     if value.ident != nil:
       this.key "ident"
@@ -554,6 +581,7 @@ when declared(echo):
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
+    this.useColor = not defined(windows)
     this.value(n)
     echo($this.res)
 
@@ -561,6 +589,7 @@ when declared(echo):
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
+    this.useColor = not defined(windows)
     this.value(n)
     echo($this.res)
 
@@ -568,6 +597,7 @@ when declared(echo):
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
+    this.useColor = not defined(windows)
     this.value(n)
     echo($this.res)
 
