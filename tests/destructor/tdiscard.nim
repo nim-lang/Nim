@@ -1,3 +1,7 @@
+discard """
+joinable: false
+"""
+
 type
   O = object
 

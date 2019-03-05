@@ -1,6 +1,7 @@
 discard """
   exitcode: 0
   output: ""
+  joinable: false
 """
 
 type
