@@ -97,9 +97,9 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   add result, "{"
   var u: int64
   case typ.size
-  of 1: u = ze64(cast[ptr int8](p)[])
-  of 2: u = ze64(cast[ptr int16](p)[])
-  of 4: u = ze64(cast[ptr int32](p)[])
+  of 1: u = cast[ptr int8](p)[]
+  of 2: u = cast[ptr int16](p)[]
+  of 4: u = cast[ptr int32](p)[]
   of 8: u = cast[ptr int64](p)[]
   else:
     var a = cast[PByteArray](p)
