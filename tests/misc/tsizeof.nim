@@ -1,5 +1,9 @@
 discard """
-  output: "OK"
+  output: '''
+body executed
+body executed
+OK
+'''
 """
 
 type
@@ -138,15 +142,41 @@ type
     ValueA
     ValueB
 
-template testinstance(body: untyped): untyped =
-  block:
-    {.pragma: objectconfig.}
-    body
 
-  block:
-    {.pragma: objectconfig, packed.}
-    body
+proc transformObjectconfigPacked(arg: NimNode): NimNode =
+  let debug = arg.kind == nnkPragmaExpr
 
+  if arg.eqIdent("objectconfig"):
+    result = ident"packed"
+  else:
+    result = copyNimNode(arg)
+    for child in arg:
+      result.add transformObjectconfigPacked(child)
+
+proc removeObjectconfig(arg: NimNode): NimNode =
+  if arg.kind == nnkPragmaExpr and arg[1][0].eqIdent "objectconfig":
+    result = arg[0]
+  else:
+    result = copyNimNode(arg)
+    for child in arg:
+      result.add removeObjectconfig(child)
+
+macro testinstance(body: untyped): untyped =
+  let bodyPure = removeObjectconfig(body)
+  let bodyPacked = transformObjectconfigPacked(body)
+
+  result = quote do:
+    proc pureblock(): void =
+      const usePacked {.inject.} = false
+      `bodyPure`
+
+    pureblock()
+
+    proc packedblock(): void =
+      const usePacked {.inject.} = true
+      `bodyPacked`
+
+    packedblock()
 
 proc testPrimitiveTypes(): void =
   testAlign(pointer)
@@ -284,13 +314,6 @@ testinstance:
       a: int32
       b: T
 
-    #Float128Test = object
-    #  a: byte
-    #  b: float128
-
-    #Bazang = object of RootObj
-    #  a: float128
-
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
   proc main(): void =
@@ -314,8 +337,13 @@ testinstance:
       eoa: EnumObjectA
       eob: EnumObjectB
 
-
     testAlign(SimpleAlignment)
+
+    # sanity check to ensure both branches are actually executed
+    when usePacked:
+      doAssert sizeof(SimpleAlignment) == 10
+    else:
+      doAssert sizeof(SimpleAlignment) > 10
 
     testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go, e1, e2, e4, e8, eoa, eob)
 
@@ -379,6 +407,9 @@ testinstance:
     testOffsetOf(RecursiveStuff, cc)
     testOffsetOf(RecursiveStuff, d1)
     testOffsetOf(RecursiveStuff, d2)
+
+    echo "body executed" # sanity check to ensure this logic isn't skipped entirely
+
 
   main()
 
