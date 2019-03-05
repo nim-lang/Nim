@@ -82,12 +82,13 @@ proc newRope(data: string = ""): Rope =
   result.L = -len(data)
   result.data = data
 
-var
-  cache: array[0..2048*2 - 1, Rope] # XXX Global here!
+when not compileOption("threads"):
+  var
+    cache: array[0..2048*2 - 1, Rope]
 
-proc resetRopeCache* =
-  for i in low(cache)..high(cache):
-    cache[i] = nil
+  proc resetRopeCache* =
+    for i in low(cache)..high(cache):
+      cache[i] = nil
 
 proc ropeInvariant(r: Rope): bool =
   if r == nil:
@@ -107,13 +108,16 @@ var gCacheMisses* = 0
 var gCacheIntTries* = 0
 
 proc insertInCache(s: string): Rope =
-  inc gCacheTries
-  var h = hash(s) and high(cache)
-  result = cache[h]
-  if isNil(result) or result.data != s:
-    inc gCacheMisses
+  when declared(cache):
+    inc gCacheTries
+    var h = hash(s) and high(cache)
+    result = cache[h]
+    if isNil(result) or result.data != s:
+      inc gCacheMisses
+      result = newRope(s)
+      cache[h] = result
+  else:
     result = newRope(s)
-    cache[h] = result
 
 proc rope*(s: string): Rope =
   ## Converts a string to a rope.

@@ -721,6 +721,17 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
 proc track(tracked: PEffects, n: PNode) =
+  template gcsafeAndSideeffectCheck() =
+    if notGcSafe(op) and not importedFromC(a):
+      # and it's not a recursive call:
+      if not (a.kind == nkSym and a.sym == tracked.owner):
+        if warnGcUnsafe in tracked.config.notes: warnAboutGcUnsafe(n, tracked.config)
+        markGcUnsafe(tracked, a)
+    if tfNoSideEffect notin op.flags and not importedFromC(a):
+      # and it's not a recursive call:
+      if not (a.kind == nkSym and a.sym == tracked.owner):
+        markSideEffect(tracked, a)
+
   case n.kind
   of nkSym:
     useVar(tracked, n)
@@ -764,18 +775,11 @@ proc track(tracked: PEffects, n: PNode) =
           propagateEffects(tracked, n, a.sym)
         elif isIndirectCall(a, tracked.owner):
           assumeTheWorst(tracked, n, op)
+          gcsafeAndSideeffectCheck()
       else:
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
         mergeTags(tracked, effectList.sons[tagEffects], n)
-        if notGcSafe(op) and not importedFromC(a):
-          # and it's not a recursive call:
-          if not (a.kind == nkSym and a.sym == tracked.owner):
-            if warnGcUnsafe in tracked.config.notes: warnAboutGcUnsafe(n, tracked.config)
-            markGcUnsafe(tracked, a)
-        if tfNoSideEffect notin op.flags and not importedFromC(a):
-          # and it's not a recursive call:
-          if not (a.kind == nkSym and a.sym == tracked.owner):
-            markSideEffect(tracked, a)
+        gcsafeAndSideeffectCheck()
     if a.kind != nkSym or a.sym.magic != mNBindSym:
       for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
