@@ -97,7 +97,7 @@ when defined(nimHasalignOf):
     for bit in bits:
       result.add newCall("flipBit", v, bit)
 
-  proc testBit*[T: SomeInteger](v: var T, bit: BitsRange[T]): bool {.inline.} =
+  proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
     ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
     let mask = 1.T shl bit
     return (v and mask) == mask
