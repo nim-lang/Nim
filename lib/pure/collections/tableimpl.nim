@@ -116,9 +116,10 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-template default[T](t: typedesc[T]): T =
-  var v: T
-  v
+when not defined(nimHasDefault):
+  template default[T](t: typedesc[T]): T =
+    var v: T
+    v
 
 template delImplIdx(t, i) =
   let msk = maxHash(t)

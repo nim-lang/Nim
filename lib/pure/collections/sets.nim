@@ -74,10 +74,11 @@ type
 
 const growthFactor = 2
 
-template default[T](t: typedesc[T]): T =
-  ## Used by clear methods to get a default value.
-  var v: T
-  v
+when not defined(nimHasDefault):
+  template default[T](t: typedesc[T]): T =
+    ## Used by clear methods to get a default value.
+    var v: T
+    v
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
@@ -161,10 +162,6 @@ template doWhile(a, b) =
   while true:
     b
     if not a: break
-
-template default[T](t: typedesc[T]): T =
-  var v: T
-  v
 
 proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
   assert s.isValid, "The set needs to be initialized."
@@ -492,7 +489,7 @@ proc clear*[A](s: var HashSet[A]) =
   s.counter = 0
   for i in 0..<s.data.len:
     s.data[i].hcode = 0
-    s.data[i].key   = default(type(s.data[i].key))
+    s.data[i].key = default(type(s.data[i].key))
 
 proc len*[A](s: HashSet[A]): int =
   ## Returns the number of elements in `s`.
