@@ -596,7 +596,7 @@ proc genCall(c: var Con; n: PNode) =
     gen(c, n[i])
     when false:
       if t != nil and i < t.len and t.sons[i].kind == tyVar:
-        # XXX This is wrong! Pass by var is a 'might def', not a 'must def'
+        # This is wrong! Pass by var is a 'might def', not a 'must def'
         # like the other defs we emit. This is not good enough for a move
         # optimizer.
         genDef(c, n[i])

@@ -68,17 +68,6 @@ const
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc, tyOwned}
 
-type
-  TTypeFieldResult* = enum
-    frNone,                   # type has no object type field
-    frHeader,                 # type has an object type field only in the header
-    frEmbedded                # type has an object type field somewhere embedded
-
-proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult
-  # this does a complex analysis whether a call to ``objectInit`` needs to be
-  # made or intializing of the type field suffices or if there is no type field
-  # at all in this type.
-
 proc invalidGenericInst*(f: PType): bool =
   result = f.kind == tyGenericInst and lastSon(f) == nil
 
@@ -242,10 +231,15 @@ proc containsObject*(t: PType): bool =
   result = searchTypeFor(t, isObjectPredicate)
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
-
   result = t.kind == tyObject and t.sons[0] == nil and
       not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
+
+type
+  TTypeFieldResult* = enum
+    frNone,                   # type has no object type field
+    frHeader,                 # type has an object type field only in the header
+    frEmbedded                # type has an object type field somewhere embedded
 
 proc analyseObjectWithTypeFieldAux(t: PType,
                                    marker: var IntSet): TTypeFieldResult =
@@ -276,7 +270,10 @@ proc analyseObjectWithTypeFieldAux(t: PType,
   else:
     discard
 
-proc analyseObjectWithTypeField(t: PType): TTypeFieldResult =
+proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult =
+  # this does a complex analysis whether a call to ``objectInit`` needs to be
+  # made or intializing of the type field suffices or if there is no type field
+  # at all in this type.
   var marker = initIntSet()
   result = analyseObjectWithTypeFieldAux(t, marker)
 
@@ -323,9 +320,7 @@ proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool =
 proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   result = false
   if typ == nil: return
-  if tfAcyclic in typ.flags: return
   var t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
-  if tfAcyclic in t.flags: return
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyOpenArray, tyVarargs:
     if not containsOrIncl(marker, t.id):

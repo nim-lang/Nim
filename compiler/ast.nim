@@ -479,7 +479,7 @@ type
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
     tfInheritable,    # is the object inheritable?
-    tfAcyclic,        # type is acyclic (for GC optimization)
+    tfHasOwned,       # type contains an 'owned' type and must be moved
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment
     tfThread,         # proc type is marked as ``thread``; alias for ``gcsafe``
@@ -1471,6 +1471,13 @@ proc propagateToOwner*(owner, elem: PType) =
                    tySequence, tyOpt, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
+
+  if tfHasOwned in elem.flags:
+    let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
+    if o2.kind in {tyTuple, tyObject, tyArray,
+                   tySequence, tyOpt, tySet, tyDistinct}:
+      o2.flags.incl tfHasOwned
+      owner.flags.incl tfHasOwned
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:

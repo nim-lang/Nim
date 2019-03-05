@@ -1854,7 +1854,9 @@ proc processMagicType(c: PContext, m: PSym) =
     case m.name.s
     of "lent": setMagicType(c.config, m, tyLent, c.config.target.ptrSize)
     of "sink": setMagicType(c.config, m, tySink, szUncomputedSize)
-    of "owned": setMagicType(c.config, m, tyOwned, c.config.target.ptrSize)
+    of "owned":
+      setMagicType(c.config, m, tyOwned, c.config.target.ptrSize)
+      incl m.typ.flags, tfHasOwned
     else: localError(c.config, m.info, errTypeExpected)
   else: localError(c.config, m.info, errTypeExpected)
 

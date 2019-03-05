@@ -42,8 +42,6 @@ when not declared(dynlib.libCandidates):
 when options.hasTinyCBackend:
   import tccgen
 
-# implementation
-
 proc hcrOn(m: BModule): bool = m.config.hcrOn
 proc hcrOn(p: BProc): bool = p.module.config.hcrOn
 
@@ -295,6 +293,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     includeHeader(p.module, "<new>")
     linefmt(p, section, "new ($1) $2;$n", rdLoc(a), getTypeDesc(p.module, t))
 
+  if optNimV2 in p.config.globalOptions: return
   case analyseObjectWithTypeField(t)
   of frNone:
     discard
@@ -303,7 +302,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     if not takeAddr: r = "(*$1)" % [r]
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while (s.kind == tyObject) and (s.sons[0] != nil):
+      while s.kind == tyObject and s.sons[0] != nil:
         add(r, ".Sup")
         s = skipTypes(s.sons[0], skipPtrs)
     linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t, a.lode.info))

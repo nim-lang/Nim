@@ -16,16 +16,12 @@ const
   tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
-  if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
-    localError(conf, info, "invalid pragma: acyclic")
-  elif t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
+  if t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
 
 proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
   if t.kind in tyTypeClasses: discard
-  elif tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
-    localError(conf, info, "invalid pragma: acyclic")
   elif t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion:
