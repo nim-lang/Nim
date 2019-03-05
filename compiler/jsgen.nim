@@ -1804,6 +1804,10 @@ proc genOf(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "isObj($1.m_type, $2)" % [x.res, genTypeInfo(p, t)]
   r.kind = resExpr
 
+proc genDefault(p: PProc, n: PNode; r: var TCompRes) =
+  r.res = createVar(p, n.typ, indirect = false)
+  r.kind = resExpr
+
 proc genReset(p: PProc, n: PNode) =
   var x: TCompRes
   useMagic(p, "genericReset")
@@ -1938,6 +1942,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeq: genNewSeq(p, n)
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
+  of mDefault: genDefault(p, n, r)
   of mReset: genReset(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
@@ -2138,7 +2143,7 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   if hasFrameInfo(p):
     add(result, frameDestroy(p))
 
-proc optionaLine(p: Rope): Rope =
+proc optionalLine(p: Rope): Rope =
   if p == nil:
     return nil
   else:
@@ -2182,11 +2187,11 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
             [ returnType,
               name,
               header,
-              optionaLine(p.globals),
-              optionaLine(p.locals),
-              optionaLine(resultAsgn),
-              optionaLine(genProcBody(p, prc)),
-              optionaLine(p.indentLine(returnStmt))]
+              optionalLine(p.globals),
+              optionalLine(p.locals),
+              optionalLine(resultAsgn),
+              optionalLine(genProcBody(p, prc)),
+              optionalLine(p.indentLine(returnStmt))]
   else:
     result = ~"\L"
 
@@ -2203,11 +2208,11 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     def = "function $#($#) {$n$#$#$#$#$#" %
             [ name,
               header,
-              optionaLine(p.globals),
-              optionaLine(p.locals),
-              optionaLine(resultAsgn),
-              optionaLine(genProcBody(p, prc)),
-              optionaLine(p.indentLine(returnStmt))]
+              optionalLine(p.globals),
+              optionalLine(p.locals),
+              optionalLine(resultAsgn),
+              optionalLine(genProcBody(p, prc)),
+              optionalLine(p.indentLine(returnStmt))]
 
   dec p.extraIndent
   result.add p.indentLine(def)
