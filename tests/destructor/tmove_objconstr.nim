@@ -7,6 +7,7 @@ test destroyed 0
 3
 4
 Pony is dying!'''
+joinable: false
 """
 
 # bug #4214

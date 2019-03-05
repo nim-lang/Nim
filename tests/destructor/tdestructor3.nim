@@ -6,6 +6,7 @@ destroy
 123
 destroy Foo: 5
 destroy Foo: 123'''
+joinable: false
 """
 
 # bug #2821

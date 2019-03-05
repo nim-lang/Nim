@@ -466,10 +466,10 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     result = p(arg, c)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
-  template moveOrCopyIfTyped(ri_part: PNode): PNode =
+  template moveOrCopyIfTyped(riPart: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
-    if ri_part.typ == nil: p(ri_part, c)
-    else: moveOrCopy(dest, ri_part, c)
+    if riPart.typ == nil: p(riPart, c)
+    else: moveOrCopy(dest, riPart, c)
 
   case ri.kind
   of nkCallKinds:

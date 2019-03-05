@@ -11,6 +11,7 @@ deallocating
 allocating
 deallocating
 '''
+joinable: false
 """
 
 type

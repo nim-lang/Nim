@@ -1519,7 +1519,8 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   if ri.typ != nil and ri.typ.skipTypes(abstractInst).kind == tyOwned and
       le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned:
-    localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer")
+    localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer; " &
+      "use 'owned(" & typeToString(le.typ) & ")' as the return type")
 
 template resultTypeIsInferrable(typ: PType): untyped =
   typ.isMetaType and typ.kind != tyTypeDesc

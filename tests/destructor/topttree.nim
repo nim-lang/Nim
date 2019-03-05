@@ -8,6 +8,7 @@ discard """
 90.0
 120.0
 8 8'''
+joinable: false
 """
 
 import typetraits
