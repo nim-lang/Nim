@@ -1341,7 +1341,7 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `isnot`*(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
-when defined(nimV2):
+when defined(nimV2) and not defined(nimscript):
   type owned*{.magic: "BuiltinType".}[T]
 
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
@@ -3022,8 +3022,10 @@ template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
-  var
-    e: ref exceptn
+  when declared(owned):
+    var e: owned(ref exceptn)
+  else:
+    var e: ref exceptn
   new(e)
   e.msg = message
   e.parent = parentException
@@ -3062,13 +3064,19 @@ when not declared(sysFatal):
       sysFatal(exceptn, message, "")
   else:
     proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
-      var e: ref exceptn
+      when declared(owned):
+        var e: owned(ref exceptn)
+      else:
+        var e: ref exceptn
       new(e)
       e.msg = message
       raise e
 
     proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
-      var e: ref exceptn
+      when declared(owned):
+        var e: owned(ref exceptn)
+      else:
+        var e: ref exceptn
       new(e)
       e.msg = message & arg
       raise e
