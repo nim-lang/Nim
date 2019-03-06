@@ -34,7 +34,7 @@ pkg "NimData", "nim c -o:nimdataa src/nimdata.nim", "", true
 pkg "nimes", "nim c src/nimes.nim", "", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", "", true
 pkg "nimongo", "nimble test_ci", "", true
-pkg "nimpy", "nim c -o:nimpyy nimpy.nim"
+pkg "nimpy", "nim c tests/nimfrompy.nim"
 pkg "nimsl", "nim c test.nim"
 pkg "nimsvg"
 pkg "nimx", "nim c --threads:on test/main.nim", "", true
