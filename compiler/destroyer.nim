@@ -161,6 +161,8 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
+    uninit: IntSet # set of uninit'ed vars
+    uninitComputed: bool
 
 proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
   var pc = pc
@@ -246,6 +248,42 @@ proc isLastRead(n: PNode; c: var Con): bool =
           inc pc
     #echo c.graph.config $ n.info, " last read here!"
     return true
+
+proc initialized(code: ControlFlowGraph; pc: int,
+                 init, uninit: var IntSet; comesFrom: int): int =
+  ## Computes the set of definitely initialized variables accross all code paths
+  ## as an IntSet of IDs.
+  var pc = pc
+  while pc < code.len:
+    case code[pc].kind
+    of goto:
+      pc = pc + code[pc].dest
+    of fork:
+      let target = pc + code[pc].dest
+      var initA = initIntSet()
+      var initB = initIntSet()
+      let pcA = initialized(code, pc+1, initA, uninit, pc)
+      discard initialized(code, target, initB, uninit, pc)
+      # we add vars if they are in both branches:
+      for v in initA:
+        if v in initB:
+          init.incl v
+      pc = pcA+1
+    of InstrKind.join:
+      let target = pc + code[pc].dest
+      if comesFrom == target: return pc
+      inc pc
+    of use:
+      let v = code[pc].sym
+      if v.kind != skParam and v.id notin init:
+        # attempt to read an uninit'ed variable
+        uninit.incl v.id
+      inc pc
+    of def:
+      let v = code[pc].sym
+      init.incl v.id
+      inc pc
+  return pc
 
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
@@ -352,6 +390,11 @@ proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
 proc genWasMoved(n: PNode; c: var Con): PNode =
   # The mWasMoved builtin does not take the address.
   result = genMagicCall(n, c, "wasMoved", mWasMoved)
+
+proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
+  result = newNodeI(nkCall, info)
+  result.add(newSymNode(createMagic(c.graph, "default", mDefault)))
+  result.typ = t
 
 proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   # generate: (let tmp = v; reset(v); tmp)
@@ -572,6 +615,38 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     result = genCopy(c, dest.typ, dest, ri)
     result.add p(ri, c)
 
+proc computeUninit(c: var Con) =
+  if not c.uninitComputed:
+    c.uninitComputed = true
+    c.uninit = initIntSet()
+    var init = initIntSet()
+    discard initialized(c.g, pc = 0, init, c.uninit, comesFrom = -1)
+
+proc injectDefaultCalls(n: PNode, c: var Con) =
+  case n.kind
+  of nkVarSection, nkLetSection:
+    for i in 0..<n.len:
+      let it = n[i]
+      let L = it.len-1
+      let ri = it[L]
+      if it.kind == nkIdentDefs and ri.kind == nkEmpty:
+        computeUninit(c)
+        for j in 0..L-2:
+          let v = it[j]
+          doAssert v.kind == nkSym
+          if c.uninit.contains(v.sym.id):
+            it[L] = genDefaultCall(v.sym.typ, c, v.info)
+            break
+  of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
+      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    discard
+  else:
+    for i in 0..<safeLen(n):
+      injectDefaultCalls(n[i], c)
+
+proc isCursor(n: PNode): bool {.inline.} =
+  result = n.kind == nkSym and sfCursor in n.sym.flags
+
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
@@ -585,7 +660,7 @@ proc p(n: PNode; c: var Con): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
         for j in 0..L-2:
           let v = it[j]
           doAssert v.kind == nkSym
@@ -669,6 +744,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       if param.typ.kind == tySink and hasDestructor(param.typ.sons[0]):
         c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
+  if optNimV2 in c.graph.config.globalOptions:
+    injectDefaultCalls(n, c)
   let body = p(n, c)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:

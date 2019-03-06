@@ -287,6 +287,11 @@ const
   sfImmediate* = sfDispatcher
     # macro or template is immediately expanded
     # without considering any possible overloads
+
+  sfCursor* = sfDispatcher
+    # local variable has been computed to be a "cursor".
+    # see cursors.nim for details about what that means.
+
   sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
     # in a generic context
 
