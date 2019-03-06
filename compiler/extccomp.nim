@@ -843,7 +843,7 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
   let basename = splitFile(objFile).name
   let targetName = if isMain: basename & ".exe"
                    else: platform.OS[conf.target.targetOS].dllFrmt % basename
-  result = conf.nimcacheDir / RelativeFile(targetName)
+  result = conf.getNimcacheDir / RelativeFile(targetName)
 
 proc callCCompiler*(conf: ConfigRef) =
   var
