@@ -2214,6 +2214,12 @@ when defined(nimNewRoof):
   dotdotImpl(uint64)
   dotdotImpl(uint32)
 
+  iterator `..<`*[T](a, b: T): T {.inline.} =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+
 else:
   iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
     ## Counts from ordinal value `a` up to `b` (inclusive) with the given
@@ -2243,6 +2249,12 @@ else:
       while res <= b:
         yield res
         inc(res)
+
+  iterator `..<`*[S, T](a: S, b: T): T {.inline.} =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
 
 
 iterator `||`*[S, T](a: S, b: T, annotation: static string = "parallel for"): T {.
@@ -2331,159 +2343,6 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((0..5).len == 6)
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
-
-iterator items*[T](a: openArray[T]): T {.inline.} =
-  ## iterates over each item of `a`.
-  var i = 0
-  while i < len(a):
-    yield a[i]
-    inc(i)
-
-iterator mitems*[T](a: var openArray[T]): var T {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
-  var i = 0
-  while i < len(a):
-    yield a[i]
-    inc(i)
-
-iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
-  ## iterates over each item of `a`.
-  var i = low(IX)
-  if i <= high(IX):
-    while true:
-      yield a[i]
-      if i >= high(IX): break
-      inc(i)
-
-iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
-  var i = low(IX)
-  if i <= high(IX):
-    while true:
-      yield a[i]
-      if i >= high(IX): break
-      inc(i)
-
-iterator items*[T](a: set[T]): T {.inline.} =
-  ## iterates over each element of `a`. `items` iterates only over the
-  ## elements that are really in the set (and not over the ones the set is
-  ## able to hold).
-  var i = low(T).int
-  while i <= high(T).int:
-    if T(i) in a: yield T(i)
-    inc(i)
-
-iterator items*(a: cstring): char {.inline.} =
-  ## iterates over each item of `a`.
-  when defined(js):
-    var i = 0
-    var L = len(a)
-    while i < L:
-      yield a[i]
-      inc(i)
-  else:
-    var i = 0
-    while a[i] != '\0':
-      yield a[i]
-      inc(i)
-
-iterator mitems*(a: var cstring): var char {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
-  var i = 0
-  while a[i] != '\0':
-    yield a[i]
-    inc(i)
-
-iterator items*(E: typedesc[enum]): E =
-  ## iterates over the values of the enum ``E``.
-  for v in low(E)..high(E):
-    yield v
-
-iterator items*[T](s: HSlice[T, T]): T =
-  ## iterates over the slice `s`, yielding each value between `s.a` and `s.b`
-  ## (inclusively).
-  for x in s.a..s.b:
-    yield x
-
-iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  var i = 0
-  while i < len(a):
-    yield (i, a[i])
-    inc(i)
-
-iterator mpairs*[T](a: var openArray[T]): tuple[key:int, val:var T]{.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
-  var i = 0
-  while i < len(a):
-    yield (i, a[i])
-    inc(i)
-
-iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  var i = low(IX)
-  if i <= high(IX):
-    while true:
-      yield (i, a[i])
-      if i >= high(IX): break
-      inc(i)
-
-iterator mpairs*[IX, T](a:var array[IX, T]):tuple[key:IX,val:var T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
-  var i = low(IX)
-  if i <= high(IX):
-    while true:
-      yield (i, a[i])
-      if i >= high(IX): break
-      inc(i)
-
-iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  var i = 0
-  while i < len(a):
-    yield (i, a[i])
-    inc(i)
-
-iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
-  var i = 0
-  while i < len(a):
-    yield (i, a[i])
-    inc(i)
-
-iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  var i = 0
-  while i < len(a):
-    yield (i, a[i])
-    inc(i)
-
-iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
-  var i = 0
-  while i < len(a):
-    yield (i, a[i])
-    inc(i)
-
-iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  var i = 0
-  while a[i] != '\0':
-    yield (i, a[i])
-    inc(i)
-
-iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
-  var i = 0
-  while a[i] != '\0':
-    yield (i, a[i])
-    inc(i)
-
 
 when defined(nimNoNilSeqs2):
   when not compileOption("nilseqs"):
@@ -2599,6 +2458,53 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
 
   return true
 
+proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
+  ## converts the AST of `x` into a string representation. This is very useful
+  ## for debugging.
+
+proc instantiationInfo*(index = -1, fullPaths = false): tuple[
+  filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
+  ## provides access to the compiler's instantiation stack line information
+  ## of a template.
+  ##
+  ## While similar to the `caller info`:idx: of other languages, it is determined
+  ## at compile time.
+  ##
+  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
+  ## to retrieve information about the current filename and line number.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   import strutils
+  ##
+  ##   template testException(exception, code: untyped): typed =
+  ##     try:
+  ##       let pos = instantiationInfo()
+  ##       discard(code)
+  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
+  ##         $pos.line, astToStr(code)]
+  ##       assert false, "A test expecting failure succeeded?"
+  ##     except exception:
+  ##       discard
+  ##
+  ##   proc tester(pos: int): int =
+  ##     let
+  ##       a = @[1, 2, 3]
+  ##     result = a[pos]
+  ##
+  ##   when isMainModule:
+  ##     testException(IndexError, tester(30))
+  ##     testException(IndexError, tester(1))
+  ##     # --> Test failure at example.nim:20 with 'tester(1)'
+
+
+import system/assertions
+export assertions
+
+import system/iterators
+export iterators
+
+
 proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
   ## appropriate `items` and `==` operations to work.
@@ -2618,59 +2524,6 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   var L = s.len-1
   result = s[L]
   setLen(s, L)
-
-iterator fields*[T: tuple|object](x: T): RootObj {.
-  magic: "Fields", noSideEffect.}
-  ## iterates over every field of `x`. Warning: This really transforms
-  ## the 'for' and unrolls the loop. The current implementation also has a bug
-  ## that affects symbol binding in the loop body.
-iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: untyped] {.
-  magic: "Fields", noSideEffect.}
-  ## iterates over every field of `x` and `y`.
-  ## Warning: This is really transforms the 'for' and unrolls the loop.
-  ## The current implementation also has a bug that affects symbol binding
-  ## in the loop body.
-iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
-  magic: "FieldPairs", noSideEffect.}
-  ## Iterates over every field of `x` returning their name and value.
-  ##
-  ## When you iterate over objects with different field types you have to use
-  ## the compile time ``when`` instead of a runtime ``if`` to select the code
-  ## you want to run for each type. To perform the comparison use the `is
-  ## operator <manual.html#generics-is-operator>`_. Example:
-  ##
-  ## .. code-block:: Nim
-  ##
-  ##   type
-  ##     Custom = object
-  ##       foo: string
-  ##       bar: bool
-  ##
-  ##   proc `$`(x: Custom): string =
-  ##     result = "Custom:"
-  ##     for name, value in x.fieldPairs:
-  ##       when value is bool:
-  ##         result.add("\n\t" & name & " is " & $value)
-  ##       else:
-  ##         if value.isNil:
-  ##           result.add("\n\t" & name & " (nil)")
-  ##         else:
-  ##           result.add("\n\t" & name & " '" & value & "'")
-  ##
-  ## Another way to do the same without ``when`` is to leave the task of
-  ## picking the appropriate code to a secondary proc which you overload for
-  ## each field type and pass the `value` to.
-  ##
-  ## Warning: This really transforms the 'for' and unrolls the loop. The
-  ## current implementation also has a bug that affects symbol binding in the
-  ## loop body.
-iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
-  a, b: untyped] {.
-  magic: "FieldPairs", noSideEffect.}
-  ## iterates over every field of `x` and `y`.
-  ## Warning: This really transforms the 'for' and unrolls the loop.
-  ## The current implementation also has a bug that affects symbol binding
-  ## in the loop body.
 
 proc `==`*[T: tuple|object](x, y: T): bool =
   ## generic ``==`` operator for tuples that is lifted from the components
@@ -2762,7 +2615,6 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
         result.addQuoted(value)
     else:
       result.addQuoted(value)
-
   result.add(suffix)
 
 proc `$`*[T](x: set[T]): string =
@@ -2884,7 +2736,8 @@ when not defined(nimscript) and hasAlloc:
       {.warning: "GC_getStatistics is a no-op in JavaScript".}
       ""
 
-template accumulateResult*(iter: untyped) {.deprecated: "use `sequtils.toSeq` instead (more hygienic, sometimes more efficient)".} =
+template accumulateResult*(iter: untyped) {.deprecated:
+    "use `sequtils.toSeq` instead (more hygienic, sometimes more efficient)".} =
   ## helps to convert an iterator to a proc.
   ## See also `sequtils.toSeq` which is more hygienic and efficient.
   ##
@@ -3032,55 +2885,15 @@ template newException*(exceptn: typedesc, message: string;
   e
 
 when hostOS == "standalone":
-  include "$projectpath/panicoverride"
+  proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
+    if s == nil or s.len == 0: result = cstring""
+    else: result = cstring(addr s.data)
 
 when not defined(js) and not defined(nimscript):
   include "system/ansi_c"
 
 when not declared(sysFatal):
-  {.push profiler: off.}
-  when hostOS == "standalone":
-    proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
-      panic(message)
-
-    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline.} =
-      rawoutput(message)
-      panic(arg)
-  elif defined(nimQuirky) and not defined(nimscript):
-    proc name(t: typedesc): string {.magic: "TypeTrait".}
-
-    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
-      var buf = newStringOfCap(200)
-      add(buf, "Error: unhandled exception: ")
-      add(buf, message)
-      add(buf, arg)
-      add(buf, " [")
-      add(buf, name exceptn)
-      add(buf, "]")
-      cstderr.rawWrite buf
-      quit 1
-
-    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
-      sysFatal(exceptn, message, "")
-  else:
-    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
-      when declared(owned):
-        var e: owned(ref exceptn)
-      else:
-        var e: ref exceptn
-      new(e)
-      e.msg = message
-      raise e
-
-    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
-      when declared(owned):
-        var e: owned(ref exceptn)
-      else:
-        var e: ref exceptn
-      new(e)
-      e.msg = message & arg
-      raise e
-  {.pop.}
+  include "system/fatal"
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## get type information for `x`. Ordinary code should not use this, but
@@ -3109,18 +2922,6 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
-when defined(nimNewRoof):
-  iterator `..<`*[T](a, b: T): T =
-    var i = T(a)
-    while i < b:
-      yield i
-      inc i
-else:
-  iterator `..<`*[S, T](a: S, b: T): T =
-    var i = T(a)
-    while i < b:
-      yield i
-      inc i
 
 when not defined(JS):
   proc likelyProc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
@@ -3745,85 +3546,8 @@ template `&=`*(x, y: typed) =
 when declared(File):
   template `&=`*(f: File, x: typed) = write(f, x)
 
-proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
-  ## converts the AST of `x` into a string representation. This is very useful
-  ## for debugging.
-
-proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
-  ## provides access to the compiler's instantiation stack line information
-  ## of a template.
-  ##
-  ## While similar to the `caller info`:idx: of other languages, it is determined
-  ## at compile time.
-  ##
-  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
-  ## to retrieve information about the current filename and line number.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   import strutils
-  ##
-  ##   template testException(exception, code: untyped): typed =
-  ##     try:
-  ##       let pos = instantiationInfo()
-  ##       discard(code)
-  ##       echo "Test failure at $1:$2 with '$3'" % [pos.filename,
-  ##         $pos.line, astToStr(code)]
-  ##       assert false, "A test expecting failure succeeded?"
-  ##     except exception:
-  ##       discard
-  ##
-  ##   proc tester(pos: int): int =
-  ##     let
-  ##       a = @[1, 2, 3]
-  ##     result = a[pos]
-  ##
-  ##   when isMainModule:
-  ##     testException(IndexError, tester(30))
-  ##     testException(IndexError, tester(1))
-  ##     # --> Test failure at example.nim:20 with 'tester(1)'
-
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## returns the full file-system path of the current source
-
-proc raiseAssert*(msg: string) {.noinline, noReturn.} =
-  sysFatal(AssertionError, msg)
-
-proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
-  # trick the compiler to not list ``AssertionError`` when called
-  # by ``assert``.
-  type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
-                                    tags: [].}
-  Hide(raiseAssert)(msg)
-
-template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
-  const loc = $instantiationInfo(-1, true)
-  bind instantiationInfo
-  mixin failedAssertImpl
-  when enabled:
-    # for stacktrace; fixes #8928; Note: `fullPaths = true` is correct
-    # here, regardless of --excessiveStackTrace
-    {.line: instantiationInfo(fullPaths = true).}:
-      if not cond:
-        failedAssertImpl(loc & " `" & expr & "` " & msg)
-
-template assert*(cond: untyped, msg = "") =
-  ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
-  ## that ``AssertionError`` is hidden from the effect system, so it doesn't
-  ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
-  ## to be caught by unit testing frameworks.
-  ##
-  ## The compiler may not generate any code at all for ``assert`` if it is
-  ## advised to do so through the ``-d:release`` or ``--assertions:off``
-  ## `command line switches <nimc.html#command-line-switches>`_.
-  const expr = astToStr(cond)
-  assertImpl(cond, msg, expr, compileOption("assertions"))
-
-template doAssert*(cond: untyped, msg = "") =
-  ## same as ``assert`` but is always turned on regardless of ``--assertions``
-  const expr = astToStr(cond)
-  assertImpl(cond, msg, expr, true)
 
 when compileOption("rangechecks"):
   template rangeCheck*(cond) =
@@ -3834,61 +3558,8 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-iterator items*[T](a: seq[T]): T {.inline.} =
-  ## iterates over each item of `a`.
-  var i = 0
-  let L = len(a)
-  while i < L:
-    yield a[i]
-    inc(i)
-    assert(len(a) == L, "seq modified while iterating over it")
-
-iterator mitems*[T](a: var seq[T]): var T {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
-  var i = 0
-  let L = len(a)
-  while i < L:
-    yield a[i]
-    inc(i)
-    assert(len(a) == L, "seq modified while iterating over it")
-
-iterator items*(a: string): char {.inline.} =
-  ## iterates over each item of `a`.
-  var i = 0
-  let L = len(a)
-  while i < L:
-    yield a[i]
-    inc(i)
-    assert(len(a) == L, "string modified while iterating over it")
-
-iterator mitems*(a: var string): var char {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
-  var i = 0
-  let L = len(a)
-  while i < L:
-    yield a[i]
-    inc(i)
-    assert(len(a) == L, "string modified while iterating over it")
-
 when not defined(nimhygiene):
   {.pragma: inject.}
-
-template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
-  ## Sets an assertion failure handler that will intercept any assert
-  ## statements following `onFailedAssert` in the current module scope.
-  ##
-  ## .. code-block:: nim
-  ##  # module-wide policy to change the failed assert
-  ##  # exception type in order to include a lineinfo
-  ##  onFailedAssert(msg):
-  ##    var e = new(TMyError)
-  ##    e.msg = msg
-  ##    e.lineinfo = instantiationInfo(-2)
-  ##    raise e
-  ##
-  template failedAssertImpl(msgIMPL: string): untyped {.dirty.} =
-    let msg = msgIMPL
-    code
 
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
@@ -4202,35 +3873,6 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
-
-template doAssertRaises*(exception: typedesc, code: untyped): typed =
-  ## Raises ``AssertionError`` if specified ``code`` does not raise the
-  ## specified exception. Example:
-  ##
-  ## .. code-block:: nim
-  ##  doAssertRaises(ValueError):
-  ##    raise newException(ValueError, "Hello World")
-  var wrong = false
-  when Exception is exception:
-    try:
-      if true:
-        code
-      wrong = true
-    except Exception:
-      discard
-  else:
-    try:
-      if true:
-        code
-      wrong = true
-    except exception:
-      discard
-    except Exception:
-      raiseAssert(astToStr(exception) &
-                  " wasn't raised, another error was raised instead by:\n"&
-                  astToStr(code))
-  if wrong:
-    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
 when not defined(js):
   proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
