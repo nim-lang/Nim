@@ -417,8 +417,11 @@ Miscellaneous
 * `logging <logging.html>`_
   This module implements a simple logger.
 
-* `options <options.html>`_
+* `optionals <optionals.html>`_
   Types which encapsulate an optional value.
+
+* `optutils <optutils.html>`_
+  More advanced functionality for the optional values.
 
 * `sugar <sugar.html>`_
   This module implements nice syntactic sugar based on Nim's macro system.

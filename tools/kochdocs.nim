@@ -125,6 +125,7 @@ lib/system.nim
 lib/system/io.nim
 lib/system/nimscript.nim
 lib/deprecated/pure/ospaths.nim
+lib/deprecated/pure/options.nim
 lib/pure/parsejson.nim
 lib/pure/cstrutils.nim
 lib/core/macros.nim
@@ -215,7 +216,8 @@ lib/packages/docutils/rst.nim
 lib/packages/docutils/rstast.nim
 lib/packages/docutils/rstgen.nim
 lib/pure/logging.nim
-lib/pure/options.nim
+lib/pure/optionals.nim
+lib/pure/optutils.nim
 lib/pure/asyncdispatch.nim
 lib/pure/asyncnet.nim
 lib/pure/asyncstreams.nim

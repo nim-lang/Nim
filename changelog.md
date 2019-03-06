@@ -69,6 +69,9 @@
 - two poorly documented and not used modules (`subexes`, `scgi`) were moved to
   graveyard (they are available as Nimble packages)
 
+- `options` module has been deprecated and split into `optionals` (basic
+  operations on `Option[T]`) and `optutils` (more advanced functionality)
+
 
 
 #### Breaking changes in the compiler
