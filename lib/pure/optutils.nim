@@ -23,6 +23,7 @@ proc map*[T](self: Option[T], callback: proc (input: T)) =
   ##   which returns a value
   ## * `filter proc <#filter,Option[T],proc(T)>`_
   runnableExamples:
+    import options
     var d = 0
     proc saveDouble(x: int) =
       d = 2*x
@@ -51,6 +52,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
   ##   callback which returns an `Option`
   ## * `filter proc <#filter,Option[T],proc(T)>`_
   runnableExamples:
+    import options
     var
       a = some(42)
       b = none(int)
@@ -69,6 +71,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
 proc flatten*[A](self: Option[Option[A]]): Option[A] =
   ## Remove one level of structure in a nested `Option`.
   runnableExamples:
+    import options
     let a = some(some(42))
     assert $flatten(a) == "Some(42)"
 
@@ -92,6 +95,7 @@ proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Opti
   ## * `flatten proc <#flatten,Option[Option[A]]>`_
   ## * `filter proc <#filter,Option[T],proc(T)>`_
   runnableExamples:
+    import options
     proc doublePositives(x: int): Option[int] =
       if x > 0:
         return some(2*x)
@@ -117,6 +121,7 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
   ## * `map proc <#map,Option[T],proc(T)_2>`_
   ## * `flatMap proc <#flatMap,Option[A],proc(A)>`_
   runnableExamples:
+    import options
     proc isEven(x: int): bool =
       x mod 2 == 0
     let
