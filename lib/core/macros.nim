@@ -8,7 +8,6 @@
 #
 
 include "system/inclrtl"
-include "system/helpers"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -121,7 +120,7 @@ type
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
 
 type
-  NimIdent* = object of RootObj
+  NimIdent* {.deprecated.} = object of RootObj
     ## represents a Nim identifier in the AST. **Note**: This is only
     ## rarely useful, for identifier construction from a string
     ## use ``ident"abc"``.
@@ -418,14 +417,14 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: NimIdent): NimNode {.compileTime.} =
-  ## creates an identifier node from `i`
-  result = newNimNode(nnkIdent)
-  result.ident = i
-
 proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
+
+proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
+  ## creates an identifier node from `i`
+  newIdentNode($i)
+
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -478,7 +477,7 @@ type
 
 proc `$`*(arg: Lineinfo): string =
   # BUG: without `result = `, gives compile error
-  result = lineInfoToString(arg.filename, arg.line, arg.column)
+  result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
 
 #proc lineinfo*(n: NimNode): LineInfo {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file
@@ -772,10 +771,7 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
 
 proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated.} =
   ## **Deprecated since version 0.18.1**; Use one of ``nestList(NimNode, ...)`` instead.
-  var L = x.len
-  result = newCall(theProc, x[L-2], x[L-1])
-  for i in countdown(L-3, 0):
-    result = newCall(theProc, x[i], result)
+  nestList(newIdentNode(theProc), x)
 
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
@@ -1276,8 +1272,10 @@ proc basename*(a: NimNode): NimNode =
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
-  of nnkIdent: macros.`ident=`(a, toNimIdent val)
-  of nnkPostfix, nnkPrefix: a[1] = ident(val)
+  of nnkIdent:
+    a.strVal = val
+  of nnkPostfix, nnkPrefix:
+    a[1] = ident(val)
   else:
     quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
 
