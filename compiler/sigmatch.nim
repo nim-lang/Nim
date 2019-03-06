@@ -99,7 +99,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
-proc markUsed*(conf: ConfigRef; info: TLineInfo, s: PSym; usageSym: var PSym)
+proc markUsed*(conf: ConfigRef; info: TLineInfo, s: PSym; usageSym: var PSym; muteDeprecations: bool = false)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
