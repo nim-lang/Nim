@@ -543,7 +543,8 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
     elif (n.kind == nkSym and n.sym.kind in routineKinds) or
          (n.kind in procDefs+{nkObjConstr, nkBracket, nkClosure, nkStrLit..nkTripleStrLit}) or
-         (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq):
+         (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq) or
+         n.typ.kind == tyTypeDesc:
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
