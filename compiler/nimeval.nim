@@ -11,7 +11,7 @@
 import
   ast, astalgo, modules, passes, condsyms,
   options, sem, semdata, llstream, vm, vmdef,
-  modulegraphs, idents, os, pathutils
+  modulegraphs, idents, os, pathutils, passaux
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -126,11 +126,21 @@ proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
 
-proc runRepl*(r: TLLRepl;
-              searchPaths: openArray[string] = [findNimStdLibCompileTime()];
-              flags: TSandboxFlags = {}) =
-  var intr = createInterpreter("stdin", searchPaths, flags)
-  let conf = intr.graph.config
+proc runRepl*(r: TLLRepl) =
+  var conf = newConfigRef()
+  var cache = newIdentCache()
+  var graph = newModuleGraph(cache, conf)
+  var stdLibDir = AbsoluteDir findNimStdLibCompileTime()
+  conf.searchPaths.add(stdLibDir)
+  conf.libpath = stdLibDir
   conf.cmd = cmdInteractive
-  conf.errorMax = high(int)  # do not stop after first error
-  processModule(intr.graph, intr.mainModule, llStreamOpenStdIn(r))
+  conf.errorMax = high(int)
+  initDefines(conf.symbols)
+  defineSymbol(conf.symbols, "nimscript")
+  registerPass(graph, verbosePass)
+  registerPass(graph, semPass)
+  registerPass(graph, evalPass)
+  var m = graph.makeStdinModule()
+  incl(m.flags, sfMainModule)
+  graph.compileSystemModule()
+  processModule(graph, m, llStreamOpenStdIn(r))
