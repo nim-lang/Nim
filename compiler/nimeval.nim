@@ -125,3 +125,12 @@ proc createInterpreter*(scriptName: string;
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
+
+proc runRepl*(r: TLLRepl;
+              searchPaths: openArray[string] = [findNimStdLibCompileTime()];
+              flags: TSandboxFlags = {}) =
+  var intr = createInterpreter("stdin", searchPaths, flags)
+  let conf = intr.graph.config
+  conf.cmd = cmdInteractive
+  conf.errorMax = high(int)  # do not stop after first error
+  processModule(intr.graph, intr.mainModule, llStreamOpenStdIn(r))
