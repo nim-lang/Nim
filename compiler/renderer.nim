@@ -500,7 +500,11 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkUsingStmt:
     if sonsLen(n) > 1: result = MaxLineLen + 1
     else: result = lsons(g, n) + len("using_")
-  of nkReturnStmt: result = lsub(g, n.sons[0]) + len("return_")
+  of nkReturnStmt:
+    if n.len > 0 and n[0].kind == nkAsgn:
+      result = len("return_") + lsub(g, n[0][1])
+    else: 
+      result = len("return_") + lsub(g, n[0])
   of nkRaiseStmt: result = lsub(g, n.sons[0]) + len("raise_")
   of nkYieldStmt: result = lsub(g, n.sons[0]) + len("yield_")
   of nkDiscardStmt: result = lsub(g, n.sons[0]) + len("discard_")
@@ -1326,7 +1330,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
   of nkReturnStmt:
     putWithSpace(g, tkReturn, "return")
-    gsub(g, n, 0)
+    if n.len > 0 and n[0].kind == nkAsgn: 
+      gsub(g, n[0], 1)
+    else: 
+      gsub(g, n, 0)
   of nkRaiseStmt:
     putWithSpace(g, tkRaise, "raise")
     gsub(g, n, 0)
