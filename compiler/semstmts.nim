@@ -339,7 +339,7 @@ proc checkNilable(c: PContext; v: PSym) =
     elif tfNotNil in v.typ.flags and tfNotNil notin v.astdef.typ.flags:
       message(c.config, v.info, warnProveInit, v.name.s)
 
-include semasgn
+include liftdestructors
 
 proc addToVarSection(c: PContext; result: PNode; orig, identDefs: PNode) =
   let L = identDefs.len
