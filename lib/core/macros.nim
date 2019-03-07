@@ -137,6 +137,8 @@ const
                    nnkCallStrLit}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
+{.push warnings: off.}
+
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
   ## **Deprecated since version 0.18.0**: Use ``ident`` or ``newIdentNode`` instead.
@@ -156,6 +158,7 @@ proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated
   ## compares two Nim symbols
   ## **Deprecated since version 0.18.1**; Use ``==(NimNode, NimNode)`` instead.
 
+{.pop.}
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## compares two Nim nodes' types. Return true if the types are the same,
@@ -226,6 +229,8 @@ proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 
+{.push warnings: off.}
+
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated.} =
   ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
 
@@ -266,6 +271,8 @@ else: # bootstrapping substitute
       $n.symbol
     else:
       n.strValOld
+
+{.pop.}
 
 when defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
@@ -359,11 +366,15 @@ proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
 
+{.push warnings: off.}
+
 proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated.}
   ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``genSym`` instead.
 
 proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated.}
   ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``ident(string)`` instead.
+
+{.pop.}
 
 #proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
@@ -421,10 +432,13 @@ proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
 
+{.push warnings: off.}
+
 proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
   ## creates an identifier node from `i`
   newIdentNode($i)
 
+{.pop.}
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -602,6 +616,8 @@ proc newCall*(theProc: NimNode,
   result.add(theProc)
   result.add(args)
 
+{.push warnings: off.}
+
 proc newCall*(theProc: NimIdent,
               args: varargs[NimNode]): NimNode {.compileTime, deprecated.} =
   ## produces a new call node. `theProc` is the proc that is called with
@@ -611,6 +627,8 @@ proc newCall*(theProc: NimIdent,
   result = newNimNode(nnkCall)
   result.add(newIdentNode(theProc))
   result.add(args)
+
+{.pop.}
 
 proc newCall*(theProc: string,
               args: varargs[NimNode]): NimNode {.compileTime.} =
@@ -769,9 +787,13 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
 
+{.push warnings: off.}
+
 proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated.} =
   ## **Deprecated since version 0.18.1**; Use one of ``nestList(NimNode, ...)`` instead.
   nestList(newIdentNode(theProc), x)
+
+{.pop.}
 
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
