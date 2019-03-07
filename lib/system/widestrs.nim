@@ -17,7 +17,7 @@ type
   Utf16Char* = distinct int16
   WideCString* = ref UncheckedArray[Utf16Char]
 
-proc ord*(arg: Utf16Char): int = int(cast[uint16](arg))
+proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
