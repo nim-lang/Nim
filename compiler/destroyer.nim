@@ -116,32 +116,7 @@ Rule      Pattern                 Transformed into
 5.4       f_noSink(g())           var tmp = bitwiseCopy(g()); f(tmp); `=destroy`(tmp)
 
 Rule 3.2 describes a "cursor" variable, a variable that is only used as a
-view into some data structure. Rule 3.2 applies to value based
-datatypes like strings and sequences and also ``ref`` cursors. We
-seek to allow most forms of "scan" loops like::
-
-  var x = it
-  # scan loop:
-  while x != nil:
-    x.foo = value
-    x = x.next
-
-The difference is that ``s[i] = y`` needs to be turned into a ``mut(s)``
-for seqs and ``r.field = y`` is NOT turned into ``mut(r)`` as it doesn't
-mutate the ``r`` itself. So the above loop is turned into something like::
-
-    use it
-    def x
-  L1:
-    fork L2
-    use value
-    use x
-    def x
-  L2:
-
-Which means that ``x`` is detected as a "cursor". Rule 3.2 is not yet
-implemented and requires either DFA changes or a different analysis.
-Write-tracking also helps to compute this.
+view into some data structure. See ``compiler/cursors.nim`` for details.
 ]##
 
 import
@@ -357,6 +332,8 @@ proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
   genOp(if t.sink != nil: t.sink else: t.assignment, "=sink", ri)
 
 proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
+  if tfHasOwned in t.flags:
+    checkForErrorPragma(c, t, ri, "=")
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(t.assignment, "=", ri)
 

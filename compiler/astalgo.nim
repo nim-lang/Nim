@@ -499,6 +499,9 @@ proc value(this: var DebugPrinter; value: PType): void =
   this.key "kind"
   this.value value.kind
 
+  this.key "id"
+  this.value value.id
+
   if value.sym != nil:
     this.key "sym"
     this.value value.sym

@@ -1793,7 +1793,7 @@ when false:
     for i in 0 ..< n.safeLen:
       if n[i].containsNil: return true
 
-template hasDestructor*(t: PType): bool = tfHasAsgn in t.flags
+template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 
