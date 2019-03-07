@@ -1741,14 +1741,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   #c.currentScope = s.scope
   pushOwner(c, s)
   openScope(c)
-
-  # this is a hack. It also does not detect symbols that are tagged as
-  # deprecated is the forward definition.
-  if n[pragmasPos].kind == nkPragma:
-    for child in n[pragmasPos]:
-      if child.kind == nkIdent and eqIdent(child.ident, "deprecated"):
-        s.flags.incl sfDeprecated
-
   var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty:
     gp = setGenericParamsMisc(c, n)

@@ -356,10 +356,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     if result.isNil:
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
-      # if the owner is deprecated already, don't trigger deprecation warnings in the implementation.
-      let muteDeprecationWarnings = sfDeprecated in c.graph.owners[^1].flags
-      markUsed(c.config, n.info, result, c.graph.usageSym, muteDeprecationWarnings)
-
+      markUsed(c.config, n.info, result, c.graph.usageSym)
       onUse(n.info, result)
 
       if result.kind == skParam and result.typ.kind == tyTypeDesc:

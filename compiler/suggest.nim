@@ -528,17 +528,15 @@ proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
         return
   localError(conf, info, "usage of '$1' is a user-defined error" % s.name.s)
 
-proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; muteDeprecations: bool = false) =
+proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
     if sfDeprecated in s.owner.flags:
       warnAboutDeprecated(conf, info, s)
   if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags and not muteDeprecations:
-      warnAboutDeprecated(conf, info, s)
-    if sfError in s.flags:
-      userError(conf, info, s)
+    if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
+    if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(conf, info, s, usageSym, false)
 

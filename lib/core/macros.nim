@@ -428,17 +428,19 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
-  ## creates an identifier node from `i`. It is simply an alias for
-  ## ``ident(string)``. Use that, it's shorter.
-
 {.push warnings: off.}
 
 proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
   ## creates an identifier node from `i`
-  newIdentNode($i)
+  result = newNimNode(nnkIdent)
+  result.ident = i
 
 {.pop.}
+
+proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
+  ## creates an identifier node from `i`. It is simply an alias for
+  ## ``ident(string)``. Use that, it's shorter.
+
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
