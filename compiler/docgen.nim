@@ -20,7 +20,7 @@ import
   pathutils
 
 const
-  exportSection = skTemp
+  exportSection = skField
 
 type
   TSections = array[TSymKind, Rope]
@@ -893,9 +893,9 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
   else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
-  const sectionNames: array[skTemp..skTemplate, string] = [
-    "Exports", "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
-    "Methods", "Iterators", "Converters", "Macros", "Templates"
+  const sectionNames: array[skModule..skField, string] = [
+    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
+    "Methods", "Iterators", "Converters", "Macros", "Templates", "Exports"
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].rope
