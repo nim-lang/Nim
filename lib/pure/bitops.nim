@@ -46,9 +46,6 @@ template forwardImpl(impl, arg) {.dirty.} =
       impl(x.uint64)
 
 when defined(nimHasalignOf):
-
-  import macros
-
   type BitsRange*[T] = range[0..sizeof(T)*8-1]
     ## Returns a range with all bit positions for type ``T``
 
@@ -76,26 +73,32 @@ when defined(nimHasalignOf):
     ## Returns ``v``, with the bit at position ``bit`` flipped
     v.flipMask(1.T shl bit)
 
-  macro setBits*(v: typed, bits: varargs[typed]): untyped =
+  template setBits*(v: typed): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 1
-    bits.expectKind(nnkBracket)
-    result = newStmtList()
-    for bit in bits:
-      result.add newCall("setBit", v, bit)
+    discard
 
-  macro clearBits*(v: typed, bits: varargs[typed]): untyped =
-    ## Returns ``v``, with the bits at positions ``bits`` set to 0
-    bits.expectKind(nnkBracket)
-    result = newStmtList()
-    for bit in bits:
-      result.add newCall("clearBit", v, bit)
+  template setBits*(v: typed, bit: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 1
+    setBit(v, bit)
+    setBits(v, bits)
 
-  macro flipBits*(v: typed, bits: varargs[typed]): untyped =
+  template clearBits(v: typed): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 0
-    bits.expectKind(nnkBracket)
-    result = newStmtList()
-    for bit in bits:
-      result.add newCall("flipBit", v, bit)
+    discard
+
+  template clearBits(v: typed; bit: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    clearBit(v, bit)
+    clearBits(v, bits)
+
+  template flipBits(v: typed): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    discard
+
+  template flipBits(v: typed; bit: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    flipBit(v, bit)
+    flipBits(v, bits)
 
   proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
     ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
@@ -121,7 +124,7 @@ proc firstSetBit_nim(x: uint64): int {.inline, nosideeffect.} =
   if k == 0:
     k = uint32(v shr 32'u32) and 0xFFFFFFFF'u32
     result = 32
-  result += firstSetBit_nim(k)
+  result = result + firstSetBit_nim(k)
 
 proc fastlog2_nim(x: uint32): int {.inline, nosideeffect.} =
   ## Quickly find the log base 2 of a 32-bit or less integer.
