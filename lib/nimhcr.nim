@@ -7,186 +7,186 @@
 #    distribution, for details about the copyright.
 #
 
-## This is the Nim hot code reloading run-time for the native targets.
-##
-## This minimal dynamic library is not subject to reloading when the
-## `hotCodeReloading` build mode is enabled. It's responsible for providing
-## a permanent memory location for all globals and procs within a program
-## and orchestrating the reloading. For globals, this is easily achieved
-## by storing them on the heap. For procs, we produce on the fly simple
-## trampolines that can be dynamically overwritten to jump to a different
-## target. In the host program, all globals and procs are first registered
-## here with ``hcrRegisterGlobal`` and ``hcrRegisterProc`` and then the
-## returned permanent locations are used in every reference to these symbols
-## onwards.
-##
-## Detailed description:
-##
-## When code is compiled with the hotCodeReloading option for native targets
-## a couple of things happen for all modules in a project:
-## - the useNimRtl option is forced (including when building the HCR runtime too)
-## - all modules of a target get built into separate shared libraries
-##   - the smallest granularity of reloads is modules
-##   - for each .c (or .cpp) in the corresponding nimcache folder of the project
-##     a shared object is built with the name of the source file + DLL extension
-##   - only the main module produces whatever the original project type intends
-##     (again in nimcache) and is then copied to its original destination
-##   - linking is done in parallel - just like compilation
-## - function calls to functions from the same project go through function pointers:
-##   - with a few exceptions - see the nonReloadable pragma
-##   - the forward declarations of the original functions become function
-##     pointers as static globals with the same names
-##   - the original function definitions get suffixed with <name>_actual
-##   - the function pointers get initialized with the address of the corresponding
-##     function in the DatInit of their module through a call to either hcrRegisterProc
-##     or hcrGetProc. When being registered, the <name>_actual address is passed to
-##     hcrRegisterProc and a permanent location is returned and assigned to the pointer.
-##     This way the implementation (<name>_actual) can change but the address for it
-##     will be the same - this works by just updating a jump instruction (trampoline).
-##     For functions from other modules hcrGetProc is used (after they are registered).
-## - globals are initialized only once and their state is preserved
-##   - including locals with the {.global.} pragma
-##   - their definitions are changed into pointer definitions which are initialized
-##     in the DatInit() of their module with calls to hcrRegisterGlobal (supplying the
-##     size of the type that this HCR runtime should allocate) and a bool is returned
-##     which when true triggers the initialization code for the global (only once).
-##     Globals from other modules: a global pointer coupled with a hcrGetGlobal call.
-##   - globals which have already been initialized cannot have their values changed
-##     by changing their initialization - use a handler or some other mechanism
-##   - new globals can be introduced when reloading
-## - top-level code (global scope) is executed only once - at the first module load
-## - the runtime knows every symbol's module owner (globals and procs)
-## - both the RTL and HCR shared libraries need to be near the program for execution
-##   - same folder, in the PATH or LD_LIBRARY_PATH env var, etc (depending on OS)
-## - the main module is responsible for initializing the HCR runtime
-##   - the main module loads the RTL and HCR shared objects
-##   - after that a call to hcrInit() is done in the main module which triggers
-##     the loading of all modules the main one imports, and doing that for the
-##     dependencies of each module recursively. Basically a DFS traversal.
-##   - then initialization takes place with several passes over all modules:
-##     - HcrInit - initializes the pointers for HCR procs such as hcrRegisterProc
-##     - HcrCreateTypeInfos - creates globals which will be referenced in the next pass
-##     - DatInit - usual dat init + register/get procs and get globals
-##     - Init - it does the following multiplexed operations:
-##       - register globals (if already registered - then just retrieve pointer)
-##       - execute top level scope (only if loaded for the first time)
-##   - when modules are loaded the originally built shared libraries get copied in
-##     the same folder and the copies are loaded instead of the original files
-##   - a module import tree is built in the runtime (and maintained when reloading)
-## - hcrPerformCodeReload
-##   - named `performCodeReload`, requires the hotcodereloading module
-##   - explicitly called by the user - the current active callstack shouldn't contain
-##     any functions which are defined in modules that will be reloaded (or crash!).
-##     The reason is that old dynalic libraries get unloaded.
-##     Example:
-##       if A is the main module and it imports B, then only B is reloadable and only
-##       if when calling hcrPerformCodeReload there is no function defined in B in the
-##       current active callstack at the point of the call (it has to be done from A)
-##   - for reloading to take place the user has to have rebuilt parts of the application
-##     without changes affecting the main module in any way - it shouldn't be rebuilt.
-##   - to determine what needs to be reloaded the runtime starts traversing the import
-##     tree from the root and checks the timestamps of the loaded shared objects
-##   - modules that are no longer referenced are unloaded and cleaned up properly
-##   - symbols (procs/globals) that have been removed in the code are also cleaned up
-##     - so changing the init of a global does nothing, but removing it, reloading,
-##       and then re-introducing it with a new initializer works
-##   - new modules can be imported, and imports can also be reodereded/removed
-##   - hcrReloadNeeded() can be used to determine if any module needs reloading
-##     - named `hasAnyModuleChanged`, requires the hotcodereloading module
-## - code in the beforeCodeReload/afterCodeReload handlers is executed on each reload
-##   - require the hotcodereloading module
-##   - such handlers can be added and removed
-##   - before each reload all "beforeCodeReload" handlers are executed and after
-##     that all handlers (including "after") from the particular module are deleted
-##   - the order of execution is the same as the order of top-level code execution.
-##     Example: if A imports B which imports C, then all handlers in C will be executed
-##     first (from top to bottom) followed by all from B and lastly all from A
-##   - after the reload all "after" handlers are executed the same way as "before"
-##   - the handlers for a reloaded module are always removed when reloading and then
-##     registered when the top-level scope is executed (thanks to `executeOnReload`)
-##
-## TODO - after first merge in upstream Nim:
-##
-## - profile
-##   - build speed with and without hot code reloading - difference should be small
-##   - runtime degradation of HCR-enabled code - important!!!
-## - ARM support for the trampolines
-## - investigate:
-##   - rethink the closure iterators
-##     - ability to keep old versions of dynamic libraries alive
-##       - because of async server code
-##       - perhaps with refcounting of .dlls for unfinished closures
-##   - linking with static libs
-##     - all shared objects for each module will (probably) have to link to them
-##       - state in static libs gets duplicated
-##       - linking is slow and therefore iteration time suffers
-##         - have just a single .dll for all .nim files and bulk reload?
-##   - think about the compile/link/passC/passL/emit/injectStmt pragmas
-##     - if a passC pragma is introduced (either written or dragged in by a new
-##       import) the whole command line for compilation changes - for example:
-##         winlean.nim: {.passC: "-DWIN32_LEAN_AND_MEAN".}
-##   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
-##   - everything thread-local related
-## - tests
-##   - add a new travis build matrix entry which builds everything with HCR enabled
-##     - currently building with useNimRtl is problematic - lots of problems...
-##     - how to supply the nimrtl/nimhcr shared objects to all test binaries...?
-##     - think about building to C++ instead of only to C - added type safety
-##   - run tests through valgrind and the sanitizers! of HUGE importance!
-##
-## TODO - nice to have cool stuff:
-##
-## - separate handling of global state for much faster reloading and manipulation
-##   - imagine sliders in an IDE for tweaking variables
-##   - perhaps using shared memory
-## - multi-dll projects - how everything can be reloaded..?
-##   - a single HCR instance shared across multiple .dlls
-##   - instead of having to call hcrPerformCodeReload from a function in each dll
-##     - which currently renders the main module of each dll not reloadable
-## - ability to check with the current callstack if a reload is "legal"
-##   - if it is in any function which is in a module about to be reloaded ==> error
-## - pragma annotations for files - to be excluded from dll shenanigans
-##   - for such file-global pragmas look at codeReordering or injectStmt
-##   - how would the initialization order be kept? messy...
-##   - per function exclude pragmas would be TOO messy and hard...
-## - C code calling stable exportc interface of nim code (for bindings)
-##   - generate proxy functions with the stable names
-##     - in a non-reloadable part (the main binary) that call the function pointers
-##     - parameter passing/forwarding - how? use the same trampoline jumping?
-##     - extracting the dependencies for these stubs/proxies will be hard...
-## - changing memory layout of types - detecting this..?
-##   - implement with registerType() call to HCR runtime...?
-##     - and checking if a previously registered type matches
-##   - issue an error
-##     - or let the user handle this by transferring the state properly
-##       - perhaps in the before/afterCodeReload handlers
-## - optimization: calls to procs within a module (+inlined) to use the _actual versions
-## - implement executeOnReload for global vars too - not just statements (and document!)
-## - cleanup at shutdown - freeing all globals
-##
-## TODO - unimportant:
-##
-## - have a "bad call" trampoline that all no-longer-present functions are routed to call there
-##     - so the user gets some error msg if he calls a dangling pointer instead of a crash
-## - before/afterCodeReload and hasModuleChanged should be accessible only where appropriate
-## - nim_program_result is inaccessible in HCR mode from external C code (see nimbase.h)
-## - proper .json build file - but the format is different... multiple link commands...
-## - avoid registering globals on each loop when using an iterator in global scope
-##
-## TODO - REPL:
-## - proper way (as proposed by Zahary):
-##   - parse the input code and put everything in global scope except for
-##     statements with side effects only - those go in afterCodeReload blocks
-## - my very hacky idea: just append to a closure iterator the new statements
-##   followed by a yield statement. So far I can think of 2 problems:
-##   - import and some other code cannot be written inside of a proc -
-##     has to be parsed and extracted in the outer scope
-##   - when new variables are created they are actually locals to the closure
-##     so the struct for the closure state grows in memory, but it has already
-##     been allocated when the closure was created with the previous smaller size.
-##     That would lead to working with memory outside of the initially allocated
-##     block. Perhaps something can be done about this - some way of re-allocating
-##     the state and transferring the old...
+# This is the Nim hot code reloading run-time for the native targets.
+#
+# This minimal dynamic library is not subject to reloading when the
+# `hotCodeReloading` build mode is enabled. It's responsible for providing
+# a permanent memory location for all globals and procs within a program
+# and orchestrating the reloading. For globals, this is easily achieved
+# by storing them on the heap. For procs, we produce on the fly simple
+# trampolines that can be dynamically overwritten to jump to a different
+# target. In the host program, all globals and procs are first registered
+# here with ``hcrRegisterGlobal`` and ``hcrRegisterProc`` and then the
+# returned permanent locations are used in every reference to these symbols
+# onwards.
+#
+# Detailed description:
+#
+# When code is compiled with the hotCodeReloading option for native targets
+# a couple of things happen for all modules in a project:
+# - the useNimRtl option is forced (including when building the HCR runtime too)
+# - all modules of a target get built into separate shared libraries
+#   - the smallest granularity of reloads is modules
+#   - for each .c (or .cpp) in the corresponding nimcache folder of the project
+#     a shared object is built with the name of the source file + DLL extension
+#   - only the main module produces whatever the original project type intends
+#     (again in nimcache) and is then copied to its original destination
+#   - linking is done in parallel - just like compilation
+# - function calls to functions from the same project go through function pointers:
+#   - with a few exceptions - see the nonReloadable pragma
+#   - the forward declarations of the original functions become function
+#     pointers as static globals with the same names
+#   - the original function definitions get suffixed with <name>_actual
+#   - the function pointers get initialized with the address of the corresponding
+#     function in the DatInit of their module through a call to either hcrRegisterProc
+#     or hcrGetProc. When being registered, the <name>_actual address is passed to
+#     hcrRegisterProc and a permanent location is returned and assigned to the pointer.
+#     This way the implementation (<name>_actual) can change but the address for it
+#     will be the same - this works by just updating a jump instruction (trampoline).
+#     For functions from other modules hcrGetProc is used (after they are registered).
+# - globals are initialized only once and their state is preserved
+#   - including locals with the {.global.} pragma
+#   - their definitions are changed into pointer definitions which are initialized
+#     in the DatInit() of their module with calls to hcrRegisterGlobal (supplying the
+#     size of the type that this HCR runtime should allocate) and a bool is returned
+#     which when true triggers the initialization code for the global (only once).
+#     Globals from other modules: a global pointer coupled with a hcrGetGlobal call.
+#   - globals which have already been initialized cannot have their values changed
+#     by changing their initialization - use a handler or some other mechanism
+#   - new globals can be introduced when reloading
+# - top-level code (global scope) is executed only once - at the first module load
+# - the runtime knows every symbol's module owner (globals and procs)
+# - both the RTL and HCR shared libraries need to be near the program for execution
+#   - same folder, in the PATH or LD_LIBRARY_PATH env var, etc (depending on OS)
+# - the main module is responsible for initializing the HCR runtime
+#   - the main module loads the RTL and HCR shared objects
+#   - after that a call to hcrInit() is done in the main module which triggers
+#     the loading of all modules the main one imports, and doing that for the
+#     dependencies of each module recursively. Basically a DFS traversal.
+#   - then initialization takes place with several passes over all modules:
+#     - HcrInit - initializes the pointers for HCR procs such as hcrRegisterProc
+#     - HcrCreateTypeInfos - creates globals which will be referenced in the next pass
+#     - DatInit - usual dat init + register/get procs and get globals
+#     - Init - it does the following multiplexed operations:
+#       - register globals (if already registered - then just retrieve pointer)
+#       - execute top level scope (only if loaded for the first time)
+#   - when modules are loaded the originally built shared libraries get copied in
+#     the same folder and the copies are loaded instead of the original files
+#   - a module import tree is built in the runtime (and maintained when reloading)
+# - hcrPerformCodeReload
+#   - named `performCodeReload`, requires the hotcodereloading module
+#   - explicitly called by the user - the current active callstack shouldn't contain
+#     any functions which are defined in modules that will be reloaded (or crash!).
+#     The reason is that old dynalic libraries get unloaded.
+#     Example:
+#       if A is the main module and it imports B, then only B is reloadable and only
+#       if when calling hcrPerformCodeReload there is no function defined in B in the
+#       current active callstack at the point of the call (it has to be done from A)
+#   - for reloading to take place the user has to have rebuilt parts of the application
+#     without changes affecting the main module in any way - it shouldn't be rebuilt.
+#   - to determine what needs to be reloaded the runtime starts traversing the import
+#     tree from the root and checks the timestamps of the loaded shared objects
+#   - modules that are no longer referenced are unloaded and cleaned up properly
+#   - symbols (procs/globals) that have been removed in the code are also cleaned up
+#     - so changing the init of a global does nothing, but removing it, reloading,
+#       and then re-introducing it with a new initializer works
+#   - new modules can be imported, and imports can also be reodereded/removed
+#   - hcrReloadNeeded() can be used to determine if any module needs reloading
+#     - named `hasAnyModuleChanged`, requires the hotcodereloading module
+# - code in the beforeCodeReload/afterCodeReload handlers is executed on each reload
+#   - require the hotcodereloading module
+#   - such handlers can be added and removed
+#   - before each reload all "beforeCodeReload" handlers are executed and after
+#     that all handlers (including "after") from the particular module are deleted
+#   - the order of execution is the same as the order of top-level code execution.
+#     Example: if A imports B which imports C, then all handlers in C will be executed
+#     first (from top to bottom) followed by all from B and lastly all from A
+#   - after the reload all "after" handlers are executed the same way as "before"
+#   - the handlers for a reloaded module are always removed when reloading and then
+#     registered when the top-level scope is executed (thanks to `executeOnReload`)
+#
+# TODO - after first merge in upstream Nim:
+#
+# - profile
+#   - build speed with and without hot code reloading - difference should be small
+#   - runtime degradation of HCR-enabled code - important!!!
+# - ARM support for the trampolines
+# - investigate:
+#   - rethink the closure iterators
+#     - ability to keep old versions of dynamic libraries alive
+#       - because of async server code
+#       - perhaps with refcounting of .dlls for unfinished closures
+#   - linking with static libs
+#     - all shared objects for each module will (probably) have to link to them
+#       - state in static libs gets duplicated
+#       - linking is slow and therefore iteration time suffers
+#         - have just a single .dll for all .nim files and bulk reload?
+#   - think about the compile/link/passC/passL/emit/injectStmt pragmas
+#     - if a passC pragma is introduced (either written or dragged in by a new
+#       import) the whole command line for compilation changes - for example:
+#         winlean.nim: {.passC: "-DWIN32_LEAN_AND_MEAN".}
+#   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
+#   - everything thread-local related
+# - tests
+#   - add a new travis build matrix entry which builds everything with HCR enabled
+#     - currently building with useNimRtl is problematic - lots of problems...
+#     - how to supply the nimrtl/nimhcr shared objects to all test binaries...?
+#     - think about building to C++ instead of only to C - added type safety
+#   - run tests through valgrind and the sanitizers! of HUGE importance!
+#
+# TODO - nice to have cool stuff:
+#
+# - separate handling of global state for much faster reloading and manipulation
+#   - imagine sliders in an IDE for tweaking variables
+#   - perhaps using shared memory
+# - multi-dll projects - how everything can be reloaded..?
+#   - a single HCR instance shared across multiple .dlls
+#   - instead of having to call hcrPerformCodeReload from a function in each dll
+#     - which currently renders the main module of each dll not reloadable
+# - ability to check with the current callstack if a reload is "legal"
+#   - if it is in any function which is in a module about to be reloaded ==> error
+# - pragma annotations for files - to be excluded from dll shenanigans
+#   - for such file-global pragmas look at codeReordering or injectStmt
+#   - how would the initialization order be kept? messy...
+#   - per function exclude pragmas would be TOO messy and hard...
+# - C code calling stable exportc interface of nim code (for bindings)
+#   - generate proxy functions with the stable names
+#     - in a non-reloadable part (the main binary) that call the function pointers
+#     - parameter passing/forwarding - how? use the same trampoline jumping?
+#     - extracting the dependencies for these stubs/proxies will be hard...
+# - changing memory layout of types - detecting this..?
+#   - implement with registerType() call to HCR runtime...?
+#     - and checking if a previously registered type matches
+#   - issue an error
+#     - or let the user handle this by transferring the state properly
+#       - perhaps in the before/afterCodeReload handlers
+# - optimization: calls to procs within a module (+inlined) to use the _actual versions
+# - implement executeOnReload for global vars too - not just statements (and document!)
+# - cleanup at shutdown - freeing all globals
+#
+# TODO - unimportant:
+#
+# - have a "bad call" trampoline that all no-longer-present functions are routed to call there
+#     - so the user gets some error msg if he calls a dangling pointer instead of a crash
+# - before/afterCodeReload and hasModuleChanged should be accessible only where appropriate
+# - nim_program_result is inaccessible in HCR mode from external C code (see nimbase.h)
+# - proper .json build file - but the format is different... multiple link commands...
+# - avoid registering globals on each loop when using an iterator in global scope
+#
+# TODO - REPL:
+# - proper way (as proposed by Zahary):
+#   - parse the input code and put everything in global scope except for
+#     statements with side effects only - those go in afterCodeReload blocks
+# - my very hacky idea: just append to a closure iterator the new statements
+#   followed by a yield statement. So far I can think of 2 problems:
+#   - import and some other code cannot be written inside of a proc -
+#     has to be parsed and extracted in the outer scope
+#   - when new variables are created they are actually locals to the closure
+#     so the struct for the closure state grows in memory, but it has already
+#     been allocated when the closure was created with the previous smaller size.
+#     That would lead to working with memory outside of the initially allocated
+#     block. Perhaps something can be done about this - some way of re-allocating
+#     the state and transferring the old...
 
 when not defined(JS) and (defined(hotcodereloading) or
                           defined(createNimHcr) or
