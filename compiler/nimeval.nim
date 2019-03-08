@@ -137,6 +137,7 @@ proc runRepl*(r: TLLRepl) =
   conf.errorMax = high(int)
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
+  when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
   registerPass(graph, verbosePass)
   registerPass(graph, semPass)
   registerPass(graph, evalPass)
