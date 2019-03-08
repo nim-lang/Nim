@@ -474,12 +474,34 @@ when defined(endb):
 when defined(cpp) and appType != "lib" and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
+  proc verboseTerminate() {.importc: "__gnu_cxx::__verbose_terminate_handler", header: "<exception>".}
+  proc getTerminate: proc() {.noconv.}
+    {.importc: "std::get_terminate", header: "<exception>".} # C++11
+  var oldTerminate = getTerminate()
   proc setTerminate(handler: proc() {.noconv.})
     {.importc: "std::set_terminate", header: "<exception>".}
   setTerminate proc() {.noconv.} =
     # Remove ourself as a handler, reinstalling the default handler.
     setTerminate(nil)
 
+    if nil == currException:
+      when true:
+        writeToStdErr "egotCurrentException() -> nil\n"
+        {.emit: """
+            try {
+              throw;
+            } catch (const std::exception& exc) {
+              fprintf(stderr, "  Uncaught exception. what(): '%s'\n", exc.what());
+            } catch (...) {
+              fprintf(stderr, "  Uncaught unknown exception.\n");
+            }
+        """.}
+        return
+      else:
+        # verboseTeminate()
+        if nil != oldTerminate:
+          writeToStdErr "Calling previous terminate_handler...\n"
+          oldTerminate()
     when defined(genode):
       # stderr not available by default, use the LOG session
       echo currException.getStackTrace() & "Error: unhandled exception: " &
