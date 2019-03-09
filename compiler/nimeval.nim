@@ -126,13 +126,15 @@ proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
 
-proc runRepl*(r: TLLRepl) =
+proc runRepl*(r: TLLRepl; searchPaths: openArray[string]) =
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
-  var stdLibDir = AbsoluteDir findNimStdLibCompileTime()
-  conf.searchPaths.add(stdLibDir)
-  conf.libpath = stdLibDir
+
+  for p in searchPaths:
+    conf.searchPaths.add(AbsoluteDir p)
+    if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
+
   conf.cmd = cmdInteractive
   conf.errorMax = high(int)
   initDefines(conf.symbols)
