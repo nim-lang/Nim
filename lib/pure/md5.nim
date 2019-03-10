@@ -197,7 +197,9 @@ proc `$`*(d: MD5Digest): string =
     add(result, digits[d[i].int and 0xF])
 
 proc getMD5*(s: string): string =
-  ## Computes an MD5 value of `s` and returns its string representation.
+  ## Computes an MD5 value of `s` and returns its string representation. 
+  ## .. note::
+  ## available at compile time
   ##
   ## See also:
   ## * `toMD5 proc <#toMD5,string>`_ which returns the `MD5Digest` of a string
