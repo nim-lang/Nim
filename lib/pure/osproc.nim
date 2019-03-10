@@ -97,8 +97,7 @@ proc execProcess*(command: string,
   ## Example:
   ##
   ## .. code-block:: Nim
-  ##  let outp = execProcess("/usr/bin/env", ["nim", "c", "-r", "mytestfile.nim"], option={})
-  ##  let outp_shell = execProcess("nim c -r mytestfile.nim")
+  ##  let outp = execProcess("nim c -r mytestfile.nim")
   ##  # Note: outp may have an interleave of text from the nim compile
   ##  # and any output from mytestfile when it runs
 
