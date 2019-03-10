@@ -16,7 +16,7 @@ import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  sighashes
+  sighashes, plugins/symdigest
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -1499,6 +1499,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "node is not a symbol")
       else:
         regs[ra].node.strVal = $sigHash(regs[rb].node.sym)
+    of opcNSymBodyHash:
+      decodeB(rkNode)
+      let a = regs[rb].node
+      if a.kind == nkSym and a.sym.kind in skProcKinds:
+        regs[ra].node = symBodyDigest(c.graph, a)
+      else:
+        stackTrace(c, tos, pc, "node is not a symbol")
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]

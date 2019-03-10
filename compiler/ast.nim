@@ -662,7 +662,8 @@ type
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
+    mNSigHash, mNSymBodyHash
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,

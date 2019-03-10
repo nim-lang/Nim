@@ -1238,6 +1238,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     #genUnaryABC(c, n, dest, opcNGetType)
   of mNStrVal: genUnaryABC(c, n, dest, opcNStrVal)
   of mNSigHash: genUnaryABC(c, n , dest, opcNSigHash)
+  of mNSymBodyHash: genUnaryABC(c, n, dest, opcNSymBodyHash)
   of mNSetIntVal:
     unused(c, n, dest)
     genBinaryStmt(c, n, opcNSetIntVal)
