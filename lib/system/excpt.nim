@@ -474,7 +474,6 @@ when defined(endb):
 when defined(cpp) and appType != "lib" and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
-  proc verboseTerminate() {.importc: "__gnu_cxx::__verbose_terminate_handler", header: "<exception>".}
   proc getTerminate: proc() {.noconv.}
     {.importc: "std::get_terminate", header: "<exception>".} # C++11
   var oldTerminate = getTerminate()
@@ -484,9 +483,8 @@ when defined(cpp) and appType != "lib" and
     # Remove ourself as a handler, reinstalling the default handler.
     setTerminate(nil)
 
-    if nil == currException:
-      when true:
-        writeToStdErr "egotCurrentException() -> nil\n"
+    if currException == nil:
+      when false:
         {.emit: """
             try {
               throw;
@@ -498,9 +496,8 @@ when defined(cpp) and appType != "lib" and
         """.}
         return
       else:
-        # verboseTeminate()
-        if nil != oldTerminate:
-          writeToStdErr "Calling previous terminate_handler...\n"
+        if oldTerminate != nil:
+          writeToStdErr "Uncaught non-Nim exception. Calling previous terminate_handler...\n"
           oldTerminate()
     when defined(genode):
       # stderr not available by default, use the LOG session
