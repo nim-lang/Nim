@@ -8,7 +8,6 @@
 #
 
 include "system/inclrtl"
-include "system/helpers"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -478,7 +477,7 @@ type
 
 proc `$`*(arg: Lineinfo): string =
   # BUG: without `result = `, gives compile error
-  result = lineInfoToString(arg.filename, arg.line, arg.column)
+  result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
 
 #proc lineinfo*(n: NimNode): LineInfo {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file

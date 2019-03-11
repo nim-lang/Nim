@@ -10,10 +10,6 @@
 ## This module defines compile-time reflection procs for
 ## working with types.
 
-include "system/helpers" # for `isNamedTuple`
-
-export system.`$`
-export isNamedTuple
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.

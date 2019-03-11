@@ -2444,62 +2444,6 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     # unnecessary slow down in this case.
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
-proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
-  ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string. ``$`` is Nim's general way of
-  ## spelling `toString`:idx:.
-
-proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
-  ## The stringify operator for an `int64` argument. Returns `x`
-  ## converted to a decimal string.
-
-when not defined(nimscript):
-  when not defined(JS) and hasAlloc:
-    proc `$`*(x: uint64): string {.noSideEffect.}
-      ## The stringify operator for an unsigned integer argument. Returns `x`
-      ## converted to a decimal string.
-
-proc `$`*(x: float): string {.magic: "FloatToStr", noSideEffect.}
-  ## The stringify operator for a float argument. Returns `x`
-  ## converted to a decimal string.
-
-proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
-  ## The stringify operator for a boolean argument. Returns `x`
-  ## converted to the string "false" or "true".
-
-proc `$`*(x: char): string {.magic: "CharToStr", noSideEffect.}
-  ## The stringify operator for a character argument. Returns `x`
-  ## converted to a string.
-  ##
-  ## .. code-block:: Nim
-  ##   assert $'c' == "c"
-
-proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
-  ## The stringify operator for a CString argument. Returns `x`
-  ## converted to a string.
-
-proc `$`*(x: string): string {.magic: "StrToStr", noSideEffect.}
-  ## The stringify operator for a string argument. Returns `x`
-  ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` also works if ``expr`` is already a string.
-
-proc `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
-  ## The stringify operator for an enumeration argument. This works for
-  ## any enumeration type thanks to compiler magic.
-  ##
-  ## If a ``$`` operator for a concrete enumeration is provided, this is
-  ## used instead. (In other words: *Overwriting* is possible.)
-
-proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
-  ## Returns the name of the given type.
-  ##
-  ## For more procedures dealing with ``typedesc``, see
-  ## `typetraits module <typetraits.html>`_.
-  runnableExamples:
-    doAssert $(type(42)) == "int"
-    doAssert $(type("Foo")) == "string"
-    static: doAssert $(type(@['A', 'B'])) == "seq[char]"
-
 
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect,
@@ -2527,17 +2471,6 @@ const
     ## Note that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
     ## in the `math module <math.html>`_ for checking for NaN.
-  NimMajor* {.intdefine.}: int = 0
-    ## The major number of Nim's version.
-
-  NimMinor* {.intdefine.}: int = 19
-    ## The minor number of Nim's version.
-
-  NimPatch* {.intdefine.}: int = 9
-    ## The patch number of Nim's version.
-
-  NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
-    ## The version of Nim as a string.
 
 # GC interface:
 
@@ -2982,6 +2915,16 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     testException(IndexError, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
+proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
+  ## Special compile-time procedure that checks whether `x` can be compiled
+  ## without any semantic error.
+  ## This can be used to check whether a type supports some operation:
+  ##
+  ## .. code-block:: Nim
+  ##   when compiles(3 + 4):
+  ##     echo "'+' for integers is available"
+  discard
+
 
 import system/assertions
 export assertions
@@ -3040,99 +2983,7 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return false
 
-proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
-  ## Special compile-time procedure that checks whether `x` can be compiled
-  ## without any semantic error.
-  ##
-  ## This can be used to check whether a type supports some operation:
-  ##
-  ## .. code-block:: Nim
-  ##   when compiles(3 + 4):
-  ##     echo "'+' for integers is available"
-  discard
 
-include "system/helpers" # for `lineInfoToString`, `isNamedTuple`
-
-proc `$`*[T: tuple|object](x: T): string =
-  ## Generic ``$`` operator for tuples that is lifted from the components
-  ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   $(23, 45) == "(23, 45)"
-  ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
-  ##   $() == "()"
-  result = "("
-  var firstElement = true
-  const isNamed = T is object or isNamedTuple(T)
-  when not isNamed:
-    var count = 0
-  for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
-    when isNamed:
-      result.add(name)
-      result.add(": ")
-    else:
-      count.inc
-    when compiles($value):
-      when value isnot string and value isnot seq and compiles(value.isNil):
-        if value.isNil: result.add "nil"
-        else: result.addQuoted(value)
-      else:
-        result.addQuoted(value)
-      firstElement = false
-    else:
-      result.add("...")
-      firstElement = false
-  when not isNamed:
-    if count == 1:
-      result.add(",") # $(1,) should print as the semantically legal (1,)
-
-  result.add(")")
-
-proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
-  result = prefix
-  var firstElement = true
-  for value in items(x):
-    if firstElement:
-      firstElement = false
-    else:
-      result.add(separator)
-
-    when value isnot string and value isnot seq and compiles(value.isNil):
-      # this branch should not be necessary
-      if value.isNil:
-        result.add "nil"
-      else:
-        result.addQuoted(value)
-    else:
-      result.addQuoted(value)
-  result.add(suffix)
-
-proc `$`*[T](x: set[T]): string =
-  ## Generic ``$`` operator for sets that is lifted from the components
-  ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   ${23, 45} == "{23, 45}"
-  collectionToString(x, "{", ", ", "}")
-
-proc `$`*[T](x: seq[T]): string =
-  ## Generic ``$`` operator for seqs that is lifted from the components
-  ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   $(@[23, 45]) == "@[23, 45]"
-  collectionToString(x, "@[", ", ", "]")
-
-proc `$`*[T, U](x: HSlice[T, U]): string =
-  ## Generic ``$`` operator for slices that is lifted from the components
-  ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##  $(1 .. 5) == "1 .. 5"
-  result = $x.a
-  result.add(" .. ")
-  result.add($x.b)
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -3481,6 +3332,25 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
+
+import system/dollars
+export dollars
+
+
+const
+  NimMajor* {.intdefine.}: int = 0
+    ## is the major number of Nim's version.
+
+  NimMinor* {.intdefine.}: int = 19
+    ## is the minor number of Nim's version.
+
+  NimPatch* {.intdefine.}: int = 9
+    ## is the patch number of Nim's version.
+
+  NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
+    ## is the version of Nim as a string.
+
+
 type
   FileSeekPos* = enum ## Position relative to which seek should happen.
                       # The values are ordered so that they match with stdio
@@ -3488,6 +3358,7 @@ type
     fspSet            ## Seek to absolute value
     fspCur            ## Seek relative to current position
     fspEnd            ## Seek relative to end
+
 
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
@@ -3799,18 +3670,6 @@ elif defined(JS):
       if x < y: return -1
       return 1
 
-when not defined(nimNoArrayToString):
-  proc `$`*[T, IDX](x: array[IDX, T]): string =
-    ## Generic ``$`` operator for arrays that is lifted from the components.
-    collectionToString(x, "[", ", ", "]")
-
-proc `$`*[T](x: openarray[T]): string =
-  ## Generic ``$`` operator for openarrays that is lifted from the components
-  ## of `x`. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
-  collectionToString(x, "[", ", ", "]")
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.
@@ -4481,14 +4340,6 @@ when defined(genode):
         # Perform application initialization
         # and return to thread entrypoint.
 
-proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
-  ## Returns the name of the given type.
-  ##
-  ## For more procedures dealing with ``typedesc``, see ``typetraits.nim``.
-  runnableExamples:
-    doAssert $(type(42)) == "int"
-    doAssert $(type("Foo")) == "string"
-    static: doAssert $(type(@['A', 'B'])) == "seq[char]"
 
 when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
