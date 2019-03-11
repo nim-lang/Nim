@@ -199,7 +199,7 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: untyped
   magic: "Fields", noSideEffect.}
   ## Iterates over every field of `x` and `y`.
   ##
-  ## **Warning**: This is really transforms the 'for' and unrolls the loop.
+  ## **Warning**: This really transforms the 'for' and unrolls the loop.
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
 iterator fieldPairs*[T: tuple|object](x: T): RootObj {.

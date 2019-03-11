@@ -1,7 +1,19 @@
-include "system/helpers"
-
 when not declared(sysFatal):
   include "system/fatal"
+
+# ---------------------------------------------------------------------------
+# helpers
+
+type InstantiationInfo = tuple[filename: string, line: int, column: int]
+
+proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
+
+proc `$`(info: InstantiationInfo): string =
+  # The +1 is needed here
+  # instead of overriding `$` (and changing its meaning), consider explicit name.
+  info.fileName & "(" & $info.line & ", " & $(info.column+1) & ")"
+
+# ---------------------------------------------------------------------------
 
 
 proc raiseAssert*(msg: string) {.noinline, noReturn.} =
