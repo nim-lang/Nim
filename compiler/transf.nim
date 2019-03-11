@@ -763,7 +763,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
       add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
   elif magic == mAddr:
-    result = newTransNode(nkHiddenAddr, n, 1)
+    result = newTransNode(nkAddr, n, 1)
     result[0] = n[1].PTransNode
     result = transformAddrDeref(c, result.PNode, nkDerefExpr, nkHiddenDeref)
   elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
