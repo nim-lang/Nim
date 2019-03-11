@@ -287,6 +287,11 @@ const
   sfImmediate* = sfDispatcher
     # macro or template is immediately expanded
     # without considering any possible overloads
+
+  sfCursor* = sfDispatcher
+    # local variable has been computed to be a "cursor".
+    # see cursors.nim for details about what that means.
+
   sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
     # in a generic context
 
@@ -1788,7 +1793,7 @@ when false:
     for i in 0 ..< n.safeLen:
       if n[i].containsNil: return true
 
-template hasDestructor*(t: PType): bool = tfHasAsgn in t.flags
+template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 

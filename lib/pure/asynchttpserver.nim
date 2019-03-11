@@ -15,8 +15,8 @@
 ## allowing users to connect directly to this server.
 ##
 ##
-## Examples
-## --------
+## Basic usage
+## -----------
 ##
 ## This example will create an HTTP server on port 8080. The server will
 ## respond to all requests with a ``200 OK`` response code and "Hello World"
@@ -85,8 +85,8 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ##
   ## This procedure will **not** close the client socket.
   ##
-  ## Examples
-  ## --------
+  ## Example:
+  ##
   ## .. code-block::nim
   ##    import json
   ##    proc handler(req: Request) {.async.} =

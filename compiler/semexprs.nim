@@ -227,6 +227,8 @@ proc semConv(c: PContext, n: PNode): PNode =
   if targetType.kind in {tySink, tyLent, tyOwned}:
     let baseType = semTypeNode(c, n.sons[1], nil).skipTypes({tyTypeDesc})
     let t = newTypeS(targetType.kind, c)
+    if targetType.kind == tyOwned:
+      t.flags.incl tfHasOwned
     t.rawAddSonNoPropagationOfTypeFlags baseType
     result = newNodeI(nkType, n.info)
     result.typ = makeTypeDesc(c, t)

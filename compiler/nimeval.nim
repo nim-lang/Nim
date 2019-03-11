@@ -11,7 +11,7 @@
 import
   ast, astalgo, modules, passes, condsyms,
   options, sem, semdata, llstream, vm, vmdef,
-  modulegraphs, idents, os, pathutils
+  modulegraphs, idents, os, pathutils, passaux
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -125,3 +125,25 @@ proc createInterpreter*(scriptName: string;
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
+
+proc runRepl*(r: TLLRepl; searchPaths: openArray[string]) =
+  var conf = newConfigRef()
+  var cache = newIdentCache()
+  var graph = newModuleGraph(cache, conf)
+
+  for p in searchPaths:
+    conf.searchPaths.add(AbsoluteDir p)
+    if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
+
+  conf.cmd = cmdInteractive
+  conf.errorMax = high(int)
+  initDefines(conf.symbols)
+  defineSymbol(conf.symbols, "nimscript")
+  when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
+  registerPass(graph, verbosePass)
+  registerPass(graph, semPass)
+  registerPass(graph, evalPass)
+  var m = graph.makeStdinModule()
+  incl(m.flags, sfMainModule)
+  graph.compileSystemModule()
+  processModule(graph, m, llStreamOpenStdIn(r))

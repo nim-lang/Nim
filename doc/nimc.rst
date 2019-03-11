@@ -517,6 +517,14 @@ on Linux::
   nim c --dynlibOverride:lua --passL:liblua.lib program.nim
 
 
+Cursor pragma
+=============
+
+The ``.cursor`` pragma is a temporary tool for optimization purposes
+and this property will be computed by Nim's optimizer eventually. Thus it
+remains undocumented.
+
+
 Backend language options
 ========================
 
