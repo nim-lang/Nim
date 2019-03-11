@@ -2205,7 +2205,17 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
       result.add("function $#() { return $#.apply(this, arguments); }$n" %
                  [thunkName, name])
 
-    def = "function $#($#) {$n$#$#$#$#$#" %
+    if sfDeprecated in prc.flags:
+      def = "export function $#($#) {$n$#$#$#$#$#" %
+            [ name,
+              header,
+              optionalLine(p.globals),
+              optionalLine(p.locals),
+              optionalLine(resultAsgn),
+              optionalLine(genProcBody(p, prc)),
+              optionalLine(p.indentLine(returnStmt))]
+    else:
+      def = "function $#($#) {$n$#$#$#$#$#" %
             [ name,
               header,
               optionalLine(p.globals),
