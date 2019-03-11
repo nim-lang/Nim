@@ -96,7 +96,7 @@ proc genLiteral(p: BProc, n: PNode): Rope =
 proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
   result = 0
   for j in 0 ..< size:
-    if j < len(s): result = result or (ze64(s[j]) shl j * 8)
+    if j < len(s): result = result or (ze64(s[j]) shl (j * 8))
 
 proc genRawSetData(cs: TBitSet, size: int): Rope =
   var frmt: FormatStr
