@@ -552,7 +552,8 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
   $1  define nimln_(n, file) \
       FR_.line = n; FR_.filename = file;
   """
-  appcg(p.module, p.module.s[cfsForwardTypes], frameDefines, [rope("#")])
+  if p.module.s[cfsFrameDefines].len == 0:
+    appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, [rope("#")])
 
   discard cgsym(p.module, "nimFrame")
   if p.maxFrameLen > 0:
@@ -1606,6 +1607,9 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   add(result, genSectionStart(cfsHeaders, m.config))
   add(result, m.s[cfsHeaders])
   add(result, genSectionEnd(cfsHeaders, m.config))
+  add(result, genSectionStart(cfsFrameDefines, m.config))
+  add(result, m.s[cfsFrameDefines])
+  add(result, genSectionEnd(cfsFrameDefines, m.config))
 
   for i in countup(cfsForwardTypes, cfsProcs):
     if m.s[i].len > 0:
