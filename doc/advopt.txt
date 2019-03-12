@@ -13,7 +13,7 @@ Advanced commands:
   //genDepend               generate a DOT file containing the
                           module dependency graph
   //dump                    dump all defined conditionals and search paths
-                            see also: --dump.format:json (useful with: ` | jq`)
+                          see also: --dump.format:json (useful with: ` | jq`)
   //check                   checks the project for syntax and semantic
 
 Runtime checks (see -x):
@@ -78,7 +78,8 @@ Advanced options:
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
-  --patterns:on|off         turn pattern matching on|off
+  --patterns:on|off         turn term rewriting macros on|off
+  --multimethods:on|off     turn multi-methods on|off
   --memTracker:on|off       turn memory tracker on|off
   --hotCodeReloading:on|off
                             turn support for hot code reloading on|off
