@@ -91,14 +91,24 @@ proc fn2(x, y: float): float =
 
 proc fn3(x, y: int): bool =
   (((x and 3) div 4) or (x mod (y xor -1))) == 0 or y notin [1,2]
-  
+
+
+#------------------------------------
+# bug #10807
+proc fn_unsafeaddr(x: int): int = 
+  cast[int](unsafeAddr(x))
+
 static:
+  echo fn_unsafeaddr.repr_to_string 
   let fn1s = "proc fn1(x, y: int): int =\n  result = 2 * (x + y)\n"
   let fn2s = "proc fn2(x, y: float): float =\n  result = (y + 2 * x) / (x - y)\n"
   let fn3s = "proc fn3(x, y: int): bool =\n  result = ((x and 3) div 4 or x mod (y xor -1)) == 0 or not contains([1, 2], y)\n"
+  let fnAddr = "proc fn_unsafeaddr(x: int): int =\n  result = cast[int](unsafeAddr(x))\n"
+  
   doAssert fn1.repr_to_string == fn1s
   doAssert fn2.repr_to_string == fn2s
   doAssert fn3.repr_to_string == fn3s
+  doAssert fn_unsafeaddr.repr_to_string == fnAddr
 
 #------------------------------------
 # bug #8763
