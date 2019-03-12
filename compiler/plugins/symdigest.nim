@@ -54,7 +54,10 @@ proc hashVarSym(c: var MD5Context, s: PSym) =
     hashNonProcSym(c, s)
     # this one works for let and const but not for var. True variables can change value
     # later on. it is user resposibility to hash his global state if required
-    hashTree(c, s.ast)
+    if s.ast != nil and s.ast.kind == nkIdentDefs:
+      hashTree(c, s.ast[^1])
+    else:
+      hashTree(c, s.ast)
 
 proc hashTree(c: var MD5Context, n: PNode) =
   if n == nil:
