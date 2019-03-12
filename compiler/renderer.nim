@@ -1005,7 +1005,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCommand:
     accentedName(g, n[0])
     put(g, tkSpaces, Space)
-    gcomma(g, n, 1)
+    if n[^1].kind == nkStmtList:
+      for i, child in n:
+        if i > 1 and i < n.len - 1:
+          put(g, tkComma, ",")
+        elif i == n.len - 1:
+          put(g, tkColon, ":")
+        if i > 0:
+          gsub(g, child)
+    else:
+      gcomma(g, n, 1)
   of nkExprEqExpr, nkAsgn, nkFastAsgn:
     gsub(g, n, 0)
     put(g, tkSpaces, Space)

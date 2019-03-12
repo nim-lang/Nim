@@ -14,7 +14,7 @@ var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
     ## Function that will be called
-    ## instead of stdmsg.write when printing stacktrace.
+    ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
 proc c_fwrite(buf: pointer, size, n: csize, f: CFilePtr): cint {.
@@ -331,8 +331,9 @@ else:
   proc stackTraceAvailable*(): bool = result = false
 
 var onUnhandledException*: (proc (errorMsg: string) {.
-  nimcall.}) ## set this error \
+  nimcall.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
+  ##
   ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
   ## Unstable API.
 

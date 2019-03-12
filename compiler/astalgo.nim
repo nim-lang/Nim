@@ -1001,3 +1001,11 @@ proc iiTablePut(t: var TIITable, key, val: int) =
       swap(t.data, n)
     iiTableRawInsert(t.data, key, val)
     inc(t.counter)
+
+proc isAddrNode*(n: PNode): bool = 
+  case n.kind
+    of nkAddr, nkHiddenAddr: true
+    of nkCallKinds:
+      if n[0].kind == nkSym and n[0].sym.magic == mAddr: true
+      else: false
+    else: false

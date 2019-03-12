@@ -10,8 +10,7 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
-proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
-  result = newNodeI(nkAddr, n.info)
+proc semAddrArg(c: PContext; n: PNode; isUnsafeAddr = false): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
@@ -22,8 +21,7 @@ proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
       localError(c.config, n.info, errExprHasNoAddress)
     else:
       localError(c.config, n.info, errExprHasNoAddress & "; maybe use 'unsafeAddr'")
-  result.add x
-  result.typ = makePtrType(c, x.typ)
+  result = x
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   var m = BiggestInt 1 # typeOfIter
@@ -335,7 +333,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
+    result = n
+    result[1] = semAddrArg(c, n[1], n[0].sym.name.s == "unsafeAddr")
+    result.typ = makePtrType(c, result[1].typ)
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:

@@ -20,7 +20,7 @@ import
   pathutils
 
 const
-  exportSection = skTemp
+  exportSection = skField
 
 type
   TSections = array[TSymKind, Rope]
@@ -893,9 +893,9 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
   else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
-  const sectionNames: array[skTemp..skTemplate, string] = [
-    "Exports", "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
-    "Methods", "Iterators", "Converters", "Macros", "Templates"
+  const sectionNames: array[skModule..skField, string] = [
+    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
+    "Methods", "Iterators", "Converters", "Macros", "Templates", "Exports"
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].rope
@@ -992,10 +992,13 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
                  warnUser, "unable to open file \"" & d.destFile.string &
                  "\" for writing")
 
-proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
+proc handleDocOutputOptions*(conf: ConfigRef) =
   if optWholeProject in conf.globalOptions:
     # Backward compatibility with previous versions
     conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
+
+proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
+  handleDocOutputOptions conf
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
