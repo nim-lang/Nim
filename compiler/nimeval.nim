@@ -127,7 +127,9 @@ proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
 
-proc runRepl*(r: TLLRepl; searchPaths: openArray[string]) =
+proc runRepl*(r: TLLRepl;
+              searchPaths: openArray[string];
+              supportNimscript: bool) =
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
@@ -140,13 +142,13 @@ proc runRepl*(r: TLLRepl; searchPaths: openArray[string]) =
   conf.errorMax = high(int)
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
-  defineSymbol(conf.symbols, "nimconfig")
+  if supportNimscript: defineSymbol(conf.symbols, "nimconfig")
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
   registerPass(graph, verbosePass)
   registerPass(graph, semPass)
   registerPass(graph, evalPass)
   var m = graph.makeStdinModule()
   incl(m.flags, sfMainModule)
-  graph.vm = setupVM(m, cache, "stdin", graph)
+  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph)
   graph.compileSystemModule()
   processModule(graph, m, llStreamOpenStdIn(r))
