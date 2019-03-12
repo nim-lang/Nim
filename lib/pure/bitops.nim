@@ -446,3 +446,48 @@ proc rotateRightBits*(value: uint64;
   ## Right-rotate bits in a 64-bits value.
   let amount = amount and 63
   result = (value shr amount) or (value shl ( (-amount) and 63))
+
+proc repeatBits[T: SomeUnsignedInt](x: SomeUnsignedInt; retType: type[T]): T {.
+  noSideEffect.} =
+  result = x
+  var i = 1
+  while i != (sizeof(T) div sizeof(x)):
+    result = (result shl (sizeof(x)*8*i)) or result
+    i *= 2
+ 
+proc reverseBits*[T: SomeUnsignedInt](x: T): T {.noSideEffect.} =
+  ## Return the bit reversal of x.
+  runnableExamples:
+    doAssert reverseBits(0b10100100'u8) == 0b00100101'u8
+    doAssert reverseBits(0xdd'u8) == 0xbb'u8
+    doAssert reverseBits(0xddbb'u16) == 0xddbb'u16
+    doAssert reverseBits(0xdeadbeef'u32) == 0xf77db57b'u32
+
+  template repeat(x: SomeUnsignedInt): T = repeatBits(x, T)
+
+  result = x
+  result =
+    ((repeat(0x55u8) and result) shl 1) or
+    ((repeat(0xaau8) and result) shr 1)
+  result =
+    ((repeat(0x33u8) and result) shl 2) or
+    ((repeat(0xccu8) and result) shr 2)
+  when sizeof(T) == 1:
+    result = (result shl 4) or (result shr 4)
+  when sizeof(T) >= 2:
+    result =
+      ((repeat(0x0fu8) and result) shl 4) or
+      ((repeat(0xf0u8) and result) shr 4)
+  when sizeof(T) == 2:
+    result = (result shl 8) or (result shr 8)
+  when sizeof(T) >= 4:
+    result =
+      ((repeat(0x00ffu16) and result) shl 8) or
+      ((repeat(0xff00u16) and result) shr 8)
+  when sizeof(T) == 4:
+    result = (result shl 16) or (result shr 16)
+  when sizeof(T) == 8:
+    result =
+      ((repeat(0x0000ffffu32) and result) shl 16) or
+      ((repeat(0xffff0000u32) and result) shr 16)
+    result = (result shl 32) or (result shr 32)
