@@ -474,9 +474,6 @@ when defined(endb):
 when defined(cpp) and appType != "lib" and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
-  proc getTerminate: proc() {.noconv.}
-    {.importc: "std::get_terminate", header: "<exception>".} # C++11
-  var oldTerminate = getTerminate()
   proc setTerminate(handler: proc() {.noconv.})
     {.importc: "std::set_terminate", header: "<exception>".}
   setTerminate proc() {.noconv.} =
@@ -484,7 +481,6 @@ when defined(cpp) and appType != "lib" and
     setTerminate(nil)
 
     if currException == nil:
-      when false:
         {.emit: """
             try {
               throw;
@@ -495,10 +491,6 @@ when defined(cpp) and appType != "lib" and
             }
         """.}
         return
-      else:
-        if oldTerminate != nil:
-          writeToStdErr "Uncaught non-Nim exception. Calling previous terminate_handler...\n"
-          oldTerminate()
     when defined(genode):
       # stderr not available by default, use the LOG session
       echo currException.getStackTrace() & "Error: unhandled exception: " &
