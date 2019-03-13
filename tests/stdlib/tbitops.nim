@@ -169,6 +169,48 @@ proc main() =
     v.setBit(63)
     doAssert v == 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000'u64
 
+  block:
+    proc testReverseBitsInvo(x: SomeUnsignedInt) =
+      doAssert(reverseBits(reverseBits(x)) == x)
+      
+    proc testReverseBitsPerType(x, reversed: uint64) =
+      doAssert reverseBits(x) == reversed
+      doAssert reverseBits(uint32(x)) == uint32(reversed shr 32)
+      doAssert reverseBits(uint32(x shr 16)) == uint32(reversed shr 16)
+      doAssert reverseBits(uint16(x)) == uint16(reversed shr 48)
+      doAssert reverseBits(uint8(x)) == uint8(reversed shr 56)
+
+      testReverseBitsInvo(x)
+      testReverseBitsInvo(uint32(x))
+      testReverseBitsInvo(uint16(x))
+      testReverseBitsInvo(uint8(x))
+
+    proc testReverseBitsRefl(x, reversed: uint64) =
+      testReverseBitsPerType(x, reversed)
+      testReverseBitsPerType(reversed, x)
+
+    proc testReverseBitsShift(d, b: uint64) =
+      var
+        x = d
+        y = b
+
+      for i in 1..64:
+        testReverseBitsRefl(x, y)
+        x = x shl 1
+        y = y shr 1
+
+    proc testReverseBits(d, b: uint64) =
+      testReverseBitsShift(d, b)
+
+    testReverseBits(0x0u64, 0x0u64)
+    testReverseBits(0xffffffffffffffffu64, 0xffffffffffffffffu64)
+    testReverseBits(0x0123456789abcdefu64, 0xf7b3d591e6a2c480u64)
+    testReverseBits(0x5555555555555555u64, 0xaaaaaaaaaaaaaaaau64)
+    testReverseBits(0x5555555500000001u64, 0x80000000aaaaaaaau64)
+    testReverseBits(0x55555555aaaaaaaau64, 0x55555555aaaaaaaau64)
+    testReverseBits(0xf0f0f0f00f0f0f0fu64, 0xf0f0f0f00f0f0f0fu64)
+    testReverseBits(0x181881810ff00916u64, 0x68900ff081811818u64)
+
   echo "OK"
 
 block: # not ready for vm because exception is compile error
