@@ -36,6 +36,14 @@ when false:
   proc `=trace`[T](s: NimSeqV2[T]) =
     for i in 0 ..< s.len: `=trace`(s.data[i])
 
+#[
+Keep in mind that C optimizers are bad at detecting the connection
+between ``s.p != nil`` and ``s.len != 0`` and that these are intermingled
+with user-level code that accesses ``s.len`` only, never ``s.p`` directly.
+This means the check for whether ``s.p`` needs to be freed should
+be ``s.len == 0`` even though that feels slightly more awkward.
+]#
+
 proc `=destroy`[T](s: var seq[T]) =
   var x = cast[ptr NimSeqV2[T]](addr s)
   var p = x.p
