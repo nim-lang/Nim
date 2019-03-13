@@ -30,7 +30,7 @@ proc nimLoadLibraryError(path: string) =
     var msg: array[1000, char]
     copyMem(msg[0].addr, prefix.cstring, prefix.len)
     copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
-    discard MessageBoxA(0, msg[0].addr, nil, 0)
+    discard MessageBoxA(nil, msg[0].addr, nil, 0)
   quit(1)
 
 proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =

@@ -28,11 +28,11 @@ when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
 
 else:
-  proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
+  proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
 
   proc writeToStdErr(msg: cstring) =
-    discard MessageBoxA(0, msg, nil, 0)
+    discard MessageBoxA(nil, msg, nil, 0)
 
 proc showErrorMessage(data: cstring) {.gcsafe.} =
   if errorMessageWriter != nil:
