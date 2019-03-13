@@ -1091,6 +1091,17 @@ proc parseDoBlock(p: var TParser; info: TLineInfo): PNode =
       body = result, params = params, name = p.emptyNode, pattern = p.emptyNode,
       genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
 
+proc addNoSideEffect(p: var TParser, pragmas: var PNode) =
+  let id = getIdent(p.lex.cache, "noSideEffect")
+  if pragmas.kind == nkEmpty:
+    pragmas = newNodeP(nkPragma, p)
+    addSon(pragmas, newIdentNodeP(id, p))
+  else:
+    for n in pragmas:
+      if n.kind == nkIdent and n.ident.id == id.id:
+        return
+    pragmas.add newIdentNodeP(id, p)
+
 proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
   #| procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
   # either a proc type or a anonymous proc
@@ -1098,7 +1109,7 @@ proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
   getTok(p)
   let hasSignature = p.tok.tokType in {tkParLe, tkColon} and p.tok.indent < 0
   let params = parseParamList(p)
-  let pragmas = optPragmas(p)
+  var pragmas = optPragmas(p)
   if p.tok.tokType == tkEquals and isExpr:
     getTok(p)
     skipComment(p, result)
@@ -1109,6 +1120,8 @@ proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
     result = newNodeI(nkProcTy, info)
     if hasSignature:
       addSon(result, params)
+      if kind == nkFuncDef:
+        addNoSideEffect(p, pragmas)
       addSon(result, pragmas)
 
 proc isExprStart(p: TParser): bool =
