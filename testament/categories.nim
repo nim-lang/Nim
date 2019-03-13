@@ -26,7 +26,7 @@ const
     "lib",
     "longgc",
     "manyloc",
-    "nimble",
+    "nimble-packages",
     "niminaction",
     "rodfiles",
     "threads",
@@ -720,7 +720,7 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble":
+  of "nimble-packages":
     testNimblePackages(r, cat)
   of "niminaction":
     testNimInAction(r, cat, options)
