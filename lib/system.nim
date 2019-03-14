@@ -2926,11 +2926,12 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   discard
 
 
-import system/assertions
-export assertions
+when not defined(nimSlimSystem):
+  import system/assertions
+  export assertions
 
-import system/iterators
-export iterators
+  import system/iterators
+  export iterators
 
 
 proc find*[T, S](a: T, item: S): int {.inline.}=
@@ -3332,9 +3333,9 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
-
-import system/dollars
-export dollars
+when not defined(nimSlimSystem):
+  import system/dollars
+  export dollars
 
 
 const
@@ -4345,10 +4346,10 @@ when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
 
-import system/widestrs
-export widestrs
+when not defined(nimSlimSystem):
+  import system/widestrs
+  export widestrs
 
-when not defined(nimnoio):
   import system/io
   export io
 
