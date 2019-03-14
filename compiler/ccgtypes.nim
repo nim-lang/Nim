@@ -740,7 +740,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                  "  #TGenericSeq Sup;$n"
         if m.config.selectedGC == gcDestructors:
           appcg(m, m.s[cfsTypes],
-            "typedef struct{ NI cap;void* allocator;$1 data[SEQ_DECL_SIZE];}$2_Content;$n" &
+            "typedef struct{ NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];}$2_Content;$n" &
             "struct $2 {$n" &
             "  NI len; $2_Content* p;$n" &
             "};$n", [getTypeDescAux(m, t.sons[0], check), result])
@@ -1254,7 +1254,7 @@ proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo
     d = t.destructor.loc.r
   else:
     d = rope("NIM_NIL")
-
+  addf(m.s[cfsVars], "TNimType $1;$n", [name])
   addf(m.s[cfsTypeInit3], "$1.destructor = $2; $1.size = sizeof($3); $1.name = $4;$n", [
     name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
 

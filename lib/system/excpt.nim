@@ -17,13 +17,6 @@ var
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
-proc c_fwrite(buf: pointer, size, n: csize, f: CFilePtr): cint {.
-  importc: "fwrite", header: "<stdio.h>".}
-
-proc rawWrite(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable, hcrInline.} =
-  # we cannot throw an exception here!
-  discard c_fwrite(s, 1, s.len, f)
-
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
 

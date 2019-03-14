@@ -139,4 +139,11 @@ proc c_free(p: pointer) {.
 proc c_realloc(p: pointer, newsize: csize): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
+proc c_fwrite(buf: pointer, size, n: csize, f: CFilePtr): cint {.
+  importc: "fwrite", header: "<stdio.h>".}
+
+proc rawWrite(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable, inline.} =
+  # we cannot throw an exception here!
+  discard c_fwrite(s, 1, s.len, f)
+
 {.pop}

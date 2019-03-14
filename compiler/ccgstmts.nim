@@ -17,6 +17,7 @@ const
 
 proc getTraverseProc(p: BProc, v: Psym): Rope =
   if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
+      optNimV2 notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)

@@ -17,7 +17,7 @@ proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 type
   NimSeqPayload[T] = object
     cap: int
-    region: Allocator
+    allocator: Allocator
     data: UncheckedArray[T]
 
   NimSeqV2*[T] = object
@@ -52,8 +52,8 @@ when not defined(nimV2):
       mixin `=destroy`
       when not supportsCopyMem(T):
         for i in 0..<x.len: `=destroy`(p.data[i])
-      if p.region != nil:
-        p.region.dealloc(p.region, p, payloadSize(p.cap))
+      if p.allocator != nil:
+        p.allocator.dealloc(p.allocator, p, payloadSize(p.cap))
       x.p = nil
       x.len = 0
 
@@ -87,15 +87,15 @@ when not defined(nimV2):
 type
   PayloadBase = object
     cap: int
-    region: Allocator
+    allocator: Allocator
 
 proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
-    let region = getLocalAllocator()
-    var p = cast[ptr PayloadBase](region.alloc(region, cap * elemSize + sizeof(int) + sizeof(Allocator)))
-    p.region = region
+    let allocator = getLocalAllocator()
+    var p = cast[ptr PayloadBase](allocator.alloc(allocator, cap * elemSize + sizeof(int) + sizeof(Allocator)))
+    p.allocator = allocator
     p.cap = cap
     result = p
   else:
@@ -112,12 +112,12 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
       var p = cast[ptr PayloadBase](p)
-      let region = if p.region == nil: getLocalAllocator() else: p.region
+      let allocator = if p.allocator == nil: getLocalAllocator() else: p.allocator
       let cap = max(resize(p.cap), len+addlen)
-      var q = cast[ptr PayloadBase](region.realloc(region, p,
+      var q = cast[ptr PayloadBase](allocator.realloc(allocator, p,
         sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
         sizeof(int) + sizeof(Allocator) + elemSize * cap))
-      q.region = region
+      q.allocator = allocator
       q.cap = cap
       result = q
 

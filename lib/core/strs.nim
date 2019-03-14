@@ -28,7 +28,7 @@ import allocators
 type
   NimStrPayload {.core.} = object
     cap: int
-    region: Allocator
+    allocator: Allocator
     data: UncheckedArray[char]
 
   NimStringV2 {.core.} = object
@@ -37,7 +37,7 @@ type
 
 const nimStrVersion {.core.} = 2
 
-template isLiteral(s): bool = s.p == nil or s.p.region == nil
+template isLiteral(s): bool = s.p == nil or s.p.allocator == nil
 
 template contentSize(cap): int = cap + 1 + sizeof(int) + sizeof(Allocator)
 
@@ -45,7 +45,7 @@ when not defined(nimV2):
 
   template frees(s) =
     if not isLiteral(s):
-      s.p.region.dealloc(s.p.region, s.p, contentSize(s.p.cap))
+      s.p.allocator.dealloc(s.p.allocator, s.p, contentSize(s.p.cap))
 
   proc `=destroy`(s: var string) =
     var a = cast[ptr NimStringV2](addr s)
@@ -72,12 +72,12 @@ when not defined(nimV2):
       # we can shallow copy literals:
       a.p = b.p
     else:
-      let region = if a.p != nil and a.p.region != nil: a.p.region else: getLocalAllocator()
+      let allocator = if a.p != nil and a.p.allocator != nil: a.p.allocator else: getLocalAllocator()
       # we have to allocate the 'cap' here, consider
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
-      a.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(b.len)))
-      a.p.region = region
+      a.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(b.len)))
+      a.p.allocator = allocator
       a.p.cap = b.len
       copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
 
@@ -90,16 +90,16 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
   if isLiteral(s):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
-    let region = getLocalAllocator()
-    s.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(s.len + addlen)))
-    s.p.region = region
+    let allocator = getLocalAllocator()
+    s.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(s.len + addlen)))
+    s.p.allocator = allocator
     s.p.cap = s.len + addlen
     if s.len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
       copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
   elif s.len + addlen > s.p.cap:
     let cap = max(s.len + addlen, resize(s.p.cap))
-    s.p = cast[ptr NimStrPayload](s.p.region.realloc(s.p.region, s.p,
+    s.p = cast[ptr NimStrPayload](s.p.allocator.realloc(s.p.allocator, s.p,
       oldSize = contentSize(s.p.cap),
       newSize = contentSize(cap)))
     s.p.cap = cap
@@ -114,9 +114,9 @@ proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerProc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    let region = getLocalAllocator()
-    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(len)))
-    p.region = region
+    let allocator = getLocalAllocator()
+    var p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(len)))
+    p.allocator = allocator
     p.cap = len
     if len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
@@ -147,9 +147,9 @@ proc rawNewString(space: int): NimStringV2 {.compilerProc.} =
   if space <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    let region = getLocalAllocator()
-    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(space)))
-    p.region = region
+    let allocator = getLocalAllocator()
+    var p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(space)))
+    p.allocator = allocator
     p.cap = space
     result = NimStringV2(len: 0, p: p)
 
@@ -157,9 +157,9 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    let region = getLocalAllocator()
-    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(len)))
-    p.region = region
+    let allocator = getLocalAllocator()
+    var p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(len)))
+    p.allocator = allocator
     p.cap = len
     result = NimStringV2(len: len, p: p)
 

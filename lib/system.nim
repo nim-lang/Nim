@@ -679,7 +679,8 @@ when not defined(JS) and not defined(nimscript):
   when not defined(gcDestructors):
     template space(s: PGenericSeq): int {.dirty.} =
       s.reserved and not (seqShallowFlag or strlitFlag)
-  include "system/hti"
+  when not defined(nimV2):
+    include "system/hti"
 
 type
   byte* = uint8 ## This is an alias for ``uint8``, that is an unsigned
@@ -2925,6 +2926,14 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ##     echo "'+' for integers is available"
   discard
 
+when not defined(js) and not defined(nimscript):
+  include "system/ansi_c"
+
+when not declared(sysFatal):
+  include "system/fatal"
+
+when defined(nimV2) and not defined(nimscript):
+  include core/runtime_v2
 
 import system/assertions
 export assertions
@@ -2995,7 +3004,7 @@ when not defined(nimscript) and hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-  when not defined(JS):
+  when not defined(JS) and not defined(nimV2):
     proc GC_disable*() {.rtl, inl, benign.}
       ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
       ## are needed to reactivate the GC.
@@ -3242,12 +3251,6 @@ when hostOS == "standalone":
     if s == nil or s.len == 0: result = cstring""
     else: result = cstring(addr s.data)
 
-when not defined(js) and not defined(nimscript):
-  include "system/ansi_c"
-
-when not declared(sysFatal):
-  include "system/fatal"
-
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## Get type information for `x`.
   ##
@@ -3364,11 +3367,8 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
-    when not defined(gcRegions):
+    when not defined(gcRegions) and not defined(nimV2):
       proc initGC() {.gcsafe.}
-    when not defined(boehmgc) and not defined(useMalloc) and
-        not defined(gogc) and not defined(gcRegions):
-      proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
@@ -3547,26 +3547,27 @@ when not defined(JS): #and not defined(nimscript):
     else:
       const GenericSeqSize = (2 * sizeof(int))
 
-    proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
-      sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
-      var d: int
-      var a = cast[ByteAddress](aa)
-      case n.typ.size
-      of 1: d = ze(cast[ptr int8](a +% n.offset)[])
-      of 2: d = ze(cast[ptr int16](a +% n.offset)[])
-      of 4: d = int(cast[ptr int32](a +% n.offset)[])
-      of 8: d = int(cast[ptr int64](a +% n.offset)[])
-      else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
-      return d
+    when not defined(nimV2):
+      proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
+        sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
+        var d: int
+        var a = cast[ByteAddress](aa)
+        case n.typ.size
+        of 1: d = ze(cast[ptr int8](a +% n.offset)[])
+        of 2: d = ze(cast[ptr int16](a +% n.offset)[])
+        of 4: d = int(cast[ptr int32](a +% n.offset)[])
+        of 8: d = int(cast[ptr int64](a +% n.offset)[])
+        else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
+        return d
 
-    proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
-      var discr = getDiscriminant(aa, n)
-      if discr <% n.len:
-        result = n.sons[discr]
-        if result == nil: result = n.sons[n.len]
-        # n.sons[n.len] contains the ``else`` part (but may be nil)
-      else:
-        result = n.sons[n.len]
+      proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
+        var discr = getDiscriminant(aa, n)
+        if discr <% n.len:
+          result = n.sons[discr]
+          if result == nil: result = n.sons[n.len]
+          # n.sons[n.len] contains the ``else`` part (but may be nil)
+        else:
+          result = n.sons[n.len]
 
     {.push profiler:off.}
     when hasAlloc: include "system/mmdisp"
@@ -3584,7 +3585,8 @@ when not defined(JS): #and not defined(nimscript):
   when not defined(nimscript) and hasAlloc:
     when not defined(gcDestructors):
       include "system/assign"
-    include "system/repr"
+    when not defined(nimV2):
+      include "system/repr"
 
   when hostOS != "standalone" and not defined(nimscript):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =

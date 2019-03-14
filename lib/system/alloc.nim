@@ -224,10 +224,6 @@ proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   setBit(sl, a.slBitmap[fl])
   setBit(fl, a.flBitmap)
 
-{.push stack_trace: off.}
-proc initAllocator() = discard "nothing to do anymore"
-{.pop.}
-
 proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   inc(a.currMem, bytes)
 

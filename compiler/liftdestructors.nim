@@ -141,22 +141,19 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     result = true
 
 proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode): bool =
-  let op = t.destructor
+  var op = t.destructor
+  if op == nil and useNoGc(c, t):
+    op = liftBody(c.graph, t, attachedDestructor, c.info)
+    doAssert op != nil
+
   if op != nil:
     markUsed(c.graph.config, c.info, op, c.graph.usageSym)
     onUse(c.info, op)
     body.add destructorCall(c.graph, op, x)
     result = true
   elif useNoGc(c, t):
-    if sameType(t, c.asgnForType) and c.kind == attachedDestructor:
-      let op = c.fn
-      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
-      onUse(c.info, op)
-      body.add destructorCall(c.graph, op, x)
-      result = true
-    else:
-      internalError(c.graph.config, c.info,
-        "type-bound operator could not be resolved")
+    internalError(c.graph.config, c.info,
+      "type-bound operator could not be resolved")
 
 proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   case c.kind
@@ -479,18 +476,26 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
   if kind != attachedDestructor:
     result.typ.addParam src
 
-  liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
-  # recursion is handled explicitly, do not register the type based operation
-  # before 'liftBodyAux':
-  if g.config.selectedGC == gcDestructors and
-      typ.kind in {tySequence, tyString} and body.len == 0:
-    discard "do not cache it yet"
-  else:
+  if optNimV2 in g.config.globalOptions:
     case kind
     of attachedAsgn: typ.assignment = result
     of attachedSink: typ.sink = result
     of attachedDeepCopy: typ.deepCopy = result
     of attachedDestructor: typ.destructor = result
+
+  liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
+  if optNimV2 notin g.config.globalOptions:
+    # recursion is handled explicitly, do not register the type based operation
+    # before 'liftBodyAux':
+    if g.config.selectedGC == gcDestructors and
+        typ.kind in {tySequence, tyString} and body.len == 0:
+      discard "do not cache it yet"
+    else:
+      case kind
+      of attachedAsgn: typ.assignment = result
+      of attachedSink: typ.sink = result
+      of attachedDeepCopy: typ.deepCopy = result
+      of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)

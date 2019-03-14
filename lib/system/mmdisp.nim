@@ -497,7 +497,8 @@ else:
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
   elif defined(nimV2):
-    include "core/runtime_v2"
+    var allocator {.rtlThreadVar.}: MemRegion
+    instantiateForRegion(allocator)
   elif defined(gcMarkAndSweep) or defined(gcDestructors):
     # XXX use 'compileOption' here
     include "system/gc_ms"

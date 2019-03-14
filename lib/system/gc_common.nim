@@ -167,7 +167,6 @@ when declared(threadType):
     ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
     if threadType == ThreadType.None:
-      initAllocator()
       var stackTop {.volatile.}: pointer
       nimGC_setStackBottom(addr(stackTop))
       initGC()

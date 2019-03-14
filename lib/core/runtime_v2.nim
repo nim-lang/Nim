@@ -38,15 +38,6 @@ type
             # we could remove it in non-debug builds but this seems
             # unwise.
 
-proc isObj(obj: PNimType, subclass: cstring): bool {.compilerproc.} =
-  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
-
-  result = strstr(obj.name, subclass) != nil
-
-proc chckObj(obj: PNimType, subclass: cstring) {.compilerproc.} =
-  # checks if obj is of type subclass:
-  if not isObj(obj, subclass): sysFatal(ObjectConversionError, "invalid object conversion")
-
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
 
@@ -76,3 +67,12 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor
   if d != nil: d(p)
   nimRawDispose(p)
+
+proc isObj(obj: PNimType, subclass: cstring): bool {.compilerproc.} =
+  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+
+  result = strstr(obj.name, subclass) != nil
+
+proc chckObj(obj: PNimType, subclass: cstring) {.compilerproc.} =
+  # checks if obj is of type subclass:
+  if not isObj(obj, subclass): sysFatal(ObjectConversionError, "invalid object conversion")
