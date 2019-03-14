@@ -117,6 +117,20 @@ Rule      Pattern                 Transformed into
 
 Rule 3.2 describes a "cursor" variable, a variable that is only used as a
 view into some data structure. See ``compiler/cursors.nim`` for details.
+
+Note: In order to avoid the very common combination ``reset(x); =sink(x, y)`` for
+variable definitions we must turn "the first sink/assignment" operation into a
+copyMem. This is harder than it looks:
+
+  while true:
+    try:
+      if cond: break # problem if we run destroy(x) here :-/
+      var x = f()
+    finally:
+      destroy(x)
+
+And the C++ optimizers don't sweat to optimize it for us, so we don't have
+to do it.
 ]##
 
 import
