@@ -1,6 +1,6 @@
 
 discard """
-  errmsg: "type mismatch: got <proc (a: int): int{.gcsafe, locks: 0.}> but expected 'proc (a: int): int{.closure, noSideEffect.}"
+  errmsg: "func keyword is not allowed in type descriptions, use proc with {.noSideEffect.} pragma instead"
 """
 
 type
