@@ -26,6 +26,16 @@
   ``assert not isFalse(3)`` compiles.
 - `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
   tree from the symbol declaration instead of just the initializer portion.
+- it is now possible to use statement list expressions after keywords with
+  indentation: raise, return, discard, yield, if, elif, case. This helps 
+  parsing code produced by Nim template expansion where stmtListExpr can
+  appear in place of any expression. Example:
+```nim
+  raise 
+    var e = new(Exception)
+    e.msg = "My Exception msg"
+    e
+```
 
 
 #### Breaking changes in the standard library
