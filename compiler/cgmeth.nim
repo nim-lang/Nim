@@ -37,10 +37,9 @@ proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
 
 proc getDispatcher*(s: PSym): PSym =
   ## can return nil if is has no dispatcher.
-  let dispn = lastSon(s.ast)
-  if dispn.kind == nkSym:
-    let disp = dispn.sym
-    if sfDispatcher in disp.flags: result = disp
+  if dispatcherPos < s.ast.len:
+    result = s.ast[dispatcherPos].sym
+    doAssert sfDispatcher in result.flags
 
 proc methodCall*(n: PNode; conf: ConfigRef): PNode =
   result = n
@@ -99,13 +98,14 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
         return No
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
-  var L = s.ast.len-1
-  var x = s.ast.sons[L]
-  if x.kind == nkSym and sfDispatcher in x.sym.flags:
+  if dispatcherPos < s.ast.len:
     # we've added a dispatcher already, so overwrite it
-    s.ast.sons[L] = dispatcher
+    s.ast.sons[dispatcherPos] = dispatcher
   else:
-    s.ast.add(dispatcher)
+    setLen(s.ast.sons, dispatcherPos+1)
+    if s.ast[resultPos] == nil:
+      s.ast[resultPos] = newNodeI(nkEmpty, s.info)
+    s.ast.sons[dispatcherPos] = dispatcher
 
 proc createDispatcher(s: PSym): PSym =
   var disp = copySym(s)
@@ -165,7 +165,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
     case sameMethodBucket(disp, s)
     of Yes:
       add(g.methods[i].methods, s)
-      attachDispatcher(s, lastSon(disp.ast))
+      attachDispatcher(s, disp.ast[dispatcherPos])
       fixupDispatcher(s, disp, g.config)
       #echo "fixup ", disp.name.s, " ", disp.id
       when useEffectSystem: checkMethodEffects(g, disp, s)
