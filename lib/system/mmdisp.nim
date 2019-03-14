@@ -496,6 +496,8 @@ else:
   elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
+  elif defined(nimV2):
+    include "core/runtime_v2"
   elif defined(gcMarkAndSweep) or defined(gcDestructors):
     # XXX use 'compileOption' here
     include "system/gc_ms"

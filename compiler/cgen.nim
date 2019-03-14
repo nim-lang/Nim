@@ -293,7 +293,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     includeHeader(p.module, "<new>")
     linefmt(p, section, "new ($1) $2;$n", rdLoc(a), getTypeDesc(p.module, t))
 
-  if optNimV2 in p.config.globalOptions: return
+  #if optNimV2 in p.config.globalOptions: return
   case analyseObjectWithTypeField(t)
   of frNone:
     discard

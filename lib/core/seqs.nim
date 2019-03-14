@@ -44,43 +44,44 @@ This means the check for whether ``s.p`` needs to be freed should
 be ``s.len == 0`` even though that feels slightly more awkward.
 ]#
 
-proc `=destroy`[T](s: var seq[T]) =
-  var x = cast[ptr NimSeqV2[T]](addr s)
-  var p = x.p
-  if p != nil:
+when not defined(nimV2):
+  proc `=destroy`[T](s: var seq[T]) =
+    var x = cast[ptr NimSeqV2[T]](addr s)
+    var p = x.p
+    if p != nil:
+      mixin `=destroy`
+      when not supportsCopyMem(T):
+        for i in 0..<x.len: `=destroy`(p.data[i])
+      if p.region != nil:
+        p.region.dealloc(p.region, p, payloadSize(p.cap))
+      x.p = nil
+      x.len = 0
+
+  proc `=`[T](x: var seq[T]; y: seq[T]) =
     mixin `=destroy`
-    when not supportsCopyMem(T):
-      for i in 0..<x.len: `=destroy`(p.data[i])
-    if p.region != nil:
-      p.region.dealloc(p.region, p, payloadSize(p.cap))
-    x.p = nil
-    x.len = 0
+    var a = cast[ptr NimSeqV2[T]](addr x)
+    var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
 
-proc `=`[T](x: var seq[T]; y: seq[T]) =
-  mixin `=destroy`
-  var a = cast[ptr NimSeqV2[T]](addr x)
-  var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
-
-  if a.p == b.p: return
-  `=destroy`(x)
-  a.len = b.len
-  if b.p != nil:
-    a.p = cast[type(a.p)](alloc(payloadSize(a.len)))
-    when supportsCopyMem(T):
-      if a.len > 0:
-        copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], a.len * sizeof(T))
-    else:
-      for i in 0..<a.len:
-        a.p.data[i] = b.p.data[i]
-
-proc `=sink`[T](x: var seq[T]; y: seq[T]) =
-  mixin `=destroy`
-  var a = cast[ptr NimSeqV2[T]](addr x)
-  var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
-  if a.p != nil and a.p != b.p:
+    if a.p == b.p: return
     `=destroy`(x)
-  a.len = b.len
-  a.p = b.p
+    a.len = b.len
+    if b.p != nil:
+      a.p = cast[type(a.p)](alloc(payloadSize(a.len)))
+      when supportsCopyMem(T):
+        if a.len > 0:
+          copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], a.len * sizeof(T))
+      else:
+        for i in 0..<a.len:
+          a.p.data[i] = b.p.data[i]
+
+  proc `=sink`[T](x: var seq[T]; y: seq[T]) =
+    mixin `=destroy`
+    var a = cast[ptr NimSeqV2[T]](addr x)
+    var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
+    if a.p != nil and a.p != b.p:
+      `=destroy`(x)
+    a.len = b.len
+    a.p = b.p
 
 
 type
