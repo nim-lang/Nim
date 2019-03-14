@@ -2034,7 +2034,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   case s.magic # magics that need special treatment
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = semAddr(c, n.sons[1], s.name.s == "unsafeAddr")
+    result[0] = newSymNode(s, n[0].info)
+    result[1] = semAddrArg(c, n.sons[1], s.name.s == "unsafeAddr")
+    result.typ = makePtrType(c, result[1].typ)
   of mTypeOf:
     result = semTypeOf(c, n)
   #of mArrGet: result = semArrGet(c, n, flags)
@@ -2579,7 +2581,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkAddr:
     result = n
     checkSonsLen(n, 1, c.config)
-    result = semAddr(c, n.sons[0])
+    result[0] = semAddrArg(c, n.sons[0])
+    result.typ = makePtrType(c, result[0].typ)
   of nkHiddenAddr, nkHiddenDeref:
     checkSonsLen(n, 1, c.config)
     n.sons[0] = semExpr(c, n.sons[0], flags)

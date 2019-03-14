@@ -41,43 +41,45 @@ template isLiteral(s): bool = s.p == nil or s.p.region == nil
 
 template contentSize(cap): int = cap + 1 + sizeof(int) + sizeof(Allocator)
 
-template frees(s) =
-  if not isLiteral(s):
-    s.p.region.dealloc(s.p.region, s.p, contentSize(s.p.cap))
+when not defined(nimV2):
 
-proc `=destroy`(s: var string) =
-  var a = cast[ptr NimStringV2](addr s)
-  frees(a)
-  a.len = 0
-  a.p = nil
+  template frees(s) =
+    if not isLiteral(s):
+      s.p.region.dealloc(s.p.region, s.p, contentSize(s.p.cap))
 
-proc `=sink`(x: var string, y: string) =
-  var a = cast[ptr NimStringV2](addr x)
-  var b = cast[ptr NimStringV2](unsafeAddr y)
-  # we hope this is optimized away for not yet alive objects:
-  if unlikely(a.p == b.p): return
-  frees(a)
-  a.len = b.len
-  a.p = b.p
+  proc `=destroy`(s: var string) =
+    var a = cast[ptr NimStringV2](addr s)
+    frees(a)
+    a.len = 0
+    a.p = nil
 
-proc `=`(x: var string, y: string) =
-  var a = cast[ptr NimStringV2](addr x)
-  var b = cast[ptr NimStringV2](unsafeAddr y)
-  if unlikely(a.p == b.p): return
-  frees(a)
-  a.len = b.len
-  if isLiteral(b):
-    # we can shallow copy literals:
+  proc `=sink`(x: var string, y: string) =
+    var a = cast[ptr NimStringV2](addr x)
+    var b = cast[ptr NimStringV2](unsafeAddr y)
+    # we hope this is optimized away for not yet alive objects:
+    if unlikely(a.p == b.p): return
+    frees(a)
+    a.len = b.len
     a.p = b.p
-  else:
-    let region = if a.p != nil and a.p.region != nil: a.p.region else: getLocalAllocator()
-    # we have to allocate the 'cap' here, consider
-    # 'let y = newStringOfCap(); var x = y'
-    # on the other hand... These get turned into moves now.
-    a.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(b.len)))
-    a.p.region = region
-    a.p.cap = b.len
-    copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
+
+  proc `=`(x: var string, y: string) =
+    var a = cast[ptr NimStringV2](addr x)
+    var b = cast[ptr NimStringV2](unsafeAddr y)
+    if unlikely(a.p == b.p): return
+    frees(a)
+    a.len = b.len
+    if isLiteral(b):
+      # we can shallow copy literals:
+      a.p = b.p
+    else:
+      let region = if a.p != nil and a.p.region != nil: a.p.region else: getLocalAllocator()
+      # we have to allocate the 'cap' here, consider
+      # 'let y = newStringOfCap(); var x = y'
+      # on the other hand... These get turned into moves now.
+      a.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(b.len)))
+      a.p.region = region
+      a.p.cap = b.len
+      copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4

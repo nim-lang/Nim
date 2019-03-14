@@ -41,6 +41,13 @@ proc hashString(s: string): int {.compilerproc.} =
   result = h
 
 proc add*(result: var string; x: int64) =
+  ## Converts integer to its string representation and appends it to `result`.
+  ##
+  ## .. code-block:: Nim
+  ##   var
+  ##     a = "123"
+  ##     b = 45
+  ##   a.add(b) # a <- "12345"
   let base = result.len
   setLen(result, base + sizeof(x)*4)
   var i = 0
@@ -64,6 +71,13 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result.add x
 
 proc add*(result: var string; x: float) =
+  ## Converts float to its string representation and appends it to `result`.
+  ##
+  ## .. code-block:: Nim
+  ##   var
+  ##     a = "123"
+  ##     b = 45.67
+  ##   a.add(b) # a <- "12345.67"
   when nimvm:
     result.add $x
   else:
@@ -279,7 +293,9 @@ proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc `$`(x: uint64): string =
+proc `$`*(x: uint64): string {.noSideEffect.} =
+  ## The stringify operator for an unsigned integer argument. Returns `x`
+  ## converted to a decimal string.
   if x == 0:
     result = "0"
   else:

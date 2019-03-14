@@ -390,24 +390,18 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
-#[
-Note: could use simply:
-proc `%`*(o: object|tuple): JsonNode
-but blocked by https://github.com/nim-lang/Nim/issues/10019
-]#
-proc `%`*(o: tuple): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
-  when isNamedTuple(type(o)):
+proc `%`*[T: tuple|object](o: T): JsonNode =
+  ## Construct JsonNode from tuples and objects.
+  ##
+  ## If passed an anonymous tuple, creates `JArray JsonNode`,
+  ## otherwise (named tuples and objects) `JObject JsonNode`.
+  const isNamed = T is object or isNamedTuple(T)
+  when isNamed:
     result = newJObject()
     for k, v in o.fieldPairs: result[k] = %v
   else:
     result = newJArray()
     for a in o.fields: result.add(%a)
-
-proc `%`*(o: object): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
-  result = newJObject()
-  for k, v in o.fieldPairs: result[k] = %v
 
 proc `%`*(o: ref object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`

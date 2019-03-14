@@ -996,7 +996,7 @@ const
   miscPos* = 5  # used for undocumented and hacky stuff
   bodyPos* = 6       # position of body; use rodread.getBody() instead!
   resultPos* = 7
-  dispatcherPos* = 8 # caution: if method has no 'result' it can be position 7!
+  dispatcherPos* = 8
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}

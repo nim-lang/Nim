@@ -339,6 +339,10 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   of tyProc: result = typ.callConv == ccClosure
   else: discard
 
+proc isFinal*(t: PType): bool =
+  var t = t.skipTypes(abstractInst)
+  result = t.kind != tyObject or tfFinal in t.flags
+
 proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()
   result = canFormAcycleAux(marker, typ, typ.id)

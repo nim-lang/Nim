@@ -538,7 +538,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let paramType = paramType.skipTypesOrNil(abstractInst)
   if paramType != nil and tfNotNil in paramType.flags and
       n.typ != nil and tfNotNil notin n.typ.flags:
-    if n.kind == nkAddr:
+    if isAddrNode(n):
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
     elif (n.kind == nkSym and n.sym.kind in routineKinds) or

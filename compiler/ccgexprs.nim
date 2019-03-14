@@ -1165,40 +1165,45 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   assert refType.kind == tyRef
   let bt = refType.lastSon
   if sizeExpr.isNil:
-    sizeExpr = "sizeof($1)" %
-        [getTypeDesc(p.module, bt)]
+    sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
 
-  let ti = genTypeInfo(p.module, typ, a.lode.info)
-  if bt.destructor != nil:
-    # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
-    # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
-    # convention at least:
-    if bt.destructor.typ == nil or bt.destructor.typ.callConv != ccDefault:
-      localError(p.module.config, a.lode.info,
-        "the destructor that is turned into a finalizer needs " &
-        "to have the 'nimcall' calling convention")
-    var f: TLoc
-    initLocExpr(p, newSymNode(bt.destructor), f)
-    addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
-
-  let args = [getTypeDesc(p.module, typ), ti, sizeExpr]
-  if a.storage == OnHeap and usesWriteBarrier(p.config):
-    if canFormAcycle(a.t):
-      linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", a.rdLoc)
-    else:
-      linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", a.rdLoc)
-    if p.config.selectedGC == gcGo:
-      # newObjRC1() would clash with unsureAsgnRef() - which is used by gcGo to
-      # implement the write barrier
-      b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
-      linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n", addrLoc(p.config, a), b.rdLoc)
-    else:
-      # use newObjRC1 as an optimization
-      b.r = ropecg(p.module, "($1) #newObjRC1($2, $3)", args)
-      linefmt(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
+  if optNimV2 in p.config.globalOptions:
+    b.r = ropecg(p.module, "($1) #nimNewObj($2)",
+        [getTypeDesc(p.module, typ), sizeExpr])
+    genAssignment(p, a, b, {})
   else:
-    b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
-    genAssignment(p, a, b, {})  # set the object type:
+    let ti = genTypeInfo(p.module, typ, a.lode.info)
+    if bt.destructor != nil:
+      # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
+      # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
+      # convention at least:
+      if bt.destructor.typ == nil or bt.destructor.typ.callConv != ccDefault:
+        localError(p.module.config, a.lode.info,
+          "the destructor that is turned into a finalizer needs " &
+          "to have the 'nimcall' calling convention")
+      var f: TLoc
+      initLocExpr(p, newSymNode(bt.destructor), f)
+      addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
+
+    let args = [getTypeDesc(p.module, typ), ti, sizeExpr]
+    if a.storage == OnHeap and usesWriteBarrier(p.config):
+      if canFormAcycle(a.t):
+        linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", a.rdLoc)
+      else:
+        linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", a.rdLoc)
+      if p.config.selectedGC == gcGo:
+        # newObjRC1() would clash with unsureAsgnRef() - which is used by gcGo to
+        # implement the write barrier
+        b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
+        linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n", addrLoc(p.config, a), b.rdLoc)
+      else:
+        # use newObjRC1 as an optimization
+        b.r = ropecg(p.module, "($1) #newObjRC1($2, $3)", args)
+        linefmt(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
+    else:
+      b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
+      genAssignment(p, a, b, {})
+  # set the object type:
   genObjectInit(p, cpsStmts, bt, a, false)
 
 proc genNew(p: BProc, e: PNode) =
@@ -1433,22 +1438,26 @@ proc genNewFinalize(p: BProc, e: PNode) =
   gcUsage(p.config, e)
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
-  # unfortunately 'genTypeInfo' sets tfObjHasKids as a side effect, so we
-  # have to call it here first:
-  let ti = genTypeInfo(p.module, dest, info)
-  if tfFinal in dest.flags or (objHasKidsValid in p.module.flags and
-                               tfObjHasKids notin dest.flags):
-    result = "$1.m_type == $2" % [a, ti]
-  else:
-    discard cgsym(p.module, "TNimType")
-    inc p.module.labels
-    let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
-    addf(p.module.s[cfsVars], "static TNimType* $#[2];$n", [cache])
-    result = ropecg(p.module, "#isObjWithCache($#.m_type, $#, $#)", a, ti, cache)
-  when false:
-    # former version:
+  if optNimV2 in p.config.globalOptions:
     result = ropecg(p.module, "#isObj($1.m_type, $2)",
-                  a, genTypeInfo(p.module, dest, info))
+      a, genTypeInfo2Name(p.module, dest))
+  else:
+    # unfortunately 'genTypeInfo' sets tfObjHasKids as a side effect, so we
+    # have to call it here first:
+    let ti = genTypeInfo(p.module, dest, info)
+    if tfFinal in dest.flags or (objHasKidsValid in p.module.flags and
+                                tfObjHasKids notin dest.flags):
+      result = "$1.m_type == $2" % [a, ti]
+    else:
+      discard cgsym(p.module, "TNimType")
+      inc p.module.labels
+      let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
+      addf(p.module.s[cfsVars], "static TNimType* $#[2];$n", [cache])
+      result = ropecg(p.module, "#isObjWithCache($#.m_type, $#, $#)", a, ti, cache)
+    when false:
+      # former version:
+      result = ropecg(p.module, "#isObj($1.m_type, $2)",
+                    a, genTypeInfo(p.module, dest, info))
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -1925,11 +1934,57 @@ proc genWasMoved(p: BProc; n: PNode) =
   #  addrLoc(p.config, a), getTypeDesc(p.module, a.t))
 
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
-  if d.k == locNone: getTemp(p, n.typ, d)
   var a: TLoc
   initLocExpr(p, n[1].skipAddr, a)
-  genAssignment(p, d, a, {})
-  resetLoc(p, a)
+  if n.len == 4:
+    # generated by liftdestructors:
+    var src, destroyCall: TLoc
+    initLocExpr(p, n[2], src)
+    initLocExpr(p, n[3], destroyCall)
+    linefmt(p, cpsStmts, "if ($1.len && $1.p != $2.p) { $3; }$n" &
+      "$1.len = $2.len; $1.p = $2.p;$n",
+      [rdLoc(a), rdLoc(src), rdLoc(destroyCall)])
+  else:
+    if d.k == locNone: getTemp(p, n.typ, d)
+    genAssignment(p, d, a, {})
+    resetLoc(p, a)
+
+proc genDestroy(p: BProc; n: PNode) =
+  if optNimV2 in p.config.globalOptions:
+    let t = n[1].typ.skipTypes(abstractInst)
+    case t.kind
+    of tyString:
+      var a: TLoc
+      initLocExpr(p, n[1].skipAddr, a)
+      linefmt(p, cpsStmts, "if ($1.len && $1.region) {$n" &
+        " $1.region->dealloc($1.region, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*)); }$n",
+        [rdLoc(a)])
+    of tySequence:
+      var a: TLoc
+      initLocExpr(p, n[1].skipAddr, a)
+      linefmt(p, cpsStmts, "if ($1.len && $1.region) {$n" &
+        " $1.region->dealloc($1.region, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*)); }$n",
+        [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
+    else: discard "nothing to do"
+  else:
+    discard "ignore calls to the default destructor"
+
+proc genDispose(p: BProc; n: PNode) =
+  when false:
+    let elemType = n[1].typ.skipTypes(abstractVarInst).lastSon
+
+    var a: TLoc
+    initLocExpr(p, n[1].skipAddr, a)
+
+    if isFinal(elemType):
+      if elemType.destructor != nil:
+        var destroyCall = newNodeI(nkCall, n.info)
+        genStmts(p, destroyCall)
+      lineCg(p, cpsStmts, "#nimRawDispose($#)", rdLoc(a))
+    else:
+      # ``nimRawDisposeVirtual`` calls the ``finalizer`` which is the same as the
+      # destructor, but it uses the runtime type. Afterwards the memory is freed:
+      lineCg(p, cpsStmts, "#nimDestroyAndDispose($#)", rdLoc(a))
 
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
@@ -2090,7 +2145,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDotDot, mEqCString: genCall(p, e, d)
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
-  of mDestroy: discard "ignore calls to the default destructor"
+  of mDestroy: genDestroy(p, e)
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       " 'toOpenArray' is only valid within a call expression")
@@ -2250,12 +2305,16 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")
         t = skipTypes(t.sons[0], skipPtrs)
+    let checkFor = if optNimV2 in p.config.globalOptions:
+                     genTypeInfo2Name(p.module, dest)
+                   else:
+                     genTypeInfo(p.module, dest, n.info)
     if nilCheck != nil:
       linefmt(p, cpsStmts, "if ($1) #chckObj($2.m_type, $3);$n",
-              nilCheck, r, genTypeInfo(p.module, dest, n.info))
+              nilCheck, r, checkFor)
     else:
       linefmt(p, cpsStmts, "#chckObj($1.m_type, $2);$n",
-              r, genTypeInfo(p.module, dest, n.info))
+              r, checkFor)
   if n.sons[0].typ.kind != tyObject:
     putIntoDest(p, d, n,
                 "(($1) ($2))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)

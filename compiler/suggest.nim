@@ -540,10 +540,6 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
   when defined(nimsuggest):
     suggestSym(conf, info, s, usageSym, false)
 
-proc useSym*(conf: ConfigRef; sym: PSym; usageSym: var PSym): PNode =
-  result = newSymNode(sym)
-  markUsed(conf, result.info, sym, usageSym)
-
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!
   try:

@@ -593,7 +593,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       of tySequence:
         if cl.isReturnType and cl.c.config.selectedGc == gcDestructors and result.destructor.isNil and
-            result[0].kind != tyEmpty:
+            result[0].kind != tyEmpty and optNimV2 notin cl.c.config.globalOptions:
           let s = cl.c.graph.sysTypes[tySequence]
           var old = copyType(s, s.owner, keepId=false)
           # Remove the 'T' parameter from tySequence:
