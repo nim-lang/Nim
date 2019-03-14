@@ -76,7 +76,7 @@ const populationCount: array[low(int8)..high(int8), int8] = block:
     var arr: array[low(int8)..high(int8), int8]
 
     proc countSetBits(x: int8): int8 =
-      return 
+      return
         ( x and 0b00000001'i8) +
         ((x and 0b00000010'i8) shr 1) +
         ((x and 0b00000100'i8) shr 2) +
