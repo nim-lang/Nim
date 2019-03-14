@@ -33,7 +33,7 @@
 # included from sigmatch.nim
 
 import algorithm, prefixmatches, lineinfos, pathutils, parseutils
-from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
+from wordrecg import TSpecialWord # wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
   import passes, tables # importer

@@ -75,7 +75,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       localError(c.config, n.sons[0].info, "inheritance only works with an enum")
     counter = lastOrd(c.config, base) + 1
   rawAddSon(result, base)
-  let isPure = result.sym != nil and sfPure in result.sym.flags
+  var isPure = result.sym.magic != mBool
+  if optOldAst in c.config.options:
+    isPure = result.sym != nil and sfPure in result.sym.flags
   var symbols: TStrTable
   if isPure: initStrTable(symbols)
   var hasNull = false

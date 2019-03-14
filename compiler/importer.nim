@@ -21,15 +21,15 @@ proc readExceptSet*(c: PContext, n: PNode): IntSet =
     result.incl(ident.id)
 
 proc importPureEnumField*(c: PContext; s: PSym) =
-  let check = strTableGet(c.importTable.symbols, s.name)
+  var check = strTableGet(c.importTable.symbols, s.name)
   if check == nil:
-    let checkB = strTableGet(c.pureEnumFields, s.name)
-    if checkB == nil:
+    check = strTableGet(c.pureEnumFields, s.name)
+    if check == nil:
       strTableAdd(c.pureEnumFields, s)
-    else:
-      # mark as ambigous:
-      incl(c.ambiguousSymbols, checkB.id)
-      incl(c.ambiguousSymbols, s.id)
+      return
+  # mark as ambigous:
+  incl(c.ambiguousSymbols, check.id)
+  incl(c.ambiguousSymbols, s.id)
 
 proc rawImportSymbol(c: PContext, s: PSym) =
   # This does not handle stubs, because otherwise loading on demand would be

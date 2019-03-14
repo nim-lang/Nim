@@ -40,7 +40,7 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optLaxStrings,
     optNilSeqs,
-    optOldAst
+    optOldAst # v0.19 compatibility switch
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -398,8 +398,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
-    of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
-    of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
+    of "littleendian": result = CPU[conf.target.targetCPU].endian == littleEndian
+    of "bigendian": result = CPU[conf.target.targetCPU].endian == bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
     of "cpu16": result = CPU[conf.target.targetCPU].bit == 16
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32

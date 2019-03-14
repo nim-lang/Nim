@@ -310,8 +310,10 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       result = searchInScopes(c, ident).skipAlias(n, c.config)
     else:
       result = searchInScopes(c, ident, allExceptModule).skipAlias(n, c.config)
-    if result == nil and checkPureEnumFields in flags:
+    if result == nil and (optOldAst notin c.config.options or checkPureEnumFields in flags):
       result = strTableGet(c.pureEnumFields, ident)
+      if result != nil and contains(c.ambiguousSymbols, result.id):
+        errorUseQualifier(c, n.info, result)
     if result == nil and checkUndeclared in flags:
       fixSpelling(n, ident, searchInScopes)
       errorUndeclaredIdentifier(c, n.info, ident.s)

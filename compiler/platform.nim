@@ -184,13 +184,10 @@ type
     cpuMips64, cpuMips64el, cpuRiscV64, cpuWasm32
 
 type
-  TEndian* = enum
-    littleEndian, bigEndian
-  TInfoCPU* = tuple[name: string, intSize: int, endian: TEndian,
+  TInfoCPU* = tuple[name: string, intSize: int, endian: Endianness,
                     floatSize, bit: int]
 
 const
-  EndianToStr*: array[TEndian, string] = ["littleEndian", "bigEndian"]
   CPU*: array[succ(low(TSystemCPU))..high(TSystemCPU), TInfoCPU] = [
     (name: "i386", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "m68k", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),

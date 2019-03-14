@@ -22,8 +22,8 @@ when not defined(leanCompiler):
 import strutils except `%` # collides with ropes.`%`
 
 from modulegraphs import ModuleGraph, PPassContext
-from lineinfos import
-  warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
+from lineinfos import TMsgKind
+#  warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
 
 when not declared(dynlib.libCandidates):
@@ -539,7 +539,7 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
 
 include ccgcalls, "ccgstmts.nim"
 
-proc initFrame(p: BProc, procname, filename: Rope): Rope =  
+proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
   $1  define nimfr_(proc, file) \
       TFrame FR_; \

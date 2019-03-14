@@ -1909,7 +1909,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)")
-  of ast.mDec:
+  of ast.TMagic.mDec:
     if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "-", true)
     else:

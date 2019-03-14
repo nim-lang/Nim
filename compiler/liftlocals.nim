@@ -14,7 +14,7 @@ import
   idents, renderer, types, lowerings, lineinfos
 
 from pragmas import getPragmaVal
-from wordrecg import wLiftLocals
+from wordrecg import TSpecialWord # wLiftLocals
 
 type
   Ctx = object
