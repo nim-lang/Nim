@@ -1483,7 +1483,7 @@ proc parseFromStmt(p: var TParser): PNode =
     optInd(p, a)
   #expectNl(p)
 
-proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
+proc parseReturnOrRaise(p: var TParser, kind: TNodeKind, mode = emNormal): PNode =
   #| returnStmt = 'return' optInd expr?
   #| raiseStmt = 'raise' optInd expr?
   #| yieldStmt = 'yield' optInd expr?
@@ -1499,7 +1499,7 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
     # NL terminates:
     addSon(result, p.emptyNode)
   else:
-    addSon(result, parseStmtListExpr(p))
+    addSon(result, parseStmtListExpr(p, mode))
 
 proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   #| condStmt = expr colcom stmt COMMENT?
@@ -2123,12 +2123,12 @@ proc simpleStmt(p: var TParser, mode = emNormal): PNode =
   #|            | includeStmt | commentStmt) / exprStmt) COMMENT?
   #|
   case p.tok.tokType
-  of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt)
-  of tkRaise: result = parseReturnOrRaise(p, nkRaiseStmt)
-  of tkYield: result = parseReturnOrRaise(p, nkYieldStmt)
-  of tkDiscard: result = parseReturnOrRaise(p, nkDiscardStmt)
-  of tkBreak: result = parseReturnOrRaise(p, nkBreakStmt)
-  of tkContinue: result = parseReturnOrRaise(p, nkContinueStmt)
+  of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt, mode)
+  of tkRaise: result = parseReturnOrRaise(p, nkRaiseStmt, mode)
+  of tkYield: result = parseReturnOrRaise(p, nkYieldStmt, mode)
+  of tkDiscard: result = parseReturnOrRaise(p, nkDiscardStmt, mode)
+  of tkBreak: result = parseReturnOrRaise(p, nkBreakStmt, mode)
+  of tkContinue: result = parseReturnOrRaise(p, nkContinueStmt, mode)
   of tkCurlyDotLe: result = parseStmtPragma(p)
   of tkImport: result = parseImport(p, nkImportStmt)
   of tkExport: result = parseImport(p, nkExportStmt)

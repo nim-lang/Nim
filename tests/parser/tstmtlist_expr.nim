@@ -40,4 +40,6 @@ proc d(x: int): int =
     y > 0:
       return y
 
-  
+##issue 4035
+echo(5 +
+5)
