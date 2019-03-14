@@ -550,6 +550,15 @@ proc genHigh*(g: ModuleGraph; n: PNode): PNode =
     result.sons[0] = newSymNode(getSysMagic(g, n.info, "high", mHigh))
     result.sons[1] = n
 
+proc genLen*(g: ModuleGraph; n: PNode): PNode =
+  if skipTypes(n.typ, abstractVar).kind == tyArray:
+    result = newIntLit(g, n.info, lastOrd(g.config, skipTypes(n.typ, abstractVar)) + 1)
+  else:
+    result = newNodeI(nkCall, n.info, 2)
+    result.typ = getSysType(g, n.info, tyInt)
+    result.sons[0] = newSymNode(getSysMagic(g, n.info, "len", mLengthSeq))
+    result.sons[1] = n
+
 proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchObj: PSym;
                              castExpr, call,
                              varSection, varInit, result: PNode) =
