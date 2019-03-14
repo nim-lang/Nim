@@ -10,6 +10,8 @@
 ## This module defines compile-time reflection procs for
 ## working with types.
 
+export system.`$` # for backward compatibility
+
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
