@@ -1,7 +1,10 @@
- 
+
 discard """
-   output: 1
+   output: '''
+test1 OK
+'''
 """
+
 import smart_ptr
 
 type
@@ -22,9 +25,10 @@ proc pushFront*[T] (list: var ForwardList[T], val: sink T) =
     result = list.first.cas(head, newNode)
   list.len.atomicInc()
 
-proc test = 
+proc test1() =
   var list: ForwardList[int]
   list.pushFront(1)
-  echo list.len
+  doAssert list.len == 1
+  echo "test1 OK"
 
-test()
+test1()

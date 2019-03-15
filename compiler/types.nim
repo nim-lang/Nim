@@ -1525,7 +1525,7 @@ proc isTupleRecursive*(t: PType, cycleDetector: var IntSet): bool =
         var copy = cycleDetector
         if isTupleRecursive(t[i], copy):
           return true
-    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink:
+    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
       return isTupleRecursive(t.lastSon, cycleDetector)
     else:
       discard
