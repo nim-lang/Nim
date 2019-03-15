@@ -731,8 +731,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       if param.typ.kind == tySink and hasDestructor(param.typ.sons[0]):
         c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
-  if optNimV2 in c.graph.config.globalOptions:
-    injectDefaultCalls(n, c)
+  #if optNimV2 in c.graph.config.globalOptions:
+  #  injectDefaultCalls(n, c)
   let body = p(n, c)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
