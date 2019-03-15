@@ -27,8 +27,9 @@ hash of ``package & "." & module & "." & name`` to save space.
 
 type
   TNimNode {.compilerProc.} = object # to keep the code generator simple
+  DestructorProc = proc (p: pointer) {.nimcall, benign.}
   TNimType {.compilerProc.} = object
-    destructor: proc (p: pointer) {.nimcall, benign.}
+    destructor: pointer
     size: int
     name: cstring
   PNimType = ptr TNimType
@@ -65,7 +66,7 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor
-  if d != nil: d(p)
+  if d != nil: cast[DestructorProc](d)(p)
   nimRawDispose(p)
 
 proc isObj(obj: PNimType, subclass: cstring): bool {.compilerproc.} =

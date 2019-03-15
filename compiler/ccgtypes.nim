@@ -1255,7 +1255,7 @@ proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo
   else:
     d = rope("NIM_NIL")
   addf(m.s[cfsVars], "TNimType $1;$n", [name])
-  addf(m.s[cfsTypeInit3], "$1.destructor = $2; $1.size = sizeof($3); $1.name = $4;$n", [
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.name = $4;$n", [
     name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
 
 proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
