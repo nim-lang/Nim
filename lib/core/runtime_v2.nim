@@ -34,7 +34,7 @@ type
     name: cstring
   PNimType = ptr TNimType
 
-  ObjHeader = object
+  RefHeader = object
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds but this seems
             # unwise.
@@ -45,11 +45,11 @@ template `+!`(p: pointer, s: int): pointer =
 template `-!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) -% s)
 
-template head(p: pointer): ptr ObjHeader =
-  cast[ptr ObjHeader](cast[int](p) -% sizeof(ObjHeader))
+template head(p: pointer): ptr RefHeader =
+  cast[ptr RefHeader](cast[int](p) -% sizeof(RefHeader))
 
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
-  result = alloc0(size + sizeof(ObjHeader)) +! sizeof(ObjHeader)
+  result = alloc0(size + sizeof(RefHeader)) +! sizeof(RefHeader)
   # XXX Respect   defined(useMalloc)  here!
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
@@ -62,7 +62,7 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
   if head(p).rc != 0:
     cstderr.rawWrite "[FATAL] dangling references exist\n"
     quit 1
-  dealloc(p -! sizeof(ObjHeader))
+  dealloc(p -! sizeof(RefHeader))
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor
