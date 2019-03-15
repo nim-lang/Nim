@@ -1,4 +1,5 @@
 discard """
+  disabled: true
   cmd: '''nim c --gc:destructors $file'''
   output: '''hi
 ho
