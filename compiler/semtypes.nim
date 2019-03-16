@@ -1748,7 +1748,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
   n.typ = result
   dec c.inTypeContext
-  if c.inTypeContext == 0:
+  if false: # c.inTypeContext == 0:
     #if $n == "var seq[StackTraceEntry]":
     #  echo "begin ", n
     instAllTypeBoundOp(c, n.info)

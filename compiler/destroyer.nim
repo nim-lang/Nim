@@ -329,7 +329,7 @@ template genOp(opr, opname, ri) =
   elif op.ast[genericParamsPos].kind != nkEmpty:
     globalError(c.graph.config, dest.info, "internal error: '" & opname &
       "' operator is generic")
-  patchHead op
+  #patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)

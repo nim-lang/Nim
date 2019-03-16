@@ -484,7 +484,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(c.config, a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
-    liftTypeBoundOps(c.graph, typ, a.info)
+    liftTypeBoundOps(c, typ, a.info)
     instAllTypeBoundOp(c, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
@@ -1265,7 +1265,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
-  instAllTypeBoundOp(c, n.info)
+  #instAllTypeBoundOp(c, n.info)
 
 
 proc semAllTypeSections(c: PContext; n: PNode): PNode =

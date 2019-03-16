@@ -119,7 +119,17 @@ proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
 
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: PSym): bool =
-  if tfHasAsgn in t.flags or useNoGc(c, t):
+  if optNimV2 in c.graph.config.globalOptions:
+    let op = field
+    if field != nil and sfOverriden in field.flags:
+      if sfError in op.flags:
+        incl c.fn.flags, sfError
+      else:
+        markUsed(c.graph.config, c.info, op, c.graph.usageSym)
+      onUse(c.info, op)
+      body.add newAsgnCall(c.graph, op, x, y)
+      result = true
+  elif tfHasAsgn in t.flags:
     var op: PSym
     if sameType(t, c.asgnForType):
       # generate recursive call:
@@ -159,7 +169,13 @@ proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode): bool =
 proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   case c.kind
   of attachedDestructor:
-    result = addDestructorCall(c, t, body, x)
+    var op = t.destructor
+    if op != nil and sfOverriden in op.flags:
+      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
+      onUse(c.info, op)
+      body.add destructorCall(c.graph, op, x)
+      result = true
+    #result = addDestructorCall(c, t, body, x)
   of attachedAsgn:
     result = considerAsgnOrSink(c, t, body, x, y, t.assignment)
   of attachedSink:
@@ -221,10 +237,10 @@ proc newSeqCall(g: ModuleGraph; x, y: PNode): PNode =
   lenCall.typ = getSysType(g, x.info, tyInt)
   result.add lenCall
 
-proc setLenCall(g: ModuleGraph; x, y: PNode): PNode =
+proc setLenCall(g: ModuleGraph; x, y: PNode; m: TMagic): PNode =
   let lenCall = genBuiltin(g, mLengthSeq, "len", y)
   lenCall.typ = getSysType(g, x.info, tyInt)
-  result = genBuiltin(g, mSetLengthSeq, "setLen", genAddr(g, x))
+  result = genBuiltin(g, m, "setLen", genAddr(g, x))
   result.add lenCall
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -244,7 +260,7 @@ proc seqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenCall(c.graph, x, y)
+    body.add setLenCall(c.graph, x, y, mSetLengthSeq)
     forallElements(c, t, body, x, y)
   of attachedSink:
     let moveCall = genBuiltin(c.graph, mMove, "move", x)
@@ -273,7 +289,23 @@ proc seqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, genVerbatim("dest@len != 0 && dest@region", c.info), deallocStmt)
 
 proc strOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  seqOp(c, t, body, x, y)
+  case c.kind
+  of attachedAsgn, attachedDeepCopy:
+    # we generate:
+    # setLen(dest, y.len)
+    # var i = 0
+    # while i < y.len: dest[i] = y[i]; inc(i)
+    # This is usually more efficient than a destroy/create pair.
+    body.add setLenCall(c.graph, x, y, mSetLengthStr)
+    forallElements(c, t, body, x, y)
+  of attachedSink:
+    let moveCall = genBuiltin(c.graph, mMove, "move", x)
+    moveCall.add y
+    doAssert t.destructor != nil
+    moveCall.add destructorCall(c.graph, t.destructor, x)
+    body.add moveCall
+  of attachedDestructor:
+    body.add genBuiltin(c.graph, mDestroy, "destroy", x)
 
 proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -517,7 +549,7 @@ proc overloadedAsgn(g: ModuleGraph; dest, src: PNode): PNode =
   let a = getAsgnOrLiftBody(g, dest.typ, dest.info)
   result = newAsgnCall(g, a, dest, src)
 
-proc liftTypeBoundOps*(g: ModuleGraph; typ: PType; info: TLineInfo) =
+proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
@@ -525,8 +557,11 @@ proc liftTypeBoundOps*(g: ModuleGraph; typ: PType; info: TLineInfo) =
   when false:
     # do not produce wrong liftings while we're still instantiating generics:
     # now disabled; breaks topttree.nim!
-    if c.typesWithOps.len > 0: return
+    if c.typesWithOps.len > 0:
+      writeStackTrace()
+      return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
+  let g = c.graph
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil:
     liftBody(g, typ, attachedDestructor, info)
