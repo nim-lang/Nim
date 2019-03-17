@@ -2248,6 +2248,7 @@ proc parseStmt(p: var TParser): PNode =
           if err and p.tok.tokType == tkEof: break
 
 proc parseStmtListExpr(p: var TParser): PNode =
+  #| stmtListExpr = (IND{>} stmt) / expr
   if p.tok.indent > p.currInd:
     result = parseStmt(p)
     result.kind = nkStmtListExpr
