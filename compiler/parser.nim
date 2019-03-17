@@ -53,9 +53,6 @@ type
   TPrimaryMode = enum
     pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix,
 
-  TExprMode = enum
-    emNormal, emNoPostExprBlocks
-
 proc parseAll*(p: var TParser): PNode
 proc closeParser*(p: var TParser)
 proc parseTopLevelStmt*(p: var TParser): PNode
@@ -84,8 +81,8 @@ proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
 proc parseStmtPragma(p: var TParser): PNode
 proc parsePragma(p: var TParser): PNode
-proc postExprBlocks(p: var TParser, x: PNode, mode = emNormal): PNode
-proc parseExprStmt(p: var TParser, mode = emNormal): PNode
+proc postExprBlocks(p: var TParser, x: PNode): PNode
+proc parseExprStmt(p: var TParser): PNode
 proc parseBlock(p: var TParser): PNode
 proc primary(p: var TParser, mode: TPrimaryMode): PNode
 proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode
@@ -240,8 +237,8 @@ proc newIdentNodeP(ident: PIdent, p: TParser): PNode =
   result.ident = ident
 
 proc parseExpr(p: var TParser): PNode
-proc parseStmt(p: var TParser, mode = emNormal): PNode
-proc parseStmtListExpr(p: var TParser, mode = emNormal): PNode
+proc parseStmt(p: var TParser): PNode
+proc parseStmtListExpr(p: var TParser): PNode
 proc parseTypeDesc(p: var TParser): PNode
 proc parseParamList(p: var TParser, retColon = true): PNode
 
@@ -507,7 +504,7 @@ proc parseGStrLit(p: var TParser, a: PNode): PNode =
   else:
     result = a
 
-proc complexOrSimpleStmt(p: var TParser, mode = emNormal): PNode
+proc complexOrSimpleStmt(p: var TParser): PNode
 proc simpleExpr(p: var TParser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var TParser, result: PNode) =
@@ -1298,7 +1295,7 @@ proc makeCall(n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add n
 
-proc postExprBlocks(p: var TParser, x: PNode, mode = emNormal): PNode =
+proc postExprBlocks(p: var TParser, x: PNode): PNode =
   #| postExprBlocks = ':' stmt? ( IND{=} doBlock
   #|                            | IND{=} 'of' exprList ':' stmt
   #|                            | IND{=} 'elif' expr ':' stmt
@@ -1315,8 +1312,6 @@ proc postExprBlocks(p: var TParser, x: PNode, mode = emNormal): PNode =
     getTok(p)
     openingParams = parseParamList(p, retColon=false)
     openingPragmas = optPragmas(p)
-  if mode == emNoPostExprBlocks:
-    return
 
   if p.tok.tokType == tkColon:
     result = makeCall(result)
@@ -1355,7 +1350,7 @@ proc postExprBlocks(p: var TParser, x: PNode, mode = emNormal): PNode =
           nextBlock = newNodeP(nkElifBranch, p)
           getTok(p)
           optInd(p, nextBlock)
-          nextBlock.addSon parseStmtListExpr(p, emNoPostExprBlocks)
+          nextBlock.addSon parseExpr(p)
         of tkExcept:
           nextBlock = newNodeP(nkExceptBranch, p)
           exprList(p, tkColon, nextBlock)
@@ -1374,7 +1369,7 @@ proc postExprBlocks(p: var TParser, x: PNode, mode = emNormal): PNode =
     if openingParams.kind != nkEmpty:
       parMessage(p, "expected ':'")
 
-proc parseExprStmt(p: var TParser, mode = emNormal): PNode =
+proc parseExprStmt(p: var TParser): PNode =
   #| exprStmt = simpleExpr
   #|          (( '=' optInd expr colonBody? )
   #|          / ( expr ^+ comma
@@ -1409,7 +1404,7 @@ proc parseExprStmt(p: var TParser, mode = emNormal): PNode =
         optInd(p, result)
     else:
       result = a
-    result = postExprBlocks(p, result, mode)
+    result = postExprBlocks(p, result)
 
 proc parseModuleName(p: var TParser, kind: TNodeKind): PNode =
   result = parseExpr(p)
@@ -1483,7 +1478,7 @@ proc parseFromStmt(p: var TParser): PNode =
     optInd(p, a)
   #expectNl(p)
 
-proc parseReturnOrRaise(p: var TParser, kind: TNodeKind, mode = emNormal): PNode =
+proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
   #| returnStmt = 'return' optInd expr?
   #| raiseStmt = 'raise' optInd expr?
   #| yieldStmt = 'yield' optInd expr?
@@ -1499,7 +1494,7 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind, mode = emNormal): PNode
     # NL terminates:
     addSon(result, p.emptyNode)
   else:
-    addSon(result, parseStmtListExpr(p, mode))
+    addSon(result, parseStmtListExpr(p))
 
 proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   #| condStmt = expr colcom stmt COMMENT?
@@ -1512,7 +1507,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
     getTok(p)                 # skip `if`, `when`, `elif`
     var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
-    addSon(branch, parseStmtListExpr(p, emNoPostExprBlocks))
+    addSon(branch, parseExpr(p))
     colcom(p, branch)
     addSon(branch, parseStmt(p))
     skipComment(p, branch)
@@ -1530,7 +1525,7 @@ proc parseWhile(p: var TParser): PNode =
   result = newNodeP(nkWhileStmt, p)
   getTok(p)
   optInd(p, result)
-  addSon(result, parseStmtListExpr(p, emNoPostExprBlocks))
+  addSon(result, parseExpr(p))
   colcom(p, result)
   addSon(result, parseStmt(p))
 
@@ -1548,7 +1543,7 @@ proc parseCase(p: var TParser): PNode =
     wasIndented = false
   result = newNodeP(nkCaseStmt, p)
   getTok(p)
-  addSon(result, parseStmtListExpr(p, emNoPostExprBlocks))
+  addSon(result, parseExpr(p))
   if p.tok.tokType == tkColon: getTok(p)
   skipComment(p, result)
 
@@ -1568,7 +1563,7 @@ proc parseCase(p: var TParser): PNode =
       b = newNodeP(nkElifBranch, p)
       getTok(p)
       optInd(p, b)
-      addSon(b, parseStmtListExpr(p, emNoPostExprBlocks))
+      addSon(b, parseExpr(p))
     of tkElse:
       b = newNodeP(nkElse, p)
       getTok(p)
@@ -2117,18 +2112,18 @@ proc parseStmtPragma(p: var TParser): PNode =
     result.add a
     result.add parseStmt(p)
 
-proc simpleStmt(p: var TParser, mode = emNormal): PNode =
+proc simpleStmt(p: var TParser): PNode =
   #| simpleStmt = ((returnStmt | raiseStmt | yieldStmt | discardStmt | breakStmt
   #|            | continueStmt | pragmaStmt | importStmt | exportStmt | fromStmt
   #|            | includeStmt | commentStmt) / exprStmt) COMMENT?
   #|
   case p.tok.tokType
-  of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt, mode)
-  of tkRaise: result = parseReturnOrRaise(p, nkRaiseStmt, mode)
-  of tkYield: result = parseReturnOrRaise(p, nkYieldStmt, mode)
-  of tkDiscard: result = parseReturnOrRaise(p, nkDiscardStmt, mode)
-  of tkBreak: result = parseReturnOrRaise(p, nkBreakStmt, mode)
-  of tkContinue: result = parseReturnOrRaise(p, nkContinueStmt, mode)
+  of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt)
+  of tkRaise: result = parseReturnOrRaise(p, nkRaiseStmt)
+  of tkYield: result = parseReturnOrRaise(p, nkYieldStmt)
+  of tkDiscard: result = parseReturnOrRaise(p, nkDiscardStmt)
+  of tkBreak: result = parseReturnOrRaise(p, nkBreakStmt)
+  of tkContinue: result = parseReturnOrRaise(p, nkContinueStmt)
   of tkCurlyDotLe: result = parseStmtPragma(p)
   of tkImport: result = parseImport(p, nkImportStmt)
   of tkExport: result = parseImport(p, nkExportStmt)
@@ -2136,11 +2131,11 @@ proc simpleStmt(p: var TParser, mode = emNormal): PNode =
   of tkInclude: result = parseIncludeStmt(p)
   of tkComment: result = newCommentStmt(p)
   else:
-    if isExprStart(p): result = parseExprStmt(p, mode)
+    if isExprStart(p): result = parseExprStmt(p)
     else: result = p.emptyNode
   if result.kind notin {nkEmpty, nkCommentStmt}: skipComment(p, result)
 
-proc complexOrSimpleStmt(p: var TParser, mode = emNormal): PNode =
+proc complexOrSimpleStmt(p: var TParser): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
   #|                     | tryStmt | forStmt
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
@@ -2191,9 +2186,9 @@ proc complexOrSimpleStmt(p: var TParser, mode = emNormal): PNode =
   of tkBind: result = parseBind(p, nkBindStmt)
   of tkMixin: result = parseBind(p, nkMixinStmt)
   of tkUsing: result = parseSection(p, nkUsingStmt, parseVariable)
-  else: result = simpleStmt(p, mode)
+  else: result = simpleStmt(p)
 
-proc parseStmt(p: var TParser, mode = emNormal): PNode =
+proc parseStmt(p: var TParser): PNode =
   #| stmt = (IND{>} complexOrSimpleStmt^+(IND{=} / ';') DED)
   #|      / simpleStmt ^+ ';'
   if p.tok.indent > p.currInd:
@@ -2215,7 +2210,7 @@ proc parseStmt(p: var TParser, mode = emNormal): PNode =
           # deprecate this syntax later
           break
         p.hasProgress = false
-        var a = complexOrSimpleStmt(p, mode)
+        var a = complexOrSimpleStmt(p)
         if a.kind != nkEmpty:
           addSon(result, a)
         else:
@@ -2252,15 +2247,15 @@ proc parseStmt(p: var TParser, mode = emNormal): PNode =
           getTok(p)
           if err and p.tok.tokType == tkEof: break
 
-proc parseStmtListExpr(p: var TParser, mode = emNormal): PNode =
+proc parseStmtListExpr(p: var TParser): PNode =
   if p.tok.indent > p.currInd:
-    result = parseStmt(p, mode)
+    result = parseStmt(p)
     result.kind = nkStmtListExpr
     if result.len == 1:
       result = result[0]
   else:
     result = parseExpr(p)
-    result = postExprBlocks(p, result, mode)
+    result = postExprBlocks(p, result)
 
 proc parseAll(p: var TParser): PNode =
   ## Parses the rest of the input stream held by the parser into a PNode.

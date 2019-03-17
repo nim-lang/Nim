@@ -2109,7 +2109,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
             continue
 
         let verdict = semConstExpr(c, n[i])
-        if verdict.intVal == 0:
+        if verdict == nil or (verdict.kind in nkCharLit..nkUInt64Lit and verdict.intVal == 0):
           localError(c.config, result.info, "concept predicate failed")
       of tyUnknown: continue
       else: discard
