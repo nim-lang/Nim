@@ -29,7 +29,8 @@
 - it is now possible to use statement list expressions after keywords with
   indentation: raise, return, discard, yield, if, elif, case. This helps 
   parsing code produced by Nim template expansion where stmtListExpr can
-  appear in place of any expression. Example:
+  appear in place of any expression. Feature needs to be enabled with
+  switch `--experimental:exprStmtListExtensions`. Example of usage:
 ```nim
   raise 
     var e = new(Exception)

@@ -2254,7 +2254,8 @@ proc parseStmt(p: var TParser, mode = emNormal): PNode =
 
 proc parseStmtListExpr(p: var TParser, mode = emNormal): PNode =
   #| stmtListExpr = (IND{>} stmt) / expr
-  if p.tok.indent > p.currInd:
+  if exprStmtListExtensions in p.lex.config.features and 
+       p.tok.indent > p.currInd:
     result = parseStmt(p, mode)
     result.kind = nkStmtListExpr
     if result.len == 1:

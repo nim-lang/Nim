@@ -129,6 +129,7 @@ type
     forLoopMacros,
     caseStmtMacros,
     codeReordering,
+    exprStmtListExtensions,
     compiletimeFFI,
       ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
