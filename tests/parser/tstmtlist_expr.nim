@@ -1,3 +1,7 @@
+discard """
+  output: '''10'''
+"""
+
 proc xx(a: int): int = 
   let y = 0
   return
