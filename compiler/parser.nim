@@ -1301,7 +1301,7 @@ proc makeCall(n: PNode): PNode =
 proc postExprBlocks(p: var TParser, x: PNode, mode = emNormal): PNode =
   #| postExprBlocks = ':' stmt? ( IND{=} doBlock
   #|                            | IND{=} 'of' exprList ':' stmt
-  #|                            | IND{=} 'elif' expr ':' stmt
+  #|                            | IND{=} 'elif' stmtListExpr ':' stmt
   #|                            | IND{=} 'except' exprList ':' stmt
   #|                            | IND{=} 'else' ':' stmt )*
   result = x
@@ -1502,8 +1502,8 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind, mode = emNormal): PNode
     addSon(result, parseStmtListExpr(p, mode))
 
 proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
-  #| condStmt = expr colcom stmt COMMENT?
-  #|            (IND{=} 'elif' expr colcom stmt)*
+  #| condStmt = stmtListExpr colcom stmt COMMENT?
+  #|            (IND{=} 'elif' stmtListExpr colcom stmt)*
   #|            (IND{=} 'else' colcom stmt)?
   #| ifStmt = 'if' condStmt
   #| whenStmt = 'when' condStmt
@@ -1537,9 +1537,9 @@ proc parseWhile(p: var TParser): PNode =
 proc parseCase(p: var TParser): PNode =
   #| ofBranch = 'of' exprList colcom stmt
   #| ofBranches = ofBranch (IND{=} ofBranch)*
-  #|                       (IND{=} 'elif' expr colcom stmt)*
+  #|                       (IND{=} 'elif' stmtListExpr colcom stmt)*
   #|                       (IND{=} 'else' colcom stmt)?
-  #| caseStmt = 'case' expr ':'? COMMENT?
+  #| caseStmt = 'case' stmtListExpr ':'? COMMENT?
   #|             (IND{>} ofBranches DED
   #|             | IND{=} ofBranches)
   var
