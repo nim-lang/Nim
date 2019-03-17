@@ -51,7 +51,7 @@ type
     smNormal, smAllowNil, smAfterDot
 
   TPrimaryMode = enum
-    pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix,
+    pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix
 
 proc parseAll*(p: var TParser): PNode
 proc closeParser*(p: var TParser)
