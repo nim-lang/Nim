@@ -3716,6 +3716,9 @@ The ``[]`` subscript operator for arrays/openarrays/sequences can be overloaded.
 Multi-methods
 =============
 
+**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
+``--multimethods:on`` when compiling.
+
 Procedures always use static dispatch. Multi-methods use dynamic
 dispatch. For dynamic dispatch to work on an object it should be a reference
 type as well.
@@ -6222,7 +6225,7 @@ Predicate                Meaning
 ===================      =====================================================
 
 Predicates that share their name with a keyword have to be escaped with
-backticks: `` `const` ``.
+backticks.
 The ``alias`` and ``noalias`` predicates refer not only to the matching AST,
 but also to every other bound parameter; syntactically they need to occur after
 the ordinary AST predicates:
