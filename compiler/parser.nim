@@ -1479,12 +1479,12 @@ proc parseFromStmt(p: var TParser): PNode =
   #expectNl(p)
 
 proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
-  #| returnStmt = 'return' optInd stmtListExpr?
-  #| raiseStmt = 'raise' optInd stmtListExpr?
-  #| yieldStmt = 'yield' optInd stmtListExpr?
+  #| returnStmt = 'return' stmtListExpr?
+  #| raiseStmt = 'raise' stmtListExpr?
+  #| yieldStmt = 'yield' stmtListExpr?
   #| discardStmt = 'discard' stmtListExpr?
-  #| breakStmt = 'break' optInd stmtListExpr?
-  #| continueStmt = 'break' optInd stmtListExpr?
+  #| breakStmt = 'break' stmtListExpr?
+  #| continueStmt = 'break' stmtListExpr?
   result = newNodeP(kind, p)
   getTok(p)
   if p.tok.tokType == tkComment:
