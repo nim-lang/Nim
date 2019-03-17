@@ -1662,3 +1662,23 @@ proc connect*(socket: Socket, address: string, port = Port(0),
         socket.fd.setBlocking(true)
         doAssert socket.gotHandshake()
   socket.fd.setBlocking(true)
+
+proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
+  ## Finds the local IP address, usually assigned to eth0 on LAN or wlan0 on WiFi,
+  ## used to reach an external address. Useful to run local services.
+  ##
+  ## No traffic is sent.
+  ##
+  ## Supports IPv4 and v6.
+  ## Raises OSError if external networking is not set up.
+  ##
+  ## .. code-block:: Nim
+  ##   echo $getPrimaryIPAddr()  # "192.168.1.2"
+
+  let socket =
+    if dest.family == IpAddressFamily.IPv4:
+      newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    else:
+      newSocket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
+  socket.connect($dest, 80.Port)
+  socket.getLocalAddr()[0].parseIpAddress()
