@@ -339,7 +339,7 @@ proc checkNilable(c: PContext; v: PSym) =
     elif tfNotNil in v.typ.flags and tfNotNil notin v.astdef.typ.flags:
       message(c.config, v.info, warnProveInit, v.name.s)
 
-include liftdestructors
+#include liftdestructors
 
 proc addToVarSection(c: PContext; result: PNode; orig, identDefs: PNode) =
   let L = identDefs.len
@@ -1474,7 +1474,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       addResult(c, s.typ.sons[0], n.info, skProc)
       addResultNode(c, n)
       s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      trackProc(c.graph, s, s.ast[bodyPos])
+      trackProc(c, s, s.ast[bodyPos])
       popProcCon(c)
     elif efOperand notin flags:
       localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -1515,7 +1515,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   addResult(c, n.typ.sons[0], n.info, skProc)
   addResultNode(c, n)
   s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-  trackProc(c.graph, s, s.ast[bodyPos])
+  trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
   closeScope(c)
@@ -1632,6 +1632,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
+        if obj.id == 211108:
+          echo "YEAH; here?!"
         if opr[].isNil:
           opr[] = s
         else:
@@ -1862,7 +1864,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
-          trackProc(c.graph, s, s.ast[bodyPos])
+          trackProc(c, s, s.ast[bodyPos])
       else:
         if s.typ.sons[0] != nil and kind != skIterator:
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))

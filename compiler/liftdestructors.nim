@@ -20,9 +20,10 @@ type
     fn: PSym
     asgnForType: PType
     recurse: bool
+    c: PContext
 
 proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode)
-proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
+proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym {.discardable.}
 
 proc at(a, i: PNode, elemType: PType): PNode =
@@ -118,7 +119,7 @@ proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
     (tfHasGCedMem in t.flags or t.isGCedMem)
 
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
-                        field: PSym): bool =
+                        field: var PSym): bool =
   if optNimV2 in c.graph.config.globalOptions:
     let op = field
     if field != nil and sfOverriden in field.flags:
@@ -141,19 +142,29 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     else:
       op = field
       if op == nil:
-        op = liftBody(c.graph, t, c.kind, c.info)
+        op = liftBody(c.c, t, c.kind, c.info)
     if sfError in op.flags:
       incl c.fn.flags, sfError
     else:
       markUsed(c.graph.config, c.info, op, c.graph.usageSym)
     onUse(c.info, op)
+    # We also now do generic instantiations in the destructor lifting pass:
+    if op.ast[genericParamsPos].kind != nkEmpty:
+      assert t.typeInst != nil
+      op = c.c.instTypeBoundOp(c.c, op, t.typeInst, c.info, attachedAsgn, 1)
+      field = op
+      #echo "trying to use ", op.ast
+      #echo "for ", op.name.s, " "
+      #debug(t)
+      #return false
+    assert op.ast[genericParamsPos].kind == nkEmpty
     body.add newAsgnCall(c.graph, op, x, y)
     result = true
 
 proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode): bool =
   var op = t.destructor
   if op == nil and useNoGc(c, t):
-    op = liftBody(c.graph, t, attachedDestructor, c.info)
+    op = liftBody(c.c, t, attachedDestructor, c.info)
     doAssert op != nil
     doAssert op == t.destructor
 
@@ -449,35 +460,37 @@ proc addParam(procType: PType; param: PSym) =
   addSon(procType.n, newSymNode(param))
   rawAddSon(procType, param.typ)
 
-proc liftBodyDistinctType(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp; info: TLineInfo): PSym =
+proc liftBodyDistinctType(c: PContext; typ: PType; kind: TTypeAttachedOp; info: TLineInfo): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ[0]
   case kind
   of attachedAsgn:
     if baseType.assignment == nil:
-      discard liftBody(g, baseType, kind, info)
+      discard liftBody(c, baseType, kind, info)
     typ.assignment = baseType.assignment
+    if typ.id == 211108:
+      quit "how do you know?"
     result = typ.assignment
   of attachedSink:
     if baseType.sink == nil:
-      discard liftBody(g, baseType, kind, info)
+      discard liftBody(c, baseType, kind, info)
     typ.sink = baseType.sink
     result = typ.sink
   of attachedDeepCopy:
     if baseType.deepCopy == nil:
-      discard liftBody(g, baseType, kind, info)
+      discard liftBody(c, baseType, kind, info)
     typ.deepCopy = baseType.deepCopy
     result = typ.deepCopy
   of attachedDestructor:
     if baseType.destructor == nil:
-      discard liftBody(g, baseType, kind, info)
+      discard liftBody(c, baseType, kind, info)
     typ.destructor = baseType.destructor
     result = typ.destructor
 
-proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
+proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
   if typ.kind == tyDistinct:
-    return liftBodyDistinctType(g, typ, kind, info)
+    return liftBodyDistinctType(c, typ, kind, info)
   when false:
     var typ = typ
     if c.config.selectedGC == gcDestructors and typ.kind == tySequence:
@@ -486,8 +499,10 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
 
   var a: TLiftCtx
   a.info = info
-  a.graph = g
+  a.graph = c.graph
   a.kind = kind
+  a.c = c
+  let g = c.graph
   let body = newNodeI(nkStmtList, info)
   let procname = case kind
                  of attachedAsgn: getIdent(g.cache, "=")
@@ -530,6 +545,9 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
       of attachedDeepCopy: typ.deepCopy = result
       of attachedDestructor: typ.destructor = result
 
+  if typ.id == 211108:
+    echo "SET FOR ", kind
+
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
   n.sons[namePos] = newSymNode(result)
@@ -539,17 +557,20 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
   incl result.flags, sfFromGeneric
 
 
-proc getAsgnOrLiftBody(g: ModuleGraph; typ: PType; info: TLineInfo): PSym =
+proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
   let t = typ.skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
   result = t.assignment
   if result.isNil:
-    result = liftBody(g, t, attachedAsgn, info)
+    result = liftBody(c, t, attachedAsgn, info)
 
-proc overloadedAsgn(g: ModuleGraph; dest, src: PNode): PNode =
-  let a = getAsgnOrLiftBody(g, dest.typ, dest.info)
-  result = newAsgnCall(g, a, dest, src)
+proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
+  let a = getAsgnOrLiftBody(c, dest.typ, dest.info)
+  result = newAsgnCall(c.graph, a, dest, src)
 
-proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
+template liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
+  discard "now a nop"
+
+proc createTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
@@ -561,11 +582,10 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
       writeStackTrace()
       return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
-  let g = c.graph
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil:
-    liftBody(g, typ, attachedDestructor, info)
+    liftBody(c, typ, attachedDestructor, info)
   if typ.assignment == nil:
-    liftBody(g, typ, attachedAsgn, info)
+    liftBody(c, typ, attachedAsgn, info)
   if typ.sink == nil:
-    liftBody(g, typ, attachedSink, info)
+    liftBody(c, typ, attachedSink, info)

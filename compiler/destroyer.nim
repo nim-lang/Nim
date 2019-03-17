@@ -91,7 +91,7 @@
 ## destroy(tmp.x); destroy(tmp.y)
 ##
 
-##[
+#[
 From https://github.com/nim-lang/Nim/wiki/Destructors
 
 Rule      Pattern                 Transformed into
@@ -131,7 +131,7 @@ copyMem. This is harder than it looks:
 
 And the C++ optimizers don't sweat to optimize it for us, so we don't have
 to do it.
-]##
+]#
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
