@@ -25,6 +25,7 @@ macro symHash(s: typed{nkSym}): string =
 template graph_node(key: string) {.pragma.}
 
 proc tag(n: NimNode): NimNode = 
+  ## returns graph node unique name of a function or nil if it is not a graph node
   expectKind(n, {nnkProcDef, nnkFuncDef})
   for p in n.pragma:
     if p.len > 0 and p[0] == bindSym"graph_node":
@@ -35,7 +36,7 @@ macro graph_node_key(n: typed{nkSym}): untyped =
   result = newStrLitNode(n.symBodyHash)
 
 macro graph_discovery(n: typed{nkSym}): untyped =
-  # discovers graph dependency tree and store in dep_tree
+  # discovers graph dependency tree and updated dep_tree global var
   let mytag = newStrLitNode(n.symBodyHash)
   var visited: seq[NimNode]
   proc discover(n: NimNode) = 
@@ -59,17 +60,18 @@ macro graph_discovery(n: typed{nkSym}): untyped =
 #######################################################################################
 
 macro incremental_input(key: static[string], n: untyped{nkFuncDef}): untyped =
-  # incrementalize side effect free computation
+  # mark leaf nodes of the graph
   template getInput(key) {.dirty.} =
     {.noSideEffect.}:
       inputs[key]
-    
   result = n
   result.pragma = nnkPragma.newTree(nnkCall.newTree(bindSym"graph_node", newStrLitNode(key)))
   result.body = getAst(getInput(key))
 
 macro incremental(n: untyped{nkFuncDef}): untyped =
   ## incrementalize side effect free computation
+  ## wraps function into caching layer, mark caching function as a graph_node
+  ## injects dependency discovery between graph nodes
   template cache_func_body(func_name, func_name_str, func_call) {.dirty.} =
     {.noSideEffect.}: 
       graph_discovery(func_name)
@@ -93,6 +95,10 @@ macro incremental(n: untyped{nkFuncDef}): untyped =
   n.name = ident(func_name)
   result = nnkStmtList.newTree(n, cache_func)
 
+###########################################################################
+### Example
+###########################################################################
+
 func input1(): float {.incremental_input("a1").}
 
 func input2(): float {.incremental_input("a2").}
@@ -103,9 +109,11 @@ func sub_calc1(a: float): float  {.incremental.} =
 func sub_calc2(b: float): float  {.incremental.} = 
   b + input2()
 
-func heavy_calc(a: float, b: float): float  {.incremental.} = 
+func heavy_calc(a: float, b: float): float {.incremental.} = 
   sub_calc1(a) + sub_calc2(b)
 
+###########################################################################
+## graph finalize and inputs
 ###########################################################################
 
 macro finalize_dep_tree(): untyped = 
@@ -117,6 +125,8 @@ macro finalize_dep_tree(): untyped =
 const dep_tree_final = finalize_dep_tree()
 
 proc set_input(key: string, val: float) = 
+  ## set input value
+  ## all affected nodes of graph are invalidated
   inputs[key] = val
   var k = key
   while k != "":
