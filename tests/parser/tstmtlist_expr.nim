@@ -1,4 +1,8 @@
-proc xx(a: int): int = 
+discard """
+  output: '''10'''
+"""
+
+proc xx(a: int): int =
   let y = 0
   return
     var x = 0
