@@ -1109,6 +1109,8 @@ proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
     result = newNodeI(nkProcTy, info)
     if hasSignature:
       addSon(result, params)
+      if kind == nkFuncDef:
+        parMessage(p, "func keyword is not allowed in type descriptions, use proc with {.noSideEffect.} pragma instead")
       addSon(result, pragmas)
 
 proc isExprStart(p: TParser): bool =
