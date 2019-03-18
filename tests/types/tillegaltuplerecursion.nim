@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid recursion in type"
+  errormsg: "illegal recursion in type"
 """
 
 # This is one big illegal type cycle. It doesn't really matter at

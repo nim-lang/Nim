@@ -1529,3 +1529,7 @@ proc isTupleRecursive*(t: PType, cycleDetector: var IntSet): bool =
       return isTupleRecursive(t.lastSon, cycleDetector)
     else:
       discard
+
+proc isTupleRecursive*(t: PType): bool =
+  var cycleDetector = initIntSet()
+  isTupleRecursive(t, cycleDetector)
