@@ -1632,8 +1632,6 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
-        if obj.id == 211108:
-          echo "YEAH; here?!"
         if opr[].isNil:
           opr[] = s
         else:

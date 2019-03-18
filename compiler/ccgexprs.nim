@@ -1967,11 +1967,14 @@ proc genDestroy(p: BProc; n: PNode) =
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
   else:
+    let t = n[1].typ.skipTypes(abstractVar)
+    if t.destructor != nil:
+      internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
 proc genDispose(p: BProc; n: PNode) =
   when false:
-    let elemType = n[1].typ.skipTypes(abstractVarInst).lastSon
+    let elemType = n[1].typ.skipTypes(abstractVar).lastSon
 
     var a: TLoc
     initLocExpr(p, n[1].skipAddr, a)

@@ -10,7 +10,7 @@
 ## This module implements lifting for type-bound operations
 ## (``=sink``, ``=``, ``=destroy``, ``=deepCopy``).
 
-# included from sem.nim
+# included from sempass2.nim
 
 type
   TLiftCtx = object
@@ -182,6 +182,13 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   of attachedDestructor:
     var op = t.destructor
     if op != nil and sfOverriden in op.flags:
+
+      if op.ast[genericParamsPos].kind != nkEmpty:
+        assert t.typeInst != nil
+        # patch generic destructor:
+        op = c.c.instTypeBoundOp(c.c, op, t.typeInst, c.info, attachedAsgn, 1)
+        t.destructor = op
+
       markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
       body.add destructorCall(c.graph, op, x)
@@ -468,8 +475,6 @@ proc liftBodyDistinctType(c: PContext; typ: PType; kind: TTypeAttachedOp; info: 
     if baseType.assignment == nil:
       discard liftBody(c, baseType, kind, info)
     typ.assignment = baseType.assignment
-    if typ.id == 211108:
-      quit "how do you know?"
     result = typ.assignment
   of attachedSink:
     if baseType.sink == nil:
@@ -524,29 +529,14 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   if kind != attachedDestructor:
     result.typ.addParam src
 
-  if optNimV2 in g.config.globalOptions:
-    case kind
-    of attachedAsgn: typ.assignment = result
-    of attachedSink: typ.sink = result
-    of attachedDeepCopy: typ.deepCopy = result
-    of attachedDestructor: typ.destructor = result
+  # register this operation already:
+  case kind
+  of attachedAsgn: typ.assignment = result
+  of attachedSink: typ.sink = result
+  of attachedDeepCopy: typ.deepCopy = result
+  of attachedDestructor: typ.destructor = result
 
   liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
-  if optNimV2 notin g.config.globalOptions:
-    # recursion is handled explicitly, do not register the type based operation
-    # before 'liftBodyAux':
-    if g.config.selectedGC == gcDestructors and
-        typ.kind in {tySequence, tyString} and body.len == 0:
-      discard "do not cache it yet"
-    else:
-      case kind
-      of attachedAsgn: typ.assignment = result
-      of attachedSink: typ.sink = result
-      of attachedDeepCopy: typ.deepCopy = result
-      of attachedDestructor: typ.destructor = result
-
-  if typ.id == 211108:
-    echo "SET FOR ", kind
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
@@ -570,22 +560,27 @@ proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
 template liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   discard "now a nop"
 
+template inst(field, t) =
+  if field.ast != nil and field.ast[genericParamsPos].kind != nkEmpty:
+    assert t.typeInst != nil
+    field = c.instTypeBoundOp(c, field, t.typeInst, info, attachedAsgn, 1)
+
 proc createTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
-  ## The later 'destroyer' pass depends on it.
+  ## The later 'injectdestructors' pass depends on it.
   if not hasDestructor(typ): return
-  when false:
-    # do not produce wrong liftings while we're still instantiating generics:
-    # now disabled; breaks topttree.nim!
-    if c.typesWithOps.len > 0:
-      writeStackTrace()
-      return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil:
     liftBody(c, typ, attachedDestructor, info)
+  else:
+    inst(typ.destructor, typ)
   if typ.assignment == nil:
     liftBody(c, typ, attachedAsgn, info)
+  else:
+    inst(typ.assignment, typ)
   if typ.sink == nil:
     liftBody(c, typ, attachedSink, info)
+  else:
+    inst(typ.sink, typ)

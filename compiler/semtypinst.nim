@@ -291,7 +291,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   when false:
     if newDestructors:
       result.assignment = nil
-      #result.destructor = nil
+      result.destructor = nil
       result.sink = nil
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
@@ -404,7 +404,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # adding myseq for myseq[system.int]
     # sigmatch: Formal myseq[=destroy.T] real myseq[system.int]
     #echo "DESTROY: adding ", typeToString(newbody), " for ", typeToString(result, preferDesc)
-    cl.c.typesWithOps.add((newbody, result))
+    #cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:
