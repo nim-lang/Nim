@@ -21,24 +21,35 @@
   your previous annotations with `parallel for`.
 
 - The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
+
 - The undocumented ``#? strongSpaces`` parsing mode has been removed.
+
 - The `not` operator is now always a unary operator, this means that code like
   ``assert not isFalse(3)`` compiles.
+
 - `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
   tree from the symbol declaration instead of just the initializer portion.
+
+- To use multi-methods, explicit `--multimethods:on` is now needed.
 
 
 #### Breaking changes in the standard library
 
 - `osproc.execProcess` now also takes a `workingDir` parameter.
 
-- `options.UnpackError` is no longer a ref type and inherits from `system.Defect` instead of `system.ValueError`.
+- `options.UnpackError` is no longer a ref type and inherits from `system.Defect`
+  instead of `system.ValueError`.
 
 - `system.ValueError` now inherits from `system.CatchableError` instead of `system.Defect`.
 
-- The procs `parseutils.parseBiggsetInt`, `parseutils.parseInt`, `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a `ValueError` when the parsed integer is outside of the valid range. Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
+- The procs `parseutils.parseBiggsetInt`, `parseutils.parseInt`,
+  `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a
+  `ValueError` when the parsed integer is outside of the valid range.
+  Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
 
-- `streams.StreamObject` now restricts its fields to only raise `system.Defect`, `system.IOError` and `system.OSError`. This change only affects custom stream implementations.
+- `streams.StreamObject` now restricts its fields to only raise `system.Defect`,
+  `system.IOError` and `system.OSError`.
+  This change only affects custom stream implementations.
 
 - nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
   `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
@@ -61,7 +72,10 @@
 
 - splitFile now correctly handles edge cases, see #10047
 
-- `isNil` is no longer false for undefined in the JavaScript backend: now it's true for both nil and undefined. Use `isNull` or `isUndefined` if you need exact equallity: `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
+- `isNil` is no longer false for undefined in the JavaScript backend:
+  now it's true for both nil and undefined.
+  Use `isNull` or `isUndefined` if you need exact equallity:
+  `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
 
 - several deprecated modules were removed: `ssl`, `matchers`, `httpserver`,
   `unsigned`, `actors`, `parseurl`
@@ -131,6 +145,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added the `posix_utils` module.
 
 - Added `system.default`.
+
 
 ### Library changes
 

@@ -290,6 +290,9 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
     var relevantCols = initIntSet()
     for col in countup(1, sonsLen(g.methods[bucket].methods[0].typ) - 1):
       if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
+      if optMultiMethods notin g.config.globalOptions:
+        # if multi-methods are not enabled, we are interested only in the first field
+        break
     sortBucket(g.methods[bucket].methods, relevantCols)
     addSon(result,
            newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols)))
