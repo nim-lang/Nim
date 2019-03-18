@@ -24,7 +24,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   if t.kind in tyTypeClasses: discard
   elif t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
-  elif computeSize(conf, t) == szIllegalRecursion:
+  elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
     localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
@@ -682,4 +682,3 @@ proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
 template generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
                                t: PType): untyped =
   generateTypeInstance(p, pt, arg.info, t)
-
