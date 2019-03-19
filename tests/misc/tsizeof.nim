@@ -3,6 +3,7 @@ discard """
 body executed
 body executed
 OK
+macros api OK
 '''
 """
 
@@ -485,3 +486,53 @@ if failed:
   quit("FAIL")
 else:
   echo "OK"
+
+##########################################
+# sizeof macros API
+##########################################
+
+import macros
+
+type
+  Vec2f = object
+    x,y: float32
+
+  Vec4f = object
+    x,y,z,w: float32
+
+  # this type is constructed to have no platform depended alignment.
+  ParticleDataA = object
+    pos, vel: Vec2f
+    birthday: float32
+    padding: float32
+    moreStuff: Vec4f
+
+const expected = [
+  # name size align offset
+  ("pos", 8, 4, 0),
+  ("vel", 8, 4, 8),
+  ("birthday", 4, 4, 16),
+  ("padding", 4, 4, 20),
+  ("moreStuff", 16, 4, 24)
+]
+
+macro typeProcessing(arg: typed): untyped =
+  let recList = arg.getTypeImpl[2]
+  recList.expectKind nnkRecList
+  for i, identDefs in recList:
+    identDefs.expectKind nnkIdentDefs
+    identDefs.expectLen 3
+    let sym = identDefs[0]
+    sym.expectKind nnkSym
+    doAssert expected[i][0] == sym.strVal
+    doAssert expected[i][1] == getSize(sym)
+    doAssert expected[i][2] == getAlign(sym)
+    doAssert expected[i][3] == getOffset(sym)
+
+  result = newCall(bindSym"echo", newLit("macros api OK"))
+
+proc main() =
+  var mylocal: ParticleDataA
+  typeProcessing(mylocal)
+
+main()
