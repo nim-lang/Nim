@@ -560,16 +560,39 @@ proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
 template liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   discard "now a nop"
 
+proc patchBody(c: PContext; n: PNode; info: TLineInfo) =
+  if n.kind in nkCallKinds:
+    if n[0].kind == nkSym and n[0].sym.magic == mDestroy:
+      let t = n[1].typ.skipTypes(abstractVar)
+      if t.destructor == nil:
+        liftBody(c, t, attachedDestructor, info)
+
+      if t.destructor != nil:
+        if t.destructor.ast[genericParamsPos].kind != nkEmpty:
+          internalError(c.graph.config, info, "resolved destructor is generic")
+        if t.destructor.magic == mDestroy:
+          internalError(c.graph.config, info, "patching mDestroy with mDestroy?")
+        n.sons[0] = newSymNode(t.destructor)
+  for x in n: patchBody(c, x, info)
+
 template inst(field, t) =
   if field.ast != nil and field.ast[genericParamsPos].kind != nkEmpty:
     assert t.typeInst != nil
     field = c.instTypeBoundOp(c, field, t.typeInst, info, attachedAsgn, 1)
+    if field.ast != nil:
+      patchBody(c, field.ast, info)
 
 proc createTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
   if not hasDestructor(typ): return
+  # multiple cases are to distinguish here:
+  # 1. we don't know yet if 'typ' has a nontrival destructor.
+  # 2. we have a nop destructor. --> mDestroy
+  # 3. we have a lifted destructor.
+  # 4. We have a custom destructor.
+  # 5. We have a (custom) generic destructor.
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil:

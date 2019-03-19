@@ -343,7 +343,14 @@ proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
       echo t.sink.id, " owner ", t.id
       quit 1
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(if t.sink != nil: t.sink else: t.assignment, "=sink", ri)
+  let op = if t.sink != nil: t.sink else: t.assignment
+  if op != nil:
+    genOp(op, "=sink", ri)
+  else:
+    # in rare cases only =destroy exists but no sink or assignment
+    # (see Pony object in tmove_objconstr.nim)
+    # we generate a fast assignment in this case:
+    result = newTree(nkFastAsgn, dest, ri)
 
 proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
   if tfHasOwned in t.flags:
