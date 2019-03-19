@@ -1217,8 +1217,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       put(g, tkDistinct, "distinct")
   of nkTypeDef:
-    gsub(g, n, 0)
-    gsub(g, n, 1)
+    if n.sons[0].kind == nkPragmaExpr:
+      # generate pragma after generic
+      gsub(g, n.sons[0], 0)
+      gsub(g, n, 1)
+      gsub(g, n.sons[0], 1)
+    else:
+      gsub(g, n, 0)
+      gsub(g, n, 1)
     put(g, tkSpaces, Space)
     if n.len > 2 and n.sons[2].kind != nkEmpty:
       putWithSpace(g, tkEquals, "=")
