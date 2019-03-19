@@ -442,7 +442,7 @@ proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: 
 # }}}
 
 proc destroyRegex(pattern: Regex) =
-  pcre.free_substring(cast[cstring](pattern.pcreObj))
+  pcre.free(pattern.pcreObj)
   pattern.pcreObj = nil
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
