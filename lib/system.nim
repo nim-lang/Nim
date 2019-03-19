@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+
 ## The compiler depends on the System module to work properly and the System
 ## module depends on the compiler. Most of the routines listed here use
 ## special compiler magic.
@@ -15,12 +16,11 @@
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 ##
-## Module system
+## System module
 ## =============
 ##
+## .. include:: ./system_overview.rst
 
-# That lonesome header above is to prevent :idx: entries from being mentioned
-# in the global index as part of the previous header (Exception hierarchy).
 
 type
   int* {.magic: Int.}         ## Default integer type; bitwidth depends on
@@ -904,7 +904,7 @@ proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
 
 proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.}
   ## Returns the ``y``-th successor (default: 1) of the value ``x``.
-  ## ``T`` has to be an ordinal type.
+  ## ``T`` has to be an `ordinal type <#Ordinal>`_.
   ##
   ## If such a value does not exist, ``OverflowError`` is raised
   ## or a compile time error occurs.
@@ -916,7 +916,7 @@ proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.}
 
 proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.}
   ## Returns the ``y``-th predecessor (default: 1) of the value ``x``.
-  ## ``T`` has to be an ordinal type.
+  ## ``T`` has to be an `ordinal type <#Ordinal>`_.
   ##
   ## If such a value does not exist, ``OverflowError`` is raised
   ## or a compile time error occurs.
@@ -950,6 +950,7 @@ proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.
 
 proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ## Creates a new sequence of type ``seq[T]`` with length ``len``.
+  ##
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
   ##
@@ -1056,8 +1057,9 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
 
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
-  ## Includes element ``y`` in the set ``x``. This is the same as
-  ## ``x = x + {y}``, but it might be more efficient.
+  ## Includes element ``y`` in the set ``x``.
+  ##
+  ## This is the same as ``x = x + {y}``, but it might be more efficient.
   ##
   ## .. code-block:: Nim
   ##   var a = {1, 3, 5}
@@ -1074,8 +1076,9 @@ template incl*[T](x: var set[T], y: set[T]) =
   x = x + y
 
 proc excl*[T](x: var set[T], y: T) {.magic: "Excl", noSideEffect.}
-  ## Excludes element ``y`` from the set ``x``. This is the same as
-  ## ``x = x - {y}``, but it might be more efficient.
+  ## Excludes element ``y`` from the set ``x``.
+  ##
+  ## This is the same as ``x = x - {y}``, but it might be more efficient.
   ##
   ## .. code-block:: Nim
   ##   var b = {2, 3, 5, 6, 12, 545}
@@ -1099,14 +1102,14 @@ proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ##   echo card(a) # => 4
 
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
-  ## Returns the internal int value of an ordinal value ``x``.
+  ## Returns the internal `int` value of an ordinal value ``x``.
   ##
   ## .. code-block:: Nim
   ##   echo ord('A') # => 65
   ##   echo ord('a') # => 97
 
 proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
-  ## Converts an int in the range 0..255 to a character.
+  ## Converts an `int` in the range `0..255` to a character.
   ##
   ## .. code-block:: Nim
   ##   echo chr(65) # => A
@@ -1230,8 +1233,9 @@ else:
   proc `*`*(x, y: int64): int64 {.magic: "MulI64", noSideEffect.}
 
 proc `div`*(x, y: int): int {.magic: "DivI", noSideEffect.}
-  ## Computes the integer division. This is roughly the same as
-  ## ``trunc(x/y)``.
+  ## Computes the integer division.
+  ##
+  ## This is roughly the same as ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
   ##   ( 1 div  2) ==  0
@@ -1251,8 +1255,8 @@ else:
 
 proc `mod`*(x, y: int): int {.magic: "ModI", noSideEffect.}
   ## Computes the integer modulo operation (remainder).
-  ## This is the same as
-  ## ``x - (x div y) * y``.
+  ##
+  ## This is the same as ``x - (x div y) * y``.
   ##
   ## .. code-block:: Nim
   ##   ( 7 mod  5) ==  2
@@ -1272,8 +1276,11 @@ when defined(nimNewShiftOps):
     ## Computes the `shift right` operation of `x` and `y`, filling
     ## vacant bit positions with zeros.
     ##
+    ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
+    ## is different than in *C*.
+    ##
     ## See also:
-    ## * `ashr proc <#ashr,int,SomeInteger>`_
+    ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
     ##
     ## .. code-block:: Nim
     ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
@@ -1286,6 +1293,9 @@ when defined(nimNewShiftOps):
 
   proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
     ## Computes the `shift left` operation of `x` and `y`.
+    ##
+    ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
+    ## is different than in *C*.
     ##
     ## .. code-block:: Nim
     ##  1'i32 shl 4 == 0x0000_0010
@@ -1502,7 +1512,6 @@ proc `+`*(x, y: float): float {.magic: "AddF64", noSideEffect.}
 proc `-`*(x, y: float): float {.magic: "SubF64", noSideEffect.}
 proc `*`*(x, y: float): float {.magic: "MulF64", noSideEffect.}
 proc `/`*(x, y: float): float {.magic: "DivF64", noSideEffect.}
-  ## Computes the floating point division.
 
 proc `==`*(x, y: float32): bool {.magic: "EqF64", noSideEffect.}
 proc `<=`*(x, y: float32): bool {.magic: "LeF64", noSideEffect.}
@@ -1550,7 +1559,8 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ##
   ## .. code-block:: Nim
   ##   var s: set[range['a'..'z']] = {'a'..'c'}
-  ##   writeLine(stdout, 'b' in s)
+  ##   assert s.contains('c')
+  ##   assert 'b' in s
   ##
   ## If ``in`` had been declared as ``[T](elem: T, s: set[T])`` then ``T`` would
   ## have been bound to ``char``. But ``s`` is not compatible to type
@@ -1742,13 +1752,13 @@ proc `&`*(x: string, y: char): string {.
   ##   assert("ab" & 'c' == "abc")
 proc `&`*(x, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## Concatenates `x` and `y` into a string.
+  ## Concatenates characters `x` and `y` into a string.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
 proc `&`*(x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
-  ## Concatenates `x` and `y`.
+  ## Concatenates strings `x` and `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & "cd" == "abcd")
@@ -2005,7 +2015,8 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
 
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## Deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
-  ## This is an O(1) operation.
+  ##
+  ## This is an `O(1)` operation.
   ##
   ## See also:
   ## * `delete <#delete,seq[T][T],Natural>`_ for preserving the order
@@ -2018,8 +2029,9 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   setLen(x, xl)
 
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
-  ## Deletes the item at index `i` by moving ``x[i+1..]`` by one position.
-  ## This is an O(n) operation.
+  ## Deletes the item at index `i` by moving all ``x[i+1..]`` items by one position.
+  ##
+  ## This is an `O(n)` operation.
   ##
   ## See also:
   ## * `del <#delete,seq[T][T],Natural>`_ for O(1) operation
@@ -2953,6 +2965,15 @@ proc find*[T, S](a: T, item: S): int {.inline.}=
 proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
   ## Returns true if `item` is in `a` or false if not found. This is a shortcut
   ## for ``find(a, item) >= 0``.
+  ##
+  ## This allows the `in` operator: `a.contains(item)` is the same as
+  ## `item in a`.
+  ##
+  ## .. code-block:: Nim
+  ##   var a = @[1, 3, 5]
+  ##   assert a.contains(5)
+  ##   assert 3 in a
+  ##   assert 99 notin a
   return find(a, item) >= 0
 
 proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
@@ -2962,6 +2983,7 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     var a = @[1, 3, 5, 7]
     let b = pop(a)
     assert b == 7
+    assert a == @[1, 3, 5]
 
   var L = s.len-1
   result = s[L]
@@ -3686,7 +3708,11 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
 {.pop.} # hints
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
-  ## Integer division that results in a float.
+  ## Division of intergers that results in a float.
+  ##
+  ## See also:
+  ## * `div <#div,int,int>`_
+  ## * `mod <#mod,int,int>`_
   ##
   ## .. code-block:: Nim
   ##   echo 7 / 5 # => 1.4
@@ -3788,6 +3814,11 @@ proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
 
 proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
+  ##
+  ## .. code-block:: Nim
+  ##   var a = [10, 20, 30, 40, 50]
+  ##   a[1..2] = @[99, 88]
+  ##   assert a == [10, 99, 88, 40, 50]
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
   if L == b.len:
