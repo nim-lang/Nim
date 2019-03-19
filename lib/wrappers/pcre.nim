@@ -341,8 +341,6 @@ proc compile2*(pattern: cstring,
                erroffset: ptr cint,
                tableptr: pointer): ptr Pcre
 
-proc free*(p: ptr Pcre)
-
 proc config*(what: cint,
              where: pointer): cint
 

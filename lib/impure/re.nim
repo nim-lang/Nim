@@ -60,9 +60,12 @@ proc rawCompile(pattern: string, flags: cint): ptr Pcre =
     raiseInvalidRegex($msg & "\n" & pattern & "\n" & spaces(offset) & "^\n")
 
 proc finalizeRegEx(x: Regex) =
-  pcre.free(x.h)
+  # XXX This is a hack, but PCRE does not export its "free" function properly.
+  # Sigh. The hack relies on PCRE's implementation (see ``pcre_get.c``).
+  # Fortunately the implementation is unlikely to change.
+  pcre.free_substring(cast[cstring](x.h))
   if not isNil(x.e):
-    pcre.free_study(x.e)
+    pcre.free_substring(cast[cstring](x.e))
 
 proc re*(s: string, flags = {reStudy}): Regex =
   ## Constructor of regular expressions.
