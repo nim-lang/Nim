@@ -1552,6 +1552,14 @@ proc canonType(c: PContext, t: PType): PType =
     result = t
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
+  proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
+    var msg = "cannot bind another '" & prevOp.name.s & "' to: " & typeToString(obj)
+    if sfOverriden notin prevOp.flags:
+      msg.add "; previous declaration was constructed here implicitly: " & (c.config $ prevOp.info)
+    else:
+      msg.add "; previous declaration was here: " & (c.config $ prevOp.info)
+    localError(c.config, n.info, errGenerated, msg)
+
   let name = s.name.s.normalize
   case name
   of "=destroy":
@@ -1569,8 +1577,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         if obj.destructor.isNil:
           obj.destructor = s
         else:
-          localError(c.config, n.info, errGenerated,
-            "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+          prevDestructor(c, obj.destructor, obj, n.info)
         noError = true
         if obj.owner.getModule != s.getModule:
           localError(c.config, n.info, errGenerated,
@@ -1601,8 +1608,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                    "cannot bind 'deepCopy' to: " & typeToString(t))
 
       if t.owner.getModule != s.getModule:
-          localError(c.config, n.info, errGenerated,
-            "type bound operation `" & name & "` can be defined only in the same module with its type (" & t.typeToString() & ")")
+        localError(c.config, n.info, errGenerated,
+          "type bound operation `" & name & "` can be defined only in the same module with its type (" & t.typeToString() & ")")
 
     else:
       localError(c.config, n.info, errGenerated,
@@ -1635,11 +1642,10 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         if opr[].isNil:
           opr[] = s
         else:
-          localError(c.config, n.info, errGenerated,
-                     "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+          prevDestructor(c, opr[], obj, n.info)
         if obj.owner.getModule != s.getModule:
-            localError(c.config, n.info, errGenerated,
-              "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+          localError(c.config, n.info, errGenerated,
+            "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
 
         return
     if sfSystemModule notin s.owner.flags:
