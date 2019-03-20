@@ -1,18 +1,18 @@
 discard """
-outputsub: '''tcall_with_default_arg.nim(16) anderesfoo'''
+outputsub: '''tcall_with_default_arg.nim(16) anotherFoo'''
 exitcode: 1
 """
 # issue: #5604
 
-proc eineproc() =
-  raise newException(ValueError, "irgendwie tot")
+proc fail() =
+  raise newException(ValueError, "dead")
 
 proc getDefault(): int = 123
 
 proc bar*(arg1: int = getDefault()) =
-  eineproc()
+  fail()
 
-proc anderesfoo(input: string) =
+proc anotherFoo(input: string) =
   bar()
 
-anderesfoo("123")
+anotherFoo("123")
