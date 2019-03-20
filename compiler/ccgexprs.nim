@@ -2453,7 +2453,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     putIntoDest(p, d, n, genLiteral(p, n))
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
      nkCallStrLit:
-    genLineDir(p, n)
+    genLineDir(p, n) # may be redundant, it is generated in fixupCall as well
     let op = n.sons[0]
     if n.typ.isNil:
       # discard the value:
