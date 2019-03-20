@@ -1779,24 +1779,28 @@ proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   else:
     discard
 
+proc setMagicIntegral(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
+  setMagicType(conf, m, kind, size)
+  incl m.typ.flags, tfCheckedForDestructor
+
 proc processMagicType(c: PContext, m: PSym) =
   case m.magic
-  of mInt: setMagicType(c.config, m, tyInt, c.config.target.intSize)
-  of mInt8: setMagicType(c.config, m, tyInt8, 1)
-  of mInt16: setMagicType(c.config, m, tyInt16, 2)
-  of mInt32: setMagicType(c.config, m, tyInt32, 4)
-  of mInt64: setMagicType(c.config, m, tyInt64, 8)
-  of mUInt: setMagicType(c.config, m, tyUInt, c.config.target.intSize)
-  of mUInt8: setMagicType(c.config, m, tyUInt8, 1)
-  of mUInt16: setMagicType(c.config, m, tyUInt16, 2)
-  of mUInt32: setMagicType(c.config, m, tyUInt32, 4)
-  of mUInt64: setMagicType(c.config, m, tyUInt64, 8)
-  of mFloat: setMagicType(c.config, m, tyFloat, c.config.target.floatSize)
-  of mFloat32: setMagicType(c.config, m, tyFloat32, 4)
-  of mFloat64: setMagicType(c.config, m, tyFloat64, 8)
-  of mFloat128: setMagicType(c.config, m, tyFloat128, 16)
-  of mBool: setMagicType(c.config, m, tyBool, 1)
-  of mChar: setMagicType(c.config, m, tyChar, 1)
+  of mInt: setMagicIntegral(c.config, m, tyInt, c.config.target.intSize)
+  of mInt8: setMagicIntegral(c.config, m, tyInt8, 1)
+  of mInt16: setMagicIntegral(c.config, m, tyInt16, 2)
+  of mInt32: setMagicIntegral(c.config, m, tyInt32, 4)
+  of mInt64: setMagicIntegral(c.config, m, tyInt64, 8)
+  of mUInt: setMagicIntegral(c.config, m, tyUInt, c.config.target.intSize)
+  of mUInt8: setMagicIntegral(c.config, m, tyUInt8, 1)
+  of mUInt16: setMagicIntegral(c.config, m, tyUInt16, 2)
+  of mUInt32: setMagicIntegral(c.config, m, tyUInt32, 4)
+  of mUInt64: setMagicIntegral(c.config, m, tyUInt64, 8)
+  of mFloat: setMagicIntegral(c.config, m, tyFloat, c.config.target.floatSize)
+  of mFloat32: setMagicIntegral(c.config, m, tyFloat32, 4)
+  of mFloat64: setMagicIntegral(c.config, m, tyFloat64, 8)
+  of mFloat128: setMagicIntegral(c.config, m, tyFloat128, 16)
+  of mBool: setMagicIntegral(c.config, m, tyBool, 1)
+  of mChar: setMagicIntegral(c.config, m, tyChar, 1)
   of mString:
     setMagicType(c.config, m, tyString, szUncomputedSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
@@ -1804,29 +1808,29 @@ proc processMagicType(c: PContext, m: PSym) =
       if c.config.selectedGc == gcDestructors:
         incl m.typ.flags, tfHasAsgn
   of mCstring:
-    setMagicType(c.config, m, tyCString, c.config.target.ptrSize)
+    setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
-  of mPointer: setMagicType(c.config, m, tyPointer, c.config.target.ptrSize)
+  of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
   of mEmptySet:
-    setMagicType(c.config, m, tySet, 1)
+    setMagicIntegral(c.config, m, tySet, 1)
     rawAddSon(m.typ, newTypeS(tyEmpty, c))
-  of mIntSetBaseType: setMagicType(c.config, m, tyRange, c.config.target.intSize)
+  of mIntSetBaseType: setMagicIntegral(c.config, m, tyRange, c.config.target.intSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
   of mExpr:
     if m.name.s == "auto":
-      setMagicType(c.config, m, tyAnything, 0)
+      setMagicIntegral(c.config, m, tyAnything, 0)
     else:
-      setMagicType(c.config, m, tyExpr, 0)
+      setMagicIntegral(c.config, m, tyExpr, 0)
   of mStmt:
-    setMagicType(c.config, m, tyStmt, 0)
+    setMagicIntegral(c.config, m, tyStmt, 0)
   of mTypeDesc, mType:
-    setMagicType(c.config, m, tyTypeDesc, 0)
+    setMagicIntegral(c.config, m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mStatic:
     setMagicType(c.config, m, tyStatic, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mVoidType:
-    setMagicType(c.config, m, tyVoid, 0)
+    setMagicIntegral(c.config, m, tyVoid, 0)
   of mArray:
     setMagicType(c.config, m, tyArray, szUncomputedSize)
   of mOpenArray:
@@ -1834,12 +1838,12 @@ proc processMagicType(c: PContext, m: PSym) =
   of mVarargs:
     setMagicType(c.config, m, tyVarargs, szUncomputedSize)
   of mRange:
-    setMagicType(c.config, m, tyRange, szUncomputedSize)
+    setMagicIntegral(c.config, m, tyRange, szUncomputedSize)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mSet:
-    setMagicType(c.config, m, tySet, szUncomputedSize)
+    setMagicIntegral(c.config, m, tySet, szUncomputedSize)
   of mUncheckedArray:
-    setMagicType(c.config, m, tyUncheckedArray, szUncomputedSize)
+    setMagicIntegral(c.config, m, tyUncheckedArray, szUncomputedSize)
   of mSeq:
     setMagicType(c.config, m, tySequence, szUncomputedSize)
     if c.config.selectedGc == gcDestructors:
@@ -1849,10 +1853,11 @@ proc processMagicType(c: PContext, m: PSym) =
   of mOpt:
     setMagicType(c.config, m, tyOpt, szUncomputedSize)
   of mOrdinal:
-    setMagicType(c.config, m, tyOrdinal, szUncomputedSize)
+    setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime
+    incl m.typ.flags, tfCheckedForDestructor
   of mException: discard
   of mBuiltinType:
     case m.name.s
