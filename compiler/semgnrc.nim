@@ -369,7 +369,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       addTempDecl(c, n.sons[0], skLabel)
     n.sons[1] = semGenericStmt(c, n.sons[1], flags, ctx)
     closeScope(c)
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     checkMinSonsLen(n, 2, c.config)
     n.sons[0] = semGenericStmtScope(c, n.sons[0], flags, ctx)
     for i in countup(1, sonsLen(n)-1):

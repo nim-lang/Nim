@@ -122,7 +122,7 @@ proc returnsNewExpr*(n: PNode): NewLocation =
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
     result = returnsNewExpr(n.lastSon)
   of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure,
-      nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt:
+      nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt, nkHiddenTryStmt:
     result = newLit
     for i in ord(n.kind == nkObjConstr) ..< n.len:
       let x = returnsNewExpr(n.sons[i])

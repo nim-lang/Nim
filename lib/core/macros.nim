@@ -78,7 +78,7 @@ type
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
-    nnkReturnToken,
+    nnkHiddenTryStmt,
     nnkClosure,
     nnkGotoState,
     nnkState,
