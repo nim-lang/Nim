@@ -344,9 +344,9 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       if procTokenPos == tokenPos-2 and procLink != nil:
         dispA(d.conf, result, "<a href=\"#$2\"><span class=\"Identifier\">$1</span></a>",
               "\\spanIdentifier{$1}", [rope(esc(d.target, literal)), procLink])
-      elif s != nil and s.kind == skType and sfExported in s.flags and
-          s.owner != nil and belongsToPackage(d.conf, s.owner) and
-          d.target == outHtml:
+      elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
+           sfExported in s.flags and s.owner != nil and
+           belongsToPackage(d.conf, s.owner) and d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [rope changeFileExt(external, "html"), rope literal,
