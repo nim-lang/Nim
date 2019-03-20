@@ -12,13 +12,15 @@
 type
   NimSet = array[0..4*2048-1, uint8]
 
-import bitops
-
 proc countBits32(n: int32): int {.compilerproc.} =
-  countSetBits(n)
+  var v = n
+  v = v -% ((v shr 1'i32) and 0x55555555'i32)
+  v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
+  result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
 proc countBits64(n: int64): int {.compilerproc.} =
-  countSetBits(n)
+  result = countBits32(toU32(n and 0xffffffff'i64)) +
+           countBits32(toU32(n shr 32'i64))
 
 proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
   for i in 0..<len:
