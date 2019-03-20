@@ -48,7 +48,7 @@ const
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects, wNoForward, wReorder, wComputedGoto,
+    wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
@@ -350,7 +350,7 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wMemTracker: {optMemTracker}
   of wByRef: {optByRef}
   of wImplicitStatic: {optImplicitStatic}
-  of wPatterns: {optPatterns}
+  of wPatterns, wTrMacros: {optTrMacros}
   else: {}
 
 proc processExperimental(c: PContext; n: PNode) =
@@ -1011,7 +1011,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks,
          wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
          wLinedir, wOptimization, wMovechecks, wCallconv, wDebugger, wProfiler,
-         wFloatchecks, wNanChecks, wInfChecks, wPatterns:
+         wFloatchecks, wNanChecks, wInfChecks, wPatterns, wTrMacros:
         processOption(c, it, c.config.options)
       of wStacktrace, wLinetrace:
         if sym.kind in {skProc, skMethod, skConverter}:

@@ -78,7 +78,7 @@ Advanced options:
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
-  --patterns:on|off         turn pattern matching on|off
+  --trmacros:on|off         turn term rewriting macros on|off
   --memTracker:on|off       turn memory tracker on|off
   --hotCodeReloading:on|off
                             turn support for hot code reloading on|off

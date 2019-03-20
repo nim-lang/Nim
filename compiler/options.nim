@@ -36,7 +36,7 @@ type                          # please make sure we have under 32 options
     optProfiler,              # profiler turned on
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
-    optPatterns,              # en/disable pattern matching
+    optTrMacros,              # en/disable pattern matching
     optMemTracker,
     optLaxStrings,
     optNilSeqs,
@@ -272,7 +272,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns,
     optHints, optStackTrace, optLineTrace,
-    optPatterns, optNilCheck, optMoveCheck}
+    optTrMacros, optNilCheck, optMoveCheck}
   DefaultGlobalOptions* = {optThreadAnalysis}
 
 proc getSrcTimestamp(): DateTime =
