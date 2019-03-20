@@ -21,6 +21,7 @@ const
   CFileSectionNames: array[TCFileSection, string] = [
     cfsMergeInfo: "",
     cfsHeaders: "NIM_merge_HEADERS",
+    cfsFrameDefines: "NIM_merge_FRAME_DEFINES",
     cfsForwardTypes: "NIM_merge_FORWARD_TYPES",
     cfsTypes: "NIM_merge_TYPES",
     cfsSeqTypes: "NIM_merge_SEQ_TYPES",

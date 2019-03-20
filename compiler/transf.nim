@@ -762,6 +762,10 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
+  elif magic == mAddr:
+    result = newTransNode(nkAddr, n, 1)
+    result[0] = n[1].PTransNode
+    result = transformAddrDeref(c, result.PNode, nkDerefExpr, nkHiddenDeref)
   elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n.PTransNode

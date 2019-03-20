@@ -474,7 +474,7 @@ proc runCI(cmd: string) =
     kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
-    execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-extra")
+    execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-packages")
   else:
     buildTools() # altenatively, kochExec "tools --toolsNoNimble"
 

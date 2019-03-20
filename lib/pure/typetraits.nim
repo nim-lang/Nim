@@ -10,10 +10,8 @@
 ## This module defines compile-time reflection procs for
 ## working with types.
 
-include "system/helpers" # for `isNamedTuple`
+export system.`$` # for backward compatibility
 
-export system.`$`
-export isNamedTuple
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
@@ -62,6 +60,20 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## `copyMem`:idx:.
   ##
   ## Other languages name a type like these `blob`:idx:.
+
+proc isNamedTuple*(T: typedesc): bool =
+  ## Return true for named tuples, false for any other type.
+  when T isnot tuple: result = false
+  else:
+    var t: T
+    for name, _ in t.fieldPairs:
+      when name == "Field0":
+        return compiles(t.Field0)
+      else:
+        return true
+    # empty tuple should be un-named,
+    # see https://github.com/nim-lang/Nim/issues/8861#issue-356631191
+    return false
 
 
 when isMainModule:

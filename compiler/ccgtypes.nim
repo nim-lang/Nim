@@ -740,7 +740,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                  "  #TGenericSeq Sup;$n"
         if m.config.selectedGC == gcDestructors:
           appcg(m, m.s[cfsTypes],
-            "typedef struct{ NI cap;void* allocator;$1 data[SEQ_DECL_SIZE];}$2_Content;$n" &
+            "typedef struct{ NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];}$2_Content;$n" &
             "struct $2 {$n" &
             "  NI len; $2_Content* p;$n" &
             "};$n", [getTypeDescAux(m, t.sons[0], check), result])
@@ -980,7 +980,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     discard cgsym(m, "nimTypeRoot")
     addf(m.s[cfsTypeInit3], "$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
          [nameHcr])
-  
+
   if m.hcrOn:
     addf(m.s[cfsVars], "static TNimType* $1;$n", [name])
     addf(m.hcrCreateTypeInfosProc, "\thcrRegisterGlobal($2, \"$1\", sizeof(TNimType), NULL, (void**)&$1);$n",
@@ -1204,6 +1204,60 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   addf(m.s[cfsTypeInit3], "$1.deepcopy =(void* (N_RAW_NIMCALL*)(void*))$2;$n",
      [result, s.loc.r])
 
+proc declareNimType(m: BModule, str: Rope, ownerModule: PSym) =
+  if m.hcrOn:
+    addf(m.s[cfsVars], "static TNimType* $1;$n", [str])
+    addf(m.s[cfsTypeInit1], "\t$1 = (TNimType*)hcrGetGlobal($2, \"$1\");$n",
+          [str, getModuleDllPath(m, ownerModule)])
+  else:
+    addf(m.s[cfsVars], "extern TNimType $1;$n", [str])
+
+proc genTypeInfo2Name(m: BModule; t: PType): Rope =
+  var res = "|"
+  var it = t
+  while it != nil:
+    it = it.skipTypes(skipPtrs)
+    if it.sym != nil:
+      var m = t.sym.owner
+      while m != nil and m.kind != skModule: m = m.owner
+      if m == nil or sfSystemModule in m.flags:
+        # produce short names for system types:
+        res.add it.sym.name.s
+      else:
+        var p = m.owner
+        if p != nil and p.kind == skPackage:
+          res.add p.name.s & "."
+        res.add m.name.s & "."
+        res.add it.sym.name.s
+    else:
+      res.add $hashType(it)
+    res.add "|"
+    it = it.sons[0]
+  result = makeCString(res)
+
+proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
+  assert t.kind == tyObject
+  if incompleteType(t):
+    localError(m.config, info, "request for RTTI generation for incomplete object: " &
+                      typeToString(t))
+
+  var d: Rope
+  if t.destructor != nil:
+    # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
+    # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
+    # convention at least:
+    if t.destructor.typ == nil or t.destructor.typ.callConv != ccDefault:
+      localError(m.config, info,
+        "the destructor that is turned into a finalizer needs " &
+        "to have the 'nimcall' calling convention")
+    genProc(m, t.destructor)
+    d = t.destructor.loc.r
+  else:
+    d = rope("NIM_NIL")
+  addf(m.s[cfsVars], "TNimType $1;$n", [name])
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.name = $4;$n", [
+    name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
+
 proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
@@ -1214,14 +1268,6 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   result = m.typeInfoMarker.getOrDefault(sig)
   if result != nil:
     return prefixTI.rope & result & ")".rope
-
-  proc declareNimType(m: BModule, str: Rope, ownerModule: PSym) =
-    if m.hcrOn:
-      addf(m.s[cfsVars], "static TNimType* $1;$n", [str])
-      addf(m.s[cfsTypeInit1], "\t$1 = (TNimType*)hcrGetGlobal($2, \"$1\");$n",
-           [str, getModuleDllPath(m, ownerModule)])
-    else:
-      addf(m.s[cfsVars], "extern TNimType $1;$n", [str])
 
   let marker = m.g.typeInfoMarker.getOrDefault(sig)
   if marker.str != nil:
@@ -1278,7 +1324,11 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   of tyArray: genArrayInfo(m, t, result, info)
   of tySet: genSetInfo(m, t, result, info)
   of tyEnum: genEnumInfo(m, t, result, info)
-  of tyObject: genObjectInfo(m, t, origType, result, info)
+  of tyObject:
+    if optNimV2 in m.config.globalOptions:
+      genObjectInfoV2(m, t, origType, result, info)
+    else:
+      genObjectInfo(m, t, origType, result, info)
   of tyTuple:
     # if t.n != nil: genObjectInfo(m, t, result)
     # else:

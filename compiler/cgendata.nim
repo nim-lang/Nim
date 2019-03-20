@@ -20,6 +20,7 @@ type
   TCFileSection* = enum       # the sections a generated C file consists of
     cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
+    cfsFrameDefines           # section for nim frame macros
     cfsForwardTypes,          # section for C forward typedefs
     cfsTypes,                 # section for C typedefs
     cfsSeqTypes,              # section for sequence types only

@@ -456,8 +456,6 @@ template threadProcWrapperBody(closure: untyped): untyped =
   var thrd = cast[ptr Thread[TArg]](closure)
   var core = thrd.core
   when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
-  when declared(initAllocator):
-    initAllocator()
   threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is
   # no need for a ``try finally`` here, nor would it be correct: The current

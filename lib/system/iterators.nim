@@ -1,19 +1,19 @@
 iterator items*[T](a: openArray[T]): T {.inline.} =
-  ## iterates over each item of `a`.
+  ## Iterates over each item of `a`.
   var i = 0
   while i < len(a):
     yield a[i]
     inc(i)
 
 iterator mitems*[T](a: var openArray[T]): var T {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = 0
   while i < len(a):
     yield a[i]
     inc(i)
 
 iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
-  ## iterates over each item of `a`.
+  ## Iterates over each item of `a`.
   var i = low(IX)
   if i <= high(IX):
     while true:
@@ -22,7 +22,7 @@ iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
       inc(i)
 
 iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = low(IX)
   if i <= high(IX):
     while true:
@@ -31,7 +31,7 @@ iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
       inc(i)
 
 iterator items*[T](a: set[T]): T {.inline.} =
-  ## iterates over each element of `a`. `items` iterates only over the
+  ## Iterates over each element of `a`. `items` iterates only over the
   ## elements that are really in the set (and not over the ones the set is
   ## able to hold).
   var i = low(T).int
@@ -40,7 +40,7 @@ iterator items*[T](a: set[T]): T {.inline.} =
     inc(i)
 
 iterator items*(a: cstring): char {.inline.} =
-  ## iterates over each item of `a`.
+  ## Iterates over each item of `a`.
   when defined(js):
     var i = 0
     var L = len(a)
@@ -54,32 +54,32 @@ iterator items*(a: cstring): char {.inline.} =
       inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = 0
   while a[i] != '\0':
     yield a[i]
     inc(i)
 
 iterator items*(E: typedesc[enum]): E =
-  ## iterates over the values of the enum ``E``.
+  ## Iterates over the values of the enum ``E``.
   for v in low(E)..high(E):
     yield v
 
 iterator items*[T](s: HSlice[T, T]): T =
-  ## iterates over the slice `s`, yielding each value between `s.a` and `s.b`
+  ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
   for x in s.a..s.b:
     yield x
 
 iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = 0
   while i < len(a):
     yield (i, a[i])
     inc(i)
 
 iterator mpairs*[T](a: var openArray[T]): tuple[key:int, val:var T]{.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = 0
   while i < len(a):
@@ -87,7 +87,7 @@ iterator mpairs*[T](a: var openArray[T]): tuple[key:int, val:var T]{.inline.} =
     inc(i)
 
 iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = low(IX)
   if i <= high(IX):
     while true:
@@ -96,7 +96,7 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
       inc(i)
 
 iterator mpairs*[IX, T](a:var array[IX, T]):tuple[key:IX,val:var T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = low(IX)
   if i <= high(IX):
@@ -106,14 +106,14 @@ iterator mpairs*[IX, T](a:var array[IX, T]):tuple[key:IX,val:var T] {.inline.} =
       inc(i)
 
 iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = 0
   while i < len(a):
     yield (i, a[i])
     inc(i)
 
 iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = 0
   while i < len(a):
@@ -121,14 +121,14 @@ iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
     inc(i)
 
 iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = 0
   while i < len(a):
     yield (i, a[i])
     inc(i)
 
 iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = 0
   while i < len(a):
@@ -136,22 +136,23 @@ iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
     inc(i)
 
 iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = 0
   while a[i] != '\0':
     yield (i, a[i])
     inc(i)
 
 iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
-  ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = 0
   while a[i] != '\0':
     yield (i, a[i])
     inc(i)
 
+
 iterator items*[T](a: seq[T]): T {.inline.} =
-  ## iterates over each item of `a`.
+  ## Iterates over each item of `a`.
   var i = 0
   let L = len(a)
   while i < L:
@@ -160,7 +161,7 @@ iterator items*[T](a: seq[T]): T {.inline.} =
     assert(len(a) == L, "seq modified while iterating over it")
 
 iterator mitems*[T](a: var seq[T]): var T {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = 0
   let L = len(a)
   while i < L:
@@ -169,7 +170,7 @@ iterator mitems*[T](a: var seq[T]): var T {.inline.} =
     assert(len(a) == L, "seq modified while iterating over it")
 
 iterator items*(a: string): char {.inline.} =
-  ## iterates over each item of `a`.
+  ## Iterates over each item of `a`.
   var i = 0
   let L = len(a)
   while i < L:
@@ -178,7 +179,7 @@ iterator items*(a: string): char {.inline.} =
     assert(len(a) == L, "string modified while iterating over it")
 
 iterator mitems*(a: var string): var char {.inline.} =
-  ## iterates over each item of `a` so that you can modify the yielded value.
+  ## Iterates over each item of `a` so that you can modify the yielded value.
   var i = 0
   let L = len(a)
   while i < L:
@@ -186,19 +187,21 @@ iterator mitems*(a: var string): var char {.inline.} =
     inc(i)
     assert(len(a) == L, "string modified while iterating over it")
 
+
 iterator fields*[T: tuple|object](x: T): RootObj {.
   magic: "Fields", noSideEffect.}
-  ## iterates over every field of `x`. Warning: This really transforms
-  ## the 'for' and unrolls the loop. The current implementation also has a bug
+  ## Iterates over every field of `x`.
+  ##
+  ## **Warning**: This really transforms the 'for' and unrolls the loop.
+  ## The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-
 iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: untyped] {.
   magic: "Fields", noSideEffect.}
-  ## iterates over every field of `x` and `y`.
-  ## Warning: This is really transforms the 'for' and unrolls the loop.
+  ## Iterates over every field of `x` and `y`.
+  ##
+  ## **Warning**: This really transforms the 'for' and unrolls the loop.
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
- 
 iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   magic: "FieldPairs", noSideEffect.}
   ## Iterates over every field of `x` returning their name and value.
@@ -209,7 +212,6 @@ iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   ## operator <manual.html#generics-is-operator>`_. Example:
   ##
   ## .. code-block:: Nim
-  ##
   ##   type
   ##     Custom = object
   ##       foo: string
@@ -230,14 +232,17 @@ iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   ## picking the appropriate code to a secondary proc which you overload for
   ## each field type and pass the `value` to.
   ##
-  ## Warning: This really transforms the 'for' and unrolls the loop. The
+  ## **Warning**: This really transforms the 'for' and unrolls the loop. The
   ## current implementation also has a bug that affects symbol binding in the
   ## loop body.
 
 iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
   a, b: untyped] {.
   magic: "FieldPairs", noSideEffect.}
-  ## iterates over every field of `x` and `y`.
-  ## Warning: This really transforms the 'for' and unrolls the loop.
+  ## Iterates over every field of `x` and `y`.
+  ##
+  ## **Warning**: This really transforms the 'for' and unrolls the loop.
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
+
+

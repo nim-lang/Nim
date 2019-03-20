@@ -124,6 +124,10 @@ doc/manual/var_t_return.rst
 lib/system.nim
 lib/system/io.nim
 lib/system/nimscript.nim
+lib/system/assertions.nim
+lib/system/iterators.nim
+lib/system/dollars.nim
+lib/system/widestrs.nim
 lib/deprecated/pure/ospaths.nim
 lib/pure/parsejson.nim
 lib/pure/cstrutils.nim

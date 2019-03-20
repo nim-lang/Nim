@@ -17,6 +17,7 @@ const
 
 proc getTraverseProc(p: BProc, v: Psym): Rope =
   if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
+      optNimV2 notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -1039,8 +1040,12 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
         let isObjFormat = if not p.module.compileToCpp:
           "#isObj(#getCurrentException()->Sup.m_type, $1)"
           else: "#isObj(#getCurrentException()->m_type, $1)"
-        appcg(p.module, orExpr, isObjFormat,
-              [genTypeInfo(p.module, t[i][j].typ, t[i][j].info)])
+
+        let checkFor = if optNimV2 in p.config.globalOptions:
+          genTypeInfo2Name(p.module, t[i][j].typ)
+        else:
+          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
+        appcg(p.module, orExpr, isObjFormat, [checkFor])
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       if not quirkyExceptions:

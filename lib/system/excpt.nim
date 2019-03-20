@@ -14,25 +14,18 @@ var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
     ## Function that will be called
-    ## instead of stdmsg.write when printing stacktrace.
+    ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
-
-proc c_fwrite(buf: pointer, size, n: csize, f: CFilePtr): cint {.
-  importc: "fwrite", header: "<stdio.h>".}
-
-proc rawWrite(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable, hcrInline.} =
-  # we cannot throw an exception here!
-  discard c_fwrite(s, 1, s.len, f)
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
 
 else:
-  proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
+  proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
 
   proc writeToStdErr(msg: cstring) =
-    discard MessageBoxA(0, msg, nil, 0)
+    discard MessageBoxA(nil, msg, nil, 0)
 
 proc showErrorMessage(data: cstring) {.gcsafe.} =
   if errorMessageWriter != nil:
@@ -331,8 +324,9 @@ else:
   proc stackTraceAvailable*(): bool = result = false
 
 var onUnhandledException*: (proc (errorMsg: string) {.
-  nimcall.}) ## set this error \
+  nimcall.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
+  ##
   ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
   ## Unstable API.
 

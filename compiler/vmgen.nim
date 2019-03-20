@@ -1236,6 +1236,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABC(n, opcNGetType, dest, tmp, rc)
     c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
+  of mNSizeOf:
+    let imm = case n[0].sym.name.s:
+      of "getSize": 0
+      of "getAlign": 1
+      else: 2 # "getOffset"
+    c.genUnaryABI(n, dest, opcNGetSize, imm)
   of mNStrVal: genUnaryABC(c, n, dest, opcNStrVal)
   of mNSigHash: genUnaryABC(c, n , dest, opcNSigHash)
   of mNSymBodyHash: genUnaryABC(c, n, dest, opcNSymBodyHash)

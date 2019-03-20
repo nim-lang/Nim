@@ -339,7 +339,7 @@ proc checkNilable(c: PContext; v: PSym) =
     elif tfNotNil in v.typ.flags and tfNotNil notin v.astdef.typ.flags:
       message(c.config, v.info, warnProveInit, v.name.s)
 
-include semasgn
+include liftdestructors
 
 proc addToVarSection(c: PContext; result: PNode; orig, identDefs: PNode) =
   let L = identDefs.len
@@ -1579,6 +1579,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
     incl(s.flags, sfUsed)
+    incl(s.flags, sfOverriden)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
         s.typ.sons[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
@@ -1607,9 +1608,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(c.config, n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
+    incl(s.flags, sfOverriden)
   of "=", "=sink":
     if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
+    incl(s.flags, sfOverriden)
     let t = s.typ
     if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar:
       var obj = t.sons[1].sons[0]

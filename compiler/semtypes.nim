@@ -448,6 +448,10 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       styleCheckDef(c.config, a.sons[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
+  if isTupleRecursive(result):
+    localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(result))
+
+
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
@@ -1600,7 +1604,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq:
-      if c.config.selectedGc == gcDestructors:
+      if c.config.selectedGc == gcDestructors and optNimV2 notin c.config.globalOptions:
         let s = c.graph.sysTypes[tySequence]
         assert s != nil
         assert prev == nil

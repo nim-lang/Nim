@@ -12,7 +12,7 @@ type
     ThreadLocal ## the allocator is thread local only.
     ZerosMem    ## the allocator always zeros the memory on an allocation
   Allocator* = ptr AllocatorObj
-  AllocatorObj* {.inheritable.} = object
+  AllocatorObj* {.inheritable, compilerproc.} = object
     alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [], tags: [].}
     dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [], tags: [].}
     realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [], tags: [].}

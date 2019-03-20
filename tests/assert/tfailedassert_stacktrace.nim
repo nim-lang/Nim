@@ -6,7 +6,7 @@ const expected = """
 tfailedassert_stacktrace.nim(34) tfailedassert_stacktrace
 tfailedassert_stacktrace.nim(33) foo
 assertions.nim(*)       failedAssertImpl
-assertions.nim(*)        raiseAssert
+assertions.nim(*)       raiseAssert
 fatal.nim(*)            sysFatal"""
 
 proc tmatch(x, p: string): bool =
