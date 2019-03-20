@@ -1582,3 +1582,15 @@ proc getProjectPath*(): string = discard
   ## Returns the path to the currently compiling project, not to
   ## be confused with ``system.currentSourcePath`` which returns
   ## the path of the current module.
+
+when defined(nimMacrosSizealignof):
+  proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+    ## Returns the same result as ``system.sizeof``, but it works on
+    ## ``NimNode`` for use in macro context.
+  proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+    ## Returns the same result as ``system.alignof``, but it works on
+    ## ``NimNode`` for use in macro context.
+  proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+    ## Returns the same result as ``system.offsetof``, but it expects
+    ## a resolved symbol node from a field of a type. Therefore it
+    ## only requires one argument instead of two.

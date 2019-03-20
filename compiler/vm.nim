@@ -1477,6 +1477,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
+    of opcNGetSize:
+      decodeBImm(rkInt)
+      let n = regs[rb].node
+      case imm
+      of 0: # size
+        if n.typ == nil:
+          stackTrace(c, tos, pc, "node has no type")
+        else:
+          regs[ra].intVal = getSize(c.config, n.typ)
+      of 1: # align
+        if n.typ == nil:
+          stackTrace(c, tos, pc, "node has no type")
+        else:
+          regs[ra].intVal = getAlign(c.config, n.typ)
+      else: # offset
+        if n.kind != nkSym:
+          stackTrace(c, tos, pc, "node is not a symbol")
+        elif n.sym.kind != skField:
+          stackTrace(c, tos, pc, "symbol is not a field (nskField)")
+        else:
+          regs[ra].intVal = n.sym.offset
     of opcNStrVal:
       decodeB(rkNode)
       createStr regs[ra]

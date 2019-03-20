@@ -308,6 +308,9 @@ Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
 because it makes more sense for them to use static binding, but ``eval`` is a
 method because it requires dynamic binding.
 
+**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
+``--multimethods:on`` when compiling.
+
 In a multi-method all parameters that have an object type are used for the
 dispatching:
 

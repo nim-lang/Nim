@@ -159,7 +159,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       # Make sure the destination directory exists
       createDir(outp.splitFile.dir)
       # Include the current file if we're parsing a nim file
-      let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
+      let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
       let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
               else: cmd

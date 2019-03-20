@@ -1514,3 +1514,23 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
     localError(conf, info, msg)
+
+proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
+  if t == nil: return
+  case t.kind:
+    of tyTuple:
+      if cycleDetector.containsOrIncl(t.id):
+        return true
+      var cycleDetectorCopy: IntSet
+      for i in  0..<t.len:
+        assign(cycleDetectorCopy, cycleDetector)
+        if isTupleRecursive(t[i], cycleDetectorCopy):
+          return true
+    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
+      return isTupleRecursive(t.lastSon, cycleDetector)
+    else:
+      discard
+
+proc isTupleRecursive*(t: PType): bool =
+  var cycleDetector = initIntSet()
+  isTupleRecursive(t, cycleDetector)

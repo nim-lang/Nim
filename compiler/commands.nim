@@ -758,6 +758,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     defineSymbol(conf.symbols, "cppCompileToNamespace", conf.cppCustomNamespace)
   of "docinternal":
     processOnOffSwitchG(conf, {optDocInternal}, arg, pass, info)
+  of "multimethods":
+    processOnOffSwitchG(conf, {optMultiMethods}, arg, pass, info)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)

@@ -83,6 +83,7 @@ type                          # please make sure we have under 32 options
     optHotCodeReloading
     optDynlibOverrideAll
     optNimV2
+    optMultiMethods
 
   TGlobalOptions* = set[TGlobalOption]
 
