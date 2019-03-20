@@ -2085,7 +2085,7 @@ proc parseConstant(p: var TParser): PNode =
       addSon(result, p.emptyNode)
   eat(p, tkEquals)
   optInd(p, result)
-  addSon(result, parseExpr(p))
+  addSon(result, parseStmtListExpr(p))
   indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
