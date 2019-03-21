@@ -61,15 +61,15 @@ when defined(nimTypeNames):
       inc totalAllocated, it.sizes
     sortInstances(a, n)
     for i in 0 .. n-1:
-      c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
-    c_fprintf(stdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
+      c_fprintf(cstdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
+    c_fprintf(cstdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
     when defined(nimTypeNames):
       let (allocs, deallocs) = getMemCounters()
-      c_fprintf(stdout, "[Heap] allocs/deallocs: %ld/%ld\n", allocs, deallocs)
+      c_fprintf(cstdout, "[Heap] allocs/deallocs: %ld/%ld\n", allocs, deallocs)
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
-      c_fprintf(stdout, "[Heap] ROOTS: #%ld\n", gch.additionalRoots.len)
+      c_fprintf(cstdout, "[Heap] ROOTS: #%ld\n", gch.additionalRoots.len)
       writeLeaks()
 
     outOfMemHook = oomhandler
