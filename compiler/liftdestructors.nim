@@ -372,13 +372,34 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call.sons[1] = y
     body.add newAsgnStmt(x, call)
   elif optNimV2 in c.graph.config.globalOptions:
+    let xx = genBuiltin(c.graph, mAccessEnv, "accessEnv", x)
     case c.kind
-    of attachedSink, attachedAsgn: discard
-    of attachedDestructor: discard
+    of attachedSink:
+      # we 'nil' y out afterwards so we *need* to take over its reference
+      # count value:
+      body.add genIf(c, xx, callCodegenProc(c.graph, "nimDecWeakRef", c.info, xx))
+      body.add newAsgnStmt(x, y)
+    of attachedAsgn:
+      body.add callCodegenProc(c.graph, "nimIncWeakRef", c.info, y)
+      body.add genIf(c, xx, callCodegenProc(c.graph, "nimDecWeakRef", c.info, xx))
+      body.add newAsgnStmt(x, y)
+    of attachedDestructor:
+      body.add genIf(c, xx, callCodegenProc(c.graph, "nimDecWeakRef", c.info, xx))
     of attachedDeepCopy: assert(false, "cannot happen")
 
 proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  discard "to implement"
+  let xx = genBuiltin(c.graph, mAccessEnv, "accessEnv", x)
+  var actions = newNodeI(nkStmtList, c.info)
+  let elemType = t.lastSon
+  discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
+  actions.add callCodegenProc(c.graph, "nimDestroyAndDispose", c.info, xx)
+  case c.kind
+  of attachedSink, attachedAsgn:
+    body.add genIf(c, xx, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genIf(c, xx, actions)
+  of attachedDeepCopy: assert(false, "cannot happen")
 
 proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
