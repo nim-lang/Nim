@@ -246,8 +246,8 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   result = tab.getOrDefault(sig)
 
 proc addAbiCheck(m: BModule, t: PType, name: Rope) =
-  if isDefined(m.config, "checkabi"):
-    addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(getSize(m.config, t))])
+  if isDefined(m.config, "checkabi") and (let size = getSize(m.config, t); size != szUnknownSize):
+    addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(size)])
 
 proc ccgIntroducedPtr(conf: ConfigRef; s: PSym): bool =
   var pt = skipTypes(s.typ, typedescInst)
