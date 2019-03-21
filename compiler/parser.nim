@@ -400,7 +400,8 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
 proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
   assert(endTok in {tkCurlyRi, tkCurlyDotRi, tkBracketRi, tkParRi})
   getTok(p)
-  optInd(p, result)
+  flexComment(p, result)
+  optPar(p)
   # progress guaranteed
   while p.tok.tokType != endTok and p.tok.tokType != tkEof:
     var a = exprColonEqExpr(p)
