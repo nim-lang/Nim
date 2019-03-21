@@ -49,8 +49,14 @@ template head(p: pointer): ptr RefHeader =
   cast[ptr RefHeader](cast[int](p) -% sizeof(RefHeader))
 
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
-  result = alloc0(size + sizeof(RefHeader)) +! sizeof(RefHeader)
-  # XXX Respect   defined(useMalloc)  here!
+  let s = size + sizeof(RefHeader)
+  when defined(nimscript):
+    discard
+  elif defined(useMalloc):
+    result = c_malloc(s) +! sizeof(RefHeader)
+    nimZeroMem(result, s)
+  else:
+    result = alloc0(s) +! sizeof(RefHeader)
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
   dec head(p).rc
@@ -59,10 +65,14 @@ proc nimIncWeakRef(p: pointer) {.compilerRtl.} =
   inc head(p).rc
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
-  if head(p).rc != 0:
-    cstderr.rawWrite "[FATAL] dangling references exist\n"
-    quit 1
-  dealloc(p -! sizeof(RefHeader))
+  when not defined(nimscript):
+    if head(p).rc != 0:
+      cstderr.rawWrite "[FATAL] dangling references exist\n"
+      quit 1
+    when defined(useMalloc):
+      c_free(p -! sizeof(RefHeader))
+    else:
+      dealloc(p -! sizeof(RefHeader))
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor
