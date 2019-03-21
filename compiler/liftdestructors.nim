@@ -586,7 +586,7 @@ proc createTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
-  if tfCheckedForDestructor in typ.flags: return
+  if typ == nil or tfCheckedForDestructor in typ.flags: return
   incl typ.flags, tfCheckedForDestructor
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
