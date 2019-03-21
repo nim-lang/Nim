@@ -400,7 +400,8 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
 proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
   assert(endTok in {tkCurlyRi, tkCurlyDotRi, tkBracketRi, tkParRi})
   getTok(p)
-  optInd(p, result)
+  flexComment(p, result)
+  optPar(p)
   # progress guaranteed
   while p.tok.tokType != endTok and p.tok.tokType != tkEof:
     var a = exprColonEqExpr(p)
@@ -2085,7 +2086,7 @@ proc parseConstant(p: var TParser): PNode =
       addSon(result, p.emptyNode)
   eat(p, tkEquals)
   optInd(p, result)
-  addSon(result, parseExpr(p))
+  addSon(result, parseStmtListExpr(p))
   indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
