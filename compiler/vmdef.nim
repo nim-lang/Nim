@@ -17,7 +17,7 @@ const
   byteExcess* = 128 # we use excess-K for immediates
   wordExcess* = 32768
 
-  MaxLoopIterations* = 3_000_000 # max iterations of all loops
+  MaxLoopIterations* = 10_000_000 # max iterations of all loops
 
 
 type

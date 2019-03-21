@@ -35,6 +35,7 @@
 ##   `execShellCmd proc <#execShellCmd,string>`_
 ## * `parseopt module <parseopt.html>`_ for command-line parser beyond
 ##   `parseCmdLine proc <#parseCmdLine,string>`_
+## * `uri module <uri.html>`_
 ## * `distros module <distros.html>`_
 ## * `dynlib module <dynlib.html>`_
 ## * `streams module <streams.html>`_
@@ -115,13 +116,15 @@ proc joinPath*(head, tail: string): string {.
   ##
   ## If `head` is the empty string, `tail` is returned. If `tail` is the empty
   ## string, `head` is returned with a trailing path separator. If `tail` starts
-  ## with a path separator it will be removed when concatenated to `head`. Other
-  ## path separators not located on boundaries won't be modified.
+  ## with a path separator it will be removed when concatenated to `head`.
+  ## Path separators will be normalized.
   ##
   ## See also:
   ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
   ## * `/ proc <#/,string,string>`_
   ## * `splitPath proc <#splitPath,string>`_
+  ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
+  ## * `uri./ proc <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
@@ -186,6 +189,8 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
   ## * `joinPath(head, tail) proc <#joinPath,string,string>`_
   ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
   ## * `splitPath proc <#splitPath,string>`_
+  ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
+  ## * `uri./ proc <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
       assert "usr" / "" == "usr/"
