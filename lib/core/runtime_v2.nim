@@ -1,5 +1,5 @@
 #[
-In this new runtime we simply the object layouts a bit: The runtime type
+In this new runtime we simplify the object layouts a bit: The runtime type
 information is only accessed for the objects that have it and it's always
 at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
