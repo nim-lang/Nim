@@ -545,7 +545,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   n.sons[bodyPos] = body
   result.ast = n
   incl result.flags, sfFromGeneric
-
+  incl result.flags, sfGeneratedOp
 
 proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
   let t = typ.skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})

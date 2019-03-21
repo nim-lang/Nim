@@ -48,6 +48,8 @@ template `-!`(p: pointer, s: int): pointer =
 template head(p: pointer): ptr RefHeader =
   cast[ptr RefHeader](cast[int](p) -% sizeof(RefHeader))
 
+var allocs*: int
+
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
@@ -57,6 +59,7 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     nimZeroMem(result, s)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
+  inc allocs
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
   dec head(p).rc
@@ -73,6 +76,11 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       c_free(p -! sizeof(RefHeader))
     else:
       dealloc(p -! sizeof(RefHeader))
+    if allocs > 0:
+      dec allocs
+    else:
+      cstderr.rawWrite "[FATAL] unpaired dealloc\n"
+      quit 1
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor

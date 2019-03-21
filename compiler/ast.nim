@@ -227,7 +227,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 34 flags!
+  TSymFlag* = enum    # already 36 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -278,6 +278,8 @@ type
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
     sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
                       # meaning that it won't be renamed and/or changed in any way
+    sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
+
 
   TSymFlags* = set[TSymFlag]
 

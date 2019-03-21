@@ -315,6 +315,10 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     if c.otherRead != nil:
       m.add "; another read is done here: "
       m.add c.graph.config $ c.otherRead.info
+    elif ri.kind == nkSym and ri.sym.kind == skParam and ri.sym.typ.kind != tySink:
+      m.add "; try to make "
+      m.add renderTree(ri)
+      m.add " a 'sink' parameter"
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: Con, baseType: PType): PType =
@@ -717,6 +721,7 @@ proc p(n: PNode; c: var Con): PNode =
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   when false: # defined(nimDebugDestroys):
     echo "injecting into ", n
+  if sfGeneratedOp in owner.flags: return n
   var c: Con
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)
