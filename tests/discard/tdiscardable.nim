@@ -45,3 +45,21 @@ proc foo: (proc: int) =
   return bar
 
 discard foo()
+
+# bug #10842
+
+proc myDiscardable(): int {.discardable.} =
+  discard
+
+proc main1() =
+  defer:
+    echo "something defered"
+  discard myDiscardable()
+
+proc main2() =
+  defer:
+    echo "something defered"
+  myDiscardable()
+
+main1()
+main2()
