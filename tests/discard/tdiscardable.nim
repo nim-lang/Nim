@@ -3,6 +3,8 @@ output: '''
 tdiscardable
 1
 1
+something defered
+something defered
 '''
 """
 
