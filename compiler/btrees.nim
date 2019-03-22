@@ -72,7 +72,7 @@ proc debug(b: BTree): string =
   debugWrite(result, b.root, 1)
 
 proc initBTree*[Key, Val](): BTree[Key, Val] =
-  BTree[Key, Val](root: Node[Key, Val](entries: 0, isInternal: false))
+  discard
 
 template less(a, b): bool = cmp(a, b) < 0
 template eq(a, b): bool = cmp(a, b) == 0
@@ -84,6 +84,8 @@ proc findWithCmp[T](arg: openarray[T], value: T): int =
   return -1
 
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
+  if b.root == nil:
+    return
   var x = b.root
   while x.isInternal:
     for j in 0 ..< x.entries:
@@ -95,6 +97,8 @@ proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
     if eq(key, x.keys[j]): return x.vals[j]
 
 proc contains*[Key, Val](n: BTree[Key, Val], key: Key): bool =
+  if n.root == nil:
+    return false
   var x = n.root
   while x.isInternal:
     for j in 0 ..< x.entries:
@@ -104,7 +108,6 @@ proc contains*[Key, Val](n: BTree[Key, Val], key: Key): bool =
   assert(not x.isInternal)
   for j in 0 ..< x.entries:
     if eq(key, x.keys[j]): return true
-  return false
 
 proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
   for j in 0 ..< Mhalf:
@@ -188,10 +191,19 @@ proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
       dec n.entries
 
 proc delete[Key, Val](self: var BTree[Key, Val]; key: Key): bool =
-  result = delete(self.root, key)
-  dec self.entries
+  if self.root == nil:
+    return false
+  else:
+    result = delete(self.root, key)
+    dec self.entries
+    if self.root.entries == 0:
+      self.root = nil
+      assert self.entries == 0
 
 proc add*[Key, Val](b: var BTree[Key, Val]; key: Key; val: Val) =
+  if b.root == nil:
+    b.root = Node[Key, Val](entries: 0, isInternal: false)
+
   let u = insert(b.root, key, val)
   inc b.entries
   if u == nil: return
@@ -327,8 +339,15 @@ when isMainModule:
       shuffle keys2 # just make it a different order than insertion order
 
       for key in keys2:
+        doAssert key in b2
         doAssert b2.delete(key) == true
+        doAssert key notin b2
 
       doAssert b2.entries == 0
+      shuffle keys2
+
+      for key in keys2:
+        b2.add(key, $key)
+
 
   main()
