@@ -298,10 +298,12 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
     result = typ
   else:
     result = newTypeS(tyTypeDesc, c)
+    incl result.flags, tfCheckedForDestructor
     result.addSonSkipIntLit(typ)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
+  incl typedesc.flags, tfCheckedForDestructor
   typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
   let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)

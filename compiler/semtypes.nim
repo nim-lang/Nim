@@ -53,6 +53,7 @@ proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
 
 proc newConstraint(c: PContext, k: TTypeKind): PType =
   result = newTypeS(tyBuiltInTypeClass, c)
+  result.flags.incl tfCheckedForDestructor
   result.addSonSkipIntLit(newTypeS(k, c))
 
 proc semEnum(c: PContext, n: PNode, prev: PType): PType =
@@ -951,8 +952,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
           paramTypId.id == getIdent(c.cache, "typedesc").id:
         # XXX Why doesn't this check for tyTypeDesc instead?
         paramTypId = nil
-      result = addImplicitGeneric(
-        c.newTypeWithSons(tyTypeDesc, @[paramType.base]))
+      let t = c.newTypeWithSons(tyTypeDesc, @[paramType.base])
+      incl t.flags, tfCheckedForDestructor
+      result = addImplicitGeneric(t)
 
   of tyDistinct:
     if paramType.sonsLen == 1:
@@ -1138,6 +1140,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           # surprising behavior. We must instead fix the expected type of
           # the proc to be the unbound typedesc type:
           typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
+          typ.flags.incl tfCheckedForDestructor
 
       else:
         # if def.typ != nil and def.typ.kind != tyNone:
@@ -1432,7 +1435,9 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     if modifier != tyNone:
       dummyName = param[0]
       dummyType = c.makeTypeWithModifier(modifier, candidateTypeSlot)
-      if modifier == tyTypeDesc: dummyType.flags.incl tfConceptMatchedTypeSym
+      if modifier == tyTypeDesc:
+        dummyType.flags.incl tfConceptMatchedTypeSym
+        dummyType.flags.incl tfCheckedForDestructor
     else:
       dummyName = param
       dummyType = candidateTypeSlot
@@ -1891,6 +1896,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         if typ.kind == tyTypeDesc:
           if typ.sons[0].kind == tyNone:
             typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
+            incl typ.flags, tfCheckedForDestructor
         else:
           typ = semGenericConstraints(c, typ)
 
