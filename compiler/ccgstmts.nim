@@ -622,15 +622,25 @@ proc genParForStmt(p: BProc, t: PNode) =
     #initLoc(forLoopVar.loc, locLocalVar, forLoopVar.typ, onStack)
     #discard mangleName(forLoopVar)
     let call = t.sons[1]
+    assert(sonsLen(call) in {4, 5})
     initLocExpr(p, call.sons[1], rangeA)
     initLocExpr(p, call.sons[2], rangeB)
 
     # $n at the beginning because of #9710
-    lineF(p, cpsStmts, "$n#pragma omp $4$n" &
-                        "for ($1 = $2; $1 <= $3; ++$1)",
-                        [forLoopVar.loc.rdLoc,
-                        rangeA.rdLoc, rangeB.rdLoc,
-                        call.sons[3].getStr.rope])
+    if call.sonsLen == 4: # `||`(a, b, annotation)
+      lineF(p, cpsStmts, "$n#pragma omp $4$n" &
+                          "for ($1 = $2; $1 <= $3; ++$1)",
+                          [forLoopVar.loc.rdLoc,
+                          rangeA.rdLoc, rangeB.rdLoc,
+                          call.sons[3].getStr.rope])
+    else: # `||`(a, b, step, annotation)
+      var step: TLoc
+      initLocExpr(p, call.sons[3], step)
+      lineF(p, cpsStmts, "$n#pragma omp $5$n" &
+                    "for ($1 = $2; $1 <= $3; $1 += $4)",
+                    [forLoopVar.loc.rdLoc,
+                    rangeA.rdLoc, rangeB.rdLoc, step.rdLoc,
+                    call.sons[4].getStr.rope])
 
     p.breakIdx = startBlock(p)
     p.blocks[p.breakIdx].isLoop = true
