@@ -1414,6 +1414,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     inherited = n[2]
 
   result = newOrPrevType(tyUserTypeClass, prev, c)
+  result.flags.incl tfCheckedForDestructor
   var owner = getCurrOwner(c)
   var candidateTypeSlot = newTypeWithSons(owner, tyAlias, @[c.errorType])
   result.sons = @[candidateTypeSlot]
