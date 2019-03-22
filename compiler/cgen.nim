@@ -534,12 +534,18 @@ proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
 
 proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e, OnUnknown)
-  result.flags.incl lfSingleUse
+  if e.kind in nkCallKinds and (e[0].kind != nkSym or e[0].sym.magic == mNone):
+    # We cannot check for tfNoSideEffect here because of mutable parameters.
+    discard "bug #8202; enforce evaluation order for nested calls for C++ too"
+    # We may need to consider that 'f(g())' cannot be rewritten to 'tmp = g(); f(tmp)'
+    # if 'tmp' lacks a move/assignment operator.
+  else:
+    result.flags.incl lfSingleUse
   expr(p, e, result)
 
 include ccgcalls, "ccgstmts.nim"
 
-proc initFrame(p: BProc, procname, filename: Rope): Rope =  
+proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
   $1  define nimfr_(proc, file) \
       TFrame FR_; \
