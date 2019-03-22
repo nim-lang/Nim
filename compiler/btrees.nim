@@ -11,7 +11,7 @@
 ## Nim compiler's needs.
 
 const
-  M = 512    # max children per B-tree node = M-1
+  M = 32    # max children per B-tree node = M-1
             # (must be even and greater than 2)
   Mhalf = M div 2
 
@@ -77,21 +77,27 @@ proc initBTree*[Key, Val](): BTree[Key, Val] =
 template less(a, b): bool = cmp(a, b) < 0
 template eq(a, b): bool = cmp(a, b) == 0
 
-proc findWithCmp[T](arg: openarray[T], value: T): int =
-  for i, it in arg:
-    if cmp(it, value) == 0:
+proc findWithCmp[T](arg: openarray[T]; entries: int; value: T): int =
+  for i in 0 ..< entries:
+    if eq(arg[i], value):
       return i
   return -1
+
+proc findKey[T](keys: openarray[T]; entries: int; key: T): int =
+  for i in 0 ..< entries:
+    if i+1 == entries or less(key, keys[i+1]):
+      return i
+  return -1
+
 
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   if b.root == nil:
     return
   var x = b.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
-      if j+1 == x.entries or less(key, x.keys[j+1]):
-        x = x.links[j]
-        break
+    let idx = findKey(x.keys, x.entries, key)
+    doAssert idx >= 0
+    x = x.links[idx]
   assert(not x.isInternal)
   for j in 0 ..< x.entries:
     if eq(key, x.keys[j]): return x.vals[j]
@@ -101,10 +107,9 @@ proc contains*[Key, Val](n: BTree[Key, Val], key: Key): bool =
     return false
   var x = n.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
-      if j+1 == x.entries or less(key, x.keys[j+1]):
-        x = x.links[j]
-        break
+    let idx = findKey(x.keys, x.entries, key)
+    doAssert idx >= 0
+    x = x.links[idx]
   assert(not x.isInternal)
   for j in 0 ..< x.entries:
     if eq(key, x.keys[j]): return true
@@ -142,8 +147,8 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
     while j < h.entries:
       if less(key, h.keys[j]): break
       inc j
-    for i in countdown(h.entries, j+1):
-      shallowCopy(h.vals[i], h.vals[i-1])
+    inc h.entries
+    rotateLeft(h.vals, j ..< h.entries, -1) # rotate right
     h.vals[j] = val
   else:
     var newLink: Node[Key, Val] = nil
@@ -156,14 +161,12 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
         newLink = u
         break
       inc j
-    for i in countdown(h.entries, j+1):
-      h.links[i] = h.links[i-1]
+    inc h.entries
+    rotateLeft(h.links, j ..< h.entries, -1) # rotate right
     h.links[j] = newLink
 
-  for i in countdown(h.entries, j+1):
-    h.keys[i] = h.keys[i-1]
+  rotateLeft(h.keys, j ..< h.entries, -1) # rotate right
   h.keys[j] = newKey
-  inc h.entries
 
 proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
   if n.isInternal:
@@ -181,7 +184,7 @@ proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
           n.keys[j] = link.keys[0]
         return
   else:
-    var idx = findWithCmp(n.keys, key)
+    var idx = findWithCmp(n.keys, n.entries, key)
     if idx >= 0:
       result = true
       n.keys[idx] = default(Key)
@@ -318,23 +321,25 @@ when isMainModule:
       echo b2.entries
 
     when true:
+      const iters = 100_000
+
       var b2 = initBTree[int, string]()
       var t2 = initTable[int, string]()
-      const iters = 100_000
       var keys2: seq[int]
       for i in 1..iters:
         let x = rand(high(int))
         if not t2.hasKey(x):
-          doAssert b2.getOrDefault(x).len == 0, " what, tree has this element " & $x
+          doAssert b2.getOrDefault(x) == "", " what, tree has this element " & $x
           t2[x] = $x
           b2.add(x, $x)
           keys2.add x
+          doAssert b2.getOrDefault(x) == $x
 
       doAssert b2.entries == t2.len
       echo "unique entries ", b2.entries
       for k, v in t2:
         doAssert $k == v
-        doAssert b2.getOrDefault(k) == $k
+        doAssert b2.getOrDefault(k) == $k, "\"" & b2.getOrDefault(k) & "\" != \"" & $k & "\""
 
       shuffle keys2 # just make it a different order than insertion order
 
