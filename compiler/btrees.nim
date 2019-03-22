@@ -12,8 +12,11 @@
 
 const
   M = 512    # max children per B-tree node = M-1
-             # (must be even and greater than 2)
+            # (must be even and greater than 2)
   Mhalf = M div 2
+
+
+import algorithm
 
 type
   Node[Key, Val] = ref object
@@ -28,11 +31,57 @@ type
     root: Node[Key, Val]
     entries: int      ## number of key-value pairs
 
+proc newlineAndIndent(result: var string, indentation: int) =
+  result.add "\n"
+  for i in 0 ..< indentation:
+    result.add "  "
+
+proc addNamedValue[T](result: var string; name: string; value: T; indentation: int) =
+  result.newlineAndIndent(indentation)
+  result.add name
+  result.add ": "
+  result.add $value
+
+proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
+
+proc indexFormat(arg: int): string =
+  result.setLen(5)
+  discard c_snprintf(cstring(result[0].addr), 6, "[%3d]", int32(arg))
+
+proc debugWrite[Key, Val](result: var string; n: Node[Key, Val], indentation: int) =
+  result.addNamedValue("entries", n.entries, indentation)
+  result.newlineAndIndent(indentation)
+  result.add "keys: "
+  for i in 0 ..< n.entries:
+    result.addNamedValue(indexFormat(i), n.keys[i], indentation + 1)
+  result.newlineAndIndent(indentation)
+  if n.isInternal:
+    result.add "links:"
+    for i in 0 ..< n.entries:
+      result.debugWrite(n.links[i], indentation + 1)
+  else:
+    result.add "vals:"
+    for i in 0 ..< n.entries:
+
+      result.addNamedValue(indexFormat(i), n.vals[i], indentation + 1)
+
+proc debug(b: BTree): string =
+  result.add "entries: "
+  result.add b.entries
+  result.add "root:"
+  debugWrite(result, b.root, 1)
+
 proc initBTree*[Key, Val](): BTree[Key, Val] =
   BTree[Key, Val](root: Node[Key, Val](entries: 0, isInternal: false))
 
 template less(a, b): bool = cmp(a, b) < 0
 template eq(a, b): bool = cmp(a, b) == 0
+
+proc findWithCmp[T](arg: openarray[T], value: T): int =
+  for i, it in arg:
+    if cmp(it, value) == 0:
+      return i
+  return -1
 
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   var x = b.root
@@ -45,8 +94,8 @@ proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   for j in 0 ..< x.entries:
     if eq(key, x.keys[j]): return x.vals[j]
 
-proc contains*[Key, Val](b: BTree[Key, Val], key: Key): bool =
-  var x = b.root
+proc contains*[Key, Val](n: BTree[Key, Val], key: Key): bool =
+  var x = n.root
   while x.isInternal:
     for j in 0 ..< x.entries:
       if j+1 == x.entries or less(key, x.keys[j+1]):
@@ -68,13 +117,22 @@ proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
       shallowCopy(result.vals[j], h.vals[Mhalf + j])
 
 proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
-  ## split node in half
+  ## modifiy h, to be half the size. Returns a node with the other half.
   result = Node[Key, Val](entries: Mhalf, isInternal: h.isInternal)
   h.entries = Mhalf
   copyHalf(h, result)
 
 proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
-  #var t = Entry(key: key, val: val, next: nil)
+  ## If h needs to be split, one half will remain in h, the other half
+  ## is returned as a new node. Returns ``nil`` when no split occurs.
+  if h.entries == M:
+    result = split(h)
+    if less(key, result.keys[0]):
+      doAssert insert(h, key, val) == nil
+    else:
+      doAssert insert(result, key, val) == nil
+    return
+
   var newKey = key
   var j = 0
   if not h.isInternal:
@@ -103,7 +161,35 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
     h.keys[i] = h.keys[i-1]
   h.keys[j] = newKey
   inc h.entries
-  return if h.entries < M: nil else: split(h)
+
+proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
+  if n.isInternal:
+    for j in 0 ..< n.entries:
+      if j+1 == n.entries or less(key, n.keys[j+1]):
+        let link = n.links[j]
+        result = delete(link, key)
+        if link.entries == 0:
+          n.keys[j] = default(Key)
+          rotateLeft(n.keys,  j ..< n.entries, 1)
+          n.links[j] = nil
+          rotateLeft(n.links, j ..< n.entries, 1)
+          dec n.entries
+        else:
+          n.keys[j] = link.keys[0]
+        return
+  else:
+    var idx = findWithCmp(n.keys, key)
+    if idx >= 0:
+      result = true
+      n.keys[idx] = default(Key)
+      rotateLeft(n.keys, idx ..< n.entries, 1)
+      n.vals[idx] = default(Val)
+      rotateLeft(n.vals, idx ..< n.entries, 1)
+      dec n.entries
+
+proc delete[Key, Val](self: var BTree[Key, Val]; key: Key): bool =
+  result = delete(self.root, key)
+  dec self.entries
 
 proc add*[Key, Val](b: var BTree[Key, Val]; key: Key; val: Val) =
   let u = insert(b.root, key, val)
@@ -171,7 +257,7 @@ when isMainModule:
 
   import random, tables
 
-  proc main =
+  proc main() =
     var st = initBTree[string, string]()
     st.add("www.cs.princeton.edu", "abc")
     st.add("www.princeton.edu",    "128.112.128.15")
@@ -191,7 +277,7 @@ when isMainModule:
     st.add("www.yahoo.com",        "216.109.118.65")
 
     assert st.getOrDefault("www.cs.princeton.edu") == "abc"
-    assert st.getOrDefault("www.harvardsucks.com") == nil
+    assert st.getOrDefault("www.harvardsucks.com") == ""
 
     assert st.getOrDefault("www.simpsons.com") == "209.052.165.60"
     assert st.getOrDefault("www.apple.com") == "17.112.152.32"
@@ -199,8 +285,14 @@ when isMainModule:
     assert st.getOrDefault("www.dell.com") == "143.166.224.230"
     assert(st.entries == 16)
 
+    var keys: seq[string]
+
     for k, v in st:
       echo k, ": ", v
+      keys.add k
+
+    for key in keys:
+      discard st.delete(key)
 
     when false:
       var b2 = initBTree[string, string]()
@@ -217,17 +309,26 @@ when isMainModule:
       var b2 = initBTree[int, string]()
       var t2 = initTable[int, string]()
       const iters = 100_000
+      var keys2: seq[int]
       for i in 1..iters:
         let x = rand(high(int))
         if not t2.hasKey(x):
           doAssert b2.getOrDefault(x).len == 0, " what, tree has this element " & $x
           t2[x] = $x
           b2.add(x, $x)
+          keys2.add x
 
       doAssert b2.entries == t2.len
       echo "unique entries ", b2.entries
       for k, v in t2:
         doAssert $k == v
         doAssert b2.getOrDefault(k) == $k
+
+      shuffle keys2 # just make it a different order than insertion order
+
+      for key in keys2:
+        doAssert b2.delete(key) == true
+
+      doAssert b2.entries == 0
 
   main()
