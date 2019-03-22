@@ -2031,7 +2031,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkBreakStmt:
     unused(c, n, dest)
     genBreak(c, n)
-  of nkTryStmt: genTry(c, n, dest)
+  of nkTryStmt, nkHiddenTryStmt: genTry(c, n, dest)
   of nkStmtList:
     #unused(c, n, dest)
     # XXX Fix this bug properly, lexim triggers it

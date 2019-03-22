@@ -1,5 +1,5 @@
 #[
-In this new runtime we simply the object layouts a bit: The runtime type
+In this new runtime we simplify the object layouts a bit: The runtime type
 information is only accessed for the objects that have it and it's always
 at offset 0 then. The ``ref`` object header is independent from the
 runtime type and only contains a reference count.
@@ -48,9 +48,18 @@ template `-!`(p: pointer, s: int): pointer =
 template head(p: pointer): ptr RefHeader =
   cast[ptr RefHeader](cast[int](p) -% sizeof(RefHeader))
 
+var allocs*: int
+
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
-  result = alloc0(size + sizeof(RefHeader)) +! sizeof(RefHeader)
-  # XXX Respect   defined(useMalloc)  here!
+  let s = size + sizeof(RefHeader)
+  when defined(nimscript):
+    discard
+  elif defined(useMalloc):
+    result = c_malloc(s) +! sizeof(RefHeader)
+    nimZeroMem(result, s)
+  else:
+    result = alloc0(s) +! sizeof(RefHeader)
+  inc allocs
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
   dec head(p).rc
@@ -59,10 +68,19 @@ proc nimIncWeakRef(p: pointer) {.compilerRtl.} =
   inc head(p).rc
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
-  if head(p).rc != 0:
-    cstderr.rawWrite "[FATAL] dangling references exist\n"
-    quit 1
-  dealloc(p -! sizeof(RefHeader))
+  when not defined(nimscript):
+    if head(p).rc != 0:
+      cstderr.rawWrite "[FATAL] dangling references exist\n"
+      quit 1
+    when defined(useMalloc):
+      c_free(p -! sizeof(RefHeader))
+    else:
+      dealloc(p -! sizeof(RefHeader))
+    if allocs > 0:
+      dec allocs
+    else:
+      cstderr.rawWrite "[FATAL] unpaired dealloc\n"
+      quit 1
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor

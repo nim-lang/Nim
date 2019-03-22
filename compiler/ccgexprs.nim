@@ -1967,11 +1967,14 @@ proc genDestroy(p: BProc; n: PNode) =
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
   else:
+    let t = n[1].typ.skipTypes(abstractVar)
+    if t.destructor != nil and t.destructor.magic != mDestroy:
+      internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
 proc genDispose(p: BProc; n: PNode) =
   when false:
-    let elemType = n[1].typ.skipTypes(abstractVarInst).lastSon
+    let elemType = n[1].typ.skipTypes(abstractVar).lastSon
 
     var a: TLoc
     initLocExpr(p, n[1].skipAddr, a)
@@ -2146,6 +2149,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
+  of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       " 'toOpenArray' is only valid within a call expression")
@@ -2541,7 +2545,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       initLocExprSingleUse(p, ex, a)
       line(p, cpsStmts, "(void)(" & a.r & ");\L")
   of nkAsmStmt: genAsmStmt(p, n)
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     if p.module.compileToCpp and optNoCppExceptions notin p.config.globalOptions:
       genTryCpp(p, n, d)
     else:

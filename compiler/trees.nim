@@ -120,6 +120,16 @@ proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n.sons[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
+proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  for i in countup(0, sonsLen(n) - 1):
+    var it = n.sons[i]
+    if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
+      result = it.sons[1]
+      if result.kind notin {nkCurly, nkBracket}:
+        result = newNodeI(nkCurly, result.info)
+        result.add(it.sons[1])
+      return
+
 proc unnestStmts(n, result: PNode) =
   if n.kind == nkStmtList:
     for x in items(n): unnestStmts(x, result)

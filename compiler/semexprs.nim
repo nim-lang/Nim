@@ -815,7 +815,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
       result = magicsAfterOverloadResolution(c, result, flags)
     if result.typ != nil and
         not (result.typ.kind == tySequence and result.typ.sons[0].kind == tyEmpty):
-      liftTypeBoundOps(c.graph, result.typ, n.info)
+      liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
@@ -1616,7 +1616,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
-    liftTypeBoundOps(c.graph, lhs.typ, lhs.info)
+    liftTypeBoundOps(c, lhs.typ, lhs.info)
     #liftTypeBoundOps(c, n.sons[0].typ, n.sons[0].info)
 
     fixAbstractType(c, n)
@@ -2617,7 +2617,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkTypeSection: result = semTypeSection(c, n)
   of nkDiscardStmt: result = semDiscard(c, n)
   of nkWhileStmt: result = semWhile(c, n, flags)
-  of nkTryStmt: result = semTry(c, n, flags)
+  of nkTryStmt, nkHiddenTryStmt: result = semTry(c, n, flags)
   of nkBreakStmt, nkContinueStmt: result = semBreakOrContinue(c, n)
   of nkForStmt, nkParForStmt: result = semFor(c, n, flags)
   of nkCaseStmt: result = semCase(c, n, flags)

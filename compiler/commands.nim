@@ -286,7 +286,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "taintmode": result = contains(conf.globalOptions, optTaintMode)
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
-  of "patterns": result = contains(conf.options, optPatterns)
+  of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs": result = contains(conf.options, optNilSeqs)
   of "oldast": result = contains(conf.options, optOldAst)
@@ -532,8 +532,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "taintmode": processOnOffSwitchG(conf, {optTaintMode}, arg, pass, info)
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
-  of "patterns":
-    processOnOffSwitch(conf, {optPatterns}, arg, pass, info)
+  of "patterns", "trmacros":
+    processOnOffSwitch(conf, {optTrMacros}, arg, pass, info)
   of "opt":
     expectArg(conf, switch, arg, pass, info)
     case arg.normalize

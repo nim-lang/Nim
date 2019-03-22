@@ -22,6 +22,7 @@ var
 
 proc `=destroy`*[T](x: var opt[T]) =
   if x.data != nil:
+    mixin `=destroy`
     when not supportsCopyMem(T):
       `=destroy`(x.data[])
     dealloc(x.data)

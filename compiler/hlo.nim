@@ -92,12 +92,12 @@ proc hlo(c: PContext, n: PNode): PNode =
 
 proc hloBody(c: PContext, n: PNode): PNode =
   # fast exit:
-  if c.patterns.len == 0 or optPatterns notin c.config.options: return n
+  if c.patterns.len == 0 or optTrMacros notin c.config.options: return n
   c.hloLoopDetector = 0
   result = hlo(c, n)
 
 proc hloStmt(c: PContext, n: PNode): PNode =
   # fast exit:
-  if c.patterns.len == 0 or optPatterns notin c.config.options: return n
+  if c.patterns.len == 0 or optTrMacros notin c.config.options: return n
   c.hloLoopDetector = 0
   result = hlo(c, n)

@@ -1002,7 +1002,7 @@ proc iiTablePut(t: var TIITable, key, val: int) =
     iiTableRawInsert(t.data, key, val)
     inc(t.counter)
 
-proc isAddrNode*(n: PNode): bool = 
+proc isAddrNode*(n: PNode): bool =
   case n.kind
     of nkAddr, nkHiddenAddr: true
     of nkCallKinds:

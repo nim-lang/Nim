@@ -503,7 +503,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkReturnStmt:
     if n.len > 0 and n[0].kind == nkAsgn:
       result = len("return_") + lsub(g, n[0][1])
-    else: 
+    else:
       result = len("return_") + lsub(g, n[0])
   of nkRaiseStmt: result = lsub(g, n.sons[0]) + len("raise_")
   of nkYieldStmt: result = lsub(g, n.sons[0]) + len("yield_")
@@ -1295,7 +1295,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkWhileStmt: gwhile(g, n)
   of nkPragmaBlock: gpragmaBlock(g, n)
   of nkCaseStmt, nkRecCase: gcase(g, n)
-  of nkTryStmt: gtry(g, n)
+  of nkTryStmt, nkHiddenTryStmt: gtry(g, n)
   of nkForStmt, nkParForStmt: gfor(g, n)
   of nkBlockStmt, nkBlockExpr: gblock(g, n)
   of nkStaticStmt: gstaticStmt(g, n)
@@ -1345,9 +1345,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
   of nkReturnStmt:
     putWithSpace(g, tkReturn, "return")
-    if n.len > 0 and n[0].kind == nkAsgn: 
+    if n.len > 0 and n[0].kind == nkAsgn:
       gsub(g, n[0], 1)
-    else: 
+    else:
       gsub(g, n, 0)
   of nkRaiseStmt:
     putWithSpace(g, tkRaise, "raise")

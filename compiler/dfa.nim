@@ -665,7 +665,7 @@ proc gen(c: var Con; n: PNode) =
   of nkReturnStmt: genReturn(c, n)
   of nkRaiseStmt: genRaise(c, n)
   of nkBreakStmt: genBreak(c, n)
-  of nkTryStmt: genTry(c, n)
+  of nkTryStmt, nkHiddenTryStmt: genTry(c, n)
   of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
      nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
     for x in n: gen(c, x)

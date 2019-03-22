@@ -2950,7 +2950,7 @@ when not defined(js) and not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
-when defined(nimV2) and not defined(nimscript):
+when defined(nimV2):
   include core/runtime_v2
 
 import system/assertions

@@ -339,7 +339,7 @@ proc checkNilable(c: PContext; v: PSym) =
     elif tfNotNil in v.typ.flags and tfNotNil notin v.astdef.typ.flags:
       message(c.config, v.info, warnProveInit, v.name.s)
 
-include liftdestructors
+#include liftdestructors
 
 proc addToVarSection(c: PContext; result: PNode; orig, identDefs: PNode) =
   let L = identDefs.len
@@ -484,7 +484,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(c.config, a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
-    liftTypeBoundOps(c.graph, typ, a.info)
+    liftTypeBoundOps(c, typ, a.info)
     instAllTypeBoundOp(c, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
@@ -1265,7 +1265,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
-  instAllTypeBoundOp(c, n.info)
+  #instAllTypeBoundOp(c, n.info)
 
 
 proc semAllTypeSections(c: PContext; n: PNode): PNode =
@@ -1474,7 +1474,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       addResult(c, s.typ.sons[0], n.info, skProc)
       addResultNode(c, n)
       s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      trackProc(c.graph, s, s.ast[bodyPos])
+      trackProc(c, s, s.ast[bodyPos])
       popProcCon(c)
     elif efOperand notin flags:
       localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -1515,7 +1515,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   addResult(c, n.typ.sons[0], n.info, skProc)
   addResultNode(c, n)
   s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-  trackProc(c.graph, s, s.ast[bodyPos])
+  trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
   closeScope(c)
@@ -1552,6 +1552,14 @@ proc canonType(c: PContext, t: PType): PType =
     result = t
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
+  proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
+    var msg = "cannot bind another '" & prevOp.name.s & "' to: " & typeToString(obj)
+    if sfOverriden notin prevOp.flags:
+      msg.add "; previous declaration was constructed here implicitly: " & (c.config $ prevOp.info)
+    else:
+      msg.add "; previous declaration was here: " & (c.config $ prevOp.info)
+    localError(c.config, n.info, errGenerated, msg)
+
   let name = s.name.s.normalize
   case name
   of "=destroy":
@@ -1569,8 +1577,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         if obj.destructor.isNil:
           obj.destructor = s
         else:
-          localError(c.config, n.info, errGenerated,
-            "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+          prevDestructor(c, obj.destructor, obj, n.info)
         noError = true
         if obj.owner.getModule != s.getModule:
           localError(c.config, n.info, errGenerated,
@@ -1601,8 +1608,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                    "cannot bind 'deepCopy' to: " & typeToString(t))
 
       if t.owner.getModule != s.getModule:
-          localError(c.config, n.info, errGenerated,
-            "type bound operation `" & name & "` can be defined only in the same module with its type (" & t.typeToString() & ")")
+        localError(c.config, n.info, errGenerated,
+          "type bound operation `" & name & "` can be defined only in the same module with its type (" & t.typeToString() & ")")
 
     else:
       localError(c.config, n.info, errGenerated,
@@ -1635,11 +1642,10 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         if opr[].isNil:
           opr[] = s
         else:
-          localError(c.config, n.info, errGenerated,
-                     "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+          prevDestructor(c, opr[], obj, n.info)
         if obj.owner.getModule != s.getModule:
-            localError(c.config, n.info, errGenerated,
-              "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+          localError(c.config, n.info, errGenerated,
+            "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
 
         return
     if sfSystemModule notin s.owner.flags:
@@ -1862,7 +1868,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
-          trackProc(c.graph, s, s.ast[bodyPos])
+          trackProc(c, s, s.ast[bodyPos])
       else:
         if s.typ.sons[0] != nil and kind != skIterator:
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))

@@ -2387,7 +2387,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genLineDir(p, n)
       gen(p, n.sons[0], r)
   of nkAsmStmt: genAsmOrEmitStmt(p, n)
-  of nkTryStmt: genTry(p, n, r)
+  of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,

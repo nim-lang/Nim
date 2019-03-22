@@ -539,7 +539,7 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
 
 include ccgcalls, "ccgstmts.nim"
 
-proc initFrame(p: BProc, procname, filename: Rope): Rope =  
+proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
   $1  define nimfr_(proc, file) \
       TFrame FR_; \
@@ -868,7 +868,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
   of nkSym:
     # some path reads from 'result' before it was written to!
     if n.sym.kind == skResult: result = InitRequired
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     # We need to watch out for the following problem:
     # try:
     #   result = stuffThatRaises()

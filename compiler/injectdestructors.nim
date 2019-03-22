@@ -91,7 +91,7 @@
 ## destroy(tmp.x); destroy(tmp.y)
 ##
 
-##[
+#[
 From https://github.com/nim-lang/Nim/wiki/Destructors
 
 Rule      Pattern                 Transformed into
@@ -131,7 +131,7 @@ copyMem. This is harder than it looks:
 
 And the C++ optimizers don't sweat to optimize it for us, so we don't have
 to do it.
-]##
+]#
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
@@ -315,6 +315,10 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     if c.otherRead != nil:
       m.add "; another read is done here: "
       m.add c.graph.config $ c.otherRead.info
+    elif ri.kind == nkSym and ri.sym.kind == skParam and ri.sym.typ.kind != tySink:
+      m.add "; try to make "
+      m.add renderTree(ri)
+      m.add " a 'sink' parameter"
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: Con, baseType: PType): PType =
@@ -329,7 +333,7 @@ template genOp(opr, opname, ri) =
   elif op.ast[genericParamsPos].kind != nkEmpty:
     globalError(c.graph.config, dest.info, "internal error: '" & opname &
       "' operator is generic")
-  patchHead op
+  #patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
@@ -343,7 +347,14 @@ proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
       echo t.sink.id, " owner ", t.id
       quit 1
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(if t.sink != nil: t.sink else: t.assignment, "=sink", ri)
+  let op = if t.sink != nil: t.sink else: t.assignment
+  if op != nil:
+    genOp(op, "=sink", ri)
+  else:
+    # in rare cases only =destroy exists but no sink or assignment
+    # (see Pony object in tmove_objconstr.nim)
+    # we generate a fast assignment in this case:
+    result = newTree(nkFastAsgn, dest, ri)
 
 proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
   if tfHasOwned in t.flags:
@@ -710,6 +721,7 @@ proc p(n: PNode; c: var Con): PNode =
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   when false: # defined(nimDebugDestroys):
     echo "injecting into ", n
+  if sfGeneratedOp in owner.flags: return n
   var c: Con
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)
