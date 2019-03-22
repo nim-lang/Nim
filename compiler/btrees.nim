@@ -150,23 +150,20 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
     inc h.entries
     rotateLeft(h.vals, j ..< h.entries, -1) # rotate right
     h.vals[j] = val
+    rotateLeft(h.keys, j ..< h.entries, -1) # rotate right
+    h.keys[j] = newKey
   else:
-    var newLink: Node[Key, Val] = nil
-    while j < h.entries:
-      if j+1 == h.entries or less(key, h.keys[j+1]):
-        let u = insert(h.links[j], key, val)
-        inc j
-        if u == nil: return nil
-        newKey = u.keys[0]
-        newLink = u
-        break
-      inc j
-    inc h.entries
-    rotateLeft(h.links, j ..< h.entries, -1) # rotate right
-    h.links[j] = newLink
-
-  rotateLeft(h.keys, j ..< h.entries, -1) # rotate right
-  h.keys[j] = newKey
+    let idx = findKey(h.keys, h.entries, key)
+    doAssert idx >= 0
+    let newLink = insert(h.links[idx], key, val)
+    if newLink != nil:
+      let newKey = newLink.keys[0]
+      let newIdx = idx + 1
+      inc h.entries
+      rotateLeft(h.links, newIdx ..< h.entries, -1) # rotate right
+      h.links[newIdx] = newLink
+      rotateLeft(h.keys, newIdx ..< h.entries, -1) # rotate right
+      h.keys[newIdx] = newKey
 
 proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
   if n.isInternal:
