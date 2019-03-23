@@ -48,23 +48,6 @@ proc `$`[Key, Val](b: BTree[Key, Val]): string =
   result = ""
   toString(b.root, "", result)
 
-proc newlineAndIndent(result: var string, indentation: int) =
-  result.add "\n"
-  for i in 0 ..< indentation:
-    result.add "  "
-
-proc addNamedValue[T](result: var string; name: string; value: T; indentation: int) =
-  result.newlineAndIndent(indentation)
-  result.add name
-  result.add ": "
-  result.add $value
-
-proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
-
-proc indexFormat(arg: int): string =
-  result.setLen(5)
-  discard c_snprintf(cstring(result[0].addr), 6, "[%3d]", int32(arg))
-
 proc initBTree*[Key, Val](): BTree[Key, Val] =
   discard
 
