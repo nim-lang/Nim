@@ -330,7 +330,7 @@ when isMainModule:
       var t2 = initTable[int, string]()
       var keys: seq[int]
 
-      for i in 0 ..< 1_000_000:
+      for i in 0 ..< 100_000:
         var x = rand(high(int))
         while t2.hasKey(x):
           x = rand(high(int))
