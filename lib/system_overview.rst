@@ -1,5 +1,6 @@
-System module imports several separate modules, and their documentation
+The System module imports several separate modules, and their documentation
 is in separate files:
+
 * `iterators <iterators.html>`_
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
@@ -31,15 +32,13 @@ Proc                              Usage
 =============================     =======================================
 
 **See also:**
-* `strutils module<strutils.html>`_ for common string functions
-* `strformat module<strformat.html>`_ for string interpolation and formatting
-* `unicode module<unicode.html>`_ for Unicode UTF-8 handling
-* `strscans<strscans.html>`_ for ``scanf`` and ``scanp`` macros, which offer
+* `strutils module <strutils.html>`_ for common string functions
+* `strformat module <strformat.html>`_ for string interpolation and formatting
+* `unicode module <unicode.html>`_ for Unicode UTF-8 handling
+* `strscans <strscans.html>`_ for ``scanf`` and ``scanp`` macros, which offer
   easier substring extraction than regular expressions
-* `strtabs module<strtabs.html>`_ for efficient hash tables
+* `strtabs module <strtabs.html>`_ for efficient hash tables
   (dictionaries, in some programming languages) mapping from strings to strings
-* `ropes module<ropes.html>`_ for rope data type, which can represent very
-  long strings efficiently
 
 
 
@@ -62,14 +61,14 @@ Proc                                       Usage
 `del<#del,seq[T][T],Natural>`_             `O(1)` removal, doesn't preserve the order
 `pop<#pop,seq[T][T]>`_                     Remove and return last item of a sequence
 `x & y<#&,seq[T][T],seq[T][T]>`_           Concatenate two sequences
-`x[a..b]<#[],openArray[T],HSlice[U,V]>`_   Slice of a seqence (both ends included)
+`x[a..b]<#[],openArray[T],HSlice[U,V]>`_   Slice of a sequence (both ends included)
 ========================================   ==========================================
 
 **See also:**
-* `sequtils module<collections/sequtils.html>`_ for operations on container
+* `sequtils module <collections/sequtils.html>`_ for operations on container
   types (including strings)
-* `json module<json.html>`_ for a structure which allows heterogeneous members
-* `lists module<lists.html>`_ for linked lists
+* `json module <json.html>`_ for a structure which allows heterogeneous members
+* `lists module <lists.html>`_ for linked lists
 
 
 
@@ -120,10 +119,10 @@ Proc                              Usage                                  Also kn
 ==============================    ==================================     =====================
 
 **See also:**
-* `math module<math.html>`_ for mathematical operations like trigonometric
+* `math module <math.html>`_ for mathematical operations like trigonometric
   functions, logarithms, square and cubic roots, etc.
-* `complex module<complex.html>`_ for operations on complex numbers
-* `rationals module<rationals.html>`_ for rational numbers
+* `complex module <complex.html>`_ for operations on complex numbers
+* `rationals module <rationals.html>`_ for rational numbers
 
 
 
@@ -163,6 +162,6 @@ Proc                                           Usage
 `not T<#not,bool>`_                            Boolean `not`
 `a .. b<#..,T,U>`_                             Binary slice that constructs an interval
                                                `[a, b]`
-[a ..< b](#..<.t,untyped,untyped)              Interval `[a, b>` (excluded upper bound)
+[a ..< b](#..<.t,untyped,untyped)              Interval `[a, b)` (excluded upper bound)
 [runnableExamples](#runnableExamples,untyped)  Create testable documentation
 =============================================  ============================================

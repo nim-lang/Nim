@@ -1322,13 +1322,16 @@ when defined(nimAshr):
     ## Shifts right by pushing copies of the leftmost bit in from the left,
     ## and let the rightmost bits fall off.
     ##
+    ## Note that `ashr` is not an operator so use the normal function
+    ## call syntax for it.
+    ##
     ## See also:
     ## * `shr proc <#shr,int,SomeInteger>`_
     ##
     ## .. code-block:: Nim
-    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
-    ##   0b1000_0000'i8 shr 8 == 0b1111_1111'i8
-    ##   0b1000_0000'i8 shr 1 == 0b1100_0000'i8
+    ##   ashr(0b0001_0000'i8, 2) == 0b0000_0100'i8
+    ##   ashr(0b1000_0000'i8, 8) == 0b1111_1111'i8
+    ##   ashr(0b1000_0000'i8, 1) == 0b1100_0000'i8
   proc ashr*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
   proc ashr*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
   proc ashr*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
@@ -3726,7 +3729,7 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
 {.pop.} # hints
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
-  ## Division of intergers that results in a float.
+  ## Division of integers that results in a float.
   ##
   ## See also:
   ## * `div <#div,int,int>`_
