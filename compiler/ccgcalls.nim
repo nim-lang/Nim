@@ -174,6 +174,11 @@ template genParamLoop(params) {.dirty.} =
     if params != nil: add(params, ~", ")
     add(params, genArgNoParam(p, ri.sons[i]))
 
+proc addActualPrefixForHCR(res: var Rope, module: PSym, sym: PSym) =
+  if sym.flags * {sfImportc, sfNonReloadable} == {} and
+      (sym.typ.callConv == ccInline or sym.owner.id == module.id):
+    res = res & "_actual".rope
+
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   # this is a hotspot in the compiler
@@ -186,7 +191,10 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
     genParamLoop(params)
-  fixupCall(p, le, ri, d, rdLoc(op), params)
+  var callee = rdLoc(op)
+  if p.hcrOn and ri.sons[0].kind == nkSym:
+    callee.addActualPrefixForHCR(p.module.module, ri.sons[0].sym)
+  fixupCall(p, le, ri, d, callee, params)
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 

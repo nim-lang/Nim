@@ -105,13 +105,12 @@
 #   - the handlers for a reloaded module are always removed when reloading and then
 #     registered when the top-level scope is executed (thanks to `executeOnReload`)
 #
-# TODO - after first merge in upstream Nim:
+# TODO next:
 #
-# - profile
-#   - build speed with and without hot code reloading - difference should be small
-#   - runtime degradation of HCR-enabled code - important!!!
+# - implement the before/after handlers and hasModuleChanged for the javascript target
 # - ARM support for the trampolines
 # - investigate:
+#   - soon the system module might be importing other modules - the init order...?
 #   - rethink the closure iterators
 #     - ability to keep old versions of dynamic libraries alive
 #       - because of async server code
@@ -132,7 +131,7 @@
 #     - currently building with useNimRtl is problematic - lots of problems...
 #     - how to supply the nimrtl/nimhcr shared objects to all test binaries...?
 #     - think about building to C++ instead of only to C - added type safety
-#   - run tests through valgrind and the sanitizers! of HUGE importance!
+#   - run tests through valgrind and the sanitizers!
 #
 # TODO - nice to have cool stuff:
 #
@@ -148,7 +147,6 @@
 # - pragma annotations for files - to be excluded from dll shenanigans
 #   - for such file-global pragmas look at codeReordering or injectStmt
 #   - how would the initialization order be kept? messy...
-#   - per function exclude pragmas would be TOO messy and hard...
 # - C code calling stable exportc interface of nim code (for bindings)
 #   - generate proxy functions with the stable names
 #     - in a non-reloadable part (the main binary) that call the function pointers
@@ -160,9 +158,18 @@
 #   - issue an error
 #     - or let the user handle this by transferring the state properly
 #       - perhaps in the before/afterCodeReload handlers
-# - optimization: calls to procs within a module (+inlined) to use the _actual versions
 # - implement executeOnReload for global vars too - not just statements (and document!)
 # - cleanup at shutdown - freeing all globals
+# - fallback mechanism if the program crashes (the program should detect crashes
+#   by itself using SEH/signals on Windows/Unix) - should be able to revert to
+#   previous versions of the .dlls by calling some function from HCR
+# - improve runtime performance - possibilities
+#   - implement a way for multiple .nim files to be bundled into the same dll
+#     and have all calls within that domain to use the "_actual" versions of
+#     procs so there are no indirections (or the ability to just bundle everything
+#     except for a few unreloadable modules into a single mega reloadable dll)
+#   - try to load the .dlls at specific addresses of memory (close to each other)
+#     allocated with execution flags - check this: https://github.com/fancycode/MemoryModule
 #
 # TODO - unimportant:
 #
