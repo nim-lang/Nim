@@ -15,7 +15,6 @@ const
             # (must be even and greater than 2)
   Mhalf = M div 2
 
-
 import algorithm
 
 type
@@ -89,7 +88,6 @@ proc findKey[T](keys: openarray[T]; entries: int; key: T): int =
       return i
   return -1
 
-
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   if b.root == nil:
     return
@@ -114,21 +112,21 @@ proc contains*[Key, Val](n: BTree[Key, Val], key: Key): bool =
   for j in 0 ..< x.entries:
     if eq(key, x.keys[j]): return true
 
-proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
+proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
+  ## modifiy h, to be half the size. Returns a node with the other half.
+  result = Node[Key, Val](entries: Mhalf, isInternal: h.isInternal)
+  h.entries = Mhalf
+
   for j in 0 ..< Mhalf:
     result.keys[j] = h.keys[Mhalf + j]
   if h.isInternal:
     for j in 0 ..< Mhalf:
       result.links[j] = h.links[Mhalf + j]
+      h.links[Mhalf + j] = nil
   else:
     for j in 0 ..< Mhalf:
       shallowCopy(result.vals[j], h.vals[Mhalf + j])
-
-proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
-  ## modifiy h, to be half the size. Returns a node with the other half.
-  result = Node[Key, Val](entries: Mhalf, isInternal: h.isInternal)
-  h.entries = Mhalf
-  copyHalf(h, result)
+      h.vals[Mhalf + j] = default(Val)
 
 proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
   ## If h needs to be split, one half will remain in h, the other half
@@ -142,17 +140,8 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
     return
 
   var newKey = key
-  var j = 0
-  if not h.isInternal:
-    while j < h.entries:
-      if less(key, h.keys[j]): break
-      inc j
-    inc h.entries
-    rotateLeft(h.vals, j ..< h.entries, -1) # rotate right
-    h.vals[j] = val
-    rotateLeft(h.keys, j ..< h.entries, -1) # rotate right
-    h.keys[j] = newKey
-  else:
+
+  if h.isInternal:
     let idx = findKey(h.keys, h.entries, key)
     doAssert idx >= 0
     let newLink = insert(h.links[idx], key, val)
@@ -164,6 +153,26 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
       h.links[newIdx] = newLink
       rotateLeft(h.keys, newIdx ..< h.entries, -1) # rotate right
       h.keys[newIdx] = newKey
+  else:
+
+    var j = 0
+    while j < h.entries:
+      if less(key, h.keys[j]): break
+      inc j
+    let idx =
+      if less(key, h.keys[0]):
+        0
+      else:
+        findKey(h.keys, h.entries, key) + 1
+    if idx != j:
+      echo h.keys[0 ..< h.entries]
+      echo idx, "  ", j
+      echo key
+    inc h.entries
+    rotateLeft(h.vals, j ..< h.entries, -1) # rotate right
+    h.vals[j] = val
+    rotateLeft(h.keys, j ..< h.entries, -1) # rotate right
+    h.keys[j] = newKey
 
 proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
   if n.isInternal:
