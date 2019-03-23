@@ -539,6 +539,8 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
     discard "bug #8202; enforce evaluation order for nested calls for C++ too"
     # We may need to consider that 'f(g())' cannot be rewritten to 'tmp = g(); f(tmp)'
     # if 'tmp' lacks a move/assignment operator.
+    if e[0].kind == nkSym and sfConstructor in e[0].sym.flags:
+      result.flags.incl lfSingleUse
   else:
     result.flags.incl lfSingleUse
   expr(p, e, result)
