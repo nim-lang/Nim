@@ -82,11 +82,18 @@ proc findWithCmp[T](arg: openarray[T]; entries: int; value: T): int =
       return i
   return -1
 
+proc myDebug(): void {.exportc.} =
+  discard
+
 proc findKey[T](keys: openarray[T]; entries: int; key: T): int =
-  for i in 0 ..< entries:
-    if i+1 == entries or less(key, keys[i+1]):
-      return i
-  return -1
+  if entries == 0 or less(key, keys[0]):
+    return -1
+  var i = 1
+  while i < entries:
+    if less(key, keys[i]):
+      return i - 1
+    inc i
+  return entries-1
 
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   if b.root == nil:
@@ -94,8 +101,10 @@ proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   var x = b.root
   while x.isInternal:
     let idx = findKey(x.keys, x.entries, key)
-    doAssert idx >= 0
-    x = x.links[idx]
+    if idx >= 0:
+      x = x.links[idx]
+    else:
+      return
   assert(not x.isInternal)
   for j in 0 ..< x.entries:
     if eq(key, x.keys[j]): return x.vals[j]
@@ -106,7 +115,8 @@ proc contains*[Key, Val](n: BTree[Key, Val], key: Key): bool =
   var x = n.root
   while x.isInternal:
     let idx = findKey(x.keys, x.entries, key)
-    doAssert idx >= 0
+    if idx < 0:
+      return false
     x = x.links[idx]
   assert(not x.isInternal)
   for j in 0 ..< x.entries:
@@ -143,8 +153,10 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
 
   if h.isInternal:
     let idx = findKey(h.keys, h.entries, key)
-    doAssert idx >= 0
-    let newLink = insert(h.links[idx], key, val)
+    let newLink: Node[Key, Val] = insert(h.links[max(0, idx)], key, val)
+    if idx < 0: # insertion to the very beginning
+      h.keys[0] = h.links[0].keys[0]
+
     if newLink != nil:
       let newKey = newLink.keys[0]
       let newIdx = idx + 1
@@ -159,20 +171,19 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
     while j < h.entries:
       if less(key, h.keys[j]): break
       inc j
-    let idx =
-      if less(key, h.keys[0]):
-        0
-      else:
-        findKey(h.keys, h.entries, key) + 1
+    let idx = findKey(h.keys, h.entries, key) + 1
+
     if idx != j:
       echo h.keys[0 ..< h.entries]
       echo idx, "  ", j
       echo key
+
+    # doAssert j == idx
     inc h.entries
-    rotateLeft(h.vals, j ..< h.entries, -1) # rotate right
-    h.vals[j] = val
-    rotateLeft(h.keys, j ..< h.entries, -1) # rotate right
-    h.keys[j] = newKey
+    rotateLeft(h.vals, idx ..< h.entries, -1) # rotate right
+    h.vals[idx] = val
+    rotateLeft(h.keys, idx ..< h.entries, -1) # rotate right
+    h.keys[idx] = newKey
 
 proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
   if n.isInternal:
