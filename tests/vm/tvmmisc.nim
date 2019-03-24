@@ -31,7 +31,7 @@ static:
   assert str == "abc"
 
 # #6086
-import math, sequtils, future
+import math, sequtils, sugar
 
 block:
   proc f: int =
@@ -149,16 +149,6 @@ static:
   static:
     doAssert foo().i == 1
 
-# #10333
-block:
-  const
-    encoding: auto = [
-      ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"],
-      ["", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"],
-      ["", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM"],
-      ["", "M", "MM", "MMM", "--", "-", "--", "---", "----", "--"],
-    ]
-  doAssert encoding.len == 4
 
 # #10886
 
