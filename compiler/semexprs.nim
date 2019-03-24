@@ -1518,6 +1518,8 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       n.sons[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
+
+proc asgnToResult(c: PContext, n, le, ri: PNode) =
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   if ri.typ != nil and ri.typ.skipTypes(abstractInst).kind == tyOwned and
       le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned:
@@ -1614,6 +1616,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.owner.typ.sons[0] = rhsTyp
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
+      asgnToResult(c, n, n.sons[0], n.sons[1])
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
     liftTypeBoundOps(c, lhs.typ, lhs.info)

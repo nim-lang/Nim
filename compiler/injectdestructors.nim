@@ -354,7 +354,7 @@ proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
     # in rare cases only =destroy exists but no sink or assignment
     # (see Pony object in tmove_objconstr.nim)
     # we generate a fast assignment in this case:
-    result = newTree(nkFastAsgn, dest, ri)
+    result = newTree(nkFastAsgn, dest)
 
 proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
   if tfHasOwned in t.flags:
@@ -598,6 +598,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       else:
         ri2[i] = pArg(ri[i], c, isSink = true)
     result.add ri2
+  of nkNilLit:
+    result = genSink(c, dest.typ, dest, ri)
+    result.add ri
   of nkSym:
     if isSinkParam(ri.sym):
       # Rule 3: `=sink`(x, z); wasMoved(z)

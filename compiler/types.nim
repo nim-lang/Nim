@@ -1277,7 +1277,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # prevent cascading errors:
     result = nil
   of tyOwned:
-    if t.len == 1 and t.sons[0].kind in {tyRef, tyPtr}:
+    if t.len == 1 and t.sons[0].skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
       result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
     else:
       result = t
