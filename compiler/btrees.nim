@@ -134,6 +134,13 @@ proc contains*[Key, Val](n: BTree[Key, Val], key: Key): bool =
   assert(not x.isInternal)
   return findValue(x.keys, x.entries, key) >= 0
 
+
+# for bootstrapping it can happen that ``default`` doesn't exist yet.
+when not defined(nimHasDefault):
+  template default(T: typedesc): untyped =
+    var tmp: T
+    tmp
+
 proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
   ## modifiy h, to be half the size. Returns a node with the other half.
   result = Node[Key, Val](entries: Mhalf, isInternal: h.isInternal)
