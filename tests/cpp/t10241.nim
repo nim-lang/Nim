@@ -1,7 +1,6 @@
 discard """
   targets: "cpp"
   action: "compile"
-  disabled: true
 """
 
 type

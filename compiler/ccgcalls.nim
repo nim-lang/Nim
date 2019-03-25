@@ -46,13 +46,22 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       add(pl, ~")")
-      if p.module.compileToCpp and lfSingleUse in d.flags:
-        # do not generate spurious temporaries for C++! For C we're better off
-        # with them to prevent undefined behaviour and because the codegen
-        # is free to emit expressions multiple times!
-        d.k = locCall
-        d.r = pl
-        excl d.flags, lfSingleUse
+      if p.module.compileToCpp:
+        if lfSingleUse in d.flags:
+          # do not generate spurious temporaries for C++! For C we're better off
+          # with them to prevent undefined behaviour and because the codegen
+          # is free to emit expressions multiple times!
+          d.k = locCall
+          d.r = pl
+          excl d.flags, lfSingleUse
+        else:
+          if d.k == locNone:
+            getTempCpp(p, typ.sons[0], d, pl)
+          else:
+            var list: TLoc
+            initLoc(list, locCall, d.lode, OnUnknown)
+            list.r = pl
+            genAssignment(p, d, list, {}) # no need for deep copying
       else:
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         assert(d.t != nil)        # generate an assignment to d:
