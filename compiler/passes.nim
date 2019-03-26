@@ -160,8 +160,9 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
         # for the interactive mode.
-        processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
-        processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
+        if module.name.s != "nimscriptapi":
+          processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
+          processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
       while true:
         if graph.stopCompile(): break
