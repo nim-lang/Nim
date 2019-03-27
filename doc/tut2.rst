@@ -169,21 +169,6 @@ no conversion between different object types is needed. Yet, access to invalid
 object fields raises an exception.
 
 
-Methods
--------
-In ordinary object oriented languages, procedures (also called *methods*) are
-bound to a class. This has disadvantages:
-
-* Adding a method to a class the programmer has no control over is
-  impossible or needs ugly workarounds.
-* Often it is unclear where the method should belong to: is
-  ``join`` a string method or an array method?
-
-Nim avoids these problems by not assigning methods to a class. All methods
-in Nim are multi-methods. As we will see later, multi-methods are
-distinguished from procs only for dynamic binding purposes.
-
-
 Method call syntax
 ------------------
 
