@@ -5153,35 +5153,39 @@ types that will match the type param:
 
 The constraint can be a concrete type or a type class.
 
-type operator
--------------
 
-You can obtain the type of a given expression by constructing a ``type``
+typeof operator
+---------------
+
+**Note**: ``typeof(x)`` can also be written as ``type(x)``.
+
+You can obtain the type of a given expression by constructing a ``typeof``
 value from it (in many other languages this is known as the `typeof`:idx:
 operator):
 
 .. code-block:: nim
+
   var x = 0
-  var y: type(x) # y has type int
+  var y: typeof(x) # y has type int
 
-You may add a constraint to the resulting type to trigger a compile-time error
-if the expression doesn't have the expected type:
 
-.. code-block:: nim
-  var x = 0
-  var y: type[object](x) # Error: type mismatch: got <int> but expected 'object'
-
-If ``type`` is used to determine the result type of a proc/iterator/converter
+If ``typeof`` is used to determine the result type of a proc/iterator/converter
 call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
 interpretation where ``c`` is an iterator is preferred over the
-other interpretations:
+other interpretations, but this behavior can be changed by
+passing ``typeOfProc`` as the second argument to ``typeof``:
 
 .. code-block:: nim
-  import strutils
+    :test: "nim c $1"
 
-  # strutils contains both a ``split`` proc and iterator, but since an
-  # an iterator is the preferred interpretation, `y` has the type ``string``:
-  var y: type("a b c".split)
+  iterator split(s: string): string = discard
+  proc split(s: string): seq[string] = discard
+
+  # since an iterator is the preferred interpretation, `y` has the type ``string``:
+  assert typeof("a b c".split) is string
+
+  assert typeof("a b c".split, typeOfProc) is seq[string]
+
 
 
 Modules
