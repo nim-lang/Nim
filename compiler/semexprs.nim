@@ -37,6 +37,11 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   # XXX: A more elaborate line info rewrite might be needed
   result.info = info
 
+  if eqIdent(c.config.expandMacro, s.name.s):
+    echo c.config $ info, " expansion of template ", s.name.s
+    echo result
+
+
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
 template rejectEmptyNode(n: PNode) =
