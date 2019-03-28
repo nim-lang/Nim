@@ -174,7 +174,7 @@ type
 
 # implementation
 
-proc open*(c: var CfgParser, input: Stream, filename, 
+proc open*(c: var CfgParser, input: Stream, filename: string, 
            commentSeparato: string = "#;", lineOffset = 0)
           {.rtl, extern: "npc$1".} =
   ## initializes the parser with an input stream. `Filename` is only used
