@@ -188,7 +188,7 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 1)
   result += 1 + ord(x<=0)
 
-proc countBits32*(n: int32): int {.noSideEffect, deprecated.} =
+proc countBits32*(n: int32): int {.noSideEffect, deprecated: "use bitops.countSetBits instead".} =
   ## **Deprecated since version v0.20.0**: Use ``bitops.countSetBits`` instead.
   runnableExamples:
     doAssert countBits32(7) == 3
