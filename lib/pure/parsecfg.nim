@@ -32,7 +32,7 @@
     var f = newFileStream(paramStr(1), fmRead)
     if f != nil:
       var p: CfgParser
-      open(p, f, filename, "#;")
+      open(p, f, filename, commentSeparato = "#;")
       while true:
         var e = next(p)
         case e.kind
@@ -174,8 +174,8 @@ type
 
 # implementation
 
-proc open*(c: var CfgParser, input: Stream, filename: string, 
-           commentSeparato: string = "#;", lineOffset = 0)
+proc open*(c: var CfgParser, input: Stream, filename: string, lineOffset = 0,
+           commentSeparato: string = "#;")
           {.rtl, extern: "npc$1".} =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. `lineOffset` can be used to influence the line
@@ -591,7 +591,7 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]",
                       # the default value of the current section is "",
                       # which means that the current section is a common
   var p: CfgParser
-  open(p, stream, filename, commentSeparato)
+  open(p, stream, filename, commentSeparato = commentSeparato)
   while true:
     var e = next(p)
     case e.kind
