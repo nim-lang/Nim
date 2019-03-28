@@ -11,8 +11,8 @@
 ## Nim compiler's needs.
 
 const
-  M = 512   # max children per B-tree node = M-1
-            # (must be even and greater than 2)
+  M = 4  # max children per B-tree node
+          # (must be even and greater than 2)
   Mhalf = M div 2
 
 import algorithm
@@ -29,6 +29,39 @@ type
   BTree*[Key, Val] = object
     root: Node[Key, Val]
     entries: int      ## number of key-value pairs
+
+proc sanityCheck[Key, Val](self: Node[Key,Val], isRoot: bool): int =
+  if self.entries > M:
+    echo "number of entries exceepds capacity ", self.entries
+    result = -1
+  if self.entries < Mhalf:
+    if not isRoot or self.isInternal:
+      echo "number of entries is below minimum ", self.entries
+      echo self.keys[0]
+      echo "---"
+      return -1
+  if self.isInternal:
+
+    let expectedChildDepth = sanityCheck(self.links[0], false)
+    if expectedChildDepth < 0:
+      return -1
+
+    for i in 1 ..< self.entries:
+      let child = self.links[i]
+      let childDepth = sanityCheck(child, false)
+      if childDepth == -1:
+        result = -1
+      elif childDepth != expectedChildDepth:
+        echo "node is imbalanced"
+        return -1
+
+    if result != -1:
+      result =  expectedChildDepth + 1
+  else:
+    result = 1
+
+proc sanityCheck[Key, Val](self: BTree[Key, Val]): bool =
+  result = sanityCheck(self.root, true) > 0
 
 proc toString[Key, Val](h: Node[Key, Val], indent: string; result: var string) =
   if not h.isInternal:
@@ -59,6 +92,43 @@ proc findLinearWithCmp[T](arg: openarray[T]; entries: int; value: T): int =
     if eq(arg[i], value):
       return i
   return -1
+
+proc newTreeFromSortedData[Key,Val](data: openArray[(Key,Val)]): BTree[Key,Val] =
+  if data.len == 0:
+    return
+
+  var nodes = newSeq[Node[Key,Val]]()
+
+  var currentNode: Node[Key,Val] = nil
+  for i, (key, val) in data.pairs:
+    if currentNode == nil:
+      currentNode.new
+    currentNode.keys[currentNode.entries] = key
+    currentNode.vals[currentNode.entries] = val
+    inc currentNode.entries
+    if currentNode.entries == M or i == data.len-1:
+      nodes.add currentNode
+      currentNode = nil
+
+  var newNodes: seq[Node[Key,Val]]
+  while nodes.len > 1:
+    newNodes.setLen 0
+    swap(newNodes, nodes)
+    for i, node in newNodes:
+      if currentNode == nil:
+        currentNode.new
+        currentNode.isInternal = true
+      currentNode.keys[currentNode.entries]  = node.keys[0]
+      currentNode.links[currentNode.entries] = node
+      inc currentNode.entries
+      if currentNode.entries == M or i == newNodes.len:
+        nodes.add currentNode
+        currentNode = nil
+
+
+  result.root = nodes[0]
+  result.entries = data.len
+
 
 proc findValue[T](values: openarray[T]; entries: int; value: T): int =
   # let expected = findLinearWithCmp(values, entries, value)
@@ -160,39 +230,48 @@ proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
 proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
   ## If h needs to be split, one half will remain in h, the other half
   ## is returned as a new node. Returns ``nil`` when no split occurs.
-  if h.entries == M:
-    result = split(h)
-    if less(key, result.keys[0]):
-      doAssert insert(h, key, val) == nil
-    else:
-      doAssert insert(result, key, val) == nil
-    return
 
   var newKey = key
+  var dstNode = h # node where insertion finally happens
 
   if h.isInternal:
     let idx = findKey(h.keys, h.entries, key)
     let newLink: Node[Key, Val] = insert(h.links[max(0, idx)], key, val)
-
     if idx < 0: # insertion to the very beginning
       h.keys[0] = h.links[0].keys[0]
 
     if newLink != nil:
       let newKey = newLink.keys[0]
-      let newIdx = max(0, idx) + 1
+      var newIdx = max(0, idx) + 1
 
-      inc h.entries
-      rotateLeft(h.links, newIdx ..< h.entries, -1) # rotate right
-      h.links[newIdx] = newLink
-      rotateLeft(h.keys, newIdx ..< h.entries, -1) # rotate right
-      h.keys[newIdx] = newKey
+      if h.entries == M:
+        result = split(h)
+        if less(key, result.keys[0]):
+          dstNode = h
+        else:
+          dstNode = result
+          newIdx -= Mhalf
+
+      inc dstNode.entries
+      rotateLeft(dstNode.links, newIdx ..< dstNode.entries, -1) # rotate right
+      dstNode.links[newIdx] = newLink
+      rotateLeft(dstNode.keys, newIdx ..< dstNode.entries, -1) # rotate right
+      dstNode.keys[newIdx] = newKey
   else:
-    let idx = findKey(h.keys, h.entries, key) + 1
-    inc h.entries
-    rotateLeft(h.vals, idx ..< h.entries, -1) # rotate right
-    h.vals[idx] = val
-    rotateLeft(h.keys, idx ..< h.entries, -1) # rotate right
-    h.keys[idx] = newKey
+    # split if necessary
+    if h.entries == M:
+      result = split(h)
+      if less(key, result.keys[0]):
+        dstNode = h
+      else:
+        dstNode = result
+
+    let idx = findKey(dstNode.keys, dstNode.entries, key) + 1
+    inc dstNode.entries
+    rotateLeft(dstNode.vals, idx ..< dstNode.entries, -1) # rotate right
+    dstNode.vals[idx] = val
+    rotateLeft(dstNode.keys, idx ..< dstNode.entries, -1) # rotate right
+    dstNode.keys[idx] = newKey
 
 proc delete[Key, Val](n: Node[Key, Val]; key: Key): bool =
   if n.isInternal:
@@ -282,9 +361,16 @@ proc len*[Key, Val](b: BTree[Key, Val]): int {.inline.} = b.entries
 
 when isMainModule:
 
-  import random, tables
+  import random, tables, times, strutils
+
+  template time(name: string; body: untyped): untyped =
+    let startTime = getTime()
+    body
+    let timeDiff = inNanoseconds(getTime() - startTime)
+    echo name, ": ", repeat("*", int(100 * timeDiff.float64 / 250000000.0)).align(60) & align($timeDiff, 10)
 
   proc main() =
+
     block test1:
       var st = initBTree[string, string]()
       st.add("www.cs.princeton.edu", "abc")
@@ -313,6 +399,9 @@ when isMainModule:
       assert st.getOrDefault("www.dell.com") == "143.166.224.230"
       assert(st.entries == 16)
 
+      # echo st
+      assert st.sanityCheck
+
       var keys: seq[string]
 
       for k, v in st:
@@ -331,42 +420,66 @@ when isMainModule:
         let x = b2.getOrDefault($i)
         if x != $(iters - i):
           echo "got ", x, ", but expected ", iters - i
-      echo b2.entries
 
     when true:
-      var t2 = initTable[int, string]()
-      var keys: seq[int]
 
-      for i in 0 ..< 100_000:
+      var keyValuePairs: seq[(string, int)]
+
+      # I just happen to know that the random number generator doesn't produce collisions
+      for i in 0 ..< 10000:
         var x = rand(high(int))
-        while t2.hasKey(x):
-          x = rand(high(int))
-        t2[x] = $x
-        keys.add x
+        keyValuePairs.add(($x,x))
 
-      echo "Hash map initialized with ", keys.len, " entries."
+      var t2 = initTable[string, int]()
+      time "hash map fill  ":
+        for (key, val) in keyValuePairs.items:
+          t2[key] = val
 
-      var tree = initBTree[int, string]()
-      for key, value in t2:
-        doAssert tree.getOrDefault(key) == "", " what, tree has this element " & $key
-        tree.add(key, value)
-        doAssert tree.getOrDefault(key) == value
+      #sort keys
+      time "hash map read  ":
+        for (key, val) in keyValuePairs.items:
+          doAssert t2[key] == val
 
+
+      var tree = initBTree[string, int]()
+
+      #for key, value in t2:
+      time "tree fill      ":
+        for key, val in keyValuePairs.items:
+          #doAssert tree.getOrDefault(key) == "", " what, tree has this element " & $key
+          #echo key
+          tree.add(key, val)
+          #doAssert tree.getOrDefault(key) == value
+          #doAssert sanityCheck tree
+
+      sort(keyValuePairs, proc (a,b: (string,int)): int = cmp(a[0], b[0]))
+
+      time "tree fill bulk ":
+        tree = newTreeFromSortedData(keyValuePairs)
+
+      echo tree
       doAssert tree.entries == t2.len
-      for key, value in t2:
-        doAssert tree.getOrDefault(key) == value, "\"" & $tree.getOrDefault(key) & "\" != \"" & $value & "\""
 
-      shuffle keys # just make it a different order than insertion order
+      time "tree read      ":
+        for (key, value) in keyValuePairs.items:
+          doAssert tree.getOrDefault(key) == value, key
 
-      for key in keys:
-        doAssert key in tree
-        doAssert tree.delete(key)
-        doAssert key notin tree
+      shuffle(keyValuePairs)  # just make it a different order than insertion order
+
+
+      time "delete all     ":
+        for (key, value) in keyValuePairs.items:
+          #doAssert key in tree
+          doAssert tree.delete(key)
+          #doAssert sanityCheck tree
+          #doAssert key notin tree
 
       doAssert tree.entries == 0
-      shuffle keys
+      shuffle keyValuePairs
 
-      for key in keys:
-        tree.add(key, $key)
+      time "readding all   ":
+        for key, val in keyValuePairs.items:
+          tree.add(key, val)
+
 
   main()
