@@ -11,8 +11,8 @@ environment:
   platform: x64
 
   matrix:
-    - NIM_TEST_PACKAGES: true
     - NIM_TEST_PACKAGES: false
+    - NIM_TEST_PACKAGES: true
 
 cache:
     - '%MINGW_ARCHIVE%'
