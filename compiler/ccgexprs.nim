@@ -95,17 +95,8 @@ proc genLiteral(p: BProc, n: PNode): Rope =
 
 proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
   result = 0
-  when true:
-    for j in countup(0, size - 1):
-      if j < len(s): result = result or `shl`(ze64(s[j]), j * 8)
-  else:
-    # not needed, too complex thinking:
-    if CPU[platform.hostCPU].endian == CPU[targetCPU].endian:
-      for j in countup(0, size - 1):
-        if j < len(s): result = result or `shl`(Ze64(s[j]), j * 8)
-    else:
-      for j in countup(0, size - 1):
-        if j < len(s): result = result or `shl`(Ze64(s[j]), (Size - 1 - j) * 8)
+  for j in 0 ..< size:
+    if j < len(s): result = result or (ze64(s[j]) shl (j * 8))
 
 proc genRawSetData(cs: TBitSet, size: int): Rope =
   var frmt: FormatStr

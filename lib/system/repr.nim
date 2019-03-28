@@ -95,12 +95,12 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   var elemCounter = 0  # we need this flag for adding the comma at
                        # the right places
   add result, "{"
-  var u: int64
+  var u: uint64
   case typ.size
-  of 1: u = ze64(cast[ptr int8](p)[])
-  of 2: u = ze64(cast[ptr int16](p)[])
-  of 4: u = ze64(cast[ptr int32](p)[])
-  of 8: u = cast[ptr int64](p)[]
+  of 1: u = cast[ptr uint8](p)[]
+  of 2: u = cast[ptr uint16](p)[]
+  of 4: u = cast[ptr uint32](p)[]
+  of 8: u = cast[ptr uint64](p)[]
   else:
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
@@ -110,7 +110,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
         inc(elemCounter)
   if typ.size <= 8:
     for i in 0..sizeof(int64)*8-1:
-      if (u and (1'i64 shl int64(i))) != 0'i64:
+      if (u and (1'u64 shl uint64(i))) != 0'u64:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)
