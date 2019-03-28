@@ -471,6 +471,10 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
 
+  if eqIdent(c.config.expandMacro, sym.name.s):
+    echo c.config $ nOrig.info, " expansion of macro ", c.config.expandMacro
+    echo result
+
 proc forceBool(c: PContext, n: PNode): PNode =
   result = fitNode(c, getSysType(c.graph, n.info, tyBool), n, n.info)
   if result == nil: result = n

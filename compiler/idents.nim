@@ -52,6 +52,9 @@ proc cmpIgnoreStyle*(a, b: cstring, blen: int): int =
   if result == 0:
     if a[i] != '\0': result = 1
 
+proc eqIdent*(a,b: string): bool =
+  cmpIgnoreStyle(a.cstring, b.cstring, high(int)) == 0
+
 proc cmpExact(a, b: cstring, blen: int): int =
   var i = 0
   var j = 0

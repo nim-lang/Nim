@@ -760,6 +760,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optDocInternal}, arg, pass, info)
   of "multimethods":
     processOnOffSwitchG(conf, {optMultiMethods}, arg, pass, info)
+  of "expandmacro":
+    conf.expandMacro = arg
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)

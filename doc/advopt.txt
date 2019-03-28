@@ -124,3 +124,4 @@ Advanced options:
   --profiler:on|off         Enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
+  --expandMacro:MACRO       Dump the generated syntax tree of MACRO.
