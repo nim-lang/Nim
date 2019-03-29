@@ -95,7 +95,8 @@
 - two poorly documented and not used modules (`subexes`, `scgi`) were moved to
   graveyard (they are available as Nimble packages)
 
-
+- Custom types that should be supported by `strformat` (&) now need an
+  explicit overload of `formatValue`.
 
 #### Breaking changes in the compiler
 
