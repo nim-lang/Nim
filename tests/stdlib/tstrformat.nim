@@ -59,21 +59,26 @@ doAssert fmt"{0.0:g}" == "0"
 doAssert fmt"{0.0:+g}" == "+0"
 doAssert fmt"{0.0: g}" == " 0"
 
-# issue #7632
-
+# custom format Value
 
 type
-  Vec2f = object
-    x,y: float32
+  Vec2[T] = object
+    x,y: T
+  Vec2f = Vec2[float32]
+  Vec2i = Vec2[int32]
 
-proc formatValue(value: Vec2f; specifier: string; res: var string) =
+proc formatValue[T](value: Vec2[T]; specifier: string; res: var string) =
   res.add '['
   formatValue value.x, specifier, res
   res.add ", "
   formatValue value.y, specifier, res
   res.add "]"
 
-doAssert fmt"v: {Vec2f(x:1.0, y: 2.0):+08}" == "v: [+0000001, +0000002]"
+let v1 = Vec2f(x:1.0, y: 2.0)
+let v2 = Vec2i(x:1, y: 1337)
+doAssert fmt"v1: {v1:+08}  v2: {v2:>4}" == "v1: [+0000001, +0000002]  v2: [   1, 1337]"
+
+# issue #7632
 
 import genericstrformat
 
