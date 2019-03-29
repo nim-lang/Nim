@@ -14,6 +14,11 @@
 ## of these procedures in the system module already work with it.
 ##
 ## The current version is compatible with Unicode v12.0.0.
+##
+## **See also:**
+## * `strutils module <strutils.html>`_
+## * `unidecode module <unidecode.html>`_
+## * `encodings module <encodings.html>`_
 
 
 {.deadCodeElim: on.}  # dce option deprecated
@@ -31,9 +36,6 @@ type
     ##
     ## A single Rune16 may not be enough to hold an arbitrary Unicode code point.
 
-proc `<=%`*(a, b: Rune): bool = return int(a) <=% int(b)
-proc `<%`*(a, b: Rune): bool = return int(a) <% int(b)
-proc `==`*(a, b: Rune): bool = return int(a) == int(b)
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
@@ -57,6 +59,9 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
 
 proc runeLenAt*(s: string, i: Natural): int =
   ## Returns the number of bytes the rune starting at ``s[i]`` takes.
+  ##
+  ## See also:
+  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   runnableExamples:
     let a = "añyóng"
     doAssert a.runeLenAt(0) == 1
@@ -150,9 +155,28 @@ template fastRuneAt*(s: string, i: int, result: untyped, doInc = true) =
     result = Rune(ord(s[i]))
     when doInc: inc(i)
 
-proc validateUtf8*(s: string): int =
+proc runeAt*(s: string, i: Natural): Rune =
+  ## Returns the rune in ``s`` at **byte index** ``i``.
+  ##
+  ## See also:
+  ## * `runeAtPos proc <#runeAtPos,string,int>`_
+  ## * `runeStrAtPos proc <#runeStrAtPos,string,Natural>`_
+  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
+  runnableExamples:
+    let a = "añyóng"
+    doAssert a.runeAt(1) == "ñ".runeAt(0)
+    doAssert a.runeAt(2) == "ñ".runeAt(1)
+    doAssert a.runeAt(3) == "y".runeAt(0)
+  fastRuneAt(s, i, result, false)
+
+proc validateUTF8*(s: string): int =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
   ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
+  ##
+  ## See also:
+  ## * `toUTF8 proc <#toUTF8,Rune>`_
+  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
+  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   var i = 0
   let L = s.len
   while i < L:
@@ -176,15 +200,6 @@ proc validateUtf8*(s: string): int =
       return i
   return -1
 
-proc runeAt*(s: string, i: Natural): Rune =
-  ## Returns the rune in ``s`` at **byte index** ``i``.
-  runnableExamples:
-    let a = "añyóng"
-    doAssert a.runeAt(1) == "ñ".runeAt(0)
-    doAssert a.runeAt(2) == "ñ".runeAt(1)
-    doAssert a.runeAt(3) == "y".runeAt(0)
-  fastRuneAt(s, i, result, false)
-
 template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
   ## Copies UTF-8 representation of ``c`` into the preallocated string ``s``
   ## starting at position ``pos``.
@@ -194,6 +209,11 @@ template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
   ##
   ## To be the most efficient, make sure ``s`` is preallocated
   ## with an additional amount equal to the byte length of ``c``.
+  ##
+  ## See also:
+  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `toUTF8 proc <#toUTF8,Rune>`_
+  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
   var i = RuneImpl(c)
   if i <=% 127:
     s.setLen(pos+1)
@@ -239,6 +259,12 @@ template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
 
 proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
   ## Converts a rune into its UTF-8 representation.
+  ##
+  ## See also:
+  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
+  ## * `utf8 iterator <#utf8.i,string>`_
+  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   runnableExamples:
     let a = "añyóng"
     doAssert a.runeAt(1).toUTF8 == "ñ"
@@ -258,16 +284,29 @@ proc add*(s: var string; c: Rune) =
   fastToUTF8Copy(c, s, pos, false)
 
 proc `$`*(rune: Rune): string =
-  ## An alias for `toUTF8 <#toUTF8%2CRune>`_.
+  ## An alias for `toUTF8 <#toUTF8,Rune>`_.
+  ##
+  ## See also:
+  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   rune.toUTF8
 
 proc `$`*(runes: seq[Rune]): string =
   ## Converts a sequence of Runes to a string.
+  ##
+  ## See also:
+  ## * `toRunes <#toRunes,string>`_ for a reverse operation
+  runnableExamples:
+    let
+      someString = "öÑ"
+      someRunes = toRunes(someString)
+    doAssert $someRunes == someString
+
   result = ""
   for rune in runes:
     result.add rune
 
-proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
+proc runeOffset*(s: string, pos: Natural, start: Natural = 0): int =
   ## Returns the byte position of rune
   ## at position ``pos`` in ``s`` with an optional start byte position.
   ## Returns the special value -1 if it runs out of the string.
@@ -275,6 +314,15 @@ proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
   ## **Beware:** This can lead to unoptimized code and slow execution!
   ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
+  ##
+  ## See also:
+  ## * `runeReverseOffset proc <#runeReverseOffset,string,Positive>`_
+  runnableExamples:
+    let a = "añyóng"
+    doAssert a.runeOffset(1) == 1
+    doAssert a.runeOffset(3) == 4
+    doAssert a.runeOffset(4) == 6
+
   var
     i = 0
     o = start
@@ -285,24 +333,7 @@ proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
     inc i
   return o
 
-proc runeAtPos*(s: string, pos: int): Rune =
-  ## Returns the rune at position ``pos``.
-  ##
-  ## **Beware:** This can lead to unoptimized code and slow execution!
-  ## Most problems can be solved more efficiently by using an iterator
-  ## or conversion to a seq of Rune.
-  fastRuneAt(s, runeOffset(s, pos), result, false)
-
-proc runeStrAtPos*(s: string, pos: Natural): string =
-  ## Returns the rune at position ``pos`` as UTF8 String.
-  ##
-  ## **Beware:** This can lead to unoptimized code and slow execution!
-  ## Most problems can be solved more efficiently by using an iterator
-  ## or conversion to a seq of Rune.
-  let o = runeOffset(s, pos)
-  s[o.. (o+runeLenAt(s, o)-1)]
-
-proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
+proc runeReverseOffset*(s: string, rev: Positive): (int, int) =
   ## Returns a tuple with the byte offset of the
   ## rune at position ``rev`` in ``s``, counting
   ## from the end (starting with 1) and the total
@@ -314,6 +345,9 @@ proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
   ## **Beware:** This can lead to unoptimized code and slow execution!
   ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
+  ##
+  ## See also:
+  ## * `runeOffset proc <#runeOffset,string,Natural,Natural>`_
   var
     a = rev.int
     o = 0
@@ -329,6 +363,33 @@ proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
     return (-a, rev.int-a)
   return (x, -a+rev.int)
 
+proc runeAtPos*(s: string, pos: int): Rune =
+  ## Returns the rune at position ``pos``.
+  ##
+  ## **Beware:** This can lead to unoptimized code and slow execution!
+  ## Most problems can be solved more efficiently by using an iterator
+  ## or conversion to a seq of Rune.
+  ##
+  ## See also:
+  ## * `runeAt proc <#runeAt,string,Natural>`_
+  ## * `runeStrAtPos proc <#runeStrAtPos,string,Natural>`_
+  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
+  fastRuneAt(s, runeOffset(s, pos), result, false)
+
+proc runeStrAtPos*(s: string, pos: Natural): string =
+  ## Returns the rune at position ``pos`` as UTF8 String.
+  ##
+  ## **Beware:** This can lead to unoptimized code and slow execution!
+  ## Most problems can be solved more efficiently by using an iterator
+  ## or conversion to a seq of Rune.
+  ##
+  ## See also:
+  ## * `runeAt proc <#runeAt,string,Natural>`_
+  ## * `runeAtPos proc <#runeAtPos,string,int>`_
+  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
+  let o = runeOffset(s, pos)
+  s[o.. (o+runeLenAt(s, o)-1)]
+
 proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   ## Returns the UTF-8 substring starting at code point ``pos``
   ## with ``len`` code points.
@@ -336,7 +397,6 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   ## If ``pos`` or ``len`` is negative they count from
   ## the end of the string. If ``len`` is not given it means the longest
   ## possible string.
-  ##
   runnableExamples:
     let s = "Hänsel  ««: 10,00€"
     doAssert(runeSubStr(s, 0, 2) == "Hä")
@@ -377,6 +437,29 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
         e = s.len
       result = s.substr(o, e-1)
 
+proc `<=%`*(a, b: Rune): bool =
+  ## Checks if code point of `a` is smaller or equal to code point of `b`.
+  runnableExamples:
+    let
+      a = "ú".runeAt(0)
+      b = "ü".runeAt(0)
+    doAssert a <=% b
+  return int(a) <=% int(b)
+
+proc `<%`*(a, b: Rune): bool =
+  ## Checks if code point of `a` is smaller than code point of `b`.
+  runnableExamples:
+    let
+      a = "ú".runeAt(0)
+      b = "ü".runeAt(0)
+    doAssert a <% b
+  return int(a) <% int(b)
+
+proc `==`*(a, b: Rune): bool =
+  ## Checks if two runes are equal.
+  return int(a) == int(b)
+
+
 include "includes/unicode_ranges"
 
 proc binarySearch(c: RuneImpl, tab: openArray[int], len, stride: int): int =
@@ -398,6 +481,11 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## Converts ``c`` into lower case. This works for any rune.
   ##
   ## If possible, prefer ``toLower`` over ``toUpper``.
+  ##
+  ## See also:
+  ## * `toUpper proc <#toUpper,Rune>`_
+  ## * `toTitle proc <#toTitle,Rune>`_
+  ## * `isLower proc <#isLower,Rune>`_
   var c = RuneImpl(c)
   var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
   if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
@@ -411,6 +499,11 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## Converts ``c`` into upper case. This works for any rune.
   ##
   ## If possible, prefer ``toLower`` over ``toUpper``.
+  ##
+  ## See also:
+  ## * `toLower proc <#toLower,Rune>`_
+  ## * `toTitle proc <#toTitle,Rune>`_
+  ## * `isUpper proc <#isUpper,Rune>`_
   var c = RuneImpl(c)
   var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
   if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
@@ -422,6 +515,11 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
 
 proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## Converts ``c`` to title case.
+  ##
+  ## See also:
+  ## * `toLower proc <#toLower,Rune>`_
+  ## * `toUpper proc <#toUpper,Rune>`_
+  ## * `isTitle proc <#isTitle,Rune>`_
   var c = RuneImpl(c)
   var p = binarySearch(c, toTitleSinglets, len(toTitleSinglets) div 2, 2)
   if p >= 0 and c == toTitleSinglets[p]:
@@ -432,6 +530,11 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true if ``c`` is a lower case rune.
   ##
   ## If possible, prefer ``isLower`` over ``isUpper``.
+  ##
+  ## See also:
+  ## * `toLower proc <#toLower,Rune>`_
+  ## * `isUpper proc <#isUpper,Rune>`_
+  ## * `isTitle proc <#isTitle,Rune>`_
   var c = RuneImpl(c)
   # Note: toUpperRanges is correct here!
   var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
@@ -445,6 +548,13 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true if ``c`` is a upper case rune.
   ##
   ## If possible, prefer ``isLower`` over ``isUpper``.
+  ##
+  ## See also:
+  ## * `toUpper proc <#toUpper,Rune>`_
+  ## * `isLower proc <#isLower,Rune>`_
+  ## * `isTitle proc <#isTitle,Rune>`_
+  ## * `isAlpha proc <#isAlpha,Rune>`_
+  ## * `isWhiteSpace proc <#isWhiteSpace,Rune>`_
   var c = RuneImpl(c)
   # Note: toLowerRanges is correct here!
   var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
@@ -456,6 +566,13 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true if ``c`` is an *alpha* rune (i.e., a letter).
+  ##
+  ## See also:
+  ## * `isLower proc <#isLower,Rune>`_
+  ## * `isTitle proc <#isTitle,Rune>`_
+  ## * `isAlpha proc <#isAlpha,Rune>`_
+  ## * `isWhiteSpace proc <#isWhiteSpace,Rune>`_
+  ## * `isCombining proc <#isCombining,Rune>`_
   if isUpper(c) or isLower(c):
     return true
   var c = RuneImpl(c)
@@ -468,10 +585,23 @@ proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
 
 proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true if ``c`` is a Unicode titlecase code point.
+  ##
+  ## See also:
+  ## * `toTitle proc <#toTitle,Rune>`_
+  ## * `isLower proc <#isLower,Rune>`_
+  ## * `isUpper proc <#isUpper,Rune>`_
+  ## * `isAlpha proc <#isAlpha,Rune>`_
+  ## * `isWhiteSpace proc <#isWhiteSpace,Rune>`_
   return isUpper(c) and isLower(c)
 
 proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true if ``c`` is a Unicode whitespace code point.
+  ##
+  ## See also:
+  ## * `isLower proc <#isLower,Rune>`_
+  ## * `isUpper proc <#isUpper,Rune>`_
+  ## * `isTitle proc <#isTitle,Rune>`_
+  ## * `isAlpha proc <#isAlpha,Rune>`_
   var c = RuneImpl(c)
   var p = binarySearch(c, spaceRanges, len(spaceRanges) div 2, 2)
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
@@ -479,6 +609,12 @@ proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
 
 proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true if ``c`` is a Unicode combining code unit.
+  ##
+  ## See also:
+  ## * `isLower proc <#isLower,Rune>`_
+  ## * `isUpper proc <#isUpper,Rune>`_
+  ## * `isTitle proc <#isTitle,Rune>`_
+  ## * `isAlpha proc <#isAlpha,Rune>`_
   var c = RuneImpl(c)
 
   # Optimized to return false immediately for ASCII
@@ -491,11 +627,9 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
 template runeCheck(s, runeProc) =
   ## Common code for isAlpha and isSpace.
   result = if len(s) == 0: false else: true
-
   var
     i = 0
     rune: Rune
-
   while i < len(s) and result:
     fastRuneAt(s, i, rune, doInc=true)
     result = runeProc(rune) and result
@@ -503,89 +637,45 @@ template runeCheck(s, runeProc) =
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all alphabetic runes.
+  runnableExamples:
+    let a = "añyóng"
+    doAssert a.isAlpha
   runeCheck(s, isAlpha)
 
 proc isSpace*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all whitespace runes.
+  runnableExamples:
+    let a = "\t\l \v\r\f"
+    doAssert a.isSpace
   runeCheck(s, isWhiteSpace)
 
-template runeCaseCheck(s, runeProc, skipNonAlpha) =
-  ## Common code for rune.isLower and rune.isUpper.
-  if len(s) == 0: return false
-
-  var
-    i = 0
-    rune: Rune
-    hasAtleastOneAlphaRune = false
-
-  while i < len(s):
-    fastRuneAt(s, i, rune, doInc=true)
-    if skipNonAlpha:
-      var runeIsAlpha = isAlpha(rune)
-      if not hasAtleastOneAlphaRune:
-        hasAtleastOneAlphaRune = runeIsAlpha
-      if runeIsAlpha and (not runeProc(rune)):
-        return false
-    else:
-      if not runeProc(rune):
-        return false
-  return if skipNonAlpha: hasAtleastOneAlphaRune else: true
-
-proc isLower*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether ``s`` is lower case.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## runes in ``s`` are lower case. Returns false if none of the
-  ## runes in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all runes in
-  ## ``s`` are alphabetical and lower case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  runeCaseCheck(s, isLower, skipNonAlpha)
-
-proc isUpper*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether ``s`` is upper case.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## runes in ``s`` are upper case. Returns false if none of the
-  ## runes in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all runes in
-  ## ``s`` are alphabetical and upper case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  runeCaseCheck(s, isUpper, skipNonAlpha)
 
 template convertRune(s, runeProc) =
   ## Convert runes in ``s`` using ``runeProc`` as the converter.
   result = newString(len(s))
-
   var
     i = 0
     lastIndex = 0
     rune: Rune
-
   while i < len(s):
     lastIndex = i
     fastRuneAt(s, i, rune, doInc=true)
     rune = runeProc(rune)
-
     rune.fastToUTF8Copy(result, lastIndex)
 
 proc toUpper*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into upper-case runes.
+  runnableExamples:
+    doAssert toUpper("abγ") == "ABΓ"
   convertRune(s, toUpper)
 
 proc toLower*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into lower-case runes.
+  runnableExamples:
+    doAssert toLower("ABΓ") == "abγ"
   convertRune(s, toLower)
 
 proc swapCase*(s: string): string {.noSideEffect, procvar,
@@ -594,38 +684,35 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
   ##
   ## Returns a new string such that the cases of all runes
   ## are swapped if possible.
+  runnableExamples:
+    doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
 
   var
     i = 0
     lastIndex = 0
     rune: Rune
-
   result = newString(len(s))
-
   while i < len(s):
     lastIndex = i
-
     fastRuneAt(s, i, rune)
-
     if rune.isUpper():
       rune = rune.toLower()
     elif rune.isLower():
       rune = rune.toUpper()
-
     rune.fastToUTF8Copy(result, lastIndex)
 
 proc capitalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1".} =
   ## Converts the first character of ``s`` into an upper-case rune.
+  runnableExamples:
+    doAssert capitalize("βeta") == "Βeta"
+
   if len(s) == 0:
     return s
-
   var
     rune: Rune
     i = 0
-
   fastRuneAt(s, i, rune, doInc=true)
-
   result = $toUpper(rune) & substr(s, i)
 
 proc translate*(s: string, replacements: proc(key: string): string): string {.
@@ -635,13 +722,20 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
   ##
   ## ``replacements`` is any proc that takes a word and returns
   ## a new word to fill it's place.
+  runnableExamples:
+    proc wordToNumber(s: string): string =
+      case s
+      of "one": "1"
+      of "two": "2"
+      else: s
+    let a = "one two three four"
+    doAssert a.translate(wordToNumber) == "1 2 three four"
 
   # Allocate memory for the new string based on the old one.
   # If the new string length is less than the old, no allocations
   # will be needed. If the new string length is greater than the
   # old, then maybe only one allocation is needed
   result = newStringOfCap(s.len)
-
   var
     index = 0
     lastIndex = 0
@@ -651,9 +745,7 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
 
   while index < len(s):
     lastIndex = index
-
     fastRuneAt(s, index, rune)
-
     let whiteSpace = rune.isWhiteSpace()
 
     if whiteSpace and inWord:
@@ -661,7 +753,6 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
       let word = s[wordStart ..< lastIndex]
       result.add(replacements(word))
       result.add($rune)
-
       inWord = false
     elif not whiteSpace and not inWord:
       # If we've hit a non space character and
@@ -683,55 +774,26 @@ proc title*(s: string): string {.noSideEffect, procvar,
   ##
   ## Returns a new string such that the first character
   ## in each word inside ``s`` is capitalized.
+  runnableExamples:
+    doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
 
   var
     i = 0
     lastIndex = 0
     rune: Rune
-
   result = newString(len(s))
-
   var firstRune = true
 
   while i < len(s):
     lastIndex = i
-
     fastRuneAt(s, i, rune)
-
     if not rune.isWhiteSpace() and firstRune:
       rune = rune.toUpper()
       firstRune = false
     elif rune.isWhiteSpace():
       firstRune = true
-
     rune.fastToUTF8Copy(result, lastIndex)
 
-proc isTitle*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str",
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".}=
-  ## Checks whether or not ``s`` is a unicode title.
-  ##
-  ## Returns true if the first character in each word inside ``s``
-  ## are upper case and there is at least one character in ``s``.
-  if s.len == 0:
-    return false
-
-  result = true
-
-  var
-    i = 0
-    rune: Rune
-
-  var firstRune = true
-
-  while i < len(s) and result:
-    fastRuneAt(s, i, rune, doInc=true)
-
-    if not rune.isWhiteSpace() and firstRune:
-      result = rune.isUpper() and result
-      firstRune = false
-    elif rune.isWhiteSpace():
-      firstRune = true
 
 iterator runes*(s: string): Rune =
   ## Iterates over any rune of the string ``s`` returning runes.
@@ -744,6 +806,12 @@ iterator runes*(s: string): Rune =
 
 iterator utf8*(s: string): string =
   ## Iterates over any rune of the string ``s`` returning utf8 values.
+  ##
+  ## See also:
+  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `toUTF8 proc <#toUTF8,Rune>`_
+  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
+  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   var o = 0
   while o < s.len:
     let n = runeLenAt(s, o)
@@ -752,6 +820,13 @@ iterator utf8*(s: string): string =
 
 proc toRunes*(s: string): seq[Rune] =
   ## Obtains a sequence containing the Runes in ``s``.
+  ##
+  ## See also:
+  ## * `$ proc <#$,seq[T][Rune]>`_ for a reverse operation
+  runnableExamples:
+    let a = toRunes("aáä")
+    doAssert a == @["a".runeAt(0), "á".runeAt(0), "ä".runeAt(0)]
+
   result = newSeq[Rune]()
   for r in s.runes:
     result.add(r)
@@ -775,6 +850,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
 
 proc reversed*(s: string): string =
   ## Returns the reverse of ``s``, interpreting it as runes.
+  ##
   ## Unicode combining characters are correctly interpreted as well.
   runnableExamples:
     assert reversed("Reverse this!") == "!siht esreveR"
@@ -808,8 +884,14 @@ proc reversed*(s: string): string =
   reverseUntil(len(s))
 
 proc graphemeLen*(s: string; i: Natural): Natural =
-  ## The number of bytes belonging to ``s[i]`` including following combining
-  ## code unit.
+  ## The number of bytes belonging to byte index ``s[i]``,
+  ## including following combining code unit.
+  runnableExamples:
+    let a = "añyóng"
+    doAssert a.graphemeLen(1) == 2 ## ñ
+    doAssert a.graphemeLen(2) == 1
+    doAssert a.graphemeLen(4) == 2 ## ó
+
   var j = i.int
   var r, r2: Rune
   if j < s.len:
@@ -834,6 +916,11 @@ proc lastRune*(s: string; last: int): (Rune, int) =
 
 proc size*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes.
+  runnableExamples:
+    let a = toRunes "aá"
+    doAssert size(a[0]) == 1
+    doAssert size(a[1]) == 2
+
   let v = r.uint32
   if v <= 0x007F: result = 1
   elif v <= 0x07FF: result = 2
@@ -978,9 +1065,15 @@ proc strip*(s: string, leading = true, trailing = true,
   ## Strips leading or trailing ``runes`` from ``s`` and returns
   ## the resulting string.
   ##
-  ## If ``leading`` is true, leading ``runes`` are stripped.
-  ## If ``trailing`` is true, trailing ``runes`` are stripped.
+  ## If ``leading`` is true (default), leading ``runes`` are stripped.
+  ## If ``trailing`` is true (default), trailing ``runes`` are stripped.
   ## If both are false, the string is returned unchanged.
+  runnableExamples:
+    let a = "\táñyóng   "
+    doAssert a.strip == "áñyóng"
+    doAssert a.strip(leading = false) == "\táñyóng"
+    doAssert a.strip(trailing = false) == "áñyóng   "
+
   var
     s_i = 0 ## starting index into string ``s``
     e_i = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
@@ -1028,6 +1121,10 @@ proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
   ## Returns a string of ``count`` Runes ``c``.
   ##
   ## The returned string will have a rune-length of ``count``.
+  runnableExamples:
+    let a = "ñ".runeAt(0)
+    doAssert a.repeat(5) == "ñññññ"
+
   let s = $c
   result = newStringOfCap(count * s.len)
   for i in 0 ..< count:
@@ -1086,6 +1183,89 @@ proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
   else:
     result = s
 
+# -----------------------------------------------------------------------------
+# deprecated
+
+template runeCaseCheck(s, runeProc, skipNonAlpha) =
+  ## Common code for rune.isLower and rune.isUpper.
+  if len(s) == 0: return false
+  var
+    i = 0
+    rune: Rune
+    hasAtleastOneAlphaRune = false
+  while i < len(s):
+    fastRuneAt(s, i, rune, doInc=true)
+    if skipNonAlpha:
+      var runeIsAlpha = isAlpha(rune)
+      if not hasAtleastOneAlphaRune:
+        hasAtleastOneAlphaRune = runeIsAlpha
+      if runeIsAlpha and (not runeProc(rune)):
+        return false
+    else:
+      if not runeProc(rune):
+        return false
+  return if skipNonAlpha: hasAtleastOneAlphaRune else: true
+
+proc isLower*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
+  ## **Deprecated since version 0.20 since its semantics are unclear**
+  ##
+  ## Checks whether ``s`` is lower case.
+  ##
+  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
+  ## runes in ``s`` are lower case. Returns false if none of the
+  ## runes in ``s`` are alphabetical.
+  ##
+  ## If ``skipNonAlpha`` is false, returns true only if all runes in
+  ## ``s`` are alphabetical and lower case.
+  ##
+  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
+  ## an empty string.
+  runeCaseCheck(s, isLower, skipNonAlpha)
+
+proc isUpper*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
+  ## **Deprecated since version 0.20 since its semantics are unclear**
+  ##
+  ## Checks whether ``s`` is upper case.
+  ##
+  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
+  ## runes in ``s`` are upper case. Returns false if none of the
+  ## runes in ``s`` are alphabetical.
+  ##
+  ## If ``skipNonAlpha`` is false, returns true only if all runes in
+  ## ``s`` are alphabetical and upper case.
+  ##
+  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
+  ## an empty string.
+  runeCaseCheck(s, isUpper, skipNonAlpha)
+
+proc isTitle*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".}=
+  ## **Deprecated since version 0.20 since its semantics are unclear**
+  ##
+  ## Checks whether or not ``s`` is a unicode title.
+  ##
+  ## Returns true if the first character in each word inside ``s``
+  ## are upper case and there is at least one character in ``s``.
+  if s.len == 0:
+    return false
+  result = true
+  var
+    i = 0
+    rune: Rune
+  var firstRune = true
+
+  while i < len(s) and result:
+    fastRuneAt(s, i, rune, doInc=true)
+    if not rune.isWhiteSpace() and firstRune:
+      result = rune.isUpper() and result
+      firstRune = false
+    elif rune.isWhiteSpace():
+      firstRune = true
+
+
 
 when isMainModule:
 
@@ -1100,7 +1280,7 @@ when isMainModule:
 
   let
     someString = "öÑ"
-    someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
+    someRunes = toRunes(someString)
     compared = (someString == $someRunes)
   doAssert compared == true
 
