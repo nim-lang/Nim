@@ -1869,7 +1869,10 @@ when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
 
 when defined(boehmgc):
   when defined(windows):
-    const boehmLib = "boehmgc.dll"
+    when sizeof(int) == 8:
+      const boehmLib = "boehmgc64.dll"
+    else:
+      const boehmLib = "boehmgc.dll"
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
   else:
