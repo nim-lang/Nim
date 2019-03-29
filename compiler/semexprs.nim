@@ -2119,9 +2119,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     else:
       result = c.graph.emptyNode
   of mSizeOf: result = semSizeof(c, setMs(n, s))
-  of mOmpParFor:
-    checkMinSonsLen(n, 3, c.config)
-    result = semDirectOp(c, n, flags)
   else:
     result = semDirectOp(c, n, flags)
 
