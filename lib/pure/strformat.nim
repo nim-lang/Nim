@@ -503,19 +503,17 @@ macro `&`*(pattern: string): untyped =
           let msg = getCurrentExceptionMsg()
           error("could not parse ``" & subexpr & "``.\n" & msg, pattern)
         let formatSym = bindSym("formatValue", brOpen)
+        var options = ""
         if f[i] == ':':
           inc i
-          var options = ""
           while i < f.len and f[i] != '}':
             options.add f[i]
             inc i
-          result.add newCall(formatSym, x, newLit(options), res)
-        else:
-          result.add newCall(formatSym, x, newLit(""), res)
         if f[i] == '}':
           inc i
         else:
           doAssert false, "invalid format string: missing '}'"
+        result.add newCall(formatSym, x, newLit(options), res)
     elif f[i] == '}':
       if f[i+1] == '}':
         strlit.add '}'
