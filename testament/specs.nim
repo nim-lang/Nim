@@ -98,7 +98,6 @@ proc extractSpec(filename: string): string =
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""
-  echo result
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -237,7 +236,6 @@ proc parseSpec*(filename: string): TSpec =
       of "":
         discard  
       else:
-        echo filename
         result.parseErrors.addLine "invalid key for test spec: ", e.key & ":" & e.value
 
     of cfgSectionStart:
