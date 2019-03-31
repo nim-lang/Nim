@@ -50,6 +50,7 @@ proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   else:
     result = prev
     if result.kind == tyForward: result.kind = kind
+  #if kind == tyError: result.flags.incl tfCheckedForDestructor
 
 proc newConstraint(c: PContext, k: TTypeKind): PType =
   result = newTypeS(tyBuiltInTypeClass, c)
