@@ -10,9 +10,14 @@
 ## The ``parsecfg`` module implements a high performance configuration file
 ## parser. The configuration file's syntax is similar to the Windows ``.ini``
 ## format, but much more powerful, as it is not a line based parser. String
-## literals, raw string literals and triple quoted string literals are supported
-## as in the Nim programming language.
-
+## literals, raw string literals and triple quoted string literals are 
+## supported as in the Nim programming language.
+## The module supports annotation statements, does not delete comment
+## statements and redundant blank characters, leaving the original style
+## and you can specify annotation delimiters.
+##
+## For example, the following file is fully compatible.
+##
 ## This is an example of how a configuration file may look like:
 ##
 ## .. include:: ../../doc/mytest.cfg
@@ -37,9 +42,9 @@
         of cfgSectionStart:   ## a ``[section]`` has been parsed
           echo("new section: " & e.section)
         of cfgKeyValuePair:
-          echo("key-value-pair: " & e.key & ": " & e.value)
+          echo("key-value-pair: " & e.key & ": " & e.keyVal.value)
         of cfgOption:
-          echo("command: " & e.key & ": " & e.value)
+          echo("command: " & e.key & ": " & e.keyVal.value)
         of cfgError:
           echo(e.msg)
       close(p)
@@ -51,45 +56,46 @@
 ## Examples
 ## --------
 ##
-## This is an example of a configuration file.
+## This is a simple example of a configuration file.
 ##
 ## ::
 ##
-##     charset = "utf-8"
+##     charset="utf-8"
 ##     [Package]
-##     name = "hello"
-##     --threads:on
+##     name="hello"
+##     --threads:"on"
 ##     [Author]
-##     name = "lihf8515"
-##     qq = "10214028"
-##     email = "lihaifeng@wxm.com"
+##     name="lihf8515"
+##     qq="10214028"
+##     email="lihaifeng@wxm.com"
 ##
 ## Creating a configuration file.
 ## ==============================
 ## .. code-block:: nim
 ##
 ##     import parsecfg
-##     var dict=newConfig()
-##     dict.setSectionKey("","charset","utf-8")
-##     dict.setSectionKey("Package","name","hello")
-##     dict.setSectionKey("Package","--threads","on")
-##     dict.setSectionKey("Author","name","lihf8515")
-##     dict.setSectionKey("Author","qq","10214028")
-##     dict.setSectionKey("Author","email","lihaifeng@wxm.com")
-##     dict.writeConfig("config.ini")
+##     var cfg=newConfig()
+##     cfg.set("","charset","utf-8")
+##     cfg.set("Package","name","hello")
+##     cfg.set("Package","--threads","on")
+##     cfg.set("Author","name","lihf8515")
+##     cfg.set("Author","qq","10214028")
+##     cfg.set("Author","email","lihaifeng@wxm.com")
+##     cfg.write("config.ini")
+##     echo cfg
 ##
 ## Reading a configuration file.
 ## =============================
 ## .. code-block:: nim
 ##
 ##     import parsecfg
-##     var dict = loadConfig("config.ini")
-##     var charset = dict.getSectionValue("","charset")
-##     var threads = dict.getSectionValue("Package","--threads")
-##     var pname = dict.getSectionValue("Package","name")
-##     var name = dict.getSectionValue("Author","name")
-##     var qq = dict.getSectionValue("Author","qq")
-##     var email = dict.getSectionValue("Author","email")
+##     var cfg = loadConfig("config.ini")
+##     var charset = cfg.get("","charset")
+##     var threads = cfg.get("Package","--threads")
+##     var pname = cfg.get("Package","name")
+##     var name = cfg.get("Author","name")
+##     var qq = cfg.get("Author","qq")
+##     var email = cfg.get("Author","email")
 ##     echo pname & "\n" & name & "\n" & qq & "\n" & email
 ##
 ## Modifying a configuration file.
@@ -97,18 +103,20 @@
 ## .. code-block:: nim
 ##
 ##     import parsecfg
-##     var dict = loadConfig("config.ini")
-##     dict.setSectionKey("Author","name","lhf")
-##     dict.writeConfig("config.ini")
+##     var cfg = loadConfig("config.ini")
+##     cfg.set("Author","name","lhf")
+##     cfg.write("config.ini")
+##     echo cfg
 ##
 ## Deleting a section key in a configuration file.
 ## ===============================================
 ## .. code-block:: nim
 ##
 ##     import parsecfg
-##     var dict = loadConfig("config.ini")
-##     dict.delSectionKey("Author","email")
-##     dict.writeConfig("config.ini")
+##     var cfg = loadConfig("config.ini")
+##     cfg.del("Author","email")
+##     cfg.write("config.ini")
+##     echo cfg
 
 import
   strutils, lexbase, streams, tables
@@ -116,46 +124,60 @@ import
 include "system/inclrtl"
 
 type
-  CfgEventKind* = enum ## enumeration of all events that may occur when parsing
-    cfgEof,             ## end of file reached
-    cfgSectionStart,    ## a ``[section]`` has been parsed
-    cfgKeyValuePair,    ## a ``key=value`` pair has been detected
-    cfgOption,          ## a ``--key=value`` command line option
-    cfgError            ## an error occurred during parsing
+  CfgEventKind* = enum # enumeration of all events that may occur when parsing
+    cfgEof,            # end of file reached
+    cfgSectionStart,   # a ``[section]`` has been parsed
+    cfgKeyValuePair,   # a ``key=value`` pair has been detected
+    cfgOption,         # a ``--key=value`` command line option
+    cfgError           # an error occurred during parsing
 
-  CfgEvent* = object of RootObj ## describes a parsing event
-    case kind*: CfgEventKind    ## the kind of the event
+  CfgEvent* = object of RootObj    # describes a parsing event
+    case kind*: CfgEventKind       # the kind of the event
     of cfgEof: nil
     of cfgSectionStart:
-      section*: string           ## `section` contains the name of the
-                                 ## parsed section start (syntax: ``[section]``)
+      section*: string             # `section` contains the name of the
+      sectionVal*: SectionPair     # parsed section start (syntax: ``[section]``)
+                                   # 'sectionVal' is the other part of `section`
     of cfgKeyValuePair, cfgOption:
-      key*, value*: string       ## contains the (key, value) pair if an option
-                                 ## of the form ``--key: value`` or an ordinary
-                                 ## ``key= value`` pair has been parsed.
-                                 ## ``value==""`` if it was not specified in the
-                                 ## configuration file.
-    of cfgError:                 ## the parser encountered an error: `msg`
-      msg*: string               ## contains the error message. No exceptions
-                                 ## are thrown if a parse error occurs.
+      key*: string                 # contains the (key, value) pair if an option.
+      value*{.deprecated.}: string # `value` field is set for compatibility with 
+                                   # older versions and may be deprecated in the
+                                   # future.we recommend that packages that have
+                                   # already used `value` field be replaced by 
+                                   # `keyVal.value` field.
+      keyVal*: KeyValPair          # of the form ``--key: value`` or an ordinary
+                                   # ``key= value`` pair has been parsed.
+                                   # ``value==""`` if it was not specified in the
+                                   # configuration file.
+                                 
+    of cfgError:                   # the parser encountered an error: `msg`
+      msg*: string                 # contains the error message. No exceptions
+                                   # are thrown if a parse error occurs.
 
-  TokKind = enum
-    tkInvalid, tkEof,
-    tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
-  Token = object             # a token
-    kind: TokKind            # the type of the token
-    literal: string          # the parsed (string) literal
+  SectionPair = tuple            
+    tokenFrontBlank: string     # Blank in front of the `[`
+    tokenLeft: string           # `[`
+    sectionFrontBlank: string   # Blank in front of the `section`
+    sectionRearBlank: string    # Whitespace after `section`
+    tokenRight: string          # `]`
+    tokenRearBlank: string      # Whitespace after `]`
+    comment: string              
+                          
+  KeyValPair = tuple             
+    keyFrontBlank: string       # Blank in front of the `key`
+    keyRearBlank: string        # Whitespace after `key`
+    token: string               # `=` or `:`
+    valFrontBlank: string       # Blank in front of the `value`
+    value: string               # value
+    valRearBlank: string        # Whitespace after `value`
+    comment: string              
 
-  CfgParser* = object of BaseLexer ## the parser object.
-    tok: Token
+  CfgParser* = object of BaseLexer # the parser object.
+    literal: string                # the parsed (string) literal
     filename: string
+    commentSeparato: string
 
 # implementation
-
-const
-  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\', '-'}
-
-proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
 proc open*(c: var CfgParser, input: Stream, filename: string,
            lineOffset = 0) {.rtl, extern: "npc$1".} =
@@ -164,10 +186,9 @@ proc open*(c: var CfgParser, input: Stream, filename: string,
   ## number information in the generated error messages.
   lexbase.open(c, input)
   c.filename = filename
-  c.tok.kind = tkInvalid
-  c.tok.literal = ""
+  c.literal = ""
+  c.commentSeparato = "#;"
   inc(c.lineNumber, lineOffset)
-  rawGetTok(c, c.tok)
 
 proc close*(c: var CfgParser) {.rtl, extern: "npc$1".} =
   ## closes the parser `c` and its associated input stream.
@@ -204,169 +225,60 @@ proc handleDecChars(c: var CfgParser, xi: var int) =
     xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var CfgParser, tok: var Token) =
+proc getEscapedChar(c: var CfgParser) =
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N':
-    add(tok.literal, "\n")
+    add(c.literal, "\n")
     inc(c.bufpos)
   of 'r', 'R', 'c', 'C':
-    add(tok.literal, '\c')
+    add(c.literal, '\c')
     inc(c.bufpos)
   of 'l', 'L':
-    add(tok.literal, '\L')
+    add(c.literal, '\L')
     inc(c.bufpos)
   of 'f', 'F':
-    add(tok.literal, '\f')
+    add(c.literal, '\f')
     inc(c.bufpos)
   of 'e', 'E':
-    add(tok.literal, '\e')
+    add(c.literal, '\e')
     inc(c.bufpos)
   of 'a', 'A':
-    add(tok.literal, '\a')
+    add(c.literal, '\a')
     inc(c.bufpos)
   of 'b', 'B':
-    add(tok.literal, '\b')
+    add(c.literal, '\b')
     inc(c.bufpos)
   of 'v', 'V':
-    add(tok.literal, '\v')
+    add(c.literal, '\v')
     inc(c.bufpos)
   of 't', 'T':
-    add(tok.literal, '\t')
+    add(c.literal, '\t')
     inc(c.bufpos)
   of '\'', '"':
-    add(tok.literal, c.buf[c.bufpos])
+    add(c.literal, c.buf[c.bufpos])
     inc(c.bufpos)
   of '\\':
-    add(tok.literal, '\\')
+    add(c.literal, '\\')
     inc(c.bufpos)
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
-    add(tok.literal, chr(xi))
+    add(c.literal, chr(xi))
   of '0'..'9':
     var xi = 0
     handleDecChars(c, xi)
-    if (xi <= 255): add(tok.literal, chr(xi))
-    else: tok.kind = tkInvalid
-  else: tok.kind = tkInvalid
+    if (xi <= 255): add(c.literal, chr(xi))
+    else: discard
+  else: discard
 
 proc handleCRLF(c: var CfgParser, pos: int): int =
   case c.buf[pos]
   of '\c': result = lexbase.handleCR(c, pos)
   of '\L': result = lexbase.handleLF(c, pos)
   else: result = pos
-
-proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
-  var pos = c.bufpos + 1          # skip "
-  tok.kind = tkSymbol
-  if (c.buf[pos] == '"') and (c.buf[pos + 1] == '"'):
-    # long string literal:
-    inc(pos, 2)               # skip ""
-                              # skip leading newline:
-    pos = handleCRLF(c, pos)
-    while true:
-      case c.buf[pos]
-      of '"':
-        if (c.buf[pos + 1] == '"') and (c.buf[pos + 2] == '"'): break
-        add(tok.literal, '"')
-        inc(pos)
-      of '\c', '\L':
-        pos = handleCRLF(c, pos)
-        add(tok.literal, "\n")
-      of lexbase.EndOfFile:
-        tok.kind = tkInvalid
-        break
-      else:
-        add(tok.literal, c.buf[pos])
-        inc(pos)
-    c.bufpos = pos + 3       # skip the three """
-  else:
-    # ordinary string literal
-    while true:
-      var ch = c.buf[pos]
-      if ch == '"':
-        inc(pos)              # skip '"'
-        break
-      if ch in {'\c', '\L', lexbase.EndOfFile}:
-        tok.kind = tkInvalid
-        break
-      if (ch == '\\') and not rawMode:
-        c.bufpos = pos
-        getEscapedChar(c, tok)
-        pos = c.bufpos
-      else:
-        add(tok.literal, ch)
-        inc(pos)
-    c.bufpos = pos
-
-proc getSymbol(c: var CfgParser, tok: var Token) =
-  var pos = c.bufpos
-  while true:
-    add(tok.literal, c.buf[pos])
-    inc(pos)
-    if not (c.buf[pos] in SymChars): break
-  c.bufpos = pos
-  tok.kind = tkSymbol
-
-proc skip(c: var CfgParser) =
-  var pos = c.bufpos
-  while true:
-    case c.buf[pos]
-    of ' ', '\t':
-      inc(pos)
-    of '#', ';':
-      while not (c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
-    of '\c', '\L':
-      pos = handleCRLF(c, pos)
-    else:
-      break                   # EndOfFile also leaves the loop
-  c.bufpos = pos
-
-proc rawGetTok(c: var CfgParser, tok: var Token) =
-  tok.kind = tkInvalid
-  setLen(tok.literal, 0)
-  skip(c)
-  case c.buf[c.bufpos]
-  of '=':
-    tok.kind = tkEquals
-    inc(c.bufpos)
-    tok.literal = "="
-  of '-':
-    inc(c.bufpos)
-    if c.buf[c.bufpos] == '-':
-      inc(c.bufpos)
-      tok.kind = tkDashDash
-      tok.literal = "--"
-    else:
-      dec(c.bufpos)
-      getSymbol(c, tok)
-  of ':':
-    tok.kind = tkColon
-    inc(c.bufpos)
-    tok.literal = ":"
-  of 'r', 'R':
-    if c.buf[c.bufpos + 1] == '\"':
-      inc(c.bufpos)
-      getString(c, tok, true)
-    else:
-      getSymbol(c, tok)
-  of '[':
-    tok.kind = tkBracketLe
-    inc(c.bufpos)
-    tok.literal = "]"
-  of ']':
-    tok.kind = tkBracketRi
-    inc(c.bufpos)
-    tok.literal = "]"
-  of '"':
-    getString(c, tok, false)
-  of lexbase.EndOfFile:
-    tok.kind = tkEof
-    tok.literal = "[EOF]"
-  else: getSymbol(c, tok)
 
 proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formatted error message containing current line and
@@ -387,108 +299,11 @@ proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
   of cfgSectionStart: result = c.warningStr("section ignored: " & e.section)
   of cfgKeyValuePair: result = c.warningStr("key ignored: " & e.key)
   of cfgOption:
-    result = c.warningStr("command ignored: " & e.key & ": " & e.value)
+    result = c.warningStr("command ignored: " & e.key & ": " & e.keyVal.value)
   of cfgError: result = e.msg
   of cfgEof: result = ""
 
-proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
-  if c.tok.kind == tkSymbol:
-    result.kind = kind
-    result.key = c.tok.literal
-    result.value = ""
-    rawGetTok(c, c.tok)
-    if c.tok.kind in {tkEquals, tkColon}:
-      rawGetTok(c, c.tok)
-      if c.tok.kind == tkSymbol:
-        result.value = c.tok.literal
-      else:
-        reset result
-        result.kind = cfgError
-        result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
-      rawGetTok(c, c.tok)
-  else:
-    result.kind = cfgError
-    result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
-    rawGetTok(c, c.tok)
-
-proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
-  ## retrieves the first/next event. This controls the parser.
-  case c.tok.kind
-  of tkEof:
-    result.kind = cfgEof
-  of tkDashDash:
-    rawGetTok(c, c.tok)
-    result = getKeyValPair(c, cfgOption)
-  of tkSymbol:
-    result = getKeyValPair(c, cfgKeyValuePair)
-  of tkBracketLe:
-    rawGetTok(c, c.tok)
-    if c.tok.kind == tkSymbol:
-      result.kind = cfgSectionStart
-      result.section = c.tok.literal
-    else:
-      result.kind = cfgError
-      result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
-    rawGetTok(c, c.tok)
-    if c.tok.kind == tkBracketRi:
-      rawGetTok(c, c.tok)
-    else:
-      reset(result)
-      result.kind = cfgError
-      result.msg = errorStr(c, "']' expected, but found: " & c.tok.literal)
-  of tkInvalid, tkEquals, tkColon, tkBracketRi:
-    result.kind = cfgError
-    result.msg = errorStr(c, "invalid token: " & c.tok.literal)
-    rawGetTok(c, c.tok)
-
-# ---------------- Configuration file related operations ----------------
-type
-  Config* = OrderedTableRef[string, OrderedTableRef[string, string]]
-
-proc newConfig*(): Config =
-  ## Create a new configuration table.
-  ## Useful when wanting to create a configuration file.
-  result = newOrderedTable[string, OrderedTableRef[string, string]]()
-
-proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
-  ## Load the specified configuration from stream into a new Config instance.
-  ## `filename` parameter is only used for nicer error messages.
-  var dict = newOrderedTable[string, OrderedTableRef[string, string]]()
-  var curSection = "" ## Current section,
-                      ## the default value of the current section is "",
-                      ## which means that the current section is a common
-  var p: CfgParser
-  open(p, stream, filename)
-  while true:
-    var e = next(p)
-    case e.kind
-    of cfgEof:
-      break
-    of cfgSectionStart: # Only look for the first time the Section
-      curSection = e.section
-    of cfgKeyValuePair:
-      var t = newOrderedTable[string, string]()
-      if dict.hasKey(curSection):
-        t = dict[curSection]
-      t[e.key] = e.value
-      dict[curSection] = t
-    of cfgOption:
-      var c = newOrderedTable[string, string]()
-      if dict.hasKey(curSection):
-        c = dict[curSection]
-      c["--" & e.key] = e.value
-      dict[curSection] = c
-    of cfgError:
-      break
-  close(p)
-  result = dict
-
-proc loadConfig*(filename: string): Config =
-  ## Load the specified configuration file into a new Config instance.
-  let file = open(filename, fmRead)
-  let fileStream = newFileStream(file)
-  defer: fileStream.close()
-  result = fileStream.loadConfig(filename)
+# =========================================================================
 
 proc replace(s: string): string =
   var d = ""
@@ -508,89 +323,499 @@ proc replace(s: string): string =
     inc(i)
   result = d
 
-proc writeConfig*(dict: Config, stream: Stream) =
-  ## Writes the contents of the table to the specified stream
-  ##
-  ## **Note:** Comment statement will be ignored.
-  for section, sectionData in dict.pairs():
-    if section != "": ## Not general section
-      if not allCharsInSet(section, SymChars): ## Non system character
-        stream.writeLine("[\"" & section & "\"]")
+proc skipCRLF(c: var CfgParser) =
+  var pos = c.bufpos
+  pos = handleCRLF(c, pos)
+  c.bufpos = pos
+
+proc mySplit(s: string): tuple =
+  var l=len(s)-1
+  var t: tuple[front: string, rear: string]
+  for i in countdown(l, 0):
+    if not (s[i] in {' ', '\t'}):
+      t.front = s[0..i]
+      t.rear = s[i+1..l]
+      break
+  result = t
+
+proc readBlank(c: var CfgParser) =
+  setLen(c.literal, 0)
+  var pos = c.bufpos
+  while true:
+    if c.buf[pos] in {' ', '\t'}:
+      add(c.literal, c.buf[pos])
+      inc(pos)
+    else:
+      break
+  c.bufpos = pos
+
+proc readSection(c: var CfgParser) =
+  setLen(c.literal, 0)
+  var pos = c.bufpos
+  while true:
+    if c.buf[pos] in {']', '\c', '\L', lexbase.EndOfFile}: break
+    add(c.literal, c.buf[pos])
+    inc(pos)
+  c.bufpos = pos
+
+proc readComment(c: var CfgParser) =
+  setLen(c.literal, 0)
+  var pos = c.bufpos
+  while true:
+    if c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}:
+      break
+    else:
+      add(c.literal, c.buf[pos])
+      inc(pos)
+  c.bufpos = pos
+
+proc readKey(c: var CfgParser) =
+  setLen(c.literal, 0)
+  var pos = c.bufpos
+  while true:
+    if c.buf[pos] in {'=', ':', '\c', '\L', lexbase.EndOfFile}: break
+    add(c.literal, c.buf[pos])
+    inc(pos)
+  c.bufpos = pos
+
+proc readValue(c: var CfgParser, rawMode: bool) =
+  setLen(c.literal, 0)
+  var pos = c.bufpos
+  if (c.buf[pos] == '"') and (c.buf[pos + 1] == '"') and (c.buf[pos + 2] == '"'):
+    # long string literal:
+    inc(pos, 3)               # skip """
+                              # skip leading newline:
+    c.literal = c.literal & "\"\"\""
+    pos = handleCRLF(c, pos)
+    while true:
+      case c.buf[pos]
+      of '"':
+        if (c.buf[pos + 1] == '"') and (c.buf[pos + 2] == '"'): break
+        add(c.literal, '"')
+        inc(pos)
+      of '\c', '\L':
+        pos = handleCRLF(c, pos)
+        add(c.literal, "\n")
+      of lexbase.EndOfFile:
+        break
       else:
-        stream.writeLine("[" & section & "]")
-    for key, value in sectionData.pairs():
-      var kv, segmentChar: string
-      if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
-        segmentChar = ":"
-        if not allCharsInSet(key[2..key.len()-1], SymChars):
-          kv.add("--\"")
-          kv.add(key[2..key.len()-1])
-          kv.add("\"")
+        add(c.literal, c.buf[pos])
+        inc(pos)
+    add(c.literal, "\"\"\"")
+    c.bufpos = pos + 3       # skip the three """
+  else:
+    # ordinary string literal
+    if c.buf[pos] == '"':
+      c.literal = "\""
+      inc(pos)
+      while true:
+        var ch = c.buf[pos]
+        if ch == '"':
+          add(c.literal, ch)
+          inc(pos)
+          break
+        if ch in {'\c', '\L', lexbase.EndOfFile}:
+          break
+        if (ch == '\\') and not rawMode:
+          c.bufpos = pos
+          getEscapedChar(c)
+          pos = c.bufpos
         else:
-          kv = key
+          add(c.literal, ch)
+          inc(pos)
+      c.bufpos = pos
+    else:
+      setLen(c.literal, 0)
+      var pos = c.bufpos
+      while true:
+        if c.commentSeparato.contains(c.buf[pos]): break
+        if c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}: break
+        add(c.literal, c.buf[pos])
+        inc(pos)
+      c.bufpos = pos
+
+proc handleLineComment(c: var CfgParser, frontBlank: string): CfgEvent =
+  ## Handling the entire line is an annotation situation.
+  result.kind = cfgKeyValuePair
+  result.keyVal.keyFrontBlank = frontBlank
+  result.key = ""
+  result.keyVal.keyRearBlank = ""
+  result.keyVal.token = ""
+  result.keyVal.valFrontBlank = ""
+  result.keyVal.value = ""
+  result.value = ""
+  result.keyVal.valRearBlank = ""
+  readComment(c)
+  result.keyVal.comment = c.literal
+  skipCRLF(c)
+
+proc handleSectionComment(c: var CfgParser, frontBlank, 
+                          sectionFrontBlank: string): CfgEvent =
+  ## Handle annotated situations in section
+  result.kind = cfgKeyValuePair
+  result.keyVal.keyFrontBlank = frontBlank
+  result.key = ""
+  result.keyVal.keyRearBlank = ""
+  result.keyVal.token = ""
+  result.keyVal.valFrontBlank = ""
+  result.keyVal.value = ""
+  result.value = ""
+  result.keyVal.valRearBlank = ""
+  readComment(c)
+  result.keyVal.comment = '[' & sectionFrontBlank & c.literal
+  skipCRLF(c)
+
+proc handleValueComment(c: var CfgParser, ret: var CfgEvent) =
+  var temp = mySplit(c.literal)
+  ret.keyVal.value = temp[0]
+  # The following `if` statements are intended to be compatible 
+  # with older versions and will be deprecated in the future.
+  if temp[0].startsWith("\"\"\"") and temp[0].endsWith("\"\"\""):
+    ret.value = temp[0].substr(3, len(temp[0]) - 4)
+  elif (temp[0].startsWith("r\"") or temp[0].startsWith("R\"")) and temp[0].endsWith('"'):
+    ret.value = temp[0].substr(2, len(temp[0]) - 2)
+  elif temp[0].startsWith('"') and temp[0].endsWith('"'):
+    ret.value = temp[0].substr(1, len(temp[0]) - 2)
+  else:
+    ret.value = temp[0]
+  ret.keyVal.valRearBlank = temp[1]
+  case c.buf[c.bufpos]
+  of '\c', '\L', lexbase.EndOfFile:
+    ret.keyVal.comment = ""
+    skipCRLF(c)
+  else: # read to comment characte
+    readComment(c)
+    ret.keyVal.comment = c.literal
+    skipCRLF(c)
+
+proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
+  ## retrieves the first/next event. This controls the parser.
+  readBlank(c) # read the blank space in the front of the line.
+  var frontBlank = c.literal
+  if c.commentSeparato.contains(c.buf[c.bufpos]):
+    result = handleLineComment(c, frontBlank)
+    return
+  case c.buf[c.bufpos]
+  of lexbase.EndOfFile:
+    result.kind = cfgEof
+  of '\c', '\L': # comment field processing as key value section.
+    result = handleLineComment(c, frontBlank)
+  of '[': # it could be `section`
+    inc(c.bufpos) # skip `[`
+    readBlank(c) # read blank in front of `section`
+    var sectionFrontBlank = c.literal
+    if c.commentSeparato.contains(c.buf[c.bufpos]):
+      result = handleSectionComment(c, frontBlank, sectionFrontBlank)
+    case c.buf[c.bufpos]
+    of ']', '\c', '\L', lexbase.EndOfFile: # is not a valid `section`,
+      result = handleSectionComment(c, frontBlank, sectionFrontBlank)
+    else: # read valid characte.
+      readSection(c)
+      case c.buf[c.bufpos]
+      of '\c', '\L', lexbase.EndOfFile:            # did not read `]`，
+                                                   # comment field processing
+                                                   # as key value section.
+        result = handleSectionComment(c, frontBlank, sectionFrontBlank)
+      else: ## read `]`
+        result.kind = cfgSectionStart
+        result.sectionVal.tokenFrontBlank = frontBlank
+        result.sectionVal.tokenLeft = "["
+        result.sectionVal.sectionFrontBlank = sectionFrontBlank
+        var temp = mySplit(c.literal)
+        result.section = temp[0]
+        result.sectionVal.sectionRearBlank = temp[1]
+        result.sectionVal.tokenRight ="]"
+        inc(c.bufpos) # skip `]`
+        readBlank(c) # read the whitespace after `]`
+        result.sectionVal.tokenRearBlank = c.literal
+        readComment(c)
+        result.sectionVal.comment = c.literal
+        skipCRLF(c)
+  else: # is the key value, does the key value processing
+    result.kind = cfgKeyValuePair
+    result.keyVal.keyFrontBlank = frontBlank
+    readKey(c) # read key
+    var temp = mySplit(c.literal)
+    if temp[0].startsWith("--"):
+      result.kind = cfgOption
+    else:
+      result.kind = cfgKeyValuePair
+    case c.buf[c.bufpos]
+    of '\c', '\L', lexbase.EndOfFile: # did not read `=` or `:`
+      if result.kind == cfgKeyValuePair:
+        result.key = ""
+        result.keyVal.keyRearBlank = ""
+        result.keyVal.token = ""
+        result.keyVal.valFrontBlank = ""
+        result.keyVal.value = ""
+        result.value = ""
+        result.keyVal.valRearBlank = ""
+        result.keyVal.comment = c.literal
+        skipCRLF(c)
       else:
-        segmentChar = "="
-        kv = key
-      if value != "": ## If the key is not empty
-        if not allCharsInSet(value, SymChars):
-          if find(value, '"') == -1:
-            kv.add(segmentChar)
-            kv.add("\"")
-            kv.add(replace(value))
-            kv.add("\"")
-          else:
-            kv.add(segmentChar)
-            kv.add("\"\"\"")
-            kv.add(replace(value))
-            kv.add("\"\"\"")
+        result.key = temp[0]
+        result.keyVal.keyRearBlank = temp[1]
+        result.keyVal.token = ""
+        result.keyVal.valFrontBlank = ""
+        result.keyVal.value = ""
+        result.value = ""
+        result.keyVal.valRearBlank = ""
+        result.keyVal.comment = ""
+        skipCRLF(c)
+    else:
+      result.key = temp[0]
+      result.keyVal.keyRearBlank = temp[1]
+      if c.buf[c.bufpos] == ':':
+        result.keyVal.token = ":"
+      else:
+        result.keyVal.token = "="
+      inc(c.bufpos)
+      readBlank(c) # read the blank front of the value
+      case c.buf[c.bufpos]
+      of lexbase.EndOfFile: # value not read
+        result.keyVal.valFrontBlank = c.literal
+        result.keyVal.value = ""
+        result.value = ""
+        result.keyVal.valRearBlank = ""
+        result.keyVal.comment = ""
+        skipCRLF(c)
+      of '\c', '\L':
+        skipCRLF(c)
+        readBlank(c) # read the blank front of the value
+        if c.buf[c.bufpos] == '"' and c.buf[c.bufpos+1] == '"' and c.buf[c.bufpos+2] == '"':
+          result.keyVal.valFrontBlank = c.literal
+          readValue(c, true)
+          handleValueComment(c, result)
         else:
-          kv.add(segmentChar)
-          kv.add(value)
-      stream.writeLine(kv)
+          result.keyVal.valFrontBlank = c.literal
+          result.keyVal.value = ""
+          result.value = ""
+          result.keyVal.valRearBlank = ""
+          result.keyVal.comment = ""
+          skipCRLF(c)
+      else: # read valid value
+        result.keyVal.valFrontBlank = c.literal
+        if c.buf[c.bufpos] == '"':
+          readValue(c, false) # escape characte
+        else:
+          readValue(c, true) # non-escape characte
+        handleValueComment(c, result)
+
+# ================= Configuration file related operations ===================
+type
+  Config* = OrderedTableRef[string, (SectionPair, 
+                                     OrderedTableRef[string, KeyValPair])]
+
+proc newConfig*(): Config =
+  ## Create a new configuration table.
+  ## Useful when wanting to create a configuration file.
+  result = newOrderedTable[string, (SectionPair, 
+                                    OrderedTableRef[string, KeyValPair])]()
+
+proc loadConfig*(stream: Stream, filename: string = "[stream]",
+                 commentSeparato: string = "#;"): Config =
+  ## loadConfig the specified configuration from stream into a new Config
+  ## instance.`filename` parameter is only used for nicer error messages.
+  ## `commentSeparato` default value is `"#;"`
+  var dict = newOrderedTable[string, (SectionPair, 
+                                      OrderedTableRef[string, KeyValPair])]()
+  var curSection = "" # Current section,
+                      # the default value of the current section is "",
+                      # which means that the current section is a common
+  var p: CfgParser
+  open(p, stream, filename)
+  p.commentSeparato = commentSeparato
+  while true:
+    var e = next(p)
+    case e.kind
+    of cfgEof:
+      break
+    of cfgSectionStart: # Only look for the first time the Section
+      var tp: tuple[sec: SectionPair, kv: OrderedTableRef[string, KeyValPair]]
+      var t = newOrderedTable[string, KeyValPair]()
+      curSection = e.section
+      tp.sec = e.sectionVal
+      tp.kv = t
+      dict[curSection] = tp
+    of cfgKeyValuePair, cfgOption:
+      var tp: tuple[sec: SectionPair, kv: OrderedTableRef[string, KeyValPair]]
+      var t = newOrderedTable[string, KeyValPair]()
+      if dict.hasKey(curSection):
+        tp = dict[curSection]
+        t = tp.kv
+      if e.key == "":
+        t.add(e.key, e.keyVal)
+      else:
+        t[e.key] = e.keyVal
+      tp.kv = t
+      dict[curSection] = tp
+    of cfgError:
+      break
+  close(p)
+  result = dict
+
+proc loadConfig*(filename: string, commentSeparato: string = "#;"): Config =
+  ## loadConfig the specified configuration file into a new Config instance.
+  ## `commentSeparato` default value is `"#;"`
+  let file = open(filename, fmRead)
+  let fileStream = newFileStream(file)
+  defer: fileStream.close()
+  result = fileStream.loadConfig(filename, commentSeparato)
+
+proc write*(dict: Config, stream: Stream) =
+  ## Writes the contents of the table to the specified stream.
+  for section, tp in dict.pairs():
+    var secPair = tp[0]
+    var kvPair = tp[1]
+    if section != "": # Not general section
+      stream.writeLine(secPair.tokenFrontBlank & secPair.tokenLeft &
+                       secPair.sectionFrontBlank & section &
+                       secPair.sectionRearBlank & secPair.tokenRight &
+                       secPair.tokenRearBlank & secPair.comment)
+    for key, kv in kvPair.pairs():
+      var s = ""
+      s.add(kv.keyFrontBlank)
+      s.add(key)
+      s.add(kv.keyRearBlank)
+      s.add(kv.token)
+      s.add(kv.valFrontBlank)
+      if kv.value.startsWith("\"\"\"") and kv.value.endsWith("\"\"\""):
+        s.add(kv.value)
+      elif (kv.value.startsWith("r\"") or kv.value.startsWith("R\"")) and kv.value.endsWith('"'):
+        s.add(kv.value)
+      elif kv.value.startsWith('"') and kv.value.endsWith('"'):
+        s.add(replace(kv.value))
+      else:
+        s.add(kv.value)
+      s.add(kv.valRearBlank)
+      s.add(kv.comment)
+      stream.writeLine(s)
 
 proc `$`*(dict: Config): string =
   ## Writes the contents of the table to string.
-  ## Note: Comment statement will be ignored.
   let stream = newStringStream()
   defer: stream.close()
-  dict.writeConfig(stream)
+  dict.write(stream)
   result = stream.data
 
-proc writeConfig*(dict: Config, filename: string) =
+proc write*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
-  ## Note: Comment statement will be ignored.
   let file = open(filename, fmWrite)
   defer: file.close()
   let fileStream = newFileStream(file)
-  dict.writeConfig(fileStream)
+  dict.write(fileStream)
 
-proc getSectionValue*(dict: Config, section, key: string): string =
+proc get*(dict: Config, section, key: string): string =
   ## Gets the Key value of the specified Section.
   if dict.haskey(section):
-    if dict[section].hasKey(key):
-      result = dict[section][key]
+    if dict[section][1].hasKey(key):
+      result = dict[section][1][key].value
+    elif dict[section][1].hasKey('"' & key & '"'):
+      result = dict[section][1]['"' & key & '"'].value
+    if result != "":
+      if result.startsWith("\"\"\"") and result.endsWith("\"\"\""):
+        result = result.substr(3, len(result) - 4)
+      elif (result.startsWith("r\"") or result.startsWith("R\"")) and result.endsWith('"'):
+        result = result.substr(2, len(result) - 2)
+      elif result.startsWith('"') and result.endsWith('"'):
+        result = result.substr(1, len(result) - 2)
     else:
       result = ""
   else:
     result = ""
 
-proc setSectionKey*(dict: var Config, section, key, value: string) =
+proc set*(dict: var Config, section, key, value: string) =
   ## Sets the Key value of the specified Section.
-  var t = newOrderedTable[string, string]()
+  var tp: tuple[sec: SectionPair, kv: OrderedTableRef[string, KeyValPair]]
+  var t = newOrderedTable[string, KeyValPair]()
+  var kvp: KeyValPair
   if dict.hasKey(section):
-    t = dict[section]
-  t[key] = value
-  dict[section] = t
+    tp = dict[section]
+    t = tp.kv
+    var tempKey = ""
+    if t.hasKey(key):
+      tempKey = key
+    elif t.hasKey('"' & key & '"'):
+      tempKey = '"' & key & '"'
+    if tempKey != "":
+      if t[tempKey].value.startsWith("\"\"\"") and t[tempKey].value.endsWith("\"\"\""):
+        t[tempKey].value = "\"" & value & "\""
+      elif (t[tempKey].value.startsWith("r\"") or t[tempKey].value.startsWith("R\"")) and t[tempKey].value.endsWith('"'):
+        t[tempKey].value = "\"" & value & "\""
+      elif t[tempKey].value.startsWith('"') and t[tempKey].value.endsWith('"'):
+        t[tempKey].value = "\"" & value & "\""
+      else:
+        t[tempKey].value = replace(value)
+    else:
+      if key.startsWith("--"):
+        kvp.token = ":"
+      else:
+        kvp.token = "="
+      kvp.value = "\"" & value & "\""
+      t[key] = kvp
+    tp.kv = t
+    dict[section] = tp
+  else:
+    if key.startsWith("--"):
+      kvp.token = ":"
+    else:
+      kvp.token = "="
+    kvp.value = "\"" & value & "\""
+    t[key] = kvp
+    tp.kv = t
+    tp.sec.tokenLeft = "["
+    tp.sec.tokenRight = "]"
+    dict[section] = tp
 
-proc delSection*(dict: var Config, section: string) =
+proc del*(dict: var Config, section: string) =
   ## Deletes the specified section and all of its sub keys.
-  dict.del(section)
+  tables.del(dict, section)
 
-proc delSectionKey*(dict: var Config, section, key: string) =
+proc del*(dict: var Config, section, key: string) =
   ## Delete the key of the specified section.
   if dict.haskey(section):
-    if dict[section].hasKey(key):
-      if dict[section].len() == 1:
-        dict.del(section)
+    if dict[section][1].hasKey(key):
+      if dict[section][1].len() == 1:
+        tables.del(dict, section)
       else:
-        dict[section].del(key)
+        tables.del(dict[section][1], key)
+
+# =========================================================================
+proc writeConfig*(dict: Config, stream: Stream) 
+                 {.deprecated: "use write method".} =
+  dict.write(stream)
+
+proc writeConfig*(dict: Config, filename: string) 
+                 {.deprecated: "use write method".} =
+  ## Writes the contents of the table to the specified configuration file.
+  ## This method has been deprecated and it is recommended that you use
+  ## the `write` method.
+  dict.write(filename)
+
+proc getSectionValue*(dict: Config, section, key: string): string 
+                     {.deprecated: "use get method".} =
+  ## Gets the Key value of the specified Section.
+  ## This method has been deprecated and it is recommended that you use
+  ## the `get` method.
+  result = dict.get(section, key)
+
+proc setSectionKey*(dict: var Config, section, key, value: string) 
+                   {.deprecated: "use set method".} =
+  ## Sets the Key value of the specified Section.
+  ## This method has been deprecated and it is recommended that you use
+  ## the `set` method.
+  dict.set(section, key, value)
+
+proc delSection*(dict: var Config, section: string) 
+                {.deprecated: "use del method".} =
+  ## Deletes the specified section and all of its sub keys.
+  ## This method has been deprecated and it is recommended that you use
+  ## the `del` method.
+  dict.del(section)
+
+proc delSectionKey*(dict: var Config, section, key: string) 
+                   {.deprecated: "use del method".} =
+  ## Delete the key of the specified section.
+  ## This method has been deprecated and it is recommended that you use
+  ## the `del` method.
+  dict.del(section, key)
