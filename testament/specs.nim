@@ -98,6 +98,7 @@ proc extractSpec(filename: string): string =
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""
+  echo result
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -233,8 +234,11 @@ proc parseSpec*(filename: string): TSpec =
             result.targets.incl(targetJS)
           else:
             result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "":
+        discard  
       else:
-        result.parseErrors.addLine "invalid key for test spec: ", e.key
+        echo filename
+        result.parseErrors.addLine "invalid key for test spec: ", e.key & ":" & e.value
 
     of cfgSectionStart:
       result.parseErrors.addLine "section ignored: ", e.section
