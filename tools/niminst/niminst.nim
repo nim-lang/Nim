@@ -268,11 +268,13 @@ proc pathFlags(p: var CfgParser, k, v: string,
   case normalize(k)
   of "path": t.path = v
   of "flags": t.flags = v
+  of "": discard
   else: quit(errorStr(p, "unknown variable: " & k))
 
 proc filesOnly(p: var CfgParser, k, v: string, dest: var seq[string]) =
   case normalize(k)
   of "files": addFiles(dest, split(v, {';'}))
+  of "": discard
   else: quit(errorStr(p, "unknown variable: " & k))
 
 proc yesno(p: var CfgParser, v: string): bool =
@@ -317,7 +319,6 @@ proc parseIniFile(c: var ConfigData) =
       of cfgKeyValuePair:
         var v = `%`(k.value, c.vars, {useEnvironment, useEmpty})
         c.vars[k.key] = v
-
         case section
         of "project":
           case normalize(k.key)
@@ -347,6 +348,7 @@ proc parseIniFile(c: var ConfigData) =
             of "gui": c.app = appGUI
             else: quit(errorStr(p, "expected: console or gui"))
           of "license": c.license = unixToNativePath(k.value)
+          of "": discard
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "var": discard
         of "winbin": filesOnly(p, k.key, v, c.cat[fcWinBin])
@@ -356,6 +358,7 @@ proc parseIniFile(c: var ConfigData) =
           case normalize(k.key)
           of "files": addFiles(c.cat[fcDoc], split(v, {';'}))
           of "start": addFiles(c.cat[fcDocStart], split(v, {';'}))
+          of "": discard
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "lib": filesOnly(p, k.key, v, c.cat[fcLib])
         of "other": filesOnly(p, k.key, v, c.cat[fcOther])
@@ -365,12 +368,14 @@ proc parseIniFile(c: var ConfigData) =
           of "binpath": c.binPaths = split(v, {';'})
           of "innosetup": c.innoSetupFlag = yesno(p, v)
           of "download": c.downloads.add(v)
+          of "": discard
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unix":
           case normalize(k.key)
           of "files": addFiles(c.cat[fcUnix], split(v, {';'}))
           of "installscript": c.installScript = yesno(p, v)
           of "uninstallscript": c.uninstallScript = yesno(p, v)
+          of "": discard
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "unixbin": filesOnly(p, k.key, v, c.cat[fcUnixBin])
         of "innosetup": pathFlags(p, k.key, v, c.innosetup)
@@ -406,6 +411,7 @@ proc parseIniFile(c: var ConfigData) =
                 if afterComma: license.add(v[i])
                 else: file.add(v[i])
               inc(i)
+          of "": discard
           else: quit(errorStr(p, "unknown variable: " & k.key))
         of "nimble":
           case normalize(k.key)
@@ -413,8 +419,10 @@ proc parseIniFile(c: var ConfigData) =
             c.nimblePkgName = v
           of "pkgfiles":
             addFiles(c.cat[fcNimble], split(v, {';'}))
+          of "": discard
           else:
             quit(errorStr(p, "invalid key: " & k.key))
+        of "": discard
         else: quit(errorStr(p, "invalid section: " & section))
 
       of cfgOption: quit(errorStr(p, "syntax error"))
