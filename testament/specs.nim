@@ -233,8 +233,9 @@ proc parseSpec*(filename: string): TSpec =
             result.targets.incl(targetJS)
           else:
             result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "": discard  
       else:
-        result.parseErrors.addLine "invalid key for test spec: ", e.key
+        result.parseErrors.addLine "invalid key for test spec: ", e.key & ":" & e.value
 
     of cfgSectionStart:
       result.parseErrors.addLine "section ignored: ", e.section
