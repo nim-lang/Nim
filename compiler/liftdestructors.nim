@@ -263,11 +263,18 @@ proc newSeqCall(g: ModuleGraph; x, y: PNode): PNode =
   lenCall.typ = getSysType(g, x.info, tyInt)
   result.add lenCall
 
-proc setLenCall(g: ModuleGraph; x, y: PNode; m: TMagic): PNode =
-  let lenCall = genBuiltin(g, mLengthSeq, "len", y)
+proc setLenStrCall(g: ModuleGraph; x, y: PNode): PNode =
+  let lenCall = genBuiltin(g, mLengthStr, "len", y)
   lenCall.typ = getSysType(g, x.info, tyInt)
-  result = genBuiltin(g, m, "setLen", genAddr(g, x))
+  result = genBuiltin(g, mSetLengthStr, "setLen", genAddr(g, x))
   result.add lenCall
+
+proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
+  let lenCall = genBuiltin(c.graph, mLengthSeq, "len", y)
+  lenCall.typ = getSysType(c.graph, x.info, tyInt)
+  var op = getSysMagic(c.graph, x.info, "setLen", mSetLengthSeq)
+  op = c.c.instTypeBoundOp(c.c, op, t, c.info, attachedAsgn, 1)
+  result = newTree(nkCall, newSymNode(op, x.info), genAddr(c.graph, x), lenCall)
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let i = declareCounter(c, body, firstOrd(c.graph.config, t))
@@ -286,7 +293,7 @@ proc seqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenCall(c.graph, x, y, mSetLengthSeq)
+    body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
     let moveCall = genBuiltin(c.graph, mMove, "move", x)
@@ -307,7 +314,7 @@ proc strOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenCall(c.graph, x, y, mSetLengthStr)
+    body.add setLenStrCall(c.graph, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
     let moveCall = genBuiltin(c.graph, mMove, "move", x)

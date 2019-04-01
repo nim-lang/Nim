@@ -324,7 +324,7 @@ proc isComplexValueType(t: PType): bool {.inline.} =
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc resetLoc(p: BProc, loc: var TLoc) =
-  let containsGcRef = containsGarbageCollectedRef(loc.t)
+  let containsGcRef = p.config.selectedGc != gcDestructors and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
   if p.config.selectedGc == gcDestructors and typ.kind in {tyString, tySequence}:
