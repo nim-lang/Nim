@@ -61,11 +61,11 @@ doAssert fmt"{0.0: g}" == " 0"
 
 # seq format
 
-let data1 = [1'i64, 1000'i64, 10000000'i64]
-let data2 = [10000000'i64, 1000'i64, 1'i64]
+let data1 = [1'i64, 10000'i64, 10000000'i64]
+let data2 = [10000000'i64, 100'i64, 1'i64]
 
-doAssert fmt"data1: {data1:8} ∨" == "data1: [       1,     1000, 10000000] ∨"
-doAssert fmt"data2: {data2:8} ∧" == "data2: [10000000,     1000,        1] ∧"
+doAssert fmt"data1: {data1:8} ∨" == "data1: [       1,    10000, 10000000] ∨"
+doAssert fmt"data2: {data2:8} ∧" == "data2: [10000000,      100,        1] ∧"
 
 # custom format Value
 
