@@ -102,7 +102,7 @@ of ``formatValue`` procs. The required signature for a type ``T`` that supports
 formatting is usually ``proc formatValue(result: var string; x: T; specifier: string)``.
 
 The subexpression after the colon
-(``arg`` in ``&"{key} is {value:arg} {{z}}"``) is optional. It will be passed as the second argument to ``formatValue``. When it is left out, the default value is the empty string.
+(``arg`` in ``&"{key} is {value:arg} {{z}}"``) is optional. It will be passed as the last argument to ``formatValue``. When the colon with the subexpression it is left out, an empty string will be taken instead.
 
 For strings and numeric types the optional argument is a so-called
 "standard format specifier".
@@ -215,7 +215,7 @@ Future directions
 =================
 
 A curly expression with commas in it like ``{x, argA, argB}`` could be
-transformed to ``format(x, argA, argB, res)`` in order to support
+transformed to ``formatValue(result, x, argA, argB)`` in order to support
 formatters that do not need to parse a custom language within a custom
 language but instead prefer to use Nim's existing syntax. This also
 helps in readability since there is only so much you can cram into
