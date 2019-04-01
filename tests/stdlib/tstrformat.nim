@@ -9,8 +9,8 @@ type Obj = object
 proc `$`(o: Obj): string = "foobar"
 
 # for custom types, formatValue needs to be overloaded.
-template formatValue(value: Obj; specifier: string; res: var string) =
-  formatValue($value, specifier, res)
+template formatValue(result: var string; value: Obj; specifier: string) =
+  result.formatValue($value, specifier)
 
 var o: Obj
 doAssert fmt"{o}" == "foobar"
@@ -59,6 +59,14 @@ doAssert fmt"{0.0:g}" == "0"
 doAssert fmt"{0.0:+g}" == "+0"
 doAssert fmt"{0.0: g}" == " 0"
 
+# seq format
+
+let data1 = [1'i64, 1000'i64, 10000000'i64]
+let data2 = [10000000'i64, 1000'i64, 1'i64]
+
+doAssert fmt"data1: {data1:8} ∨" == "data1: [       1,     1000, 10000000] ∨"
+doAssert fmt"data2: {data2:8} ∧" == "data2: [10000000,     1000,        1] ∧"
+
 # custom format Value
 
 type
@@ -67,12 +75,12 @@ type
   Vec2f = Vec2[float32]
   Vec2i = Vec2[int32]
 
-proc formatValue[T](value: Vec2[T]; specifier: string; res: var string) =
-  res.add '['
-  formatValue value.x, specifier, res
-  res.add ", "
-  formatValue value.y, specifier, res
-  res.add "]"
+proc formatValue[T](result: var string; value: Vec2[T]; specifier: string) =
+  result.add '['
+  result.formatValue value.x, specifier
+  result.add ", "
+  result.formatValue value.y, specifier
+  result.add "]"
 
 let v1 = Vec2f(x:1.0, y: 2.0)
 let v2 = Vec2i(x:1, y: 1337)
