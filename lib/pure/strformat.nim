@@ -88,9 +88,9 @@ An expression like ``&"{key} is {value:arg} {{z}}"`` is transformed into:
 
 .. code-block:: nim
   var temp = newStringOfCap(educatedCapGuess)
-  formatValue(key, "", temp)
+  temp.formatValue key, ""
   temp.add " is "
-  formatValue(value, arg, temp)
+  temp.formatValue value, arg
   temp.add " {z}"
   temp
 
@@ -99,7 +99,7 @@ as Nim code, to escape an ``{`` or ``}`` double it.
 
 ``&`` delegates most of the work to an open overloaded set
 of ``formatValue`` procs. The required signature for a type ``T`` that supports
-formatting is usually ``proc formatValue(x: T; specifier: string; result: var string)``.
+formatting is usually ``proc formatValue(result: var string; x: T; specifier: string)``.
 
 The subexpression after the colon
 (``arg`` in ``&"{key} is {value:arg} {{z}}"``) is optional. It will be passed as the second argument to ``formatValue``. When it is left out, the default value is the empty string.
@@ -375,7 +375,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
     raise newException(ValueError,
       "invalid format string, cannot parse: " & s[i..^1])
 
-proc formatValue*(value: SomeInteger; specifier: string; res: var string) =
+proc formatValue*(result: var string; value: SomeInteger; specifier: string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
@@ -390,9 +390,9 @@ proc formatValue*(value: SomeInteger; specifier: string; res: var string) =
     raise newException(ValueError,
       "invalid type in format string for number, expected one " &
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
-  res.add formatInt(value, radix, spec)
+  result.add formatInt(value, radix, spec)
 
-proc formatValue*(value: SomeFloat; specifier: string; res: var string) =
+proc formatValue*(result: var string; value: SomeFloat; specifier: string): void =
   ## Standard format implementation for ``SomeFloat``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
@@ -440,14 +440,13 @@ proc formatValue*(value: SomeFloat; specifier: string; res: var string) =
 
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
-  let result = alignString(f, spec.minimumWidth,
-                           align, spec.fill)
+  let res = alignString(f, spec.minimumWidth, align, spec.fill)
   if spec.typ in {'A'..'Z'}:
-    res.add toUpperAscii(result)
+    result.add toUpperAscii(res)
   else:
-    res.add result
+    result.add res
 
-proc formatValue*(value: string; specifier: string; res: var string) =
+proc formatValue*(result: var string; value: string; specifier: string) =
   ## Standard format implementation for ``string``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
@@ -462,10 +461,16 @@ proc formatValue*(value: string; specifier: string; res: var string) =
   if spec.precision != -1:
     if spec.precision < runelen(value):
       setLen(value, runeOffset(value, spec.precision))
-  res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
+  result.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
-template formatValue(value: char; specifier: string; res: var string) =
-  res.add value
+template formatValue[T: enum](result: var string; value: T; specifier: string) =
+  result.add $value
+
+template formatValue(result: var string; value: char; specifier: string) =
+  result.add value
+
+template formatValue(result: var string; value: cstring; specifier: string) =
+  result.add value
 
 macro `&`*(pattern: string): untyped =
   ## For a specification of the ``&`` macro, see the module level documentation.
@@ -513,7 +518,7 @@ macro `&`*(pattern: string): untyped =
           inc i
         else:
           doAssert false, "invalid format string: missing '}'"
-        result.add newCall(formatSym, x, newLit(options), res)
+        result.add newCall(formatSym, res, x, newLit(options))
     elif f[i] == '}':
       if f[i+1] == '}':
         strlit.add '}'

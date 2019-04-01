@@ -2330,9 +2330,9 @@ proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   const f2 = initTimeFormat(f)
   result = dt.format(f2)
 
-template formatValue*(value: DateTime, specifier: string, res: var string) =
+template formatValue*(result: var string; value: DateTime, specifier: string) =
   ## adapter for strformat. Not intended to be called directly.
-  res.add format(value, specifier)
+  result.add format(value, specifier)
 
 proc format*(time: Time, f: string, zone: Timezone = local()): string
     {.raises: [TimeFormatParseError].} =
@@ -2353,9 +2353,9 @@ proc format*(time: Time, f: static[string], zone: Timezone = local()): string
   const f2 = initTimeFormat(f)
   result = time.inZone(zone).format(f2)
 
-template formatValue*(value: Time, specifier: string, res: var string) =
+template formatValue*(result: var string; value: Time, specifier: string) =
   ## adapter for strformat. Not intended to be called directly.
-  res.add format(value, specifier)
+  result.add format(value, specifier)
 
 proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
     {.raises: [TimeParseError, Defect].} =

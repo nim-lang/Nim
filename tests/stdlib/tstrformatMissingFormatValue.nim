@@ -1,5 +1,5 @@
 discard """
-errormsg: '''type mismatch: got <Obj, string, string>'''
+errormsg: '''type mismatch: got <string, Obj, string>'''
 nimout: '''proc formatValue'''
 """
 
