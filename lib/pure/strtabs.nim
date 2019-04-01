@@ -247,7 +247,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
     rawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc newStringTable*(mode: StringTableMode): owned StringTableRef {.
+proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
   rtlFunc, extern: "nst$1".} =
   ## Creates a new empty string table.
   ##
@@ -260,7 +260,7 @@ proc newStringTable*(mode: StringTableMode): owned StringTableRef {.
   newSeq(result.data, startSize)
 
 proc newStringTable*(keyValuePairs: varargs[string],
-                     mode: StringTableMode): owned StringTableRef {.
+                     mode: StringTableMode): owned(StringTableRef) {.
   rtlFunc, extern: "nst$1WithPairs".} =
   ## Creates a new string table with given `key, value` string pairs.
   ##
