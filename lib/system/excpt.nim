@@ -371,7 +371,6 @@ proc raiseExceptionAux(e: ref Exception) =
         add(buf, $e.name)
         add(buf, "]\n")
         unhandled(buf):
-          showErrorMessage(buf)
           quitOrDebug()
       else:
         # ugly, but avoids heap allocations :-)
