@@ -72,10 +72,7 @@ proc unloadLib*(lib: LibHandle) {.gcsafe.}
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
   ## raises an `EInvalidLibrary` exception.
-  var e: ref LibraryError
-  new(e)
-  e.msg = "could not find symbol: " & $name
-  raise e
+  raise newException(LibraryError, "could not find symbol: " & $name)
 
 proc symAddr*(lib: LibHandle, name: cstring): pointer {.gcsafe.}
   ## retrieves the address of a procedure/variable from `lib`. Returns nil

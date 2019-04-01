@@ -126,7 +126,7 @@ proc startProcess*(command: string,
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut}):
-              Process {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect,
+              owned Process {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect,
               RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
@@ -470,7 +470,7 @@ when defined(Windows) and not defined(useNimRtl):
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: Handle): FileHandleStream =
+  proc newFileHandleStream(handle: Handle): owned FileHandleStream =
     new(result)
     result.handle = handle
     result.closeImpl = hsClose
@@ -573,7 +573,7 @@ when defined(Windows) and not defined(useNimRtl):
                  workingDir: string = "",
                  args: openArray[string] = [],
                  env: StringTableRef = nil,
-                 options: set[ProcessOption] = {poStdErrToStdOut}): Process =
+                 options: set[ProcessOption] = {poStdErrToStdOut}): owned Process =
     var
       si: STARTUPINFO
       procInfo: PROCESS_INFORMATION
@@ -840,7 +840,7 @@ elif not defined(useNimRtl):
                  workingDir: string = "",
                  args: openArray[string] = [],
                  env: StringTableRef = nil,
-                 options: set[ProcessOption] = {poStdErrToStdOut}): Process =
+                 options: set[ProcessOption] = {poStdErrToStdOut}): owned Process =
     var
       pStdin, pStdout, pStderr: array[0..1, cint]
     new(result)

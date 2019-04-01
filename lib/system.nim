@@ -1638,6 +1638,8 @@ when defined(nimV2) and not defined(nimscript):
     new(r)
     return r
 else:
+  template owned*(t: typeDesc): typedesc = t
+
   proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it in ``a``.
