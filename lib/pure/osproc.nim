@@ -126,7 +126,7 @@ proc startProcess*(command: string,
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut}):
-              owned Process {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect,
+              owned(Process) {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect,
               RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
