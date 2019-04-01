@@ -1023,10 +1023,7 @@ proc toIdentNode(typeNode: NimNode): NimNode =
 
 proc createGetEnumCall(jsonNode, kindType: NimNode): NimNode =
   # -> getEnum(`jsonNode`, `kindType`)
-  let getEnumSym = bindSym("getEnum")
-  let astStrLit = toStrLit(jsonNode)
-  let getEnumCall = newCall(getEnumSym, jsonNode, astStrLit, kindType)
-  return getEnumCall
+  result = newCall(bindSym("getEnum"), jsonNode, toStrLit(jsonNode), kindType)
 
 proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
   ## Creates an expression that acts as the condition for an ``of`` branch.
