@@ -411,12 +411,12 @@ proc deinitGCFrame(p: BProc): Rope =
     result = ropecg(p.module,
                     "if (((NU)&GCFRAME_) < 4096) #nimGCFrame(&GCFRAME_);$n")
 
-proc localDebugInfo(p: BProc, s: PSym) =
+proc localDebugInfo(p: BProc, s: PSym, retType: PType) =
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return
   # XXX work around a bug: No type information for open arrays possible:
   if skipTypes(s.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: return
   var a = "&" & s.loc.r
-  if s.kind == skParam and ccgIntroducedPtr(p.config, s): a = s.loc.r
+  if s.kind == skParam and ccgIntroducedPtr(p.config, s, retType, s.ast.info): a = s.loc.r
   lineF(p, cpsInit,
        "FR_.s[$1].address = (void*)$3; FR_.s[$1].typ = $4; FR_.s[$1].name = $2;$n",
        [p.maxFrameLen.rope, makeCString(normalize(s.name.s)), a,
@@ -447,7 +447,7 @@ proc assignLocalVar(p: BProc, n: PNode) =
   let nl = if optLineDir in p.config.options: "" else: "\L"
   let decl = localVarDecl(p, n) & ";" & nl
   line(p, cpsLocals, decl)
-  localDebugInfo(p, n.sym)
+  localDebugInfo(p, n.sym, nil)
 
 include ccgthreadvars
 
@@ -501,10 +501,10 @@ proc assignGlobalVar(p: BProc, n: PNode) =
          [makeCString(normalize(s.owner.name.s & '.' & s.name.s)),
           s.loc.r, genTypeInfo(p.module, s.typ, n.info)])
 
-proc assignParam(p: BProc, s: PSym) =
+proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != nil)
   scopeMangledParam(p, s)
-  localDebugInfo(p, s)
+  localDebugInfo(p, s, retType)
 
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
@@ -934,7 +934,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       returnStmt = ropecg(p.module, "\treturn $1;$n", rdLoc(res.loc))
     else:
       fillResult(p.config, resNode)
-      assignParam(p, res)
+      assignParam(p, res, prc.typ[0])
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
       # Sketch why this is correct: If 'result' points to a stack location
@@ -952,7 +952,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   for i in countup(1, sonsLen(prc.typ.n) - 1):
     let param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
-    assignParam(p, param)
+    assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
