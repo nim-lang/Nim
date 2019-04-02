@@ -226,7 +226,7 @@ proc genLineDir(p: BProc, t: PNode) =
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
-    if freshLineInfo(p, t.info):
+    if freshLineInfo(p, t.info) and p.module.s[cfsFrameDefines].len > 0:
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               line.rope, quotedFilename(p.config, t.info))
 
