@@ -1145,7 +1145,8 @@ proc genReset(p: BProc, n: PNode) =
           genTypeInfo(p.module, skipTypes(a.t, {tyVar}), n.info))
 
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
-  resetLoc(p, d)
+  if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
+  else: resetLoc(p, d)
 
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr

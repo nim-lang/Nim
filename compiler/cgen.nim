@@ -328,6 +328,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
   if p.config.selectedGc == gcDestructors and typ.kind in {tyString, tySequence}:
+    assert rdLoc(loc) != nil
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", rdLoc(loc))
   elif not isComplexValueType(typ):
     if containsGcRef:
