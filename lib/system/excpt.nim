@@ -40,11 +40,6 @@ proc showErrorMessage(data: cstring) {.gcsafe.} =
 proc quitOrDebug() {.inline.} =
   when defined(endb):
     endbStep() # call the debugger
-  elif not defined(nodejs) and not defined(nimscript):
-    when nimvm:
-      quit(1)
-    else:
-      c_abort()
   else:
     quit(1)
 
@@ -371,6 +366,7 @@ proc raiseExceptionAux(e: ref Exception) =
         add(buf, $e.name)
         add(buf, "]\n")
         unhandled(buf):
+          showErrorMessage(buf)
           quitOrDebug()
       else:
         # ugly, but avoids heap allocations :-)
