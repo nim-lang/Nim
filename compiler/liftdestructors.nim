@@ -469,7 +469,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
      tyTypeDesc, tyGenericInvocation, tyForward:
-    internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
+    #internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
+    discard
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
