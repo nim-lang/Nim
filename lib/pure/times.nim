@@ -959,7 +959,7 @@ proc newTimezone*(
           {.tags: [], raises: [], benign.},
       zonedTimeFromAdjTimeImpl: proc (adjTime: Time): ZonedTime
           {.tags: [], raises: [], benign.}
-    ): Timezone =
+    ): owned Timezone =
   ## Create a new ``Timezone``.
   ##
   ## ``zonedTimeFromTimeImpl`` and ``zonedTimeFromAdjTimeImpl`` is used

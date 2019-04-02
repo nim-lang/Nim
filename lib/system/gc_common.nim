@@ -75,21 +75,20 @@ when defined(nimTypeNames):
     outOfMemHook = oomhandler
 
 template decTypeSize(cell, t) =
-  # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
       let cap = cast[PGenericSeq](cellToUsr(cell)).space
       let size = if t.kind == tyString: cap+1+GenericSeqSize
                  else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
-      dec t.sizes, size+sizeof(Cell)
+      atomicDec t.sizes, size+sizeof(Cell)
     else:
-      dec t.sizes, t.base.size+sizeof(Cell)
-    dec t.instances
+      atomicDec t.sizes, t.base.size+sizeof(Cell)
+    atomicDec t.instances
 
 template incTypeSize(typ, size) =
   when defined(nimTypeNames):
-    inc typ.instances
-    inc typ.sizes, size+sizeof(Cell)
+    atomicInc typ.instances
+    atomicInc typ.sizes, size+sizeof(Cell)
 
 proc dispose*(x: ForeignCell) =
   when hasThreadSupport:

@@ -96,6 +96,7 @@ doc/intern.rst
 doc/apis.rst
 doc/lib.rst
 doc/manual.rst
+doc/manual_experimental.rst
 doc/tut1.rst
 doc/tut2.rst
 doc/tut3.rst

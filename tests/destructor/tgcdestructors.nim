@@ -1,10 +1,9 @@
 discard """
-  disabled: true
-  cmd: '''nim c --gc:destructors $file'''
+  cmd: '''nim c --newruntime $file'''
   output: '''hi
 ho
 ha
-7 7'''
+1 1'''
 """
 
 import allocators
@@ -76,15 +75,16 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
       break
     i = j
 
-let input = "$test{}  $this is ${an{  example}}  "
-let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
-                (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
-var i = 0
-for s in interpolatedFragments(input):
-  doAssert s == expected[i]
-  inc i
+when false:
+  let input = "$test{}  $this is ${an{  example}}  "
+  let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
+                  (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
+  var i = 0
+  for s in interpolatedFragments(input):
+    doAssert s == expected[i]
+    inc i
 
 
 #echo s
 let (a, d) = allocCounters()
-cprintf("%ld %ld\n", a, d)
+discard cprintf("%ld %ld\n", a, d)

@@ -12,6 +12,14 @@
 
 # included from sempass2.nim
 
+# Todo:
+# - specialize destructors for constant arrays of strings
+#   (they don't require any)
+# - use openArray instead of array to avoid over-specializations
+# - make 'owned' mean 'sink' in parameters
+
+import sighashes
+
 type
   TLiftCtx = object
     graph: ModuleGraph
@@ -255,11 +263,18 @@ proc newSeqCall(g: ModuleGraph; x, y: PNode): PNode =
   lenCall.typ = getSysType(g, x.info, tyInt)
   result.add lenCall
 
-proc setLenCall(g: ModuleGraph; x, y: PNode; m: TMagic): PNode =
-  let lenCall = genBuiltin(g, mLengthSeq, "len", y)
+proc setLenStrCall(g: ModuleGraph; x, y: PNode): PNode =
+  let lenCall = genBuiltin(g, mLengthStr, "len", y)
   lenCall.typ = getSysType(g, x.info, tyInt)
-  result = genBuiltin(g, m, "setLen", genAddr(g, x))
+  result = genBuiltin(g, mSetLengthStr, "setLen", genAddr(g, x))
   result.add lenCall
+
+proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
+  let lenCall = genBuiltin(c.graph, mLengthSeq, "len", y)
+  lenCall.typ = getSysType(c.graph, x.info, tyInt)
+  var op = getSysMagic(c.graph, x.info, "setLen", mSetLengthSeq)
+  op = c.c.instTypeBoundOp(c.c, op, t, c.info, attachedAsgn, 1)
+  result = newTree(nkCall, newSymNode(op, x.info), genAddr(c.graph, x), lenCall)
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let i = declareCounter(c, body, firstOrd(c.graph.config, t))
@@ -278,7 +293,7 @@ proc seqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenCall(c.graph, x, y, mSetLengthSeq)
+    body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
     let moveCall = genBuiltin(c.graph, mMove, "move", x)
@@ -286,25 +301,10 @@ proc seqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     doAssert t.destructor != nil
     moveCall.add destructorCall(c.graph, t.destructor, x)
     body.add moveCall
-    when false:
-      # we generate:
-      #  if a.len != 0 and a.p != b.p:
-      #    `=destroy`(x)
-      #  a.len = b.len
-      #  a.p = b.p
-      # Note: '@' is either '.' or '->'.
-      body.add genIf(c, genVerbatim("dest@len != 0 && dest@p != src.p", c.info),
-        destructorCall(c.graph, t.destructor, x))
-      body.add genVerbatim("dest@len=src.len; dest@p=src.p;", c.info)
   of attachedDestructor:
     # destroy all elements:
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c.graph, mDestroy, "destroy", x)
-    when false:
-      var deallocStmt = genVerbatim("dest@region->dealloc(dest@region, dest@p, " &
-          "(dest@p->cap * sizeof($)) + sizeof(NI) + sizeof(void*)); dest@len = 0;", c.info)
-      deallocStmt.typ = t.lastSon
-      body.add genIf(c, genVerbatim("dest@len != 0 && dest@region", c.info), deallocStmt)
 
 proc strOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -314,7 +314,7 @@ proc strOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenCall(c.graph, x, y, mSetLengthStr)
+    body.add setLenStrCall(c.graph, x, y)
     forallElements(c, t, body, x, y)
   of attachedSink:
     let moveCall = genBuiltin(c.graph, mMove, "move", x)
@@ -469,7 +469,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
      tyTypeDesc, tyGenericInvocation, tyForward:
-    internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
+    #internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
+    discard
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
@@ -603,19 +604,29 @@ template inst(field, t) =
     if field.ast != nil:
       patchBody(c, field.ast, info)
 
-proc createTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
+proc createTypeBoundOps*(c: PContext; orig: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
-  if typ == nil or {tfCheckedForDestructor, tfHasMeta} * typ.flags != {}: return
-  incl typ.flags, tfCheckedForDestructor
+  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+  incl orig.flags, tfCheckedForDestructor
+
+  let h = sighashes.hashType(orig, {CoType, CoConsiderOwned})
+  var canon = c.graph.canonTypes.getOrDefault(h)
+  var overwrite = false
+  if canon == nil:
+    c.graph.canonTypes[h] = orig
+    canon = orig
+  elif canon != orig:
+    overwrite = true
+
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
   # 2. we have a nop destructor. --> mDestroy
   # 3. we have a lifted destructor.
   # 4. We have a custom destructor.
   # 5. We have a (custom) generic destructor.
-  let typ = typ.skipTypes({tyGenericInst, tyAlias})
+  let typ = canon.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil:
     liftBody(c, typ, attachedDestructor, info)
@@ -629,3 +640,8 @@ proc createTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
     liftBody(c, typ, attachedSink, info)
   else:
     inst(typ.sink, typ)
+
+  if overwrite:
+    orig.destructor = canon.destructor
+    orig.assignment = canon.assignment
+    orig.sink = canon.sink

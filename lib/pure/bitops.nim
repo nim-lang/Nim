@@ -154,25 +154,13 @@ proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
   v = v or v shr 32
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
+# sets.nim cannot import bitops, but bitops can use include
+# system/sets to eleminate code duplication. sets.nim defines defines
+# countBits32 and countBits64.
+include system/sets
 
-proc countSetBits_nim(n: uint32): int {.inline, noSideEffect.} =
-  ## Counts the set bits in integer. (also called Hamming weight.)
-  # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-
-  var v = uint32(n)
-  v = v - ((v shr 1) and 0x55555555)
-  v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
-  result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).int
-
-proc countSetBits_nim(n: uint64): int {.inline, noSideEffect.} =
-  ## Counts the set bits in integer. (also called Hamming weight.)
-  # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-  var v = uint64(n)
-  v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
-  v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
-  v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
-  result = ((v * 0x0101010101010101'u64) shr 56'u64).int
-
+template countSetBits_nim(n: uint32): int = countBits32(n)
+template countSetBits_nim(n: uint64): int = countBits64(n)
 
 template parity_impl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel

@@ -188,18 +188,16 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 1)
   result += 1 + ord(x<=0)
 
-proc countBits32*(n: int32): int {.noSideEffect.} =
-  ## Counts the set bits in ``n``.
+proc countBits32*(n: int32): int {.noSideEffect, deprecated: "use bitops.countSetBits instead".} =
+  ## **Deprecated since version v0.20.0**: Use ``bitops.countSetBits`` instead.
   runnableExamples:
     doAssert countBits32(7) == 3
     doAssert countBits32(8) == 1
     doAssert countBits32(15) == 4
     doAssert countBits32(16) == 1
     doAssert countBits32(17) == 2
-  var v = n
-  v = v -% ((v shr 1'i32) and 0x55555555'i32)
-  v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
-  result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
+
+  bitops.countSetBits(n)
 
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the sum of the elements in ``x``.

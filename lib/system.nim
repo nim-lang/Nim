@@ -1638,6 +1638,8 @@ when defined(nimV2) and not defined(nimscript):
     new(r)
     return r
 else:
+  template owned*(t: typeDesc): typedesc = t
+
   proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it in ``a``.
@@ -1703,6 +1705,10 @@ proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
   ##
   ##   echo @a # => @[1, 3, 5]
   ##   echo @b # => @['f', 'o', 'o']
+
+when defined(nimHasDefault):
+  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
+    ## returns the default value of the type ``T``.
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
@@ -1869,7 +1875,10 @@ when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
 
 when defined(boehmgc):
   when defined(windows):
-    const boehmLib = "boehmgc.dll"
+    when sizeof(int) == 8:
+      const boehmLib = "boehmgc64.dll"
+    else:
+      const boehmLib = "boehmgc.dll"
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
   else:
@@ -4394,10 +4403,6 @@ when defined(genode):
         # Perform application initialization
         # and return to thread entrypoint.
 
-
-when defined(nimHasDefault):
-  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
-    ## returns the default value of the type ``T``.
 
 import system/widestrs
 export widestrs

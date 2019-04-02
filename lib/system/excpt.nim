@@ -40,11 +40,6 @@ proc showErrorMessage(data: cstring) {.gcsafe.} =
 proc quitOrDebug() {.inline.} =
   when defined(endb):
     endbStep() # call the debugger
-  elif not defined(nodejs) and not defined(nimscript):
-    when nimvm:
-      quit(1)
-    else:
-      c_abort()
   else:
     quit(1)
 

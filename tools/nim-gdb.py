@@ -563,6 +563,20 @@ class NimTablePrinter:
 
 ################################################################################
 
+class NimFrameFilter:
+  def __init__(self):
+    self.name = "nim-frame-filter"
+    self.enabled = True
+    self.priority = 100
+    self.hidden =  {"NimMainInner","NimMain", "main"}
+
+  def filter(self, iterator):
+    for framedecorator in iterator:
+      if framedecorator.function() not in self.hidden:
+        yield framedecorator
+
+################################################################################
+
 def makematcher(klass):
   def matcher(val):
     typeName = str(val.type)
@@ -593,3 +607,5 @@ def new_object_handler(event):
   register_nim_pretty_printers_for_object(event.new_objfile)
 
 gdb.events.new_objfile.connect(new_object_handler)
+
+gdb.frame_filters = {"nim-frame-filter": NimFrameFilter()}

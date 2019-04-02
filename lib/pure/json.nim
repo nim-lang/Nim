@@ -390,18 +390,10 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
-proc `%`*[T: tuple|object](o: T): JsonNode =
+proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
-  ##
-  ## If passed an anonymous tuple, creates `JArray JsonNode`,
-  ## otherwise (named tuples and objects) `JObject JsonNode`.
-  const isNamed = T is object or isNamedTuple(T)
-  when isNamed:
-    result = newJObject()
-    for k, v in o.fieldPairs: result[k] = %v
-  else:
-    result = newJArray()
-    for a in o.fields: result.add(%a)
+  result = newJObject()
+  for k, v in o.fieldPairs: result[k] = %v
 
 proc `%`*(o: ref object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
@@ -1031,10 +1023,7 @@ proc toIdentNode(typeNode: NimNode): NimNode =
 
 proc createGetEnumCall(jsonNode, kindType: NimNode): NimNode =
   # -> getEnum(`jsonNode`, `kindType`)
-  let getEnumSym = bindSym("getEnum")
-  let astStrLit = toStrLit(jsonNode)
-  let getEnumCall = newCall(getEnumSym, jsonNode, astStrLit, kindType)
-  return getEnumCall
+  result = newCall(bindSym("getEnum"), jsonNode, toStrLit(jsonNode), kindType)
 
 proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
   ## Creates an expression that acts as the condition for an ``of`` branch.
@@ -1718,7 +1707,6 @@ when isMainModule:
 
   # Test loading of file.
   when not defined(js):
-    echo("99% of tests finished. Going to try loading file.")
     var parsed = parseFile("tests/testdata/jsontest.json")
 
     try:
@@ -1751,6 +1739,8 @@ when isMainModule:
   # bug #6438
   doAssert($ %*[] == "[]")
   doAssert($ %*{} == "{}")
+
+  doAssert(not compiles(%{"error": "No messages"}))
 
   # bug #9111
   block:

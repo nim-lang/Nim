@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, lowerings, sigmatch
+  modulegraphs, lowerings, sigmatch, tables
 
 when not defined(leanCompiler):
   import writetracking
@@ -708,7 +708,8 @@ proc track(tracked: PEffects, n: PNode) =
     if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
       return
     if op != nil:
-      createTypeBoundOps(tracked.c, op, n.info)
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked.c, op, n.info)
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
@@ -768,12 +769,14 @@ proc track(tracked: PEffects, n: PNode) =
     addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
     when false: cstringCheck(tracked, n)
-    createTypeBoundOps(tracked.c, n[0].typ, n.info)
+    if tracked.owner.kind != skMacro:
+      createTypeBoundOps(tracked.c, n[0].typ, n.info)
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
       if last.kind != nkEmpty: track(tracked, last)
-      createTypeBoundOps(tracked.c, child[0].typ, child.info)
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked.c, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)

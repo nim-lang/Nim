@@ -145,8 +145,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
     if newlen < s.len:
       shrink(s, newLen)
     else:
-      var v: T # get the default value of 'v'
-      grow(s, newLen, v)
+      grow(s, newLen, default(T))
 
 when false:
   proc resize[T](s: var NimSeqV2[T]) =

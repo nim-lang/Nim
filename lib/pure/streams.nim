@@ -34,7 +34,7 @@
 
 include "system/inclrtl"
 
-proc newEIO(msg: string): ref IOError =
+proc newEIO(msg: string): owned(ref IOError) =
   new(result)
   result.msg = msg
 
@@ -403,7 +403,7 @@ when not defined(js):
     else:
       s.data = nil
 
-  proc newStringStream*(s: string = ""): StringStream =
+  proc newStringStream*(s: string = ""): owned StringStream =
     ## creates a new stream from the string `s`.
     new(result)
     result.data = s
@@ -446,7 +446,7 @@ when not defined(js):
     if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
       raise newEIO("cannot write to stream")
 
-  proc newFileStream*(f: File): FileStream =
+  proc newFileStream*(f: File): owned FileStream =
     ## creates a new stream from the file `f`.
     new(result)
     result.f = f
@@ -460,7 +460,7 @@ when not defined(js):
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
 
-  proc newFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): FileStream =
+  proc newFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, nil is returned. See the `system
     ## <system.html>`_ module for a list of available FileMode enums.
@@ -469,7 +469,7 @@ when not defined(js):
     var f: File
     if open(f, filename, mode, bufSize): result = newFileStream(f)
 
-  proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): FileStream =
+  proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, an IO exception is raised.
     var f: File
@@ -522,7 +522,7 @@ else:
         raise newEIO("cannot write to stream")
       inc(s.pos, bufLen)
 
-  proc newFileHandleStream*(handle: FileHandle): FileHandleStream =
+  proc newFileHandleStream*(handle: FileHandle): owned FileHandleStream =
     new(result)
     result.handle = handle
     result.pos = 0
@@ -535,7 +535,7 @@ else:
     result.writeData = hsWriteData
 
   proc newFileHandleStream*(filename: string,
-                            mode: FileMode): FileHandleStream =
+                            mode: FileMode): owned FileHandleStream =
     when defined(windows):
       discard
     else:
