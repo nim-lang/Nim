@@ -152,7 +152,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
   of tyDistinct:
-    if CoType in flags:
+    if {CoType, CoConsiderOwned} * flags == {CoType} or t.sym == nil:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
