@@ -55,9 +55,10 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
           d.r = pl
           excl d.flags, lfSingleUse
         else:
-          if d.k == locNone:
+          if d.k == locNone and p.splitDecls == 0:
             getTempCpp(p, typ.sons[0], d, pl)
           else:
+            if d.k == locNone: getTemp(p, typ.sons[0], d)
             var list: TLoc
             initLoc(list, locCall, d.lode, OnUnknown)
             list.r = pl
