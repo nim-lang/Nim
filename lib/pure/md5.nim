@@ -168,9 +168,9 @@ proc transform(buffer: pointer, state: var MD5State) =
   state[2] = state[2] + c
   state[3] = state[3] + d
 
-proc md5Init*(c: var MD5Context) {.raises: [], tags: [].}
-proc md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [], tags: [].}
-proc md5Final*(c: var MD5Context, digest: var MD5Digest) {.raises: [], tags: [].}
+proc md5Init*(c: var MD5Context) {.raises: [], tags: [], gcsafe.}
+proc md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [], tags: [], gcsafe.}
+proc md5Final*(c: var MD5Context, digest: var MD5Digest) {.raises: [], tags: [], gcsafe.}
 
 
 proc toMD5*(s: string): MD5Digest =
