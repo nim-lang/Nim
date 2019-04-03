@@ -3481,6 +3481,10 @@ when not defined(JS): #and not defined(nimscript):
     when defined(endb):
       proc endbStep()
 
+  when hasThreadSupport and hostOS != "standalone":
+    const insideRLocksModule = false
+    include "system/syslocks"
+    include "system/threadlocalstorage"
 
   when defined(gcDestructors) and not defined(nimscript):
     include "core/strs"
@@ -3545,8 +3549,6 @@ when not defined(JS): #and not defined(nimscript):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
-    const insideRLocksModule = false
-    include "system/syslocks"
     when hostOS != "standalone": include "system/threads"
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
@@ -3632,7 +3634,7 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/strmantle"
 
     when hasThreadSupport:
-      when hostOS != "standalone": include "system/channels"
+      when hostOS != "standalone" and not defined(gcDestructors): include "system/channels"
 
   when not defined(nimscript) and hasAlloc:
     when not defined(gcDestructors):

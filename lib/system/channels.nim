@@ -21,7 +21,7 @@
 ## **Note:** Channels cannot be passed between threads. Use globals or pass
 ## them by `ptr`.
 
-when not declared(NimString):
+when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
 type
