@@ -107,7 +107,7 @@ proc procSymDigest(sym: PSym): MD5Digest =
   c.md5Final(result)
   procSymHashes[sym.id] = result # protect from recursion in the body
 
-  if sym.ast != nil and sym.ast[bodyPos] != nil:
+  if sym.ast != nil:
     md5Init(c)
     c.md5Update(cast[cstring](result.addr), sizeof(result))
     c.hashTree(sym.ast[bodyPos])
