@@ -209,6 +209,12 @@ type
       tls: ThreadLocalStorage
     else:
       nil
+    when hasSharedHeap:
+      next, prev: PGcThread
+      stackBottom, stackTop: pointer
+      stackSize: int
+    else:
+      nil
 
 when emulatedThreadVars:
   var globalsSlot: ThreadVarSlot
