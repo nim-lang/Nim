@@ -34,10 +34,11 @@ proc next*(it: var PathIter; x: string): (int, int) =
     result = (it.prev, it.i-1)
   elif hasNext(it, x):
     result = next(it, x)
-
-  # skip all separators:
-  while it.i < x.len and x[it.i] in {DirSep, AltSep}: inc it.i
-  it.notFirst = true
+  let validLeadSeps = when doslikeFileSystem: 2 # UNC paths have leading `\\`
+                      else: 1
+  if it.i >= validLeadSeps:
+    while it.i < x.len and x[it.i] in {DirSep, AltSep}: inc it.i
+    it.notFirst = true
 
 iterator dirs(x: string): (int, int) =
   var it: PathIter
