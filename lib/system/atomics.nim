@@ -171,7 +171,7 @@ elif defined(vcc) and hasThreadSupport:
         header: "<intrin.h>".}
     else:
       proc addAndFetch*(p: ptr int, val: int): int {.
-        importcpp: "_InterlockedExchangeAdd(reinterpret_cast<LONG volatile *>(#), static_cast<LONG>(#))",
+        importcpp: "_InterlockedExchangeAdd(reinterpret_cast<long volatile *>(#), static_cast<long>(#))",
         header: "<intrin.h>".}
   else:
     when sizeof(int) == 8:
