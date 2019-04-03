@@ -1,9 +1,3 @@
-discard """
-  output: '''23
-1.5
-'''
-"""
-
 # bug #554, #179
 
 type T[E] =
