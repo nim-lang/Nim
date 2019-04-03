@@ -136,7 +136,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
     result = openArrayLoc(p, n)
-  elif ccgIntroducedPtr(p.config, param):
+  elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     result = addrLoc(p.config, a)
   elif p.module.compileToCpp and param.typ.kind == tyVar and

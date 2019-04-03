@@ -249,9 +249,10 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
   if isDefined(m.config, "checkabi") and (let size = getSize(m.config, t); size != szUnknownSize):
     addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(size)])
 
-proc ccgIntroducedPtr(conf: ConfigRef; s: PSym): bool =
+proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)
   assert skResult != s.kind
+
   if tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
   case pt.kind
@@ -261,13 +262,18 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym): bool =
       result = true
     elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
       result = true           # requested anyway
+    elif retType != nil and retType.kind == tyLent:
+      result = true
     elif (tfFinal in pt.flags) and (pt.sons[0] == nil):
       result = false          # no need, because no subtyping possible
     else:
       result = true           # ordinary objects are always passed by reference,
                               # otherwise casting doesn't work
   of tyTuple:
-    result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
+    if retType != nil and retType.kind == tyLent:
+      result = true
+    else:
+      result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
   else: result = false
 
 proc fillResult(conf: ConfigRef; param: PNode) =
@@ -404,7 +410,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     if params != nil: add(params, ~", ")
     fillLoc(param.loc, locParam, t.n.sons[i], mangleParamName(m, param),
             param.paramStorageLoc)
-    if ccgIntroducedPtr(m.config, param):
+    if ccgIntroducedPtr(m.config, param, t.sons[0]):
       add(params, getTypeDescWeak(m, param.typ, check))
       add(params, ~"*")
       incl(param.loc.flags, lfIndirect)
