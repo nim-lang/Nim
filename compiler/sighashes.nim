@@ -37,7 +37,7 @@ type
     CoIgnoreRange
     CoConsiderOwned
 
-proc hashType*(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
 proc hashSym(c: var MD5Context, s: PSym) =
   if sfAnon in s.flags or s.kind == skGenericParam:
@@ -87,7 +87,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   else:
     for i in 0..<n.len: hashTree(c, n.sons[i])
 
-proc hashType*(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   if t == nil:
     c &= "\254"
     return
