@@ -61,35 +61,34 @@ when defined(nimTypeNames):
       inc totalAllocated, it.sizes
     sortInstances(a, n)
     for i in 0 .. n-1:
-      c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
-    c_fprintf(stdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
+      c_fprintf(cstdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
+    c_fprintf(cstdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
     when defined(nimTypeNames):
       let (allocs, deallocs) = getMemCounters()
-      c_fprintf(stdout, "[Heap] allocs/deallocs: %ld/%ld\n", allocs, deallocs)
+      c_fprintf(cstdout, "[Heap] allocs/deallocs: %ld/%ld\n", allocs, deallocs)
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
-      c_fprintf(stdout, "[Heap] ROOTS: #%ld\n", gch.additionalRoots.len)
+      c_fprintf(cstdout, "[Heap] ROOTS: #%ld\n", gch.additionalRoots.len)
       writeLeaks()
 
     outOfMemHook = oomhandler
 
 template decTypeSize(cell, t) =
-  # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
       let cap = cast[PGenericSeq](cellToUsr(cell)).space
       let size = if t.kind == tyString: cap+1+GenericSeqSize
                  else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
-      dec t.sizes, size+sizeof(Cell)
+      atomicDec t.sizes, size+sizeof(Cell)
     else:
-      dec t.sizes, t.base.size+sizeof(Cell)
-    dec t.instances
+      atomicDec t.sizes, t.base.size+sizeof(Cell)
+    atomicDec t.instances
 
 template incTypeSize(typ, size) =
   when defined(nimTypeNames):
-    inc typ.instances
-    inc typ.sizes, size+sizeof(Cell)
+    atomicInc typ.instances
+    atomicInc typ.sizes, size+sizeof(Cell)
 
 proc dispose*(x: ForeignCell) =
   when hasThreadSupport:

@@ -26,7 +26,7 @@
 ##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental, btrees
+  incremental, btrees, sighashes
 
 type
   ModuleGraph* = ref object
@@ -57,6 +57,7 @@ type
     opContains*, opNot*: PSym
     emptyNode*: PNode
     incr*: IncrementalCtx
+    canonTypes*: Table[SigHash, PType]
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
     recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
@@ -138,6 +139,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
   result.cacheTables = initTable[string, BTree[string, PNode]]()
+  result.canonTypes = initTable[SigHash, PType]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)

@@ -247,7 +247,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
     rawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc newStringTable*(mode: StringTableMode): StringTableRef {.
+proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
   rtlFunc, extern: "nst$1".} =
   ## Creates a new empty string table.
   ##
@@ -260,7 +260,7 @@ proc newStringTable*(mode: StringTableMode): StringTableRef {.
   newSeq(result.data, startSize)
 
 proc newStringTable*(keyValuePairs: varargs[string],
-                     mode: StringTableMode): StringTableRef {.
+                     mode: StringTableMode): owned(StringTableRef) {.
   rtlFunc, extern: "nst$1WithPairs".} =
   ## Creates a new string table with given `key, value` string pairs.
   ##
@@ -290,10 +290,7 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
   for key, val in items(keyValuePairs): result[key] = val
 
 proc raiseFormatException(s: string) =
-  var e: ref ValueError
-  new(e)
-  e.msg = "format string: key not found: " & s
-  raise e
+  raise newException(ValueError, "format string: key not found: " & s)
 
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t.getOrDefault(key)

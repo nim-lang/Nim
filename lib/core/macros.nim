@@ -78,7 +78,7 @@ type
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
-    nnkReturnToken,
+    nnkHiddenTryStmt,
     nnkClosure,
     nnkGotoState,
     nnkState,
@@ -723,7 +723,7 @@ proc newLit*(f: float64): NimNode {.compileTime.} =
   result = newNimNode(nnkFloat64Lit)
   result.floatVal = f
 
-when compiles(float128):
+when declared(float128):
   proc newLit*(f: float128): NimNode {.compileTime.} =
     ## produces a new float literal node.
     result = newNimNode(nnkFloat128Lit)

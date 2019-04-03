@@ -95,17 +95,8 @@ proc genLiteral(p: BProc, n: PNode): Rope =
 
 proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
   result = 0
-  when true:
-    for j in countup(0, size - 1):
-      if j < len(s): result = result or `shl`(ze64(s[j]), j * 8)
-  else:
-    # not needed, too complex thinking:
-    if CPU[platform.hostCPU].endian == CPU[targetCPU].endian:
-      for j in countup(0, size - 1):
-        if j < len(s): result = result or `shl`(Ze64(s[j]), j * 8)
-    else:
-      for j in countup(0, size - 1):
-        if j < len(s): result = result or `shl`(Ze64(s[j]), (Size - 1 - j) * 8)
+  for j in 0 ..< size:
+    if j < len(s): result = result or (ze64(s[j]) shl (j * 8))
 
 proc genRawSetData(cs: TBitSet, size: int): Rope =
   var frmt: FormatStr
@@ -1154,7 +1145,8 @@ proc genReset(p: BProc, n: PNode) =
           genTypeInfo(p.module, skipTypes(a.t, {tyVar}), n.info))
 
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
-  resetLoc(p, d)
+  if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
+  else: resetLoc(p, d)
 
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
@@ -1967,11 +1959,14 @@ proc genDestroy(p: BProc; n: PNode) =
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
   else:
+    let t = n[1].typ.skipTypes(abstractVar)
+    if t.destructor != nil and t.destructor.magic != mDestroy:
+      internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
 proc genDispose(p: BProc; n: PNode) =
   when false:
-    let elemType = n[1].typ.skipTypes(abstractVarInst).lastSon
+    let elemType = n[1].typ.skipTypes(abstractVar).lastSon
 
     var a: TLoc
     initLocExpr(p, n[1].skipAddr, a)
@@ -2146,6 +2141,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
+  of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       " 'toOpenArray' is only valid within a call expression")
@@ -2453,7 +2449,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     putIntoDest(p, d, n, genLiteral(p, n))
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
      nkCallStrLit:
-    genLineDir(p, n)
+    genLineDir(p, n) # may be redundant, it is generated in fixupCall as well
     let op = n.sons[0]
     if n.typ.isNil:
       # discard the value:
@@ -2541,7 +2537,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       initLocExprSingleUse(p, ex, a)
       line(p, cpsStmts, "(void)(" & a.r & ");\L")
   of nkAsmStmt: genAsmStmt(p, n)
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     if p.module.compileToCpp and optNoCppExceptions notin p.config.globalOptions:
       genTryCpp(p, n, d)
     else:

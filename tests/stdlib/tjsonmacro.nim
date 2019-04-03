@@ -517,10 +517,6 @@ when true:
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
 
-    block test_tuple:
-      doAssert $(%* (a1: 10, a2: "foo")) == """{"a1":10,"a2":"foo"}"""
-      doAssert $(%* (10, "foo")) == """[10,"foo"]"""
-
 # TODO: when the issue with the limeted vm registers is solved, the
 # exact same test as above should be evaluated at compile time as
 # well, to ensure that the vm functionality won't diverge from the

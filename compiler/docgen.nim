@@ -15,7 +15,7 @@ import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
-  packages/docutils/highlite, sempass2, json, xmltree, cgi,
+  packages/docutils/highlite, json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
   pathutils
 
@@ -344,9 +344,9 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       if procTokenPos == tokenPos-2 and procLink != nil:
         dispA(d.conf, result, "<a href=\"#$2\"><span class=\"Identifier\">$1</span></a>",
               "\\spanIdentifier{$1}", [rope(esc(d.target, literal)), procLink])
-      elif s != nil and s.kind == skType and sfExported in s.flags and
-          s.owner != nil and belongsToPackage(d.conf, s.owner) and
-          d.target == outHtml:
+      elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
+           sfExported in s.flags and s.owner != nil and
+           belongsToPackage(d.conf, s.owner) and d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [rope changeFileExt(external, "html"), rope literal,
@@ -759,6 +759,63 @@ proc exportSym(d: PDoc; s: PSym) =
             "<a href=\"$2#$1\"><span class=\"Identifier\">$1</span></a>",
             "$1", [rope esc(d.target, s.name.s),
             rope changeFileExt(external, "html")])
+
+proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
+  let s = n.sons[namePos].sym
+  if tfReturnsNew in s.typ.flags:
+    result = newIdentNode(getIdent(cache, "new"), n.info)
+
+proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
+  let spec = effectSpec(x, effectType)
+  if isNil(spec):
+    let s = n.sons[namePos].sym
+
+    let actual = s.typ.n.sons[0]
+    if actual.len != effectListLen: return
+    let real = actual.sons[idx]
+
+    # warning: hack ahead:
+    var effects = newNodeI(nkBracket, n.info, real.len)
+    for i in 0 ..< real.len:
+      var t = typeToString(real[i].typ)
+      if t.startsWith("ref "): t = substr(t, 4)
+      effects.sons[i] = newIdentNode(getIdent(cache, t), n.info)
+      # set the type so that the following analysis doesn't screw up:
+      effects.sons[i].typ = real[i].typ
+
+    result = newNode(nkExprColonExpr, n.info, @[
+      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects])
+
+proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
+  let s = n.sons[namePos].sym
+  let params = s.typ.n
+
+  var effects = newNodeI(nkBracket, n.info)
+  for i in 1 ..< params.len:
+    if params[i].kind == nkSym and flag in params[i].sym.flags:
+      effects.add params[i]
+
+  if effects.len > 0:
+    result = newNode(nkExprColonExpr, n.info, @[
+      newIdentNode(getIdent(cache, pragmaName), n.info), effects])
+
+proc documentRaises*(cache: IdentCache; n: PNode) =
+  if n.sons[namePos].kind != nkSym: return
+  let pragmas = n.sons[pragmasPos]
+  let p1 = documentEffect(cache, n, pragmas, wRaises, exceptionEffects)
+  let p2 = documentEffect(cache, n, pragmas, wTags, tagEffects)
+  let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
+  let p4 = documentNewEffect(cache, n)
+  let p5 = documentWriteEffect(cache, n, sfEscapes, "escapes")
+
+  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
+    if pragmas.kind == nkEmpty:
+      n.sons[pragmasPos] = newNodeI(nkPragma, n.info)
+    if p1 != nil: n.sons[pragmasPos].add p1
+    if p2 != nil: n.sons[pragmasPos].add p2
+    if p3 != nil: n.sons[pragmasPos].add p3
+    if p4 != nil: n.sons[pragmasPos].add p4
+    if p5 != nil: n.sons[pragmasPos].add p5
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
   case n.kind

@@ -175,7 +175,7 @@ proc `+`*(a, b: RunningStat): RunningStat =
                 (n*n) +
                 4.0*delta*(a.n.float*b.mom3 - b.n.float*a.mom3) / n
   result.max = max(a.max, b.max)
-  result.min = max(a.min, b.min)
+  result.min = min(a.min, b.min)
 
 proc `+=`*(a: var RunningStat, b: RunningStat) {.inline.} =
   ## add a second RunningStats `b` to `a`

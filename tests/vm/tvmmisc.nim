@@ -160,3 +160,21 @@ block:
       ["", "M", "MM", "MMM", "--", "-", "--", "---", "----", "--"],
     ]
   doAssert encoding.len == 4
+
+# #10886
+
+proc tor(): bool =
+  result = true
+  result = false or result
+
+proc tand(): bool =
+  result = false
+  result = true and result
+
+const
+  ctor = tor()
+  ctand = not tand()
+
+static:
+  doAssert ctor
+  doAssert ctand

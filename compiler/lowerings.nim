@@ -80,7 +80,7 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   addSon(result, lit)
 
 proc newTryFinally*(body, final: PNode): PNode =
-  result = newTree(nkTryStmt, body, newTree(nkFinally, final))
+  result = newTree(nkHiddenTryStmt, body, newTree(nkFinally, final))
 
 proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let value = n.lastSon

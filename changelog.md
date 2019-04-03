@@ -20,6 +20,8 @@
   the change is transparent, if you used annotations you will have to prefix
   your previous annotations with `parallel for`.
 
+  Furthermore, an overload with positive stepping is available.
+
 - The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
 
 - The undocumented ``#? strongSpaces`` parsing mode has been removed.

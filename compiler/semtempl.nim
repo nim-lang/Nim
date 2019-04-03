@@ -391,7 +391,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         n.sons[0] = newSymNode(s, n.sons[0].info)
     n.sons[1] = semTemplBody(c, n.sons[1])
     closeScope(c)
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     checkMinSonsLen(n, 2, c.c.config)
     n.sons[0] = semTemplBodyScope(c, n.sons[0])
     for i in countup(1, sonsLen(n)-1):

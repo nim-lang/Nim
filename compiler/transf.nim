@@ -21,7 +21,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, lookups,
   idents, renderer, types, passes, semfold, magicsys, cgmeth,
-  sempass2, lowerings, destroyer, liftlocals,
+  sempass2, lowerings, injectdestructors, liftlocals,
   modulegraphs, lineinfos
 
 proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;

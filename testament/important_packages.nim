@@ -11,7 +11,7 @@ pkg "ast_pattern_matching", "nim c tests/test1.nim"
 pkg "blscurve", "", "", true
 pkg "bncurve", "nim c tests/tarith.nim", "", true
 pkg "c2nim", "nim c testsuite/tester.nim"
-pkg "chronicles", "nim c -o:chr chronicles.nim"
+pkg "chronicles", "nim c -o:chr chronicles.nim", "", true
 # pkg "chronos", "nim c tests/teststream.nim"
 pkg "cligen", "nim c -o:cligenn cligen.nim"
 pkg "compactdict", "nim c tests/test1.nim"

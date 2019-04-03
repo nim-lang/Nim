@@ -324,10 +324,11 @@ proc isComplexValueType(t: PType): bool {.inline.} =
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc resetLoc(p: BProc, loc: var TLoc) =
-  let containsGcRef = containsGarbageCollectedRef(loc.t)
+  let containsGcRef = p.config.selectedGc != gcDestructors and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
   if p.config.selectedGc == gcDestructors and typ.kind in {tyString, tySequence}:
+    assert rdLoc(loc) != nil
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", rdLoc(loc))
   elif not isComplexValueType(typ):
     if containsGcRef:
@@ -410,12 +411,12 @@ proc deinitGCFrame(p: BProc): Rope =
     result = ropecg(p.module,
                     "if (((NU)&GCFRAME_) < 4096) #nimGCFrame(&GCFRAME_);$n")
 
-proc localDebugInfo(p: BProc, s: PSym) =
+proc localDebugInfo(p: BProc, s: PSym, retType: PType) =
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return
   # XXX work around a bug: No type information for open arrays possible:
   if skipTypes(s.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: return
   var a = "&" & s.loc.r
-  if s.kind == skParam and ccgIntroducedPtr(p.config, s): a = s.loc.r
+  if s.kind == skParam and ccgIntroducedPtr(p.config, s, retType): a = s.loc.r
   lineF(p, cpsInit,
        "FR_.s[$1].address = (void*)$3; FR_.s[$1].typ = $4; FR_.s[$1].name = $2;$n",
        [p.maxFrameLen.rope, makeCString(normalize(s.name.s)), a,
@@ -446,7 +447,7 @@ proc assignLocalVar(p: BProc, n: PNode) =
   let nl = if optLineDir in p.config.options: "" else: "\L"
   let decl = localVarDecl(p, n) & ";" & nl
   line(p, cpsLocals, decl)
-  localDebugInfo(p, n.sym)
+  localDebugInfo(p, n.sym, nil)
 
 include ccgthreadvars
 
@@ -500,10 +501,10 @@ proc assignGlobalVar(p: BProc, n: PNode) =
          [makeCString(normalize(s.owner.name.s & '.' & s.name.s)),
           s.loc.r, genTypeInfo(p.module, s.typ, n.info)])
 
-proc assignParam(p: BProc, s: PSym) =
+proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != nil)
   scopeMangledParam(p, s)
-  localDebugInfo(p, s)
+  localDebugInfo(p, s, retType)
 
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
@@ -534,12 +535,20 @@ proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
 
 proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e, OnUnknown)
-  result.flags.incl lfSingleUse
+  if e.kind in nkCallKinds and (e[0].kind != nkSym or e[0].sym.magic == mNone):
+    # We cannot check for tfNoSideEffect here because of mutable parameters.
+    discard "bug #8202; enforce evaluation order for nested calls for C++ too"
+    # We may need to consider that 'f(g())' cannot be rewritten to 'tmp = g(); f(tmp)'
+    # if 'tmp' lacks a move/assignment operator.
+    if e[0].kind == nkSym and sfCompileToCpp in e[0].sym.flags:
+      result.flags.incl lfSingleUse
+  else:
+    result.flags.incl lfSingleUse
   expr(p, e, result)
 
 include ccgcalls, "ccgstmts.nim"
 
-proc initFrame(p: BProc, procname, filename: Rope): Rope =  
+proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
   $1  define nimfr_(proc, file) \
       TFrame FR_; \
@@ -706,6 +715,8 @@ proc cgsym(m: BModule, name: string): Rope =
     # we're picky here for the system module too:
     rawMessage(m.config, errGenerated, "system module needs: " & name)
   result = sym.loc.r
+  if m.hcrOn and sym != nil and sym.kind in skProc..skIterator:
+    result.addActualPrefixForHCR(m.module, sym)
 
 proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "\L#include \"nimbase.h\"\L")
@@ -868,7 +879,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
   of nkSym:
     # some path reads from 'result' before it was written to!
     if n.sym.kind == skResult: result = InitRequired
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     # We need to watch out for the following problem:
     # try:
     #   result = stuffThatRaises()
@@ -923,7 +934,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       returnStmt = ropecg(p.module, "\treturn $1;$n", rdLoc(res.loc))
     else:
       fillResult(p.config, resNode)
-      assignParam(p, res)
+      assignParam(p, res, prc.typ[0])
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
       # Sketch why this is correct: If 'result' points to a stack location
@@ -941,7 +952,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   for i in countup(1, sonsLen(prc.typ.n) - 1):
     let param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
-    assignParam(p, param)
+    assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope

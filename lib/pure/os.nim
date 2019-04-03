@@ -501,7 +501,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     assert ext == ""
 
   if path.len == 0:
-      result = ("", "", "")
+    result = ("", "", "")
   elif path[^1] in {DirSep, AltSep}:
     if path.len == 1:
       # issue #8255

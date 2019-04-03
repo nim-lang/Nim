@@ -394,8 +394,6 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
      NIM_CHAR data[(length) + 1];          \
   } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
-typedef struct TStringDesc* string;
-
 /* declared size of a sequence/variable length array: */
 #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
 #  define SEQ_DECL_SIZE /* empty is correct! */

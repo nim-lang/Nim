@@ -38,10 +38,10 @@ proc showErrorMessage(data: cstring) {.gcsafe.} =
       writeToStdErr(data)
 
 proc quitOrDebug() {.inline.} =
-  when not defined(endb):
-    quit(1)
-  else:
+  when defined(endb):
     endbStep() # call the debugger
+  else:
+    quit(1)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}

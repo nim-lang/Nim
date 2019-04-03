@@ -255,7 +255,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   # (e.g. skGenericParam and skType).
   # Note: `s.magic` may be `mType` in an example such as:
   # proc foo[T](a: T, b = myDefault(type(a)))
-  if s.kind == skProc or s.magic != mNone:
+  if s.kind in routineKinds or s.magic != mNone:
     return s
 
   #result = PSym(idTableGet(cl.symMap, s))
@@ -291,7 +291,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   when false:
     if newDestructors:
       result.assignment = nil
-      #result.destructor = nil
+      result.destructor = nil
       result.sink = nil
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
@@ -404,7 +404,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # adding myseq for myseq[system.int]
     # sigmatch: Formal myseq[=destroy.T] real myseq[system.int]
     #echo "DESTROY: adding ", typeToString(newbody), " for ", typeToString(result, preferDesc)
-    cl.c.typesWithOps.add((newbody, result))
+    #cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:

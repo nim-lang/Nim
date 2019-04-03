@@ -90,6 +90,7 @@ type
     CoType
     CoOwnerSig
     CoIgnoreRange
+    CoConsiderOwned
 
 proc hashType*(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
@@ -151,7 +152,7 @@ proc hashType*(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
   of tyDistinct:
-    if CoType in flags:
+    if {CoType, CoConsiderOwned} * flags == {CoType} or t.sym == nil:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
@@ -165,7 +166,11 @@ proc hashType*(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashType t.sons[i], flags
     else:
       c.hashType t.lastSon, flags
-  of tyAlias, tySink, tyUserTypeClasses, tyInferred, tyOwned:
+  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
+    c.hashType t.lastSon, flags
+  of tyOwned:
+    if CoConsiderOwned in flags:
+      c &= char(t.kind)
     c.hashType t.lastSon, flags
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is

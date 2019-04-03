@@ -216,7 +216,7 @@ type
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
     nkPattern,            # a special pattern; used for matching
-    nkReturnToken,        # token used for interpretation
+    nkHiddenTryStmt,      # token used for interpretation
     nkClosure,            # (prc, env)-pair (internally used for code gen)
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
@@ -227,7 +227,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 34 flags!
+  TSymFlag* = enum    # already 36 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -278,6 +278,8 @@ type
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
     sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
                       # meaning that it won't be renamed and/or changed in any way
+    sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
+
 
   TSymFlags* = set[TSymFlag]
 
@@ -478,7 +480,7 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~38)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -535,6 +537,8 @@ type
     tfCovariant       # covariant generic param mimicing a ptr type
     tfWeakCovariant   # covariant generic param mimicing a seq/array type
     tfContravariant   # contravariant generic param
+    tfCheckedForDestructor # type was checked for having a destructor.
+                           # If it has one, t.destructor is not nil.
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -640,7 +644,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mReset,
+    mDefault, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,

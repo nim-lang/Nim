@@ -73,7 +73,7 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   ## See also:
   ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
   ## * `osLastError proc <#osLastError>`_
-  var e: ref OSError; new(e)
+  var e: owned(ref OSError); new(e)
   e.errorCode = errorCode.int32
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:

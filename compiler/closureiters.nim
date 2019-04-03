@@ -541,7 +541,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 
       if isExpr: result.add(ctx.newEnvVarAccess(tmp))
 
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -934,7 +934,7 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
       result[1] = ctx.transformBreaksInBlock(result[1], result[0], gotoOut)
       result[1] = ctx.transformClosureIteratorBody(result[1], gotoOut)
 
-    of nkTryStmt:
+    of nkTryStmt, nkHiddenTryStmt:
       # See explanation above about how this works
       ctx.hasExceptions = true
 
