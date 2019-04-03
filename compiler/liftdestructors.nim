@@ -373,6 +373,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newAsgnStmt(x, call)
   elif optNimV2 in c.graph.config.globalOptions:
     let xx = genBuiltin(c.graph, mAccessEnv, "accessEnv", x)
+    xx.typ = getSysType(c.graph, c.info, tyPointer)
     case c.kind
     of attachedSink:
       # we 'nil' y out afterwards so we *need* to take over its reference
@@ -389,6 +390,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c.graph, mAccessEnv, "accessEnv", x)
+  xx.typ = getSysType(c.graph, c.info, tyPointer)
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.lastSon
   discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
