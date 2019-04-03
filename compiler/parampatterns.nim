@@ -259,6 +259,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
   of nkHiddenDeref:
     if isUnsafeAddr and n[0].typ.kind == tyLent: result = arLValue
+    elif n[0].typ.kind == tyLent: result = arDiscriminant
     else: result = arLValue
   of nkDerefExpr, nkHiddenAddr:
     result = arLValue

@@ -249,11 +249,9 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
   if isDefined(m.config, "checkabi") and (let size = getSize(m.config, t); size != szUnknownSize):
     addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(size)])
 
-proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType, info: TLineInfo): bool =
+proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)
   assert skResult != s.kind
-  if tfByCopy in pt.flags and retType != nil and retType.kind == tyLent:
-    localError(conf, info, typeToString(pt) & " type is {.bycopy.}, but pass by reference is required to return lent value")
 
   if tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
@@ -412,7 +410,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     if params != nil: add(params, ~", ")
     fillLoc(param.loc, locParam, t.n.sons[i], mangleParamName(m, param),
             param.paramStorageLoc)
-    if ccgIntroducedPtr(m.config, param, t.sons[0], t.n.sons[i].info):
+    if ccgIntroducedPtr(m.config, param, t.sons[0]):
       add(params, getTypeDescWeak(m, param.typ, check))
       add(params, ~"*")
       incl(param.loc.flags, lfIndirect)

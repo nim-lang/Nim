@@ -416,7 +416,7 @@ proc localDebugInfo(p: BProc, s: PSym, retType: PType) =
   # XXX work around a bug: No type information for open arrays possible:
   if skipTypes(s.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: return
   var a = "&" & s.loc.r
-  if s.kind == skParam and ccgIntroducedPtr(p.config, s, retType, s.ast.info): a = s.loc.r
+  if s.kind == skParam and ccgIntroducedPtr(p.config, s, retType): a = s.loc.r
   lineF(p, cpsInit,
        "FR_.s[$1].address = (void*)$3; FR_.s[$1].typ = $4; FR_.s[$1].name = $2;$n",
        [p.maxFrameLen.rope, makeCString(normalize(s.name.s)), a,
