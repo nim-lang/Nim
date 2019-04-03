@@ -12,7 +12,7 @@
 
 import
   ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
-  intsets, platform, llstream, tables, sighashes, pathutils
+  intsets, platform, llstream, tables, sighashes, modulegraphs, pathutils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
