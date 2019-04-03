@@ -611,7 +611,7 @@ proc createTypeBoundOps*(c: PContext; orig: PType; info: TLineInfo) =
     canon = orig
   elif canon != orig:
     overwrite = true
-    
+
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
   # 2. we have a nop destructor. --> mDestroy
