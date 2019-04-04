@@ -26,7 +26,8 @@ Usage:
   nimpretty [options] file.nim
 Options:
   --output:file         set the output file (default: overwrite the input file)
-  --indent:N[=2]        set the number of spaces that is used for indentation
+  --indent:N[=0]        set the number of spaces that is used for indentation
+                        --indent:0 means autodetection (default behaviour)
   --version             show the version
   --help                show this help
 """
