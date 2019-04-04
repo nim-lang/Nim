@@ -226,7 +226,7 @@ proc genLineDir(p: BProc, t: PNode) =
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
-    if freshLineInfo(p, t.info) and p.module.s[cfsFrameDefines].len > 0:
+    if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               line.rope, quotedFilename(p.config, t.info))
 
@@ -1619,7 +1619,10 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   add(result, m.s[cfsHeaders])
   add(result, genSectionEnd(cfsHeaders, m.config))
   add(result, genSectionStart(cfsFrameDefines, m.config))
-  add(result, m.s[cfsFrameDefines])
+  if m.s[cfsFrameDefines].len > 0:
+    add(result, m.s[cfsFrameDefines])
+  else:
+    add(result, "#define nimfr_(x, y)\n#define nimln_(x, y)\n")
   add(result, genSectionEnd(cfsFrameDefines, m.config))
 
   for i in countup(cfsForwardTypes, cfsProcs):
