@@ -481,6 +481,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       undefSymbol(conf.symbols, "endb")
     else:
       localError(conf, info, "expected endb|gdb but found " & arg)
+  of "g": # alias for --debugger:native
+    incl(conf.globalOptions, optCDebug)
+    conf.options = conf.options + {optLineDir} - {optEndb}
+    #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
+    undefSymbol(conf.symbols, "endb")
   of "profiler":
     processOnOffSwitch(conf, {optProfiler}, arg, pass, info)
     if optProfiler in conf.options: defineSymbol(conf.symbols, "profiler")
