@@ -369,3 +369,9 @@ foobar
 
 # bug #9673
 discard `*`(1, 2)
+
+proc fun4() =
+  var a = "asdf"
+  var i = 0
+  while i < a.len and i < a.len:
+    return
