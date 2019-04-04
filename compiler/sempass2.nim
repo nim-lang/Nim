@@ -776,7 +776,12 @@ proc track(tracked: PEffects, n: PNode) =
       let last = lastSon(child)
       if last.kind != nkEmpty: track(tracked, last)
       if tracked.owner.kind != skMacro:
-        createTypeBoundOps(tracked.c, child[0].typ, child.info)
+        if child.kind == nkVarTuple:
+          createTypeBoundOps(tracked.c, child[^1].typ, child.info)
+          for i in 0..child.len-3:
+            createTypeBoundOps(tracked.c, child[i].typ, child.info)
+        else:
+          createTypeBoundOps(tracked.c, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)

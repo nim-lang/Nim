@@ -610,7 +610,7 @@ proc createTypeBoundOps*(c: PContext; orig: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
-  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.skipTypes({tyAlias}).flags != {}: return
   incl orig.flags, tfCheckedForDestructor
 
   let h = sighashes.hashType(orig, {CoType, CoConsiderOwned})
