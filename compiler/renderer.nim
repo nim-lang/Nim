@@ -500,7 +500,11 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkUsingStmt:
     if sonsLen(n) > 1: result = MaxLineLen + 1
     else: result = lsons(g, n) + len("using_")
-  of nkReturnStmt: result = lsub(g, n.sons[0]) + len("return_")
+  of nkReturnStmt:
+    if n.len > 0 and n[0].kind == nkAsgn:
+      result = len("return_") + lsub(g, n[0][1])
+    else:
+      result = len("return_") + lsub(g, n[0])
   of nkRaiseStmt: result = lsub(g, n.sons[0]) + len("raise_")
   of nkYieldStmt: result = lsub(g, n.sons[0]) + len("yield_")
   of nkDiscardStmt: result = lsub(g, n.sons[0]) + len("discard_")
@@ -1001,7 +1005,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCommand:
     accentedName(g, n[0])
     put(g, tkSpaces, Space)
-    gcomma(g, n, 1)
+    if n[^1].kind == nkStmtList:
+      for i, child in n:
+        if i > 1 and i < n.len - 1:
+          put(g, tkComma, ",")
+        elif i == n.len - 1:
+          put(g, tkColon, ":")
+        if i > 0:
+          gsub(g, child)
+    else:
+      gcomma(g, n, 1)
   of nkExprEqExpr, nkAsgn, nkFastAsgn:
     gsub(g, n, 0)
     put(g, tkSpaces, Space)
@@ -1204,8 +1217,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       put(g, tkDistinct, "distinct")
   of nkTypeDef:
-    gsub(g, n, 0)
-    gsub(g, n, 1)
+    if n.sons[0].kind == nkPragmaExpr:
+      # generate pragma after generic
+      gsub(g, n.sons[0], 0)
+      gsub(g, n, 1)
+      gsub(g, n.sons[0], 1)
+    else:
+      gsub(g, n, 0)
+      gsub(g, n, 1)
     put(g, tkSpaces, Space)
     if n.len > 2 and n.sons[2].kind != nkEmpty:
       putWithSpace(g, tkEquals, "=")
@@ -1276,7 +1295,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkWhileStmt: gwhile(g, n)
   of nkPragmaBlock: gpragmaBlock(g, n)
   of nkCaseStmt, nkRecCase: gcase(g, n)
-  of nkTryStmt: gtry(g, n)
+  of nkTryStmt, nkHiddenTryStmt: gtry(g, n)
   of nkForStmt, nkParForStmt: gfor(g, n)
   of nkBlockStmt, nkBlockExpr: gblock(g, n)
   of nkStaticStmt: gstaticStmt(g, n)
@@ -1326,7 +1345,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
   of nkReturnStmt:
     putWithSpace(g, tkReturn, "return")
-    gsub(g, n, 0)
+    if n.len > 0 and n[0].kind == nkAsgn:
+      gsub(g, n[0], 1)
+    else:
+      gsub(g, n, 0)
   of nkRaiseStmt:
     putWithSpace(g, tkRaise, "raise")
     gsub(g, n, 0)

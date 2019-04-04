@@ -1545,20 +1545,17 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
 
 proc skip(c: var PegLexer) =
   var pos = c.bufpos
-  var buf = c.buf
   while pos < c.buf.len:
-    case buf[pos]
+    case c.buf[pos]
     of ' ', '\t':
       inc(pos)
     of '#':
       while (pos < c.buf.len) and
-             not (buf[pos] in {'\c', '\L', '\0'}): inc(pos)
+             not (c.buf[pos] in {'\c', '\L', '\0'}): inc(pos)
     of '\c':
       pos = handleCR(c, pos)
-      buf = c.buf
     of '\L':
       pos = handleLF(c, pos)
-      buf = c.buf
     else:
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
@@ -1566,10 +1563,9 @@ proc skip(c: var PegLexer) =
 proc getString(c: var PegLexer, tok: var Token) =
   tok.kind = tkStringLit
   var pos = c.bufpos + 1
-  var buf = c.buf
-  var quote = buf[pos-1]
+  var quote = c.buf[pos-1]
   while pos < c.buf.len:
-    case buf[pos]
+    case c.buf[pos]
     of '\\':
       c.bufpos = pos
       getEscapedChar(c, tok)
@@ -1577,22 +1573,21 @@ proc getString(c: var PegLexer, tok: var Token) =
     of '\c', '\L', '\0':
       tok.kind = tkInvalid
       break
-    elif buf[pos] == quote:
+    elif c.buf[pos] == quote:
       inc(pos)
       break
     else:
-      add(tok.literal, buf[pos])
+      add(tok.literal, c.buf[pos])
       inc(pos)
   c.bufpos = pos
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  var buf = c.buf
-  if buf[pos] in {'0'..'9'}:
+  if c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
-    while pos < c.buf.len and buf[pos] in {'0'..'9'}:
-      tok.index = tok.index * 10 + ord(buf[pos]) - ord('0')
+    while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
+      tok.index = tok.index * 10 + ord(c.buf[pos]) - ord('0')
       inc(pos)
   else:
     tok.kind = tkDollar
@@ -1602,14 +1597,13 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
   tok.kind = tkCharSet
   tok.charset = {}
   var pos = c.bufpos + 1
-  var buf = c.buf
   var caret = false
-  if buf[pos] == '^':
+  if c.buf[pos] == '^':
     inc(pos)
     caret = true
   while pos < c.buf.len:
     var ch: char
-    case buf[pos]
+    case c.buf[pos]
     of ']':
       if pos < c.buf.len: inc(pos)
       break
@@ -1622,11 +1616,11 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
       tok.kind = tkInvalid
       break
     else:
-      ch = buf[pos]
+      ch = c.buf[pos]
       inc(pos)
     incl(tok.charset, ch)
-    if buf[pos] == '-':
-      if pos+1 < c.buf.len and buf[pos+1] == ']':
+    if c.buf[pos] == '-':
+      if pos+1 < c.buf.len and c.buf[pos+1] == ']':
         incl(tok.charset, '-')
         inc(pos)
       else:
@@ -1635,7 +1629,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
         else:
           break
         var ch2: char
-        case buf[pos]
+        case c.buf[pos]
         of '\\':
           c.bufpos = pos
           getEscapedChar(c, tok)
@@ -1646,7 +1640,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
           break
         else:
           if pos+1 < c.buf.len:
-            ch2 = buf[pos]
+            ch2 = c.buf[pos]
             inc(pos)
           else:
             break
@@ -1657,11 +1651,10 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
 
 proc getSymbol(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos
-  var buf = c.buf
   while pos < c.buf.len:
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if pos < buf.len and buf[pos] notin strutils.IdentChars: break
+    if pos < c.buf.len and c.buf[pos] notin strutils.IdentChars: break
   c.bufpos = pos
   tok.kind = tkIdentifier
 

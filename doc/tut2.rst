@@ -40,18 +40,16 @@ and more efficient code. In particular, preferring composition over inheritance
 is often the better design.
 
 
-Objects
--------
+Inheritance
+-----------
 
-Like tuples, objects are a means to pack different values together in a
-structured way. However, objects provide many features that tuples do not:
-They provide inheritance and information hiding. Because objects encapsulate
-data, the ``T()`` object constructor should only be used internally and the
-programmer should provide a proc to initialize the object (this is called
-a *constructor*).
-
-Objects have access to their type at runtime. There is an
-``of`` operator that can be used to check the object's type:
+Inheritance in Nim is entirely optional. To enable inheritance with
+runtime type information the object needs to inherit from
+``RootObj``.  This can be done directly, or indirectly by
+inheriting from an object that inherits from ``RootObj``.  Usually
+types with inheritance are also marked as ``ref`` types even though
+this isn't strictly enforced. To check at runtime if an object is of a certain
+type, the ``of`` operator can be used.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -70,11 +68,6 @@ Objects have access to their type at runtime. There is an
   # object construction:
   student = Student(name: "Anton", age: 5, id: 2)
   echo student[]
-
-Object fields that should be visible from outside the defining module have to
-be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. New object types can only be defined within a type
-section.
 
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``RootObj``
@@ -174,21 +167,6 @@ An example:
 As can been seen from the example, an advantage to an object hierarchy is that
 no conversion between different object types is needed. Yet, access to invalid
 object fields raises an exception.
-
-
-Methods
--------
-In ordinary object oriented languages, procedures (also called *methods*) are
-bound to a class. This has disadvantages:
-
-* Adding a method to a class the programmer has no control over is
-  impossible or needs ugly workarounds.
-* Often it is unclear where the method should belong to: is
-  ``join`` a string method or an array method?
-
-Nim avoids these problems by not assigning methods to a class. All methods
-in Nim are multi-methods. As we will see later, multi-methods are
-distinguished from procs only for dynamic binding purposes.
 
 
 Method call syntax
@@ -314,6 +292,9 @@ Procedures always use static dispatch. For dynamic dispatch replace the
 Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
 because it makes more sense for them to use static binding, but ``eval`` is a
 method because it requires dynamic binding.
+
+**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
+``--multimethods:on`` when compiling.
 
 In a multi-method all parameters that have an object type are used for the
 dispatching:

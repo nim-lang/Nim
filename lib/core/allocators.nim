@@ -12,12 +12,13 @@ type
     ThreadLocal ## the allocator is thread local only.
     ZerosMem    ## the allocator always zeros the memory on an allocation
   Allocator* = ptr AllocatorObj
-  AllocatorObj* {.inheritable.} = object
-    alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall.}
-    dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall.}
-    realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.}
-    deallocAll*: proc (a: Allocator) {.nimcall.}
+  AllocatorObj* {.inheritable, compilerproc.} = object
+    alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [], tags: [].}
+    dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [], tags: [].}
+    realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [], tags: [].}
+    deallocAll*: proc (a: Allocator) {.nimcall, raises: [], tags: [].}
     flags*: set[AllocatorFlag]
+    name*: cstring
     allocCount: int
     deallocCount: int
 
@@ -30,16 +31,17 @@ proc getLocalAllocator*(): Allocator =
   result = localAllocator
   if result == nil:
     result = addr allocatorStorage
-    result.alloc = proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall.} =
+    result.alloc = proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [].} =
       result = system.alloc(size)
       inc a.allocCount
-    result.dealloc = proc (a: Allocator; p: pointer; size: int) {.nimcall.} =
+    result.dealloc = proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [].} =
       system.dealloc(p)
       inc a.deallocCount
-    result.realloc = proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.} =
+    result.realloc = proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [].} =
       result = system.realloc(p, newSize)
     result.deallocAll = nil
     result.flags = {ThreadLocal}
+    result.name = "nim_local"
     localAllocator = result
 
 proc setLocalAllocator*(a: Allocator) =

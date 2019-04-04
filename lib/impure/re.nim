@@ -451,7 +451,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ##
   ## .. code-block:: nim
   ##
-  ## "var1<-keykey; val2<-key2key2"
+  ## "var1<-keykey; var2<-key2key2"
   result = ""
   var caps: array[MaxSubpatterns, string]
   var prev = 0
@@ -561,31 +561,6 @@ proc escapeRe*(s: string): string =
       result.add("\\x")
       result.add(toHex(ord(c), 2))
 
-const ## common regular expressions
-  reIdentifier* {.deprecated.} = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"
-    ## describes an identifier
-  reNatural* {.deprecated.} = r"\b\d+\b"
-    ## describes a natural number
-  reInteger* {.deprecated.} = r"\b[-+]?\d+\b"
-    ## describes an integer
-  reHex* {.deprecated.} = r"\b0[xX][0-9a-fA-F]+\b"
-    ## describes a hexadecimal number
-  reBinary* {.deprecated.} = r"\b0[bB][01]+\b"
-    ## describes a binary number (example: 0b11101)
-  reOctal* {.deprecated.} = r"\b0[oO][0-7]+\b"
-    ## describes an octal number (example: 0o777)
-  reFloat* {.deprecated.} = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
-    ## describes a floating point number
-  reEmail* {.deprecated.} = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\. &" &
-                            r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@" &
-                            r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+" &
-                            r"(?:[a-zA-Z]{2}|com|org|net|gov|mil|biz|" &
-                            r"info|mobi|name|aero|jobs|museum)\b"
-    ## describes a common email address
-  reURL* {.deprecated.} = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms-help)" &
-                          r":((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
-    ## describes an URL
-
 when isMainModule:
   doAssert match("(a b c)", rex"\( .* \)")
   doAssert match("WHiLe", re("while", {reIgnoreCase}))
@@ -595,7 +570,7 @@ when isMainModule:
   doAssert "ABC".match(rex"\d+ | \w+")
 
   {.push warnings:off.}
-  doAssert matchLen("key", re(reIdentifier)) == 3
+  doAssert matchLen("key", re"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b") == 3
   {.pop.}
 
   var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+"

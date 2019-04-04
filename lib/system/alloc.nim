@@ -20,7 +20,7 @@ template track(op, address, size) =
 # Each chunk starts at an address that is divisible by the page size.
 
 const
-  InitialMemoryRequest = 128 * PageSize # 0.5 MB
+  nimMinHeapPages {.intdefine.} = 128 # 0.5 MB
   SmallChunkSize = PageSize
   MaxFli = 30
   MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
@@ -223,10 +223,6 @@ proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   mat() = b
   setBit(sl, a.slBitmap[fl])
   setBit(fl, a.flBitmap)
-
-{.push stack_trace: off.}
-proc initAllocator() = discard "nothing to do anymore"
-{.pop.}
 
 proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   inc(a.currMem, bytes)
@@ -588,8 +584,8 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
   if result == nil:
-    if size < InitialMemoryRequest:
-      result = requestOsChunks(a, InitialMemoryRequest)
+    if size < nimMinHeapPages * PageSize:
+      result = requestOsChunks(a, nimMinHeapPages * PageSize)
       splitChunk(a, result, size)
     else:
       result = requestOsChunks(a, size)

@@ -12,7 +12,7 @@
 import
   ast, astalgo, magicsys, std / sha1, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
-  lineinfos, pathutils
+  lineinfos, pathutils, tables
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
@@ -91,6 +91,9 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym {.proc
   assert graph.config != nil
   result = compileModule(graph, fileIdx, {})
   graph.addDep(s, fileIdx)
+  # keep track of import relationships
+  if graph.config.hcrOn:
+    graph.importDeps.mgetOrPut(FileIndex(s.position), @[]).add(fileIdx)
   #if sfSystemModule in result.flags:
   #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:

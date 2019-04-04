@@ -8,10 +8,13 @@
 #
 
 include "system/inclrtl"
-include "system/helpers"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
+##
+## See also:
+## * `macros tutorial <https://nim-lang.github.io/Nim/tut3.html>`_
+## * `macros section in Nim manual <https://nim-lang.github.io/Nim/manual.html#macros>`_
 
 ## .. include:: ../../doc/astspec.txt
 
@@ -75,7 +78,7 @@ type
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
-    nnkReturnToken,
+    nnkHiddenTryStmt,
     nnkClosure,
     nnkGotoState,
     nnkState,
@@ -117,7 +120,7 @@ type
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
 
 type
-  NimIdent* = object of RootObj
+  NimIdent* {.deprecated.} = object of RootObj
     ## represents a Nim identifier in the AST. **Note**: This is only
     ## rarely useful, for identifier construction from a string
     ## use ``ident"abc"``.
@@ -133,6 +136,8 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
+
+{.push warnings: off.}
 
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
@@ -151,8 +156,9 @@ proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
 
 proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
   ## compares two Nim symbols
-  ## **Deprecated since version 0.18.1**; Use ```==`(NimNode,NimNode)`` instead.
+  ## **Deprecated since version 0.18.1**; Use ``==(NimNode, NimNode)`` instead.
 
+{.pop.}
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## compares two Nim nodes' types. Return true if the types are the same,
@@ -223,6 +229,8 @@ proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 
+{.push warnings: off.}
+
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated.} =
   ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
 
@@ -250,7 +258,7 @@ else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
     symbol.symbol.getImpl
 
-  proc strValOld(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
 
   proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
 
@@ -263,6 +271,8 @@ else: # bootstrapping substitute
       $n.symbol
     else:
       n.strValOld
+
+{.pop.}
 
 when defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
@@ -343,17 +353,28 @@ object
     doAssert(dumpTypeImpl(b) == t)
     doAssert(dumpTypeImpl(c) == t)
 
+when defined(nimHasSignatureHashInMacro):
+  proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
+    ## Returns a stable identifier derived from the signature of a symbol.
+    ## The signature combines many factors such as the type of the symbol,
+    ## the owning module of the symbol and others. The same identifier is
+    ## used in the back-end to produce the mangled symbol name.
+
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeImpl`` which takes a ``typedesc``.
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
 
+{.push warnings: off.}
+
 proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated.}
   ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``genSym`` instead.
 
 proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated.}
   ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``ident(string)`` instead.
+
+{.pop.}
 
 #proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
@@ -377,7 +398,9 @@ proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
 
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
-  ## writes an error message at compile time
+  ## writes an error message at compile time. The optional ``n: NimNode``
+  ## parameter is used as the source for file and line number information in
+  ## the compilation error message.
 
 proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
@@ -405,14 +428,19 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: NimIdent): NimNode {.compileTime.} =
+{.push warnings: off.}
+
+proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
   result.ident = i
 
+{.pop.}
+
 proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
+
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -465,7 +493,7 @@ type
 
 proc `$`*(arg: Lineinfo): string =
   # BUG: without `result = `, gives compile error
-  result = lineInfoToString(arg.filename, arg.line, arg.column)
+  result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
 
 #proc lineinfo*(n: NimNode): LineInfo {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file
@@ -590,6 +618,8 @@ proc newCall*(theProc: NimNode,
   result.add(theProc)
   result.add(args)
 
+{.push warnings: off.}
+
 proc newCall*(theProc: NimIdent,
               args: varargs[NimNode]): NimNode {.compileTime, deprecated.} =
   ## produces a new call node. `theProc` is the proc that is called with
@@ -599,6 +629,8 @@ proc newCall*(theProc: NimIdent,
   result = newNimNode(nnkCall)
   result.add(newIdentNode(theProc))
   result.add(args)
+
+{.pop.}
 
 proc newCall*(theProc: string,
               args: varargs[NimNode]): NimNode {.compileTime.} =
@@ -684,11 +716,22 @@ proc newLit*(f: float64): NimNode {.compileTime.} =
   result = newNimNode(nnkFloat64Lit)
   result.floatVal = f
 
-when compiles(float128):
+when declared(float128):
   proc newLit*(f: float128): NimNode {.compileTime.} =
     ## produces a new float literal node.
     result = newNimNode(nnkFloat128Lit)
     result.floatVal = f
+
+proc newLit*(arg: enum): NimNode {.compileTime.} =
+  result = newCall(
+    arg.type.getTypeInst[1],
+    newLit(int(arg))
+  )
+
+proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.}
+proc newLit*[T](arg: seq[T]): NimNode {.compileTime.}
+proc newLit*[T](s: set[T]): NimNode {.compileTime.}
+proc newLit*(arg: tuple): NimNode {.compileTime.}
 
 proc newLit*(arg: object): NimNode {.compileTime.} =
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
@@ -711,11 +754,6 @@ proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
       getTypeInst( bindSym"T" )
     ),
     bracket
-  )
-proc newLit*(arg: enum): NimNode {.compileTime.} =
-  result = newCall(
-    arg.type.getTypeInst[1],
-    newLit(int(arg))
   )
 
 proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
@@ -751,12 +789,13 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
 
+{.push warnings: off.}
+
 proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated.} =
   ## **Deprecated since version 0.18.1**; Use one of ``nestList(NimNode, ...)`` instead.
-  var L = x.len
-  result = newCall(theProc, x[L-2], x[L-1])
-  for i in countdown(L-3, 0):
-    result = newCall(theProc, x[i], result)
+  nestList(newIdentNode(theProc), x)
+
+{.pop.}
 
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
@@ -1025,7 +1064,10 @@ const
     nnkCallStrLit, nnkHiddenCallConv}
 
 proc expectKind*(n: NimNode; k: set[NimNodeKind]) {.compileTime.} =
-  assert n.kind in k, "Expected one of " & $k & ", got " & $n.kind
+  ## checks that `n` is of kind `k`. If this is not the case,
+  ## compilation aborts with an error message. This is useful for writing
+  ## macros that check the AST that is passed to them.
+  if n.kind notin k: error("Expected one of " & $k & ", got " & $n.kind, n)
 
 proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode()];
     body: NimNode = newStmtList(), procType = nnkProcDef): NimNode {.compileTime.} =
@@ -1033,13 +1075,14 @@ proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode(
   ##
   ## The ``params`` array must start with the return type of the proc,
   ## followed by a list of IdentDefs which specify the params.
-  assert procType in RoutineNodes
+  if procType notin RoutineNodes:
+    error("Expected one of " & $RoutineNodes & ", got " & $procType)
   result = newNimNode(procType).add(
     name,
     newEmptyNode(),
     newEmptyNode(),
-    newNimNode(nnkFormalParams).add(params), ##params
-    newEmptyNode(),  ## pragmas
+    newNimNode(nnkFormalParams).add(params),
+    newEmptyNode(),  # pragmas
     newEmptyNode(),
     body)
 
@@ -1075,7 +1118,8 @@ proc newEnum*(name: NimNode, fields: openArray[NimNode],
   ##
 
   expectKind name, nnkIdent
-  doAssert len(fields) > 0, "Enum must contain at least one field"
+  if len(fields) < 1:
+    error("Enum must contain at least one field")
   for field in fields:
     expectKind field, {nnkIdent, nnkEnumFieldDef}
 
@@ -1131,7 +1175,7 @@ proc params*(someProc: NimNode): NimNode {.compileTime.} =
   result = someProc[3]
 proc `params=`* (someProc: NimNode; params: NimNode) {.compileTime.}=
   someProc.expectRoutine
-  assert params.kind == nnkFormalParams
+  expectKind(params, nnkFormalParams)
   someProc[3] = params
 
 proc pragma*(someProc: NimNode): NimNode {.compileTime.} =
@@ -1142,7 +1186,7 @@ proc pragma*(someProc: NimNode): NimNode {.compileTime.} =
 proc `pragma=`*(someProc: NimNode; val: NimNode){.compileTime.}=
   ## Set the pragma of a proc type
   someProc.expectRoutine
-  assert val.kind in {nnkEmpty, nnkPragma}
+  expectKind(val, {nnkEmpty, nnkPragma})
   someProc[4] = val
 
 proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
@@ -1154,8 +1198,8 @@ proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
     someProc.pragma = pragmaNode
   pragmaNode.add(pragma)
 
-template badNodeKind(k, f) =
-  assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
+template badNodeKind(n, f) =
+  error("Invalid node kind " & $n.kind & " for macros.`" & $f & "`", n)
 
 proc body*(someProc: NimNode): NimNode {.compileTime.} =
   case someProc.kind:
@@ -1166,7 +1210,7 @@ proc body*(someProc: NimNode): NimNode {.compileTime.} =
   of nnkForStmt:
     return someProc.last
   else:
-    badNodeKind someProc.kind, "body"
+    badNodeKind someProc, "body"
 
 proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   case someProc.kind
@@ -1177,7 +1221,7 @@ proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   of nnkForStmt:
     someProc[len(someProc)-1] = val
   else:
-    badNodeKind someProc.kind, "body="
+    badNodeKind someProc, "body="
 
 proc basename*(a: NimNode): NimNode {.compiletime, benign.}
 
@@ -1193,7 +1237,7 @@ proc `$`*(node: NimNode): string {.compileTime.} =
   of nnkAccQuoted:
     result = $node[0]
   else:
-    badNodeKind node.kind, "$"
+    badNodeKind node, "$"
 
 proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## Create a new ident node from a string
@@ -1252,8 +1296,10 @@ proc basename*(a: NimNode): NimNode =
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
-  of nnkIdent: macros.`ident=`(a, toNimIdent val)
-  of nnkPostfix, nnkPrefix: a[1] = ident(val)
+  of nnkIdent:
+    a.strVal = val
+  of nnkPostfix, nnkPrefix:
+    a[1] = ident(val)
   else:
     quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
 
@@ -1279,7 +1325,7 @@ proc unpackPrefix*(node: NimNode): tuple[node: NimNode; op: string] {.
 
 proc unpackInfix*(node: NimNode): tuple[left: NimNode; op: string;
                                         right: NimNode] {.compileTime.} =
-  assert node.kind == nnkInfix
+  expectKind(node, nnkInfix)
   result = (node[1], $node[0], node[2])
 
 proc copy*(node: NimNode): NimNode {.compileTime.} =
@@ -1340,7 +1386,7 @@ else:
 
 proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
-  assert params.kind == nnkFormalParams
+  expectKind(params, nnkFormalParams)
   for i in 1 ..< params.len:
     template node: untyped = params[i]
     if name.eqIdent( $ node[0]):
@@ -1402,12 +1448,19 @@ proc customPragmaNode(n: NimNode): NimNode =
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
+    elif impl.kind == nnkIdentDefs and impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
     else:
-      return typ.getImpl()[0][1]
+      let timpl = typ.getImpl()
+      if timpl.len>0 and timpl[0].len>1:
+        return timpl[0][1]
+      else:
+        return timpl
 
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
-    var typDef = getImpl(getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0]))
+    let typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
+    var typDef = getImpl(if typInst.kind == nnkVarTy: typInst[0] else: typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       let typ = typDef[2]
@@ -1442,7 +1495,7 @@ proc customPragmaNode(n: NimNode): NimNode =
                 if varName.kind == nnkPostfix:
                   # This is a public field. We are skipping the postfix *
                   varName = varName[1]
-                if eqIdent(varName.strVal, name):
+                if eqIdent($varName, name):
                   return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
@@ -1492,9 +1545,18 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
-      return p[1]
-
-  error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
+      if p.len == 2:
+        result = p[1]
+      else:
+        let def = p[0].getImpl[3]
+        result = newTree(nnkPar)
+        for i in 1 ..< def.len:
+          let key = def[i][0]
+          let val = p[i]
+          result.add newTree(nnkExprColonExpr, key, val)
+      break
+  if result.kind == nnkEmpty:
+    error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
 
 when not defined(booting):
@@ -1520,3 +1582,15 @@ proc getProjectPath*(): string = discard
   ## Returns the path to the currently compiling project, not to
   ## be confused with ``system.currentSourcePath`` which returns
   ## the path of the current module.
+
+when defined(nimMacrosSizealignof):
+  proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+    ## Returns the same result as ``system.sizeof``, but it works on
+    ## ``NimNode`` for use in macro context.
+  proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+    ## Returns the same result as ``system.alignof``, but it works on
+    ## ``NimNode`` for use in macro context.
+  proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+    ## Returns the same result as ``system.offsetof``, but it expects
+    ## a resolved symbol node from a field of a type. Therefore it
+    ## only requires one argument instead of two.

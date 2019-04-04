@@ -82,7 +82,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
   if s == nil: return nil
   result = copyStrLast(s, start, s.len-1)
 
-proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
+proc nimToCStringConv(s: NimString): cstring {.compilerProc, nonReloadable, inline.} =
   if s == nil or s.len == 0: result = cstring""
   else: result = cstring(addr s.data)
 
@@ -116,22 +116,27 @@ proc newOwnedString(src: NimString; n: int): NimString =
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
-    when declared(newObjRC1) and not defined(gcRegions):
-      var s = src.len
-      if s < 7: s = 7
-      result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
-                               s+1))
-      result.reserved = s
-      when defined(gogc):
-        result.elemSize = 1
+    if (src.reserved and seqShallowFlag) != 0:
+      result = src
+      when declared(incRef):
+        incRef(usrToCell(result))
     else:
-      result = rawNewStringNoInit(src.len)
-    result.len = src.len
-    copyMem(addr(result.data), addr(src.data), src.len + 1)
-    sysAssert((seqShallowFlag and result.reserved) == 0, "copyStringRC1")
-    when defined(nimShallowStrings):
-      if (src.reserved and strlitFlag) != 0:
-        result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
+      when declared(newObjRC1) and not defined(gcRegions):
+        var s = src.len
+        if s < 7: s = 7
+        result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
+                                s+1))
+        result.reserved = s
+        when defined(gogc):
+          result.elemSize = 1
+      else:
+        result = rawNewStringNoInit(src.len)
+      result.len = src.len
+      copyMem(addr(result.data), addr(src.data), src.len + 1)
+      sysAssert((seqShallowFlag and result.reserved) == 0, "copyStringRC1")
+      when defined(nimShallowStrings):
+        if (src.reserved and strlitFlag) != 0:
+          result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
 proc copyDeepString(src: NimString): NimString {.inline.} =
   if src != nil:

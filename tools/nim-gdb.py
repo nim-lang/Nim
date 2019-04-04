@@ -1,4 +1,3 @@
-
 import gdb
 import re
 import sys
@@ -16,8 +15,6 @@ def printErrorOnce(id, message):
     errorSet.add(id)
     gdb.write(message, gdb.STDERR)
 
-nimobjfile = gdb.current_objfile() or gdb.objfiles()[0]
-nimobjfile.type_printers = []
 
 ################################################################################
 #####  Type pretty printers
@@ -121,9 +118,6 @@ class NimTypePrinter:
   def instantiate(self):
     return NimTypeRecognizer()
 
-
-nimobjfile.type_printers = [NimTypePrinter()]
-
 ################################################################################
 #####  GDB Function, equivalent of Nim's $ operator
 ################################################################################
@@ -173,6 +167,60 @@ class DollarPrintCmd (gdb.Command):
     gdb.write(str(DollarPrintFunction.invoke_static(param)) + "\n", gdb.STDOUT)
 
 DollarPrintCmd()
+
+
+################################################################################
+#####  GDB Commands to invoke common nim tools.
+################################################################################
+
+
+import subprocess, os
+
+
+class KochCmd (gdb.Command):
+  """Command that invokes ``koch'', the build tool for the compiler."""
+
+  def __init__ (self):
+    super (KochCmd, self).__init__ ("koch",
+                                    gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "koch")
+
+  def invoke(self, argument, from_tty):
+    import os
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
+
+KochCmd()
+
+
+class NimCmd (gdb.Command):
+  """Command that invokes ``nim'', the nim compiler."""
+
+  def __init__ (self):
+    super (NimCmd, self).__init__ ("nim",
+                                   gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "bin/nim")
+
+  def invoke(self, argument, from_tty):
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
+
+NimCmd()
+
+
+class NimbleCmd (gdb.Command):
+  """Command that invokes ``nimble'', the nim package manager and build tool."""
+
+  def __init__ (self):
+    super (NimbleCmd, self).__init__ ("nimble",
+                                      gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "bin/nimble")
+
+  def invoke(self, argument, from_tty):
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
+
+NimbleCmd()
 
 ################################################################################
 #####  Value pretty printers
@@ -515,6 +563,20 @@ class NimTablePrinter:
 
 ################################################################################
 
+class NimFrameFilter:
+  def __init__(self):
+    self.name = "nim-frame-filter"
+    self.enabled = True
+    self.priority = 100
+    self.hidden =  {"NimMainInner","NimMain", "main"}
+
+  def filter(self, iterator):
+    for framedecorator in iterator:
+      if framedecorator.function() not in self.hidden:
+        yield framedecorator
+
+################################################################################
+
 def makematcher(klass):
   def matcher(val):
     typeName = str(val.type)
@@ -528,5 +590,22 @@ def makematcher(klass):
       printErrorOnce(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")
   return matcher
 
-nimobjfile.pretty_printers = []
-nimobjfile.pretty_printers.extend([makematcher(var) for var in list(vars().values()) if hasattr(var, 'pattern')])
+def register_nim_pretty_printers_for_object(objfile):
+  nimMainSym = gdb.lookup_global_symbol("NimMain", gdb.SYMBOL_FUNCTIONS_DOMAIN)
+  if nimMainSym and nimMainSym.symtab.objfile == objfile:
+    print("set Nim pretty printers for ", objfile.filename)
+
+    objfile.type_printers = [NimTypePrinter()]
+    objfile.pretty_printers = [makematcher(var) for var in list(globals().values()) if hasattr(var, 'pattern')]
+
+# Register pretty printers for all objfiles that are already loaded.
+for old_objfile in gdb.objfiles():
+  register_nim_pretty_printers_for_object(old_objfile)
+
+# Register an event handler to register nim pretty printers for all future objfiles.
+def new_object_handler(event):
+  register_nim_pretty_printers_for_object(event.new_objfile)
+
+gdb.events.new_objfile.connect(new_object_handler)
+
+gdb.frame_filters = {"nim-frame-filter": NimFrameFilter()}

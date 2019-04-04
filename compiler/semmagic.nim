@@ -10,15 +10,18 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
-proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
-  result = newNodeI(nkAddr, n.info)
+proc semAddrArg(c: PContext; n: PNode; isUnsafeAddr = false): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
-    localError(c.config, n.info, errExprHasNoAddress)
-  result.add x
-  result.typ = makePtrType(c, x.typ)
+    # Do not suggest the use of unsafeAddr if this expression already is a
+    # unsafeAddr
+    if isUnsafeAddr:
+      localError(c.config, n.info, errExprHasNoAddress)
+    else:
+      localError(c.config, n.info, errExprHasNoAddress & "; maybe use 'unsafeAddr'")
+  result = x
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   var m = BiggestInt 1 # typeOfIter
@@ -129,14 +132,15 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   template typeWithSonsResult(kind, sons): PNode =
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
-  case trait.sym.name.s
+  let s = trait.sym.name.s
+  case s
   of "or", "|":
     return typeWithSonsResult(tyOr, @[operand, operand2])
   of "and":
     return typeWithSonsResult(tyAnd, @[operand, operand2])
   of "not":
     return typeWithSonsResult(tyNot, @[operand])
-  of "name":
+  of "name", "$":
     result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
     result.typ = newType(tyString, context)
     result.info = traitCall.info
@@ -160,7 +164,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
                      hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
-    localError(c.config, traitCall.info, "unknown trait")
+    localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
@@ -329,7 +333,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
+    result = n
+    result[1] = semAddrArg(c, n[1], n[0].sym.name.s == "unsafeAddr")
+    result.typ = makePtrType(c, result[1].typ)
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:
@@ -347,9 +353,17 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely, type: " & n[1].typ.typeToString)
       result = n
   of mAlignOf:
-    result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
-    result.info = n.info
-    result.typ = n.typ
+    # this is 100% analog to mSizeOf, could be made more dry.
+    let align = getAlign(c.config, n[1].typ)
+    if align == szUnknownSize:
+      result = n
+    elif align >= 0:
+      result = newIntNode(nkIntLit, align)
+      result.info = n.info
+      result.typ = n.typ
+    else:
+      localError(c.config, n.info, "cannot evaluate 'alignof' because its type is not defined completely, type: " & n[1].typ.typeToString)
+      result = n
   of mOffsetOf:
     var dotExpr: PNode
 
@@ -409,4 +423,14 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n
     else:
       result = plugin(c, n)
+  of mNewFinalize:
+    # Make sure the finalizer procedure refers to a procedure
+    if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
+      localError(c.config, n.info, "finalizer must be a direct reference to a procedure")
+    result = n
+  of mDestroy:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    if t.destructor != nil:
+      result.sons[0] = newSymNode(t.destructor)
   else: result = n

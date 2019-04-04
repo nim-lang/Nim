@@ -182,11 +182,10 @@ proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
 proc parseString(my: var JsonParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
-  var buf = my.buf
   if my.rawStringLiterals:
     add(my.a, '"')
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0':
       my.err = errQuoteExpected
       result = tkError
@@ -199,9 +198,9 @@ proc parseString(my: var JsonParser): TokKind =
     of '\\':
       if my.rawStringLiterals:
         add(my.a, '\\')
-      case buf[pos+1]
+      case my.buf[pos+1]
       of '\\', '"', '\'', '/':
-        add(my.a, buf[pos+1])
+        add(my.a, my.buf[pos+1])
         inc(pos, 2)
       of 'b':
         add(my.a, '\b')
@@ -223,17 +222,17 @@ proc parseString(my: var JsonParser): TokKind =
           add(my.a, 'u')
         inc(pos, 2)
         var pos2 = pos
-        var r = parseEscapedUTF16(buf, pos)
+        var r = parseEscapedUTF16(my.buf, pos)
         if r < 0:
           my.err = errInvalidToken
           break
         # Deal with surrogates
         if (r and 0xfc00) == 0xd800:
-          if buf[pos] != '\\' or buf[pos+1] != 'u':
+          if my.buf[pos] != '\\' or my.buf[pos+1] != 'u':
             my.err = errInvalidToken
             break
           inc(pos, 2)
-          var s = parseEscapedUTF16(buf, pos)
+          var s = parseEscapedUTF16(my.buf, pos)
           if (s and 0xfc00) == 0xdc00 and s > 0:
             r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
           else:
@@ -242,8 +241,8 @@ proc parseString(my: var JsonParser): TokKind =
         if my.rawStringLiterals:
           let length = pos - pos2
           for i in 1 .. length:
-            if buf[pos2] in {'0'..'9', 'A'..'F', 'a'..'f'}:
-              add(my.a, buf[pos2])
+            if my.buf[pos2] in {'0'..'9', 'A'..'F', 'a'..'f'}:
+              add(my.a, my.buf[pos2])
               inc pos2
             else:
               break
@@ -251,61 +250,54 @@ proc parseString(my: var JsonParser): TokKind =
           add(my.a, toUTF8(Rune(r)))
       else:
         # don't bother with the error
-        add(my.a, buf[pos])
+        add(my.a, my.buf[pos])
         inc(pos)
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\c')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos # store back
 
 proc skip(my: var JsonParser) =
   var pos = my.bufpos
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '/':
-      if buf[pos+1] == '/':
+      if my.buf[pos+1] == '/':
         # skip line comment:
         inc(pos, 2)
         while true:
-          case buf[pos]
+          case my.buf[pos]
           of '\0':
             break
           of '\c':
             pos = lexbase.handleCR(my, pos)
-            buf = my.buf
             break
           of '\L':
             pos = lexbase.handleLF(my, pos)
-            buf = my.buf
             break
           else:
             inc(pos)
-      elif buf[pos+1] == '*':
+      elif my.buf[pos+1] == '*':
         # skip long comment:
         inc(pos, 2)
         while true:
-          case buf[pos]
+          case my.buf[pos]
           of '\0':
             my.err = errEOC_Expected
             break
           of '\c':
             pos = lexbase.handleCR(my, pos)
-            buf = my.buf
           of '\L':
             pos = lexbase.handleLF(my, pos)
-            buf = my.buf
           of '*':
             inc(pos)
-            if buf[pos] == '/':
+            if my.buf[pos] == '/':
               inc(pos)
               break
           else:
@@ -316,51 +308,47 @@ proc skip(my: var JsonParser) =
       inc(pos)
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
     else:
       break
   my.bufpos = pos
 
 proc parseNumber(my: var JsonParser) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] == '-':
+  if my.buf[pos] == '-':
     add(my.a, '-')
     inc(pos)
-  if buf[pos] == '.':
+  if my.buf[pos] == '.':
     add(my.a, "0.")
     inc(pos)
   else:
-    while buf[pos] in Digits:
-      add(my.a, buf[pos])
+    while my.buf[pos] in Digits:
+      add(my.a, my.buf[pos])
       inc(pos)
-    if buf[pos] == '.':
+    if my.buf[pos] == '.':
       add(my.a, '.')
       inc(pos)
   # digits after the dot:
-  while buf[pos] in Digits:
-    add(my.a, buf[pos])
+  while my.buf[pos] in Digits:
+    add(my.a, my.buf[pos])
     inc(pos)
-  if buf[pos] in {'E', 'e'}:
-    add(my.a, buf[pos])
+  if my.buf[pos] in {'E', 'e'}:
+    add(my.a, my.buf[pos])
     inc(pos)
-    if buf[pos] in {'+', '-'}:
-      add(my.a, buf[pos])
+    if my.buf[pos] in {'+', '-'}:
+      add(my.a, my.buf[pos])
       inc(pos)
-    while buf[pos] in Digits:
-      add(my.a, buf[pos])
+    while my.buf[pos] in Digits:
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
 
 proc parseName(my: var JsonParser) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] in IdentStartChars:
-    while buf[pos] in IdentChars:
-      add(my.a, buf[pos])
+  if my.buf[pos] in IdentStartChars:
+    while my.buf[pos] in IdentChars:
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
 

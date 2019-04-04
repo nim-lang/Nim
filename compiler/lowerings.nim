@@ -21,12 +21,20 @@ proc newDeref*(n: PNode): PNode {.inline.} =
   addSon(result, n)
 
 proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
-  result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
-                     abstractInst).sons[i])
-  addSon(result, copyTree(tup))
-  var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
-  lit.intVal = i
-  addSon(result, lit)
+  if tup.kind == nkHiddenAddr:
+    result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}))
+    result.addSon(newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}).sons[i]))
+    addSon(result[0], tup[0])
+    var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
+    lit.intVal = i
+    addSon(result[0], lit)
+  else:
+    result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
+                       abstractInst).sons[i])
+    addSon(result, copyTree(tup))
+    var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
+    lit.intVal = i
+    addSon(result, lit)
 
 proc addVar*(father, v: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -72,7 +80,7 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   addSon(result, lit)
 
 proc newTryFinally*(body, final: PNode): PNode =
-  result = newTree(nkTryStmt, body, newTree(nkFinally, final))
+  result = newTree(nkHiddenTryStmt, body, newTree(nkFinally, final))
 
 proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let value = n.lastSon
@@ -540,6 +548,15 @@ proc genHigh*(g: ModuleGraph; n: PNode): PNode =
     result = newNodeI(nkCall, n.info, 2)
     result.typ = getSysType(g, n.info, tyInt)
     result.sons[0] = newSymNode(getSysMagic(g, n.info, "high", mHigh))
+    result.sons[1] = n
+
+proc genLen*(g: ModuleGraph; n: PNode): PNode =
+  if skipTypes(n.typ, abstractVar).kind == tyArray:
+    result = newIntLit(g, n.info, lastOrd(g.config, skipTypes(n.typ, abstractVar)) + 1)
+  else:
+    result = newNodeI(nkCall, n.info, 2)
+    result.typ = getSysType(g, n.info, tyInt)
+    result.sons[0] = newSymNode(getSysMagic(g, n.info, "len", mLengthSeq))
     result.sons[1] = n
 
 proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchObj: PSym;

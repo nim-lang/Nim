@@ -2,6 +2,7 @@ discard """
   output: '''
 Hello World
 Hello World'''
+  joinable: false
 """
 type MyProc = proc() {.cdecl.}
 type MyProc2 = proc() {.nimcall.}

@@ -19,16 +19,16 @@ a Nim syntax tree into a different tree.
 
 Examples of things that can be implemented in macros:
 
- * An assert macro that prints both sides of a comparison operator, if
-the assertion fails. ``myAssert(a == b)`` is converted to
-``if a != b: quit($a " != " $b)``
+* An assert macro that prints both sides of a comparison operator, if
+  the assertion fails. ``myAssert(a == b)`` is converted to
+  ``if a != b: quit($a " != " $b)``
 
- * A debug macro that prints the value and the name of the symbol.
-``myDebugEcho(a)`` is converted to ``echo "a: ", a``
+* A debug macro that prints the value and the name of the symbol.
+  ``myDebugEcho(a)`` is converted to ``echo "a: ", a``
 
- * Symbolic differentiation of an expression.
-``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)``  is converted to
-``3*a*pow(x,2) + 2*a*x + c``
+* Symbolic differentiation of an expression.
+  ``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)`` is converted to
+  ``3*a*pow(x,2) + 2*a*x + c``
 
 
 Macro Arguments

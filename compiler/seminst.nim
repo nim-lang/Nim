@@ -147,7 +147,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
     result.ast[bodyPos] = hloBody(c, b)
-    trackProc(c.graph, result, result.ast[bodyPos])
+    trackProc(c, result, result.ast[bodyPos])
     excl(result.flags, sfForward)
     dec c.inGenericInst
 
@@ -306,7 +306,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)
+  cl.isReturnType = true
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
+  cl.isReturnType = false
   result.n.sons[0] = originalParams[0].copyTree
   if result.sons[0] != nil:
     propagateToOwner(result, result.sons[0])

@@ -56,12 +56,13 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.lastLineNumber = 1
 
 proc closeEmitter*(em: var Emitter) =
-  if fileExists(em.config.outFile) and readFile(em.config.outFile.string) == em.content:
+  let outFile = em.config.absOutFile
+  if fileExists(outFile) and readFile(outFile.string) == em.content:
     discard "do nothing, see #9499"
     return
-  var f = llStreamOpen(em.config.outFile, fmWrite)
+  var f = llStreamOpen(outFile, fmWrite)
   if f == nil:
-    rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile.string)
+    rawMessage(em.config, errGenerated, "cannot open file: " & outFile.string)
     return
   f.llStreamWrite em.content
   llStreamClose(f)
@@ -246,7 +247,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(TokTypeToStr[tok.tokType])
     if not em.inquote: wr(" ")
   of tkOpr, tkDotDot:
-    if (tok.strongSpaceA == 0 and tok.strongSpaceB == 0) or em.inquote:
+    if ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) or em.inquote) and
+      tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]:
       # bug #9504: remember to not spacify a keyword:
       lastTokWasTerse = true
       # if not surrounded by whitespace, don't produce any whitespace either:

@@ -11,7 +11,7 @@
 
 import cgi, backend, strutils, json, os, tables, times
 
-import "testamenthtml.templ"
+import "testamenthtml.nimf"
 
 proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
   let

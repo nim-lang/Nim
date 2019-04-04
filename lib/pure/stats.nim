@@ -175,7 +175,7 @@ proc `+`*(a, b: RunningStat): RunningStat =
                 (n*n) +
                 4.0*delta*(a.n.float*b.mom3 - b.n.float*a.mom3) / n
   result.max = max(a.max, b.max)
-  result.min = max(a.min, b.min)
+  result.min = min(a.min, b.min)
 
 proc `+=`*(a: var RunningStat, b: RunningStat) {.inline.} =
   ## add a second RunningStats `b` to `a`
@@ -224,7 +224,7 @@ proc standardDeviation*[T](x: openArray[T]): float =
   result = rs.standardDeviation()
 
 proc standardDeviationS*[T](x: openArray[T]): float =
-  ## computes the sanple standardDeviation of `x`
+  ## computes the sample standardDeviation of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.standardDeviationS()

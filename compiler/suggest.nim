@@ -32,8 +32,8 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, lineinfos, pathutils
-from wordrecg import wDeprecated, wError
+import algorithm, prefixmatches, lineinfos, pathutils, parseutils
+from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -81,6 +81,38 @@ proc cmpSuggestions(a, b: Suggest): int =
   # independent of hashing order:
   result = cmp(a.name[], b.name[])
 
+proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int =
+  let
+    line = sourceLine(conf, info)
+    column = toColumn(info)
+
+  proc isOpeningBacktick(col: int): bool =
+    if col >= 0 and col < line.len:
+      if line[col] == '`':
+        not isOpeningBacktick(col - 1)
+      else:
+        isOpeningBacktick(col - 1)
+    else:
+      false
+
+  if column > line.len:
+    result = 0
+  elif column > 0 and line[column - 1] == '`' and isOpeningBacktick(column - 1):
+    result = skipUntil(line, '`', column)
+    if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
+      result = 0
+  elif ident[0] in linter.Letters and ident[^1] != '=':
+    result = identLen(line, column)
+    if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
+      result = 0
+  else:
+    result = skipWhile(line, OpChars + {'[', '(', '{', ']', ')', '}'}, column)
+    if ident[^1] == '=' and ident[0] in linter.Letters:
+      if line[column..column + result - 1] != "=":
+        result = 0
+    elif line[column..column + result - 1] != ident:
+      result = 0
+
 proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
                   quality: range[0..100]; prefix: PrefixMatch;
                   inTypeContext: bool; scope: int): Suggest =
@@ -88,7 +120,6 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
   result.section = section
   result.quality = quality
   result.isGlobal = sfGlobal in s.flags
-  result.tokenLen = s.name.s.len
   result.prefix = prefix
   result.contextFits = inTypeContext == (s.kind in {skType, skGenericParam})
   result.scope = scope
@@ -109,7 +140,11 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
         result.qualifiedPath.add(ow2.origModuleName)
       if ow != nil:
         result.qualifiedPath.add(ow.origModuleName)
-    result.qualifiedPath.add(s.name.s)
+    if s.name.s[0] in OpChars + {'[', '{', '('} or
+       s.name.id in ord(wAddr)..ord(wYield):
+      result.qualifiedPath.add('`' & s.name.s & '`')
+    else:
+      result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
       result.forth = typeToString(s.typ)
@@ -122,6 +157,10 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
   result.line = toLinenumber(infox)
   result.column = toColumn(infox)
   result.version = conf.suggestVersion
+  result.tokenLen = if section != ideHighlight:
+                      s.name.s.len
+                    else:
+                      getTokenLenFromSource(conf, s.name.s, infox)
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section
@@ -356,7 +395,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
     suggestOperations(c, n, field, typ, outputs)
   else:
     let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
     if typ.kind == tyObject:
       var t = typ
       while true:
@@ -456,20 +495,27 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
 proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:
     result = s.ast[pragmasPos]
-  elif s.kind in {skType}:
+  elif s.kind in {skType, skVar, skLet} and s.ast[0].kind == nkPragmaExpr:
     # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
     result = s.ast[0][1]
   doAssert result == nil or result.kind == nkPragma
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
-  let pragmaNode = extractPragma(s)
+  var pragmaNode: PNode
+  if optOldAst in conf.options and s.kind in {skVar, skLet}:
+    pragmaNode = nil
+  else:
+    pragmaNode = if s.kind == skEnumField: extractPragma(s.owner) else: extractPragma(s)
+  let name =
+    if s.kind == skEnumField and sfDeprecated notin s.flags: "enum '" & s.owner.name.s & "' which contains field '" & s.name.s & "'"
+    else: s.name.s
   if pragmaNode != nil:
     for it in pragmaNode:
       if whichPragma(it) == wDeprecated and it.safeLen == 2 and
           it[1].kind in {nkStrLit..nkTripleStrLit}:
-        message(conf, info, warnDeprecated, it[1].strVal & "; " & s.name.s)
+        message(conf, info, warnDeprecated, it[1].strVal & "; " & name & " is deprecated")
         return
-  message(conf, info, warnDeprecated, s.name.s)
+  message(conf, info, warnDeprecated, name & " is deprecated")
 
 proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
   let pragmaNode = extractPragma(s)
@@ -486,15 +532,13 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
+    if sfDeprecated in s.owner.flags:
+      warnAboutDeprecated(conf, info, s)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
     if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(conf, info, s, usageSym, false)
-
-proc useSym*(conf: ConfigRef; sym: PSym; usageSym: var PSym): PNode =
-  result = newSymNode(sym)
-  markUsed(conf, result.info, sym, usageSym)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!

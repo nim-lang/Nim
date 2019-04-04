@@ -29,7 +29,6 @@ template shouldProcess(g): bool =
 template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
-  #echo g.module.name.s, " ", g.module.owner.id, " ", gMainPackageId
   if shouldProcess(g):
     body
     try:

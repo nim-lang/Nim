@@ -14,25 +14,18 @@ var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
     ## Function that will be called
-    ## instead of stdmsg.write when printing stacktrace.
+    ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
-proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
-  importc: "fwrite", header: "<stdio.h>".}
-
-proc rawWrite(f: File, s: string|cstring) =
-  # we cannot throw an exception here!
-  discard c_fwrite(cstring(s), 1, s.len, f)
-
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: cstring) = rawWrite(stdmsg, msg)
+  proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
 
 else:
-  proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
+  proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
 
   proc writeToStdErr(msg: cstring) =
-    discard MessageBoxA(0, msg, nil, 0)
+    discard MessageBoxA(nil, msg, nil, 0)
 
 proc showErrorMessage(data: cstring) {.gcsafe.} =
   if errorMessageWriter != nil:
@@ -45,10 +38,10 @@ proc showErrorMessage(data: cstring) {.gcsafe.} =
       writeToStdErr(data)
 
 proc quitOrDebug() {.inline.} =
-  when not defined(endb):
-    quit(1)
-  else:
+  when defined(endb):
     endbStep() # call the debugger
+  else:
+    quit(1)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
@@ -220,11 +213,12 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     inc(i)
     it = it.prev
   var last = i-1
-  if s.len == 0:
-    s = newSeq[StackTraceEntry](i)
-  else:
-    last = s.len + i - 1
-    s.setLen(last+1)
+  when true: # not defined(gcDestructors):
+    if s.len == 0:
+      s = newSeq[StackTraceEntry](i)
+    else:
+      last = s.len + i - 1
+      s.setLen(last+1)
   it = f
   while it != nil:
     s[last] = StackTraceEntry(procname: it.procname,
@@ -330,8 +324,9 @@ else:
   proc stackTraceAvailable*(): bool = result = false
 
 var onUnhandledException*: (proc (errorMsg: string) {.
-  nimcall.}) ## set this error \
+  nimcall.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
+  ##
   ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
   ## Unstable API.
 
@@ -347,24 +342,19 @@ proc raiseExceptionAux(e: ref Exception) =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions):
-    if e[] of OutOfMemError:
-      showErrorMessage(e.name)
-      quitOrDebug()
-    else:
-      pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
+    pushCurrentException(e)
+    raiseCounter.inc
+    if raiseCounter == 0:
+      raiseCounter.inc # skip zero at overflow
+    e.raiseId = raiseCounter
+    {.emit: "`e`->raise();".}
+  elif defined(nimQuirky):
+    pushCurrentException(e)
   else:
     if excHandler != nil:
       if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
         pushCurrentException(e)
         c_longjmp(excHandler.context, 1)
-    elif e[] of OutOfMemError:
-      showErrorMessage(e.name)
-      quitOrDebug()
     else:
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
@@ -447,37 +437,51 @@ proc getStackTrace(e: ref Exception): string =
   else:
     result = ""
 
-when not defined(gcDestructors):
-  proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
-    ## Returns the attached stack trace to the exception ``e`` as
-    ## a ``seq``. This is not yet available for the JS backend.
+proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
+  ## Returns the attached stack trace to the exception ``e`` as
+  ## a ``seq``. This is not yet available for the JS backend.
+  when not defined(gcDestructors):
     shallowCopy(result, e.trace)
+  else:
+    result = move(e.trace)
 
-when defined(nimRequiresNimFrame):
-  const nimCallDepthLimit {.intdefine.} = 2000
+const nimCallDepthLimit {.intdefine.} = 2000
 
-  proc callDepthLimitReached() {.noinline.} =
-    writeStackTrace()
-    showErrorMessage("Error: call depth limit reached in a debug build (" &
-        $nimCallDepthLimit & " function calls). You can change it with " &
-        "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
-        "recursions instead.\n")
-    quitOrDebug()
+proc callDepthLimitReached() {.noinline.} =
+  writeStackTrace()
+  showErrorMessage("Error: call depth limit reached in a debug build (" &
+      $nimCallDepthLimit & " function calls). You can change it with " &
+      "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+      "recursions instead.\n")
+  quitOrDebug()
 
-  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
-    s.prev = framePtr
-    framePtr = s
-    if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
-else:
-  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    # XXX only for backwards compatibility
-    s.prev = framePtr
-    framePtr = s
+proc nimFrame(s: PFrame) {.compilerRtl, inl.} =
+  s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+  s.prev = framePtr
+  framePtr = s
+  if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
 when defined(endb):
   var
     dbgAborting: bool # whether the debugger wants to abort
+
+when defined(cpp) and appType != "lib" and
+    not defined(js) and not defined(nimscript) and
+    hostOS != "standalone" and not defined(noCppExceptions):
+  proc setTerminate(handler: proc() {.noconv.})
+    {.importc: "std::set_terminate", header: "<exception>".}
+  setTerminate proc() {.noconv.} =
+    # Remove ourself as a handler, reinstalling the default handler.
+    setTerminate(nil)
+
+    when defined(genode):
+      # stderr not available by default, use the LOG session
+      echo currException.getStackTrace() & "Error: unhandled exception: " &
+              currException.msg & " [" & $currException.name & "]\n"
+    else:
+      writeToStdErr currException.getStackTrace() & "Error: unhandled exception: " &
+              currException.msg & " [" & $currException.name & "]\n"
+    quit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
@@ -536,3 +540,8 @@ proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
   type SignalHandler = proc (sign: cint) {.noconv, benign.}
   c_signal(SIGINT, cast[SignalHandler](hook))
+
+when not defined(noSignalHandler) and not defined(useNimRtl):
+  proc unsetControlCHook() =
+    # proc to unset a hook set by setControlCHook
+    c_signal(SIGINT, signalHandler)

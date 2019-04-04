@@ -35,9 +35,9 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
-    wIntDefine, wStrDefine,
+    wIntDefine, wStrDefine, wBoolDefine
 
-    wDestroy,
+    wCursor,
 
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
@@ -53,7 +53,8 @@ type
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks,
     wFloatchecks, wNanChecks, wInfChecks, wStaticBoundchecks,
-    wAssertions, wPatterns, wWarnings,
+    wNonReloadable, wExecuteOnReload,
+    wAssertions, wPatterns, wTrMacros, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
     wSafecode, wPackage, wNoForward, wReorder, wNoRewrite,
@@ -122,9 +123,10 @@ const
 
     ":", "::", "=", ".", "..",
     "*", "-",
-    "magic", "thread", "final", "profiler", "memtracker", "objchecks", "intdefine", "strdefine",
+    "magic", "thread", "final", "profiler", "memtracker", "objchecks",
+    "intdefine", "strdefine", "booldefine",
 
-    "destroy",
+    "cursor",
 
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
@@ -141,8 +143,9 @@ const
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
     "floatchecks", "nanchecks", "infchecks", "staticboundchecks",
+    "nonreloadable", "executeonreload",
 
-    "assertions", "patterns", "warnings", "hints",
+    "assertions", "patterns", "trmacros", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim",  # deprecated, dead code elim always happens
     "safecode", "package", "noforward", "reorder", "norewrite",

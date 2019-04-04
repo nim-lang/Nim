@@ -8,7 +8,8 @@
 #
 
 ## This module implements a series of low level methods for bit manipulation.
-## By default, this module use compiler intrinsics to improve performance
+
+## By default, this module use compiler intrinsics where possible to improve performance
 ## on supported compilers: ``GCC``, ``LLVM_GCC``, ``CLANG``, ``VCC``, ``ICC``.
 ##
 ## The module will fallback to pure nim procs incase the backend is not supported.
@@ -31,6 +32,75 @@ const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or defined(clang)) an
 const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
 const arch64 = sizeof(int) == 8
+
+template forwardImpl(impl, arg) {.dirty.} =
+  when sizeof(x) <= 4:
+    when x is SomeSignedInt:
+      impl(cast[uint32](x.int32))
+    else:
+      impl(x.uint32)
+  else:
+    when x is SomeSignedInt:
+      impl(cast[uint64](x.int64))
+    else:
+      impl(x.uint64)
+
+when defined(nimHasalignOf):
+
+  import macros
+
+  type BitsRange*[T] = range[0..sizeof(T)*8-1]
+    ## Returns a range with all bit positions for type ``T``
+
+  proc setMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1
+    v = v or mask
+
+  proc clearMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
+    v = v and not mask
+
+  proc flipMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped
+    v = v xor mask
+
+  proc setBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
+    ## Returns ``v``, with the bit at position ``bit`` set to 1
+    v.setMask(1.T shl bit)
+
+  proc clearBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
+    ## Returns ``v``, with the bit at position ``bit`` set to 0
+    v.clearMask(1.T shl bit)
+
+  proc flipBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
+    ## Returns ``v``, with the bit at position ``bit`` flipped
+    v.flipMask(1.T shl bit)
+
+  macro setBits*(v: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 1
+    bits.expectKind(nnkBracket)
+    result = newStmtList()
+    for bit in bits:
+      result.add newCall("setBit", v, bit)
+
+  macro clearBits*(v: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    bits.expectKind(nnkBracket)
+    result = newStmtList()
+    for bit in bits:
+      result.add newCall("clearBit", v, bit)
+
+  macro flipBits*(v: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    bits.expectKind(nnkBracket)
+    result = newStmtList()
+    for bit in bits:
+      result.add newCall("flipBit", v, bit)
+
+  proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
+    ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
+    let mask = 1.T shl bit
+    return (v and mask) == mask
 
 # #### Pure Nim version ####
 
@@ -84,25 +154,13 @@ proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
   v = v or v shr 32
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
+# sets.nim cannot import bitops, but bitops can use include
+# system/sets to eleminate code duplication. sets.nim defines defines
+# countBits32 and countBits64.
+include system/sets
 
-proc countSetBits_nim(n: uint32): int {.inline, noSideEffect.} =
-  ## Counts the set bits in integer. (also called Hamming weight.)
-  # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-
-  var v = uint32(n)
-  v = v - ((v shr 1) and 0x55555555)
-  v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
-  result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).int
-
-proc countSetBits_nim(n: uint64): int {.inline, noSideEffect.} =
-  ## Counts the set bits in integer. (also called Hamming weight.)
-  # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-  var v = uint64(n)
-  v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
-  v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
-  v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
-  result = ((v * 0x0101010101010101'u64) shr 56'u64).int
-
+template countSetBits_nim(n: uint32): int = countBits32(n)
+template countSetBits_nim(n: uint64): int = countBits64(n)
 
 template parity_impl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
@@ -185,8 +243,7 @@ proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
   when nimvm:
-    when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
-    else:                result = countSetBits_nim(x.uint64)
+    result = forwardImpl(countSetBits_nim, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_popcount(x.cuint).int
@@ -216,8 +273,7 @@ proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
-    when sizeof(x) <= 4: result = parity_impl(x.uint32)
-    else:                result = parity_impl(x.uint64)
+    result = forwardImpl(parity_impl, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_parity(x.uint32).int
@@ -235,8 +291,7 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
     when noUndefined:
       if x == 0:
         return 0
-    when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
-    else:                result = firstSetBit_nim(x.uint64)
+    result = forwardImpl(firstSetBit_nim, x)
   else:
     when noUndefined and not useGCC_builtins:
       if x == 0:
@@ -270,8 +325,7 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
     if x == 0:
       return -1
   when nimvm:
-    when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
-    else:                result = fastlog2_nim(x.uint64)
+    result = forwardImpl(fastlog2_nim, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = 31 - builtin_clz(x.uint32).int
@@ -302,8 +356,7 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
     if x == 0:
       return 0
   when nimvm:
-      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
-      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
+    result = sizeof(x)*8 - 1 - forwardImpl(fastlog2_nim, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_clz(x.uint32).int - (32 - sizeof(x)*8)
@@ -381,3 +434,48 @@ proc rotateRightBits*(value: uint64;
   ## Right-rotate bits in a 64-bits value.
   let amount = amount and 63
   result = (value shr amount) or (value shl ( (-amount) and 63))
+
+proc repeatBits[T: SomeUnsignedInt](x: SomeUnsignedInt; retType: type[T]): T {.
+  noSideEffect.} =
+  result = x
+  var i = 1
+  while i != (sizeof(T) div sizeof(x)):
+    result = (result shl (sizeof(x)*8*i)) or result
+    i *= 2
+ 
+proc reverseBits*[T: SomeUnsignedInt](x: T): T {.noSideEffect.} =
+  ## Return the bit reversal of x.
+  runnableExamples:
+    doAssert reverseBits(0b10100100'u8) == 0b00100101'u8
+    doAssert reverseBits(0xdd'u8) == 0xbb'u8
+    doAssert reverseBits(0xddbb'u16) == 0xddbb'u16
+    doAssert reverseBits(0xdeadbeef'u32) == 0xf77db57b'u32
+
+  template repeat(x: SomeUnsignedInt): T = repeatBits(x, T)
+
+  result = x
+  result =
+    ((repeat(0x55u8) and result) shl 1) or
+    ((repeat(0xaau8) and result) shr 1)
+  result =
+    ((repeat(0x33u8) and result) shl 2) or
+    ((repeat(0xccu8) and result) shr 2)
+  when sizeof(T) == 1:
+    result = (result shl 4) or (result shr 4)
+  when sizeof(T) >= 2:
+    result =
+      ((repeat(0x0fu8) and result) shl 4) or
+      ((repeat(0xf0u8) and result) shr 4)
+  when sizeof(T) == 2:
+    result = (result shl 8) or (result shr 8)
+  when sizeof(T) >= 4:
+    result =
+      ((repeat(0x00ffu16) and result) shl 8) or
+      ((repeat(0xff00u16) and result) shr 8)
+  when sizeof(T) == 4:
+    result = (result shl 16) or (result shr 16)
+  when sizeof(T) == 8:
+    result =
+      ((repeat(0x0000ffffu32) and result) shl 16) or
+      ((repeat(0xffff0000u32) and result) shr 16)
+    result = (result shl 32) or (result shr 32)

@@ -5,9 +5,9 @@ discard """
 const expected = """
 tfailedassert_stacktrace.nim(34) tfailedassert_stacktrace
 tfailedassert_stacktrace.nim(33) foo
-system.nim(*)         failedAssertImpl
-system.nim(*)         raiseAssert
-system.nim(*)         sysFatal"""
+assertions.nim(*)       failedAssertImpl
+assertions.nim(*)       raiseAssert
+fatal.nim(*)            sysFatal"""
 
 proc tmatch(x, p: string): bool =
   var i = 0

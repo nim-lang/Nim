@@ -95,12 +95,12 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   var elemCounter = 0  # we need this flag for adding the comma at
                        # the right places
   add result, "{"
-  var u: int64
+  var u: uint64
   case typ.size
-  of 1: u = ze64(cast[ptr int8](p)[])
-  of 2: u = ze64(cast[ptr int16](p)[])
-  of 4: u = ze64(cast[ptr int32](p)[])
-  of 8: u = cast[ptr int64](p)[]
+  of 1: u = cast[ptr uint8](p)[]
+  of 2: u = cast[ptr uint16](p)[]
+  of 4: u = cast[ptr uint32](p)[]
+  of 8: u = cast[ptr uint64](p)[]
   else:
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
@@ -110,7 +110,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
         inc(elemCounter)
   if typ.size <= 8:
     for i in 0..sizeof(int64)*8-1:
-      if (u and (1'i64 shl int64(i))) != 0'i64:
+      if (u and (1'u64 shl uint64(i))) != 0'u64:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)
@@ -160,6 +160,21 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), typ.base, cl)
     add result, "]"
 
+  when defined(gcDestructors):
+    type
+      GenericSeq = object
+        len: int
+        p: pointer
+      PGenericSeq = ptr GenericSeq
+    const payloadOffset = sizeof(int) + sizeof(pointer)
+      # see seqs.nim:    cap: int
+      #                  region: Allocator
+
+    template payloadPtr(x: untyped): untyped = cast[PGenericSeq](x).p
+  else:
+    const payloadOffset = GenericSeqSize
+    template payloadPtr(x: untyped): untyped = x
+
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
                     cl: var ReprClosure) =
     if p == nil:
@@ -170,7 +185,7 @@ when not defined(useNimRtl):
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](p) + GenericSeqSize + i*bs),
+      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + payloadOffset + i*bs),
               typ.base, cl)
     add result, "]"
 

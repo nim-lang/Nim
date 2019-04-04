@@ -12,13 +12,18 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, times, sets, md5
+  algorithm, times, sets, md5, sequtils
+
+include compiler/nodejs
 
 var useColors = true
 var backendLogging = true
 var simulate = false
+var verboseMegatest = false # very verbose but can be useful
+var verboseCommands = false
 
 const
+  testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
   Usage = """Usage:
@@ -34,10 +39,12 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
+  --verboseMegatest         log to stdout megatetest compilation
+  --verboseCommands         log to stdout info about commands being run
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
-  --nim:path                use a particular nim executable (default: compiler/nim)
+  --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messagescoloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
@@ -53,6 +60,7 @@ type
     name: string
     cat: Category
     options: string
+    args: seq[string]
     spec: TSpec
     startTime: float
 
@@ -83,7 +91,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string, onStdout: proc(line: string) = nil): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
@@ -101,27 +109,38 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result.output.string.add(line.string)
+      result.output.string.add("\n")
+      if onStdout != nil: onStdout(line.string)
     else:
-      result[1] = peekExitCode(p)
-      if result[1] != -1: break
+      result.exitCode = peekExitCode(p)
+      if result.exitCode != -1: break
   close(p)
 
-
+  if verboseCommands:
+    var command2 = command
+    if args.len > 0: command2.add " " & args.quoteShellCommand
+    echo (msg: "execCmdEx2",
+      command: command2,
+      options: options,
+      exitCode: result.exitCode)
 
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
   let hashInput = options & $target
   return "nimcache" / (filename & '_' & hashInput.getMD5)
 
-proc callCompiler(cmdTemplate, filename, options: string,
-                  target: TTarget, extraOptions=""): TSpec =
+proc prepareTestArgs(cmdTemplate, filename, options: string,
+                     target: TTarget, extraOptions=""): seq[string] =
   let nimcache = nimcacheDir(filename, options, target)
   let options = options & " " & quoteShell("--nimCache:" & nimcache) & extraOptions
-  let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell,
-                       "filedir", filename.getFileDir()])
+  return parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+                      "options", options, "file", filename.quoteShell,
+                      "filedir", filename.getFileDir()])
+
+proc callCompiler(cmdTemplate, filename, options: string,
+                  target: TTarget, extraOptions=""): TSpec =
+  let c = prepareTestArgs(cmdTemplate, filename, options, target, extraOptions)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -295,10 +314,13 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     inc(r.passed)
 
 proc generatedFile(test: TTest, target: TTarget): string =
-  let (_, name, _) = test.name.splitFile
-  let ext = targetToExt[target]
-  result = nimcacheDir(test.name, test.options, target) /
-    ((if target == targetJS: "" else: "compiler_") & name.changeFileExt(ext))
+  if target == targetJS:
+    result = test.name.changeFileExt("js")
+  else:
+    let (_, name, _) = test.name.splitFile
+    let ext = targetToExt[target]
+    result = nimcacheDir(test.name, test.options, target) /
+             ("compiler_" & name.changeFileExt(ext))
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
@@ -356,6 +378,12 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
+proc getTestSpecTarget(): TTarget =
+  if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true":
+    return targetCpp
+  else:
+    return targetC
+
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
   if expected.parseErrors.len > 0:
@@ -372,10 +400,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   expected.targets.incl targets
   # still no target specified at all
   if expected.targets == {}:
-    if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true":
-      expected.targets = {targetCpp}
-    else:
-      expected.targets = {targetC}
+    expected.targets = {getTestSpecTarget()}
   for target in expected.targets:
     inc(r.total)
     if target notin gTargets:
@@ -397,21 +422,15 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     of actionRun:
       # In this branch of code "early return" pattern is clearer than deep
       # nested conditionals - the empty rows in between to clarify the "danger"
-      var given = callCompiler(expected.getCmd, test.name, test.options,
-                               target)
+      var given = callCompiler(expected.getCmd, test.name, test.options, target)
       if given.err != reSuccess:
         r.addResult(test, target, "", given.msg, given.err)
         continue
       let isJsTarget = target == targetJS
-      var exeFile: string
-      if isJsTarget:
-        let file = test.name.lastPathPart.changeFileExt("js")
-        exeFile = nimcacheDir(test.name, test.options, target) / file
-      else:
-        exeFile = changeFileExt(test.name, ExeExt)
-
+      var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
       if not existsFile(exeFile):
-        r.addResult(test, target, expected.output, "executable not found", reExeNotFound)
+        r.addResult(test, target, expected.output,
+                    "executable not found: " & exeFile, reExeNotFound)
         continue
 
       let nodejs = if isJsTarget: findNodeJs() else: ""
@@ -420,10 +439,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
                     reExeNotFound)
         continue
       var exeCmd: string
-      var args: seq[string]
+      var args = test.args
       if isJsTarget:
         exeCmd = nodejs
-        args.add exeFile
+        args = concat(@[exeFile], args)
       else:
         exeCmd = exeFile
       var (buf, exitCode) = execCmdEx2(exeCmd, args, options = {poStdErrToStdOut}, input = expected.input)
@@ -517,8 +536,6 @@ else:
 
 include categories
 
-const testsDir = "tests" & DirSep
-
 proc main() =
   os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
@@ -527,12 +544,15 @@ proc main() =
   var optPrintResults = false
   var optFailing = false
   var targetsStr = ""
+  var isMainProcess = true
 
   var p = initOptParser()
   p.next()
   while p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
+    of "verbosemegatest": verboseMegatest = true
+    of "verbosecommands": verboseCommands = true
     of "failing": optFailing = true
     of "pedantic": discard "now always enabled"
     of "targets":
@@ -608,6 +628,7 @@ proc main() =
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
     # are covered by the 'megatest' category.
+    isMainProcess = false
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
@@ -632,6 +653,8 @@ proc main() =
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",
       r.skipped, " failed: ", failed
     quit(QuitFailure)
+  if isMainProcess:
+    echo "Used ", compilerPrefix, " to run the tests. Use --nim to override."
 
 if paramCount() == 0:
   quit Usage

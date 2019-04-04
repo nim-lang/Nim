@@ -22,6 +22,8 @@
 ## other lower level methods to finally build complete documents. This requires
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
+##
+## **Note:** Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
@@ -1134,11 +1136,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnTripleEmphasis:
     renderAux(d, n, "<strong><em>$1</em></strong>",
                     "\\textbf{emph{$1}}", result)
-  of rnInterpretedText:
-    renderAux(d, n, "<cite>$1</cite>", "\\emph{$1}", result)
   of rnIdx:
     renderIndexTerm(d, n, result)
-  of rnInlineLiteral:
+  of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
       "\\texttt{$1}", result)

@@ -20,6 +20,7 @@ proc hasNoInit(call: PNode): bool {.inline.} =
 
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                callee, params: Rope) =
+  genLineDir(p, ri)
   var pl = callee & ~"(" & params
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
@@ -135,7 +136,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
     result = openArrayLoc(p, n)
-  elif ccgIntroducedPtr(p.config, param):
+  elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     result = addrLoc(p.config, a)
   elif p.module.compileToCpp and param.typ.kind == tyVar and
@@ -173,6 +174,11 @@ template genParamLoop(params) {.dirty.} =
     if params != nil: add(params, ~", ")
     add(params, genArgNoParam(p, ri.sons[i]))
 
+proc addActualPrefixForHCR(res: var Rope, module: PSym, sym: PSym) =
+  if sym.flags * {sfImportc, sfNonReloadable} == {} and
+      (sym.typ.callConv == ccInline or sym.owner.id == module.id):
+    res = res & "_actual".rope
+
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   # this is a hotspot in the compiler
@@ -185,7 +191,10 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
     genParamLoop(params)
-  fixupCall(p, le, ri, d, op.r, params)
+  var callee = rdLoc(op)
+  if p.hcrOn and ri.sons[0].kind == nkSym:
+    callee.addActualPrefixForHCR(p.module.module, ri.sons[0].sym)
+  fixupCall(p, le, ri, d, callee, params)
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
@@ -209,7 +218,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
-    lineF(p, cpsStmts, callPattern & ";$n", [op.r, pl, pl.addComma, rawProc])
+    lineF(p, cpsStmts, callPattern & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
   let rawProc = getRawProcType(p, typ)
   let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
@@ -237,7 +246,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, d.lode, OnUnknown)
-      list.r = callPattern % [op.r, pl, pl.addComma, rawProc]
+      list.r = callPattern % [rdLoc(op), pl, pl.addComma, rawProc]
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()

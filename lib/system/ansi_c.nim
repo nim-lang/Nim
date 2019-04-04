@@ -11,7 +11,7 @@
 # and definitions of Ansi C types in Nim syntax
 # All symbols are prefixed with 'c_' to avoid ambiguities
 
-{.push hints:off}
+{.push hints:off, stack_trace: off, profiler: off.}
 
 proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
   importc: "memchr", header: "<string.h>".}
@@ -111,21 +111,26 @@ type c_sighandler_t = proc (a: cint) {.noconv.}
 proc c_signal(sign: cint, handler: proc (a: cint) {.noconv.}): c_sighandler_t {.
   importc: "signal", header: "<signal.h>", discardable.}
 
-proc c_fprintf(f: File, frmt: cstring): cint {.
+type
+  CFile {.importc: "FILE", header: "<stdio.h>",
+          incompletestruct.} = object
+  CFilePtr* = ptr CFile ## The type representing a file handle.
+
+var
+  cstderr* {.importc: "stderr", header: "<stdio.h>".}: CFilePtr
+  cstdout* {.importc: "stdout", header: "<stdio.h>".}: CFilePtr
+
+proc c_fprintf(f: CFilePtr, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
 proc c_printf(frmt: cstring): cint {.
   importc: "printf", header: "<stdio.h>", varargs, discardable.}
 
+proc c_fputs(c: cstring, f: CFilePtr): cint {.
+  importc: "fputs", header: "<stdio.h>", discardable.}
+
 proc c_sprintf(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
-
-when defined(windows):
-  proc c_fileno(f: File): cint {.
-      importc: "_fileno", header: "<stdio.h>".}
-else:
-  proc c_fileno(f: File): cint {.
-      importc: "fileno", header: "<fcntl.h>".}
 
 proc c_malloc(size: csize): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
@@ -133,5 +138,12 @@ proc c_free(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 proc c_realloc(p: pointer, newsize: csize): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
+
+proc c_fwrite(buf: pointer, size, n: csize, f: CFilePtr): cint {.
+  importc: "fwrite", header: "<stdio.h>".}
+
+proc rawWrite(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable, inline.} =
+  # we cannot throw an exception here!
+  discard c_fwrite(s, 1, s.len, f)
 
 {.pop}

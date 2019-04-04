@@ -28,11 +28,7 @@ type
   BaseLexer* = object of RootObj ## the base lexer. Inherit your lexer from
                                  ## this object.
     bufpos*: int              ## the current position within the buffer
-    when defined(js):         ## the buffer itself
-      buf*: string
-    else:
-      buf*: cstring
-    bufLen*: int              ## length of buffer in characters
+    buf*: string           ## the buffer itself
     input: Stream            ## the input stream
     lineNumber*: int          ## the current line number
     sentinel: int
@@ -40,13 +36,8 @@ type
     offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
     refillChars: set[char]
 
-const
-  chrSize = sizeof(char)
-
 proc close*(L: var BaseLexer) =
   ## closes the base lexer. This closes `L`'s associated stream too.
-  when not defined(js):
-    dealloc(L.buf)
   close(L.input)
 
 proc fillBuffer(L: var BaseLexer) =
@@ -57,17 +48,21 @@ proc fillBuffer(L: var BaseLexer) =
     oldBufLen: int
   # we know here that pos == L.sentinel, but not if this proc
   # is called the first time by initBaseLexer()
-  assert(L.sentinel < L.bufLen)
-  toCopy = L.bufLen - L.sentinel - 1
+  assert(L.sentinel + 1 <= L.buf.len)
+  toCopy = L.buf.len - (L.sentinel + 1)
   assert(toCopy >= 0)
   if toCopy > 0:
     when defined(js):
-      for i in 0 ..< toCopy: L.buf[i] = L.buf[L.sentinel + 1 + i]
+      for i in 0 ..< toCopy:
+        L.buf[i] = L.buf[L.sentinel + 1 + i]
     else:
-      # "moveMem" handles overlapping regions
-      moveMem(L.buf, addr L.buf[L.sentinel + 1], toCopy * chrSize)
-  charsRead = readData(L.input, addr(L.buf[toCopy]),
-                       (L.sentinel + 1) * chrSize) div chrSize
+      when nimvm:
+        for i in 0 ..< toCopy:
+          L.buf[i] = L.buf[L.sentinel + 1 + i]
+      else:
+        # "moveMem" handles overlapping regions
+        moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
+  charsRead = L.input.readDataStr(L.buf, toCopy ..< toCopy + L.sentinel + 1)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker
@@ -76,7 +71,7 @@ proc fillBuffer(L: var BaseLexer) =
     # compute sentinel:
     dec(s)                    # BUGFIX (valgrind)
     while true:
-      assert(s < L.bufLen)
+      assert(s < L.buf.len)
       while s >= 0 and L.buf[s] notin L.refillChars: dec(s)
       if s >= 0:
         # we found an appropriate character for a sentinel:
@@ -85,20 +80,14 @@ proc fillBuffer(L: var BaseLexer) =
       else:
         # rather than to give up here because the line is too long,
         # double the buffer's size and try again:
-        oldBufLen = L.bufLen
-        L.bufLen = L.bufLen * 2
-        when defined(js):
-          L.buf.setLen(L.bufLen)
-        else:
-          L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
-        assert(L.bufLen - oldBufLen == oldBufLen)
-        charsRead = readData(L.input, addr(L.buf[oldBufLen]),
-                             oldBufLen * chrSize) div chrSize
+        oldBufLen = L.buf.len
+        L.buf.setLen(L.buf.len * 2)
+        charsRead = readDataStr(L.input, L.buf, oldBufLen ..< L.buf.len)
         if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile
           L.sentinel = oldBufLen + charsRead
           break
-        s = L.bufLen - 1
+        s = L.buf.len - 1
 
 proc fillBaseLexer(L: var BaseLexer, pos: int): int =
   assert(pos <= L.sentinel)
@@ -148,12 +137,8 @@ proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
   L.input = input
   L.bufpos = 0
   L.offsetBase = 0
-  L.bufLen = bufLen
   L.refillChars = refillChars
-  when defined(js):
-    L.buf = newString(bufLen)
-  else:
-    L.buf = cast[cstring](alloc(bufLen * chrSize))
+  L.buf = newString(bufLen)
   L.sentinel = bufLen - 1
   L.lineStart = 0
   L.lineNumber = 1            # lines start at 1

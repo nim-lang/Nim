@@ -216,7 +216,7 @@ type
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
     nkPattern,            # a special pattern; used for matching
-    nkReturnToken,        # token used for interpretation
+    nkHiddenTryStmt,      # token used for interpretation
     nkClosure,            # (prc, env)-pair (internally used for code gen)
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
@@ -227,7 +227,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 33 flags!
+  TSymFlag* = enum    # already 36 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -271,7 +271,15 @@ type
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
+    sfCallsite        # A flag for template symbols to tell the
+                      # compiler it should use line information from
+                      # the calling side of the macro, not from the
+                      # implementation.
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
+    sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
+                      # meaning that it won't be renamed and/or changed in any way
+    sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
+
 
   TSymFlags* = set[TSymFlag]
 
@@ -281,6 +289,11 @@ const
   sfImmediate* = sfDispatcher
     # macro or template is immediately expanded
     # without considering any possible overloads
+
+  sfCursor* = sfDispatcher
+    # local variable has been computed to be a "cursor".
+    # see cursors.nim for details about what that means.
+
   sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
     # in a generic context
 
@@ -361,7 +374,7 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyOptAsRef, tySink, tyLent,
+    tyOwned, tySink, tyLent,
     tyVarargs,
     tyUncheckedArray
       # An array with boundaries [0,+∞]
@@ -464,15 +477,16 @@ type
     nfDefaultParam # an automatically inserter default parameter
     nfDefaultRefsParam # a default param value references another parameter
                        # the flag is applied to proc default values and to calls
+    nfExecuteOnReload  # A top-level statement that will be executed during reloads
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~38)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
     tfInheritable,    # is the object inheritable?
-    tfAcyclic,        # type is acyclic (for GC optimization)
+    tfHasOwned,       # type contains an 'owned' type and must be moved
     tfEnumHasHoles,   # enum cannot be mapped into a range
     tfShallow,        # type can be shallow copied on assignment
     tfThread,         # proc type is marked as ``thread``; alias for ``gcsafe``
@@ -523,6 +537,8 @@ type
     tfCovariant       # covariant generic param mimicing a ptr type
     tfWeakCovariant   # covariant generic param mimicing a seq/array type
     tfContravariant   # contravariant generic param
+    tfCheckedForDestructor # type was checked for having a destructor.
+                           # If it has one, t.destructor is not nil.
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -628,7 +644,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mReset,
+    mDefault, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -650,12 +666,12 @@ type
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash, mNSizeOf,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
-    mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
+    mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
     mSymIsInstantiationOf
 
@@ -850,7 +866,7 @@ type
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
-                              # reference to another object to safe space)
+                              # reference to another object to save space)
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
@@ -974,7 +990,8 @@ const
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfPreventCg, nfLL,
-                                      nfFromTemplate, nfDefaultRefsParam}
+                                      nfFromTemplate, nfDefaultRefsParam,
+                                      nfExecuteOnReload}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -983,7 +1000,7 @@ const
   miscPos* = 5  # used for undocumented and hacky stuff
   bodyPos* = 6       # position of body; use rodread.getBody() instead!
   resultPos* = 7
-  dispatcherPos* = 8 # caution: if method has no 'result' it can be position 7!
+  dispatcherPos* = 8
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
@@ -1086,6 +1103,13 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
+
+proc astdef*(s: PSym): PNode =
+  # get only the definition (initializer) portion of the ast
+  if s.ast != nil and s.ast.kind == nkIdentDefs:
+    s.ast[2]
+  else:
+    s.ast
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1258,7 +1282,10 @@ proc `$`*(x: TLockLevel): string =
   else: result = $int16(x)
 
 proc `$`*(s: PSym): string =
-  result = s.name.s & "@" & $s.id
+  if s != nil:
+    result = s.name.s & "@" & $s.id
+  else:
+    result = "<nil>"
 
 proc newType*(kind: TTypeKind, owner: PSym): PType =
   new(result)
@@ -1345,7 +1372,6 @@ proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
-  result.id = getID()
   when debugIds: registerId(result)
   result.flags = s.flags
   result.magic = s.magic
@@ -1454,6 +1480,13 @@ proc propagateToOwner*(owner, elem: PType) =
                    tySequence, tyOpt, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
+
+  if tfHasOwned in elem.flags:
+    let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
+    if o2.kind in {tyTuple, tyObject, tyArray,
+                   tySequence, tyOpt, tySet, tyDistinct}:
+      o2.flags.incl tfHasOwned
+      owner.flags.incl tfHasOwned
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
@@ -1764,7 +1797,7 @@ when false:
     for i in 0 ..< n.safeLen:
       if n[i].containsNil: return true
 
-template hasDestructor*(t: PType): bool = tfHasAsgn in t.flags
+template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 

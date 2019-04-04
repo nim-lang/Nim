@@ -35,6 +35,7 @@ Usage:
   nimsuggest [options] projectfile.nim
 
 Options:
+  --autobind              automatically binds into a free port
   --port:PORT             port, by default 6000
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
@@ -49,6 +50,8 @@ Options:
                           '""" & DummyEof & """' for the tester
 
 The server then listens to the connection and takes line-based commands.
+
+If --autobind is used, the binded port number will be printed to stdout.
 
 In addition, all command line options of Nim that do not affect code generation
 are supported.
@@ -68,6 +71,7 @@ var
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = defined(logging)
   gRefresh: bool
+  gAutoBind = false
 
   requests: Channel[string]
   results: Channel[Suggest]
@@ -99,7 +103,7 @@ type
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)
-  if cmd[i] == '"':
+  if i < cmd.len and cmd[i] == '"':
     i += parseUntil(cmd, outp, '"', i+1)+2
   else:
     i += parseUntil(cmd, outp, seps, i)
@@ -306,9 +310,15 @@ proc replCmdline(x: ThreadParams) {.thread.} =
 
 proc replTcp(x: ThreadParams) {.thread.} =
   var server = newSocket()
-  server.bindAddr(x.port, x.address)
+  if gAutoBind:
+    let port = server.connectToNextFreePort(x.address)
+    server.listen()
+    echo port
+    stdout.flushFile()
+  else:
+    server.bindAddr(x.port, x.address)
+    server.listen()
   var inp = "".TaintedString
-  server.listen()
   while true:
     var stdoutSocket = newSocket()
     accept(server, stdoutSocket)
@@ -427,10 +437,14 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   else: err()
   var dirtyfile = ""
   var orig = ""
-  i = parseQuoted(cmd, orig, i)
-  if cmd[i] == ';':
-    i = parseQuoted(cmd, dirtyfile, i+1)
-  i += skipWhile(cmd, seps, i)
+  i += skipWhitespace(cmd, i)
+  if i < cmd.len and cmd[i] in {'0'..'9'}:
+    orig = string conf.projectFull
+  else:
+    i = parseQuoted(cmd, orig, i)
+    if i < cmd.len and cmd[i] == ';':
+      i = parseQuoted(cmd, dirtyfile, i+1)
+    i += skipWhile(cmd, seps, i)
   var line = -1
   var col = 0
   i += parseInt(cmd, line, i)
@@ -510,7 +524,7 @@ proc mainCommand(graph: ModuleGraph) =
   # do not stop after the first error:
   conf.errorMax = high(int)
   # do not print errors, but log them
-  conf.writelnHook = proc (s: string) = log(s)
+  conf.writelnHook = myLog
   conf.structuredErrorHook = nil
 
   # compile the project before showing any input so that we already
@@ -544,6 +558,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "help", "h":
         stdout.writeline(Usage)
         quit()
+      of "autobind":
+        gMode = mtcp
+        gAutoBind = true
       of "port":
         gPort = parseInt(p.val).Port
         gMode = mtcp
@@ -648,7 +665,7 @@ else:
       # do not stop after the first error:
       conf.errorMax = high(int)
       # do not print errors, but log them
-      conf.writelnHook = proc (s: string) = log(s)
+      conf.writelnHook = myLog
       conf.structuredErrorHook = nil
 
       # compile the project before showing any input so that we already

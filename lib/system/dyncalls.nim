@@ -19,25 +19,25 @@ const
 
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not load: ")
-  stderr.rawWrite(path)
-  stderr.rawWrite("\n")
+  cstderr.rawWrite("could not load: ")
+  cstderr.rawWrite(path)
+  cstderr.rawWrite("\n")
   when not defined(nimDebugDlOpen) and not defined(windows):
-    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
+    cstderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
   when defined(windows) and defined(guiapp):
     # Because console output is not shown in GUI apps, display error as message box:
     const prefix = "could not load: "
     var msg: array[1000, char]
     copyMem(msg[0].addr, prefix.cstring, prefix.len)
     copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
-    discard MessageBoxA(0, msg[0].addr, nil, 0)
+    discard MessageBoxA(nil, msg[0].addr, nil, 0)
   quit(1)
 
-proc procAddrError(name: cstring) {.noinline.} =
+proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not import: ")
-  stderr.rawWrite(name)
-  stderr.rawWrite("\n")
+  cstderr.rawWrite("could not import: ")
+  cstderr.rawWrite(name)
+  cstderr.rawWrite("\n")
   quit(1)
 
 # this code was inspired from Lua's source code:
@@ -79,8 +79,8 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        stderr.rawWrite(error)
-        stderr.rawWrite("\n")
+        cstderr.rawWrite(error)
+        cstderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
@@ -162,20 +162,20 @@ elif defined(genode):
 
 elif defined(nintendoswitch):
   proc nimUnloadLibrary(lib: LibHandle) =
-    stderr.rawWrite("nimUnLoadLibrary not implemented")
-    stderr.rawWrite("\n")
+    cstderr.rawWrite("nimUnLoadLibrary not implemented")
+    cstderr.rawWrite("\n")
     quit(1)
 
   proc nimLoadLibrary(path: string): LibHandle =
-    stderr.rawWrite("nimLoadLibrary not implemented")
-    stderr.rawWrite("\n")
+    cstderr.rawWrite("nimLoadLibrary not implemented")
+    cstderr.rawWrite("\n")
     quit(1)
 
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
-    stderr.rawWrite("nimGetProAddr not implemented")
-    stderr.rawWrite(name)
-    stderr.rawWrite("\n")
+    cstderr.rawWrite("nimGetProAddr not implemented")
+    cstderr.rawWrite(name)
+    cstderr.rawWrite("\n")
     quit(1)
 
 else:

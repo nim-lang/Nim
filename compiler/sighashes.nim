@@ -90,6 +90,7 @@ type
     CoType
     CoOwnerSig
     CoIgnoreRange
+    CoConsiderOwned
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
@@ -151,7 +152,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
   of tyDistinct:
-    if CoType in flags:
+    if {CoType, CoConsiderOwned} * flags == {CoType} or t.sym == nil:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
@@ -166,6 +167,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c.hashType t.lastSon, flags
   of tyAlias, tySink, tyUserTypeClasses, tyInferred:
+    c.hashType t.lastSon, flags
+  of tyOwned:
+    if CoConsiderOwned in flags:
+      c &= char(t.kind)
     c.hashType t.lastSon, flags
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
@@ -196,18 +201,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       else:
         c.hashSym(t.sym)
       if {sfAnon, sfGenSym} * t.sym.flags != {}:
-        # generated object names can be identical, so we need to
-        # disambiguate furthermore by hashing the field types and names:
-        # mild hack to prevent endless recursions (makes nimforum compile again):
-        let oldFlags = t.sym.flags
-        t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
-        let n = t.n
-        for i in 0 ..< n.len:
-          assert n[i].kind == nkSym
-          let s = n[i].sym
-          c.hashSym s
-          c.hashType s.typ, flags
-        t.sym.flags = oldFlags
+        # Generated object names can be identical, so we need to
+        # disambiguate furthermore by hashing the field types and names.
+        if t.n.len > 0:
+          let oldFlags = t.sym.flags
+          # Mild hack to prevent endless recursion.
+          t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
+          for n in t.n:
+            assert(n.kind == nkSym)
+            let s = n.sym
+            c.hashSym s
+            c.hashType s.typ, flags
+          t.sym.flags = oldFlags
+        else:
+          # The object has no fields: we _must_ add something here in order to
+          # make the hash different from the one we produce by hashing only the
+          # type name.
+          c &= ".empty"
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:
@@ -255,9 +265,13 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       for i in 0..<t.len: c.hashType(t.sons[i], flags)
     c &= char(t.callConv)
-    if CoType notin flags:
-      if tfNoSideEffect in t.flags: c &= ".noSideEffect"
-      if tfThread in t.flags: c &= ".thread"
+    # purity of functions doesn't have to affect the mangling (which is in fact
+    # problematic for HCR - someone could have cached a pointer to another
+    # function which changes its purity and suddenly the cached pointer is danglign)
+    # IMHO anything that doesn't affect the overload resolution shouldn't be part of the mangling...
+    # if CoType notin flags:
+    #   if tfNoSideEffect in t.flags: c &= ".noSideEffect"
+    #   if tfThread in t.flags: c &= ".thread"
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
@@ -338,6 +352,12 @@ proc hashOwner*(s: PSym): SigHash =
   c &= m.name.s
 
   md5Final c, result.Md5Digest
+
+proc sigHash*(s: PSym): SigHash =
+  if s.kind in routineKinds and s.typ != nil:
+    result = hashProc(s)
+  else:
+    result = hashNonProc(s)
 
 proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]): Rope =

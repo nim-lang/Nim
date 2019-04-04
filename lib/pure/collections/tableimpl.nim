@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## An ``include`` file for the different table implementations.
+# An ``include`` file for the different table implementations.
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
@@ -116,9 +116,10 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-template default[T](t: typedesc[T]): T =
-  var v: T
-  v
+when not defined(nimHasDefault):
+  template default[T](t: typedesc[T]): T =
+    var v: T
+    v
 
 template delImplIdx(t, i) =
   let msk = maxHash(t)

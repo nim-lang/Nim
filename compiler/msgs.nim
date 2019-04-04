@@ -135,6 +135,10 @@ const
   WarningColor = fgYellow
   HintTitle    = "Hint: "
   HintColor    = fgGreen
+  # NOTE: currently line info line numbers start with 1,
+  # but column numbers start with 0, however most editors expect
+  # first column to be 1, so we need to +1 here
+  ColOffset*   = 1
 
 proc getInfoContextLen*(conf: ConfigRef): int = return conf.m.msgContext.len
 proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.m.msgContext, L)
@@ -155,7 +159,10 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     "???"
   else:
-    conf.m.fileInfos[fileIdx.int32].projPath.string
+    if optListFullPaths in conf.globalOptions:
+      conf.m.fileInfos[fileIdx.int32].fullPath.string
+    else:
+      conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil: result = "???"
@@ -164,6 +171,7 @@ proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) =
   assert fileIdx.int32 >= 0
   conf.m.fileInfos[fileIdx.int32].dirtyFile = filename
+  setLen conf.m.fileInfos[fileIdx.int32].lines, 0
 
 proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
@@ -187,16 +195,19 @@ template toFilename*(conf: ConfigRef; info: TLineInfo): string =
 template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
   toFullPath(conf, info.fileIndex)
 
+template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
+  string toFullPathConsiderDirty(conf, info.fileIndex)
+
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
     result = "???"
     return
   let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-  let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
   if optListFullPaths in conf.globalOptions:
     result = absPath
   else:
-    result = if absPath.len < relPath.len: absPath else: relPath
+    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
+    result = if relPath.count("..") > 2: absPath else: relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
@@ -208,7 +219,9 @@ proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   result = toFilename(conf, info) & ":" & $info.line
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & "(" & $info.line & ", " & $info.col & ")"
+  # consider calling `helpers.lineInfoToString` instead
+  result = toFilename(conf, info) & "(" & $info.line & ", " &
+    $(info.col + ColOffset) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
@@ -311,14 +324,15 @@ proc log*(s: string) {.procvar.} =
     f.writeLine(s)
     close(f)
 
-proc quit(conf: ConfigRef; msg: TMsgKind) =
+proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
   if defined(debug) or msg == errInternal or hintStackTrace in conf.notes:
-    if stackTraceAvailable() and isNil(conf.writelnHook):
-      writeStackTrace()
-    else:
-      styledMsgWriteln(fgRed, "No stack traceback available\n" &
-          "To create a stacktrace, rerun compilation with ./koch temp " &
-          conf.command & " <file>")
+    {.gcsafe.}:
+      if stackTraceAvailable() and isNil(conf.writelnHook):
+        writeStackTrace()
+      else:
+        styledMsgWriteln(fgRed, "No stack traceback available\n" &
+            "To create a stacktrace, rerun compilation with ./koch temp " &
+            conf.command & " <file>")
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
@@ -359,7 +373,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
         styledMsgWriteln(styleBright,
                          PosFormat % [toMsgFilename(conf, context.info),
                                       coordToStr(context.info.line.int),
-                                      coordToStr(context.info.col+1)],
+                                      coordToStr(context.info.col+ColOffset)],
                          resetStyle,
                          message)
     info = context.info
@@ -423,9 +437,9 @@ proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
 proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
   if i.fileIndex.int32 < 0: return ""
 
-  if not optPreserveOrigSource(conf) and conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
+  if conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
     try:
-      for line in lines(toFullPath(conf, i)):
+      for line in lines(toFullPathConsiderDirty(conf, i)):
         addSourceLine conf, i.fileIndex, line.string
     except IOError:
       discard
@@ -446,7 +460,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
   result = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                        coordToStr(info.col+1)] &
+                        coordToStr(info.col+ColOffset)] &
            title &
            getMessageStr(msg, arg)
 
@@ -483,11 +497,8 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(conf.hintCounter)
-  # NOTE: currently line info line numbers start with 1,
-  # but column numbers start with 0, however most editors expect
-  # first column to be 1, so we need to +1 here
   let x = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                       coordToStr(info.col+1)]
+                       coordToStr(info.col+ColOffset)]
   let s = getMessageStr(msg, arg)
 
   if not ignoreMsg:

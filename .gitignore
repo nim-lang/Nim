@@ -11,7 +11,9 @@ dnimcache/
 !/icons/*.o
 *.obj
 *.ilk
+*.exp
 *.pdb
+*.lib
 *.dll
 *.exe
 *.so
@@ -19,7 +21,6 @@ dnimcache/
 *.zip
 *.iss
 *.log
-*.ilk
 *.pdb
 
 mapping.txt
@@ -32,7 +33,7 @@ doc/*.html
 doc/*.pdf
 doc/*.idx
 /web/upload
-build/*
+/build/*
 bin/*
 
 # iOS specific wildcards.
@@ -42,6 +43,7 @@ bin/*
 *.perspectivev3
 *.swp
 .DS_Store
+.tags
 project.xcworkspace/
 xcuserdata/
 
@@ -52,6 +54,7 @@ xcuserdata/
 /run.json
 # for `nim doc foo.nim`
 /*.html
+lib/**/*.html
 #/testresults.html #covered by /*.html
 
 /testresults.json
@@ -71,3 +74,7 @@ test.txt
 tweeter.db
 tweeter_test.db
 megatest.nim
+
+/outputExpected.txt
+/outputGotten.txt
+

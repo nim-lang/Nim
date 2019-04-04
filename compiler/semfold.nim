@@ -15,8 +15,6 @@ import
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
-import system/helpers2
-
 proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
   of tyInt:
@@ -465,7 +463,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
     else:
       result = a
       result.typ = n.typ
-  of tyOpenArray, tyVarargs, tyProc:
+  of tyOpenArray, tyVarargs, tyProc, tyPointer:
     discard
   else:
     result = a
@@ -493,11 +491,11 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
-      localError(g.config, n.info, formatErrorIndexBound(idx, sonsLen(x)+1) & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, sonsLen(x)-1) & $n)
   of nkBracket:
     idx = idx - firstOrd(g.config, x.typ)
     if idx >= 0 and idx < x.len: result = x.sons[int(idx)]
-    else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len+1) & $n)
+    else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkStrLit..nkTripleStrLit:
     result = newNodeIT(nkCharLit, x.info, n.typ)
     if idx >= 0 and idx < len(x.strVal):
@@ -569,10 +567,20 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           try:
             result = newIntNodeT(g.config.symbols[s.name.s].parseInt, n, g)
           except ValueError:
-            localError(g.config, n.info, "expression is not an integer literal")
+            localError(g.config, s.info,
+              "{.intdefine.} const was set to an invalid integer: '" &
+                g.config.symbols[s.name.s] & "'")
       of mStrDefine:
         if isDefined(g.config, s.name.s):
           result = newStrNodeT(g.config.symbols[s.name.s], n, g)
+      of mBoolDefine:
+        if isDefined(g.config, s.name.s):
+          try:
+            result = newIntNodeT(g.config.symbols[s.name.s].parseBool.int, n, g)
+          except ValueError:
+            localError(g.config, s.info,
+              "{.booldefine.} const was set to an invalid bool: '" &
+                g.config.symbols[s.name.s] & "'")
       else:
         result = copyTree(s.ast)
     of skProc, skFunc, skMethod:

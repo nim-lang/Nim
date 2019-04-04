@@ -17,3 +17,9 @@ converter toWrapped[T](value: T): Wrapped[T] =
 
 let result = Plain()
 discard $result
+
+proc foo[T2](a: Wrapped[T2]) =
+  # Error: generic instantiation too nested
+  discard $a
+
+foo(result)

@@ -24,11 +24,11 @@ proc readOutput(p: Process): (string, int) =
 
 proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (string, int) =
   let workingDir = parentDir(toFullPath(conf, info))
-  if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
+  if cache.len > 0:
     let h = secureHash(cmd & "\t" & input & "\t" & cache)
     let filename = toGeneratedFile(conf, AbsoluteFile("gorge_" & $h), "txt").string
     var f: File
-    if open(f, filename):
+    if optForceFullMake notin conf.globalOptions and open(f, filename):
       result = (f.readAll, 0)
       f.close
       return

@@ -8,12 +8,19 @@
 #
 
 ## This module implements an interface to Nim's `runtime type information`:idx:
-## (`RTTI`:idx:).
-## Note that even though ``Any`` and its operations hide the nasty low level
-## details from its clients, it remains inherently unsafe!
+## (`RTTI`:idx:). See the `marshal <marshal.html>`_ module for an example of
+## what this module allows you to do.
 ##
-## See the `marshal <marshal.html>`_ module for what this module allows you
-## to do.
+## Note that even though ``Any`` and its operations hide the nasty low level
+## details from its clients, it remains inherently unsafe! Also, Nim's 
+## runtime type information will evolve and may eventually be deprecated.
+## As an alternative approach to programmatically understanding and
+## manipulating types, consider using the `macros <macros.html>`_ package to
+## work with the types' AST representation at compile time. See, for example,
+## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative 
+## approach to storing arbitrary types at runtime, consider using generics.
+##
+## 
 
 {.push hints: off.}
 
@@ -194,14 +201,14 @@ proc `[]`*(x: Any, i: int): Any =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
     return newAny(x.value +!! i*bs, x.rawType.base)
   of tySequence:
     var s = cast[ppointer](x.value)[]
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     return newAny(s +!! (GenericSeqSize+i*bs), x.rawType.base)
   else: assert false
 
@@ -211,7 +218,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
     assert y.rawType == x.rawType.base
     genericAssign(x.value +!! i*bs, y.value, y.rawType)
   of tySequence:
@@ -219,7 +226,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     assert y.rawType == x.rawType.base
     genericAssign(s +!! (GenericSeqSize+i*bs), y.value, y.rawType)
   else: assert false

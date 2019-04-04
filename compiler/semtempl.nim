@@ -58,25 +58,26 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
       inc(i)
       if i > 1: break
     a = nextOverloadIter(o, c, n)
+  let info = getCallLineInfo(n)
   if i <= 1 and r != scForceOpen:
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
-    result = newSymNode(s, n.info)
-    markUsed(c.config, n.info, s, c.graph.usageSym)
-    onUse(n.info, s)
+    result = newSymNode(s, info)
+    markUsed(c.config, info, s, c.graph.usageSym)
+    onUse(info, s)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
     let kind = if r == scClosed or n.kind == nkDotExpr: nkClosedSymChoice
                else: nkOpenSymChoice
-    result = newNodeIT(kind, n.info, newTypeS(tyNone, c))
+    result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
       if a.kind != skModule:
         incl(a.flags, sfUsed)
-        addSon(result, newSymNode(a, n.info))
-        onUse(n.info, a)
+        addSon(result, newSymNode(a, info))
+        onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
@@ -390,7 +391,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         n.sons[0] = newSymNode(s, n.sons[0].info)
     n.sons[1] = semTemplBody(c, n.sons[1])
     closeScope(c)
-  of nkTryStmt:
+  of nkTryStmt, nkHiddenTryStmt:
     checkMinSonsLen(n, 2, c.c.config)
     n.sons[0] = semTemplBodyScope(c, n.sons[0])
     for i in countup(1, sonsLen(n)-1):
@@ -557,6 +558,11 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     incl(s.flags, sfGlobal)
   else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
+
+  if s.owner != nil and sfSystemModule in s.owner.flags and
+      s.name.s in ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]:
+    incl(s.flags, sfCallsite)
+
   styleCheckDef(c.config, s)
   onDef(n[0].info, s)
   # check parameter list:

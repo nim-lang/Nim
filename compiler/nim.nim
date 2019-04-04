@@ -21,8 +21,10 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt,
-  nodejs, scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
+  scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
   pathutils
+
+include nodejs
 
 when hasTinyCBackend:
   import tccgen
@@ -66,7 +68,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   )
   self.initDefinesProg(conf, "nim_compiler")
   if paramCount() == 0:
-    writeCommandLineUsage(conf, conf.helpWritten)
+    writeCommandLineUsage(conf)
     return
 
   self.processCmdLineAndProjectPath(conf)
@@ -78,23 +80,10 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     if conf.cmd == cmdRun:
       tccgen.run(conf.arguments)
   if optRun in conf.globalOptions:
+    var ex = quoteShell conf.absOutFile
     if conf.cmd == cmdCompileToJS:
-      var ex: string
-      if not conf.outFile.isEmpty:
-        ex = conf.outFile.prependCurDir.quoteShell
-      else:
-        ex = quoteShell(
-          completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
       execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
     else:
-      var binPath: AbsoluteFile
-      if not conf.outFile.isEmpty:
-        # If the user specified an outFile path, use that directly.
-        binPath = conf.outFile.prependCurDir
-      else:
-        # Figure out ourselves a valid binary name.
-        binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
-      var ex = quoteShell(binPath)
       execExternalProgram(conf, ex & ' ' & conf.arguments)
 
 when declared(GC_setMaxPause):

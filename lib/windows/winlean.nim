@@ -683,6 +683,10 @@ const
   FILE_BEGIN* = 0'i32
   INVALID_SET_FILE_POINTER* = -1'i32
   NO_ERROR* = 0'i32
+  PAGE_NOACCESS* = 0x01'i32
+  PAGE_EXECUTE* = 0x10'i32
+  PAGE_EXECUTE_READ* = 0x20'i32
+  PAGE_EXECUTE_READWRITE* = 0x40'i32
   PAGE_READONLY* = 2'i32
   PAGE_READWRITE* = 4'i32
   FILE_MAP_READ* = 4'i32
@@ -896,7 +900,7 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
-                      stringBufSize: int32): cstring {.gcsafe, stdcall.}
+                      stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
 
 var inet_ntop_real: inet_ntop_proc = nil
 

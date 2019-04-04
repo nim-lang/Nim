@@ -450,17 +450,18 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
-  markUsed(c.config, n.info, sym, c.graph.usageSym)
-  onUse(n.info, sym)
+  let info = getCallLineInfo(n)
+  markUsed(c.config, info, sym, c.graph.usageSym)
+  onUse(info, sym)
   if sym == c.p.owner:
-    globalError(c.config, n.info, "recursive dependency: '$1'" % sym.name.s)
+    globalError(c.config, info, "recursive dependency: '$1'" % sym.name.s)
 
   let genericParams = if sfImmediate in sym.flags: 0
                       else: sym.ast[genericParamsPos].len
   let suppliedParams = max(n.safeLen - 1, 0)
 
   if suppliedParams < genericParams:
-    globalError(c.config, n.info, errMissingGenericParamsForTemplate % n.renderTree)
+    globalError(c.config, info, errMissingGenericParamsForTemplate % n.renderTree)
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
@@ -556,8 +557,6 @@ proc isEmptyTree(n: PNode): bool =
   else: result = false
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
-  if n.kind == nkDefer:
-    localError(c.config, n.info, "defer statement not supported at top level")
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
       c.importTable.addSym c.graph.systemModule # import the "System" identifier
@@ -587,7 +586,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
-  trackTopLevelStmt(c.graph, c.module, result)
+  trackTopLevelStmt(c, c.module, result)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is

@@ -1441,31 +1441,111 @@ string that is "useless" and replace it with "useful".
 Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or
 as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"``.
 
-Tuples
-------
+Objects
+-------
 
-A tuple type defines various named *fields* and an *order* of the fields.
-The constructor ``()`` can be used to construct tuples. The order of the
-fields in the constructor must match the order in the tuple's definition.
-Different tuple-types are *equivalent* if they specify fields of
-the same type and of the same name in the same order.
+The default type to pack different values together in a single
+structure with a name is the object type. An object is a value type,
+which means that when an object is assigned to a new variable all its
+components are copied as well.
 
-The assignment operator for tuples copies each component. The notation
-``t.field`` is used to access a tuple's field. Another notation is
-``t[i]`` to access the ``i``'th field. Here ``i`` must be a constant
-integer.
+Each object type ``Foo`` has a constructor ``Foo(field: value, ...)``
+where all of its fields can be initialized. Unspecified fields will
+get their default value.
+
+.. code-block:: nim
+  type
+    Person = object
+      name: string
+      age: int
+
+  var person1 = Person(name: "Peter", age: 30)
+
+  echo person1.name # "Peter"
+  echo person1.age  # 30
+
+  var person2 = person1 # copy of person 1
+
+  person2.age += 14
+
+  echo person1.age # 30
+  echo person2.age # 44
+
+
+  # the order may be changed
+  let person3 = Person(age: 12, name: "Quentin")
+
+  # not every member needs to be specified
+  let person4 = Person(age: 3)
+  # unspecified members will be initialized with their default
+  # values. In this case it is the empty string.
+  doAssert person4.name == ""
+
+
+Object fields that should be visible from outside the defining module have to
+be marked with ``*``.
 
 .. code-block:: nim
     :test: "nim c $1"
 
   type
-    Person = tuple[name: string, age: int] # type representing a person:
-                                           # a person consists of a name
-                                           # and an age
+    Person* = object # the type is visible from other modules
+      name*: string  # the field of this type is visible from other modules
+      age*: int
+
+Tuples
+------
+
+Tuples are very much like what you have seen so far from objects. They
+are value types where the assignment operator copies each component.
+Unlike object types though, tuple types are structurally typed,
+meaning different tuple-types are *equivalent* if they specify fields of
+the same type and of the same name in the same order.
+
+The constructor ``()`` can be used to construct tuples. The order of the
+fields in the constructor must match the order in the tuple's
+definition. But unlike objects, a name for the tuple type may not be
+used here.
+
+
+Like the object type the notation ``t.field`` is used to access a
+tuple's field. Another notation that is not available for objects is
+``t[i]`` to access the ``i``'th field. Here ``i`` must be a constant
+integer.
+
+.. code-block:: nim
+    :test: "nim c $1"
+  type
+    # type representing a person:
+    # A person consists of a name and an age.
+    Person = tuple
+      name: string
+      age: int
+
+    # Alternative syntax for an equivalent type.
+    PersonX = tuple[name: string, age: int]
+
+    # anonymous field syntax
+    PersonY = (string, int)
+
   var
     person: Person
+    personX: PersonX
+    personY: PersonY
+
   person = (name: "Peter", age: 30)
-  # the same, but less readable:
+  # Person and PersonX are equivalent
+  personX = person
+
+  # Create a tuple with anonymous fields:
+  personY = ("Peter", 30)
+
+  # A tuple with anonymous fields is compatible with a tuple that has
+  # field names.
+  person = personY
+  personY = person
+
+  # Usually used for short tuple initialization syntax
   person = ("Peter", 30)
 
   echo person.name # "Peter"
@@ -1483,10 +1563,6 @@ integer.
   #person = building
   # --> Error: type mismatch: got (tuple[street: string, number: int])
   #     but expected 'Person'
-
-  # The following works because the field names and types are the same.
-  var teacher: tuple[name: string, age: int] = ("Mark", 42)
-  person = teacher
 
 Even though you don't need to declare a type for a tuple to use it, tuples
 created with different field names will be considered different objects despite
@@ -1519,6 +1595,8 @@ variables! For example:
   echo badname
   echo badext
 
+Fields of tuples are always public, they don't need to be explicity
+marked to be exported, unlike for example fields in an object type.
 
 Reference and pointer types
 ---------------------------

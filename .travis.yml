@@ -1,9 +1,11 @@
 sudo: false
 language: c
 
-dist: trusty
+dist: xenial
 
 matrix:
+  fast_finish: true
+
   include:
     - os: linux
       env: NIM_COMPILE_TO_CPP=false
@@ -14,8 +16,9 @@ matrix:
     - os: osx
       env: NIM_COMPILE_TO_CPP=true
 
-  allow_failures:
-    - env: NIM_COMPILE_TO_CPP=true
+# To allow failures for a failing configuration, use something like:
+#  allow_failures:
+#    - env: NIM_COMPILE_TO_CPP=true
 #    - os: osx
 
 addons:
@@ -40,26 +43,16 @@ before_script:
   - sh build.sh
   - cd ..
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
+  - echo PATH:${PATH}
+  - set +e   # prevents breaking after_failure
+
 script:
+  - set -e
+  - echo "travis_fold:start:nim_c_koch"
   - nim c koch
-  - env NIM_COMPILE_TO_CPP=false ./koch boot
-  - ./koch boot -d:release
-  - ./koch nimble
-  - nim e tests/test_nimscript.nims
-  #- nimble install zip -y
-  #- nimble install opengl
-  #- nimble install sdl1
-  #- nimble install jester@#head -y
-  #- nimble install niminst
-  - nim c -d:nimCoroutines testament/tester
-  - testament/tester --pedantic all -d:nimCoroutines
-  - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
-  - nim c -r nimpretty/tester.nim
-  - ./koch docs --git.commit:devel
-  - ./koch csource
-  - ./koch nimsuggest
-  - nim c -r nimsuggest/tester
-  - nim c -r nimdoc/tester
+  - echo "travis_fold:end:nim_c_koch"
+  - ./koch runCI
+  - set +e
 
 before_deploy:
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
@@ -73,3 +66,6 @@ deploy:                         # https://nim-lang.github.io/Nim
   keep-history: false
   on:
     branch: devel
+
+# Extract failed tests
+after_failure: nim c -r tools/ci_testresults.nim

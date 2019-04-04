@@ -26,13 +26,14 @@
 ##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental, btrees
+  incremental, btrees, sighashes
 
 type
   ModuleGraph* = ref object
     modules*: seq[PSym]  ## indexed by int32 fileIdx
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
+    importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
@@ -56,6 +57,7 @@ type
     opContains*, opNot*: PSym
     emptyNode*: PNode
     incr*: IncrementalCtx
+    canonTypes*: Table[SigHash, PType]
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
     recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
@@ -118,6 +120,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
+  result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.modules = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
@@ -136,6 +139,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
   result.cacheTables = initTable[string, BTree[string, PNode]]()
+  result.canonTypes = initTable[SigHash, PType]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
