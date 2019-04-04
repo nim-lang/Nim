@@ -57,7 +57,7 @@
 ## **See also:**
 ## * `strformat module<strformat.html>`_ for string interpolation and formatting
 ## * `unicode module<unicode.html>`_ for Unicode UTF-8 handling
-## * `sequtils module<collections/sequtils.html>`_ for operations on container
+## * `sequtils module<sequtils.html>`_ for operations on container
 ##   types (including strings)
 ## * `parseutils module<parseutils.html>`_ for lower-level parsing of tokens,
 ##   numbers, identifiers, etc.
