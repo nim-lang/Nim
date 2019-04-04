@@ -67,6 +67,7 @@ proc main =
     # if input is not actually over-written, when nimpretty is a noop).
     # --backup was un-documented (rely on git instead).
   var opt: PrettyOptions
+  opt.indWidth = 2
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
