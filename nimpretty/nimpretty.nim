@@ -26,7 +26,8 @@ Usage:
   nimpretty [options] file.nim
 Options:
   --output:file         set the output file (default: overwrite the input file)
-  --indent:N[=2]        set the number of spaces that is used for indentation
+  --indent:N[=0]        set the number of spaces that is used for indentation
+                        --indent:0 means autodetection (default behaviour)
   --version             show the version
   --help                show this help
 """
@@ -67,7 +68,6 @@ proc main =
     # if input is not actually over-written, when nimpretty is a noop).
     # --backup was un-documented (rely on git instead).
   var opt: PrettyOptions
-  opt.indWidth = 2
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
