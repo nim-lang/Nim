@@ -3924,7 +3924,8 @@ proc gorge*(command: string, input = "", cache = ""): string {.
 
 proc staticExec*(command: string, input = "", cache = ""): string {.
   magic: "StaticExec".} = discard
-  ## Executes an external process at compile-time.
+  ## Executes an external process at compile-time and returns its text output
+  ## (stdout + stderr).
   ##
   ## If `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.

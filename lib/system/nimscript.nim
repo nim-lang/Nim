@@ -235,20 +235,26 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
     copyDir `from`, to
     checkOsError()
 
-proc exec*(command: string) =
-  ## Executes an external process.
+proc exec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
+  ## Note: If you need a version of ``exec`` that returns the exit code
+  ## and text output of the command, you can use ``gorgeEx`` from the
+  ## system module.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
     checkOsError()
 
-proc exec*(command: string, input: string, cache = "") {.
-  raises: [OSError], tags: [ExecIOEffect].} =
-  ## Executes an external process.
+proc exec*(command: string, input: string, cache = "") =
+  ## Executes an external process. Non-zero exit codes of the external process
+  ## are ignored.
   log "exec: " & command:
     echo staticExec(command, input, cache)
 
-proc selfExec*(command: string) =
+proc selfExec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external command with the current nim/nimble executable.
   ## ``Command`` must not contain the "nim " part.
   let c = selfExe() & " " & command
