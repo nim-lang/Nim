@@ -821,7 +821,16 @@ proc track(tracked: PEffects, n: PNode) =
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len
-    for i in 0 ..< len(n):
+    for i in 0 .. len(n)-3:
+      let it = n[i]
+      track(tracked, it)
+      if tracked.owner.kind != skMacro:
+        if it.kind == nkVarTuple:
+          for x in it:
+            createTypeBoundOps(tracked.c, x.typ, x.info)
+        else:
+          createTypeBoundOps(tracked.c, it.typ, it.info)
+    for i in len(n)-2..len(n)-1:
       track(tracked, n.sons[i])
     setLen(tracked.init, oldState)
   of nkObjConstr:

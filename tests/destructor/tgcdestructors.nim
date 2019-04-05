@@ -3,7 +3,7 @@ discard """
   output: '''hi
 ho
 ha
-1 1'''
+7 1'''
 """
 
 import allocators
@@ -75,7 +75,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
       break
     i = j
 
-when false:
+when true:
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
                   (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
