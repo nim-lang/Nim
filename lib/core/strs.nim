@@ -41,12 +41,11 @@ template isLiteral(s): bool = s.p == nil or s.p.allocator == nil
 
 template contentSize(cap): int = cap + 1 + sizeof(int) + sizeof(Allocator)
 
+template frees(s) =
+  if not isLiteral(s):
+    s.p.allocator.dealloc(s.p.allocator, s.p, contentSize(s.p.cap))
+
 when not defined(nimV2):
-
-  template frees(s) =
-    if not isLiteral(s):
-      s.p.allocator.dealloc(s.p.allocator, s.p, contentSize(s.p.cap))
-
   proc `=destroy`(s: var string) =
     var a = cast[ptr NimStringV2](addr s)
     frees(a)
@@ -164,9 +163,31 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
     result = NimStringV2(len: len, p: p)
 
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
-  if newLen > s.len:
+  if newLen > s.len or isLiteral(s):
     prepareAdd(s, newLen - s.len)
-  # XXX This is wrong for const strings that got moved into 's'!
   s.len = newLen
   # this also only works because the destructor
   # looks at s.p and not s.len
+
+proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
+  # self assignment is fine!
+  #if unlikely(a.p == b.p): return
+  if isLiteral(b):
+    # we can shallow copy literals:
+    frees(a)
+    a.len = b.len
+    a.p = b.p
+  elif isLiteral(a) or a.p.cap < b.len:
+    let allocator = if a.p != nil and a.p.allocator != nil: a.p.allocator else: getLocalAllocator()
+    # we have to allocate the 'cap' here, consider
+    # 'let y = newStringOfCap(); var x = y'
+    # on the other hand... These get turned into moves now.
+    a.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(b.len)))
+    a.p.allocator = allocator
+    a.p.cap = b.len
+    a.len = b.len
+    copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
+  else:
+    a.len = b.len
+    # reuse the storage we already have:
+    copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
