@@ -1,3 +1,5 @@
+{.experimental: "notnil".}
+
 import macros
 
 block:
@@ -11,8 +13,10 @@ block:
 block:
   template myAttr(a: string) {.pragma.}
 
-  type MyObj = object
-    myField1, myField2 {.myAttr: "hi".}: int
+  type
+    MyObj = object
+      myField1, myField2 {.myAttr: "hi".}: int
+
   var o: MyObj
   static:
     assert o.myField2.hasCustomPragma(myAttr)
@@ -206,11 +210,16 @@ block:
   template myAttr2(x: int) {.pragma.}
   template myAttr3(x: string) {.pragma.}
 
+  type
+    MyObj2 = ref object
+    MyObjNotNil = MyObj2 not nil
+
   let a {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
   let b {.myAttr,myAttr2(2),myAttr3:"test".} = 0
   var x {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
   var y {.myAttr,myAttr2(2),myAttr3:"test".}: int
   var z {.myAttr,myAttr2(2),myAttr3:"test".} = 0
+  var z2 {.myAttr.}: MyObjNotNil
 
   template check(s: untyped) =
     doAssert s.hasCustomPragma(myAttr)

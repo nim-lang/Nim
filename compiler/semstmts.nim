@@ -336,7 +336,7 @@ proc checkNilable(c: PContext; v: PSym) =
       {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
     if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
-    elif tfNotNil in v.typ.flags and tfNotNil notin v.astdef.typ.flags:
+    elif tfNotNil in v.typ.flags and not v.astdef.typ.isNil and tfNotNil notin v.astdef.typ.flags:
       message(c.config, v.info, warnProveInit, v.name.s)
 
 #include liftdestructors
