@@ -1,5 +1,5 @@
 discard """
-    action: "run"
+action: "run"
 """
 
 import strformat
@@ -7,6 +7,10 @@ import strformat
 type Obj = object
 
 proc `$`(o: Obj): string = "foobar"
+
+# for custom types, formatValue needs to be overloaded.
+template formatValue(result: var string; value: Obj; specifier: string) =
+  result.formatValue($value, specifier)
 
 var o: Obj
 doAssert fmt"{o}" == "foobar"
@@ -42,7 +46,7 @@ doAssert fmt"^7.9 :: {str:^7.9}" == "^7.9 :: äöüe\u0309\u0319o\u0307\u0359"
 doAssert fmt"{15:08}" == "00000015" # int, works
 doAssert fmt"{1.5:08}" == "000001.5" # float, works
 doAssert fmt"{1.5:0>8}" == "000001.5" # workaround using fill char works for positive floats
-doAssert fmt"{-1.5:0>8}" == "0000-1.5" # even that does not work for negative floats  
+doAssert fmt"{-1.5:0>8}" == "0000-1.5" # even that does not work for negative floats
 doAssert fmt"{-1.5:08}" == "-00001.5" # works
 doAssert fmt"{1.5:+08}" == "+00001.5" # works
 doAssert fmt"{1.5: 08}" == " 00001.5" # works
@@ -54,3 +58,39 @@ doassert fmt"{-0.0: g}" == "-0"
 doAssert fmt"{0.0:g}" == "0"
 doAssert fmt"{0.0:+g}" == "+0"
 doAssert fmt"{0.0: g}" == " 0"
+
+# seq format
+
+let data1 = [1'i64, 10000'i64, 10000000'i64]
+let data2 = [10000000'i64, 100'i64, 1'i64]
+
+doAssert fmt"data1: {data1:8} ∨" == "data1: [       1,    10000, 10000000] ∨"
+doAssert fmt"data2: {data2:8} ∧" == "data2: [10000000,      100,        1] ∧"
+
+# custom format Value
+
+type
+  Vec2[T] = object
+    x,y: T
+  Vec2f = Vec2[float32]
+  Vec2i = Vec2[int32]
+
+proc formatValue[T](result: var string; value: Vec2[T]; specifier: string) =
+  result.add '['
+  result.formatValue value.x, specifier
+  result.add ", "
+  result.formatValue value.y, specifier
+  result.add "]"
+
+let v1 = Vec2f(x:1.0, y: 2.0)
+let v2 = Vec2i(x:1, y: 1337)
+doAssert fmt"v1: {v1:+08}  v2: {v2:>4}" == "v1: [+0000001, +0000002]  v2: [   1, 1337]"
+
+# issue #7632
+
+import genericstrformat
+
+doAssert works(5) == "formatted  5"
+doAssert fails0(6) == "formatted  6"
+doAssert fails(7) == "formatted  7"
+doAssert fails2[0](8) == "formatted  8"
