@@ -796,7 +796,12 @@ proc track(tracked: PEffects, n: PNode) =
       let last = lastSon(child)
       if last.kind != nkEmpty: track(tracked, last)
       if tracked.owner.kind != skMacro:
-        createTypeBoundOps(tracked.c, child[0].typ, child.info)
+        if child.kind == nkVarTuple:
+          createTypeBoundOps(tracked.c, child[^1].typ, child.info)
+          for i in 0..child.len-3:
+            createTypeBoundOps(tracked.c, child[i].typ, child.info)
+        else:
+          createTypeBoundOps(tracked.c, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)
@@ -857,7 +862,16 @@ proc track(tracked: PEffects, n: PNode) =
           addFactLt(tracked.guards, iterVar, upper)
         else: discard
 
-    for i in 0 ..< len(n):
+    for i in 0 .. len(n)-3:
+      let it = n[i]
+      track(tracked, it)
+      if tracked.owner.kind != skMacro:
+        if it.kind == nkVarTuple:
+          for x in it:
+            createTypeBoundOps(tracked.c, x.typ, x.info)
+        else:
+          createTypeBoundOps(tracked.c, it.typ, it.info)
+    for i in len(n)-2..len(n)-1:
       track(tracked, n.sons[i])
     setLen(tracked.init, oldState)
     setLen(tracked.guards.s, oldFacts)

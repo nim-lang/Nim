@@ -660,13 +660,13 @@ proc p(n: PNode; c: var Con): PNode =
 
     for i in 0..<n.len:
       let it = n[i]
-      let L = it.len-1
-      let ri = it[L]
+      let L = it.len
+      let ri = it[L-1]
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
       elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
-        for j in 0..L-2:
+        for j in 0..L-3:
           let v = it[j]
           doAssert v.kind == nkSym
           # move the variable declaration to the top of the frame:
@@ -681,7 +681,7 @@ proc p(n: PNode; c: var Con): PNode =
         # keep it, but transform 'ri':
         var varSection = copyNode(n)
         var itCopy = copyNode(it)
-        for j in 0..L-1:
+        for j in 0..L-2:
           itCopy.add it[j]
         itCopy.add p(ri, c)
         varSection.add itCopy
@@ -722,8 +722,9 @@ proc p(n: PNode; c: var Con): PNode =
     recurse(n, result)
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  when false: # defined(nimDebugDestroys):
-    echo "injecting into ", n
+  when defined(nimDebugDestroys):
+    if owner.name.s == "main":
+      echo "injecting into ", n
   if sfGeneratedOp in owner.flags: return n
   var c: Con
   c.owner = owner
@@ -758,7 +759,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     result.add body
 
   when defined(nimDebugDestroys):
-    if true:
+    if owner.name.s == "main":
       echo "------------------------------------"
       echo owner.name.s, " transformed to: "
       echo result

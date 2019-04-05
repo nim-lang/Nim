@@ -266,7 +266,7 @@ proc newSeqCall(g: ModuleGraph; x, y: PNode): PNode =
 proc setLenStrCall(g: ModuleGraph; x, y: PNode): PNode =
   let lenCall = genBuiltin(g, mLengthStr, "len", y)
   lenCall.typ = getSysType(g, x.info, tyInt)
-  result = genBuiltin(g, mSetLengthStr, "setLen", genAddr(g, x))
+  result = genBuiltin(g, mSetLengthStr, "setLen", x) # genAddr(g, x))
   result.add lenCall
 
 proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
@@ -274,7 +274,7 @@ proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
   lenCall.typ = getSysType(c.graph, x.info, tyInt)
   var op = getSysMagic(c.graph, x.info, "setLen", mSetLengthSeq)
   op = c.c.instTypeBoundOp(c.c, op, t, c.info, attachedAsgn, 1)
-  result = newTree(nkCall, newSymNode(op, x.info), genAddr(c.graph, x), lenCall)
+  result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let i = declareCounter(c, body, firstOrd(c.graph.config, t))
@@ -606,11 +606,13 @@ template inst(field, t) =
     if field.ast != nil:
       patchBody(c, field.ast, info)
 
+proc isTrival(s: PSym): bool {.inline.} = s == nil or s.ast[bodyPos].len == 0
+
 proc createTypeBoundOps*(c: PContext; orig: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
-  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
+  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.skipTypes({tyAlias}).flags != {}: return
   incl orig.flags, tfCheckedForDestructor
 
   let h = sighashes.hashType(orig, {CoType, CoConsiderOwned})
@@ -647,3 +649,8 @@ proc createTypeBoundOps*(c: PContext; orig: PType; info: TLineInfo) =
     orig.destructor = canon.destructor
     orig.assignment = canon.assignment
     orig.sink = canon.sink
+
+  #if not isTrival(orig.destructor):
+    #or not isTrival(orig.assignment) or
+    # not isTrival(orig.sink):
+  #  orig.flags.incl tfHasAsgn
