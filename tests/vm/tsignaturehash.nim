@@ -18,9 +18,3 @@ discard testmacro(testmacro)
 discard testmacro(`[]`)
 discard testmacro(binarySearch)
 discard testmacro(sort)
-
-
-
-
-
-
