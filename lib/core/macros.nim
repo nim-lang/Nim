@@ -361,7 +361,7 @@ when defined(nimHasSignatureHashInMacro):
     ## used in the back-end to produce the mangled symbol name.
 
 when defined(nimHasSymBodyHashInMacro):
-  proc symBodyHash*(s: NimNode): string {.magic: "NSymBodyHash", noSideEffect.}
+  proc symBodyHash*(s: NimNode): string {.noSideEffect.} = discard
     ## Returns a stable digest for symbols derived not only from type signature
     ## and owning module, but also implementation body. All procs/varibles used in
     ## the implementation of this symbol are hashed recursively as well, including
