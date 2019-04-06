@@ -2971,6 +2971,30 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
 when not defined(js) and not defined(nimscript):
   include "system/ansi_c"
 
+when not defined(js):
+  {.push stackTrace:off.}
+
+  when hasThreadSupport and hostOS != "standalone":
+    const insideRLocksModule = false
+    include "system/syslocks"
+    include "system/threadlocalstorage"
+
+  when defined(nimV2):
+    type
+      TNimNode {.compilerProc.} = object # to keep the code generator simple
+      DestructorProc = proc (p: pointer) {.nimcall, benign.}
+      TNimType {.compilerProc.} = object
+        destructor: pointer
+        size: int
+        name: cstring
+      PNimType = ptr TNimType
+
+  when defined(gcDestructors) and not defined(nimscript):
+    include "core/strs"
+    include "core/seqs"
+
+  {.pop.}
+
 when not declared(sysFatal):
   include "system/fatal"
 
@@ -3480,15 +3504,6 @@ when not defined(JS): #and not defined(nimscript):
   when not defined(nimscript) and hostOS != "standalone":
     when defined(endb):
       proc endbStep()
-
-  when hasThreadSupport and hostOS != "standalone":
-    const insideRLocksModule = false
-    include "system/syslocks"
-    include "system/threadlocalstorage"
-
-  when defined(gcDestructors) and not defined(nimscript):
-    include "core/strs"
-    include "core/seqs"
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =

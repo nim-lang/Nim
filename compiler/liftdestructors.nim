@@ -309,13 +309,14 @@ proc seqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc strOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedAsgn, attachedDeepCopy:
+    body.add callCodegenProc(c.graph, "nimAsgnStrV2", c.info, genAddr(c.graph, x), y)
     # we generate:
     # setLen(dest, y.len)
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenStrCall(c.graph, x, y)
-    forallElements(c, t, body, x, y)
+    #body.add setLenStrCall(c.graph, x, y)
+    #forallElements(c, t, body, x, y)
   of attachedSink:
     let moveCall = genBuiltin(c.graph, mMove, "move", x)
     moveCall.add y
@@ -473,8 +474,11 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     #internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
     discard
+  of tyVar, tyLent:
+    if c.kind != attachedDestructor:
+      liftBodyAux(c, lastSon(t), body, x, y)
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
+     tyGenericInst, tyStatic, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
@@ -650,7 +654,7 @@ proc createTypeBoundOps*(c: PContext; orig: PType; info: TLineInfo) =
     orig.assignment = canon.assignment
     orig.sink = canon.sink
 
-  #if not isTrival(orig.destructor):
+  if not isTrival(orig.destructor):
     #or not isTrival(orig.assignment) or
     # not isTrival(orig.sink):
-  #  orig.flags.incl tfHasAsgn
+    orig.flags.incl tfHasAsgn

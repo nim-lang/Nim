@@ -772,6 +772,8 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
   elif magic == mProcCall:
     # but do not change to its dispatcher:
     result = transformSons(c, n[1])
+  elif magic == mStrToStr:
+    result = transform(c, n[1])
   else:
     let s = transformSons(c, n).PNode
     # bugfix: check after 'transformSons' if it's still a method call:
