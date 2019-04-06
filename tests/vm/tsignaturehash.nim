@@ -4,7 +4,7 @@ import macros, algorithm
 import md5
 
 macro testmacro(s: typed{nkSym}): string =
-  let s = signaturehash(s) & " - " & symBodyHash(s)
+  let s = getMD5(signaturehash(s) & " - " & symBodyHash(s))
   result = newStrLitNode(s)
 
 macro testmacro(s: typed{nkOpenSymChoice|nkClosedSymChoice}): string =
