@@ -74,6 +74,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     # generate selector:
     var access = dotField(x, n[0].sym)
     caseStmt.add(access)
+    var emptyBranches = 0
     # copy the branches over, but replace the fields with the for loop body:
     for i in 1 ..< n.len:
       var branch = copyTree(n[i])
@@ -81,8 +82,10 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
       branch.sons[L-1] = newNodeI(nkStmtList, c.info)
 
       liftBodyObj(c, n[i].lastSon, branch.sons[L-1], x, y)
+      if branch.sons[L-1].len == 0: inc emptyBranches
       caseStmt.add(branch)
-    body.add(caseStmt)
+    if emptyBranches != n.len-1:
+      body.add(caseStmt)
   of nkRecList:
     for t in items(n): liftBodyObj(c, t, body, x, y)
   else:
