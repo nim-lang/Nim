@@ -255,34 +255,6 @@ proc initHashSet*[A](initialSize=64): HashSet[A] =
     assert len(a) == 1
   result.init(initialSize)
 
-proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
-  ## Creates a new hash set that contains the members of the given
-  ## collection (seq, array, or string) `keys`.
-  ##
-  ## Duplicates are removed.
-  ##
-  ## See also:
-  ## * `initHashSet proc <#initHashSet,int>`_
-  runnableExamples:
-    let
-      a = toHashSet([5, 3, 2])
-      b = toHashSet("abracadabra")
-    assert len(a) == 3
-    ## a == {2, 3, 5}
-    assert len(b) == 5
-    ## b == {'a', 'b', 'c', 'd', 'r'}
-
-  result = initHashSet[A](rightSize(keys.len))
-  for key in items(keys): result.incl(key)
-
-proc initSet*[A](initialSize=64): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
-  ## Deprecated since v0.20, use `initHashSet`.
-
-proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
-  ## Deprecated since v0.20, use `toHashSet`.
-
 proc isValid*[A](s: HashSet[A]): bool =
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
@@ -375,6 +347,57 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert s.isValid, "The set `s` needs to be initialized."
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
+
+proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
+  ## Creates a new hash set that contains the members of the given
+  ## collection (seq, array, or string) `keys`.
+  ##
+  ## Duplicates are removed.
+  ##
+  ## See also:
+  ## * `initHashSet proc <#initHashSet,int>`_
+  runnableExamples:
+    let
+      a = toHashSet([5, 3, 2])
+      b = toHashSet("abracadabra")
+    assert len(a) == 3
+    ## a == {2, 3, 5}
+    assert len(b) == 5
+    ## b == {'a', 'b', 'c', 'd', 'r'}
+
+  result = initHashSet[A](rightSize(keys.len))
+  for key in items(keys): result.incl(key)
+
+proc initSet*[A](initialSize=64): HashSet[A] {.deprecated:
+     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
+  ## Deprecated since v0.20, use `initHashSet`.
+
+proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
+     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
+  ## Deprecated since v0.20, use `toHashSet`.
+
+iterator items*[A](s: HashSet[A]): A =
+  ## Iterates over elements of the set `s`.
+  ##
+  ## If you need a sequence with the elelments you can use `sequtils.toSeq
+  ## template <sequtils.html#toSeq.t,untyped>`_.
+  ##
+  ## .. code-block::
+  ##   type
+  ##     pair = tuple[a, b: int]
+  ##   var
+  ##     a, b = initHashSet[pair]()
+  ##   a.incl((2, 3))
+  ##   a.incl((3, 2))
+  ##   a.incl((2, 3))
+  ##   for x, y in a.items:
+  ##     b.incl((x - 2, y + 1))
+  ##   assert a.len == 2
+  ##   echo b
+  ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
+  assert s.isValid, "The set needs to be initialized."
+  for h in 0..high(s.data):
+    if isFilled(s.data[h].hcode): yield s.data[h].key
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
@@ -676,7 +699,7 @@ proc `<=`*[A](s, t: HashSet[A]): bool =
   result = false
   if s.counter > t.counter: return
   result = true
-  for item in s:
+  for item in items(s):
     if not(t.contains(item)):
       result = false
       return
@@ -702,7 +725,7 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
     assert b == toHashSet(["1", "2", "3"])
 
   result = initHashSet[B]()
-  for item in data: result.incl(op(item))
+  for item in items(data): result.incl(op(item))
 
 proc hash*[A](s: HashSet[A]): Hash =
   ## Hashing of HashSet.
@@ -735,32 +758,6 @@ proc rightSize*(count: Natural): int {.inline.} =
   ##
   ## Internally, we want `mustRehash(rightSize(x), x) == false`.
   result = nextPowerOfTwo(count * 3 div 2  +  4)
-
-
-
-iterator items*[A](s: HashSet[A]): A =
-  ## Iterates over elements of the set `s`.
-  ##
-  ## If you need a sequence with the elelments you can use `sequtils.toSeq
-  ## template <sequtils.html#toSeq.t,untyped>`_.
-  ##
-  ## .. code-block::
-  ##   type
-  ##     pair = tuple[a, b: int]
-  ##   var
-  ##     a, b = initHashSet[pair]()
-  ##   a.incl((2, 3))
-  ##   a.incl((3, 2))
-  ##   a.incl((2, 3))
-  ##   for x, y in a.items:
-  ##     b.incl((x - 2, y + 1))
-  ##   assert a.len == 2
-  ##   echo b
-  ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
-  assert s.isValid, "The set needs to be initialized."
-  for h in 0..high(s.data):
-    if isFilled(s.data[h].hcode): yield s.data[h].key
-
 
 
 
@@ -993,7 +990,7 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
     assert values.len == 5
   assert s.isValid, "The set `s` needs to be initialized."
   assert other.isValid, "The set `other` needs to be initialized."
-  for item in other: incl(s, item)
+  for item in items(other): incl(s, item)
 
 proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.

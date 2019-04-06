@@ -1522,7 +1522,7 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
 proc asgnToResult(c: PContext, n, le, ri: PNode) =
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   if ri.typ != nil and ri.typ.skipTypes(abstractInst).kind == tyOwned and
-      le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned:
+      le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned and ri.kind in nkCallKinds:
     localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer; " &
       "use 'owned(" & typeToString(le.typ) & ")' as the return type")
 
@@ -1616,7 +1616,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.owner.typ.sons[0] = rhsTyp
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
-      asgnToResult(c, n, n.sons[0], n.sons[1])
+      asgnToResult(c, n, n.sons[0], rhs)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
     liftTypeBoundOps(c, lhs.typ, lhs.info)

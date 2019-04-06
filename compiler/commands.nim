@@ -745,12 +745,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.cppDefine(arg)
   of "newruntime":
     expectNoArg(conf, switch, arg, pass, info)
-    doAssert(conf != nil)
-    incl(conf.features, destructor)
-    incl(conf.globalOptions, optNimV2)
-    defineSymbol(conf.symbols, "nimV2")
-    conf.selectedGC = gcDestructors
-    defineSymbol(conf.symbols, "gcdestructors")
+    if pass in {passCmd2, passPP}:
+      doAssert(conf != nil)
+      incl(conf.features, destructor)
+      incl(conf.globalOptions, optNimV2)
+      defineSymbol(conf.symbols, "nimV2")
+      conf.selectedGC = gcDestructors
+      defineSymbol(conf.symbols, "gcdestructors")
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}

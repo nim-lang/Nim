@@ -1808,3 +1808,6 @@ template getBody*(s: PSym): PNode = s.ast[bodyPos]
 
 template detailedInfo*(sym: PSym): string =
   sym.name.s
+
+proc isInlineIterator*(s: PSym): bool {.inline.} =
+  s.kind == skIterator and s.typ.callConv != ccClosure

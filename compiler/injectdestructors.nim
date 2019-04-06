@@ -456,7 +456,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result.add arg[0]
       for i in 1..<arg.len:
         result.add pArg(arg[i], c, i < L and parameters[i].kind == tySink)
-    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkFloat128Lit}:
+    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkTripleStrLit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
     elif arg.kind == nkSym and isSinkParam(arg.sym):
@@ -616,7 +616,21 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     else:
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
+  of nkHiddenSubConv, nkHiddenStdConv:
+    let harmless = ri[1].kind in (nkCallKinds + {nkSym, nkTupleConstr, nkObjConstr,
+                                                 nkBracket, nkBracketExpr, nkNilLit})
+    if harmless:
+      result = moveOrCopy(dest, ri[1], c)
+      var b = newNodeIT(ri.kind, ri.info, ri.typ)
+      b.add ri[0] # add empty node
+      let L = result.len-1
+      b.add result[L]
+      result[L] = b
+    else:
+      result = genCopy(c, dest.typ, dest, ri)
+      result.add p(ri, c)
   else:
+    # XXX At least string literals can be moved?
     result = genCopy(c, dest.typ, dest, ri)
     result.add p(ri, c)
 
@@ -725,7 +739,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   when defined(nimDebugDestroys):
     if owner.name.s == "main":
       echo "injecting into ", n
-  if sfGeneratedOp in owner.flags: return n
+  if sfGeneratedOp in owner.flags or isInlineIterator(owner): return n
   var c: Con
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)
