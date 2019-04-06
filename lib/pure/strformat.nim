@@ -513,8 +513,11 @@ macro `&`*(pattern: string): untyped =
         try:
           x = parseExpr(subexpr)
         except ValueError:
-          let msg = getCurrentExceptionMsg()
-          error("could not parse ``" & subexpr & "``.\n" & msg, pattern)
+          when declared(getCurrentExceptionMsg):
+            let msg = getCurrentExceptionMsg()
+            error("could not parse `" & subexpr & "`.\n" & msg, pattern)
+          else:
+            error("could not parse `" & subexpr & "`.\n", pattern)
         let formatSym = bindSym("formatValue", brOpen)
         var options = ""
         if f[i] == ':':
