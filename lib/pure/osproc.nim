@@ -57,8 +57,8 @@ type
       id: Handle
     else:
       inHandle, outHandle, errHandle: FileHandle
-      inStream, outStream, errStream: Stream
       id: Pid
+    inStream, outStream, errStream: owned(Stream)
     exitStatus: cint
     exitFlag: bool
     options: set[ProcessOption]
@@ -724,15 +724,21 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc inputStream(p: Process): Stream =
     streamAccess(p)
-    result = newFileHandleStream(p.inHandle)
+    if p.inStream == nil:
+      p.inStream = newFileHandleStream(p.inHandle)
+    result = p.inStream
 
   proc outputStream(p: Process): Stream =
     streamAccess(p)
-    result = newFileHandleStream(p.outHandle)
+    if p.outStream == nil:
+      p.outStream = newFileHandleStream(p.outHandle)
+    result = p.outStream
 
   proc errorStream(p: Process): Stream =
     streamAccess(p)
-    result = newFileHandleStream(p.errHandle)
+    if p.errStream == nil:
+      p.errStream = newFileHandleStream(p.errHandle)
+    result = p.errStream
 
   proc execCmd(command: string): int =
     var
