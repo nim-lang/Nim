@@ -2315,6 +2315,14 @@ iterator items*[T](s: HSlice[T, T]): T =
   for x in s.a..s.b:
     yield x
 
+iterator items*[T](xs: iterator: T): T =
+  ## iterates over each element yielded by a closure iterator. This may
+  ## not seem particularly useful on its own, but this allows closure
+  ## iterators to be used by the the mapIt, filterIt, allIt, anyIt, etc.
+  ## templates implemented in sequtils.
+  for x in xs:
+    yield x
+
 iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   var i = 0
