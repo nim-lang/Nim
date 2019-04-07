@@ -13,10 +13,7 @@
 # included from sempass2.nim
 
 # Todo:
-# - specialize destructors for constant arrays of strings
-#   (they don't require any)
 # - use openArray instead of array to avoid over-specializations
-# - make 'owned' mean 'sink' in parameters
 
 import sighashes
 

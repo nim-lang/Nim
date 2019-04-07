@@ -315,7 +315,7 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     if c.otherRead != nil:
       m.add "; another read is done here: "
       m.add c.graph.config $ c.otherRead.info
-    elif ri.kind == nkSym and ri.sym.kind == skParam and ri.sym.typ.kind != tySink:
+    elif ri.kind == nkSym and ri.sym.kind == skParam and not isSinkType(ri.sym.typ):
       m.add "; try to make "
       m.add renderTree(ri)
       m.add " a 'sink' parameter"
@@ -380,9 +380,6 @@ proc p(n: PNode; c: var Con): PNode
 template recurse(n, dest) =
   for i in 0..<n.len:
     dest.add p(n[i], c)
-
-proc isSinkParam(s: PSym): bool {.inline.} =
-  result = s.kind == skParam and s.typ.kind == tySink
 
 proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
   result = newNodeI(nkCall, n.info)
@@ -455,7 +452,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       let L = if parameters != nil: parameters.len else: 0
       result.add arg[0]
       for i in 1..<arg.len:
-        result.add pArg(arg[i], c, i < L and parameters[i].kind == tySink)
+        result.add pArg(arg[i], c, i < L and isSinkType(parameters[i]))
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkTripleStrLit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
@@ -525,7 +522,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     let L = if parameters != nil: parameters.len else: 0
     ri2.add ri[0]
     for i in 1..<ri.len:
-      ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
+      ri2.add pArg(ri[i], c, i < L and isSinkType(parameters[i]))
     #recurse(ri, ri2)
     result.add ri2
   of nkBracketExpr:
@@ -704,7 +701,7 @@ proc p(n: PNode; c: var Con): PNode =
     let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
     for i in 1 ..< n.len:
-      n.sons[i] = pArg(n[i], c, i < L and parameters[i].kind == tySink)
+      n.sons[i] = pArg(n[i], c, i < L and isSinkType(parameters[i]))
     if n.typ != nil and hasDestructor(n.typ):
       discard "produce temp creation"
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
@@ -758,7 +755,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     let params = owner.typ.n
     for i in 1 ..< params.len:
       let param = params[i].sym
-      if param.typ.kind == tySink and hasDestructor(param.typ.sons[0]):
+      if isSinkParam(param) and hasDestructor(param.typ.skipTypes({tySink})):
         c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
   #if optNimV2 in c.graph.config.globalOptions:
