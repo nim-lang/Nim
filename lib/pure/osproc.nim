@@ -1419,3 +1419,31 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
       result[1] = peekExitCode(p)
       if result[1] != -1: break
   close(p)
+
+when defined(posix):
+  proc spawnProcess*(target: proc(): int): Process =
+    ## Spawn a proc as a process using `fork`.
+    ## The return value is set as exit status.
+    let pid = posix.fork()
+    if pid < 0:
+      raise newException(OSError, "Failed to spawn process")
+
+    if pid > 0:
+      # This is the parent
+      return Process(id:pid, inHandle:0, outHandle:1, errHandle:2)
+
+    # This is the child
+    try:
+      quit(target())
+    except:
+      echo getCurrentExceptionMsg()
+      quit(1)
+
+  runnableExamples:
+    import os
+    proc a(): int =
+      sleep 10
+      3
+    let p = spawnProcess(a)
+    assert peekExitCode(p) == -1
+    assert waitForExit(p) == 3
