@@ -44,8 +44,19 @@ proc inExceptBlockLen(p: BProc): int =
   for x in p.nestedTryStmts:
     if x.inExcept: result.inc
 
-proc startBlock(p: BProc, start: FormatStr = "{$n",
-                args: varargs[Rope]): int {.discardable.}
+proc startBlockInternal(p: BProc): int {.discardable.} =
+  inc(p.labels)
+  result = len(p.blocks)
+  setLen(p.blocks, result + 1)
+  p.blocks[result].id = p.labels
+  p.blocks[result].nestedTryStmts = p.nestedTryStmts.len.int16
+  p.blocks[result].nestedExceptStmts = p.inExceptBlockLen.int16
+
+template startBlock(p: BProc, start: FormatStr = "{$n",
+                args: varargs[Rope]): int =
+  lineCg(p, cpsStmts, start, args)
+  startBlockInternal(p)
+
 proc endBlock(p: BProc)
 
 proc genVarTuple(p: BProc, n: PNode) =
@@ -129,16 +140,6 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
     genDeref(p, ri, a, enforceDeref=true)
   else:
     expr(p, ri, a)
-
-proc startBlock(p: BProc, start: FormatStr = "{$n",
-                args: varargs[Rope]): int {.discardable.} =
-  lineCg(p, cpsStmts, start, args)
-  inc(p.labels)
-  result = len(p.blocks)
-  setLen(p.blocks, result + 1)
-  p.blocks[result].id = p.labels
-  p.blocks[result].nestedTryStmts = p.nestedTryStmts.len.int16
-  p.blocks[result].nestedExceptStmts = p.inExceptBlockLen.int16
 
 proc assignLabel(b: var TBlock): Rope {.inline.} =
   b.label = "LA" & b.id.rope
@@ -699,7 +700,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n")
 
-proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
+template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =
   var
     x, y: TLoc
@@ -729,10 +730,11 @@ proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
       exprBlock(p, t.sons[i].sons[0], d)
   result = lend
 
-proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
+template genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
                        rangeFormat, eqFormat: FormatStr,
                        until: int, a: TLoc): TLabel =
   # generate a C-if statement for a Nim case statement
+  var res: TLabel
   var labId = p.labels
   for i in 1..until:
     inc(p.labels)
@@ -745,12 +747,13 @@ proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
     inc(p.labels)
     var gotoTarget = p.labels
     lineF(p, cpsStmts, "goto LA$1_;$n", [rope(gotoTarget)])
-    result = genCaseSecondPass(p, t, d, labId, until)
+    res = genCaseSecondPass(p, t, d, labId, until)
     lineF(p, cpsStmts, "LA$1_: ;$n", [rope(gotoTarget)])
   else:
-    result = genCaseSecondPass(p, t, d, labId, until)
+    res = genCaseSecondPass(p, t, d, labId, until)
+  res
 
-proc genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
+template genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
                     rangeFormat, eqFormat: FormatStr) =
   var a: TLoc
   initLocExpr(p, t.sons[0], a)
@@ -1048,15 +1051,15 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
       for j in countup(0, blen - 2):
         assert(t.sons[i].sons[j].kind == nkType)
         if orExpr != nil: add(orExpr, "||")
-        let isObjFormat = if not p.module.compileToCpp:
-          "#isObj(#getCurrentException()->Sup.m_type, $1)"
-          else: "#isObj(#getCurrentException()->m_type, $1)"
-
         let checkFor = if optNimV2 in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
           genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
-        appcg(p.module, orExpr, isObjFormat, [checkFor])
+        if p.module.compileToCpp:
+          appcg(p.module, orExpr, "#isObj(#getCurrentException()->m_type, $1)", [checkFor])
+        else:
+          appcg(p.module, orExpr, "#isObj(#getCurrentException()->Sup.m_type, $1)", [checkFor])
+
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       if not quirkyExceptions:

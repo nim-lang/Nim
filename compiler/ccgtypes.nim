@@ -751,10 +751,14 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             "  NI len; $2_Content* p;$n" &
             "};$n", [getTypeDescAux(m, t.sons[0], check), result])
         else:
-          appcg(m, m.s[cfsSeqTypes],
-              (if m.compileToCpp: cppSeq else: cSeq) &
-              "  $1 data[SEQ_DECL_SIZE];$n" &
-              "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+          if m.compileToCpp:
+            appcg(m, m.s[cfsSeqTypes],
+                cppSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
+                "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+          else:
+            appcg(m, m.s[cfsSeqTypes],
+                cSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
+                "};$n", [getTypeDescAux(m, t.sons[0], check), result])
       elif m.config.selectedGC == gcDestructors:
         internalError(m.config, "cannot map the empty seq type to a C type")
       else:

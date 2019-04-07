@@ -14,7 +14,11 @@
 type
   TTraversalClosure = object
     p: BProc
-    visitorFrmt: string
+    visitorFrmt: bool
+
+const
+  visitorFrmtA = "#nimGCvisit((void*)$1, 0);$n" # true
+  visitorFrmtB = "#nimGCvisit((void*)$1, op);$n" # false
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
@@ -94,20 +98,33 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     for i in countup(0, sonsLen(typ) - 1):
       genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", accessor, i.rope), typ.sons[i])
   of tyRef:
-    lineCg(p, cpsStmts, c.visitorFrmt, accessor)
+    if c.visitorFrmt:
+      lineCg(p, cpsStmts, visitorFrmtA, accessor)
+    else:
+      lineCg(p, cpsStmts, visitorFrmtB, accessor)
   of tySequence:
     if tfHasAsgn notin typ.flags:
-      lineCg(p, cpsStmts, c.visitorFrmt, accessor)
+      if c.visitorFrmt:
+        lineCg(p, cpsStmts, visitorFrmtA, accessor)
+      else:
+        lineCg(p, cpsStmts, visitorFrmtB, accessor)
     elif containsGarbageCollectedRef(typ.lastSon):
       # destructor based seqs are themselves not traced but their data is, if
       # they contain a GC'ed type:
       genTraverseProcSeq(c, accessor, typ)
   of tyString:
     if tfHasAsgn notin typ.flags:
-      lineCg(p, cpsStmts, c.visitorFrmt, accessor)
+      if c.visitorFrmt:
+        lineCg(p, cpsStmts, visitorFrmtA, accessor)
+      else:
+        lineCg(p, cpsStmts, visitorFrmtB, accessor)
   of tyProc:
     if typ.callConv == ccClosure:
-      lineCg(p, cpsStmts, c.visitorFrmt, ropecg(c.p.module, "$1.ClE_0", accessor))
+      if c.visitorFrmt:
+        lineCg(p, cpsStmts, visitorFrmtA, ropecg(c.p.module, "$1.ClE_0", accessor))
+      else:
+        lineCg(p, cpsStmts, visitorFrmtB, ropecg(c.p.module, "$1.ClE_0", accessor))
+
   else:
     discard
 
@@ -145,7 +162,7 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   lineF(p, cpsInit, "a = ($1)p;$n", [t])
 
   c.p = p
-  c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
+  c.visitorFrmt = false # "#nimGCvisit((void*)$1, op);$n"
 
   assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
@@ -180,7 +197,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
     accessThreadLocalVar(p, s)
     sLoc = "NimTV_->" & sLoc
 
-  c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
+  c.visitorFrmt = true # "#nimGCvisit((void*)$1, 0);$n"
   c.p = p
   let header = "static N_NIMCALL(void, $1)(void)" % [result]
   genTraverseProc(c, sLoc, s.loc.t)

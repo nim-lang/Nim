@@ -101,23 +101,59 @@ proc getModuleDllPath(m: BModule): Rope =
 proc getModuleDllPath(m: BModule, s: PSym): Rope =
   return getModuleDllPath(findPendingModule(m, s))
 
+import macros
+
+proc cgFormatValue(result: var string; value: Rope): void =
+  for str in leaves(value):
+    result.add str
+
+proc cgFormatValue(result: var string; value: string): void =
+  result.add value
+
+proc cgFormatValue(result: var string; value: BiggestInt): void =
+  result.add value
+
 # TODO: please document
-proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
-  assert m != nil
+macro ropecg(m: BModule, frmt: static[FormatStr], args: varargs[untyped]): Rope =
+  let args =
+    if args.len == 1 and args.kind == nnkArglist and args[0].kind == nnkBracket:
+      args[0]
+    else:
+      args
+
+  # echo "repecg ", newLit(frmt).repr, ", ", args.repr
   var i = 0
   var length = len(frmt)
-  result = nil
+  result = nnkStmtListExpr.newTree()
+
+  result.add quote do:
+    assert `m` != nil
+
+  let resVar = genSym(nskVar, "res")
+  result.add newVarStmt(resVar, newLit(""))
+
+
+  let formatValue = bindSym"cgFormatValue"
+
   var num = 0
+  var strLit = ""
+
+  template flushStrLit() =
+    if strLit != "":
+      result.add newCall(ident "add", resVar, newLit(strLit))
+      strLit.setLen 0
+
   while i < length:
     if frmt[i] == '$':
       inc(i)                  # skip '$'
       case frmt[i]
       of '$':
-        add(result, "$")
+        strLit.add '$'
         inc(i)
       of '#':
+        flushStrLit()
         inc(i)
-        add(result, args[num])
+        result.add newCall(formatValue, resVar, args[num])
         inc(num)
       of '0'..'9':
         var j = 0
@@ -126,71 +162,83 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
           inc(i)
           if i >= length or not (frmt[i] in {'0'..'9'}): break
         num = j
-        if j > high(args) + 1:
-          internalError(m.config, "ropes: invalid format string $" & $j)
-        add(result, args[j-1])
+        if j > len(args):
+          error("ropes: invalid format string " & newLit(frmt).repr & " args.len: " & $args.len)
+
+        flushStrLit()
+        result.add newCall(formatValue, resVar, args[j-1])
       of 'n':
-        if optLineDir notin m.config.options: add(result, "\L")
+        flushStrLit()
+        result.add quote do:
+          if optLineDir notin `m`.config.options:
+            add(`resVar`, "\L")
         inc(i)
       of 'N':
-        add(result, "\L")
+        strLit.add "\L"
         inc(i)
-      else: internalError(m.config, "ropes: invalid format string $" & frmt[i])
+      else:
+        error("ropes: invalid format string $" & frmt[i])
     elif frmt[i] == '#' and frmt[i+1] in IdentStartChars:
       inc(i)
       var j = i
       while frmt[j] in IdentChars: inc(j)
-      var ident = substr(frmt, i, j-1)
+      var ident = newLit(substr(frmt, i, j-1))
       i = j
-      add(result, cgsym(m, ident))
+      flushStrLit()
+      result.add newCall(formatValue, resVar, newCall(ident"cgsym", m, ident))
     elif frmt[i] == '#' and frmt[i+1] == '$':
       inc(i, 2)
       var j = 0
       while frmt[i] in Digits:
         j = (j * 10) + ord(frmt[i]) - ord('0')
         inc(i)
-      add(result, cgsym(m, $args[j-1]))
+      let ident = args[j-1]
+      result.add newCall(formatValue, resVar, newCall(ident"cgsym", m, ident))
     var start = i
     while i < length:
       if frmt[i] != '$' and frmt[i] != '#': inc(i)
       else: break
     if i - 1 >= start:
-      add(result, substr(frmt, start, i - 1))
+      add(strLit, substr(frmt, start, i - 1))
+
+  flushStrLit()
+  result.add newCall(ident"rope", resVar) # such a shame
+  # echo result.repr
 
 proc indentLine(p: BProc, r: Rope): Rope =
   result = r
   for i in countup(0, p.blocks.len-1):
     prepend(result, "\t".rope)
 
-proc appcg(m: BModule, c: var Rope, frmt: FormatStr,
+template appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: varargs[Rope]) =
   add(c, ropecg(m, frmt, args))
 
-proc appcg(m: BModule, s: TCFileSection, frmt: FormatStr,
+template appcg(m: BModule, sec: TCFileSection, frmt: FormatStr,
            args: varargs[Rope]) =
-  add(m.s[s], ropecg(m, frmt, args))
+  add(m.s[sec], ropecg(m, frmt, args))
 
-proc appcg(p: BProc, s: TCProcSection, frmt: FormatStr,
+template appcg(p: BProc, sec: TCProcSection, frmt: FormatStr,
            args: varargs[Rope]) =
-  add(p.s(s), ropecg(p.module, frmt, args))
+  add(p.s(sec), ropecg(p.module, frmt, args))
 
-proc line(p: BProc, s: TCProcSection, r: Rope) =
-  add(p.s(s), indentLine(p, r))
+template line(p: BProc, sec: TCProcSection, r: Rope) =
+  add(p.s(sec), indentLine(p, r))
 
-proc line(p: BProc, s: TCProcSection, r: string) =
-  add(p.s(s), indentLine(p, r.rope))
+template line(p: BProc, sec: TCProcSection, r: string) =
+  add(p.s(sec), indentLine(p, r.rope))
 
-proc lineF(p: BProc, s: TCProcSection, frmt: FormatStr,
+template lineF(p: BProc, sec: TCProcSection, frmt: FormatStr,
               args: openarray[Rope]) =
-  add(p.s(s), indentLine(p, frmt % args))
+  add(p.s(sec), indentLine(p, frmt % args))
 
-proc lineCg(p: BProc, s: TCProcSection, frmt: FormatStr,
+template lineCg(p: BProc, sec: TCProcSection, frmt: FormatStr,
                args: varargs[Rope]) =
-  add(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
+  add(p.s(sec), indentLine(p, ropecg(p.module, frmt, args)))
 
-proc linefmt(p: BProc, s: TCProcSection, frmt: FormatStr,
+template linefmt(p: BProc, sec: TCProcSection, frmt: FormatStr,
              args: varargs[Rope]) =
-  add(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
+  add(p.s(sec), indentLine(p, ropecg(p.module, frmt, args)))
 
 proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
@@ -1234,7 +1282,7 @@ proc genMainProc(m: BModule) =
   else:
     add(preMainCode, "\tPreMain();$N")
 
-  let
+  const
     # not a big deal if we always compile these 3 global vars... makes the HCR code easier
     PosixCmdLine =
       "int cmdCount;$N" &
@@ -1261,7 +1309,7 @@ proc genMainProc(m: BModule) =
       "\tNimMain();$N"
 
     MainProcsWithResult =
-      MainProcs & ("\treturn " & (if m.hcrOn: "*" else: "") & "nim_program_result;$N")
+      MainProcs & ("\treturn nim_program_result;$N")
 
     NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
@@ -1270,7 +1318,7 @@ proc genMainProc(m: BModule) =
     NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)(void);$N" &
-        $preMainCode &
+        "\tPreMain();$N" &
         "\tinner = NimMainInner;$N" &
         "$2" &
         "\t(*inner)();$N" &
@@ -1331,29 +1379,12 @@ proc genMainProc(m: BModule) =
       "\t});$N" &
       "}$N$N"
 
-  var nimMain, otherMain: FormatStr
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
-    if optGenGuiApp in m.config.globalOptions:
-      nimMain = WinNimMain
-      otherMain = WinCMain
-    else:
-      nimMain = WinNimDllMain
-      otherMain = WinCDllMain
     m.includeHeader("<windows.h>")
   elif m.config.target.targetOS == osGenode:
-    nimMain = GenodeNimMain
-    otherMain = ComponentConstruct
     m.includeHeader("<libc/component.h>")
-  elif optGenDynLib in m.config.globalOptions:
-    nimMain = PosixNimDllMain
-    otherMain = PosixCDllMain
-  elif m.config.target.targetOS == osStandalone:
-    nimMain = NimMainBody
-    otherMain = StandaloneCMain
-  else:
-    nimMain = NimMainBody
-    otherMain = PosixCMain
+
   if optEndb in m.config.options:
     for i in 0..<m.config.m.fileInfos.len:
       m.g.breakpoints.addf("dbgRegisterFilename($1);$N",
@@ -1366,13 +1397,60 @@ proc genMainProc(m: BModule) =
   appcg(m, m.s[cfsProcs], PreMainBody, [
     m.g.mainDatInit, m.g.breakpoints, m.g.otherModsInit])
 
-  appcg(m, m.s[cfsProcs], nimMain,
+  if m.config.target.targetOS == osWindows and
+      m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
+    if optGenGuiApp in m.config.globalOptions:
+      const nimMain = WinNimMain
+      appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+    else:
+      const nimMain = WinNimDllMain
+      appcg(m, m.s[cfsProcs], nimMain,
+        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+  elif m.config.target.targetOS == osGenode:
+    const nimMain = GenodeNimMain
+    appcg(m, m.s[cfsProcs], nimMain,
+        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+  elif optGenDynLib in m.config.globalOptions:
+    const nimMain = PosixNimDllMain
+    appcg(m, m.s[cfsProcs], nimMain,
+        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+  elif m.config.target.targetOS == osStandalone:
+    const nimMain = NimMainBody
+    appcg(m, m.s[cfsProcs], nimMain,
+        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+  else:
+    const nimMain = NimMainBody
+    appcg(m, m.s[cfsProcs], nimMain,
+        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+
+
   if optNoMain notin m.config.globalOptions:
     if m.config.cppCustomNamespace.len > 0:
       m.s[cfsProcs].add closeNamespaceNim() & "using namespace " & m.config.cppCustomNamespace & ";\L"
 
-    appcg(m, m.s[cfsProcs], otherMain, [])
+    if m.config.target.targetOS == osWindows and
+        m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
+      if optGenGuiApp in m.config.globalOptions:
+        const otherMain = WinCMain
+        appcg(m, m.s[cfsProcs], otherMain, [])
+      else:
+        const otherMain = WinCDllMain
+        appcg(m, m.s[cfsProcs], otherMain, [])
+    elif m.config.target.targetOS == osGenode:
+      const otherMain = ComponentConstruct
+      appcg(m, m.s[cfsProcs], otherMain, [])
+    elif optGenDynLib in m.config.globalOptions:
+      const otherMain = PosixCDllMain
+      appcg(m, m.s[cfsProcs], otherMain, [])
+    elif m.config.target.targetOS == osStandalone:
+      const otherMain = StandaloneCMain
+      appcg(m, m.s[cfsProcs], otherMain, [])
+    else:
+      const otherMain = PosixCMain
+      appcg(m, m.s[cfsProcs], otherMain, [])
+
+
     if m.config.cppCustomNamespace.len > 0:
       m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
 
