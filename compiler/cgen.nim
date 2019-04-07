@@ -211,15 +211,15 @@ proc indentLine(p: BProc, r: Rope): Rope =
     prepend(result, "\t".rope)
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
-           args: varargs[Rope]) =
+           args: varargs[untyped]) =
   add(c, ropecg(m, frmt, args))
 
 template appcg(m: BModule, sec: TCFileSection, frmt: FormatStr,
-           args: varargs[Rope]) =
+           args: varargs[untyped]) =
   add(m.s[sec], ropecg(m, frmt, args))
 
 template appcg(p: BProc, sec: TCProcSection, frmt: FormatStr,
-           args: varargs[Rope]) =
+           args: varargs[untyped]) =
   add(p.s(sec), ropecg(p.module, frmt, args))
 
 template line(p: BProc, sec: TCProcSection, r: Rope) =
@@ -233,11 +233,11 @@ template lineF(p: BProc, sec: TCProcSection, frmt: FormatStr,
   add(p.s(sec), indentLine(p, frmt % args))
 
 template lineCg(p: BProc, sec: TCProcSection, frmt: FormatStr,
-               args: varargs[Rope]) =
+               args: varargs[untyped]) =
   add(p.s(sec), indentLine(p, ropecg(p.module, frmt, args)))
 
 template linefmt(p: BProc, sec: TCProcSection, frmt: FormatStr,
-             args: varargs[Rope]) =
+             args: varargs[untyped]) =
   add(p.s(sec), indentLine(p, ropecg(p.module, frmt, args)))
 
 proc safeLineNm(info: TLineInfo): int =

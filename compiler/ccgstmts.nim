@@ -1055,10 +1055,8 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
           genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
-        if p.module.compileToCpp:
-          appcg(p.module, orExpr, "#isObj(#getCurrentException()->m_type, $1)", [checkFor])
-        else:
-          appcg(p.module, orExpr, "#isObj(#getCurrentException()->Sup.m_type, $1)", [checkFor])
+        let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
+        appcg(p.module, orExpr, "#isObj(#getCurrentException()->$1, $2)", [memberName, checkFor])
 
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
