@@ -70,7 +70,7 @@ type
     tags: PNode # list of tags
     bottom, inTryStmt: int
     owner: PSym
-    owner_module: PSym
+    ownerModule: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -705,7 +705,7 @@ proc track(tracked: PEffects, n: PNode) =
     # p's effects are ours too:
     var a = n.sons[0]
     let op = a.typ
-    if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
+    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
       return
     if op != nil:
       if tracked.owner.kind != skMacro:
@@ -950,7 +950,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
   t.owner = s
-  t.owner_module = s.getModule
+  t.ownerModule = s.getModule
   t.init = @[]
   t.guards.s = @[]
   t.guards.o = initOperators(g)

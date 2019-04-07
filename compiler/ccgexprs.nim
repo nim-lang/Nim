@@ -1481,6 +1481,8 @@ proc genOf(p: BProc, n: PNode, d: var TLoc) =
   genOf(p, n.sons[1], n.sons[2].typ, d)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) =
+  if optNimV2 in p.config.globalOptions:
+    localError(p.config, e.info, "'repr' is not available for --newruntime")
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
   var t = skipTypes(e.sons[1].typ, abstractVarRange)
@@ -1980,6 +1982,21 @@ proc genDispose(p: BProc; n: PNode) =
       # destructor, but it uses the runtime type. Afterwards the memory is freed:
       lineCg(p, cpsStmts, "#nimDestroyAndDispose($#)", rdLoc(a))
 
+proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
+  const ToStringProcSlot = -4
+  let t = e[1].typ.skipTypes(abstractInst)
+  var toStrProc: PSym = nil
+  for (idx, p) in t.methods:
+    if idx == ToStringProcSlot:
+      toStrProc = p
+      break
+  if toStrProc == nil:
+    toStrProc = genEnumToStrProc(t, e.info, p.module.g.graph)
+    t.methods.add((ToStringProcSlot, toStrProc))
+  var n = copyTree(e)
+  n[0] = newSymNode(toStrProc)
+  expr(p, n, d)
+
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
@@ -2046,7 +2063,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mFloatToStr: genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr: expr(p, e.sons[1], d)
-  of mEnumToStr: genRepr(p, e, d)
+  of mEnumToStr:
+    if optNimV2 in p.config.globalOptions:
+      genEnumToStr(p, e, d)
+    else:
+      genRepr(p, e, d)
   of mOf: genOf(p, e, d)
   of mNew: genNew(p, e)
   of mNewFinalize: genNewFinalize(p, e)

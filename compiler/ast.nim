@@ -1811,3 +1811,17 @@ template detailedInfo*(sym: PSym): string =
 
 proc isInlineIterator*(s: PSym): bool {.inline.} =
   s.kind == skIterator and s.typ.callConv != ccClosure
+
+proc newProcType*(info: TLineInfo; owner: PSym): PType =
+  result = newType(tyProc, owner)
+  result.n = newNodeI(nkFormalParams, info)
+  rawAddSon(result, nil) # return type
+  # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
+  # the effects are now stored in there too ... this is a bit hacky, but as
+  # usual we desperately try to save memory:
+  addSon(result.n, newNodeI(nkEffectList, info))
+
+proc addParam*(procType: PType; param: PSym) =
+  param.position = procType.len-1
+  addSon(procType.n, newSymNode(param))
+  rawAddSon(procType, param.typ)

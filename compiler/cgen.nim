@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf
+  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr
 
 when not defined(leanCompiler):
   import semparallel
@@ -307,6 +307,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
         s = skipTypes(s.sons[0], skipPtrs)
     linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t, a.lode.info))
   of frEmbedded:
+    if optNimV2 in p.config.globalOptions:
+      localError(p.config, p.prc.info,
+        "complex object initialization is not supported with --newruntime")
     # worst case for performance:
     var r = if takeAddr: addrLoc(p.config, a) else: rdLoc(a)
     linefmt(p, section, "#objectInit($1, $2);$n", r, genTypeInfo(p.module, t, a.lode.info))

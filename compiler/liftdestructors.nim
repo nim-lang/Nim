@@ -484,20 +484,6 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyGenericInst, tyStatic, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
 
-proc newProcType(info: TLineInfo; owner: PSym): PType =
-  result = newType(tyProc, owner)
-  result.n = newNodeI(nkFormalParams, info)
-  rawAddSon(result, nil) # return type
-  # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
-  # the effects are now stored in there too ... this is a bit hacky, but as
-  # usual we desperately try to save memory:
-  addSon(result.n, newNodeI(nkEffectList, info))
-
-proc addParam(procType: PType; param: PSym) =
-  param.position = procType.len-1
-  addSon(procType.n, newSymNode(param))
-  rawAddSon(procType, param.typ)
-
 proc liftBodyDistinctType(c: PContext; typ: PType; kind: TTypeAttachedOp; info: TLineInfo): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ[0]
