@@ -227,7 +227,7 @@ expanded, strformat cannot expand template arguments.
   myTemplate(x)
 
 First the template ``myTemplate`` is expanded, where every identifier
-``arg`` is substituted with it's argument. The ``arg`` inside the
+``arg`` is substituted with its argument. The ``arg`` inside the
 format string is not seen by this process, because it is part of a
 quoted string literal. It is not an identifier yet. Then the strformat
 macro creates the ``arg`` identifier from the string literal. An
