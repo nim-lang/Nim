@@ -2969,7 +2969,8 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   discard
 
 when not defined(js) and not defined(nimscript):
-  include "system/ansi_c"
+  import "system/ansi_c"
+  import "system/memory"
 
 when not defined(js):
   {.push stackTrace:off.}
@@ -3468,8 +3469,6 @@ when not defined(JS): #and not defined(nimscript):
       {.pop.}
 
   when not defined(nimscript):
-    include "system/memory"
-
     proc zeroMem(p: pointer, size: Natural) =
       nimZeroMem(p, size)
       when declared(memTrackerOp):
