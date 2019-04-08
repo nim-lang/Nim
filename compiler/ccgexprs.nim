@@ -439,12 +439,12 @@ proc putIntoDest(p: BProc, d: var TLoc, n: PNode, r: Rope; s=OnUnknown) =
     d.lode = n
     d.r = r
 
-template binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
+proc binaryStmt(p: BProc, e: PNode, d: var TLoc, op: string) =
   var a, b: TLoc
   if d.k != locNone: internalError(p.config, e.info, "binaryStmt")
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  lineCg(p, cpsStmts, frmt, rdLoc(a), rdLoc(b))
+  lineCg(p, cpsStmts, "$1 $2 $3;$n", rdLoc(a), op, rdLoc(b))
 
 template binaryStmtAddr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a, b: TLoc
@@ -486,13 +486,13 @@ template unaryExprChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   putIntoDest(p, d, e, ropecg(p.module, frmt, [rdCharLoc(a)]))
 
 template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
-                            frmt: string): Rope =
+                            cpname: string): Rope =
   var size = getSize(p.config, t)
   let storage = if size < p.config.target.intSize: rope("NI")
                 else: getTypeDesc(p.module, t)
   var result = getTempName(p.module)
   linefmt(p, cpsLocals, "$1 $2;$n", storage, result)
-  lineCg(p, cpsStmts, frmt, result, rdCharLoc(a), rdCharLoc(b))
+  lineCg(p, cpsStmts, "$1 = #$2($3, $4);$n", result, cpname, rdCharLoc(a), rdCharLoc(b))
   if size < p.config.target.intSize or t.kind in {tyRange, tyEnum}:
     linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
             result, intLiteral(firstOrd(p.config, t)), intLiteral(lastOrd(p.config, t)))
@@ -500,16 +500,16 @@ template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
 
 proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
-    # prc: array[mAddI..mPred, string] = [
-    #   "addInt", "subInt",
-    #   "mulInt", "divInt", "modInt",
-    #   "addInt", "subInt"
-    # ]
-    # prc64: array[mAddI..mPred, string] = [
-    #   "addInt64", "subInt64",
-    #   "mulInt64", "divInt64", "modInt64",
-    #   "addInt64", "subInt64"
-    # ]
+    prc: array[mAddI..mPred, string] = [
+      "addInt", "subInt",
+      "mulInt", "divInt", "modInt",
+      "addInt", "subInt"
+    ]
+    prc64: array[mAddI..mPred, string] = [
+      "addInt64", "subInt64",
+      "mulInt64", "divInt64", "modInt64",
+      "addInt64", "subInt64"
+    ]
     opr: array[mAddI..mPred, string] = [
       "($#)($# + $#)", "($#)($# - $#)", "($#)($# * $#)",
       "($#)($# / $#)", "($#)($# % $#)",
@@ -526,45 +526,8 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     let res = opr[m] % [getTypeDesc(p.module, e.typ), rdLoc(a), rdLoc(b)]
     putIntoDest(p, d, e, res)
   else:
-    let res =
-      if t.kind == tyInt64:
-        case m
-        of mAddI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #addInt64($#, $#);$n")
-        of mSubI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #subInt64($#, $#);$n")
-        of mMulI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #mulInt64($#, $#);$n")
-        of mDivI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #divInt64($#, $#);$n")
-        of mModI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #modInt64($#, $#);$n")
-        of mSucc:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #addInt64($#, $#);$n")
-        of mPred:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #subInt64($#, $#);$n")
-        else:
-          doAssert(false, "illegal argument " & $m)
-          rope("") # make it an expr
-      else:
-        case m
-        of mAddI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #addInt($#, $#);$n")
-        of mSubI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #subInt($#, $#);$n")
-        of mMulI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #mulInt($#, $#);$n")
-        of mDivI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #divInt($#, $#);$n")
-        of mModI:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #modInt($#, $#);$n")
-        of mSucc:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #addInt($#, $#);$n")
-        of mPred:
-          binaryArithOverflowRaw(p, t, a, b, "$# = #subInt($#, $#);$n")
-        else:
-          doAssert(false, "illegal argument " & $m)
-          rope("") # make it an expr
+    let res = binaryArithOverflowRaw(p, t, a, b,
+      if t.kind == tyInt64: prc64[m] else: prc[m])
     putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
@@ -2071,12 +2034,14 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if optOverflowCheck notin p.options: unaryExpr(p, e, d, "($1 - 1)")
     else: unaryExpr(p, e, d, "#subInt($1, 1)")
   of mInc, mDec:
+    const opr: array[mInc..mDec, string] = ["+=", "-="]
+    const fun64: array[mInc..mDec, string] = ["addInt64",
+                                               "subInt64"]
+    const fun: array[mInc..mDec, string] = ["addInt",
+                                             "subInt"]
     let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent, tyRange})
     if optOverflowCheck notin p.options or underlying.kind in {tyUInt..tyUInt64}:
-      if op == mInc:
-        binaryStmt(p, e, d, "$1 += $2;$n")
-      else:
-        binaryStmt(p, e, d, "$1 -= $2;$n")
+      binaryStmt(p, e, d, opr[op])
     else:
       var a, b: TLoc
       assert(e.sons[1].typ != nil)
@@ -2085,18 +2050,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e.sons[2], b)
 
       let ranged = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent})
-      var res: Rope
-      if op == mInc:
-        if underlying.kind == tyInt64:
-          res = binaryArithOverflowRaw(p, ranged, a, b, "$# = #addInt64($#, $#);$n")
-        else:
-          res = binaryArithOverflowRaw(p, ranged, a, b, "$# = #addInt($#, $#);$n")
-      else: #mDec
-        if underlying.kind == tyInt64:
-          res = binaryArithOverflowRaw(p, ranged, a, b, "$# = #subInt64($#, $#);$n")
-        else:
-          res = binaryArithOverflowRaw(p, ranged, a, b, "$# = #subInt($#, $#);$n")
-
+      let res = binaryArithOverflowRaw(p, ranged, a, b,
+        if underlying.kind == tyInt64: fun64[op] else: fun[op])
 
       putIntoDest(p, a, e.sons[1], "($#)($#)" % [
         getTypeDesc(p.module, ranged), res])
