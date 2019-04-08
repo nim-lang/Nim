@@ -211,6 +211,65 @@ The available floating point presentation types are:
 =================        ====================================================
 
 
+Limitations
+===========
+
+Because of the well defined order how templates and macros are
+expanded, strformat cannot expand template arguments.
+
+
+.. code-block:: nim
+  template myTemplate(arg: untyped): untyped =
+    echo "arg is: ", arg
+    echo &"--- {arg} ---"
+
+  let x = "abc"
+  myTemplate(x)
+
+First the template ``myTemplate`` is expanded, where every identifier
+``arg`` is substituted with it's argument. The ``arg`` inside the
+format string is not seen by this process, because it is part of a
+quoted string literal. It is not an identifier yet. Then the strformat
+macro creates the ``arg`` identifier from the string literal. An
+identifier that cannot be resolved anymore.
+
+.. code-block:: nim
+  let x = "abc"
+  myTemplate(x)
+
+  # expansion of myTemplate
+
+  let x = "abc"
+  echo "arg is: ", x
+  echo &"--- {arg} ---"
+
+  # expansion of `&`
+
+  let x = "abc"
+  echo "arg is: ", x
+  echo:
+    var temp = newStringOfCap(20)
+    temp.add "--- "
+    temp.formatValue arg, "" # arg cannot be resolved anymore
+    temp.add " ---"
+    temp
+
+The workaround for this is to bind template argument to a new local variable.
+
+.. code-block:: nim
+
+  template myTemplate(arg: untyped): untyped =
+    block:
+      let arg1 {.inject.} = arg
+      echo "arg is: ", arg1
+      echo &"--- {arg1} ---"
+
+The use of ``{.inject.}`` here is necessary again because of template
+expansion order and hygienic templates. But since we generelly want to
+keep the hygienicness of ``myTemplate``, and we do not want ``arg1``
+to be injected into the context where ``myTemplate`` is expanded,
+everything is wrapped in a ``block``.
+
 Future directions
 =================
 
