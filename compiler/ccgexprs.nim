@@ -1986,7 +1986,7 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst)
   var toStrProc: PSym = nil
-  for (idx, p) in t.methods:
+  for idx, p in items(t.methods):
     if idx == ToStringProcSlot:
       toStrProc = p
       break
