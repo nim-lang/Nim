@@ -29,7 +29,11 @@ var
 
 when defined(useMalloc) and not defined(nimscript):
   import "system/ansi_c"
-  import "system/memory"
+
+import "system/memory"
+
+template `+!`(p: pointer, s: int): pointer =
+  cast[pointer](cast[int](p) +% s)
 
 proc getLocalAllocator*(): Allocator =
   result = localAllocator
@@ -41,7 +45,7 @@ proc getLocalAllocator*(): Allocator =
         # XXX do we need this?
         nimZeroMem(result, size)
       else:
-        result = system.alloc(size)
+        result = system.alloc0(size)
       inc a.allocCount
     result.dealloc = proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [].} =
       when defined(useMalloc) and not defined(nimscript):
@@ -54,8 +58,9 @@ proc getLocalAllocator*(): Allocator =
         result = c_realloc(p, newSize)
       else:
         result = system.realloc(p, newSize)
+      nimZeroMem(result +! oldSize, newSize - oldSize)
     result.deallocAll = nil
-    result.flags = {ThreadLocal}
+    result.flags = {ThreadLocal, ZerosMem}
     result.name = "nim_local"
     localAllocator = result
 
