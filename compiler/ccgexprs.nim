@@ -446,12 +446,12 @@ proc binaryStmt(p: BProc, e: PNode, d: var TLoc, op: string) =
   initLocExpr(p, e.sons[2], b)
   lineCg(p, cpsStmts, "$1 $2 $3;$n", rdLoc(a), op, rdLoc(b))
 
-template binaryStmtAddr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
+proc binaryStmtAddr(p: BProc, e: PNode, d: var TLoc, cpname: string) =
   var a, b: TLoc
   if d.k != locNone: internalError(p.config, e.info, "binaryStmtAddr")
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  lineCg(p, cpsStmts, frmt, byRefLoc(p, a), rdLoc(b))
+  lineCg(p, cpsStmts, "#$1($2, $3);$n", cpname, byRefLoc(p, a), rdLoc(b))
 
 template unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -1631,7 +1631,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
   if p.config.selectedGc == gcDestructors:
-    binaryStmtAddr(p, e, d, "#setLengthStrV2($1, $2);$n")
+    binaryStmtAddr(p, e, d, "setLengthStrV2")
   else:
     var a, b, call: TLoc
     if d.k != locNone: internalError(p.config, e.info, "genSetLengthStr")
@@ -2059,7 +2059,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mConStrStr: genStrConcat(p, e, d)
   of mAppendStrCh:
     if p.config.selectedGC == gcDestructors:
-      binaryStmtAddr(p, e, d, "#nimAddCharV1($1, $2);$n")
+      binaryStmtAddr(p, e, d, "nimAddCharV1")
     else:
       var dest, b, call: TLoc
       initLoc(call, locCall, e, OnHeap)
