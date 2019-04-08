@@ -139,7 +139,7 @@ import
   lineinfos, parampatterns
 
 const
-  InterestingSyms = {skVar, skResult, skLet}
+  InterestingSyms = {skVar, skResult, skLet, skForVar}
 
 type
   Con = object

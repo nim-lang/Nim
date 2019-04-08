@@ -564,7 +564,7 @@ proc genReturn(c: var Con; n: PNode) =
   genNoReturn(c, n)
 
 const
-  InterestingSyms = {skVar, skResult, skLet, skParam}
+  InterestingSyms = {skVar, skResult, skLet, skParam, skForVar}
 
 proc genUse(c: var Con; n: PNode) =
   var n = n
