@@ -12,6 +12,8 @@
 # All symbols are prefixed with 'c_' to avoid ambiguities
 
 {.push hints:off, stack_trace: off, profiler: off.}
+when not defined(nimHasHotCodeReloading):
+  {.pragma: nonReloadable.}
 
 proc c_memchr*(s: pointer, c: cint, n: csize): pointer {.
   importc: "memchr", header: "<string.h>".}
