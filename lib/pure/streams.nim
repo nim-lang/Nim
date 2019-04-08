@@ -21,11 +21,13 @@
 ## .. code-block:: Nim
 ##
 ##  import streams
+##
 ##  var
 ##    ss = newStringStream("""The first line
 ##  the second line
 ##  the third line""")
 ##    line = ""
+##
 ##  while ss.readLine(line):
 ##    echo line
 ##  ss.close()
@@ -35,17 +37,22 @@
 ## .. code-block:: Nim
 ##
 ##  import streams
-##  var fs = newFileStream("somefile.txt", fmRead)
+##
+##  var
+##    fs = newFileStream("somefile.txt", fmRead)
+##    line = ""
+##
 ##  if not isNil(fs):
 ##    while fs.readLine(line):
 ##      echo line
 ##    fs.close()
 ##
 ## See also:
-## * TODO parsecsv
-## * TODO parse~~~
-## * TODO parse~~~
-## * TODO parse~~~
+## * `json module <json.html>`_ for a JSON parser
+## * `parsecfg module <parsecfg.html>`_ for a configuration file parser
+## * `parsecsv module <parsecsv.html>`_ for a simple CSV (comma separated value)
+##   parser
+## * `parsexml module <parsexml.html>`_ for a XML / HTML parser
 
 include "system/inclrtl"
 
