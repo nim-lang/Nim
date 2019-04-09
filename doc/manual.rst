@@ -1858,7 +1858,9 @@ But it seems all this boilerplate code needs to be repeated for the ``Euro``
 currency. This can be solved with templates_.
 
 .. code-block:: nim
-  template additive(typ: type) =
+    :test: "nim c $1"
+
+  template additive(typ: typedesc) =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
 
@@ -1866,13 +1868,13 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template multiplicative(typ, base: type) =
+  template multiplicative(typ, base: typedesc) =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template comparable(typ: type) =
+  template comparable(typ: typedesc) =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
