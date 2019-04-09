@@ -707,9 +707,9 @@ proc track(tracked: PEffects, n: PNode) =
     let op = a.typ
     if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
       return
-    if op != nil:
+    if n.typ != nil:
       if tracked.owner.kind != skMacro:
-        createTypeBoundOps(tracked.c, op, n.info)
+        createTypeBoundOps(tracked.c, n.typ, n.info)
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after

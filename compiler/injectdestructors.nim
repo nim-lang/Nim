@@ -438,10 +438,10 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   result.add tmp
 
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
-  template pArgIfTyped(arg_part: PNode): PNode =
+  template pArgIfTyped(argPart: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
-    if arg_part.typ == nil: p(arg_part, c)
-    else: pArg(arg_part, c, isSink)
+    if argPart.typ == nil: p(argPart, c)
+    else: pArg(argPart, c, isSink)
 
   if isSink:
     if arg.kind in nkCallKinds:
@@ -728,6 +728,10 @@ proc p(n: PNode; c: var Con): PNode =
     result.add n[0]
     # Analyse the inner expression
     result.add p(n[1], c)
+  of nkWhen:
+    # This should be a "when nimvm" node.
+    result = copyTree(n)
+    result[1][0] = p(result[1][0], c)
   of nkRaiseStmt:
     if optNimV2 in c.graph.config.globalOptions:
       # this is a bit hacky but we simply do not destroy exceptions that have
