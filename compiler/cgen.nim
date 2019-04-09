@@ -130,9 +130,9 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: varargs[untyped]): Rope 
     assert `m` != nil
 
   let resVar = genSym(nskVar, "res")
-  result.add newVarStmt(resVar, newLit(""))
-
-
+  # during `koch boot` the median of all generates strings from this
+  # macro is around 40 bytes in length.
+  result.add newVarStmt(resVar, newCall(bindSym"newStringOfCap", newLit(80)))
   let formatValue = bindSym"cgFormatValue"
 
   var num = 0
@@ -1273,14 +1273,14 @@ proc genMainProc(m: BModule) =
                        [handle, genStringLiteral(m, n)])
 
     add(preMainCode, loadLib("hcr_handle", "hcrGetProc"))
-    add(preMainCode, "\tvoid* rtl_handle;$N")
+    add(preMainCode, "\tvoid* rtl_handle;\L")
     add(preMainCode, loadLib("rtl_handle", "nimGC_setStackBottom"))
     add(preMainCode, hcrGetProcLoadCode(m, "nimGC_setStackBottom", "nimrtl_", "rtl_handle", "nimGetProcAddr"))
-    add(preMainCode, "\tinner = PreMain;$N")
-    add(preMainCode, "\tinitStackBottomWith_actual((void *)&inner);$N")
-    add(preMainCode, "\t(*inner)();$N")
+    add(preMainCode, "\tinner = PreMain;\L")
+    add(preMainCode, "\tinitStackBottomWith_actual((void *)&inner);\L")
+    add(preMainCode, "\t(*inner)();\L")
   else:
-    add(preMainCode, "\tPreMain();$N")
+    add(preMainCode, "\tPreMain();\L")
 
   const
     # not a big deal if we always compile these 3 global vars... makes the HCR code easier
@@ -1309,7 +1309,7 @@ proc genMainProc(m: BModule) =
       "\tNimMain();$N"
 
     MainProcsWithResult =
-      MainProcs & ("\treturn nim_program_result;$N")
+      MainProcs & ("\treturn $1nim_program_result;$N")
 
     NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
@@ -1318,7 +1318,7 @@ proc genMainProc(m: BModule) =
     NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)(void);$N" &
-        "\tPreMain();$N" &
+        "$4" &
         "\tinner = NimMainInner;$N" &
         "$2" &
         "\t(*inner)();$N" &
@@ -1402,27 +1402,27 @@ proc genMainProc(m: BModule) =
     if optGenGuiApp in m.config.globalOptions:
       const nimMain = WinNimMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
     else:
       const nimMain = WinNimDllMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
   elif m.config.target.targetOS == osGenode:
     const nimMain = GenodeNimMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
   elif optGenDynLib in m.config.globalOptions:
     const nimMain = PosixNimDllMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
   elif m.config.target.targetOS == osStandalone:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
   else:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, m.labels])
+        [m.g.mainModInit, initStackBottomCall, m.labels, preMainCode])
 
 
   if optNoMain notin m.config.globalOptions:
@@ -1433,7 +1433,7 @@ proc genMainProc(m: BModule) =
         m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
       if optGenGuiApp in m.config.globalOptions:
         const otherMain = WinCMain
-        appcg(m, m.s[cfsProcs], otherMain, [])
+        appcg(m, m.s[cfsProcs], otherMain, [if m.hcrOn: "*" else: ""])
       else:
         const otherMain = WinCDllMain
         appcg(m, m.s[cfsProcs], otherMain, [])
@@ -1448,7 +1448,7 @@ proc genMainProc(m: BModule) =
       appcg(m, m.s[cfsProcs], otherMain, [])
     else:
       const otherMain = PosixCMain
-      appcg(m, m.s[cfsProcs], otherMain, [])
+      appcg(m, m.s[cfsProcs], otherMain, [if m.hcrOn: "*" else: ""])
 
 
     if m.config.cppCustomNamespace.len > 0:
