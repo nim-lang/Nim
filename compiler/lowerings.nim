@@ -72,6 +72,22 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
     result.add newAsgnStmt(n.sons[i], newTupleAccess(g, tempAsNode, i))
 
+proc evalOnce*(g: ModuleGraph; value: PNode; owner: PSym): PNode =
+  ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
+  ## freely, multiple times. This is frequently required and such a builtin would also be
+  ## handy to have in macros.nim. The value that can be reused is 'result.lastSon'!
+  result = newNodeIT(nkStmtListExpr, value.info, value.typ)
+  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
+  temp.typ = skipTypes(value.typ, abstractInst)
+  incl(temp.flags, sfFromGeneric)
+
+  var v = newNodeI(nkLetSection, value.info)
+  let tempAsNode = newSymNode(temp)
+  v.addVar(tempAsNode)
+  result.add(v)
+  result.add newAsgnStmt(tempAsNode, value)
+  result.add tempAsNode
+
 proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   result = newNodeI(nkBracketExpr, tup.info)
   addSon(result, copyTree(tup))
