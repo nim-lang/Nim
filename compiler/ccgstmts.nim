@@ -193,9 +193,9 @@ proc genState(p: BProc, n: PNode) =
   let n0 = n[0]
   if n0.kind == nkIntLit:
     let idx = n.sons[0].intVal
-    linefmt(p, cpsStmts, "STATE$1: ;$n", idx.rope)
+    linefmt(p, cpsStmts, "STATE$1: ;$n", idx)
   elif n0.kind == nkStrLit:
-    linefmt(p, cpsStmts, "$1: ;$n", n0.strVal.rope)
+    linefmt(p, cpsStmts, "$1: ;$n", n0.strVal)
 
 proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
   # Called by return and break stmts.
@@ -691,7 +691,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
           [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
-          makeCString(toFileName(p.config, t.info)), rope(toLinenumber(t.info))])
+          makeCString(toFileName(p.config, t.info)), toLinenumber(t.info)])
   else:
     genLineDir(p, t)
     # reraise the last exception:
@@ -794,7 +794,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
         # but we reserved a label, which we use later
         discard
     linefmt(p, cpsStmts, "switch (#hashString($1) & $2) {$n",
-            rdLoc(a), rope(bitMask))
+            rdLoc(a), bitMask)
     for j in countup(0, high(branches)):
       if branches[j] != nil:
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
@@ -1168,7 +1168,7 @@ proc genBreakPoint(p: BProc, t: PNode) =
     genLineDir(p, t)          # BUGFIX
     appcg(p.module, p.module.g.breakpoints,
          "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
-        rope(toLinenumber(t.info)), makeCString(toFilename(p.config, t.info)),
+        toLinenumber(t.info), makeCString(toFilename(p.config, t.info)),
         makeCString(name)])
 
 proc genWatchpoint(p: BProc, n: PNode) =

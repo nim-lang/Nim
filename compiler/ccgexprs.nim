@@ -349,7 +349,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tySet:
     if mapType(p.config, ty) == ctArray:
       linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
-              rdLoc(dest), rdLoc(src), rope(getSize(p.config, dest.t)))
+              rdLoc(dest), rdLoc(src), getSize(p.config, dest.t))
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
@@ -361,9 +361,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     #writeStackTrace()
     #echo p.currLineInfo, " requesting"
     linefmt(p, cpsStmts, "#memTrackerWrite((void*)$1, $2, $3, $4);$n",
-            addrLoc(p.config, dest), rope getSize(p.config, dest.t),
+            addrLoc(p.config, dest), getSize(p.config, dest.t),
             makeCString(toFullPath(p.config, p.currLineInfo)),
-            rope p.currLineInfo.safeLineNm)
+            p.currLineInfo.safeLineNm)
 
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
   template addrLocOrTemp(a: TLoc): Rope =
@@ -394,7 +394,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
   of tySet:
     if mapType(p.config, ty) == ctArray:
       linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
-              rdLoc(dest), rdLoc(src), rope(getSize(p.config, dest.t)))
+              rdLoc(dest), rdLoc(src), getSize(p.config, dest.t))
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyPointer, tyChar, tyBool, tyEnum, tyCString,
@@ -1004,11 +1004,11 @@ proc genEcho(p: BProc, n: PNode) =
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
   else:
     if n.len == 0:
-      linefmt(p, cpsStmts, "#echoBinSafe(NIM_NIL, $1);$n", n.len.rope)
+      linefmt(p, cpsStmts, "#echoBinSafe(NIM_NIL, $1);$n", n.len)
     else:
       var a: TLoc
       initLocExpr(p, n, a)
-      linefmt(p, cpsStmts, "#echoBinSafe($1, $2);$n", a.rdLoc, n.len.rope)
+      linefmt(p, cpsStmts, "#echoBinSafe($1, $2);$n", a.rdLoc, n.len)
     when false:
       p.module.includeHeader("<stdio.h>")
       linefmt(p, cpsStmts, "printf($1$2);$n",
@@ -1059,7 +1059,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
         add(lens, lenExpr(p, a))
         add(lens, " + ")
       add(appends, ropecg(p.module, "#appendString($1, $2);$n", strLoc(p, tmp), rdLoc(a)))
-  linefmt(p, cpsStmts, "$1 = #rawNewString($2$3);$n", tmp.r, lens, rope(L))
+  linefmt(p, cpsStmts, "$1 = #rawNewString($2$3);$n", tmp.r, lens, L)
   add(p.s(cpsStmts), appends)
   if d.k == locNone:
     d = tmp
@@ -1102,10 +1102,10 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
                         strLoc(p, dest), rdLoc(a)))
   if p.config.selectedGC == gcDestructors:
     linefmt(p, cpsStmts, "#prepareAdd($1, $2$3);$n",
-            byRefLoc(p, dest), lens, rope(L))
+            byRefLoc(p, dest), lens, L)
   else:
     initLoc(call, locCall, e, OnHeap)
-    call.r = ropecg(p.module, "#resizeString($1, $2$3)", [rdLoc(dest), lens, rope(L)])
+    call.r = ropecg(p.module, "#resizeString($1, $2$3)", [rdLoc(dest), lens, L])
     genAssignment(p, dest, call, {})
     gcUsage(p.config, e)
   add(p.s(cpsStmts), appends)
@@ -1387,7 +1387,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
-      rdLoc d, rope L, getTypeDesc(p.module, seqtype.lastSon),
+      rdLoc d, L, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype))
   else:
     genNewSeqAux(p, d, intLiteral(L), optNilSeqs notin p.options and L == 0)
@@ -1404,7 +1404,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   else:
     var i: TLoc
     getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i)
-    linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",  i.r, L.rope)
+    linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",  i.r, L)
     initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
     elem.r = ropecg(p.module, "$1$3[$2]", rdLoc(d), rdLoc(i), dataField(p))
     elem.storage = OnHeap # we know that sequences are on the heap
@@ -1790,10 +1790,10 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       if d.k == locNone: getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyBool), d)
       if op == mLtSet:
         linefmt(p, cpsStmts, lookupOpr[mLtSet],
-           [rdLoc(i), rope(size), rdLoc(d), rdLoc(a), rdLoc(b)])
+           [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
       else:
         linefmt(p, cpsStmts, lookupOpr[mLeSet],
-           [rdLoc(i), rope(size), rdLoc(d), rdLoc(a), rdLoc(b)])
+           [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
     of mEqSet:
       var a, b: TLoc
       assert(e.sons[1].typ != nil)
@@ -1929,7 +1929,7 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     initLocExpr(p, e.sons[1], a)
     initLocExpr(p, e.sons[2], b)
     putIntoDest(p, d, e, ropecg(p.module, "(($4)($2) $1 ($4)($3))",
-                              rope(opr[m]), rdLoc(a), rdLoc(b),
+                              opr[m], rdLoc(a), rdLoc(b),
                               getSimpleTypeDesc(p.module, e[1].typ)))
     if optNaNCheck in p.options:
       linefmt(p, cpsStmts, "#nanCheck($1);$n", rdLoc(d))
@@ -2729,7 +2729,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
         "  #TGenericSeq Sup;$n" &
         "  $1 data[$2];$n" &
         "} $3 = $4;$n", [
-        getTypeDesc(p.module, base), n.len.rope, result, data])
+        getTypeDesc(p.module, base), n.len, result, data])
 
   result = "(($1)&$2)" % [getTypeDesc(p.module, t), result]
 
@@ -2747,7 +2747,7 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
     "static const struct {$n" &
     "  NI cap; void* allocator; $1 data[$2];$n" &
     "} $3 = {$2, NIM_NIL, $4};$n", [
-    getTypeDesc(p.module, base), rope(len(n)), payload, data])
+    getTypeDesc(p.module, base), len(n), payload, data])
   result = "{$1, ($2*)&$3}" % [rope(len(n)), getSeqPayloadType(p.module, t), payload]
 
 proc genConstExpr(p: BProc, n: PNode): Rope =

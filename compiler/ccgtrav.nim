@@ -78,7 +78,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
     let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
-            i.r, arraySize.rope)
+            i.r, arraySize)
     let oldLen = p.s(cpsStmts).len
     genTraverseProc(c, ropecg(c.p.module, "$1[$2]", accessor, i.r), typ.sons[1])
     if p.s(cpsStmts).len == oldLen:
@@ -95,7 +95,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   of tyTuple:
     let typ = getUniqueType(typ)
     for i in countup(0, sonsLen(typ) - 1):
-      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", accessor, i.rope), typ.sons[i])
+      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", accessor, i), typ.sons[i])
   of tyRef:
     lineCg(p, cpsStmts, visitorFrmt, accessor, c.visitorFrmt)
   of tySequence:

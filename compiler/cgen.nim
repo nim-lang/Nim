@@ -270,13 +270,13 @@ proc genLineDir(p: BProc, t: PNode) =
       (p.prc == nil or sfPure notin p.prc.flags):
     if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "#endb($1, $2);$N",
-              line.rope, makeCString(toFilename(p.config, t.info)))
+              line, makeCString(toFilename(p.config, t.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
     if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
-              line.rope, quotedFilename(p.config, t.info))
+              line, quotedFilename(p.config, t.info))
 
 proc postStmtActions(p: BProc) {.inline.} =
   add(p.s(cpsStmts), p.module.injectStmt)
@@ -613,14 +613,14 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
       FR_.line = n; FR_.filename = file;
   """
   if p.module.s[cfsFrameDefines].len == 0:
-    appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, [rope("#")])
+    appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   discard cgsym(p.module, "nimFrame")
   if p.maxFrameLen > 0:
     discard cgsym(p.module, "VarSlot")
     result = ropecg(p.module, "\tnimfrs_($1, $2, $3, $4);$n",
-                  procname, filename, p.maxFrameLen.rope,
-                  p.blocks[0].frameLen.rope)
+                  procname, filename, p.maxFrameLen,
+                  p.blocks[0].frameLen)
   else:
     result = ropecg(p.module, "\tnimfr_($1, $2);$n", procname, filename)
 
@@ -629,7 +629,7 @@ proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rop
   addf(p.blocks[0].sections[cpsLocals], "TFrame $1;$n", [frame])
   result = ropecg(p.module, "\t$1.procname = $2; $1.filename = $3; " &
                       " $1.line = $4; $1.len = -1; nimFrame(&$1);$n",
-                      frame, procname, filename, rope(line))
+                      frame, procname, filename, line)
 
 proc deinitFrameNoDebug(p: BProc; frame: Rope): Rope =
   result = ropecg(p.module, "\t#popFrameOfAddr(&$1);$n", frame)
@@ -1055,7 +1055,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     if getModule(sym).id != m.module.id and
         not containsOrIncl(m.declaredThings, sym.id):
       add(m.s[cfsVars], ropecg(m, "$1 $2 $3;$n",
-                        rope(if isReloadable(m, sym): "static" else: "extern"),
+                        (if isReloadable(m, sym): "static" else: "extern"),
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
       if isReloadable(m, sym):
         addf(m.s[cfsDynLibInit], "\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
@@ -1270,7 +1270,7 @@ proc genMainProc(m: BModule) =
       n.info = prc.annex.path.info
       appcg(m, result, "\tif (!($1 = #nimLoadLibrary($2)))$N" &
                        "\t\t#nimLoadLibraryError($2);$N",
-                       [handle.rope, genStringLiteral(m, n)])
+                       [handle, genStringLiteral(m, n)])
 
     add(preMainCode, loadLib("hcr_handle", "hcrGetProc"))
     add(preMainCode, "\tvoid* rtl_handle;$N")
@@ -1402,27 +1402,27 @@ proc genMainProc(m: BModule) =
     if optGenGuiApp in m.config.globalOptions:
       const nimMain = WinNimMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+        [m.g.mainModInit, initStackBottomCall, m.labels])
     else:
       const nimMain = WinNimDllMain
       appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+        [m.g.mainModInit, initStackBottomCall, m.labels])
   elif m.config.target.targetOS == osGenode:
     const nimMain = GenodeNimMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+        [m.g.mainModInit, initStackBottomCall, m.labels])
   elif optGenDynLib in m.config.globalOptions:
     const nimMain = PosixNimDllMain
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+        [m.g.mainModInit, initStackBottomCall, m.labels])
   elif m.config.target.targetOS == osStandalone:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+        [m.g.mainModInit, initStackBottomCall, m.labels])
   else:
     const nimMain = NimMainBody
     appcg(m, m.s[cfsProcs], nimMain,
-        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
+        [m.g.mainModInit, initStackBottomCall, m.labels])
 
 
   if optNoMain notin m.config.globalOptions:
@@ -1581,13 +1581,13 @@ proc genInitCode(m: BModule) =
     if m.hcrOn:
       appcg(m, m.s[cfsTypeInit1], "\t#TNimNode* $1;$N", [m.typeNodesName])
       appcg(m, m.s[cfsTypeInit1], "\thcrRegisterGlobal($3, \"$1_$2\", sizeof(TNimNode) * $2, NULL, (void**)&$1);$N",
-            [m.typeNodesName, rope(m.typeNodes), getModuleDllPath(m, m.module)])
+            [m.typeNodesName, m.typeNodes, getModuleDllPath(m, m.module)])
     else:
       appcg(m, m.s[cfsTypeInit1], "static #TNimNode $1[$2];$n",
-            [m.typeNodesName, rope(m.typeNodes)])
+            [m.typeNodesName, m.typeNodes])
   if m.nimTypes > 0:
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
-          [m.nimTypesName, rope(m.nimTypes)])
+          [m.nimTypesName, m.nimTypes])
 
   if m.hcrOn:
     addf(prc, "\tint* nim_hcr_dummy_ = 0;$n" &
