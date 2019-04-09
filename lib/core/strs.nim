@@ -120,7 +120,7 @@ proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerProc.} =
     if len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
       copyMem(unsafeAddr p.data[0], str, len)
-    result = NimStringV2(len: 0, p: p)
+    result = NimStringV2(len: len, p: p)
 
 proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
   if str == nil: toNimStr(str, 0)
