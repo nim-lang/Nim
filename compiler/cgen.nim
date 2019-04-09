@@ -193,6 +193,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: varargs[untyped]): Rope 
         j = (j * 10) + ord(frmt[i]) - ord('0')
         inc(i)
       let ident = args[j-1]
+      flushStrLit()
       result.add newCall(formatValue, resVar, newCall(ident"cgsym", m, ident))
     var start = i
     while i < length:
@@ -202,8 +203,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: varargs[untyped]): Rope 
       add(strLit, substr(frmt, start, i - 1))
 
   flushStrLit()
-  result.add newCall(ident"rope", resVar) # such a shame
-  # echo result.repr
+  result.add newCall(ident"rope", resVar)
 
 proc indentLine(p: BProc, r: Rope): Rope =
   result = r
