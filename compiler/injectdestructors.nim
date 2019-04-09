@@ -604,12 +604,12 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       sinkParamIsLastReadCheck(c, ri)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
-      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
+      result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     elif ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
-      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
+      result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
@@ -728,13 +728,34 @@ proc p(n: PNode; c: var Con): PNode =
     result.add n[0]
     # Analyse the inner expression
     result.add p(n[1], c)
+  of nkRaiseStmt:
+    if optNimV2 in c.graph.config.globalOptions:
+      # this is a bit hacky but we simply do not destroy exceptions that have
+      # been raised since the raise does consume the exception:
+      result = copyTree(n)
+    else:
+      result = copyNode(n)
+      recurse(n, result)
+    when false:
+      if optNimV2 in c.graph.config.globalOptions:
+        # raise e  does consume the 'e':
+        let r = result
+        if isAtom(r[0]):
+          result = newTree(nkStmtList, r, genWasMoved(r[0], c))
+        elif r[0].kind == nkStmtListExpr:
+          # terrible hack ahead...
+          result = newTree(nkStmtList, r, genWasMoved(r[0].lastSon, c))
+        else:
+          let asTmp = evalOnce(c.graph, r[0], c.owner)
+          result = newTree(nkStmtList, newTree(nkRaiseStmt, asTmp), genWasMoved(asTmp.lastSon, c))
   else:
     result = copyNode(n)
     recurse(n, result)
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  when defined(nimDebugDestroys):
-    if owner.name.s == "main":
+  const toDebug = ""
+  when toDebug.len > 0:
+    if owner.name.s == toDebug or toDebug == "always":
       echo "injecting into ", n
   if sfGeneratedOp in owner.flags or isInlineIterator(owner): return n
   var c: Con
@@ -769,8 +790,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   else:
     result.add body
 
-  when defined(nimDebugDestroys):
-    if owner.name.s == "main":
+  when toDebug.len > 0:
+    if owner.name.s == toDebug or toDebug == "always":
       echo "------------------------------------"
       echo owner.name.s, " transformed to: "
       echo result
