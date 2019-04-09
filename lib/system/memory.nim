@@ -1,3 +1,5 @@
+{.push stack_trace: off.}
+
 const useLibC = not defined(nimNoLibc)
 
 when not defined(nimHasHotCodeReloading):
@@ -6,7 +8,7 @@ when not defined(nimHasHotCodeReloading):
 when useLibC:
   import ansi_c
 
-proc nimCopyMem*(dest, source: pointer, size: Natural) {.compilerproc, inline.} =
+proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compilerproc, inline.} =
   when useLibC:
     c_memcpy(dest, source, size)
   else:
@@ -31,7 +33,7 @@ proc nimSetMem*(a: pointer, v: cint, size: Natural) {.nonReloadable, inline.} =
 proc nimZeroMem*(p: pointer, size: Natural) {.compilerproc, nonReloadable, inline.} =
   nimSetMem(p, 0, size)
 
-proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, inline.} =
+proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadable, inline.} =
   when useLibC:
     c_memcmp(a, b, size)
   else:
@@ -51,3 +53,5 @@ proc nimCStrLen*(a: cstring): csize {.compilerproc, nonReloadable, inline.} =
     while a[] != 0:
       a = cast[ptr byte](cast[uint](a) + 1)
       inc result
+
+{.pop.}
