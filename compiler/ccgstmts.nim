@@ -995,7 +995,8 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   #
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  let quirkyExceptions = isDefined(p.config, "nimQuirky")
+  let quirkyExceptions = isDefined(p.config, "nimQuirky") or
+      (t.kind == nkHiddenTryStmt and sfSystemModule in p.module.module.flags)
   if not quirkyExceptions:
     p.module.includeHeader("<setjmp.h>")
   genLineDir(p, t)
