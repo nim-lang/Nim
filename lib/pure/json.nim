@@ -636,6 +636,7 @@ proc escapeJsonUnquoted*(s: string; result: var string) =
     of '\b': result.add("\\b")
     of '\f': result.add("\\f")
     of '\t': result.add("\\t")
+    of '\v': result.add("\\v")
     of '\r': result.add("\\r")
     of '"': result.add("\\\"")
     of '\0'..'\7': result.add("\\u000" & $ord(c))
