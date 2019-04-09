@@ -163,11 +163,12 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
     result = NimStringV2(len: len, p: p)
 
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
-  if newLen > s.len or isLiteral(s):
+  if newLen == 0:
+    frees(s)
+    s.p = nil
+  elif newLen > s.len or isLiteral(s):
     prepareAdd(s, newLen - s.len)
   s.len = newLen
-  # this also only works because the destructor
-  # looks at s.p and not s.len
 
 proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
   # self assignment is fine!
