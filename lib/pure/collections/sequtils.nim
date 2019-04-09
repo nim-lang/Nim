@@ -529,6 +529,7 @@ proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## See also:
   ## * `allIt template<#allIt.t,untyped,untyped>`_
   ## * `any proc<#any,openArray[T],proc(T)>`_
+  ## * `none proc<#none,openArray[T],proc(T)>`_
   ##
   runnableExamples:
      let numbers = @[1, 4, 5, 8, 9, 7, 4]
@@ -551,6 +552,7 @@ template allIt*(s, pred: untyped): bool =
   ## See also:
   ## * `all proc<#all,openArray[T],proc(T)>`_
   ## * `anyIt template<#anyIt.t,untyped,untyped>`_
+  ## * `noneIt template<#noneIt.t,untyped,untyped>`_
   ##
   runnableExamples:
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
@@ -571,6 +573,7 @@ proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## See also:
   ## * `anyIt template<#anyIt.t,untyped,untyped>`_
   ## * `all proc<#all,openArray[T],proc(T)>`_
+  ## * `none proc<#none,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
@@ -593,6 +596,7 @@ template anyIt*(s, pred: untyped): bool =
   ## See also:
   ## * `any proc<#any,openArray[T],proc(T)>`_
   ## * `allIt template<#allIt.t,untyped,untyped>`_
+  ## * `noneIt template<#noneIt.t,untyped,untyped>`_
   ##
   runnableExamples:
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
@@ -605,6 +609,44 @@ template anyIt*(s, pred: untyped): bool =
       result = true
       break
   result
+
+proc none*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+  ## Iterates through a container and checks if none of the items fulfill the
+  ## predicate.
+  ##
+  ## See also:
+  ## *
+  ## * `noneIt template<#noneIt.t,untyped,untyped>`_
+  ## * `all proc<#all,openArray[T],proc(T)>`_
+  ## * `any proc<#any,openArray[T],proc(T)>`_
+  ##
+  runnableExamples:
+    let numbers = @[1, 4, 5, 8, 9, 7, 4]
+    assert none(numbers, proc (x: int): bool = return x > 8) == false
+    assert none(numbers, proc (x: int): bool = return x > 9) == true
+
+  not any(s, pred)
+
+template noneIt*(s, pred: untyped): bool =
+  ## Iterates through a container and checks if none of the items fulfill the
+  ## predicate.
+  ##
+  ## Unlike the `none proc<#none,openArray[T],proc(T)>`_,
+  ## the predicate needs to be an expression using
+  ## the ``it`` variable for testing, like: ``noneIt("abba", it == 'a')``.
+  ##
+  ## See also:
+  ## * `none proc<#none,openArray[T],proc(T)>`_
+  ## * `allIt template<#allIt.t,untyped,untyped>`_
+  ## * `anyIt template<#anyIt.t,untyped,untyped>`_
+  ##
+  runnableExamples:
+    let numbers = @[1, 4, 5, 8, 9, 7, 4]
+    assert numbers.noneIt(it > 8) == false
+    assert numbers.noneIt(it > 9) == true
+
+  not anyIt(s, pred)
+
 
 template toSeq1(s: not iterator): untyped =
   # overload for typed but not iterator
