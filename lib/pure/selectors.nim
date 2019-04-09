@@ -31,10 +31,16 @@ import os, strutils, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
-const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
-                                defined(netbsd) or defined(openbsd) or
-                                defined(dragonfly) or
-                                (defined(linux) and not defined(android))
+when defined(ioselector):
+  const ioselector {.strdefine.}: string = ""
+
+const ioselSupportedPlatform* =
+  when(defined(ioselector)): (
+    ioselector == "epoll" or ioselector == "kqueue"
+  ) else: (
+    defined(macosx) or defined(freebsd) or defined(netbsd) or defined(openbsd) or
+    defined(dragonfly) or (defined(linux) and not defined(android))
+  )
   ## This constant is used to determine whether the destination platform is
   ## fully supported by ``ioselectors`` module.
 
@@ -314,7 +320,18 @@ else:
     key.events = {}
     key.data = empty
 
-  when defined(linux):
+  when defined(ioselector):
+    when ioselector == "epoll":
+      include ioselects/ioselectors_epoll
+    elif ioselector == "kqueue":
+      include ioselects/ioselectors_kqueue
+    elif ioselector == "poll":
+      include ioselects/ioselectors_poll
+    elif ioselector == "select":
+      include ioselects/ioselectors_select
+    else:
+      {.fatal: "Unknown ioselector specified by define.".}
+  elif defined(linux):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
     include ioselects/ioselectors_kqueue
