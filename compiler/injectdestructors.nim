@@ -362,6 +362,10 @@ proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(t.assignment, "=", ri)
 
+proc genCopyNoCheck(c: Con; t: PType; dest, ri: PNode): PNode =
+  let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
+  genOp(t.assignment, "=", ri)
+
 proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(t.destructor, "=destroy", nil)
@@ -608,7 +612,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
-    elif ri.sym.kind != skParam and isLastRead(ri, c):
+    elif ri.sym.kind != skParam and ri.sym.owner == c.owner and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
@@ -737,9 +741,17 @@ proc p(n: PNode; c: var Con): PNode =
     result[1][0] = p(result[1][0], c)
   of nkRaiseStmt:
     if optNimV2 in c.graph.config.globalOptions:
-      # this is a bit hacky but we simply do not destroy exceptions that have
-      # been raised since the raise does consume the exception:
-      result = copyTree(n)
+      let t = n[0].typ
+      let tmp = getTemp(c, t, n.info)
+      var m = genCopyNoCheck(c, t, tmp, n[0])
+
+      m.add p(n[0], c)
+      result = newTree(nkStmtList, genWasMoved(tmp, c), m)
+      var toDisarm = n[0]
+      if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
+      if toDisarm.kind == nkSym and toDisarm.sym.owner == c.owner:
+        result.add genWasMoved(toDisarm, c)
+      result.add newTree(nkRaiseStmt, tmp)
     else:
       result = copyNode(n)
       recurse(n, result)

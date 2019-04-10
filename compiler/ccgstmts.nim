@@ -691,6 +691,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
           [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
           makeCString(toFileName(p.config, t.info)), rope(toLinenumber(t.info))])
+      if optNimV2 in p.config.globalOptions:
+        lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
     genLineDir(p, t)
     # reraise the last exception:
