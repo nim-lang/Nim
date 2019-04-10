@@ -86,7 +86,7 @@ proc resize(old: int): int {.inline.} =
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
-  if isLiteral(s):
+  if isLiteral(s) and addlen > 0:
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
     let allocator = getLocalAllocator()

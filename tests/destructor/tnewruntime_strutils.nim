@@ -1,7 +1,6 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''136 136'''
-  disabled: "true"
+  output: '''316 316'''
 """
 
 import strutils, os
@@ -135,33 +134,34 @@ proc staticTests =
   doAssert join([1, 2, 3]) == "123"
   doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
 
-  doAssert """~~!!foo
-~~!!bar
-~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
+  when false:
+    doAssert """~~!!foo
+  ~~!!bar
+  ~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
 
-  doAssert """~~!!foo
-~~!!bar
-~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
-  doAssert """~~foo
-~~  bar
-~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
-  doAssert """foo
-bar
-  baz
-""".unindent(4) == "foo\nbar\nbaz\n"
-  doAssert """foo
+    doAssert """~~!!foo
+  ~~!!bar
+  ~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
+    doAssert """~~foo
+  ~~  bar
+  ~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
+    doAssert """foo
   bar
-  baz
-""".unindent(2) == "foo\n  bar\n  baz\n"
-  doAssert """foo
-  bar
-  baz
-""".unindent(100) == "foo\nbar\nbaz\n"
+    baz
+  """.unindent(4) == "foo\nbar\nbaz\n"
+    doAssert """foo
+    bar
+    baz
+  """.unindent(2) == "foo\n  bar\n  baz\n"
+    doAssert """foo
+    bar
+    baz
+  """.unindent(100) == "foo\nbar\nbaz\n"
 
-  doAssert """foo
-  foo
-  bar
-""".unindent() == "foo\nfoo\nbar\n"
+    doAssert """foo
+    foo
+    bar
+  """.unindent() == "foo\nfoo\nbar\n"
 
   let s = " this is an example  "
   let s2 = ":this;is;an:example;;"
@@ -177,16 +177,6 @@ bar
   doAssert s.splitWhitespace(maxsplit=2) == @["this", "is", "an example  "]
   doAssert s.splitWhitespace(maxsplit=3) == @["this", "is", "an", "example  "]
   doAssert s.splitWhitespace(maxsplit=4) == @["this", "is", "an", "example"]
-
-  block: # startsWith / endsWith char tests
-    var s = "abcdef"
-    doAssert s.startsWith('a')
-    doAssert s.startsWith('b') == false
-    doAssert s.endsWith('f')
-    doAssert s.endsWith('a') == false
-    doAssert s.endsWith('\0') == false
-
-  #echo("strutils tests passed")
 
 nonStaticTests()
 staticTests()
