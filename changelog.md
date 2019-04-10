@@ -49,6 +49,9 @@
 
 - `osproc.execProcess` now also takes a `workingDir` parameter.
 
+- `std/sha1.secureHash` now accepts `openArray[char]`, not `string`. (Former
+   successful matches should keep working, though former failures will not.)
+
 - `options.UnpackError` is no longer a ref type and inherits from `system.Defect`
   instead of `system.ValueError`.
 
