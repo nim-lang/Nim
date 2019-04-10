@@ -648,8 +648,12 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     of paDirectMapping:
       idNodeTablePut(newC.mapping, formal, arg)
     of paFastAsgn:
+      var t = formal.typ
+      if formal.ast != nil and formal.ast.typ.destructor != nil and t.destructor == nil:
+        t = formal.ast.typ # better use the type that actually has a destructor.
       # generate a temporary and produce an assignment statement:
-      var temp = newTemp(c, formal.typ, formal.info)
+      var temp = newTemp(c, t, formal.info)
+      #temp.sym.flags.incl sfCursor
       addVar(v, temp)
       add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
