@@ -38,6 +38,7 @@ type
     inGenericParams: bool
     checkAnon: bool        # we're in a context that can contain sfAnon
     inPragma: int
+    needsEmptyLine: bool
     when defined(nimpretty):
       pendingNewlineCount: int
     fid*: FileIndex
@@ -105,6 +106,8 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.pendingWhitespace = -1
   g.inGenericParams = false
   g.config = config
+  g.needsEmptyLine = false # if true we add an empty line before nodes which are usually top level
+  # false if on top of source of after empty line
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
   var length = len(g.tokens)
@@ -113,6 +116,7 @@ proc addTok(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
   g.tokens[length].length = int16(len(s))
   g.tokens[length].sym = sym
   add(g.buf, s)
+  g.needsEmptyLine = true
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
@@ -134,6 +138,7 @@ proc putNL(g: var TSrcGen, indent: int) =
   g.pendingNL = indent
   g.lineLen = indent
   g.pendingWhitespace = -1
+  g.needsEmptyLine = false
 
 proc previousNL(g: TSrcGen): bool =
   result = g.pendingNL >= 0 or (g.tokens.len > 0 and
@@ -1301,19 +1306,19 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkStaticStmt: gstaticStmt(g, n)
   of nkAsmStmt: gasm(g, n)
   of nkProcDef:
-    putNL(g)
+    if g.needsEmptyLine: putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkProc, "proc")
     gproc(g, n)
   of nkFuncDef:
-    putNL(g)
+    if g.needsEmptyLine: putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkFunc, "func")
     gproc(g, n)
   of nkConverterDef:
-    putNL(g)
+    if g.needsEmptyLine: putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkConverter, "converter")
     gproc(g, n)
   of nkMethodDef:
-    putNL(g)
+    if g.needsEmptyLine: putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkMethod, "method")
     gproc(g, n)
   of nkIteratorDef:
