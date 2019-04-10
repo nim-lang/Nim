@@ -484,9 +484,9 @@ when defined(cpp) and appType != "lib" and
     var msg = "Unknown error in unexpected exception handler"
     try:
       raise
-    except Exception as e:
-      msg = e.getStackTrace() & "Error: unhandled exception: " &
-              e.msg & " [" & $e.name & "]"
+    except Exception:
+      msg = currException.getStackTrace() & "Error: unhandled exception: " &
+        currException.msg & " [" & $currException.name & "]"
     except StdException as e:
       msg = "Error: unhandled cpp exception: " & $e.what()
     except:
