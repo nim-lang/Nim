@@ -115,8 +115,8 @@ const
 type
   TokType = enum
     tkEof, tkIndent, tkWhite, tkWord, tkAdornment, tkPunct, tkOther
-  Token = object             # a RST token
-    kind*: TokType           # the type of the token
+  Token = object              # a RST token
+    kind*: TokType            # the type of the token
     ival*: int                # the indentation or parsed integer value
     symbol*: string           # the parsed symbol as string
     line*, col*: int          # line and column of the token
@@ -152,6 +152,14 @@ proc getAdornment(L: var Lexer, tok: var Token) =
     if L.buf[pos] != c: break
   inc(L.col, pos - L.bufpos)
   L.bufpos = pos
+
+proc getBracket(L: var Lexer, tok: var Token) =
+  tok.kind = tkPunct
+  tok.line = L.line
+  tok.col = L.col
+  add(tok.symbol, L.buf[L.bufpos])
+  inc L.col
+  inc L.bufpos
 
 proc getIndentAux(L: var Lexer, start: int): int =
   var pos = start
@@ -205,11 +213,13 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
       rawGetTok(L, tok)       # ignore spaces before \n
   of '\x0D', '\x0A':
     getIndent(L, tok)
-  of '!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.',
-     '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{',
-     '|', '}', '~':
+  of '!', '\"', '#', '$', '%', '&', '\'',  '*', '+', ',', '-', '.',
+     '/', ':', ';', '<', '=', '>', '?', '@', '\\', '^', '_', '`',
+     '|', '~':
     getAdornment(L, tok)
     if len(tok.symbol) <= 3: tok.kind = tkPunct
+  of '(', ')', '[', ']', '{', '}':
+    getBracket(L, tok)
   else:
     tok.line = L.line
     tok.col = L.col
@@ -837,7 +847,8 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnSubstitutionReferences)
       parseUntil(p, n, "|", false)
       add(father, n)
-    elif roSupportMarkdown in p.s.options and p.tok[p.idx].symbol == "[" and
+    elif roSupportMarkdown in p.s.options and
+        p.tok[p.idx].symbol == "[" and p.tok[p.idx+1].symbol != "[" and
         parseMarkdownLink(p, father):
       discard "parseMarkdownLink already processed it"
     else:
