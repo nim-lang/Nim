@@ -1,6 +1,6 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''316 316'''
+  output: '''442 442'''
 """
 
 import strutils, os
@@ -134,34 +134,33 @@ proc staticTests =
   doAssert join([1, 2, 3]) == "123"
   doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
 
-  when false:
-    doAssert """~~!!foo
-  ~~!!bar
-  ~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
 
-    doAssert """~~!!foo
-  ~~!!bar
-  ~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
-    doAssert """~~foo
-  ~~  bar
-  ~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
-    doAssert """foo
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
+  doAssert """~~foo
+~~  bar
+~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
+  doAssert """foo
   bar
     baz
   """.unindent(4) == "foo\nbar\nbaz\n"
-    doAssert """foo
+  doAssert """foo
     bar
     baz
   """.unindent(2) == "foo\n  bar\n  baz\n"
-    doAssert """foo
-    bar
-    baz
-  """.unindent(100) == "foo\nbar\nbaz\n"
+  doAssert """foo
+      bar
+      baz
+    """.unindent(100) == "foo\nbar\nbaz\n"
 
-    doAssert """foo
-    foo
-    bar
-  """.unindent() == "foo\nfoo\nbar\n"
+  doAssert """foo
+      foo
+      bar
+    """.unindent() == "foo\nfoo\nbar\n"
 
   let s = " this is an example  "
   let s2 = ":this;is;an:example;;"
