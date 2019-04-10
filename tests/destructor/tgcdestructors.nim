@@ -3,7 +3,8 @@ discard """
   output: '''hi
 ho
 ha
-7 7'''
+@["arg", "asdfklasdfkl", "asdkfj", "dfasj", "klfjl"]
+22 22'''
 """
 
 import allocators
@@ -75,6 +76,49 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
       break
     i = j
 
+proc parseCmdLine(c: string): seq[string] =
+  result = @[]
+  var i = 0
+  var a = ""
+  while true:
+    setLen(a, 0)
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
+    var inQuote = false
+    while i < c.len:
+      case c[i]
+      of '\\':
+        var j = i
+        while j < c.len and c[j] == '\\': inc(j)
+        if j < c.len and c[j] == '"':
+          for k in 1..(j-i) div 2: a.add('\\')
+          if (j-i) mod 2 == 0:
+            i = j
+          else:
+            a.add('"')
+            i = j+1
+        else:
+          a.add(c[i])
+          inc(i)
+      of '"':
+        inc(i)
+        if not inQuote: inQuote = true
+        elif i < c.len and c[i] == '"':
+          a.add(c[i])
+          inc(i)
+        else:
+          inQuote = false
+          break
+      of ' ', '\t':
+        if not inQuote: break
+        a.add(c[i])
+        inc(i)
+      else:
+        a.add(c[i])
+        inc(i)
+    add(result, a)
+
+
 proc other =
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
@@ -83,6 +127,8 @@ proc other =
   for s in interpolatedFragments(input):
     doAssert s == expected[i]
     inc i
+
+  echo parseCmdLine("arg asdfklasdfkl asdkfj dfasj klfjl")
 
 other()
 

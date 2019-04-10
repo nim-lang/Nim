@@ -104,7 +104,7 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
     compilerRtl, noSideEffect, raises: [].} =
   {.noSideEffect.}:
-    if len+addlen <= len:
+    if addlen <= 0:
       result = p
     elif p == nil:
       result = newSeqPayload(len+addlen, elemSize)

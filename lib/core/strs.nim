@@ -171,8 +171,7 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   s.len = newLen
 
 proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
-  # self assignment is fine!
-  #if unlikely(a.p == b.p): return
+  if a.p == b.p: return
   if isLiteral(b):
     # we can shallow copy literals:
     frees(a)
