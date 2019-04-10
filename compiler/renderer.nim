@@ -1301,31 +1301,40 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkStaticStmt: gstaticStmt(g, n)
   of nkAsmStmt: gasm(g, n)
   of nkProcDef:
+    putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkProc, "proc")
     gproc(g, n)
   of nkFuncDef:
+    putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkFunc, "func")
     gproc(g, n)
   of nkConverterDef:
+    putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkConverter, "converter")
     gproc(g, n)
   of nkMethodDef:
+    putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkMethod, "method")
     gproc(g, n)
   of nkIteratorDef:
+    putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkIterator, "iterator")
     gproc(g, n)
   of nkMacroDef:
+    putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkMacro, "macro")
     gproc(g, n)
   of nkTemplateDef:
+    putNL(g)
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkTemplate, "template")
     gproc(g, n)
   of nkTypeSection:
+    putNL(g)
     gsection(g, n, emptyContext, tkType, "type")
   of nkConstSection:
     initContext(a)
     incl(a.flags, rfInConstExpr)
+    putNL(g) # usually const is in global scope and it needs to be separated
     gsection(g, n, a, tkConst, "const")
   of nkVarSection, nkLetSection, nkUsingStmt:
     var L = sonsLen(n)
