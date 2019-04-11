@@ -318,7 +318,7 @@ proc rand*(max: float): float {.benign.} =
     ## f = 8.717181376738381e-07
   rand(state, max)
 
-proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
+proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
   ## state.
   ##
@@ -333,9 +333,9 @@ proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 6
-  result = T(rand(r, x.b - x.a)) + x.a
+  result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
 
-proc rand*[T](x: HSlice[T, T]): T =
+proc rand*[T: Ordinal](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
