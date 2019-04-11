@@ -16,12 +16,10 @@ import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  sighashes
+  modulegraphs, sighashes
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
-
-from modulegraphs import ModuleGraph, PPassContext
 
 const
   traceCode = defined(nimVMDebug)
