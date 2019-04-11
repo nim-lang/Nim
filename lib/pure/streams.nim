@@ -16,43 +16,115 @@
 ## Basic usage
 ## ===========
 ##
-## Example `StringStream <#StringStream>`_ :
+## The basic flow of using this module is:
+##
+## 1. Open input stream
+## 2. Read or write stream
+## 3. Close stream
+##
+## It is here that an implementation example with
+## `StringStream <#StringStream>`_.
+##
+## Step 1: Open input stream
+## -------------------------
+##
+## Open StringStream. For more information on `"""The first line..."""`,
+## see `Triple quoted string literals <manual.html#lexical-analysis-raw-string-literals>`_ .
 ##
 ## .. code-block:: Nim
 ##
 ##  import streams
 ##
-##  var
-##    ss = newStringStream("""The first line
+##  var strm = newStringStream("""The first line
 ##  the second line
 ##  the third line""")
-##    line = ""
 ##
-##  while ss.readLine(line):
+## Step 2: Read stream
+## -------------------
+##
+## Read stream. `readLine proc <#readLine,Stream,TaintedString>`_ reads a line
+## of text from the stream. In this example, read three times and exit the loop.
+##
+## .. code-block:: Nim
+##
+##  var line = ""
+##
+##  while strm.readLine(line):
 ##    echo line
-##  ss.close()
+##  
+##  # Output:
+##  # The first line
+##  # The second line
+##  # The third line
 ##
-## Example `FileStream <#FileStream>`_ :
+## Step 3: Close stream
+## --------------------
+##
+## Close stream.
+##
+## .. code-block:: Nim
+##
+##  strm.close()
+##
+## You can use `defer statement <manual.html#exception-handling-defer-statement>`_ 
+## to close stream. defer statement is available with procedure. But defer
+## statement is not available with Top-level.
+## 
+## defer statement example is here:
+##
+## .. code-block:: Nim
+##
+##  defer: strm.close()
+##
+## Similarly, it is here that an implementation example with
+## `FileStream <#FileStream>`_.
+##
+## Read file stream example:
 ##
 ## .. code-block:: Nim
 ##
 ##  import streams
 ##
-##  var
-##    fs = newFileStream("somefile.txt", fmRead)
-##    line = ""
+##  var strm = newFileStream("somefile.txt", fmRead)
+##  var line = ""
 ##
-##  if not isNil(fs):
-##    while fs.readLine(line):
+##  if not isNil(strm):
+##    while strm.readLine(line):
 ##      echo line
-##    fs.close()
+##    strm.close()
 ##
-## See also:
-## * `json module <json.html>`_ for a JSON parser
-## * `parsecfg module <parsecfg.html>`_ for a configuration file parser
-## * `parsecsv module <parsecsv.html>`_ for a simple CSV (comma separated value)
-##   parser
-## * `parsexml module <parsexml.html>`_ for a XML / HTML parser
+##  # Output:
+##  # The first line
+##  # the second line
+##  # the third line
+##
+## Write file stream example:
+##
+## .. code-block:: Nim
+##
+##  import streams
+##
+##  var strm = newFileStream("somefile.txt", fmWrite)
+##  var line = ""
+##
+##  if not isNil(strm):
+##    strm.writeLine("The first line")
+##    strm.writeLine("the second line")
+##    strm.writeLine("the third line")
+##    strm.close()
+## 
+##  # Output (somefile.txt):
+##  # The first line
+##  # the second line
+##  # the third line
+##
+## See also
+## ========
+## * `FileMode enum <io.html#FileMode>`_ is available FileMode
+## * `json module <json.html>`_ is using stream module
+## * `parsecfg module <parsecfg.html>`_ is using stream module
+## * `parsecsv module <parsecsv.html>`_ is using stream module
+## * `parsexml module <parsexml.html>`_ is using stream module
 
 include "system/inclrtl"
 
