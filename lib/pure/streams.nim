@@ -121,10 +121,6 @@
 ## See also
 ## ========
 ## * `FileMode enum <io.html#FileMode>`_ is available FileMode
-## * `json module <json.html>`_ is using stream module
-## * `parsecfg module <parsecfg.html>`_ is using stream module
-## * `parsecsv module <parsecsv.html>`_ is using stream module
-## * `parsexml module <parsexml.html>`_ is using stream module
 
 include "system/inclrtl"
 
@@ -364,9 +360,6 @@ proc peekFloat64*(s: Stream): float64 =
 proc readStr*(s: Stream, length: int): TaintedString =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
-  ##
-  ## See also:
-  ## * `peekStr proc <#peekStr,Stream,int>`_
   result = newString(length).TaintedString
   var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
@@ -374,9 +367,6 @@ proc readStr*(s: Stream, length: int): TaintedString =
 proc peekStr*(s: Stream, length: int): TaintedString =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
-  ##
-  ## See also:
-  ## * `readStr proc <#readStr,Stream,int>`_
   result = newString(length).TaintedString
   var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
