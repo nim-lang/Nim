@@ -1486,6 +1486,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   closeScope(c)           # close scope for parameters
   popOwner(c)
   result.typ = s.typ
+  if optNimV2 in c.config.globalOptions:
+    result.typ = makeVarType(c, result.typ, tyOwned)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
@@ -1521,7 +1523,8 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   popProcCon(c)
   popOwner(c)
   closeScope(c)
-
+  if optNimV2 in c.config.globalOptions and result.typ != nil:
+    result.typ = makeVarType(c, result.typ, tyOwned)
   # alternative variant (not quite working):
   # var prc = arg[0].sym
   # let inferred = c.semGenerateInstance(c, prc, m.bindings, arg.info)
@@ -1900,6 +1903,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if isAnon:
     n.kind = nkLambda
     result.typ = s.typ
+    if optNimV2 in c.config.globalOptions:
+      result.typ = makeVarType(c, result.typ, tyOwned)
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
