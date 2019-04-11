@@ -559,7 +559,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       if typ.isException:
-        appcg(m, result, "virtual void raise() { throw *this; }$n") # required for polymorphic exceptions
+        appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
         if typ.sym.magic == mException:
           # Add cleanup destructor to Exception base class
           appcg(m, result, "~$1();$n", [name])
@@ -751,10 +751,14 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             "  NI len; $2_Content* p;$n" &
             "};$n", [getTypeDescAux(m, t.sons[0], check), result])
         else:
-          appcg(m, m.s[cfsSeqTypes],
-              (if m.compileToCpp: cppSeq else: cSeq) &
-              "  $1 data[SEQ_DECL_SIZE];$n" &
-              "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+          if m.compileToCpp:
+            appcg(m, m.s[cfsSeqTypes],
+                cppSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
+                "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+          else:
+            appcg(m, m.s[cfsSeqTypes],
+                cSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
+                "};$n", [getTypeDescAux(m, t.sons[0], check), result])
       elif m.config.selectedGC == gcDestructors:
         internalError(m.config, "cannot map the empty seq type to a C type")
       else:

@@ -47,7 +47,7 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
                       [genStringLiteralDataOnlyV1(m, n.strVal)])
     else:
       result = ropecg(m, "((#NimStringDesc*) &$1$2)",
-                      [m.tmpBase, rope(id)])
+                      [m.tmpBase, id])
 
 # ------ Version 2: destructor based strings and seqs -----------------------
 
