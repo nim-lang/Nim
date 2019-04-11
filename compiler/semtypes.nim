@@ -1811,9 +1811,8 @@ proc processMagicType(c: PContext, m: PSym) =
   of mString:
     setMagicType(c.config, m, tyString, szUncomputedSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
-    when false:
-      if c.config.selectedGc == gcDestructors:
-        incl m.typ.flags, tfHasAsgn
+    if c.config.selectedGc == gcDestructors:
+      incl m.typ.flags, tfHasAsgn
   of mCstring:
     setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))

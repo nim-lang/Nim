@@ -2498,11 +2498,11 @@ proc formatEng*(f: BiggestFloat,
     # we can be a bit more efficient through knowledge that there will never be
     # an exponent in this part.
     if trim:
-        while splitResult[1].endsWith("0"):
-          # Trim last character
-          splitResult[1].setLen(splitResult[1].len-1)
-        if splitResult[1].len() > 0:
-          result &= decimalSep & splitResult[1]
+      while splitResult[1].endsWith("0"):
+        # Trim last character
+        splitResult[1].setLen(splitResult[1].len-1)
+      if splitResult[1].len() > 0:
+        result &= decimalSep & splitResult[1]
     else:
       result &= decimalSep & splitResult[1]
 

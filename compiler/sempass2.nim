@@ -708,7 +708,7 @@ proc track(tracked: PEffects, n: PNode) =
     if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
       return
     if n.typ != nil:
-      if tracked.owner.kind != skMacro:
+      if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         createTypeBoundOps(tracked.c, n.typ, n.info)
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]

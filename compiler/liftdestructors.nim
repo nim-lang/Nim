@@ -334,7 +334,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, x, callCodegenProc(c.graph, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
   of attachedAsgn:
-    body.add callCodegenProc(c.graph, "nimIncWeakRef", c.info, y)
+    body.add genIf(c, y, callCodegenProc(c.graph, "nimIncWeakRef", c.info, y))
     body.add genIf(c, x, callCodegenProc(c.graph, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -382,7 +382,9 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, xx, callCodegenProc(c.graph, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
     of attachedAsgn:
-      body.add callCodegenProc(c.graph, "nimIncWeakRef", c.info, y)
+      let yy = genBuiltin(c.graph, mAccessEnv, "accessEnv", y)
+      yy.typ = getSysType(c.graph, c.info, tyPointer)
+      body.add genIf(c, yy, callCodegenProc(c.graph, "nimIncWeakRef", c.info, yy))
       body.add genIf(c, xx, callCodegenProc(c.graph, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
     of attachedDestructor:

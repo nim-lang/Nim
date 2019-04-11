@@ -217,6 +217,9 @@ proc parseString(my: var JsonParser): TokKind =
       of 't':
         add(my.a, '\t')
         inc(pos, 2)
+      of 'v':
+        add(my.a, '\v')
+        inc(pos, 2)
       of 'u':
         if my.rawStringLiterals:
           add(my.a, 'u')
