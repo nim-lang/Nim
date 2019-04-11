@@ -2212,10 +2212,17 @@ proc sort*[A](t: var CountTable[A]) =
   # translation from https://en.wikipedia.org/wiki/Shellsort#Pseudocode
 
   # Sort an array t.data[0...n-1].
-  var gaps = [701, 301, 132, 57, 23, 10, 4, 1]
-
+  var gaps = @[1, 4, 10, 23, 57, 132, 301, 701]
+  # we get a lil freaky here so as to avoid rewriting
+  # this gaps array (or using a reverse).
+  var g = gaps[^1]
+  while true:
+    g = (int) (g * 3)
+    if g >= t.len: break
+    gaps.add(g)
   # Start with the largest gap and work down to a gap of 1
-  for gap in gaps:
+  for gi in countdown(gaps.len, 0):
+    var gap = gaps[gi]
     # Do a gapped insertion sort for this gap size.
     # The first gap elements t.data[0..gap-1] are already in gapped order
     # keep adding one more element until the entire array is gap sorted
