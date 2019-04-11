@@ -613,7 +613,7 @@ proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  if a.t.skipTypes(abstractInst).callConv == ccClosure:
+  if a.t.skipTypes(abstractInstOwned).callConv == ccClosure:
     putIntoDest(p, d, e,
       "($1.ClP_0 == $2.ClP_0 && $1.ClE_0 == $2.ClE_0)" % [rdLoc(a), rdLoc(b)])
   else:
@@ -660,8 +660,8 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
 proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
   result = p.module.compileToCpp and
-      skipTypes(typ, abstractInst).kind == tyVar and
-      tfVarIsPtr notin skipTypes(typ, abstractInst).flags
+      skipTypes(typ, abstractInstOwned).kind == tyVar and
+      tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   let mt = mapType(p.config, e.sons[0].typ)
@@ -775,7 +775,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   genRecordFieldAux(p, e, d, a)
   var r = rdLoc(a)
   var f = e.sons[1].sym
-  let ty = skipTypes(a.t, abstractInst + tyUserTypeClasses)
+  let ty = skipTypes(a.t, abstractInstOwned + tyUserTypeClasses)
   if ty.kind == tyTuple:
     # we found a unique tuple type which lacks field information
     # so we use Field$i
@@ -1288,7 +1288,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # we skip this step here:
   if not p.module.compileToCpp:
     if handleConstExpr(p, e, d): return
-  var t = e.typ.skipTypes(abstractInst)
+  var t = e.typ.skipTypes(abstractInstOwned)
   let isRef = t.kind == tyRef
 
   # check if we need to construct the object in a temporary
@@ -1304,7 +1304,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     r = rdLoc(tmp)
     if isRef:
       rawGenNew(p, tmp, nil)
-      t = t.lastSon.skipTypes(abstractInst)
+      t = t.lastSon.skipTypes(abstractInstOwned)
       r = "(*$1)" % [r]
       gcUsage(p.config, e)
     else:
@@ -1462,12 +1462,12 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var dest = skipTypes(typ, typedescPtrs)
   var r = rdLoc(a)
   var nilCheck: Rope = nil
-  var t = skipTypes(a.t, abstractInst)
+  var t = skipTypes(a.t, abstractInstOwned)
   while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
     if t.kind notin {tyVar, tyLent}: nilCheck = r
     if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
       r = ropecg(p.module, "(*$1)", [r])
-    t = skipTypes(t.lastSon, typedescInst)
+    t = skipTypes(t.lastSon, typedescInst+{tyOwned})
   discard getTypeDesc(p.module, t)
   if not p.module.compileToCpp:
     while t.kind == tyObject and t.sons[0] != nil:
@@ -1826,7 +1826,7 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
   # through its address:
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
-  let etyp = skipTypes(e.typ, abstractRange)
+  let etyp = skipTypes(e.typ, abstractRange+{tyOwned})
   if etyp.kind in ValueTypes and lfIndirect notin a.flags:
     putIntoDest(p, d, e, "(*($1*) ($2))" %
         [getTypeDesc(p.module, e.typ), addrLoc(p.config, a)], a.storage)
@@ -2374,7 +2374,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, arg, a)
     var r = rdLoc(a)
-    let isRef = skipTypes(arg.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent}
+    let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}
     if isRef:
       add(r, "->Sup")
     else:
@@ -2386,7 +2386,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       # (see bug #837). However sometimes using a temporary is not correct:
       # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
       # this by ensuring the destination is also a pointer:
-      if d.k == locNone and skipTypes(n.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent}:
+      if d.k == locNone and skipTypes(n.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}:
         getTemp(p, n.typ, d)
         linefmt(p, cpsStmts, "$1 = &$2;$n", [rdLoc(d), r])
       else:
@@ -2618,7 +2618,7 @@ proc genNamedConstExpr(p: BProc, n: PNode): Rope =
   else: result = genConstExpr(p, n)
 
 proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
-  var t = skipTypes(typ, abstractRange-{tyTypeDesc})
+  var t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
   case t.kind
   of tyBool: result = rope"NIM_FALSE"
   of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result = rope"0"
@@ -2693,7 +2693,7 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode, result: var Ro
 
 proc genConstObjConstr(p: BProc; n: PNode): Rope =
   result = nil
-  let t = n.typ.skipTypes(abstractInst)
+  let t = n.typ.skipTypes(abstractInstOwned)
   var count = 0
   #if not isObjLackingTypeField(t) and not p.module.compileToCpp:
   #  addf(result, "{$1}", [genTypeInfo(p.module, t)])
@@ -2760,7 +2760,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
     toBitSet(p.config, n, cs)
     result = genRawSetData(cs, int(getSize(p.config, n.typ)))
   of nkBracket, nkPar, nkTupleConstr, nkClosure:
-    var t = skipTypes(n.typ, abstractInst)
+    var t = skipTypes(n.typ, abstractInstOwned)
     if t.kind == tySequence:
       if p.config.selectedGc == gcDestructors:
         result = genConstSeqV2(p, n, n.typ)

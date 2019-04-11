@@ -396,7 +396,7 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   xx.typ = getSysType(c.graph, c.info, tyPointer)
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.lastSon
-  discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
+  #discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
   actions.add callCodegenProc(c.graph, "nimDestroyAndDispose", c.info, xx)
   case c.kind
   of attachedSink, attachedAsgn:

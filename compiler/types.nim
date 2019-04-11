@@ -58,9 +58,9 @@ const
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
                     tyAlias, tyInferred, tySink, tyOwned}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias, tyInferred, tySink}
+                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred, tySink}
+                   tyInferred, tySink, tyOwned}
   abstractInstOwned* = abstractInst + {tyOwned}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
                tyInferred, tySink, tyLent, tyOwned}

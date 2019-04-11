@@ -591,7 +591,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       # so these all act like 'sink' parameters:
       ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
     result.add ri2
-  of nkTupleConstr:
+  of nkTupleConstr, nkClosure:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 0..<ri.len:
@@ -686,15 +686,15 @@ proc p(n: PNode; c: var Con): PNode =
       elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
         for j in 0..L-3:
           let v = it[j]
-          doAssert v.kind == nkSym
-          # move the variable declaration to the top of the frame:
-          c.addTopVar v
-          # make sure it's destroyed at the end of the proc:
-          if not isUnpackedTuple(it[0].sym):
-            c.destroys.add genDestroy(c, v.typ, v)
-          if ri.kind != nkEmpty:
-            let r = moveOrCopy(v, ri, c)
-            result.add r
+          if v.kind == nkSym:
+            # move the variable declaration to the top of the frame:
+            c.addTopVar v
+            # make sure it's destroyed at the end of the proc:
+            if not isUnpackedTuple(it[0].sym):
+              c.destroys.add genDestroy(c, v.typ, v)
+            if ri.kind != nkEmpty:
+              let r = moveOrCopy(v, ri, c)
+              result.add r
       else:
         # keep it, but transform 'ri':
         var varSection = copyNode(n)

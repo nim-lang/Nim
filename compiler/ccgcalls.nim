@@ -185,7 +185,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   initLocExpr(p, ri.sons[0], op)
   var params: Rope
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri.sons[0].typ, abstractInst)
+  var typ = skipTypes(ri.sons[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
   assert(sonsLen(typ) == sonsLen(typ.n))
   var length = sonsLen(ri)
@@ -531,7 +531,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
+  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
@@ -542,7 +542,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   postStmtActions(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
+  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)
