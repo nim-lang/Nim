@@ -25,11 +25,14 @@
 ## It is here that an implementation example with
 ## `StringStream <#StringStream>`_.
 ##
-## Step 1: Open input stream
-## -------------------------
+## StringStream example
+## --------------------
+##
+## Step 1: Open input stream:
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
 ## Open StringStream. For more information on `"""The first line..."""`,
-## see `Triple quoted string literals <manual.html#lexical-analysis-raw-string-literals>`_ .
+## see `Triple quoted string literals <manual.html#lexical-analysis-triple-quoted-string-literals>`_ .
 ##
 ## .. code-block:: Nim
 ##
@@ -40,7 +43,7 @@
 ##  the third line""")
 ##
 ## Step 2: Read stream
-## -------------------
+## ^^^^^^^^^^^^^^^^^^^
 ##
 ## Read stream. `readLine proc <#readLine,Stream,TaintedString>`_ reads a line
 ## of text from the stream. In this example, read three times and exit the loop.
@@ -58,7 +61,7 @@
 ##  # The third line
 ##
 ## Step 3: Close stream
-## --------------------
+## ^^^^^^^^^^^^^^^^^^^^
 ##
 ## Close stream.
 ##
@@ -78,6 +81,9 @@
 ##
 ## Similarly, it is here that an implementation example with
 ## `FileStream <#FileStream>`_.
+##
+## FileStream example
+## ------------------
 ##
 ## Read file stream example:
 ##
@@ -383,6 +389,23 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
   ## * `readLine proc <#readLine,Stream>`_
   ## * `peekLine proc <#peekLine,Stream>`_
   ## * `peekLine proc <#peekLine,Stream,TaintedString>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    var line = ""
+
+    doAssert strm.readLine(line) == true
+    doAssert line == "The first line"
+
+    doAssert strm.readLine(line) == true
+    doAssert line == "the second line"
+
+    doAssert strm.readLine(line) == true
+    doAssert line == "the third line"
+
+    doAssert strm.readLine(line) == false
+    doAssert line == ""
+
+    strm.close()
   line.string.setLen(0)
   while true:
     var c = readChar(s)
@@ -408,6 +431,24 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
   ## * `readLine proc <#readLine,Stream>`_
   ## * `readLine proc <#readLine,Stream,TaintedString>`_
   ## * `peekLine proc <#peekLine,Stream>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    var line = ""
+    
+    doAssert strm.peekLine(line) == true
+    doAssert line == "The first line"
+
+    doAssert strm.peekLine(line) == true
+    ## not "the second line"
+    doAssert line == "The first line"
+
+    doAssert strm.readLine(line) == true
+    doAssert line == "The first line"
+
+    doAssert strm.peekLine(line) == true
+    doAssert line == "the second line"
+    
+    strm.close()
   let pos = getPosition(s)
   defer: setPosition(s, pos)
   result = readLine(s, line)
@@ -423,6 +464,15 @@ proc readLine*(s: Stream): TaintedString =
   ## * `readLine proc <#readLine,Stream,TaintedString>`_
   ## * `peekLine proc <#peekLine,Stream>`_
   ## * `peekLine proc <#peekLine,Stream,TaintedString>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    
+    doAssert strm.readLine() == "The first line"
+    doAssert strm.readLine() == "the second line"
+    doAssert strm.readLine() == "the third line"
+    ## strm.readLine() --> raise IOError
+    
+    strm.close()
   result = TaintedString""
   if s.atEnd:
     raise newEIO("cannot read from stream")
@@ -447,6 +497,17 @@ proc peekLine*(s: Stream): TaintedString =
   ## * `readLine proc <#readLine,Stream>`_
   ## * `readLine proc <#readLine,Stream,TaintedString>`_
   ## * `peekLine proc <#peekLine,Stream,TaintedString>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    
+    doAssert strm.peekLine() == "The first line"
+    ## not "the second line"
+    doAssert strm.peekLine() == "The first line"
+
+    doAssert strm.readLine() == "The first line"
+    doAssert strm.peekLine() == "the second line"
+    
+    strm.close()
   let pos = getPosition(s)
   defer: setPosition(s, pos)
   result = readLine(s)
@@ -459,7 +520,15 @@ iterator lines*(s: Stream): TaintedString =
   ## * `readLine proc <#readLine,Stream>`_
   ## * `readLine proc <#readLine,Stream,TaintedString>`_
   runnableExamples:
-    discard # TODO
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    var lines: seq[string]
+    
+    for line in strm.lines():
+      lines.add line
+    
+    doAssert lines == @["The first line", "the second line", "the third line"]
+    
+    strm.close()
   var line: TaintedString
   while s.readLine(line):
     yield line
