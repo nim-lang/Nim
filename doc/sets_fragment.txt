@@ -49,6 +49,37 @@ operation             meaning
 ``excl(A, elem)``     same as ``A = A - {elem}``
 ==================    ========================================================
 
-Sets are often used to define a type for the *flags* of a procedure. This is
-a much cleaner (and type safe) solution than just defining integer
-constants that should be ``or``'ed together.
+Bit fields
+~~~~~~~~~~
+
+Sets are often used to define a type for the *flags* of a procedure.
+This is a cleaner (and type safe) solution than defining integer
+constants that have to be ``or``'ed together.
+
+Enum, sets and casting can be used together as in:
+
+.. code-block:: nim
+
+  type
+    MyFlag* {.size: sizeof(cint).} = enum
+      A
+      B
+      C
+      D
+    MyFlags = set[MyFlag]
+
+  proc toNum(f: MyFlags): int = cast[cint](f)
+  proc toFlags(v: int): MyFlags = cast[MyFlags](v)
+
+  assert toNum({}) == 0
+  assert toNum({A}) == 1
+  assert toNum({D}) == 8
+  assert toNum({A, C}) == 5
+  assert toFlags(0) == {}
+  assert toFlags(7) == {A, B, C}
+
+Note how the set turns enum values into powers of 2.
+
+For interoperability with C see the `bitsize pragma <#implementation-specific-pragmas-bitsize-pragma>`_ instead.
+
+If using enums and sets with C, use distinct cint.
