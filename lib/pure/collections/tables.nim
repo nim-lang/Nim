@@ -2209,20 +2209,27 @@ proc sort*[A](t: var CountTable[A]) =
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_
   ## to iterate over ``t`` in the sorted order.
 
-  # we use shellsort here; fast enough and simple
-  var h = 1
-  while true:
-    h = 3 * h + 1
-    if h >= high(t.data): break
-  while true:
-    h = h div 3
-    for i in countup(h, high(t.data)):
-      var j = i
-      while t.data[j-h].val <= t.data[j].val:
-        swap(t.data[j], t.data[j-h])
-        j = j-h
-        if j < h: break
-    if h == 1: break
+  # translation from https://en.wikipedia.org/wiki/Shellsort#Pseudocode
+
+  # Sort an array t.data[0...n-1].
+  var gaps = [701, 301, 132, 57, 23, 10, 4, 1]
+
+  # Start with the largest gap and work down to a gap of 1
+  for gap in gaps:
+    # Do a gapped insertion sort for this gap size.
+    # The first gap elements t.data[0..gap-1] are already in gapped order
+    # keep adding one more element until the entire array is gap sorted
+    for i in countup(gap, high(t.data)):
+      # add t.data[i] to the elements that have been gap sorted
+      # save t.data[i] in temp and make a hole at position i
+      var temp = t.data[i]
+      # shift earlier gap-sorted elements up until the correct location for t.data[i] is found
+      for j in countdown(i, gap, gap):
+        if t.data[j - gap].val >= temp.val:
+           # put temp (the original t.data[i]) in its correct location
+           t.data[j] = temp
+           break
+        swap(t.data[j], t.data[j - gap])
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   ## Merges the second table into the first one (must be declared as `var`).
