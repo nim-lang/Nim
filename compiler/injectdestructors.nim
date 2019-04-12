@@ -515,6 +515,11 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     result = p(arg, c)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
+  # unfortunately, this needs to be kept consistent with the cases
+  # we handle in the 'case of' statement below:
+  const movableNodeKinds = (nkCallKinds + {nkSym, nkTupleConstr, nkObjConstr,
+                                           nkBracket, nkBracketExpr, nkNilLit})
+
   template moveOrCopyIfTyped(riPart: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
     if riPart.typ == nil: p(riPart, c)
@@ -621,12 +626,20 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
   of nkHiddenSubConv, nkHiddenStdConv:
-    let harmless = ri[1].kind in (nkCallKinds + {nkSym, nkTupleConstr, nkObjConstr,
-                                                 nkBracket, nkBracketExpr, nkNilLit})
-    if harmless:
+    if ri[1].kind in movableNodeKinds:
       result = moveOrCopy(dest, ri[1], c)
       var b = newNodeIT(ri.kind, ri.info, ri.typ)
       b.add ri[0] # add empty node
+      let L = result.len-1
+      b.add result[L]
+      result[L] = b
+    else:
+      result = genCopy(c, dest.typ, dest, ri)
+      result.add p(ri, c)
+  of nkObjDownConv, nkObjUpConv:
+    if ri[0].kind in movableNodeKinds:
+      result = moveOrCopy(dest, ri[0], c)
+      var b = newNodeIT(ri.kind, ri.info, ri.typ)
       let L = result.len-1
       b.add result[L]
       result[L] = b
