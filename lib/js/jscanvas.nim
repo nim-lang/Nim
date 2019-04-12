@@ -39,9 +39,6 @@ type
     font*: cstring
     textAlign*: cstring
     textBaseline*: cstring
-    # Fill and stroke styles
-    fillStyle*: cstring
-    strokeStyle*: cstring
     # Compositing
     globalAlpha*: float
     globalCompositeOperation*: cstring
@@ -98,6 +95,19 @@ type
     Saturation = "saturation",
     Color = "color",
     Luminosity = "luminosity"
+  
+  # https://developer.mozilla.org/en-US/docs/Web/API/CanvasPattern
+  CanvasPattern* = ref CanvasPatternObj
+  CanvasPatternObj {.importc.} = object
+
+  CanvasGradient* = ref CanvasGradientObj
+  CanvasGradientObj {.importc.} = object
+
+  Repetition* {.pure.} = enum
+    Repeat = "repeat",
+    RepeatX = "repeat-x",
+    RepeatY = "repeat-y",
+    NoRepeat = "no-repeat"
 
 # CanvasElement "methods"
 proc getContext2d*(c: CanvasElement): CanvasContext {.
@@ -122,6 +132,20 @@ proc strokeText*(ctx: CanvasContext, text: cstring, x, y: int)
 # Line styles
 proc setLineDash*(ctx: CanvasContext, segments: seq[int])
 
+# Fill and stroke styles
+proc `fillStyle=`*(ctx: CanvasContext, color: cstring)
+proc `fillStyle=`*(ctx: CanvasContext, gradient: CanvasGradient)
+proc `fillStyle=`*(ctx: CanvasContext, pattern: CanvasPattern)
+proc `strokeStyle=`*(ctx: CanvasContext, color: cstring)
+proc `strokeStyle=`*(ctx: CanvasContext, gradient: CanvasGradient)
+proc `strokeStyle=`*(ctx: CanvasContext, pattern: CanvasPattern)
+
+# Gradients and patterns
+proc createLinearGradient*(ctx: CanvasContext, x0, y0, x1, y1: int): CanvasGradient
+proc createRadialGradient*(ctx: CanvasContext, x0, y0, r0, x1, y1, r1: int): CanvasGradient
+proc createPattern*(image: ImageElement, repetition: cstring): CanvasPattern
+proc createPattern*(image: CanvasElement, repetition: cstring): CanvasPattern
+
 # Paths
 proc beginPath*(ctx: CanvasContext)
 proc closePath*(ctx: CanvasContext)
@@ -138,5 +162,8 @@ proc rect*(ctx: CanvasContext, x, y, width, height: int)
 proc fill*(ctx: CanvasContext)
 proc stroke*(ctx: CanvasContext)
 proc clip*(ctx: CanvasContext)
+
+# CanvasGradient "methods"
+proc addColorStop*(cg: CanvasGradient, offset: float, color: cstring)
 
 {.pop.}
