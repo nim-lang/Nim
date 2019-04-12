@@ -539,6 +539,17 @@ proc formatValue[T](result: var string; value: openarray[T]; specifier: string) 
     result.formatValue(it, specifier)
   result.add "]"
 
+var typeMemory {.compileTime.}: seq[string]
+
+macro formatValue(res: var string; value: typed; specifier: string): untyped =
+  # var message = "please provide a custom overload for the following "
+  let typeName = value.getTypeInst.repr
+  if typeName notin typeMemory:
+    typeMemory.add typeName
+    warning("For strformat and "&typeName&",\nplease provide an overload of the following function signature:\n" &
+      "proc formatValue(result: var string; value: " & typeName & "; specifier: string)")
+  result = newCall(bindSym"add", res, newCall(bindSym("$", brOpen), value))
+
 macro `&`*(pattern: string): untyped =
   ## For a specification of the ``&`` macro, see the module level documentation.
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
