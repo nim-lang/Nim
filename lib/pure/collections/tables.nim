@@ -216,7 +216,7 @@
 ## * `hashes module<hashes.html>`_ for helper functions for hashing
 
 
-import hashes, math
+import hashes, math, algorithm
 
 include "system/inclrtl"
 
@@ -1467,7 +1467,7 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
   t.first = -1
   t.last = -1
 
-proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int) =
+proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int, order = SortOrder.Ascending) =
   ## Sorts ``t`` according to the function ``cmp``.
   ##
   ## This modifies the internal list
@@ -1479,7 +1479,7 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int) =
     for i, c in "cab":
       a[c] = 10*i
     doAssert a == {'c': 0, 'a': 10, 'b': 20}.toOrderedTable
-    a.sort(system.cmp)
+    a.sort(system.cmp, order=order)
     doAssert a == {'a': 10, 'b': 20, 'c': 0}.toOrderedTable
 
   var list = t.first
@@ -1875,7 +1875,7 @@ proc clear*[A, B](t: var OrderedTableRef[A, B]) =
     doAssert len(a) == 0
   clear(t[])
 
-proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int) =
+proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int, order = SortOrder.Ascending) =
   ## Sorts ``t`` according to the function ``cmp``.
   ##
   ## This modifies the internal list
@@ -1887,7 +1887,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int) =
     for i, c in "cab":
       a[c] = 10*i
     doAssert a == {'c': 0, 'a': 10, 'b': 20}.newOrderedTable
-    a.sort(system.cmp)
+    a.sort(system.cmp, order=order)
     doAssert a == {'a': 10, 'b': 20, 'c': 0}.newOrderedTable
   t[].sort(cmp)
 
@@ -2199,30 +2199,19 @@ proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
 
-proc sort*[A](t: var CountTable[A]) =
-  ## Sorts the count table so that the entry with the highest counter comes
-  ## first.
+func ctCmp[T](a, b: tuple[key: T, val: int]): int =
+  result = cmp(a.val, b.val)
+
+proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
+  ## Sorts the count table so that, by default, the entry with the
+  ## highest counter comes first.
   ##
   ## **This is destructive! You must not modify ``t`` afterwards!**
   ##
   ## You can use the iterators `pairs<#pairs.i,CountTable[A]>`_,
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_
   ## to iterate over ``t`` in the sorted order.
-
-  # we use shellsort here; fast enough and simple
-  var h = 1
-  while true:
-    h = 3 * h + 1
-    if h >= high(t.data): break
-  while true:
-    h = h div 3
-    for i in countup(h, high(t.data)):
-      var j = i
-      while t.data[j-h].val <= t.data[j].val:
-        swap(t.data[j], t.data[j-h])
-        j = j-h
-        if j < h: break
-    if h == 1: break
+  t.data.sort(cmp=ctCmp, order=order)
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   ## Merges the second table into the first one (must be declared as `var`).
@@ -2467,16 +2456,16 @@ proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
 
-proc sort*[A](t: CountTableRef[A]) =
-  ## Sorts the count table so that the entry with the highest counter comes
-  ## first.
+proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
+  ## Sorts the count table so that, by default, the entry with the
+  ## highest counter comes first.
   ##
   ## **This is destructive! You must not modify `t` afterwards!**
   ##
   ## You can use the iterators `pairs<#pairs.i,CountTableRef[A]>`_,
   ## `keys<#keys.i,CountTableRef[A]>`_, and `values<#values.i,CountTableRef[A]>`_
   ## to iterate over ``t`` in the sorted order.
-  t[].sort
+  t[].sort(order=order)
 
 proc merge*[A](s, t: CountTableRef[A]) =
   ## Merges the second table into the first one.
