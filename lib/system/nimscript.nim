@@ -239,19 +239,24 @@ proc exec*(command: string) {.
   raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external process. If the external process terminates with
   ## a non-zero exit code, an OSError exception is raised.
-  ## Note: If you need a version of ``exec`` that returns the exit code
-  ## and text output of the command, you can use ``gorgeEx`` from the
-  ## system module.
+  ##
+  ## **Note:** If you need a version of ``exec`` that returns the exit code
+  ## and text output of the command, you can use `system.gorgeEx
+  ## <system.html#gorgeEx,string,string,string>`_.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
     checkOsError()
 
-proc exec*(command: string, input: string, cache = "") =
-  ## Executes an external process. Non-zero exit codes of the external process
-  ## are ignored.
+proc exec*(command: string, input: string, cache = "") {.
+  raises: [OSError], tags: [ExecIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
   log "exec: " & command:
-    echo staticExec(command, input, cache)
+    let (output, exitCode) = gorgeEx(command, input, cache)
+    if exitCode != 0:
+      raise newException(OSError, "FAILED: " & command)
+    echo output
 
 proc selfExec*(command: string) {.
   raises: [OSError], tags: [ExecIOEffect].} =
