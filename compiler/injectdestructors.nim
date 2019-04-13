@@ -753,7 +753,7 @@ proc p(n: PNode; c: var Con): PNode =
     result = copyTree(n)
     result[1][0] = p(result[1][0], c)
   of nkRaiseStmt:
-    if optNimV2 in c.graph.config.globalOptions:
+    if optNimV2 in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       let t = n[0].typ
       let tmp = getTemp(c, t, n.info)
       var m = genCopyNoCheck(c, t, tmp, n[0])
