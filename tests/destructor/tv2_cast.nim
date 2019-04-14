@@ -1,7 +1,7 @@
 discard """
   cmd: '''nim c --newruntime $file'''
   output: '''@[1]
-@[108, 111, 108]'''
+@[116, 101, 115, 116]'''
 """
 
 # bug #11018
