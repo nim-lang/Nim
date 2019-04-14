@@ -85,6 +85,9 @@ proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
 
 proc fill*[T](a: var openArray[T], value: T) =
   ## Fills the container ``a`` with ``value``.
+  ##
+  ## See also:
+  ## * `fillWith template <#fillWith.t,openArray[T],untyped>`_
   runnableExamples:
     var a: array[6, int]
     a.fill(9)
@@ -93,6 +96,13 @@ proc fill*[T](a: var openArray[T], value: T) =
     assert a == [4, 4, 4, 4, 4, 4]
   fillImpl(a, 0, a.high, value)
 
+template fillWith*[T](a: var openArray[T], f: untyped) =
+  ## Fills the container ``a`` with ``f``.
+  runnableExamples:
+    import random
+    var a: array[6, int]
+    a.fillWith(rand(10))
+  fillImpl(a, 0, a.high, f)
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## Reverses the slice ``a[first..last]``.

@@ -883,6 +883,8 @@ template newSeqWith*(len: int, init: untyped): untyped =
   ## Useful for creating "2D" sequences - sequences containing other sequences
   ## or to populate fields of the created sequence.
   ##
+  ## For a more memory-efficient variant, see
+  ## `algorithm.fillWith <algorithm.html#fillWith.t,openArray[T],untyped>`_.
   runnableExamples:
     ## Creates a seqence containing 5 bool sequences, each of length of 3.
     var seq2D = newSeqWith(5, newSeq[bool](3))
@@ -892,7 +894,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
 
     ## Creates a sequence of 20 random numbers from 1 to 10
     import random
-    var seqRand = newSeqWith(20, random(10))
+    var seqRand = newSeqWith(20, rand(10))
 
   var result = newSeq[type(init)](len)
   for i in 0 ..< len:
