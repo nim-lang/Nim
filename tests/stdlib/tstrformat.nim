@@ -65,6 +65,14 @@ doAssert fmt"{0.0: g}" == " 0"
 let data1 = [1'i64, 10000'i64, 10000000'i64]
 let data2 = [10000000'i64, 100'i64, 1'i64]
 
+proc formatValue(result: var string; value: (array|seq|openArray); specifier: string) =
+  result.add "["
+  for i, it in value:
+    if i != 0:
+      result.add ", "
+    result.formatValue(it, specifier)
+  result.add "]"
+
 doAssert fmt"data1: {data1:8} #" == "data1: [       1,    10000, 10000000] #"
 doAssert fmt"data2: {data2:8} =" == "data2: [10000000,      100,        1] ="
 
