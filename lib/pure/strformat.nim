@@ -513,14 +513,6 @@ template formatValue(result: var string; value: char; specifier: string) =
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
-proc formatValue(result: var string; value: (array|seq|openArray); specifier: string) =
-  result.add "["
-  for i, it in value:
-    if i != 0:
-      result.add ", "
-    result.formatValue(it, specifier)
-  result.add "]"
-
 macro `&`*(pattern: string): untyped =
   ## For a specification of the ``&`` macro, see the module level documentation.
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
