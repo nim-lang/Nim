@@ -1839,7 +1839,7 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     if srcTyp.kind in {tyPtr, tyPointer} and etyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) (ptrdiff_t) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
-    elif etyp.kind == tySequence:
+    elif p.config.selectedGc == gcDestructors and etyp.kind == tySequence:
       putIntoDest(p, d, e, "(($1_Content*) ($2.p))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
     else:
