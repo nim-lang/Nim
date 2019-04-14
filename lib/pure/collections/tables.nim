@@ -1475,6 +1475,7 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int, order 
   ## call but key lookup and insertions remain possible after ``sort`` (in
   ## contrast to the `sort proc<#sort,CountTable[A]>`_ for count tables).
   runnableExamples:
+    import algorithm
     var a = initOrderedTable[char, int]()
     for i, c in "cab":
       a[c] = 10*i
@@ -1885,6 +1886,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int, order =
   ## call but key lookup and insertions remain possible after ``sort`` (in
   ## contrast to the `sort proc<#sort,CountTableRef[A]>`_ for count tables).
   runnableExamples:
+    import algorithm
     var a = newOrderedTable[char, int]()
     for i, c in "cab":
       a[c] = 10*i
@@ -2216,6 +2218,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_
   ## to iterate over ``t`` in the sorted order.
   runnableExamples:
+    import algorithm, sequtils
     var a = toCountTable("abracadabra")
     doAssert a == "aaaaabbrrcd".toCountTable
     a.sort()
