@@ -48,14 +48,14 @@ const
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 const
-  Usage = slurp"../doc/basicopt.txt".replace("//", "")
+  Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
   FeatureDesc = block:
     var x = ""
     for f in low(Feature)..high(Feature):
       if x.len > 0: x.add "|"
       x.add $f
     x
-  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "") % FeatureDesc
+  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % FeatureDesc
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
