@@ -1479,8 +1479,10 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int, order 
     for i, c in "cab":
       a[c] = 10*i
     doAssert a == {'c': 0, 'a': 10, 'b': 20}.toOrderedTable
-    a.sort(system.cmp, order=order)
+    a.sort(system.cmp)
     doAssert a == {'a': 10, 'b': 20, 'c': 0}.toOrderedTable
+    a.sort(system.cmp, order=SortOrder.Descending)
+    doAssert a == {'c': 0, 'b': 20, 'a': 10}.toOrderedTable
 
   var list = t.first
   var
@@ -1508,7 +1510,7 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int, order 
         elif qsize == 0 or q < 0:
           e = p; p = t.data[p].next; dec(psize)
         elif cmp((t.data[p].key, t.data[p].val),
-                 (t.data[q].key, t.data[q].val)) <= 0:
+                 (t.data[q].key, t.data[q].val)) * order <= 0:
           e = p; p = t.data[p].next; dec(psize)
         else:
           e = q; q = t.data[q].next; dec(qsize)
@@ -1887,9 +1889,11 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int, order =
     for i, c in "cab":
       a[c] = 10*i
     doAssert a == {'c': 0, 'a': 10, 'b': 20}.newOrderedTable
-    a.sort(system.cmp, order=order)
+    a.sort(system.cmp)
     doAssert a == {'a': 10, 'b': 20, 'c': 0}.newOrderedTable
-  t[].sort(cmp)
+    a.sort(system.cmp, order=SortOrder.Descending)
+    doAssert a == {'c': 0, 'b': 20, 'a': 10}.newOrderedTable
+  t[].sort(cmp, order=order)
 
 proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The ``$`` operator for hash tables. Used internally when calling `echo`
@@ -2200,7 +2204,7 @@ proc clear*[A](t: var CountTable[A]) =
   clearImpl()
 
 func ctCmp[T](a, b: tuple[key: T, val: int]): int =
-  result = cmp(a.val, b.val)
+  result = system.cmp(a.val, b.val)
 
 proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
@@ -2211,6 +2215,13 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## You can use the iterators `pairs<#pairs.i,CountTable[A]>`_,
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_
   ## to iterate over ``t`` in the sorted order.
+  runnableExamples:
+    var a = toCountTable("abracadabra")
+    doAssert a == "aaaaabbrrcd".toCountTable
+    a.sort()
+    doAssert toSeq(a.values) == @[5, 2, 2, 1, 1]
+    a.sort(SortOrder.Ascending)
+    doAssert toSeq(a.values) == @[1, 1, 2, 2, 5]
   t.data.sort(cmp=ctCmp, order=order)
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
