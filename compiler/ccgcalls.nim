@@ -218,10 +218,12 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
-    lineF(p, cpsStmts, callPattern & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
+    if tfIterator in typ.flags:
+      lineF(p, cpsStmts, PatIter & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
+    else:
+      lineF(p, cpsStmts, PatProc & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
   let rawProc = getRawProcType(p, typ)
-  let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
     if isInvalidReturnType(p.config, typ.sons[0]):
       if sonsLen(ri) > 1: add(pl, ~", ")
@@ -246,7 +248,11 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, d.lode, OnUnknown)
-      list.r = callPattern % [rdLoc(op), pl, pl.addComma, rawProc]
+      if tfIterator in typ.flags:
+        list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
+      else:
+        list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()

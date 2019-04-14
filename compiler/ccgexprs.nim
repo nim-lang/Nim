@@ -99,17 +99,17 @@ proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
     if j < len(s): result = result or (ze64(s[j]) shl (j * 8))
 
 proc genRawSetData(cs: TBitSet, size: int): Rope =
-  var frmt: FormatStr
   if size > 8:
     result = "{$n" % []
     for i in countup(0, size - 1):
       if i < size - 1:
         # not last iteration?
-        if (i + 1) mod 8 == 0: frmt = "0x$1,$n"
-        else: frmt = "0x$1, "
+        if (i + 1) mod 8 == 0:
+          addf(result, "0x$1,$n", [rope(toHex(ze64(cs[i]), 2))])
+        else:
+          addf(result, "0x$1, ", [rope(toHex(ze64(cs[i]), 2))])
       else:
-        frmt = "0x$1}$n"
-      addf(result, frmt, [rope(toHex(ze64(cs[i]), 2))])
+        addf(result, "0x$1}$n", [rope(toHex(ze64(cs[i]), 2))])
   else:
     result = intLiteral(bitSetToWord(cs, size))
     #  result := rope('0x' + ToHex(bitSetToWord(cs, size), size * 2))
@@ -510,10 +510,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       "mulInt64", "divInt64", "modInt64",
       "addInt64", "subInt64"
     ]
-    opr: array[mAddI..mPred, string] = [
-      "($#)($# + $#)", "($#)($# - $#)", "($#)($# * $#)",
-      "($#)($# / $#)", "($#)($# % $#)",
-      "($#)($# + $#)", "($#)($# - $#)"]
+    opr: array[mAddI..mPred, string] = ["+", "-", "*", "/", "%", "+", "-"]
   var a, b: TLoc
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
@@ -523,7 +520,7 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   # later via 'chckRange'
   let t = e.typ.skipTypes(abstractRange)
   if optOverflowCheck notin p.options:
-    let res = opr[m] % [getTypeDesc(p.module, e.typ), rdLoc(a), rdLoc(b)]
+    let res = "($1)($2 $3 $4)" % [getTypeDesc(p.module, e.typ), rdLoc(a), rope(opr[m]), rdLoc(b)]
     putIntoDest(p, d, e, res)
   else:
     let res = binaryArithOverflowRaw(p, t, a, b,
@@ -531,11 +528,6 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
-  const
-    opr: array[mUnaryMinusI..mAbsI, string] = [
-      mUnaryMinusI: "((NI$2)-($1))",
-      mUnaryMinusI64: "-($1)",
-      mAbsI: "($1 > 0? ($1) : -($1))"]
   var
     a: TLoc
     t: PType
@@ -545,54 +537,17 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   if optOverflowCheck in p.options:
     linefmt(p, cpsStmts, "if ($1 == $2) #raiseOverflow();$n",
             [rdLoc(a), intLiteral(firstOrd(p.config, t))])
-  putIntoDest(p, d, e, opr[m] % [rdLoc(a), rope(getSize(p.config, t) * 8)])
+  case m
+  of mUnaryMinusI:
+    putIntoDest(p, d, e, "((NI$2)-($1))" % [rdLoc(a), rope(getSize(p.config, t) * 8)])
+  of mUnaryMinusI64:
+    putIntoDest(p, d, e, "-($1)" % [rdLoc(a)])
+  of mAbsI:
+    putIntoDest(p, d, e, "($1 > 0? ($1) : -($1))" % [rdLoc(a)])
+  else:
+    assert(false, $m)
 
 proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
-  const
-    binArithTab: array[mAddF64..mXor, string] = [
-      "(($4)($1) + ($4)($2))", # AddF64
-      "(($4)($1) - ($4)($2))", # SubF64
-      "(($4)($1) * ($4)($2))", # MulF64
-      "(($4)($1) / ($4)($2))", # DivF64
-      "($4)((NU$5)($1) >> (NU$3)($2))", # ShrI
-      "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
-      "($4)((NI$3)($1) >> (NU$3)($2))", # AshrI
-      "($4)($1 & $2)",      # BitandI
-      "($4)($1 | $2)",      # BitorI
-      "($4)($1 ^ $2)",      # BitxorI
-      "(($1 <= $2) ? $1 : $2)", # MinI
-      "(($1 >= $2) ? $1 : $2)", # MaxI
-      "(($1 <= $2) ? $1 : $2)", # MinF64
-      "(($1 >= $2) ? $1 : $2)", # MaxF64
-      "($4)((NU$3)($1) + (NU$3)($2))", # AddU
-      "($4)((NU$3)($1) - (NU$3)($2))", # SubU
-      "($4)((NU$3)($1) * (NU$3)($2))", # MulU
-      "($4)((NU$3)($1) / (NU$3)($2))", # DivU
-      "($4)((NU$3)($1) % (NU$3)($2))", # ModU
-      "($1 == $2)",           # EqI
-      "($1 <= $2)",           # LeI
-      "($1 < $2)",            # LtI
-      "($1 == $2)",           # EqF64
-      "($1 <= $2)",           # LeF64
-      "($1 < $2)",            # LtF64
-      "((NU$3)($1) <= (NU$3)($2))", # LeU
-      "((NU$3)($1) < (NU$3)($2))", # LtU
-      "((NU64)($1) <= (NU64)($2))", # LeU64
-      "((NU64)($1) < (NU64)($2))", # LtU64
-      "($1 == $2)",           # EqEnum
-      "($1 <= $2)",           # LeEnum
-      "($1 < $2)",            # LtEnum
-      "((NU8)($1) == (NU8)($2))", # EqCh
-      "((NU8)($1) <= (NU8)($2))", # LeCh
-      "((NU8)($1) < (NU8)($2))", # LtCh
-      "($1 == $2)",           # EqB
-      "($1 <= $2)",           # LeB
-      "($1 < $2)",            # LtB
-      "($1 == $2)",           # EqRef
-      "($1 == $2)",           # EqPtr
-      "($1 <= $2)",           # LePtr
-      "($1 < $2)",            # LtPtr
-      "($1 != $2)"]           # Xor
   var
     a, b: TLoc
     s, k: BiggestInt
@@ -603,9 +558,59 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(p.config, a.t), getSize(p.config, b.t)) * 8
   k = getSize(p.config, a.t) * 8
-  putIntoDest(p, d, e,
-              binArithTab[op] % [rdLoc(a), rdLoc(b), rope(s),
-                                      getSimpleTypeDesc(p.module, e.typ), rope(k)])
+
+  template applyFormat(frmt: untyped) =
+    putIntoDest(p, d, e, frmt % [
+      rdLoc(a), rdLoc(b), rope(s),
+      getSimpleTypeDesc(p.module, e.typ), rope(k)]
+    )
+
+  case op
+  of mAddF64: applyFormat("(($4)($1) + ($4)($2))")
+  of mSubF64: applyFormat("(($4)($1) - ($4)($2))")
+  of mMulF64: applyFormat("(($4)($1) * ($4)($2))")
+  of mDivF64: applyFormat("(($4)($1) / ($4)($2))")
+  of mShrI: applyFormat("($4)((NU$5)($1) >> (NU$3)($2))")
+  of mShlI: applyFormat("($4)((NU$3)($1) << (NU$3)($2))")
+  of mAshrI: applyFormat("($4)((NI$3)($1) >> (NU$3)($2))")
+  of mBitandI: applyFormat("($4)($1 & $2)")
+  of mBitorI: applyFormat("($4)($1 | $2)")
+  of mBitxorI: applyFormat("($4)($1 ^ $2)")
+  of mMinI: applyFormat("(($1 <= $2) ? $1 : $2)")
+  of mMaxI: applyFormat("(($1 >= $2) ? $1 : $2)")
+  of mMinF64: applyFormat("(($1 <= $2) ? $1 : $2)")
+  of mMaxF64: applyFormat("(($1 >= $2) ? $1 : $2)")
+  of mAddU: applyFormat("($4)((NU$3)($1) + (NU$3)($2))")
+  of mSubU: applyFormat("($4)((NU$3)($1) - (NU$3)($2))")
+  of mMulU: applyFormat("($4)((NU$3)($1) * (NU$3)($2))")
+  of mDivU: applyFormat("($4)((NU$3)($1) / (NU$3)($2))")
+  of mModU: applyFormat("($4)((NU$3)($1) % (NU$3)($2))")
+  of mEqI: applyFormat("($1 == $2)")
+  of mLeI: applyFormat("($1 <= $2)")
+  of mLtI: applyFormat("($1 < $2)")
+  of mEqF64: applyFormat("($1 == $2)")
+  of mLeF64: applyFormat("($1 <= $2)")
+  of mLtF64: applyFormat("($1 < $2)")
+  of mLeU: applyFormat("((NU$3)($1) <= (NU$3)($2))")
+  of mLtU: applyFormat("((NU$3)($1) < (NU$3)($2))")
+  of mLeU64: applyFormat("((NU64)($1) <= (NU64)($2))")
+  of mLtU64: applyFormat("((NU64)($1) < (NU64)($2))")
+  of mEqEnum: applyFormat("($1 == $2)")
+  of mLeEnum: applyFormat("($1 <= $2)")
+  of mLtEnum: applyFormat("($1 < $2)")
+  of mEqCh: applyFormat("((NU8)($1) == (NU8)($2))")
+  of mLeCh: applyFormat("((NU8)($1) <= (NU8)($2))")
+  of mLtCh: applyFormat("((NU8)($1) < (NU8)($2))")
+  of mEqB: applyFormat("($1 == $2)")
+  of mLeB: applyFormat("($1 <= $2)")
+  of mLtB: applyFormat("($1 < $2)")
+  of mEqRef: applyFormat("($1 == $2)")
+  of mEqUntracedRef: applyFormat("($1 == $2)")
+  of mLePtr: applyFormat("($1 <= $2)")
+  of mLtPtr: applyFormat("($1 < $2)")
+  of mXor: applyFormat("($1 != $2)")
+  else:
+    assert(false, $op)
 
 proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -628,7 +633,8 @@ proc genIsNil(p: BProc, e: PNode, d: var TLoc) =
 
 proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
-    unArithTab: array[mNot..mToBiggestInt, string] = ["!($1)", # Not
+    unArithTab: array[mNot..mToBiggestInt, string] = [
+      "!($1)", # Not
       "$1",                   # UnaryPlusI
       "($3)((NU$2) ~($1))",   # BitnotI
       "$1",                   # UnaryPlusF64
@@ -654,9 +660,57 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   assert(e.sons[1].typ != nil)
   initLocExpr(p, e.sons[1], a)
   t = skipTypes(e.typ, abstractRange)
-  putIntoDest(p, d, e,
-              unArithTab[op] % [rdLoc(a), rope(getSize(p.config, t) * 8),
+
+
+  template applyFormat(frmt: untyped) =
+    putIntoDest(p, d, e, frmt % [rdLoc(a), rope(getSize(p.config, t) * 8),
                 getSimpleTypeDesc(p.module, e.typ)])
+
+
+  case op
+  of mNot:
+    applyFormat("!($1)")
+  of mUnaryPlusI:
+    applyFormat("$1")
+  of mBitnotI:
+    applyFormat("($3)((NU$2) ~($1))")
+  of mUnaryPlusF64:
+    applyFormat("$1")
+  of mUnaryMinusF64:
+    applyFormat("-($1)")
+  of mAbsF64:
+    applyFormat("($1 < 0? -($1) : ($1))")
+    # BUGFIX: fabs() makes problems for Tiny C
+  of mZe8ToI:
+    applyFormat("(($3)(NU)(NU8)($1))")
+  of mZe8ToI64:
+    applyFormat("(($3)(NU64)(NU8)($1))")
+  of mZe16ToI:
+    applyFormat("(($3)(NU)(NU16)($1))")
+  of mZe16ToI64:
+    applyFormat("(($3)(NU64)(NU16)($1))")
+  of mZe32ToI64:
+    applyFormat("(($3)(NU64)(NU32)($1))")
+  of mZeIToI64:
+    applyFormat("(($3)(NU64)(NU)($1))")
+  of mToU8:
+    applyFormat("(($3)(NU8)(NU)($1))")
+  of mToU16:
+    applyFormat("(($3)(NU16)(NU)($1))")
+  of mToU32:
+    applyFormat("(($3)(NU32)(NU64)($1))")
+  of mToFloat:
+    applyFormat("((double) ($1))")
+  of mToBiggestFloat:
+    applyFormat("((double) ($1))")
+  of mToInt:
+    applyFormat("float64ToInt32($1)")
+  of mToBiggestInt:
+    applyFormat("float64ToInt64($1)")
+  else:
+    assert false, $op
+
+
 
 proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
   result = p.module.compileToCpp and
@@ -1678,7 +1732,7 @@ proc fewCmps(conf: ConfigRef; s: PNode): bool =
   else:
     result = sonsLen(s) <= 8  # 8 seems to be a good value
 
-proc binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
+template binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
   putIntoDest(p, d, e, frmt % [rdLoc(a), rdSetElemLoc(p.config, b, a.t)])
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc) =
