@@ -615,7 +615,7 @@ proc isTrival(s: PSym): bool {.inline.} = s == nil or s.ast[bodyPos].len == 0
 proc recCanon(c: PContext; orig: PType): PType =
   for son in orig.sons:
     if son != nil:
-      var sonCanon = recCanon(c, son)
+      discard recCanon(c, son)
   let h = sighashes.hashType(orig, {CoType, CoConsiderOwned})
   result = c.graph.canonTypes.getOrDefault(h)
   if result == nil:
