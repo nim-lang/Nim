@@ -23,5 +23,5 @@ proc test(): auto =
 
 var (a, b, _) = test()
 
-doAssert: assign_counter == 0
-doAssert: sink_counter == 9
+doAssert assign_counter == 0
+doAssert sink_counter == 12 # + 3 because of the conservative tuple unpacking transformation

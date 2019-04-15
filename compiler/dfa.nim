@@ -29,7 +29,10 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, astalgo, types, intsets, tables, msgs, options, lineinfos
+import ast, astalgo, types, intsets, tables, msgs, options, lineinfos, renderer
+
+from patterns import sameTrees
+from aliases import isPartOf, TAnalysisResult
 
 type
   InstrKind* = enum
@@ -37,7 +40,10 @@ type
   Instr* = object
     n*: PNode
     case kind*: InstrKind
-    of def, use: sym*: PSym
+    of def, use: sym*: PSym # 'sym' can also be 'nil' and
+                            # then 'n' contains the def/use location.
+                            # This is used so that we can track object
+                            # and tuple field accesses precisely.
     of goto, fork, join: dest*: int
 
   ControlFlowGraph* = seq[Instr]
@@ -46,9 +52,6 @@ type
   TBlock = object
     label: PSym
     fixups: seq[TPosition]
-
-  ValueKind = enum
-    undef, value, valueOrUndef
 
   Con = object
     code: ControlFlowGraph
@@ -77,7 +80,7 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
     result.add "\t"
     case c[i].kind
     of def, use:
-      result.add c[i].sym.name.s
+      result.add renderTree(c[i].n)
     of goto, fork, join:
       result.add "L"
       result.add c[i].dest+i
@@ -564,16 +567,50 @@ proc genReturn(c: var Con; n: PNode) =
   genNoReturn(c, n)
 
 const
-  InterestingSyms = {skVar, skResult, skLet, skParam, skForVar}
+  InterestingSyms = {skVar, skResult, skLet, skParam, skForVar, skTemp}
+  PathKinds* = {nkDotExpr, nkCheckedFieldExpr,
+                nkBracketExpr, nkDerefExpr, nkHiddenDeref,
+                nkAddr, nkHiddenAddr}
 
-proc genUse(c: var Con; n: PNode) =
-  var n = n
-  while n.kind in {nkDotExpr, nkCheckedFieldExpr,
-                   nkBracketExpr, nkDerefExpr, nkHiddenDeref,
-                   nkAddr, nkHiddenAddr}:
+proc genUse(c: var Con; orig: PNode) =
+  var n = orig
+  var iters = 0
+  while n.kind in PathKinds:
     n = n[0]
+    inc iters
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: n, kind: use, sym: n.sym)
+    c.code.add Instr(n: orig, kind: use, sym: if iters > 0: nil else: n.sym)
+
+proc instrTargets*(ins: Instr; loc: PNode): bool =
+  assert ins.kind in {def, use}
+  if ins.sym != nil and loc.kind == nkSym:
+    result = ins.sym == loc.sym
+  else:
+    result = ins.n == loc or sameTrees(ins.n, loc)
+  if not result:
+    # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+    # def x.f; question: does it affect the full 'x'? No.
+    # def x; question: does it affect the 'x.f'? Yes.
+    # use x.f;  question: does it affect the full 'x'? No.
+    # use x; question does it affect 'x.f'? Yes.
+    result = isPartOf(ins.n, loc) == arYes
+
+proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
+  var n = n
+  while true:
+    if n.kind in {nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:
+      n = n[0]
+    elif n.kind == nkBracketExpr:
+      let x = n[0]
+      if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:
+        n = x
+      else:
+        break
+    else:
+      break
+  # XXX Allow closure deref operations here if we know
+  # the owner controlled the closure allocation?
+  result = n.kind == nkSym and n.sym.owner == owner and owner.kind != skModule
 
 proc genDef(c: var Con; n: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
@@ -651,10 +688,12 @@ proc gen(c: var Con; n: PNode) =
   of nkCharLit..nkNilLit: discard
   of nkAsgn, nkFastAsgn:
     gen(c, n[1])
+    # watch out: 'obj[i].f2 = value' sets 'f2' but
+    # "uses" 'i'. But we are only talking about builtin array indexing so
+    # it doesn't matter and 'x = 34' is NOT a usage of 'x'.
     genDef(c, n[0])
-  of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr,
-     nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
-    gen(c, n[0])
+  of PathKinds:
+    genUse(c, n)
   of nkIfStmt, nkIfExpr: genIf(c, n)
   of nkWhenStmt:
     # This is "when nimvm" node. Chose the first branch.

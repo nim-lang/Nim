@@ -139,7 +139,7 @@ import
   lineinfos, parampatterns
 
 const
-  InterestingSyms = {skVar, skResult, skLet, skForVar}
+  InterestingSyms = {skVar, skResult, skLet, skForVar, skTemp}
 
 type
   Con = object
@@ -153,17 +153,24 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
+const toDebug = ""
+
+template dbg(body) =
+  when toDebug.len > 0:
+    if c.owner.name.s == toDebug or toDebug == "always":
+      body
+
+proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
   var pc = pc
   while pc < c.g.len:
     case c.g[pc].kind
     of def:
-      if c.g[pc].sym == s:
+      if instrTargets(c.g[pc], location):
         # the path lead to a redefinition of 's' --> abandon it.
         return high(int)
       inc pc
     of use:
-      if c.g[pc].sym == s:
+      if instrTargets(c.g[pc], location):
         c.otherRead = c.g[pc].n
         return -1
       inc pc
@@ -171,9 +178,9 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
-      var variantA = isLastRead(s, c, pc+1, pc)
+      var variantA = isLastRead(location, c, pc+1, pc)
       if variantA < 0: return -1
-      let variantB = isLastRead(s, c, pc + c.g[pc].dest, pc)
+      let variantB = isLastRead(location, c, pc + c.g[pc].dest, pc)
       if variantB < 0: return -1
       elif variantA == high(int):
         variantA = variantB
@@ -186,11 +193,11 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
 
 proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
-  doAssert n.kind == nkSym
   c.otherRead = nil
   var instr = -1
   for i in 0..<c.g.len:
-    if c.g[i].n == n:
+    # This comparison is correct and MUST not be ``instrTargets``:
+    if c.g[i].kind == use and c.g[i].n == n:
       if instr < 0:
         instr = i
         break
@@ -199,8 +206,11 @@ proc isLastRead(n: PNode; c: var Con): bool =
   # we go through all paths beginning from 'instr+1' and need to
   # ensure that we don't find another 'use X' instruction.
   if instr+1 >= c.g.len: return true
+  dbg:
+    echo "beginning here ", instr
+
   when true:
-    result = isLastRead(n.sym, c, instr+1, -1) >= 0
+    result = isLastRead(n, c, instr+1, -1) >= 0
   else:
     let s = n.sym
     var pcs: seq[int] = @[instr+1]
@@ -507,6 +517,8 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
           branch = copyNode(arg[i])
           branch.add pArgIfTyped(arg[i][0])
         result.add branch
+    elif isAnalysableFieldAccess(arg, c.owner) and isLastRead(arg, c):
+      result = destructiveMoveVar(arg, c)
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
@@ -647,9 +659,15 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
   else:
-    # XXX At least string literals can be moved?
-    result = genCopy(c, dest.typ, dest, ri)
-    result.add p(ri, c)
+    if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+      # Rule 3: `=sink`(x, z); wasMoved(z)
+      var snk = genSink(c, dest.typ, dest, ri)
+      snk.add ri
+      result = newTree(nkStmtList, snk, genWasMoved(ri, c))
+    else:
+      # XXX At least string literals can be moved?
+      result = genCopy(c, dest.typ, dest, ri)
+      result.add p(ri, c)
 
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:
@@ -785,10 +803,6 @@ proc p(n: PNode; c: var Con): PNode =
     recurse(n, result)
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  const toDebug = ""
-  when toDebug.len > 0:
-    if owner.name.s == toDebug or toDebug == "always":
-      echo "injecting into ", n
   if sfGeneratedOp in owner.flags or isInlineIterator(owner): return n
   var c: Con
   c.owner = owner
@@ -802,8 +816,9 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   for i in 0..<c.g.len:
     if c.g[i].kind in {goto, fork}:
       c.jumpTargets.incl(i+c.g[i].dest)
-  #if owner.name.s == "test0p1":
-  #  echoCfg(c.g)
+  dbg:
+    echo "injecting into ", n
+    echoCfg(c.g)
   if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:
     let params = owner.typ.n
     for i in 1 ..< params.len:
@@ -822,8 +837,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   else:
     result.add body
 
-  when toDebug.len > 0:
-    if owner.name.s == toDebug or toDebug == "always":
-      echo "------------------------------------"
-      echo owner.name.s, " transformed to: "
-      echo result
+  dbg:
+    echo "------------------------------------"
+    echo owner.name.s, " transformed to: "
+    echo result

@@ -843,7 +843,7 @@ proc gident(g: var TSrcGen, n: PNode) =
   else:
     t = tkOpr
   put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
-  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
+  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
     when defined(debugMagics):
       put(g, tkIntLit, $n.sym.id & $n.sym.magic)
     else:

@@ -1009,8 +1009,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)
-  #of nkAsgn:
-  #  result = transformAsgn(c, n)
+  of nkAsgn:
+    result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = PTransNode(n)
     result[0] = transform(c, n[0])
