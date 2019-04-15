@@ -102,7 +102,9 @@ of ``formatValue`` procs. The required signature for a type ``T`` that supports
 formatting is usually ``proc formatValue(result: var string; x: T; specifier: string)``.
 
 The subexpression after the colon
-(``arg`` in ``&"{key} is {value:arg} {{z}}"``) is optional. It will be passed as the last argument to ``formatValue``. When the colon with the subexpression it is left out, an empty string will be taken instead.
+(``arg`` in ``&"{key} is {value:arg} {{z}}"``) is optional. It will be passed as
+the last argument to ``formatValue``. When the colon with the subexpression it is
+left out, an empty string will be taken instead.
 
 For strings and numeric types the optional argument is a so-called
 "standard format specifier".
@@ -215,8 +217,7 @@ Limitations
 ===========
 
 Because of the well defined order how templates and macros are
-expanded, strformat cannot expand template arguments.
-
+expanded, strformat cannot expand template arguments:
 
 .. code-block:: nim
   template myTemplate(arg: untyped): untyped =
@@ -233,27 +234,6 @@ quoted string literal. It is not an identifier yet. Then the strformat
 macro creates the ``arg`` identifier from the string literal. An
 identifier that cannot be resolved anymore.
 
-.. code-block:: nim
-  let x = "abc"
-  myTemplate(x)
-
-  # expansion of myTemplate
-
-  let x = "abc"
-  echo "arg is: ", x
-  echo &"--- {arg} ---"
-
-  # expansion of `&`
-
-  let x = "abc"
-  echo "arg is: ", x
-  echo:
-    var temp = newStringOfCap(20)
-    temp.add "--- "
-    temp.formatValue arg, "" # arg cannot be resolved anymore
-    temp.add " ---"
-    temp
-
 The workaround for this is to bind template argument to a new local variable.
 
 .. code-block:: nim
@@ -265,10 +245,11 @@ The workaround for this is to bind template argument to a new local variable.
       echo &"--- {arg1} ---"
 
 The use of ``{.inject.}`` here is necessary again because of template
-expansion order and hygienic templates. But since we generelly want to
+expansion order and hygienic templates. But since we generally want to
 keep the hygienicness of ``myTemplate``, and we do not want ``arg1``
 to be injected into the context where ``myTemplate`` is expanded,
 everything is wrapped in a ``block``.
+
 
 Future directions
 =================
@@ -522,22 +503,15 @@ proc formatValue*(result: var string; value: string; specifier: string) =
       setLen(value, runeOffset(value, spec.precision))
   result.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
-template formatValue[T: enum](result: var string; value: T; specifier: string) =
-  result.add $value
+proc formatValue[T](result: var string; value: T; specifier: string) =
+  mixin `$`
+  formatValue(result, $value, specifier)
 
 template formatValue(result: var string; value: char; specifier: string) =
   result.add value
 
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
-
-proc formatValue[T](result: var string; value: openarray[T]; specifier: string) =
-  result.add "["
-  for i, it in value:
-    if i != 0:
-      result.add ", "
-    result.formatValue(it, specifier)
-  result.add "]"
 
 macro `&`*(pattern: string): untyped =
   ## For a specification of the ``&`` macro, see the module level documentation.

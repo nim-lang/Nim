@@ -9,10 +9,14 @@ import system / ansi_c
 import core / allocators
 
 proc mainA =
-  var e: owned(ref ValueError)
-  new(e)
-  e.msg = "message"
-  raise e
+  try:
+    var e: owned(ref ValueError)
+    new(e)
+    e.msg = "message"
+    raise e
+  except Exception as e:
+    raise
+
 
 proc main =
   raise newException(ValueError, "argh")

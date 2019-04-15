@@ -179,6 +179,7 @@ proc enumToString*(enums: openArray[enum]): string =
   differently.
 
 - `securehash` is moved to `lib/deprecated`
+- The switch ``-d:useWinAnsi`` is not supported anymore.
 
 
 ### Language additions

@@ -1,5 +1,6 @@
 discard """
 action: "run"
+output: '''Received (name: "Foo", species: "Bar")'''
 """
 
 import strformat
@@ -64,16 +65,22 @@ doAssert fmt"{0.0: g}" == " 0"
 let data1 = [1'i64, 10000'i64, 10000000'i64]
 let data2 = [10000000'i64, 100'i64, 1'i64]
 
-doAssert fmt"data1: {data1:8} ∨" == "data1: [       1,    10000, 10000000] ∨"
-doAssert fmt"data2: {data2:8} ∧" == "data2: [10000000,      100,        1] ∧"
+proc formatValue(result: var string; value: (array|seq|openArray); specifier: string) =
+  result.add "["
+  for i, it in value:
+    if i != 0:
+      result.add ", "
+    result.formatValue(it, specifier)
+  result.add "]"
+
+doAssert fmt"data1: {data1:8} #" == "data1: [       1,    10000, 10000000] #"
+doAssert fmt"data2: {data2:8} =" == "data2: [10000000,      100,        1] ="
 
 # custom format Value
 
 type
   Vec2[T] = object
     x,y: T
-  Vec2f = Vec2[float32]
-  Vec2i = Vec2[int32]
 
 proc formatValue[T](result: var string; value: Vec2[T]; specifier: string) =
   result.add '['
@@ -82,8 +89,8 @@ proc formatValue[T](result: var string; value: Vec2[T]; specifier: string) =
   result.formatValue value.y, specifier
   result.add "]"
 
-let v1 = Vec2f(x:1.0, y: 2.0)
-let v2 = Vec2i(x:1, y: 1337)
+let v1 = Vec2[float32](x:1.0, y: 2.0)
+let v2 = Vec2[int32](x:1, y: 1337)
 doAssert fmt"v1: {v1:+08}  v2: {v2:>4}" == "v1: [+0000001, +0000002]  v2: [   1, 1337]"
 
 # issue #7632
@@ -94,3 +101,16 @@ doAssert works(5) == "formatted  5"
 doAssert fails0(6) == "formatted  6"
 doAssert fails(7) == "formatted  7"
 doAssert fails2[0](8) == "formatted  8"
+
+
+# bug #11012
+
+type
+  Animal = object
+    name, species: string
+  AnimalRef = ref Animal
+
+proc print_object(animalAddr: AnimalRef) =
+  echo fmt"Received {animalAddr[]}"
+
+print_object(AnimalRef(name: "Foo", species: "Bar"))

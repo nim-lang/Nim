@@ -11,9 +11,7 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos, pathutils
-
-from modulegraphs import ModuleGraph, PPassContext
+  tables, ndi, lineinfos, pathutils, modulegraphs
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope

@@ -350,15 +350,13 @@ Define                   Effect
                          More aggressive optimizations are possible, eg:
                          ``--passC:-ffast-math`` (but see issue #10305)
                          ``--stacktrace:off``
-``useWinAnsi``           Modules like ``os`` and ``osproc`` use the Ansi versions
-                         of the Windows API. The default build uses the Unicode
-                         version.
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
                          own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with ``gc:none``.
+                         This only works with ``gc:none`` and
+                         with ``--newruntime``.
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
                          systems. See the documentation of the `gc <gc.html>`_
                          for further information.
