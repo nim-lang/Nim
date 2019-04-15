@@ -393,7 +393,9 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
 proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
   result = newJObject()
-  for k, v in o.fieldPairs: result[k] = %v
+  for k, v in o.fieldPairs:
+    when compiles(v):
+      result[k] = %v
 
 proc `%`*(o: ref object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
