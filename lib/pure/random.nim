@@ -129,7 +129,7 @@ proc next*(r: var Rand): uint64 =
   ##   a given upper bound
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
     var r = initRand(2019)
@@ -242,7 +242,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ##   random number generator
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(123)
     doAssert r.rand(100) == 0
@@ -268,7 +268,7 @@ proc rand*(max: int): int {.benign.} =
   ##   provided state
   ## * `rand proc<#rand,float>`_ that returns a float
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(123)
     doAssert rand(100) == 0
@@ -285,7 +285,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ##   random number generator
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(234)
     let f = r.rand(1.0)
@@ -311,7 +311,7 @@ proc rand*(max: float): float {.benign.} =
   ##   provided state
   ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(234)
     let f = rand(1.0)
@@ -327,7 +327,7 @@ proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
   ##   default random number generator
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(345)
     doAssert r.rand(1..6) == 4
@@ -349,7 +349,7 @@ proc rand*[T: Ordinal](x: HSlice[T, T]): T =
   ##   a provided state
   ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,float>`_ that returns a floating point number
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
     doAssert rand(1..6) == 4
@@ -362,7 +362,7 @@ proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## Use `sample[T](Rand, openArray[T])<#sample,Rand,openArray[T]>`_ instead.
   result = a[rand(r, a.low..a.high)]
 
-proc rand*[T: SomeInteger](t: typedesc[T]): T =
+proc rand*[T: SomeInteger|range](t: typedesc[T]): T =
   ## Returns a random integer in the range `low(T)..high(T)`.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
@@ -383,7 +383,13 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
     doAssert rand(uint32) == 578980729'u32
     doAssert rand(uint32) == 4052940463'u32
     doAssert rand(uint32) == 2163872389'u32
-  result = cast[T](state.next)
+    doAssert rand(range[1..16]) == 11
+    doAssert rand(range[1..16]) == 4
+    doAssert rand(range[1..16]) == 16
+  when T is range:
+    result = rand(state, low(T)..high(T))
+  else:
+    result = cast[T](state.next)
 
 proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## **Deprecated since version 0.20.0:**
