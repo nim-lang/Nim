@@ -55,7 +55,7 @@ const
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wGcSafe, wCodegenDecl}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl,
-    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wExtern, wShallow,
+    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wAlign, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain, wPackage}

@@ -2993,7 +2993,7 @@ when not defined(js):
       DestructorProc = proc (p: pointer) {.nimcall, benign.}
       TNimType {.compilerProc.} = object
         destructor: pointer
-        size: int
+        size, align: int
         name: cstring
       PNimType = ptr TNimType
 
@@ -3472,7 +3472,8 @@ when not defined(JS): #and not defined(nimscript):
     when not defined(gcDestructors):
       {.push profiler: off.}
       var
-        strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
+        strDesc = TNimType(size: sizeof(string), align: alignof(string), 
+                           kind: tyString, flags: {ntfAcyclic})
       {.pop.}
 
   when not defined(nimscript):

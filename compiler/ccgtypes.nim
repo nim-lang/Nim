@@ -337,9 +337,16 @@ proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
     result = getSimpleTypeDesc(m, typ)
     if result == nil: result = cacheGetType(m.typeCache, sig)
 
-proc structOrUnion(t: PType): Rope =
+proc structOrUnion(m: BModule, t: PType): Rope =
   let t = t.skipTypes({tyAlias, tySink})
-  (if tfUnion in t.flags: rope("union") else: rope("struct"))
+  result = (if tfUnion in t.flags: rope("union") else: rope("struct"))
+  if getAlign(m.config, t) > getSize(m.config, t):
+    if hasDeclspec in extccomp.CC[m.config.cCompiler].props:
+      result = "__declspec(align(" & $getAlign(m.config, t) & ")) " & result
+    elif hasAttribute in extccomp.CC[m.config.cCompiler].props:
+      result = " __attribute__ ((aligned(" & $getAlign(m.config, t) & "))) " & result 
+    else:
+      localError(m.config, m.module.info, "backend compiler doesn't support custom alignment required for type: " & typeToString(t))
 
 proc getForwardStructFormat(m: BModule): string =
   if m.compileToCpp: result = "$1 $2;$n"
@@ -361,7 +368,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-          [structOrUnion(typ), result])
+          [structOrUnion(m, typ), result])
     else:
       pushType(m, concrete)
     doAssert m.forwTypeCache[sig] == result
@@ -538,11 +545,11 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
 
   if tfPacked in typ.flags:
     if hasAttribute in CC[m.config.cCompiler].props:
-      result = structOrUnion(typ) & " __attribute__((__packed__))"
+      result = structOrUnion(m, typ) & " __attribute__((__packed__))"
     else:
-      result = "#pragma pack(push, 1)\L" & structOrUnion(typ)
+      result = "#pragma pack(push, 1)\L" & structOrUnion(m, typ)
   else:
-    result = structOrUnion(typ)
+    result = structOrUnion(m, typ)
 
   result.add " "
   result.add name
@@ -585,7 +592,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
 
 proc getTupleDesc(m: BModule, typ: PType, name: Rope,
                   check: var IntSet): Rope =
-  result = "$1 $2 {$n" % [structOrUnion(typ), name]
+  result = "$1 $2 {$n" % [structOrUnion(m, typ), name]
   var desc: Rope = nil
   for i in countup(0, sonsLen(typ) - 1):
     addf(desc, "$1 Field$2;$n",
@@ -734,7 +741,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       result = getTypeName(m, origTyp, sig)
       if not isImportedType(t):
         addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-            [structOrUnion(t), result])
+            [structOrUnion(m, t), result])
       m.forwTypeCache[sig] = result
     assert(cacheGetType(m.typeCache, sig) == nil)
     m.typeCache[sig] = result & seqStar(m)
@@ -846,7 +853,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
           addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-             [structOrUnion(t), result])
+             [structOrUnion(m, t), result])
         assert m.forwTypeCache[sig] == result
       m.typeCache[sig] = result # always call for sideeffects:
       if not incompleteType(t):
@@ -969,8 +976,11 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   var size: Rope
   if tfIncompleteStruct in typ.flags: size = rope"void*"
   else: size = getTypeDesc(m, origType)
+  if not m.compileToCpp:
+    m.includeHeader("<stdalign.h>")
   addf(m.s[cfsTypeInit3],
-       "$1.size = sizeof($2);$n" & "$1.kind = $3;$n" & "$1.base = $4;$n",
+       "$1.size = sizeof($2);$n" & "$1.align = alignof($2);$n" & 
+       "$1.kind = $3;$n" & "$1.base = $4;$n",
        [nameHcr, size, rope(nimtypeKind), base])
   # compute type flags for GC optimization
   var flags = 0
@@ -1264,8 +1274,11 @@ proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo
     d = t.destructor.loc.r
   else:
     d = rope("NIM_NIL")
+  if not m.compileToCpp:
+    m.includeHeader("<stdalign.h>")
   addf(m.s[cfsVars], "TNimType $1;$n", [name])
-  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.name = $4;$n", [
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2;$n $1.size = sizeof($3);$n" &
+    "$1.align = alignof($3);$n $1.name = $4;$n", [
     name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
 
 proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
