@@ -8,6 +8,11 @@ import strutils, os
 import core / allocators
 import system / ansi_c
 
+# bug #11004
+proc retTuple(): (seq[int], int) =
+  # XXX this doesn't allocate yet but probably it should
+  return (@[1], 1)
+
 proc nonStaticTests =
   doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
   when not defined(js):
@@ -176,6 +181,8 @@ proc staticTests =
   doAssert s.splitWhitespace(maxsplit=2) == @["this", "is", "an example  "]
   doAssert s.splitWhitespace(maxsplit=3) == @["this", "is", "an", "example  "]
   doAssert s.splitWhitespace(maxsplit=4) == @["this", "is", "an", "example"]
+
+  discard retTuple()
 
 nonStaticTests()
 staticTests()

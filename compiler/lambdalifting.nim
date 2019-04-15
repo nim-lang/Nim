@@ -291,7 +291,7 @@ type
   DetectionPass = object
     processed, capturedVars: IntSet
     ownerToType: Table[int, PType]
-    somethingToDo: bool
+    somethingToDo, noDestructors: bool
     graph: ModuleGraph
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym): DetectionPass =
@@ -404,7 +404,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        let body = transformBody(c.graph, s)
+        let body = transformBody(c.graph, s, cache = true,
+                                 noDestructors = c.noDestructors)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
@@ -777,7 +778,8 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.kind = oldKind
   fn.typ.callConv = oldCC
 
-proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
+proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
+                  noDestructors: bool): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -793,6 +795,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
     tooEarly = true
   else:
     var d = initDetectionPass(g, fn)
+    d.noDestructors = noDestructors
     detectCapturedVars(body, fn, d)
     if not d.somethingToDo and fn.isIterator:
       addClosureParam(d, fn, body.info)

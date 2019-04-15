@@ -14,6 +14,8 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   floor, ceil, `mod`
 
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
+from md5 import getMD5
+from sighashes import symBodyDigest
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -24,8 +26,14 @@ template osop(op) {.dirty.} =
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
+template ioop(op) {.dirty.} =
+  registerCallback(c, "stdlib.io." & astToStr(op), `op Wrapper`)
+
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
+
+template md5op(op) {.dirty.} =
+  registerCallback(c, "stdlib.md5." & astToStr(op), `op Wrapper`)
 
 template wrap1f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
@@ -52,6 +60,11 @@ template wrap2s(op, modop) {.dirty.} =
     setResult(a, op(getString(a, 0), getString(a, 1)))
   modop op
 
+template wrap2si(op, modop) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, op(getString(a, 0), getInt(a, 1)))
+  modop op
+
 template wrap1svoid(op, modop) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     op(getString(a, 0))
@@ -61,9 +74,6 @@ template wrap2svoid(op, modop) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     op(getString(a, 0), getString(a, 1))
   modop op
-
-template ioop(op) {.dirty.} =
-  registerCallback(c, "stdlib.io." & astToStr(op), `op Wrapper`)
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
@@ -106,6 +116,8 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(floor)
   wrap1f_math(ceil)
 
+  wrap1s(getMD5, md5op)
+
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
   registerCallback(c, "stdlib.math.mod", `mod Wrapper`)
@@ -118,6 +130,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1s(fileExists, osop)
     wrap2svoid(writeFile, ioop)
     wrap1s(readFile, ioop)
+    wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
@@ -126,3 +139,8 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
+
+  registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) {.nimcall.} =
+    let n = getNode(a, 0)
+    if n.kind != nkSym: raise newException(ValueError, "node is not a symbol")
+    setResult(a, $symBodyDigest(c.graph, n.sym))

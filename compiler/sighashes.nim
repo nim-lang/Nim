@@ -9,81 +9,26 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, md5, tables, ropes
+import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
 from astalgo import debug
 import types
 from strutils import startsWith, contains
 
-when false:
-  type
-    SigHash* = uint32  ## a hash good enough for a filename or a proc signature
+proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
+proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+proc `&=`(c: var MD5Context, r: Rope) =
+  for l in leaves(r): md5Update(c, l, l.len)
+proc `&=`(c: var MD5Context, i: BiggestInt) =
+  md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
+proc `&=`(c: var MD5Context, f: BiggestFloat) =
+  md5Update(c, cast[cstring](unsafeAddr f), sizeof(f))
+proc `&=`(c: var MD5Context, s: SigHash) =
+  md5Update(c, cast[cstring](unsafeAddr s), sizeof(s))
+template lowlevel(v) =
+  md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
 
-  proc sdbmHash(hash: SigHash, c: char): SigHash {.inline.} =
-    return SigHash(c) + (hash shl 6) + (hash shl 16) - hash
 
-  template `&=`*(x: var SigHash, c: char) = x = sdbmHash(x, c)
-  template `&=`*(x: var SigHash, s: string) =
-    for c in s: x = sdbmHash(x, c)
-
-else:
-  type
-    SigHash* = distinct Md5Digest
-
-  const
-    cb64 = [
-      "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
-      "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-      "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
-      "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-      "0", "1", "2", "3", "4", "5", "6", "7", "8", "9a",
-      "9b", "9c"]
-
-  proc toBase64a(s: cstring, len: int): string =
-    ## encodes `s` into base64 representation.
-    result = newStringOfCap(((len + 2) div 3) * 4)
-    result.add '_'
-    var i = 0
-    while i < len - 2:
-      let a = ord(s[i])
-      let b = ord(s[i+1])
-      let c = ord(s[i+2])
-      result.add cb64[a shr 2]
-      result.add cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
-      result.add cb64[((b and 0x0F) shl 2) or ((c and 0xC0) shr 6)]
-      result.add cb64[c and 0x3F]
-      inc(i, 3)
-    if i < len-1:
-      let a = ord(s[i])
-      let b = ord(s[i+1])
-      result.add cb64[a shr 2]
-      result.add cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
-      result.add cb64[((b and 0x0F) shl 2)]
-    elif i < len:
-      let a = ord(s[i])
-      result.add cb64[a shr 2]
-      result.add cb64[(a and 3) shl 4]
-
-  proc `$`*(u: SigHash): string =
-    toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
-  proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
-  proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
-  proc `&=`(c: var MD5Context, r: Rope) =
-    for l in leaves(r): md5Update(c, l, l.len)
-  proc `&=`(c: var MD5Context, i: BiggestInt) =
-    md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
-
-  template lowlevel(v) =
-    md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
-
-  proc `==`*(a, b: SigHash): bool =
-    # {.borrow.}
-    result = equalMem(unsafeAddr a, unsafeAddr b, sizeof(a))
-
-  proc hash*(u: SigHash): Hash =
-    result = 0
-    for x in 0..3:
-      result = (result shl 8) or u.MD5Digest[x].int
 type
   ConsiderFlag* = enum
     CoProc
@@ -358,6 +303,75 @@ proc sigHash*(s: PSym): SigHash =
     result = hashProc(s)
   else:
     result = hashNonProc(s)
+
+proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash
+
+proc hashBodyTree(graph: ModuleGraph, c: var MD5Context, n: PNode)
+
+proc hashVarSymBody(graph: ModuleGraph, c: var MD5Context, s: PSym) =
+  assert: s.kind in {skParam, skResult, skVar, skLet, skConst, skForVar}
+  if sfGlobal notin s.flags:
+    c &= char(s.kind)
+    c &= s.name.s
+  else:
+    c &= hashNonProc(s)
+    # this one works for let and const but not for var. True variables can change value
+    # later on. it is user resposibility to hash his global state if required
+    if s.ast != nil and s.ast.kind == nkIdentDefs:
+      hashBodyTree(graph, c, s.ast[^1])
+    else:
+      hashBodyTree(graph, c, s.ast)
+
+proc hashBodyTree(graph: ModuleGraph, c: var MD5Context, n: PNode) =
+  # hash Nim tree recursing into simply
+  if n == nil:
+    c &= "nil"
+    return
+  c &= char(n.kind)
+  case n.kind
+  of nkEmpty, nkNilLit, nkType: discard
+  of nkIdent:
+    c &= n.ident.s
+  of nkSym:
+    if n.sym.kind in skProcKinds:
+      c &= symBodyDigest(graph, n.sym)
+    elif n.sym.kind in {skParam, skResult, skVar, skLet, skConst, skForVar}:
+      hashVarSymBody(graph, c, n.sym)
+    else:
+      c &= hashNonProc(n.sym)
+  of nkProcDef, nkFuncDef, nkTemplateDef, nkMacroDef:
+    discard # we track usage of proc symbols not their definition
+  of nkCharLit..nkUInt64Lit:
+    c &= n.intVal
+  of nkFloatLit..nkFloat64Lit:
+    c &= n.floatVal
+  of nkStrLit..nkTripleStrLit:
+    c &= n.strVal
+  else:
+    for i in 0..<n.len:
+      hashTree(c, n.sons[i])
+
+proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
+  ## compute unique digest of the proc/func/method symbols
+  ## recursing into invoked symbols as well
+  assert(sym.kind in skProcKinds, $sym.kind)
+
+  graph.symBodyHashes.withValue(sym.id, value):
+    return value[]
+
+  var c: MD5Context
+  md5Init(c)
+  c.hashType(sym.typ, {CoProc})
+  c &= char(sym.kind)
+  c.md5Final(result.Md5Digest)
+  graph.symBodyHashes[sym.id] = result # protect from recursion in the body
+
+  if sym.ast != nil:
+    md5Init(c)
+    c.md5Update(cast[cstring](result.addr), sizeof(result))
+    c.hashTree(sym.ast[bodyPos])
+    c.md5Final(result.Md5Digest)
+    graph.symBodyHashes[sym.id] = result
 
 proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]): Rope =

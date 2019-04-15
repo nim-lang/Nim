@@ -2516,7 +2516,7 @@ the variable has been initialized and does not rely on syntactic properties:
     # use x
 
 
-let statement
+Let statement
 -------------
 
 A ``let`` statement declares new local and global `single assignment`:idx:

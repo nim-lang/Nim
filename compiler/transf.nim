@@ -1115,7 +1115,7 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "")
     c.noDestructors = noDestructors
-    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly)
+    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly, noDestructors)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)

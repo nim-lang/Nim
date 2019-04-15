@@ -1657,6 +1657,13 @@ else:
     new(r)
     return r
 
+template disarm*(x: typed) =
+  ## Useful for ``disarming`` dangling pointers explicitly for the
+  ## --newruntime. Regardless of whether --newruntime is used or not
+  ## this sets the pointer or callback ``x`` to ``nil``. This is an
+  ## experimental API!
+  x = nil
+
 proc `of`*[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
