@@ -362,7 +362,7 @@ proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## Use `sample[T](Rand, openArray[T])<#sample,Rand,openArray[T]>`_ instead.
   result = a[rand(r, a.low..a.high)]
 
-proc rand*[T: SomeInteger|range](t: typedesc[T]): T =
+proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## Returns a random integer in the range `low(T)..high(T)`.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
