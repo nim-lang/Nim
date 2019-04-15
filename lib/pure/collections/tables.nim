@@ -87,7 +87,7 @@
 ##   for pairs in zip(years, names):
 ##     let (birthYear, name) = pairs
 ##     if not beatlesByYear.hasKey(birthYear):
-##       # if a key doesn't exists, we create one with an empty sequence
+##       # if a key doesn't exist, we create one with an empty sequence
 ##       # before we can add elements to it
 ##       beatlesByYear[birthYear] = @[]
 ##     beatlesByYear[birthYear].add(name)
@@ -977,6 +977,8 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
+  ## **If duplicate keys were added, this may need to be called multiple times.**
+  ##
   ## See also:
   ## * `take proc<#take,TableRef[A,B],A,B>`_
   ## * `clear proc<#clear,TableRef[A,B]>`_ to empty the whole table
@@ -993,6 +995,8 @@ proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
   ## unchanged.
+  ##
+  ## **If duplicate keys were added, this may need to be called multiple times.**
   ##
   ## See also:
   ## * `del proc<#del,TableRef[A,B],A>`_
