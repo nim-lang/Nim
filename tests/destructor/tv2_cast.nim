@@ -12,8 +12,8 @@ discard cast[seq[uint8]]("test")
 echo cast[seq[uint8]](@[1])
 echo cast[seq[uint8]]("test")
 
-discard cast[seq[string]](@[116'u8, 101, 115, 116])
-echo cast[seq[string]](@[116'u8, 101, 115, 116])
+discard cast[string](@[116'u8, 101, 115, 116])
+echo cast[string](@[116'u8, 101, 115, 116])
 var a = cast[seq[uint32]]("test1234")
 a.setLen(2)
 echo a
