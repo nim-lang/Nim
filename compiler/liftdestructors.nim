@@ -612,6 +612,16 @@ template inst(field, t) =
 
 proc isTrival(s: PSym): bool {.inline.} = s == nil or s.ast[bodyPos].len == 0
 
+proc recCanon(c: PContext; orig: PType): PType =
+  for son in orig.sons:
+    if son != nil:
+      var sonCanon = recCanon(c, son)
+  let h = sighashes.hashType(orig, {CoType, CoConsiderOwned})
+  result = c.graph.canonTypes.getOrDefault(h)
+  if result == nil:
+    c.graph.canonTypes[h] = orig
+    result = orig
+
 proc createTypeBoundOps(c: PContext; orig: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
@@ -619,14 +629,7 @@ proc createTypeBoundOps(c: PContext; orig: PType; info: TLineInfo) =
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.skipTypes({tyAlias}).flags != {}: return
   incl orig.flags, tfCheckedForDestructor
 
-  let h = sighashes.hashType(orig, {CoType, CoConsiderOwned})
-  var canon = c.graph.canonTypes.getOrDefault(h)
-  var overwrite = false
-  if canon == nil:
-    c.graph.canonTypes[h] = orig
-    canon = orig
-  elif canon != orig:
-    overwrite = true
+  var canon = recCanon(c, orig)
 
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
@@ -649,10 +652,9 @@ proc createTypeBoundOps(c: PContext; orig: PType; info: TLineInfo) =
   else:
     inst(typ.sink, typ)
 
-  if overwrite:
-    orig.destructor = canon.destructor
-    orig.assignment = canon.assignment
-    orig.sink = canon.sink
+  orig.destructor = canon.destructor
+  orig.assignment = canon.assignment
+  orig.sink = canon.sink
 
   if not isTrival(orig.destructor):
     #or not isTrival(orig.assignment) or
