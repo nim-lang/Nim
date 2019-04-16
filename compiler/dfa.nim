@@ -32,7 +32,6 @@
 import ast, astalgo, types, intsets, tables, msgs, options, lineinfos, renderer
 
 from patterns import sameTrees
-from aliases import isPartOf, TAnalysisResult
 
 type
   InstrKind* = enum
@@ -570,7 +569,8 @@ const
   InterestingSyms = {skVar, skResult, skLet, skParam, skForVar, skTemp}
   PathKinds* = {nkDotExpr, nkCheckedFieldExpr,
                 nkBracketExpr, nkDerefExpr, nkHiddenDeref,
-                nkAddr, nkHiddenAddr}
+                nkAddr, nkHiddenAddr,
+                nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}
 
 proc genUse(c: var Con; orig: PNode) =
   var n = orig
@@ -580,6 +580,27 @@ proc genUse(c: var Con; orig: PNode) =
     inc iters
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use, sym: if iters > 0: nil else: n.sym)
+
+proc aliases(obj, field: PNode): bool =
+  var n = field
+  var obj = obj
+  while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:
+    obj = obj[0]
+  while true:
+    if sameTrees(obj, n): return true
+    case n.kind
+    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
+       nkObjDownConv, nkObjUpConv, nkHiddenDeref:
+      n = n[0]
+    of nkBracketExpr:
+      let x = n[0]
+      if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:
+        n = x
+      else:
+        break
+    else:
+      break
+  return false
 
 proc instrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind in {def, use}
@@ -593,14 +614,16 @@ proc instrTargets*(ins: Instr; loc: PNode): bool =
     # def x; question: does it affect the 'x.f'? Yes.
     # use x.f;  question: does it affect the full 'x'? No.
     # use x; question does it affect 'x.f'? Yes.
-    result = isPartOf(ins.n, loc) == arYes
+    result = aliases(ins.n, loc) or aliases(loc, ins.n)
 
 proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
   var n = n
   while true:
-    if n.kind in {nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:
+    case n.kind
+    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
+       nkObjDownConv, nkObjUpConv, nkHiddenDeref:
       n = n[0]
-    elif n.kind == nkBracketExpr:
+    of nkBracketExpr:
       let x = n[0]
       if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:
         n = x
@@ -710,10 +733,9 @@ proc gen(c: var Con; n: PNode) =
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
   of nkDiscardStmt: gen(c, n.sons[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkExprColonExpr, nkExprEqExpr,
-     nkCast:
+  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast:
     gen(c, n.sons[1])
-  of nkObjDownConv, nkStringToCString, nkCStringToString: gen(c, n.sons[0])
+  of nkStringToCString, nkCStringToString: gen(c, n.sons[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)
   of nkDefer:
     doAssert false, "dfa construction pass requires the elimination of 'defer'"
