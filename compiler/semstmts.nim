@@ -524,10 +524,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             shadowed.flags.incl(sfShadowed)
             if shadowed.kind == skResult and sfGenSym notin v.flags:
               message(c.config, a.info, warnResultShadowed)
-            # a shadowed variable is an error unless it appears on the right
-            # side of the '=':
-            if warnShadowIdent in c.config.notes and not identWithin(def, v.name):
-              message(c.config, a.info, warnShadowIdent, v.name.s)
       if a.kind != nkVarTuple:
         if def.kind != nkEmpty:
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
@@ -651,14 +647,6 @@ proc semConst(c: PContext, n: PNode): PNode =
 
 include semfields
 
-proc addForVarDecl(c: PContext, v: PSym) =
-  if warnShadowIdent in c.config.notes:
-    let shadowed = findShadowedVar(c, v)
-    if shadowed != nil:
-      # XXX should we do this here?
-      #shadowed.flags.incl(sfShadowed)
-      message(c.config, v.info, warnShadowIdent, v.name.s)
-  addDecl(c, v)
 
 proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
@@ -693,7 +681,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else:
             v.typ = iter.sons[i]
           n.sons[0][i] = newSymNode(v)
-          if sfGenSym notin v.flags: addForVarDecl(c, v)
+          if sfGenSym notin v.flags: addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
       else:
         var v = symForVar(c, n.sons[0])
@@ -703,7 +691,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # for an example:
         v.typ = iterBase
         n.sons[0] = newSymNode(v)
-        if sfGenSym notin v.flags: addForVarDecl(c, v)
+        if sfGenSym notin v.flags: addDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)
@@ -727,7 +715,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else:
             v.typ = iter[i][j]
           n.sons[i][j] = newSymNode(v)
-          if not isDiscardUnderscore(v): addForVarDecl(c, v)
+          if not isDiscardUnderscore(v): addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
       else:
         var v = symForVar(c, n.sons[i])
@@ -735,7 +723,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         v.typ = iter.sons[i]
         n.sons[i] = newSymNode(v)
         if sfGenSym notin v.flags:
-          if not isDiscardUnderscore(v): addForVarDecl(c, v)
+          if not isDiscardUnderscore(v): addDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
   inc(c.p.nestedLoopCounter)
   openScope(c)
