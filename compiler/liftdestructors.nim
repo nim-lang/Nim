@@ -650,9 +650,9 @@ proc createTypeBoundOps(c: PContext; orig: PType; info: TLineInfo) =
     inst(typ.sink, typ)
 
   if overwrite:
-    orig.destructor = canon.destructor
-    orig.assignment = canon.assignment
-    orig.sink = canon.sink
+    orig.destructor = typ.destructor
+    orig.assignment = typ.assignment
+    orig.sink = typ.sink
 
   if not isTrival(orig.destructor):
     #or not isTrival(orig.assignment) or
