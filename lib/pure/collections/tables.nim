@@ -232,6 +232,7 @@ type
     ## For creating an empty Table, use `initTable proc<#initTable,int>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
+    initialized: bool
   TableRef*[A,B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
     ## For creating a new empty TableRef, use `newTable proc
@@ -242,6 +243,12 @@ type
 
 template maxHash(t): untyped = high(t.data)
 template dataLen(t): untyped = len(t.data)
+
+template checkInitialization(tbl) =
+  when compileOption("boundChecks"):
+    if unlikely(not tbl.initialized):
+      raise newException(AccessViolationError,
+                         "The table was not initialized before the usage.")
 
 include tableimpl
 
@@ -328,6 +335,7 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
       a = initTable[int, string]()
       b = initTable[char, seq[int]]()
   assert isPowerOfTwo(initialSize)
+  result.initialized = true
   result.counter = 0
   newSeq(result.data, initialSize)
 
@@ -367,6 +375,7 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
+  checkInitialization(t)
   get(t, key)
 
 proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
@@ -383,6 +392,7 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
+  checkInitialization(t)
   get(t, key)
 
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
@@ -398,6 +408,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
     a['x'] = 7
     a['y'] = 33
     doAssert a == {'x': 7, 'y': 33}.toTable
+  checkInitialization(t)
   putImpl(enlarge)
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
@@ -414,6 +425,7 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
+  checkInitialization(t)
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
@@ -443,6 +455,8 @@ proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
     doAssert a == {'a': 99, 'b': 9, 'z': 50}.toTable
+
+  checkInitialization(t)
   hasKeyOrPutImpl(enlarge)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
@@ -461,6 +475,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
+  checkInitialization(t)
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
@@ -478,6 +493,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
+  checkInitialization(t)
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
@@ -497,6 +513,8 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toTable
+
+  checkInitialization(t)
   mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: Table[A, B]): int =
@@ -513,6 +531,7 @@ proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ##
   ## Use `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
+  checkInitialization(t)
   addImpl(enlarge)
 
 proc del*[A, B](t: var Table[A, B], key: A) =
@@ -527,6 +546,8 @@ proc del*[A, B](t: var Table[A, B], key: A) =
     doAssert a == {'b': 9, 'c': 13}.toTable
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toTable
+
+  checkInitialization(t)
   delImpl()
 
 proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
@@ -550,6 +571,7 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
     doAssert a == {'a': 5, 'c': 13}.toTable
     doAssert i == 0
 
+  checkInitialization(t)
   var hc: Hash
   var index = rawGet(t, key, hc)
   result = index >= 0
@@ -1161,6 +1183,7 @@ type
     ## <#initOrderedTable,int>`_.
     data: OrderedKeyValuePairSeq[A, B]
     counter, first, last: int
+    initialized: bool
   OrderedTableRef*[A, B] = ref OrderedTable[A, B] ## Ref version of
     ## `OrderedTable<#OrderedTable>`_.
     ##
@@ -1232,6 +1255,7 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
   assert isPowerOfTwo(initialSize)
+  result.initialized = true
   result.counter = 0
   result.first = -1
   result.last = -1
@@ -1274,6 +1298,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
+  checkInitialization(t)
   get(t, key)
 
 proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B=
@@ -1290,6 +1315,7 @@ proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B=
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
+  checkInitialization(t)
   get(t, key)
 
 proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
@@ -1305,6 +1331,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
     a['x'] = 7
     a['y'] = 33
     doAssert a == {'x': 7, 'y': 33}.toOrderedTable
+  checkInitialization(t)
   putImpl(enlarge)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
@@ -1322,6 +1349,7 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
+  checkInitialization(t)
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
@@ -1351,6 +1379,8 @@ proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
     doAssert a == {'a': 99, 'b': 9, 'z': 50}.toOrderedTable
+
+  checkInitialization(t)
   hasKeyOrPutImpl(enlarge)
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
@@ -1369,6 +1399,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
+  checkInitialization(t)
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
@@ -1386,6 +1417,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
+  checkInitialization(t)
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
@@ -1405,6 +1437,8 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toOrderedTable
+
+  checkInitialization(t)
   mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
@@ -1421,6 +1455,7 @@ proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ##
   ## Use `[]= proc<#[]=,OrderedTable[A,B],A,B>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
+  checkInitialization(t)
   addImpl(enlarge)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
@@ -1436,6 +1471,8 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
+
+  checkInitialization(t)
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -2033,6 +2070,7 @@ type
     ## <#initCountTable,int>`_.
     data: seq[tuple[key: A, val: int]]
     counter: int
+    initialized: bool
   CountTableRef*[A] = ref CountTable[A] ## Ref version of
     ## `CountTable<#CountTable>`_.
     ##
@@ -2085,6 +2123,7 @@ proc initCountTable*[A](initialSize=64): CountTable[A] =
   ## * `newCountTable proc<#newCountTable,int>`_ for creating a
   ##   `CountTableRef`
   assert isPowerOfTwo(initialSize)
+  result.initialized = true
   result.counter = 0
   newSeq(result.data, initialSize)
 
@@ -2106,12 +2145,14 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key
   ##   is in the table
+  checkInitialization(t)
   ctget(t, key, 0)
 
 proc mget*[A](t: var CountTable[A], key: A): var int =
   ## Retrieves the value at ``t[key]``. The value can be modified.
   ##
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
+  checkInitialization(t)
   get(t, key)
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
@@ -2121,6 +2162,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
   ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
   ##   value of a key
+  checkInitialization(t)
   assert val >= 0
   let h = rawGet(t, key)
   if h >= 0:
@@ -2137,6 +2179,8 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     a.inc('a')
     a.inc('b', 10)
     doAssert a == toCountTable("aaabbbbbbbbbbb")
+
+  checkInitialization(t)
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
@@ -2151,6 +2195,7 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ##
   ## See also:
   ## * `largest proc<#largest,CountTable[A]>`_
+  checkInitialization(t)
   assert t.len > 0
   var minIdx = -1
   for h in 0..high(t.data):
@@ -2164,6 +2209,7 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ##
   ## See also:
   ## * `smallest proc<#smallest,CountTable[A]>`_
+  checkInitialization(t)
   assert t.len > 0
   var maxIdx = 0
   for h in 1..high(t.data):
@@ -2180,6 +2226,7 @@ proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
   ## * `getOrDefault proc<#getOrDefault,CountTable[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
+  checkInitialization(t)
   result = rawGet(t, key) >= 0
 
 proc contains*[A](t: CountTable[A], key: A): bool =
@@ -2195,6 +2242,7 @@ proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key
   ##   is in the table
+  checkInitialization(t)
   ctget(t, key, default)
 
 proc len*[A](t: CountTable[A]): int =
