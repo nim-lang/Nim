@@ -7,7 +7,8 @@ type
 
   MessageParsingError* = object of Exception
 
-proc parseMessage*(data: string): Message {.raises: [MessageParsingError, KeyError].} =
+proc parseMessage*(data: string): Message {.raises: [MessageParsingError,
+                                           KeyError, AccessViolationError].} =
   var dataJson: JsonNode
   try:
     dataJson = parseJson(data)
