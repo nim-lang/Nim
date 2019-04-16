@@ -202,16 +202,19 @@ proc isLastRead(n: PNode; c: var Con): bool =
         instr = i
         break
 
+  dbg:
+    echo "starting point for ", n, " is ", instr
+
   if instr < 0: return false
   # we go through all paths beginning from 'instr+1' and need to
   # ensure that we don't find another 'use X' instruction.
   if instr+1 >= c.g.len: return true
-  dbg:
-    echo "beginning here ", instr
 
-  when true:
-    result = isLastRead(n, c, instr+1, -1) >= 0
-  else:
+  result = isLastRead(n, c, instr+1, -1) >= 0
+  dbg:
+    echo "ugh ", c.otherRead.isNil, " ", result
+
+  when false:
     let s = n.sym
     var pcs: seq[int] = @[instr+1]
     var takenGotos: IntSet
@@ -292,30 +295,6 @@ template isUnpackedTuple(s: PSym): bool =
   ## hence unpacked tuples themselves don't need to be destroyed
   s.kind == skTemp and s.typ.kind == tyTuple
 
-proc patchHead(n: PNode) =
-  if n.kind in nkCallKinds and n[0].kind == nkSym and n.len > 1:
-    let s = n[0].sym
-    if s.name.s[0] == '=' and s.name.s in ["=sink", "=", "=destroy"]:
-      if sfFromGeneric in s.flags:
-        excl(s.flags, sfFromGeneric)
-        patchHead(s.getBody)
-      let t = n[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
-      template patch(op, field) =
-        if s.name.s == op and field != nil and field != s:
-          n.sons[0].sym = field
-      patch "=sink", t.sink
-      patch "=", t.assignment
-      patch "=destroy", t.destructor
-  for x in n:
-    patchHead(x)
-
-proc patchHead(s: PSym) =
-  if sfFromGeneric in s.flags:
-    # do not patch the builtin type bound operators for seqs:
-    let dest = s.typ.sons[1].skipTypes(abstractVar)
-    if dest.kind != tySequence:
-      patchHead(s.ast[bodyPos])
-
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
   if opname == "=" and ri != nil:
@@ -343,19 +322,12 @@ template genOp(opr, opname, ri) =
   elif op.ast[genericParamsPos].kind != nkEmpty:
     globalError(c.graph.config, dest.info, "internal error: '" & opname &
       "' operator is generic")
-  #patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
-  when false:
-    if t.kind != tyString:
-      echo "this one ", c.graph.config$dest.info, " for ", typeToString(t, preferDesc)
-      debug t.sink.typ.sons[2]
-      echo t.sink.id, " owner ", t.id
-      quit 1
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   let op = if t.sink != nil: t.sink else: t.assignment
   if op != nil:
@@ -786,18 +758,6 @@ proc p(n: PNode; c: var Con): PNode =
     else:
       result = copyNode(n)
       recurse(n, result)
-    when false:
-      if optNimV2 in c.graph.config.globalOptions:
-        # raise e  does consume the 'e':
-        let r = result
-        if isAtom(r[0]):
-          result = newTree(nkStmtList, r, genWasMoved(r[0], c))
-        elif r[0].kind == nkStmtListExpr:
-          # terrible hack ahead...
-          result = newTree(nkStmtList, r, genWasMoved(r[0].lastSon, c))
-        else:
-          let asTmp = evalOnce(c.graph, r[0], c.owner)
-          result = newTree(nkStmtList, newTree(nkRaiseStmt, asTmp), genWasMoved(asTmp.lastSon, c))
   else:
     result = copyNode(n)
     recurse(n, result)
