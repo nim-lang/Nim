@@ -218,10 +218,10 @@ proc getPosition*(s: Stream): int =
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size.
   runnableExamples:
-    var strm = newStringStream("The first line")
-    var buffer: array[16, char]
-    doAssert strm.readData(addr(buffer), 1024) == 14
-    doAssert buffer == ['T', 'h', 'e', ' ', 'f', 'i', 'r', 's', 't', ' ', 'l', 'i', 'n', 'e', '\x00', '\x00']
+    var strm = newStringStream("abcde")
+    var buffer: array[6, char]
+    doAssert strm.readData(addr(buffer), 1024) == 5
+    doAssert buffer == ['a', 'b', 'c', 'd', 'e', '\x00']
     doAssert strm.atEnd() == true
     strm.close()
   result = s.readDataImpl(s, buffer, bufLen)
@@ -229,7 +229,11 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
 proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
   ## Low level proc that reads data into a string ``buffer`` at ``slice``.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("abcde")
+    var buffer = "12345"
+    doAssert strm.readDataStr(buffer, 0..3) == 4
+    doAssert buffer == "abcd5"
+    strm.close()
   if s.readDataStrImpl != nil:
     result = s.readDataStrImpl(s, buffer, slice)
   else:
@@ -263,10 +267,10 @@ proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
   ## without moving stream position
   runnableExamples:
-    var strm = newStringStream("The first line")
-    var buffer: array[16, char]
-    doAssert strm.peekData(addr(buffer), 1024) == 14
-    doAssert buffer == ['T', 'h', 'e', ' ', 'f', 'i', 'r', 's', 't', ' ', 'l', 'i', 'n', 'e', '\x00', '\x00']
+    var strm = newStringStream("abcde")
+    var buffer: array[6, char]
+    doAssert strm.peekData(addr(buffer), 1024) == 5
+    doAssert buffer == ['a', 'b', 'c', 'd', 'e', '\x00']
     doAssert strm.atEnd() == false
     strm.close()
   result = s.peekDataImpl(s, buffer, bufLen)
@@ -277,15 +281,15 @@ proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   runnableExamples:
     ## writeData
     var strm = newStringStream("")
-    var buffer = ['T', 'H', 'E', ' ', 'F', 'I', 'R', 'S', 'T', ' ', 'L', 'I', 'N', 'E']
+    var buffer = ['a', 'b', 'c', 'd', 'e']
     strm.writeData(addr(buffer), len(buffer))
     doAssert strm.atEnd() == true
 
     ## readData
     strm.setPosition(0)
-    var buffer2: array[16, char]
-    doAssert strm.readData(addr(buffer2), 16) == 14
-    doAssert buffer2 == ['T', 'H', 'E', ' ', 'F', 'I', 'R', 'S', 'T', ' ', 'L', 'I', 'N', 'E', '\x00', '\x00']
+    var buffer2: array[6, char]
+    doAssert strm.readData(addr(buffer2), len(buffer2)) == 5
+    doAssert buffer2 == ['a', 'b', 'c', 'd', 'e', '\x00']
     strm.close()
   s.writeDataImpl(s, buffer, bufLen)
 
@@ -296,7 +300,11 @@ proc write*[T](s: Stream, x: T) =
   ##
   ##     s.writeData(s, addr(x), sizeof(x))
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("")
+    strm.write("abcde")
+    strm.setPosition(0)
+    doAssert strm.readAll() == "abcde"
+    strm.close()
   var y: T
   shallowCopy(y, x)
   writeData(s, addr(y), sizeof(y))
@@ -572,32 +580,59 @@ proc peekUint64*(s: Stream): uint64 =
 proc readFloat32*(s: Stream): float32 =
   ## Reads a float32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000010002000")
+    doAssert strm.readFloat32() == 0.00000000064096905560973027604632'f32
+    doAssert strm.readFloat32() == 0.00000000064096911112088150730415'f32
+    doAssert strm.readFloat32() == 0.00000000064096916663203273856197'f32
+    ## strm.readFloat32() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekFloat32*(s: Stream): float32 =
   ## Peeks a float32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000010002000")
+    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
+    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
+    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
+    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
+    strm.close()
   peek(s, result)
 
 proc readFloat64*(s: Stream): float64 =
   ## Reads a float64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    ## TODO
+    var strm = newStringStream("000000001000000020000000")
+    echo strm.readFloat64()
+    echo strm.readFloat64()
+    echo strm.readFloat64()
+    ## strm.readFloat64() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekFloat64*(s: Stream): float64 =
   ## Peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    ## TODO
+    var strm = newStringStream("000000001000000020000000")
+    echo strm.peekFloat64()
+    echo strm.peekFloat64()
+    echo strm.peekFloat64()
+    echo strm.peekFloat64()
+    strm.close()
   peek(s, result)
 
 proc readStr*(s: Stream, length: int): TaintedString =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("abcde")
+    doAssert strm.readStr(2) == "ab"
+    doAssert strm.readStr(2) == "cd"
+    doAssert strm.readStr(2) == "e"
+    doAssert strm.readStr(2) == ""
+    strm.close()
   result = newString(length).TaintedString
   var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
@@ -606,7 +641,12 @@ proc peekStr*(s: Stream, length: int): TaintedString =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("abcde")
+    doAssert strm.peekStr(2) == "ab"
+    doAssert strm.peekStr(2) == "ab"
+    doAssert strm.peekStr(2) == "ab"
+    doAssert strm.peekStr(2) == "ab"
+    strm.close()
   result = newString(length).TaintedString
   var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
@@ -848,7 +888,12 @@ when not defined(js):
     ## **Note:**
     ## * Not available this when backend is js
     runnableExamples:
-      discard ## TODO
+      import streams
+      var strm = newStringStream("The first line\nthe second line\nthe third line")
+      doAssert strm.readLine() == "The first line"
+      doAssert strm.readLine() == "the second line"
+      doAssert strm.readLine() == "the third line"
+      strm.close()
     new(result)
     result.data = s
     result.pos = 0
@@ -904,7 +949,13 @@ when not defined(js):
     ## **Note:**
     ## * Not available this when backend is js
     runnableExamples:
-      discard ## TODO
+      import streams
+      var strm = newFileStream("somefile.txt", fmRead)
+      if not isNil(strm):
+        var line = ""
+        while strm.readLine(line):
+          echo line
+        strm.close()
     new(result)
     result.f = f
     result.closeImpl = fsClose
