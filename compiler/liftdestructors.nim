@@ -197,7 +197,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
         assert t.typeInst != nil
         # patch generic destructor:
         op = c.c.instTypeBoundOp(c.c, op, t.typeInst, c.info, attachedAsgn, 1)
-        t.destructor = op
+        t.attachedOps[attachedDestructor] = op
 
       markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
@@ -207,9 +207,9 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   of attachedAsgn:
     result = considerAsgnOrSink(c, t, body, x, y, t.assignment)
   of attachedSink:
-    result = considerAsgnOrSink(c, t, body, x, y, t.sink)
+    result = considerAsgnOrSink(c, t, body, x, y, t.asink)
   of attachedDeepCopy:
-    let op = t.deepCopy
+    let op = t.attachedOps[attachedDeepCopy]
     if op != nil:
       markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
@@ -323,8 +323,8 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add moveCall
     # alternatively we could do this:
     when false:
-      doAssert t.sink != nil
-      body.add newAsgnCall(c.graph, t.sink, x, y)
+      doAssert t.asink != nil
+      body.add newAsgnCall(c.graph, t.asink, x, y)
   of attachedDestructor:
     doAssert t.destructor != nil
     body.add destructorCall(c.graph, t.destructor, x)
@@ -502,27 +502,10 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc produceSymDistinctType(c: PContext; typ: PType; kind: TTypeAttachedOp; info: TLineInfo): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ[0]
-  case kind
-  of attachedAsgn:
-    if baseType.assignment == nil:
-      discard produceSym(c, baseType, kind, info)
-    typ.assignment = baseType.assignment
-    result = typ.assignment
-  of attachedSink:
-    if baseType.sink == nil:
-      discard produceSym(c, baseType, kind, info)
-    typ.sink = baseType.sink
-    result = typ.sink
-  of attachedDeepCopy:
-    if baseType.deepCopy == nil:
-      discard produceSym(c, baseType, kind, info)
-    typ.deepCopy = baseType.deepCopy
-    result = typ.deepCopy
-  of attachedDestructor:
-    if baseType.destructor == nil:
-      discard produceSym(c, baseType, kind, info)
-    typ.destructor = baseType.destructor
-    result = typ.destructor
+  if baseType.attachedOps[kind] == nil:
+    discard produceSym(c, baseType, kind, info)
+  typ.attachedOps[kind] = baseType.attachedOps[kind]
+  result = typ.attachedOps[kind]
 
 proc produceSym(c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
@@ -536,11 +519,7 @@ proc produceSym(c: PContext; typ: PType; kind: TTypeAttachedOp;
   a.c = c
   let g = c.graph
   let body = newNodeI(nkStmtList, info)
-  let procname = case kind
-                 of attachedAsgn: getIdent(g.cache, "=")
-                 of attachedSink: getIdent(g.cache, "=sink")
-                 of attachedDeepCopy: getIdent(g.cache, "=deepcopy")
-                 of attachedDestructor: getIdent(g.cache, "=destroy")
+  let procname = getIdent(g.cache, AttachedOpToStr[kind])
 
   result = newSym(skProc, procname, typ.owner, info)
   a.fn = result
@@ -557,11 +536,7 @@ proc produceSym(c: PContext; typ: PType; kind: TTypeAttachedOp;
     result.typ.addParam src
 
   # register this operation already:
-  case kind
-  of attachedAsgn: typ.assignment = result
-  of attachedSink: typ.sink = result
-  of attachedDeepCopy: typ.deepCopy = result
-  of attachedDestructor: typ.destructor = result
+  typ.attachedOps[kind] = result
 
   var tk: TTypeKind
   if optNimV2 in c.graph.config.globalOptions:
@@ -636,23 +611,15 @@ proc createTypeBoundOps(c: PContext; orig: PType; info: TLineInfo) =
   # 5. We have a (custom) generic destructor.
   let typ = canon.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
-  if typ.destructor == nil:
-    discard produceSym(c, typ, attachedDestructor, info)
-  else:
-    inst(typ.destructor, typ)
-  if typ.assignment == nil:
-    discard produceSym(c, typ, attachedAsgn, info)
-  else:
-    inst(typ.assignment, typ)
-  if typ.sink == nil:
-    discard produceSym(c, typ, attachedSink, info)
-  else:
-    inst(typ.sink, typ)
+  for k in attachedDestructor..attachedSink:
+    if typ.attachedOps[k] == nil:
+      discard produceSym(c, typ, k, info)
+    else:
+      inst(typ.attachedOps[k], typ)
 
   if overwrite:
-    orig.destructor = typ.destructor
-    orig.assignment = typ.assignment
-    orig.sink = typ.sink
+    for k in attachedDestructor..attachedSink:
+      orig.attachedOps[k] = typ.attachedOps[k]
 
   if not isTrival(orig.destructor):
     #or not isTrival(orig.assignment) or

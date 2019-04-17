@@ -136,7 +136,7 @@ to do it.
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
-  lineinfos, parampatterns
+  lineinfos, parampatterns, sighashes
 
 const
   InterestingSyms = {skVar, skResult, skLet, skForVar, skTemp}
@@ -314,24 +314,34 @@ proc makePtrType(c: Con, baseType: PType): PType =
   result = newType(tyPtr, c.owner)
   addSonSkipIntLit(result, baseType)
 
-template genOp(opr, opname, ri) =
-  let op = opr
+proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
+  var op = t.attachedOps[kind]
+
+  when false:
+    if op == nil:
+      # give up and find the canonical type instead:
+      let h = sighashes.hashType(t, {CoType, CoConsiderOwned})
+      let canon = c.graph.canonTypes.getOrDefault(h)
+      if canon != nil:
+        op = canon.attachedOps[kind]
+
   if op == nil:
-    globalError(c.graph.config, dest.info, "internal error: '" & opname &
+    globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
-    globalError(c.graph.config, dest.info, "internal error: '" & opname &
+    globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
-  if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
+  if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  let op = if t.sink != nil: t.sink else: t.assignment
-  if op != nil:
-    genOp(op, "=sink", ri)
+  let k = if t.attachedOps[attachedSink] != nil: attachedSink
+           else: attachedAsgn
+  if t.attachedOps[k] != nil:
+    result = genOp(c, t, k, dest, ri)
   else:
     # in rare cases only =destroy exists but no sink or assignment
     # (see Pony object in tmove_objconstr.nim)
@@ -342,15 +352,15 @@ proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
   if tfHasOwned in t.flags:
     checkForErrorPragma(c, t, ri, "=")
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(t.assignment, "=", ri)
+  result = genOp(c, t, attachedAsgn, dest, ri)
 
 proc genCopyNoCheck(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(t.assignment, "=", ri)
+  result = genOp(c, t, attachedAsgn, dest, ri)
 
 proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(t.destructor, "=destroy", nil)
+  result = genOp(c, t, attachedDestructor, dest, nil)
 
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)

@@ -1568,7 +1568,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
         obj = canonType(c, obj)
         if obj.destructor.isNil:
-          obj.destructor = s
+          obj.attachedOps[attachedDestructor] = s
         else:
           prevDestructor(c, obj.destructor, obj, n.info)
         noError = true
@@ -1592,7 +1592,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         elif t.kind == tyGenericInvocation: t = t.sons[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum, tySequence, tyString}:
-        if t.deepCopy.isNil: t.deepCopy = s
+        if t.attachedOps[attachedDeepCopy].isNil: t.attachedOps[attachedDeepCopy] = s
         else:
           localError(c.config, n.info, errGenerated,
                      "cannot bind another 'deepCopy' to: " & typeToString(t))
@@ -1631,11 +1631,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
-        let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
-        if opr[].isNil:
-          opr[] = s
+        let k = if name == "=": attachedAsgn else: attachedSink
+        if obj.attachedOps[k].isNil:
+          obj.attachedOps[k] = s
         else:
-          prevDestructor(c, opr[], obj, n.info)
+          prevDestructor(c, obj.attachedOps[k], obj, n.info)
         if obj.owner.getModule != s.getModule:
           localError(c.config, n.info, errGenerated,
             "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
@@ -1828,7 +1828,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
-    if s.name.s in [".", ".()", ".="] and {destructor, dotOperators} * c.features == {}:
+    if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
       localError(c.config, n.info, "the overloaded " & s.name.s &
         " operator has to be enabled with {.experimental: \"dotOperators\".}")
     elif s.name.s == "()" and callOperator notin c.features:

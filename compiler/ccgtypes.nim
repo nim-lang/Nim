@@ -1346,10 +1346,10 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     # results are not deterministic!
     genTupleInfo(m, t, origType, result, info)
   else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
-  if t.deepCopy != nil:
-    genDeepCopyProc(m, t.deepCopy, result)
-  elif origType.deepCopy != nil:
-    genDeepCopyProc(m, origType.deepCopy, result)
+  if t.attachedOps[attachedDeepCopy] != nil:
+    genDeepCopyProc(m, t.attachedOps[attachedDeepCopy], result)
+  elif origType.attachedOps[attachedDeepCopy] != nil:
+    genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
   result = prefixTI.rope & result & ")".rope
 
 proc genTypeSection(m: BModule, n: PNode) =

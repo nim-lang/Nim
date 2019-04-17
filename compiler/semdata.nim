@@ -72,12 +72,6 @@ type
 
   TExprFlags* = set[TExprFlag]
 
-  TTypeAttachedOp* = enum
-    attachedAsgn,
-    attachedSink,
-    attachedDeepCopy,
-    attachedDestructor
-
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     enforceVoidContext*: PType
