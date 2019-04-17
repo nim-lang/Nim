@@ -466,6 +466,8 @@ template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
       this.res.add resetStyle
     return
 
+import types
+
 proc value(this: var DebugPrinter; value: PType)
 proc value(this: var DebugPrinter; value: PNode)
 proc value(this: var DebugPrinter; value: PSym) =
@@ -486,9 +488,12 @@ proc value(this: var DebugPrinter; value: PSym) =
     this.key("flags")
     this.value(value.flags)
 
-  if this.renderSymType and value.typ != nil:
+  if value.typ != nil:
     this.key "typ"
-    this.value(value.typ)
+    if this.renderSymType:
+      this.value(value.typ)
+    else:
+      this.value(typeToString(value.typ))
 
   this.closeCurly
 
@@ -565,9 +570,12 @@ proc value(this: var DebugPrinter; value: PNode) =
       this.key "ident"
       this.value value.ident.s
   else:
-    if this.renderSymType and value.typ != nil:
+    if value.typ != nil:
       this.key "typ"
-      this.value value.typ
+      if this.renderSymType:
+        this.value value.typ
+      else:
+        this.value(typeToString(value.typ))
     if sonsLen(value) > 0:
       this.key "sons"
       this.openBracket
@@ -599,7 +607,7 @@ when declared(echo):
   proc debug(n: PNode; conf: ConfigRef) =
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
-    #this.renderSymType = true
+    this.renderSymType = false
     this.useColor = not defined(windows)
     this.value(n)
     echo($this.res)
