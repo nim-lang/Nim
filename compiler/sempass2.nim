@@ -834,7 +834,7 @@ proc track(tracked: PEffects, n: PNode) =
     let loopBody = n[n.len-1]
     if tracked.owner.kind != skMacro and iterCall.len > 1:
       # XXX this is a bit hacky:
-      if iterCall[1].typ.skipTypes(abstractVar).kind notin {tyVarargs, tyOpenArray}:
+      if iterCall[1].typ != nil and iterCall[1].typ.skipTypes(abstractVar).kind notin {tyVarargs, tyOpenArray}:
         createTypeBoundOps(tracked.c, iterCall[1].typ, iterCall[1].info)
     track(tracked, iterCall)
     track(tracked, loopBody)
