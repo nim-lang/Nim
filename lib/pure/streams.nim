@@ -401,97 +401,172 @@ proc peekBool*(s: Stream): bool =
 proc readInt8*(s: Stream): int8 =
   ## Reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("12")
+    doAssert strm.readInt8() == 49
+    doAssert strm.readInt8() == 50
+    ## strm.readInt8() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekInt8*(s: Stream): int8 =
   ## Peeks an int8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("12")
+    doAssert strm.peekInt8() == 49
+    doAssert strm.peekInt8() == 49
+    doAssert strm.peekInt8() == 49
+    strm.close()
   peek(s, result)
 
 proc readInt16*(s: Stream): int16 =
   ## Reads an int16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("001020")
+    doAssert strm.readInt16() == 12336
+    doAssert strm.readInt16() == 12337
+    doAssert strm.readInt16() == 12338
+    ## strm.readInt16() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekInt16*(s: Stream): int16 =
   ## Peeks an int16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("001020")
+    doAssert strm.peekInt16() == 12336
+    doAssert strm.peekInt16() == 12336
+    doAssert strm.peekInt16() == 12336
+    doAssert strm.peekInt16() == 12336
+    strm.close()
   peek(s, result)
 
 proc readInt32*(s: Stream): int32 =
   ## Reads an int32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000010002000")
+    doAssert strm.readInt32() == 808464432
+    doAssert strm.readInt32() == 808464433
+    doAssert strm.readInt32() == 808464434
+    ## strm.readInt32() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekInt32*(s: Stream): int32 =
   ## Peeks an int32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000010002000")
+    doAssert strm.peekInt32() == 808464432
+    doAssert strm.peekInt32() == 808464432
+    doAssert strm.peekInt32() == 808464432
+    doAssert strm.peekInt32() == 808464432
+    strm.close()
   peek(s, result)
 
 proc readInt64*(s: Stream): int64 =
   ## Reads an int64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000000001000000020000000")
+    doAssert strm.readInt64() == 3472328296227680304
+    doAssert strm.readInt64() == 3472328296227680305
+    doAssert strm.readInt64() == 3472328296227680306
+    ## strm.readInt64() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekInt64*(s: Stream): int64 =
   ## Peeks an int64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000000001000000020000000")
+    doAssert strm.peekInt64() == 3472328296227680304
+    doAssert strm.peekInt64() == 3472328296227680304
+    doAssert strm.peekInt64() == 3472328296227680304
+    strm.close()
   peek(s, result)
 
 proc readUint8*(s: Stream): uint8 =
   ## Reads an uint8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("012")
+    doAssert strm.readUint8() == 48
+    doAssert strm.readUint8() == 49
+    doAssert strm.readUint8() == 50
+    ## strm.readUint8() --> raies IOError
+    strm.close()
   read(s, result)
 
 proc peekUint8*(s: Stream): uint8 =
   ## Peeks an uint8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("012")
+    doAssert strm.peekUint8() == 48
+    doAssert strm.peekUint8() == 48
+    doAssert strm.peekUint8() == 48
+    strm.close()
   peek(s, result)
 
 proc readUint16*(s: Stream): uint16 =
   ## Reads an uint16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("001020")
+    doAssert strm.readUint16() == 12336
+    doAssert strm.readUint16() == 12337
+    doAssert strm.readUint16() == 12338
+    ## strm.readUint16() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekUint16*(s: Stream): uint16 =
   ## Peeks an uint16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("001020")
+    doAssert strm.peekUint16() == 12336
+    doAssert strm.peekUint16() == 12336
+    doAssert strm.peekUint16() == 12336
+    doAssert strm.peekUint16() == 12336
+    strm.close()
   peek(s, result)
 
 proc readUint32*(s: Stream): uint32 =
   ## Reads an uint32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000010002000")
+    doAssert strm.readUint32() == 808464432
+    doAssert strm.readUint32() == 808464433
+    doAssert strm.readUint32() == 808464434
+    ## strm.readUint32() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekUint32*(s: Stream): uint32 =
   ## Peeks an uint32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000010002000")
+    doAssert strm.peekUint32() == 808464432
+    doAssert strm.peekUint32() == 808464432
+    doAssert strm.peekUint32() == 808464432
+    doAssert strm.peekUint32() == 808464432
+    strm.close()
   peek(s, result)
 
 proc readUint64*(s: Stream): uint64 =
   ## Reads an uint64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000000001000000020000000")
+    doAssert strm.readUint64() == 3472328296227680304'u64
+    doAssert strm.readUint64() == 3472328296227680305'u64
+    doAssert strm.readUint64() == 3472328296227680306'u64
+    ## strm.readUint64() --> IOError
+    strm.close()
   read(s, result)
 
 proc peekUint64*(s: Stream): uint64 =
   ## Peeks an uint64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("000000001000000020000000")
+    doAssert strm.peekUint64() == 3472328296227680304'u64
+    doAssert strm.peekUint64() == 3472328296227680304'u64
+    doAssert strm.peekUint64() == 3472328296227680304'u64
+    strm.close()
   peek(s, result)
 
 proc readFloat32*(s: Stream): float32 =
