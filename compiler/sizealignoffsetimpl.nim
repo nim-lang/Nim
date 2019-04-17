@@ -239,8 +239,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     return
 
   # mark computation in progress
-  typ.size = szIllegalRecursion
-  typ.align = szIllegalRecursion
+  if typ.size < 0:
+    typ.size = szIllegalRecursion
+  if typ.align < 0:
+    typ.align = szIllegalRecursion
 
   var maxAlign, sizeAccum, length: BiggestInt
 
@@ -379,13 +381,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       headerAlign = 1
     let (offset, align) =
       if tfUnion in typ.flags:
-        if tfPacked in typ.flags:
+        if tfUserAligned in typ.flags:
           let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
-          localError(conf, info, "type may not be packed and union at the same time.")
+          localError(conf, info, "type `" & typeToString(typ) & "` may not be packed/aligned and union at the same time.")
           (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
         else:
           computeUnionObjectOffsetsFoldFunction(conf, typ.n, false)
-      elif tfPacked in typ.flags:
+      elif tfUserAligned in typ.flags and typ.align == 1:
+        assert(typ.align > 0, typeToString(typ))
         (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(1))
       else:
         computeObjectOffsetsFoldFunction(conf, typ.n, headerSize)
@@ -396,16 +399,21 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     if offset == szUnknownSize or (
         typ.sym != nil and
         typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}):
-      typ.size = szUnknownSize
-      typ.align = szUnknownSize
+      if typ.size < 0:
+        typ.size = szUnknownSize
+      if typ.align < 0:
+        typ.align = szUnknownSize
       return
     # header size is already in size from computeObjectOffsetsFoldFunction
     # maxAlign is probably not changed at all from headerAlign
-    if tfPacked in typ.flags:
-      typ.size = offset
-      typ.align = 1
-    else:
-      typ.align = int16(max(align, headerAlign))
+    let talign = int16(max(align, headerAlign))
+    if typ.align < 0:
+      typ.align = talign
+    elif typ.align != 1 and typ.align < talign:
+      # alignment of 1 is treated as packed struct
+      let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+      localError(conf, info, "align pragma for type `" & typeToString(typ) & "` can only increase alignment of the object, natural alignment is " & $talign & ", user specified alignment is " & $typ.align)
+    if typ.size < 0:
       typ.size = align(offset, typ.align)
   of tyInferred:
     if typ.len > 1:

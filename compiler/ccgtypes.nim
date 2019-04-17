@@ -16,6 +16,9 @@ from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
+template isPacked(conf: ConfigRef, t: PType) : bool =
+  tfUserAligned in t.flags and getAlign(conf, t) == 1
+
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -337,16 +340,9 @@ proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
     result = getSimpleTypeDesc(m, typ)
     if result == nil: result = cacheGetType(m.typeCache, sig)
 
-proc structOrUnion(m: BModule, t: PType): Rope =
+proc structOrUnion(t: PType): Rope =
   let t = t.skipTypes({tyAlias, tySink})
-  result = (if tfUnion in t.flags: rope("union") else: rope("struct"))
-  if getAlign(m.config, t) > getSize(m.config, t):
-    if hasDeclspec in extccomp.CC[m.config.cCompiler].props:
-      result = "__declspec(align(" & $getAlign(m.config, t) & ")) " & result
-    elif hasAttribute in extccomp.CC[m.config.cCompiler].props:
-      result = " __attribute__ ((aligned(" & $getAlign(m.config, t) & "))) " & result 
-    else:
-      localError(m.config, m.module.info, "backend compiler doesn't support custom alignment required for type: " & typeToString(t))
+  if tfUnion in t.flags: rope("union") else: rope("struct")
 
 proc getForwardStructFormat(m: BModule): string =
   if m.compileToCpp: result = "$1 $2;$n"
@@ -368,7 +364,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-          [structOrUnion(m, typ), result])
+          [structOrUnion(typ), result])
     else:
       pushType(m, concrete)
     doAssert m.forwTypeCache[sig] == result
@@ -486,7 +482,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
         if k.kind != nkSym:
           let a = genRecordFieldsAux(m, k, rectype, check)
           if a != nil:
-            if tfPacked notin rectype.flags:
+            if not isPacked(m.config, rectype):
               add(unionBody, "struct {")
             else:
               if hasAttribute in CC[m.config.cCompiler].props:
@@ -495,7 +491,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
                 addf(unionBody, "#pragma pack(push, 1)$nstruct{", [])
             add(unionBody, a)
             addf(unionBody, "};$n", [])
-            if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
+            if isPacked(m.config, rectype) and hasAttribute notin CC[m.config.cCompiler].props:
               addf(unionBody, "#pragma pack(pop)$n", [])
         else:
           add(unionBody, genRecordFieldsAux(m, k, rectype, check))
@@ -542,14 +538,23 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
                    check: var IntSet): Rope =
   # declare the record:
   var hasField = false
-
-  if tfPacked in typ.flags:
+  
+  if isPacked(m.config, typ):
     if hasAttribute in CC[m.config.cCompiler].props:
-      result = structOrUnion(m, typ) & " __attribute__((__packed__))"
+      result = structOrUnion(typ) & " __attribute__((__packed__))"
     else:
-      result = "#pragma pack(push, 1)\L" & structOrUnion(m, typ)
+      result = "#pragma pack(push, 1)\L" & structOrUnion(typ)
+  elif tfUserAligned in typ.flags:
+    if hasDeclspec in extccomp.CC[m.config.cCompiler].props:
+      result = "__declspec(align(" & $getAlign(m.config, typ) & ")) " & structOrUnion(typ)
+    elif hasAttribute in extccomp.CC[m.config.cCompiler].props:
+      result = structOrUnion(typ) & " __attribute__ ((aligned(" & $getAlign(m.config, typ) & "))) "
+    elif m.compileToCpp:
+      result = structOrUnion(typ) & " alignas(" & $getAlign(m.config, typ) & ")"
+    else:
+      localError(m.config, m.module.info, "backend compiler doesn't support custom alignment required for type: " & typeToString(typ))
   else:
-    result = structOrUnion(m, typ)
+    result = structOrUnion(typ)
 
   result.add " "
   result.add name
@@ -587,12 +592,12 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   else:
     add(result, desc)
   add(result, "};\L")
-  if tfPacked in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
+  if isPacked(m.config, typ) and hasAttribute notin CC[m.config.cCompiler].props:
     result.add "#pragma pack(pop)\L"
 
 proc getTupleDesc(m: BModule, typ: PType, name: Rope,
                   check: var IntSet): Rope =
-  result = "$1 $2 {$n" % [structOrUnion(m, typ), name]
+  result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = nil
   for i in countup(0, sonsLen(typ) - 1):
     addf(desc, "$1 Field$2;$n",
@@ -741,7 +746,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       result = getTypeName(m, origTyp, sig)
       if not isImportedType(t):
         addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-            [structOrUnion(m, t), result])
+            [structOrUnion(t), result])
       m.forwTypeCache[sig] = result
     assert(cacheGetType(m.typeCache, sig) == nil)
     m.typeCache[sig] = result & seqStar(m)
@@ -853,7 +858,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
           addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-             [structOrUnion(m, t), result])
+             [structOrUnion(t), result])
         assert m.forwTypeCache[sig] == result
       m.typeCache[sig] = result # always call for sideeffects:
       if not incompleteType(t):

@@ -803,23 +803,20 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:
         if sym.typ == nil: invalidPragma(c, it)
-        var align = expectIntLit(c, it)
-        if (not isPowerOfTwo(align) and align != 0) or align >% high(int16):
-          localError(c.config, it.info, "power of two expected")
+        let align = expectIntLit(c, it)
+        if align notin [1, 2, 4, 8, 16, 32, 64]:
+          localError(c.config, it.info, "aligned must be one of: 1, 2, 4, 8, 16, 32, 64")
         else:
+          sym.typ.flags.incl tfUserAligned
           sym.typ.align = align.int16
+        if sym.typ.size > 0 and sym.typ.size < sym.typ.align:
+          localError(c.config, it.info, "type size can't be less than its alignment")
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
-        var size = expectIntLit(c, it)
-        case size
-        of 1, 2, 4, 8:
-          sym.typ.size = size
-          if size == 8 and c.config.target.targetCPU == cpuI386:
-            sym.typ.align = 4
-          else:
-            sym.typ.align = int16(size)
-        else:
-          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+        if sfImportC notin sym.flags: 
+          localError(c.config, it.info, "size pragma is allowed only for imported types")
+        let size = expectIntLit(c, it)
+        sym.typ.size = int16(size)
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
@@ -954,7 +951,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wPacked:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfPacked)
+        else: 
+          incl(sym.typ.flags, tfUserAligned)
+          sym.typ.align = 1
       of wHint:
         let s = expectStrLit(c, it)
         recordPragma(c, it, "hint", s)
