@@ -38,3 +38,20 @@ block tstreams3:
     var fs = openFileStream("shouldneverexist.txt")
   except IoError:
     echo "threw exception"
+
+
+block t11049:
+  var strm = newStringStream("abcdefghijklm")
+  assert strm.readBool()
+  assert strm.readBool() == true
+  assert strm.readBool() != false
+  assert not (strm.readBool() != true)
+  assert not (strm.readBool() == false)
+
+  assert strm.peekBool()
+  assert strm.peekBool() == true
+  assert strm.peekBool() != false
+  assert not (strm.peekBool() != true)
+  assert not (strm.peekBool() == false)
+
+  strm.close()
