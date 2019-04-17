@@ -808,18 +808,15 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
-    let id = nodeTableTestOrSet(p.module.dataCache,
-                               newStrNode(nkStrLit, field.name.s), p.module.labels)
-    let strLit = if id == p.module.labels: genStringLiteralDataOnly(p.module, field.name.s, e.info)
-                 else: p.module.tmpBase & rope(id)
+    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, field.name.s))
     if op.magic == mNot:
       linefmt(p, cpsStmts,
               "if ($1) #raiseFieldError($2);$n",
-              [rdLoc(test), genStringLiteralFromData(p.module, strLit, e.info)])
+              [rdLoc(test), strLit])
     else:
       linefmt(p, cpsStmts,
               "if (!($1)) #raiseFieldError($2);$n",
-              [rdLoc(test), genStringLiteralFromData(p.module, strLit, e.info)])
+              [rdLoc(test), strLit])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   if optFieldCheck in p.options:
