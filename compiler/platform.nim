@@ -223,6 +223,7 @@ type
     intSize*: int
     floatSize*: int
     ptrSize*: int
+    maxAlign*: int16
     tnl*: string                # target newline
 
 proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
@@ -234,6 +235,12 @@ proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
   t.intSize = CPU[c].intSize div 8
   t.floatSize = CPU[c].floatSize div 8
   t.ptrSize = CPU[c].bit div 8
+  t.maxAlign =
+    if CPU[c].bit == 64: 16
+    else: 8 
+    # windows is known to have 4 byte alignment on cpu32, but it has
+    # no problems with passing floats by value hence pretend it is 8
+ 
   t.tnl = OS[o].newLine
 
 proc nameToOS*(name: string): TSystemOS =
