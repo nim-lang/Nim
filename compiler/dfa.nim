@@ -633,7 +633,8 @@ proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
       break
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
-  result = n.kind == nkSym and n.sym.owner == owner and owner.kind != skModule
+  result = n.kind == nkSym and n.sym.owner == owner and
+    owner.kind != skModule and (n.sym.kind != skParam or isSinkParam(n.sym))
 
 proc genDef(c: var Con; n: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
