@@ -1147,6 +1147,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       dec c.inGenericContext
       if body != nil:
         body.sym = s
+        if tfUserAligned in s.typ.flags:
+          body.align = s.typ.align
         body.size = -1 # could not be computed properly
         s.typ.sons[sonsLen(s.typ) - 1] = body
         if tfCovariant in s.typ.flags:

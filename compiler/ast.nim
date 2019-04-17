@@ -1346,8 +1346,6 @@ proc assignType*(dest, src: PType) =
   dest.sink = src.sink
   dest.assignment = src.assignment
   dest.lockLevel = src.lockLevel
-  if tfUserAligned in src.flags:
-    dest.align = src.align
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
