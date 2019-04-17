@@ -176,11 +176,11 @@ proc peekChar*(s: Stream): char =
 
 proc readBool*(s: Stream): bool =
   ## reads a bool from the stream `s`. Raises `IOError` if an error occurred.
-  read(s, result)
+  readData(s, addr(result), sizeof(bool)) != 0
 
 proc peekBool*(s: Stream): bool =
   ## peeks a bool from the stream `s`. Raises `IOError` if an error occurred.
-  peek(s, result)
+  peekData(s, addr(result), sizeof(bool)) != 0
 
 proc readInt8*(s: Stream): int8 =
   ## reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
