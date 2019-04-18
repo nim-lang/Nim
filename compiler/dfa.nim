@@ -636,6 +636,16 @@ proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
   result = n.kind == nkSym and n.sym.owner == owner and
     owner.kind != skModule and
     (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
+  # Note: There is a different move analyzer possible that checks for
+  # consume(param.key); param.key = newValue  for all paths. Then code like
+  #
+  #   let splited = split(move self.root, x)
+  #   self.root = merge(splited.lower, splited.greater)
+  #
+  # could be written without the ``move self.root``. However, this would be
+  # wrong! Then the write barrier for the ``self.root`` assignment would
+  # free the old data and all is lost! Lesson: Don't be too smart, trust the
+  # lower level C++ optimizer to specialize this code.
 
 proc genDef(c: var Con; n: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
