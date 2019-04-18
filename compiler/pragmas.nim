@@ -805,7 +805,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         let align = expectIntLit(c, it)
         if align notin [1, 2, 4, 8, 16, 32, 64]:
-          localError(c.config, it.info, "aligned must be one of: 1, 2, 4, 8, 16, 32, 64")
+          localError(c.config, it.info, "alignment must be one of: 1, 2, 4, 8, 16, 32, 64")
         else:
           sym.typ.flags.incl tfUserAligned
           sym.typ.align = align.int16
@@ -813,10 +813,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           localError(c.config, it.info, "type size can't be less than its alignment")
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
-        if sfImportC notin sym.flags: 
-          localError(c.config, it.info, "size pragma is allowed only for imported types")
         let size = expectIntLit(c, it)
         sym.typ.size = int16(size)
+        if sym.typ.align > 0 and sym.typ.size < sym.typ.align:
+          localError(c.config, it.info, "type size can't be less than its alignment")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
