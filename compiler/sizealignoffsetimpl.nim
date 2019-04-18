@@ -214,6 +214,8 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, debug: boo
     result.align = szUnknownSize
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType) =
+
+  echo "computeSizeAlign ", typ.kind, " ", typeToString(typ), " ", typ.align
   ## computes and sets ``size`` and ``align`` members of ``typ``
   assert typ != nil
   let hasSize = typ.size != szUncomputedSize
@@ -387,9 +389,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
         else:
           computeUnionObjectOffsetsFoldFunction(conf, typ.n, false)
-      elif tfUserAligned in typ.flags and typ.align == 1:
+      elif tfUserAligned in typ.flags:
         assert(typ.align > 0, typeToString(typ))
-        (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(1))
+        (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(typ.align))
       else:
         computeObjectOffsetsFoldFunction(conf, typ.n, headerSize)
     if offset == szIllegalRecursion:
@@ -409,10 +411,6 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     let talign = int16(max(align, headerAlign))
     if typ.align < 0:
       typ.align = talign
-    elif typ.align != 1 and typ.align < talign:
-      # alignment of 1 is treated as packed struct
-      let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
-      localError(conf, info, "align pragma for type `" & typeToString(typ) & "` can only increase alignment of the object, natural alignment is " & $talign & ", user specified alignment is " & $typ.align)
     if typ.size < 0:
       typ.size = align(offset, typ.align)
   of tyInferred:

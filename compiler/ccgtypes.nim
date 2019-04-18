@@ -16,9 +16,6 @@ from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
-template isPacked(conf: ConfigRef, t: PType) : bool =
-  tfUserAligned in t.flags and getAlign(conf, t) == 1
-
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -483,16 +480,16 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
         if k.kind != nkSym:
           let a = genRecordFieldsAux(m, k, rectype, check)
           if a != nil:
-            if not isPacked(m.config, rectype):
+            if tfUserAligned notin rectype.flags:
               add(unionBody, "struct {")
             else:
               if hasAttribute in CC[m.config.cCompiler].props:
-                add(unionBody, "struct __attribute__((__packed__)){" )
+                addf(unionBody, "struct __attribute__((packed, aligned($1))) {", [rope($rectype.align)] )
               else:
-                addf(unionBody, "#pragma pack(push, 1)$nstruct{", [])
+                addf(unionBody, "#pragma pack(push, $1)$nstruct{", [rope($rectype.align)])
             add(unionBody, a)
             addf(unionBody, "};$n", [])
-            if isPacked(m.config, rectype) and hasAttribute notin CC[m.config.cCompiler].props:
+            if tfUserAligned in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
               addf(unionBody, "#pragma pack(pop)$n", [])
         else:
           add(unionBody, genRecordFieldsAux(m, k, rectype, check))
@@ -540,20 +537,11 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   # declare the record:
   var hasField = false
   
-  if isPacked(m.config, typ):
+  if tfUserAligned in typ.flags:
     if hasAttribute in CC[m.config.cCompiler].props:
-      result = structOrUnion(typ) & " __attribute__((__packed__))"
+      result = structOrUnion(typ) & " __attribute__((packed, aligned(" & $typ.align & ")))"
     else:
-      result = "#pragma pack(push, 1)\L" & structOrUnion(typ)
-  elif tfUserAligned in typ.flags:
-    if hasDeclspec in extccomp.CC[m.config.cCompiler].props:
-      result = "__declspec(align(" & $getAlign(m.config, typ) & ")) " & structOrUnion(typ)
-    elif hasAttribute in extccomp.CC[m.config.cCompiler].props:
-      result = structOrUnion(typ) & " __attribute__ ((aligned(" & $getAlign(m.config, typ) & "))) "
-    elif m.compileToCpp:
-      result = structOrUnion(typ) & " alignas(" & $getAlign(m.config, typ) & ")"
-    else:
-      localError(m.config, m.module.info, "backend compiler doesn't support custom alignment required for type: " & typeToString(typ))
+      result = "#pragma pack(push, " & $typ.align & ")\L" & structOrUnion(typ)
   else:
     result = structOrUnion(typ)
 
@@ -593,7 +581,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   else:
     add(result, desc)
   add(result, "};\L")
-  if isPacked(m.config, typ) and hasAttribute notin CC[m.config.cCompiler].props:
+  if tfUserAligned in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
     result.add "#pragma pack(pop)\L"
 
 proc getTupleDesc(m: BModule, typ: PType, name: Rope,
