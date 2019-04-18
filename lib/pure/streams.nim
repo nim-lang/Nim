@@ -63,7 +63,9 @@
 ## Step 3: Close stream
 ## ^^^^^^^^^^^^^^^^^^^^
 ##
-## Close stream.
+## Close stream. Call `close proc <#close,Stream>`_ or
+## `flush proc <#flush,Stream>`_ if save data that written in the file
+## stream to file.
 ##
 ## .. code-block:: Nim
 ##
@@ -138,7 +140,7 @@ type
   Stream* = ref StreamObj
     ## A stream.
     ## All procedures of this module use this type.
-    ## Procedures don't use `StreamObj <#StreamObj>`_.
+    ## Procedures don't directly use `StreamObj <#StreamObj>`_.
   StreamObj* = object of RootObj
     ## Stream interface that supports writing or reading.
     ## 
@@ -169,8 +171,28 @@ type
 
 proc flush*(s: Stream) =
   ## Flushes the buffers that the stream `s` might use.
+  ## This procedure causes any unwritten data for that stream to be delivered
+  ## to the host environment to be written to the file.
   runnableExamples:
-    discard ## TODO
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmWrite)
+
+    doAssert "Before write:" & readFile("somefile.txt") == "Before write:"
+  
+    strm.write("hello")
+    doAssert "After  write:" & readFile("somefile.txt") == "After  write:"
+  
+    strm.flush()
+    doAssert "After  flush:" & readFile("somefile.txt") == "After  flush:hello"
+    strm.write("HELLO")
+    strm.flush()
+    doAssert "After  flush:" & readFile("somefile.txt") == "After  flush:helloHELLO"
+  
+    strm.close()
+    doAssert "After  close:" & readFile("somefile.txt") == "After  close:helloHELLO"
+  
+    removeFile("somefile.txt")
   if not isNil(s.flushImpl): s.flushImpl(s)
 
 proc close*(s: Stream) =
@@ -265,7 +287,7 @@ when not defined(js):
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
-  ## without moving stream position
+  ## without moving stream position.
   runnableExamples:
     var strm = newStringStream("abcde")
     var buffer: array[6, char]
@@ -282,13 +304,13 @@ proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
     ## writeData
     var strm = newStringStream("")
     var buffer = ['a', 'b', 'c', 'd', 'e']
-    strm.writeData(addr(buffer), len(buffer))
+    strm.writeData(addr(buffer), sizeof(buffer))
     doAssert strm.atEnd() == true
 
     ## readData
     strm.setPosition(0)
     var buffer2: array[6, char]
-    doAssert strm.readData(addr(buffer2), len(buffer2)) == 5
+    doAssert strm.readData(addr(buffer2), sizeof(buffer2)) == 5
     doAssert buffer2 == ['a', 'b', 'c', 'd', 'e', '\x00']
     strm.close()
   s.writeDataImpl(s, buffer, bufLen)
@@ -350,14 +372,32 @@ proc writeLine*(s: Stream, args: varargs[string, `$`]) =
 proc read*[T](s: Stream, result: var T) =
   ## Generic read procedure. Reads `result` from the stream `s`.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("012")
+    ## readInt
+    var i: int8
+    strm.read(i)
+    doAssert i == 48
+    ## readData
+    var buffer: array[2, char]
+    strm.read(buffer)
+    doAssert buffer == ['1', '2']
+    strm.close()
   if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
 proc peek*[T](s: Stream, result: var T) =
   ## Generic peek procedure. Peeks `result` from the stream `s`.
   runnableExamples:
-    discard ## TODO
+    var strm = newStringStream("012")
+    ## peekInt
+    var i: int8
+    strm.peek(i)
+    doAssert i == 48
+    ## peekData
+    var buffer: array[2, char]
+    strm.peek(buffer)
+    doAssert buffer == ['0', '1']
+    strm.close()
   if peekData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
@@ -412,7 +452,7 @@ proc readInt8*(s: Stream): int8 =
     var strm = newStringStream("12")
     doAssert strm.readInt8() == 49
     doAssert strm.readInt8() == 50
-    ## strm.readInt8() --> IOError
+    ## strm.readInt8() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -433,7 +473,7 @@ proc readInt16*(s: Stream): int16 =
     doAssert strm.readInt16() == 12336
     doAssert strm.readInt16() == 12337
     doAssert strm.readInt16() == 12338
-    ## strm.readInt16() --> IOError
+    ## strm.readInt16() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -455,7 +495,7 @@ proc readInt32*(s: Stream): int32 =
     doAssert strm.readInt32() == 808464432
     doAssert strm.readInt32() == 808464433
     doAssert strm.readInt32() == 808464434
-    ## strm.readInt32() --> IOError
+    ## strm.readInt32() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -477,7 +517,7 @@ proc readInt64*(s: Stream): int64 =
     doAssert strm.readInt64() == 3472328296227680304
     doAssert strm.readInt64() == 3472328296227680305
     doAssert strm.readInt64() == 3472328296227680306
-    ## strm.readInt64() --> IOError
+    ## strm.readInt64() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -519,7 +559,7 @@ proc readUint16*(s: Stream): uint16 =
     doAssert strm.readUint16() == 12336
     doAssert strm.readUint16() == 12337
     doAssert strm.readUint16() == 12338
-    ## strm.readUint16() --> IOError
+    ## strm.readUint16() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -541,7 +581,7 @@ proc readUint32*(s: Stream): uint32 =
     doAssert strm.readUint32() == 808464432
     doAssert strm.readUint32() == 808464433
     doAssert strm.readUint32() == 808464434
-    ## strm.readUint32() --> IOError
+    ## strm.readUint32() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -563,7 +603,7 @@ proc readUint64*(s: Stream): uint64 =
     doAssert strm.readUint64() == 3472328296227680304'u64
     doAssert strm.readUint64() == 3472328296227680305'u64
     doAssert strm.readUint64() == 3472328296227680306'u64
-    ## strm.readUint64() --> IOError
+    ## strm.readUint64() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -584,7 +624,7 @@ proc readFloat32*(s: Stream): float32 =
     doAssert strm.readFloat32() == 0.00000000064096905560973027604632'f32
     doAssert strm.readFloat32() == 0.00000000064096911112088150730415'f32
     doAssert strm.readFloat32() == 0.00000000064096916663203273856197'f32
-    ## strm.readFloat32() --> IOError
+    ## strm.readFloat32() --> raise IOError
     strm.close()
   read(s, result)
 
@@ -602,24 +642,31 @@ proc peekFloat32*(s: Stream): float32 =
 proc readFloat64*(s: Stream): float64 =
   ## Reads a float64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    ## TODO
     var strm = newStringStream("000000001000000020000000")
     echo strm.readFloat64()
     echo strm.readFloat64()
     echo strm.readFloat64()
-    ## strm.readFloat64() --> IOError
+    # issues #11056
+    # doAssert strm.readFloat64() == 1.39804328609528886042614983922832e-76'f64
+    # doAssert strm.readFloat64() == 1.39804328609528916724449142033623e-76'f64
+    # doAssert strm.readFloat64() == 1.39804328609528947406283300144414e-76'f64
+    ## strm.readFloat64() --> raise IOError
     strm.close()
   read(s, result)
 
 proc peekFloat64*(s: Stream): float64 =
   ## Peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    ## TODO
     var strm = newStringStream("000000001000000020000000")
     echo strm.peekFloat64()
     echo strm.peekFloat64()
     echo strm.peekFloat64()
     echo strm.peekFloat64()
+    # issues #11056
+    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
+    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
+    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
+    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
     strm.close()
   peek(s, result)
 
@@ -887,8 +934,15 @@ when not defined(js):
     ##
     ## **Note:**
     ## * Not available this when backend is js
+    ##
+    ## See also:
+    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+    ##   opened File.
+    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_  creates a
+    ##   file stream from the file name and the mode.
+    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+    ##   file stream from the file name and the mode.
     runnableExamples:
-      import streams
       var strm = newStringStream("The first line\nthe second line\nthe third line")
       doAssert strm.readLine() == "The first line"
       doAssert strm.readLine() == "the second line"
@@ -948,13 +1002,30 @@ when not defined(js):
     ##
     ## **Note:**
     ## * Not available this when backend is js
+    ##
+    ## See also:
+    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+    ##   from string.
+    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
+    ##   as using `open proc <system.html#open,File,string,FileMode,int>`_
+    ##   on Examples.
+    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+    ##   file stream from the file name and the mode.
     runnableExamples:
-      import streams
-      var strm = newFileStream("somefile.txt", fmRead)
-      if not isNil(strm):
+      ## Input (somefile.txt):
+      ## The first line
+      ## the second line
+      ## the third line
+      var f: File
+      if open(f, "somefile.txt", fmRead, -1):
+        var strm = newFileStream(f)
         var line = ""
         while strm.readLine(line):
           echo line
+        ## Output:
+        ## The first line
+        ## the second line
+        ## the third line
         strm.close()
     new(result)
     result.f = f
@@ -979,22 +1050,27 @@ when not defined(js):
     ##   use `openFileStream proc <#openFileStream,string,FileMode,int>`_
     ##   instead.
     ## * Not available this when backend is js
+    ##
+    ## See also:
+    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+    ##   from string.
+    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+    ##   opened File.
+    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+    ##   file stream from the file name and the mode.
     runnableExamples:
       from os import removeFile
-      try:
-        var strm = newFileStream("somefile.txt", fmWrite)
-        if not isNil(strm):
-          strm.writeLine("The first line")
-          strm.writeLine("the second line")
-          strm.writeLine("the third line")
-          strm.close()
-          ## Output (somefile.txt)
-          ## The first line
-          ## the second line
-          ## the third line
-          removeFile("somefile.txt")
-      except:
-        stderr.write getCurrentExceptionMsg()
+      var strm = newFileStream("somefile.txt", fmWrite)
+      if not isNil(strm):
+        strm.writeLine("The first line")
+        strm.writeLine("the second line")
+        strm.writeLine("the third line")
+        strm.close()
+        ## Output (somefile.txt)
+        ## The first line
+        ## the second line
+        ## the third line
+        removeFile("somefile.txt")
     var f: File
     if open(f, filename, mode, bufSize): result = newFileStream(f)
 
@@ -1004,10 +1080,24 @@ when not defined(js):
     ##
     ## **Note:**
     ## * Not available this when backend is js
+    ##
+    ## See also:
+    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+    ##   from string.
+    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+    ##   opened File.
+    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_  creates a
+    ##   file stream from the file name and the mode.
     runnableExamples:
       try:
+        ## Input (somefile.txt):
+        ## The first line
+        ## the second line
+        ## the third line
         var strm = openFileStream("somefile.txt")
         echo strm.readLine()
+        ## Output:
+        ## The first line
         strm.close()
       except:
         stderr.write getCurrentExceptionMsg()
