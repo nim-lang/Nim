@@ -556,7 +556,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       #if not cl.allowMetaTypes:
       bailout()
       result = instCopyType(cl, t)
-      result.size = -1 # needs to be recomputed
+      if result.sym == nil or sfImportc notin result.sym.flags:
+        result.size = -1 # needs to be recomputed
       #if not cl.allowMetaTypes:
       idTablePut(cl.localCache, t, result)
 
@@ -615,8 +616,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       # Slow path, we have some work to do
       if result.n != nil and t.kind == tyObject:
         # Invalidate the type size as we may alter its structure
-        result.size = -1
         result.n = replaceObjBranches(cl, result.n)
+        if sfImportC notin result.sym.flags:
+          result.size = -1
 
 template typeBound(c, newty, oldty, field, info) =
   let opr = newty.field
