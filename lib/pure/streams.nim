@@ -775,11 +775,10 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
   result = readLine(s, line)
 
 proc readLine*(s: Stream): TaintedString =
-  ## Reads a line from a stream `s`.
+  ## Reads a line from a stream `s`. Raises `IOError` if an error occurred.
   ##
   ## **Note:**
   ## * This is not very efficient.
-  ##   Raises `IOError` if an error occurred.
   ##
   ## See also:
   ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
@@ -808,11 +807,10 @@ proc readLine*(s: Stream): TaintedString =
       result.string.add(c)
 
 proc peekLine*(s: Stream): TaintedString =
-  ## Peeks a line from a stream `s`.
+  ## Peeks a line from a stream `s`. Raises `IOError` if an error occurred.
   ##
   ## **Note:**
   ## * This is not very efficient.
-  ##   Raises `IOError` if an error occurred.
   ##
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_
