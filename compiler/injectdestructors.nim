@@ -317,13 +317,12 @@ proc makePtrType(c: Con, baseType: PType): PType =
 proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = t.attachedOps[kind]
 
-  when false:
-    if op == nil:
-      # give up and find the canonical type instead:
-      let h = sighashes.hashType(t, {CoType, CoConsiderOwned})
-      let canon = c.graph.canonTypes.getOrDefault(h)
-      if canon != nil:
-        op = canon.attachedOps[kind]
+  if op == nil:
+    # give up and find the canonical type instead:
+    let h = sighashes.hashType(t, {CoType, CoConsiderOwned})
+    let canon = c.graph.canonTypes.getOrDefault(h)
+    if canon != nil:
+      op = canon.attachedOps[kind]
 
   if op == nil:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
@@ -535,9 +534,15 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
       # unpacking of tuple: move out the elements
       result = genSink(c, dest.typ, dest, ri)
+      result.add p(ri, c)
+    elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+      # Rule 3: `=sink`(x, z); wasMoved(z)
+      var snk = genSink(c, dest.typ, dest, ri)
+      snk.add ri
+      result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest.typ, dest, ri)
-    result.add p(ri, c)
+      result.add p(ri, c)
   of nkStmtListExpr:
     result = newNodeI(nkStmtList, ri.info)
     for i in 0..ri.len-2:

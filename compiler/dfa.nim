@@ -634,11 +634,14 @@ proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
   result = n.kind == nkSym and n.sym.owner == owner and
-    owner.kind != skModule and (n.sym.kind != skParam or isSinkParam(n.sym))
+    owner.kind != skModule and
+    (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
 
 proc genDef(c: var Con; n: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: n, kind: def, sym: n.sym)
+  elif isAnalysableFieldAccess(n, c.owner):
+    c.code.add Instr(n: n, kind: def, sym: nil)
 
 proc canRaise(fn: PNode): bool =
   const magicsThatCanRaise = {
