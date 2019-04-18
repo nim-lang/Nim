@@ -255,30 +255,30 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
 
   if tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
-  result = case pt.kind
-    of tyObject:
-      if getAlign(conf, pt) > conf.target.maxAlign: 
-        false
-      elif s.typ.sym != nil and sfForward in s.typ.sym.flags:
-        # forwarded objects are *always* passed by pointers for consistency!
-        true
-      elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
-        true           # requested anyway
-      elif retType != nil and retType.kind == tyLent:
-        true
-      elif (tfFinal in pt.flags) and (pt.sons[0] == nil):
-        false          # no need, because no subtyping possible
-      else:
-        true           # ordinary objects are always passed by reference,
-                                # otherwise casting doesn't work
-    of tyTuple:
-      if getAlign(conf, pt) > conf.target.maxAlign: 
-        true
-      elif retType != nil and retType.kind == tyLent:
-        true
-      else:
-        (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
-    else: false
+  case pt.kind
+  of tyObject:
+    if getAlign(conf, pt) > conf.target.maxAlign: 
+      result = true
+    elif s.typ.sym != nil and sfForward in s.typ.sym.flags:
+      # forwarded objects are *always* passed by pointers for consistency!
+      result = true
+    elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
+      result = true           # requested anyway
+    elif retType != nil and retType.kind == tyLent:
+      result = true
+    elif (tfFinal in pt.flags) and (pt.sons[0] == nil):
+      result = false          # no need, because no subtyping possible
+    else:
+      result = true           # ordinary objects are always passed by reference,
+                              # otherwise casting doesn't work
+  of tyTuple:
+    if getAlign(conf, pt) > conf.target.maxAlign: 
+      result = true
+    elif retType != nil and retType.kind == tyLent:
+      result = true
+    else:
+      result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
+  else: result = false
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
