@@ -237,6 +237,8 @@ type
     ## For creating a new empty TableRef, use `newTable proc
     ## <#newTable,int>`_.
 
+const
+  defaultInitialSize* = 64
 
 # ------------------------------ helpers ---------------------------------
 
@@ -260,30 +262,6 @@ template get(t, key): untyped =
     else:
       raise newException(KeyError, "key not found")
 
-template getOrDefaultImpl(t, key): untyped =
-  mixin rawGet
-  var hc: Hash
-  var index = rawGet(t, key, hc)
-  if index >= 0: result = t.data[index].val
-
-template getOrDefaultImpl(t, key, default: untyped): untyped =
-  mixin rawGet
-  var hc: Hash
-  var index = rawGet(t, key, hc)
-  result = if index >= 0: t.data[index].val else: default
-
-template dollarImpl(): untyped {.dirty.} =
-  if t.len == 0:
-    result = "{:}"
-  else:
-    result = "{"
-    for key, val in pairs(t):
-      if result.len > 1: result.add(", ")
-      result.addQuoted(key)
-      result.add(": ")
-      result.addQuoted(val)
-    result.add("}")
-
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
@@ -296,14 +274,6 @@ proc enlarge[A, B](t: var Table[A, B]) =
         j = nextTry(j, maxHash(t))
       rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
 
-template equalsImpl(s, t: typed): typed =
-  if s.counter == t.counter:
-    # different insertion orders mean different 'data' seqs, so we have
-    # to use the slow route here:
-    for key, val in s:
-      if not t.hasKey(key): return false
-      if t.getOrDefault(key) != val: return false
-    return true
 
 
 
@@ -311,7 +281,7 @@ template equalsImpl(s, t: typed): typed =
 # ------------------------------ Table ------------------------------
 # -------------------------------------------------------------------
 
-proc initTable*[A, B](initialSize=64): Table[A, B] =
+proc initTable*[A, B](initialsize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -320,6 +290,9 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
   ##
+  ## Starting from Nim v0.20, tables are initialized by default and it is
+  ## not necessary to call this function explicitly.
+  ##
   ## See also:
   ## * `toTable proc<#toTable,openArray[]>`_
   ## * `newTable proc<#newTable,int>`_ for creating a `TableRef`
@@ -327,9 +300,7 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
     let
       a = initTable[int, string]()
       b = initTable[char, seq[int]]()
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  newSeq(result.data, initialSize)
+  initImpl(result, initialSize)
 
 proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## Creates a new hash table that contains the given ``pairs``.
@@ -343,6 +314,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
     let a = [('a', 5), ('b', 9)]
     let b = toTable(a)
     assert b == {'a': 5, 'b': 9}.toTable
+
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
@@ -398,6 +370,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
     a['x'] = 7
     a['y'] = 33
     doAssert a == {'x': 7, 'y': 33}.toTable
+
   putImpl(enlarge)
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
@@ -414,6 +387,7 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
+
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
@@ -424,6 +398,7 @@ proc contains*[A, B](t: Table[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
+
   return hasKey[A, B](t, key)
 
 proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
@@ -443,6 +418,7 @@ proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
     doAssert a == {'a': 99, 'b': 9, 'z': 50}.toTable
+
   hasKeyOrPutImpl(enlarge)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
@@ -461,6 +437,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
+
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
@@ -478,6 +455,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
+
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
@@ -497,6 +475,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toTable
+
   mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: Table[A, B]): int =
@@ -504,6 +483,7 @@ proc len*[A, B](t: Table[A, B]): int =
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
     doAssert len(a) == 2
+
   result = t.counter
 
 proc add*[A, B](t: var Table[A, B], key: A, val: B) =
@@ -527,6 +507,7 @@ proc del*[A, B](t: var Table[A, B], key: A) =
     doAssert a == {'b': 9, 'c': 13}.toTable
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toTable
+
   delImpl()
 
 proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
@@ -568,6 +549,7 @@ proc clear*[A, B](t: var Table[A, B]) =
     doAssert len(a) == 3
     clear(a)
     doAssert len(a) == 0
+
   clearImpl()
 
 proc `$`*[A, B](t: Table[A, B]): string =
@@ -583,6 +565,7 @@ proc `==`*[A, B](s, t: Table[A, B]): bool =
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
       b = {'b': 9, 'c': 13, 'a': 5}.toTable
     doAssert a == b
+
   equalsImpl(s, t)
 
 proc rightSize*(count: Natural): int {.inline.} =
@@ -692,6 +675,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
     for k, v in a.mpairs:
       v.add(v[0] + 10)
     doAssert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.toTable
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
@@ -709,6 +693,7 @@ iterator keys*[A, B](t: Table[A, B]): A =
     for k in a.keys:
       a[k].add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].key
 
@@ -726,6 +711,7 @@ iterator values*[A, B](t: Table[A, B]): B =
       }.toTable
     for v in a.values:
       doAssert v.len == 4
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
@@ -744,6 +730,7 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
     for v in a.mvalues:
       v.add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
@@ -779,7 +766,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 # -------------------------------------------------------------------
 
 
-proc newTable*[A, B](initialSize=64): TableRef[A, B] =
+proc newTable*[A, B](initialsize = defaultInitialSize): TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -787,6 +774,9 @@ proc newTable*[A, B](initialSize=64): TableRef[A, B] =
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
+  ##
+  ## Starting from Nim v0.20, tables are initialized by default and it is
+  ## not necessary to call this function explicitly.
   ##
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
@@ -796,6 +786,7 @@ proc newTable*[A, B](initialSize=64): TableRef[A, B] =
     let
       a = newTable[int, string]()
       b = newTable[char, seq[int]]()
+
   new(result)
   result[] = initTable[A, B](initialSize)
 
@@ -811,6 +802,7 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
     let a = [('a', 5), ('b', 9)]
     let b = newTable(a)
     assert b == {'a': 5, 'b': 9}.newTable
+
   new(result)
   result[] = toTable[A, B](pairs)
 
@@ -842,6 +834,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
+
   result = t[][key]
 
 proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
@@ -857,6 +850,7 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
     a['x'] = 7
     a['y'] = 33
     doAssert a == {'x': 7, 'y': 33}.newTable
+
   t[][key] = val
 
 proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
@@ -874,6 +868,7 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.newTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
+
   result = t[].hasKey(key)
 
 proc contains*[A, B](t: TableRef[A, B], key: A): bool =
@@ -883,6 +878,7 @@ proc contains*[A, B](t: TableRef[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.newTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
+
   return hasKey[A, B](t, key)
 
 proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
@@ -902,6 +898,7 @@ proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
     doAssert a == {'a': 99, 'b': 9, 'z': 50}.newTable
+
   t[].hasKeyOrPut(key, val)
 
 proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
@@ -920,6 +917,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.newTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
+
   getOrDefault(t[], key)
 
 proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
@@ -937,6 +935,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.newTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
+
   getOrDefault(t[], key, default)
 
 proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
@@ -956,6 +955,7 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.newTable
+
   t[].mgetOrPut(key, val)
 
 proc len*[A, B](t: TableRef[A, B]): int =
@@ -963,6 +963,7 @@ proc len*[A, B](t: TableRef[A, B]): int =
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
     doAssert len(a) == 2
+
   result = t.counter
 
 proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
@@ -988,6 +989,7 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
     doAssert a == {'b': 9, 'c': 13}.newTable
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.newTable
+
   t[].del(key)
 
 proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
@@ -1012,6 +1014,7 @@ proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
     doAssert a.take('z', i) == false
     doAssert a == {'a': 5, 'c': 13}.newTable
     doAssert i == 0
+
   result = t[].take(key, val)
 
 proc clear*[A, B](t: TableRef[A, B]) =
@@ -1025,6 +1028,7 @@ proc clear*[A, B](t: TableRef[A, B]) =
     doAssert len(a) == 3
     clear(a)
     doAssert len(a) == 0
+
   clearImpl()
 
 proc `$`*[A, B](t: TableRef[A, B]): string =
@@ -1041,6 +1045,7 @@ proc `==`*[A, B](s, t: TableRef[A, B]): bool =
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
       b = {'b': 9, 'c': 13, 'a': 5}.newTable
     doAssert a == b
+
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
   else: equalsImpl(s[], t[])
@@ -1089,6 +1094,7 @@ iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
     for k, v in a.mpairs:
       v.add(v[0] + 10)
     doAssert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.newTable
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
@@ -1106,6 +1112,7 @@ iterator keys*[A, B](t: TableRef[A, B]): A =
     for k in a.keys:
       a[k].add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].key
 
@@ -1123,6 +1130,7 @@ iterator values*[A, B](t: TableRef[A, B]): B =
       }.newTable
     for v in a.values:
       doAssert v.len == 4
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
@@ -1140,6 +1148,7 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
     for v in a.mvalues:
       v.add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
+
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
@@ -1218,7 +1227,7 @@ template forAllOrderedPairs(yieldStmt: untyped): typed {.dirty.} =
 
 # ----------------------------------------------------------------------
 
-proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
+proc initOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -1226,6 +1235,9 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
+  ##
+  ## Starting from Nim v0.20, tables are initialized by default and it is
+  ## not necessary to call this function explicitly.
   ##
   ## See also:
   ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_
@@ -1235,11 +1247,7 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
     let
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  result.first = -1
-  result.last = -1
-  newSeq(result.data, initialSize)
+  initImpl(result, initialSize)
 
 proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given ``pairs``.
@@ -1254,6 +1262,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
     let a = [('a', 5), ('b', 9)]
     let b = toOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.toOrderedTable
+
   result = initOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
@@ -1278,6 +1287,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
     doAssert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
+
   get(t, key)
 
 proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B=
@@ -1309,6 +1319,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
     a['x'] = 7
     a['y'] = 33
     doAssert a == {'x': 7, 'y': 33}.toOrderedTable
+
   putImpl(enlarge)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
@@ -1326,6 +1337,7 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
+
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
@@ -1336,6 +1348,7 @@ proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
+
   return hasKey[A, B](t, key)
 
 proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
@@ -1355,6 +1368,7 @@ proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
     doAssert a == {'a': 99, 'b': 9, 'z': 50}.toOrderedTable
+
   hasKeyOrPutImpl(enlarge)
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
@@ -1373,6 +1387,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
+
   getOrDefaultImpl(t, key)
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
@@ -1390,6 +1405,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
+
   getOrDefaultImpl(t, key, default)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
@@ -1409,6 +1425,7 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toOrderedTable
+
   mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
@@ -1416,6 +1433,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
     doAssert len(a) == 2
+
   result = t.counter
 
 proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
@@ -1440,6 +1458,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
+
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -1467,6 +1486,7 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
     doAssert len(a) == 3
     clear(a)
     doAssert len(a) == 0
+
   clearImpl()
   t.first = -1
   t.last = -1
@@ -1602,6 +1622,7 @@ iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
     for k, v in a.mpairs:
       v.add(v[0] + 10)
     doAssert a == {'o': @[1, 5, 7, 9, 11], 'e': @[2, 4, 6, 8, 12]}.toOrderedTable
+
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
@@ -1619,6 +1640,7 @@ iterator keys*[A, B](t: OrderedTable[A, B]): A =
     for k in a.keys:
       a[k].add(99)
     doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.toOrderedTable
+
   forAllOrderedPairs:
     yield t.data[h].key
 
@@ -1636,6 +1658,7 @@ iterator values*[A, B](t: OrderedTable[A, B]): B =
       }.toOrderedTable
     for v in a.values:
       doAssert v.len == 4
+
   forAllOrderedPairs:
     yield t.data[h].val
 
@@ -1666,7 +1689,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
-proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -1674,6 +1697,9 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
+  ##
+  ## Starting from Nim v0.20, tables are initialized by default and it is
+  ## not necessary to call this function explicitly.
   ##
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
@@ -1700,6 +1726,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
     let a = [('a', 5), ('b', 9)]
     let b = newOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.newOrderedTable
+
   result = newOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result.add(key, val)
 
@@ -1740,6 +1767,7 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
     a['x'] = 7
     a['y'] = 33
     doAssert a == {'x': 7, 'y': 33}.newOrderedTable
+
   t[][key] = val
 
 proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
@@ -1757,6 +1785,7 @@ proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a.hasKey('a') == true
     doAssert a.hasKey('z') == false
+
   result = t[].hasKey(key)
 
 proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
@@ -1766,6 +1795,7 @@ proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert 'b' in a == true
     doAssert a.contains('z') == false
+
   return hasKey[A, B](t, key)
 
 proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
@@ -1785,6 +1815,7 @@ proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
     doAssert a == {'a': 99, 'b': 9, 'z': 50}.newOrderedTable
+
   result = t[].hasKeyOrPut(key, val)
 
 proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
@@ -1803,6 +1834,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a.getOrDefault('a') == 5
     doAssert a.getOrDefault('z') == 0
+
   getOrDefault(t[], key)
 
 proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
@@ -1820,6 +1852,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert a.getOrDefault('a', 99) == 5
     doAssert a.getOrDefault('z', 99) == 99
+
   getOrDefault(t[], key, default)
 
 proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
@@ -1839,6 +1872,7 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.newOrderedTable
+
   result = t[].mgetOrPut(key, val)
 
 proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
@@ -1846,6 +1880,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
     doAssert len(a) == 2
+
   result = t.counter
 
 proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
@@ -1868,6 +1903,7 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
     doAssert a == {'b': 9, 'c': 13}.newOrderedTable
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.newOrderedTable
+
   t[].del(key)
 
 proc clear*[A, B](t: var OrderedTableRef[A, B]) =
@@ -1880,6 +1916,7 @@ proc clear*[A, B](t: var OrderedTableRef[A, B]) =
     doAssert len(a) == 3
     clear(a)
     doAssert len(a) == 0
+
   clear(t[])
 
 proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int, order = SortOrder.Ascending) =
@@ -1899,6 +1936,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int, order =
     doAssert a == {'a': 10, 'b': 20, 'c': 0}.newOrderedTable
     a.sort(system.cmp, order=SortOrder.Descending)
     doAssert a == {'c': 0, 'b': 20, 'a': 10}.newOrderedTable
+
   t[].sort(cmp, order=order)
 
 proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
@@ -1915,6 +1953,7 @@ proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
       a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
       b = {'b': 9, 'c': 13, 'a': 5}.newOrderedTable
     doAssert a != b
+
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
   else: result = s[] == t[]
@@ -1964,6 +2003,7 @@ iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
     for k, v in a.mpairs:
       v.add(v[0] + 10)
     doAssert a == {'o': @[1, 5, 7, 9, 11], 'e': @[2, 4, 6, 8, 12]}.newOrderedTable
+
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
@@ -1981,6 +2021,7 @@ iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
     for k in a.keys:
       a[k].add(99)
     doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.newOrderedTable
+
   forAllOrderedPairs:
     yield t.data[h].key
 
@@ -1998,6 +2039,7 @@ iterator values*[A, B](t: OrderedTableRef[A, B]): B =
       }.newOrderedTable
     for v in a.values:
       doAssert v.len == 4
+
   forAllOrderedPairs:
     yield t.data[h].val
 
@@ -2016,6 +2058,7 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
     for v in a.mvalues:
       v.add(99)
     doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.newOrderedTable
+
   forAllOrderedPairs:
     yield t.data[h].val
 
@@ -2061,6 +2104,8 @@ proc enlarge[A](t: var CountTable[A]) =
   swap(t.data, n)
 
 proc rawGet[A](t: CountTable[A], key: A): int =
+  if t.data.len == 0:
+    return -1
   var h: Hash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].val != 0:
     if t.data[h].key == key: return h
@@ -2075,7 +2120,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1)
 
 # ----------------------------------------------------------------------
 
-proc initCountTable*[A](initialSize=64): CountTable[A] =
+proc initCountTable*[A](initialsize = defaultInitialSize): CountTable[A] =
   ## Creates a new count table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -2084,13 +2129,14 @@ proc initCountTable*[A](initialSize=64): CountTable[A] =
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
   ##
+  ## Starting from Nim v0.20, tables are initialized by default and it is
+  ## not necessary to call this function explicitly.
+  ##
   ## See also:
   ## * `toCountTable proc<#toCountTable,openArray[A]>`_
   ## * `newCountTable proc<#newCountTable,int>`_ for creating a
   ##   `CountTableRef`
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  newSeq(result.data, initialSize)
+  initImpl(result, initialSize)
 
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## Creates a new count table with every member of a container ``keys``
@@ -2130,9 +2176,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   if h >= 0:
     t.data[h].val = val
   else:
-    if mustRehash(len(t.data), t.counter): enlarge(t)
-    rawInsert(t, t.data, key, val)
-    inc(t.counter)
+    insertImpl()
 
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
@@ -2141,14 +2185,13 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     a.inc('a')
     a.inc('b', 10)
     doAssert a == toCountTable("aaabbbbbbbbbbb")
+
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
     if t.data[index].val == 0: dec(t.counter)
   else:
-    if mustRehash(len(t.data), t.counter): enlarge(t)
-    rawInsert(t, t.data, key, val)
-    inc(t.counter)
+    insertImpl()
 
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
@@ -2229,6 +2272,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
     doAssert toSeq(a.values) == @[5, 2, 2, 1, 1]
     a.sort(SortOrder.Ascending)
     doAssert toSeq(a.values) == @[1, 1, 2, 2, 5]
+
   t.data.sort(cmp=ctCmp, order=order)
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
@@ -2238,6 +2282,7 @@ proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
     let b = toCountTable("bcc")
     a.merge(b)
     doAssert a == toCountTable("aaabbbccc")
+
   for key, value in t:
     s.inc(key, value)
 
@@ -2248,6 +2293,7 @@ proc merge*[A](s, t: CountTable[A]): CountTable[A] =
       a = toCountTable("aaabbc")
       b = toCountTable("bcc")
     doAssert merge(a, b) == toCountTable("aaabbbccc")
+
   result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
   for table in @[s, t]:
     for key, value in table:
@@ -2306,6 +2352,7 @@ iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
     for k, v in mpairs(a):
       v = 2
     doAssert a == toCountTable("aabbccddrr")
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
@@ -2320,6 +2367,7 @@ iterator keys*[A](t: CountTable[A]): A =
     for k in keys(a):
       a[k] = 2
     doAssert a == toCountTable("aabbccddrr")
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].key
 
@@ -2334,6 +2382,7 @@ iterator values*[A](t: CountTable[A]): int =
     let a = toCountTable("abracadabra")
     for v in values(a):
       assert v < 10
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
@@ -2349,6 +2398,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
     for v in mvalues(a):
       v = 2
     doAssert a == toCountTable("aabbccddrr")
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
@@ -2364,7 +2414,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
-proc newCountTable*[A](initialSize=64): CountTableRef[A] =
+proc newCountTable*[A](initialsize = defaultInitialSize): CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -2372,6 +2422,9 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
+  ##
+  ## Starting from Nim v0.20, tables are initialized by default and it is
+  ## not necessary to call this function explicitly.
   ##
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating
@@ -2493,6 +2546,7 @@ proc merge*[A](s, t: CountTableRef[A]) =
       b = newCountTable("bcc")
     a.merge(b)
     doAssert a == newCountTable("aaabbbccc")
+
   s[].merge(t[])
 
 proc `$`*[A](t: CountTableRef[A]): string =
@@ -2551,6 +2605,7 @@ iterator mpairs*[A](t: CountTableRef[A]): (A, var int) =
     for k, v in mpairs(a):
       v = 2
     doAssert a == newCountTable("aabbccddrr")
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
@@ -2565,6 +2620,7 @@ iterator keys*[A](t: CountTableRef[A]): A =
     for k in keys(a):
       a[k] = 2
     doAssert a == newCountTable("aabbccddrr")
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].key
 
@@ -2579,6 +2635,7 @@ iterator values*[A](t: CountTableRef[A]): int =
     let a = newCountTable("abracadabra")
     for v in values(a):
       assert v < 10
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
@@ -2593,6 +2650,7 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
     for v in mvalues(a):
       v = 2
     doAssert a == newCountTable("aabbccddrr")
+
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 

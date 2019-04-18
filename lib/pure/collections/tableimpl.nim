@@ -28,6 +28,8 @@ proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
 template rawGetKnownHCImpl() {.dirty.} =
+  if t.data.len == 0:
+    return -1
   var h: Hash = hc and maxHash(t)   # start with real hash value
   while isFilled(t.data[h].hcode):
     # Compare hc THEN key with boolean short circuit. This makes the common case
@@ -86,6 +88,8 @@ template addImpl(enlarge) {.dirty.} =
   inc(t.counter)
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
+  if t.data.len == 0:
+    initImpl(t, defaultInitialSize)
   if mustRehash(t.dataLen, t.counter):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
@@ -156,3 +160,50 @@ template clearImpl() {.dirty.} =
     t.data[i].key = default(type(t.data[i].key))
     t.data[i].val = default(type(t.data[i].val))
   t.counter = 0
+
+template initImpl(result: typed, size: int) =
+  assert isPowerOfTwo(size)
+  when result is OrderedTable|OrderedTableRef:
+    result.first = -1
+    result.last = -1
+  result.counter = 0
+  newSeq(result.data, size)
+
+template insertImpl() = # for CountTable
+  if t.data.len == 0: initImpl(t, defaultInitialSize)
+  if mustRehash(len(t.data), t.counter): enlarge(t)
+  rawInsert(t, t.data, key, val)
+  inc(t.counter)
+
+template getOrDefaultImpl(t, key): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index >= 0: result = t.data[index].val
+
+template getOrDefaultImpl(t, key, default: untyped): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = if index >= 0: t.data[index].val else: default
+
+template dollarImpl(): untyped {.dirty.} =
+  if t.len == 0:
+    result = "{:}"
+  else:
+    result = "{"
+    for key, val in pairs(t):
+      if result.len > 1: result.add(", ")
+      result.addQuoted(key)
+      result.add(": ")
+      result.addQuoted(val)
+    result.add("}")
+
+template equalsImpl(s, t: typed): typed =
+  if s.counter == t.counter:
+    # different insertion orders mean different 'data' seqs, so we have
+    # to use the slow route here:
+    for key, val in s:
+      if not t.hasKey(key): return false
+      if t.getOrDefault(key) != val: return false
+    return true
