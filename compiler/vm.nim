@@ -481,6 +481,11 @@ const
     "compiler/vmdef.MaxLoopIterations and rebuild the compiler"
   errFieldXNotFound = "node lacks field: "
 
+import strformat
+
+template formatValue(result: var string; value: pointer; specifier: string) =
+  result.formatValue(toHex(cast[uint](value)), specifier)
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -498,12 +503,55 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     when traceCode:
       template regDescr(name, r): string =
         let kind = if r < regs.len: $regs[r].kind else: ""
-        let ret = name & ": " & $r & " " & $kind
+        var ret = name & ": " & $r & " " & $kind
+        if kind == rkInt:
+          ret.add
+
         alignLeft(ret, 15)
-      echo "PC:$pc $opcode $ra $rb $rc" % [
-        "pc", $pc, "opcode", alignLeft($c.code[pc].opcode, 15),
-        "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
-        "rc", regDescr("rc", instr.regC)]
+
+      template formatValue(result: var string; value: TRegister; specifier: string) =
+        formatValue(result, int(value), "3")
+        if value < regs.len:
+          let kind = regs[value].kind
+          case kind
+          of rkNone:
+            result.formatValue "<none>", ">18"
+          of rkInt:
+            result.formatValue regs[value].intVal, "17"
+            result.add "i"
+          of rkFloat:
+            result.formatValue regs[value].floatVal, "17"
+            result.add "f"
+          of rkNode:
+            result.formatValue $regs[value].node, "18"
+          of rkRegisterAddr:
+            result.formatValue pointer(regs[value].regAddr), "16"
+            result.add "*R"
+          of rkNodeAddr:
+            result.formatValue pointer(regs[value].nodeAddr), "16"
+            result.add "*N"
+
+      template formatValue(result: var string; value: TOpcode; specifier: string) =
+        formatValue(result, ($value)[3..^1], specifier)
+
+      case c.code[pc].opcode
+      of opcLdConst:
+        let rbx = instr.jmpDiff
+        let value = c.constants.sons[rbx]
+        echo &"PC:{pc} {instr.opcode:20} ra:{int(ra):3} rbx:{rbx:5}:{value}"
+      of opcTJmp, opcFJmp:
+        let rbx = instr.jmpDiff
+        echo &"PC:{pc} {instr.opcode:20} ra:{instr.regA} jmpDiff:{instr.jmpDiff:5}"
+      of opcJmp, opcJmpBack:
+        let rbx = instr.jmpDiff
+        echo &"PC:{pc} {instr.opcode:20} jmpDiff:{instr.jmpDiff:5}"
+      of opcLdImmInt:
+        let rbx = instr.jmpDiff
+        echo &"PC:{pc} {instr.opcode:20} ra:{int(ra):3} imm:{int(rbx):5}"
+      of opcAddrNode, opcLdDeref, opcAsgnInt, opcAsgnStr, opcAsgnFloat, opcAsgnComplex, opcAsgnRef:
+        echo &"PC:{pc} {instr.opcode:20} ra:{int(ra):3} rb:{instr.regB}"
+      else:
+        echo &"PC:{pc} {instr.opcode:20} ra:{instr.regA} rb:{instr.regB} rc:{instr.regC}"
 
     case instr.opcode
     of opcEof: return regs[ra]
