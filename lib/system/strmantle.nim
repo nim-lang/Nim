@@ -135,6 +135,9 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   #  INTEGER * 10 ^ exponent and leave the work to standard `strtod()`.
   # This avoid the problems of decimal character portability.
   # see: http://www.exploringbinary.com/fast-path-decimal-to-floating-point-conversion/
+  if s.len < 1:
+    return 0
+
   var
     i = start
     sign = 1.0
