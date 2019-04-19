@@ -136,7 +136,7 @@ proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int {.
+proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int {.
   rtl, extern: "npuParseBin", noSideEffect.} =
   ## Parses an binary number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
@@ -145,9 +145,25 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int {.
   ## Else no more than ``start + maxLen`` characters are parsed, up to the
   ## length of the string.
   runnableExamples:
-    var res: int
-    doAssert parseBin("010011100110100101101101", res) == 24
-    doAssert parseBin("3", res) == 0
+    var num: int
+    doAssert parseBin("010011100110100111101101", num) == 24
+    doAssert num == 5138925
+    doAssert parseBin("3", num) == 0
+    
+    var num8: int8
+    doAssert parseBin("010011100110100111101101", num8) == 24
+    doAssert num8 == -19
+    doAssert parseBin("010011100110100111101101", num8, 0, 8) == 8
+    doAssert num8 == 78
+    
+    var num8u: uint8
+    doAssert parseBin("010011100110100111101101", num8u) == 24
+    doAssert num8u == 237
+    
+    var num64: int64
+    doAssert parseBin("010011100110100111101101010011100110100111101101", num64) == 48
+    doAssert num64 == 86216859871725
+    
   var i = start
   var foundDigit = false
   # get last index based on minimum `start + maxLen` or `s.len`
@@ -157,7 +173,7 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int {.
     case s[i]
     of '_': discard
     of '0'..'1':
-      number = number shl 1 or (ord(s[i]) - ord('0'))
+      number = number shl 1 or cast[T](ord(s[i]) - ord('0'))
       foundDigit = true
     else: break
     inc(i)
