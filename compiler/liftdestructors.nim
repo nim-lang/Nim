@@ -126,7 +126,7 @@ proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
 
 proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
   result = optNimV2 in c.graph.config.globalOptions and
-    (tfHasGCedMem in t.flags or t.isGCedMem)
+    ({tfHasGCedMem, tfHasOwned} * t.flags != {} or t.isGCedMem)
 
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
@@ -171,7 +171,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     body.add newAsgnCall(c.graph, op, x, y)
     result = true
 
-proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode): bool =
+proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode) =
   var op = t.destructor
   if op == nil and useNoGc(c, t):
     op = produceSym(c.c, t, attachedDestructor, c.info)
@@ -182,7 +182,6 @@ proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode): bool =
     markUsed(c.graph.config, c.info, op, c.graph.usageSym)
     onUse(c.info, op)
     body.add destructorCall(c.graph, op, x)
-    result = true
   elif useNoGc(c, t):
     internalError(c.graph.config, c.info,
       "type-bound operator could not be resolved")
@@ -365,10 +364,10 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   #var disposeCall = genBuiltin(c.graph, mDispose, "dispose", x)
 
   if isFinal(elemType):
-    discard addDestructorCall(c, elemType, actions, genDeref(x))
+    addDestructorCall(c, elemType, actions, genDeref(x))
     actions.add callCodegenProc(c.graph, "nimRawDispose", c.info, x)
   else:
-    discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x))
+    addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x))
     actions.add callCodegenProc(c.graph, "nimDestroyAndDispose", c.info, x)
 
   case c.kind
