@@ -10,6 +10,8 @@ when hostOS == "standalone":
     panic(arg)
 
 elif defined(nimQuirky) and not defined(nimscript):
+  import ansi_c
+
   proc name(t: typedesc): string {.magic: "TypeTrait".}
 
   proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
