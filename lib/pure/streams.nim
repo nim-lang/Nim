@@ -173,6 +173,9 @@ proc flush*(s: Stream) =
   ## Flushes the buffers that the stream `s` might use.
   ## This procedure causes any unwritten data for that stream to be delivered
   ## to the host environment to be written to the file.
+  ##
+  ## See also:
+  ## * `close proc <#close,Stream>`_
   runnableExamples:
     from os import removeFile
 
@@ -197,6 +200,9 @@ proc flush*(s: Stream) =
 
 proc close*(s: Stream) =
   ## Closes the stream `s`.
+  ##
+  ## See also:
+  ## * `flush proc <#flush,Stream>`_
   runnableExamples:
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     ## do something...
