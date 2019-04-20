@@ -146,7 +146,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
     result = openArrayLoc(p, n)
-  elif ccgIntroducedPtr(p.config, param):
+  elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     result = addrLoc(p.config, a)
   elif p.module.compileToCpp and param.typ.kind == tyVar and
@@ -195,7 +195,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   initLocExpr(p, ri.sons[0], op)
   var params: Rope
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri.sons[0].typ, abstractInst)
+  var typ = skipTypes(ri.sons[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
   assert(sonsLen(typ) == sonsLen(typ.n))
   var length = sonsLen(ri)
@@ -228,10 +228,12 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
-    lineF(p, cpsStmts, callPattern & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
+    if tfIterator in typ.flags:
+      lineF(p, cpsStmts, PatIter & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
+    else:
+      lineF(p, cpsStmts, PatProc & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
   let rawProc = getRawProcType(p, typ)
-  let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
     if isInvalidReturnType(p.config, typ.sons[0]):
       if sonsLen(ri) > 1: add(pl, ~", ")
@@ -256,7 +258,11 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, d.lode, OnUnknown)
-      list.r = callPattern % [rdLoc(op), pl, pl.addComma, rawProc]
+      if tfIterator in typ.flags:
+        list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
+      else:
+        list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()
@@ -541,7 +547,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
+  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
@@ -552,7 +558,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   postStmtActions(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
+  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)

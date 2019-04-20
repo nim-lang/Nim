@@ -1584,7 +1584,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let targetKind = f.sons[0].kind
       let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
-                                          tyBuiltInTypeClass, tyAlias, tySink})
+                                          tyBuiltInTypeClass, tyAlias, tySink, tyOwned})
       let typeClassMatches = targetKind == effectiveArgType.kind and
                              not effectiveArgType.isEmptyContainer
       if typeClassMatches or
@@ -2092,14 +2092,21 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         result = localConvMatch(c, m, f, a, arg)
       else:
         r = typeRel(m, base(f), a)
-        if r >= isGeneric:
+        case r
+        of isGeneric:
           inc(m.convMatches)
           result = copyTree(arg)
-          if r == isGeneric:
-            result.typ = getInstantiatedType(c, arg, m, base(f))
+          result.typ = getInstantiatedType(c, arg, m, base(f))
           m.baseTypeMatch = true
-        # bug #4799, varargs accepting subtype relation object
-        elif r == isSubtype:
+        of isFromIntLit:
+          inc(m.intConvMatches, 256)
+          result = implicitConv(nkHiddenStdConv, f[0], arg, m, c)
+          m.baseTypeMatch = true
+        of isEqual:
+          inc(m.convMatches)
+          result = copyTree(arg)
+          m.baseTypeMatch = true
+        of isSubtype: # bug #4799, varargs accepting subtype relation object
           inc(m.subtypeMatches)
           if base(f).kind == tyTypeDesc:
             result = arg

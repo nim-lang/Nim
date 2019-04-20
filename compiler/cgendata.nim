@@ -11,9 +11,7 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos, pathutils
-
-from modulegraphs import ModuleGraph, PPassContext
+  tables, ndi, lineinfos, pathutils, modulegraphs
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -160,7 +158,7 @@ type
     typeNodesName*, nimTypesName*: Rope # used for type info generation
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
-                                              # OpenGL wrapper
+                                             # OpenGL wrapper
     injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList

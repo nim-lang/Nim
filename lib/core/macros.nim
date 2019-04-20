@@ -360,6 +360,13 @@ when defined(nimHasSignatureHashInMacro):
     ## the owning module of the symbol and others. The same identifier is
     ## used in the back-end to produce the mangled symbol name.
 
+proc symBodyHash*(s: NimNode): string {.noSideEffect.} =
+  ## Returns a stable digest for symbols derived not only from type signature
+  ## and owning module, but also implementation body. All procs/varibles used in
+  ## the implementation of this symbol are hashed recursively as well, including
+  ## magics from system module.
+  discard
+
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeImpl`` which takes a ``typedesc``.
 
@@ -1098,6 +1105,8 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
   ##    )
   ##
   result = newNimNode(nnkIfStmt)
+  if len(branches) < 1:
+    error("If statement must have at least one branch")
   for i in branches:
     result.add(newTree(nnkElifBranch, i.cond, i.body))
 

@@ -230,8 +230,10 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       let t = n.sym.typ.skipTypes({tyTypeDesc})
       if t.kind == tyVar: result = arStrange
   of nkDotExpr:
-    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in
-        {tyVar, tyPtr, tyRef}:
+    let t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
+    if t.kind in {tyVar, tyPtr, tyRef}:
+      result = arLValue
+    elif isUnsafeAddr and t.kind == tyLent:
       result = arLValue
     else:
       result = isAssignable(owner, n.sons[0], isUnsafeAddr)
@@ -239,8 +241,10 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
         sfDiscriminant in n[1].sym.flags:
       result = arDiscriminant
   of nkBracketExpr:
-    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in
-        {tyVar, tyPtr, tyRef}:
+    let t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
+    if t.kind in {tyVar, tyPtr, tyRef}:
+      result = arLValue
+    elif isUnsafeAddr and t.kind == tyLent:
       result = arLValue
     else:
       result = isAssignable(owner, n.sons[0], isUnsafeAddr)
@@ -254,7 +258,8 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       # types that are equal modulo distinction preserve l-value:
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
   of nkHiddenDeref:
-    if n[0].typ.kind == tyLent: result = arDiscriminant
+    if isUnsafeAddr and n[0].typ.kind == tyLent: result = arLValue
+    elif n[0].typ.kind == tyLent: result = arDiscriminant
     else: result = arLValue
   of nkDerefExpr, nkHiddenAddr:
     result = arLValue
@@ -265,6 +270,8 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     if getMagic(n) in {mArrGet, mSlice}:
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
     elif n.typ != nil and n.typ.kind == tyVar:
+      result = arLValue
+    elif isUnsafeAddr and n.typ != nil and n.typ.kind == tyLent:
       result = arLValue
   of nkStmtList, nkStmtListExpr:
     if n.typ != nil:

@@ -26,14 +26,6 @@ hash of ``package & "." & module & "." & name`` to save space.
 ]#
 
 type
-  TNimNode {.compilerProc.} = object # to keep the code generator simple
-  DestructorProc = proc (p: pointer) {.nimcall, benign.}
-  TNimType {.compilerProc.} = object
-    destructor: pointer
-    size: int
-    name: cstring
-  PNimType = ptr TNimType
-
   RefHeader = object
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds but this seems

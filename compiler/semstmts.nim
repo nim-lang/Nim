@@ -333,7 +333,7 @@ proc checkNilable(c: PContext; v: PSym) =
       {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
     if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
-    elif tfNotNil in v.typ.flags and tfNotNil notin v.astdef.typ.flags:
+    elif tfNotNil in v.typ.flags and not v.astdef.typ.isNil and tfNotNil notin v.astdef.typ.flags:
       message(c.config, v.info, warnProveInit, v.name.s)
 
 #include liftdestructors
@@ -521,10 +521,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             shadowed.flags.incl(sfShadowed)
             if shadowed.kind == skResult and sfGenSym notin v.flags:
               message(c.config, a.info, warnResultShadowed)
-            # a shadowed variable is an error unless it appears on the right
-            # side of the '=':
-            if warnShadowIdent in c.config.notes and not identWithin(def, v.name):
-              message(c.config, a.info, warnShadowIdent, v.name.s)
       if a.kind != nkVarTuple:
         if def.kind != nkEmpty:
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
@@ -648,14 +644,6 @@ proc semConst(c: PContext, n: PNode): PNode =
 
 include semfields
 
-proc addForVarDecl(c: PContext, v: PSym) =
-  if warnShadowIdent in c.config.notes:
-    let shadowed = findShadowedVar(c, v)
-    if shadowed != nil:
-      # XXX should we do this here?
-      #shadowed.flags.incl(sfShadowed)
-      message(c.config, v.info, warnShadowIdent, v.name.s)
-  addDecl(c, v)
 
 proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
@@ -690,7 +678,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else:
             v.typ = iter.sons[i]
           n.sons[0][i] = newSymNode(v)
-          if sfGenSym notin v.flags: addForVarDecl(c, v)
+          if sfGenSym notin v.flags: addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
       else:
         var v = symForVar(c, n.sons[0])
@@ -700,7 +688,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # for an example:
         v.typ = iterBase
         n.sons[0] = newSymNode(v)
-        if sfGenSym notin v.flags: addForVarDecl(c, v)
+        if sfGenSym notin v.flags: addDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)
@@ -724,7 +712,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else:
             v.typ = iter[i][j]
           n.sons[i][j] = newSymNode(v)
-          if not isDiscardUnderscore(v): addForVarDecl(c, v)
+          if not isDiscardUnderscore(v): addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
       else:
         var v = symForVar(c, n.sons[i])
@@ -732,7 +720,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         v.typ = iter.sons[i]
         n.sons[i] = newSymNode(v)
         if sfGenSym notin v.flags:
-          if not isDiscardUnderscore(v): addForVarDecl(c, v)
+          if not isDiscardUnderscore(v): addDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
   inc(c.p.nestedLoopCounter)
   openScope(c)
@@ -1199,6 +1187,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       incl st.flags, tfRefsAnonObj
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                               getCurrOwner(c), s.info)
+      if sfPure in s.flags:
+        obj.flags.incl sfPure
       obj.typ = st.lastSon
       st.lastSon.sym = obj
 
@@ -1480,6 +1470,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   closeScope(c)           # close scope for parameters
   popOwner(c)
   result.typ = s.typ
+  if optNimV2 in c.config.globalOptions:
+    result.typ = makeVarType(c, result.typ, tyOwned)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
@@ -1515,7 +1507,8 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   popProcCon(c)
   popOwner(c)
   closeScope(c)
-
+  if optNimV2 in c.config.globalOptions and result.typ != nil:
+    result.typ = makeVarType(c, result.typ, tyOwned)
   # alternative variant (not quite working):
   # var prc = arg[0].sym
   # let inferred = c.semGenerateInstance(c, prc, m.bindings, arg.info)
@@ -1571,7 +1564,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
         obj = canonType(c, obj)
         if obj.destructor.isNil:
-          obj.destructor = s
+          obj.attachedOps[attachedDestructor] = s
         else:
           prevDestructor(c, obj.destructor, obj, n.info)
         noError = true
@@ -1595,7 +1588,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         elif t.kind == tyGenericInvocation: t = t.sons[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum, tySequence, tyString}:
-        if t.deepCopy.isNil: t.deepCopy = s
+        if t.attachedOps[attachedDeepCopy].isNil: t.attachedOps[attachedDeepCopy] = s
         else:
           localError(c.config, n.info, errGenerated,
                      "cannot bind another 'deepCopy' to: " & typeToString(t))
@@ -1634,11 +1627,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
-        let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
-        if opr[].isNil:
-          opr[] = s
+        let k = if name == "=": attachedAsgn else: attachedSink
+        if obj.attachedOps[k].isNil:
+          obj.attachedOps[k] = s
         else:
-          prevDestructor(c, opr[], obj, n.info)
+          prevDestructor(c, obj.attachedOps[k], obj, n.info)
         if obj.owner.getModule != s.getModule:
           localError(c.config, n.info, errGenerated,
             "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
@@ -1831,7 +1824,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
-    if s.name.s in [".", ".()", ".="] and {destructor, dotOperators} * c.features == {}:
+    if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
       localError(c.config, n.info, "the overloaded " & s.name.s &
         " operator has to be enabled with {.experimental: \"dotOperators\".}")
     elif s.name.s == "()" and callOperator notin c.features:
@@ -1894,6 +1887,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if isAnon:
     n.kind = nkLambda
     result.typ = s.typ
+    if optNimV2 in c.config.globalOptions:
+      result.typ = makeVarType(c, result.typ, tyOwned)
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
@@ -2114,7 +2109,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
             continue
 
         let verdict = semConstExpr(c, n[i])
-        if verdict.intVal == 0:
+        if verdict == nil or verdict.kind != nkIntLit or verdict.intVal == 0:
           localError(c.config, result.info, "concept predicate failed")
       of tyUnknown: continue
       else: discard

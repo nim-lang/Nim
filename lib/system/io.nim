@@ -612,6 +612,25 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
+
+proc readLines*(filename: string, n = 1.Natural): seq[TaintedString] =
+  ## read `n` lines from the file named `filename`. Raises an IO exception
+  ## in case of an error. Raises EOF if file does not contain at least `n` lines.
+  ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
+  ## The newline character(s) are not part of the returned strings.
+  var f: File
+  if open(f, filename):
+    try:
+      result = newSeq[TaintedString](n)
+      for i in 0 .. n - 1:
+        if not readLine(f, result[i]):
+          raiseEOF()
+    finally:
+      close(f)
+  else:
+    sysFatal(IOError, "cannot open: " & filename)
+
+
 iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.
   ##

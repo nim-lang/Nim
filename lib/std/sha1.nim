@@ -194,7 +194,7 @@ proc finalize(ctx: var Sha1State): Sha1Digest =
 
 # Public API
 
-proc secureHash*(str: string): SecureHash =
+proc secureHash*(str: openArray[char]): SecureHash =
   ## Generates a ``SecureHash`` from a ``str``.
   ##
   ## **See also:**

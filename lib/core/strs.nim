@@ -41,12 +41,11 @@ template isLiteral(s): bool = s.p == nil or s.p.allocator == nil
 
 template contentSize(cap): int = cap + 1 + sizeof(int) + sizeof(Allocator)
 
+template frees(s) =
+  if not isLiteral(s):
+    s.p.allocator.dealloc(s.p.allocator, s.p, contentSize(s.p.cap))
+
 when not defined(nimV2):
-
-  template frees(s) =
-    if not isLiteral(s):
-      s.p.allocator.dealloc(s.p.allocator, s.p, contentSize(s.p.cap))
-
   proc `=destroy`(s: var string) =
     var a = cast[ptr NimStringV2](addr s)
     frees(a)
@@ -87,7 +86,7 @@ proc resize(old: int): int {.inline.} =
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
-  if isLiteral(s):
+  if isLiteral(s) and addlen > 0:
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
     let allocator = getLocalAllocator()
@@ -121,7 +120,7 @@ proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerProc.} =
     if len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
       copyMem(unsafeAddr p.data[0], str, len)
-    result = NimStringV2(len: 0, p: p)
+    result = NimStringV2(len: len, p: p)
 
 proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
   if str == nil: toNimStr(str, 0)
@@ -164,9 +163,29 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
     result = NimStringV2(len: len, p: p)
 
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
-  if newLen > s.len:
+  if newLen == 0:
+    frees(s)
+    s.p = nil
+  elif newLen > s.len or isLiteral(s):
     prepareAdd(s, newLen - s.len)
-  # XXX This is wrong for const strings that got moved into 's'!
   s.len = newLen
-  # this also only works because the destructor
-  # looks at s.p and not s.len
+
+proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
+  if a.p == b.p: return
+  if isLiteral(b):
+    # we can shallow copy literals:
+    frees(a)
+    a.len = b.len
+    a.p = b.p
+  else:
+    if isLiteral(a) or a.p.cap < b.len:
+      let allocator = if a.p != nil and a.p.allocator != nil: a.p.allocator else: getLocalAllocator()
+      # we have to allocate the 'cap' here, consider
+      # 'let y = newStringOfCap(); var x = y'
+      # on the other hand... These get turned into moves now.
+      frees(a)
+      a.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(b.len)))
+      a.p.allocator = allocator
+      a.p.cap = b.len
+    a.len = b.len
+    copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)

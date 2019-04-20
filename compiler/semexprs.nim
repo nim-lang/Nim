@@ -125,11 +125,18 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   var s = src
   if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
     s = s.lastSon
-  s = skipTypes(s, abstractVar-{tyTypeDesc})
-  var pointers = 0
-  while (d != nil) and (d.kind in {tyPtr, tyRef, tyOwned}) and (d.kind == s.kind):
-    d = d.lastSon
+  s = skipTypes(s, abstractVar-{tyTypeDesc, tyOwned})
+  if s.kind == tyOwned and d.kind != tyOwned:
     s = s.lastSon
+  var pointers = 0
+  while (d != nil) and (d.kind in {tyPtr, tyRef, tyOwned}):
+    if s.kind == tyOwned and d.kind != tyOwned:
+      s = s.lastSon
+    elif d.kind != s.kind:
+      break
+    else:
+      d = d.lastSon
+      s = s.lastSon
     inc pointers
   if d == nil:
     result = convNotLegal
@@ -143,7 +150,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
     of isNone, isGeneric:
-      if not compareTypes(castDest.skipTypes(abstractVar), src, dcEqIgnoreDistinct):
+      if not compareTypes(castDest.skipTypes(abstractVar), src.skipTypes({tyOwned}), dcEqIgnoreDistinct):
         result = convNotLegal
     else:
       discard
@@ -851,7 +858,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   semOpAux(c, n)
   var t: PType = nil
   if n.sons[0].typ != nil:
-    t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
+    t = skipTypes(n.sons[0].typ, abstractInst+{tyOwned}-{tyTypeDesc})
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
@@ -1522,7 +1529,7 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
 proc asgnToResult(c: PContext, n, le, ri: PNode) =
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   if ri.typ != nil and ri.typ.skipTypes(abstractInst).kind == tyOwned and
-      le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned:
+      le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned and ri.kind in nkCallKinds:
     localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer; " &
       "use 'owned(" & typeToString(le.typ) & ")' as the return type")
 
@@ -1616,7 +1623,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.owner.typ.sons[0] = rhsTyp
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
-      asgnToResult(c, n, n.sons[0], n.sons[1])
+      asgnToResult(c, n, n.sons[0], rhs)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
     liftTypeBoundOps(c, lhs.typ, lhs.info)
@@ -2421,6 +2428,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         markIndirect(c, result.sym)
         # if isGenericRoutine(result.sym):
         #   localError(c.config, n.info, errInstantiateXExplicitly, s.name.s)
+      # "procs literals" are 'owned'
+      if optNimV2 in c.config.globalOptions:
+        result.typ = makeVarType(c, result.typ, tyOwned)
     else:
       result = semSym(c, n, s, flags)
   of nkSym:

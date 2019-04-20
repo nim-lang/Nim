@@ -276,7 +276,7 @@ proc newStringTable*(keyValuePairs: varargs[string],
     inc(i, 2)
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
-                     mode: StringTableMode = modeCaseSensitive): StringTableRef {.
+                     mode: StringTableMode = modeCaseSensitive): owned(StringTableRef) {.
   rtlFunc, extern: "nst$1WithTableConstr".} =
   ## Creates a new string table with given `(key, value)` tuple pairs.
   ##

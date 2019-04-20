@@ -376,7 +376,7 @@ proc nameToCC*(name: string): TSystemCC =
   result = ccNone
 
 proc isVSCompatible*(conf: ConfigRef): bool =
-  return conf.cCompiler == ccVcc or 
+  return conf.cCompiler == ccVcc or
           conf.cCompiler == ccClangCl or
           (conf.cCompiler == ccIcl and conf.target.hostOS in osDos..osWindows)
 
@@ -738,7 +738,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     # way of being able to debug and rebuild the program at the same time. This
     # is accomplished using the /PDB:<filename> flag (there also exists the
     # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
-    # atleast 300kb big (when linking statically to the runtime - or else 5mb+) 
+    # atleast 300kb big (when linking statically to the runtime - or else 5mb+)
     # and will quickly accumulate. There is a hacky solution: we could try to
     # delete all .pdb files with a pattern and swallow exceptions.
     #
@@ -910,7 +910,8 @@ proc callCCompiler*(conf: ConfigRef) =
                        else: AbsoluteFile(conf.projectName)
       linkCmd = getLinkCmd(conf, mainOutput, objfiles)
       if optCompileOnly notin conf.globalOptions:
-        if defined(windows) and linkCmd.len > 8_000:
+        const MaxCmdLen = when defined(windows): 8_000 else: 32_000
+        if linkCmd.len > MaxCmdLen:
           # Windows's command line limit is about 8K (don't laugh...) so C compilers on
           # Windows support a feature where the command line can be passed via ``@linkcmd``
           # to them.

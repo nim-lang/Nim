@@ -247,7 +247,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(TokTypeToStr[tok.tokType])
     if not em.inquote: wr(" ")
   of tkOpr, tkDotDot:
-    if (tok.strongSpaceA == 0 and tok.strongSpaceB == 0) or em.inquote:
+    if ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) or em.inquote) and
+      tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]:
       # bug #9504: remember to not spacify a keyword:
       lastTokWasTerse = true
       # if not surrounded by whitespace, don't produce any whitespace either:

@@ -48,14 +48,14 @@ const
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 const
-  Usage = slurp"../doc/basicopt.txt".replace("//", "")
+  Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
   FeatureDesc = block:
     var x = ""
     for f in low(Feature)..high(Feature):
       if x.len > 0: x.add "|"
       x.add $f
     x
-  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "") % FeatureDesc
+  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % FeatureDesc
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
@@ -481,6 +481,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       undefSymbol(conf.symbols, "endb")
     else:
       localError(conf, info, "expected endb|gdb but found " & arg)
+  of "g": # alias for --debugger:native
+    incl(conf.globalOptions, optCDebug)
+    conf.options = conf.options + {optLineDir} - {optEndb}
+    #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
+    undefSymbol(conf.symbols, "endb")
   of "profiler":
     processOnOffSwitch(conf, {optProfiler}, arg, pass, info)
     if optProfiler in conf.options: defineSymbol(conf.symbols, "profiler")
@@ -740,12 +745,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.cppDefine(arg)
   of "newruntime":
     expectNoArg(conf, switch, arg, pass, info)
-    doAssert(conf != nil)
-    incl(conf.features, destructor)
-    incl(conf.globalOptions, optNimV2)
-    defineSymbol(conf.symbols, "nimV2")
-    conf.selectedGC = gcDestructors
-    defineSymbol(conf.symbols, "gcdestructors")
+    if pass in {passCmd2, passPP}:
+      doAssert(conf != nil)
+      incl(conf.features, destructor)
+      incl(conf.globalOptions, optNimV2)
+      defineSymbol(conf.symbols, "nimV2")
+      conf.selectedGC = gcDestructors
+      defineSymbol(conf.symbols, "gcdestructors")
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}

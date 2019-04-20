@@ -47,7 +47,7 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
                       [genStringLiteralDataOnlyV1(m, n.strVal)])
     else:
       result = ropecg(m, "((#NimStringDesc*) &$1$2)",
-                      [m.tmpBase, rope(id)])
+                      [m.tmpBase, id])
 
 # ------ Version 2: destructor based strings and seqs -----------------------
 
@@ -96,10 +96,6 @@ proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo): Rope =
     genStringLiteralDataOnlyV2(m, s, result)
   else:
     localError(m.config, info, "cannot determine how to produce code for string literal")
-
-proc genStringLiteralFromData(m: BModule; data: Rope; info: TLineInfo): Rope =
-  result = ropecg(m, "((#NimStringDesc*) &$1)",
-                [data])
 
 proc genNilStringLiteral(m: BModule; info: TLineInfo): Rope =
   result = ropecg(m, "((#NimStringDesc*) NIM_NIL)", [])

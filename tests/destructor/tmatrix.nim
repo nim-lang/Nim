@@ -88,8 +88,8 @@ proc `-`*(a: sink Matrix; b: Matrix): Matrix =
   doAssert(a.len == b.len) # non destructive use before sink is ok
   result = a
   for i in 0 ..< result.m:
-     for j in 0 ..< result.n:
-        result[i, j] = a[i, j] - b[i, j]
+    for j in 0 ..< result.n:
+      result[i, j] = a[i, j] - b[i, j]
 
 proc info =
   echo "after ", allocCount, " ", deallocCount

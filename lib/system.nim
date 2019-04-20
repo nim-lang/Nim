@@ -1657,6 +1657,13 @@ else:
     new(r)
     return r
 
+template disarm*(x: typed) =
+  ## Useful for ``disarming`` dangling pointers explicitly for the
+  ## --newruntime. Regardless of whether --newruntime is used or not
+  ## this sets the pointer or callback ``x`` to ``nil``. This is an
+  ## experimental API!
+  x = nil
+
 proc `of`*[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
@@ -2969,7 +2976,32 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   discard
 
 when not defined(js) and not defined(nimscript):
-  include "system/ansi_c"
+  import "system/ansi_c"
+  import "system/memory"
+
+when not defined(js):
+  {.push stackTrace:off.}
+
+  when hasThreadSupport and hostOS != "standalone":
+    const insideRLocksModule = false
+    include "system/syslocks"
+    include "system/threadlocalstorage"
+
+  when defined(nimV2):
+    type
+      TNimNode {.compilerProc.} = object # to keep the code generator simple
+      DestructorProc = proc (p: pointer) {.nimcall, benign.}
+      TNimType {.compilerProc.} = object
+        destructor: pointer
+        size: int
+        name: cstring
+      PNimType = ptr TNimType
+
+  when defined(gcDestructors) and not defined(nimscript):
+    include "core/strs"
+    include "core/seqs"
+
+  {.pop.}
 
 when not declared(sysFatal):
   include "system/fatal"
@@ -3444,8 +3476,6 @@ when not defined(JS): #and not defined(nimscript):
       {.pop.}
 
   when not defined(nimscript):
-    include "system/memory"
-
     proc zeroMem(p: pointer, size: Natural) =
       nimZeroMem(p, size)
       when declared(memTrackerOp):
@@ -3480,11 +3510,6 @@ when not defined(JS): #and not defined(nimscript):
   when not defined(nimscript) and hostOS != "standalone":
     when defined(endb):
       proc endbStep()
-
-
-  when defined(gcDestructors) and not defined(nimscript):
-    include "core/strs"
-    include "core/seqs"
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
@@ -3545,8 +3570,6 @@ when not defined(JS): #and not defined(nimscript):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
-    const insideRLocksModule = false
-    include "system/syslocks"
     when hostOS != "standalone": include "system/threads"
   elif not defined(nogc) and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
@@ -3632,7 +3655,7 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/strmantle"
 
     when hasThreadSupport:
-      when hostOS != "standalone": include "system/channels"
+      when hostOS != "standalone" and not defined(gcDestructors): include "system/channels"
 
   when not defined(nimscript) and hasAlloc:
     when not defined(gcDestructors):

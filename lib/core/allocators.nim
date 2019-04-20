@@ -27,20 +27,40 @@ var
   sharedAllocator: Allocator
   allocatorStorage {.threadvar.}: AllocatorObj
 
+when defined(useMalloc) and not defined(nimscript):
+  import "system/ansi_c"
+
+import "system/memory"
+
+template `+!`(p: pointer, s: int): pointer =
+  cast[pointer](cast[int](p) +% s)
+
 proc getLocalAllocator*(): Allocator =
   result = localAllocator
   if result == nil:
     result = addr allocatorStorage
     result.alloc = proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [].} =
-      result = system.alloc(size)
+      when defined(useMalloc) and not defined(nimscript):
+        result = c_malloc(size)
+        # XXX do we need this?
+        nimZeroMem(result, size)
+      else:
+        result = system.alloc0(size)
       inc a.allocCount
     result.dealloc = proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [].} =
-      system.dealloc(p)
+      when defined(useMalloc) and not defined(nimscript):
+        c_free(p)
+      else:
+        system.dealloc(p)
       inc a.deallocCount
     result.realloc = proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [].} =
-      result = system.realloc(p, newSize)
+      when defined(useMalloc) and not defined(nimscript):
+        result = c_realloc(p, newSize)
+      else:
+        result = system.realloc(p, newSize)
+      nimZeroMem(result +! oldSize, newSize - oldSize)
     result.deallocAll = nil
-    result.flags = {ThreadLocal}
+    result.flags = {ThreadLocal, ZerosMem}
     result.name = "nim_local"
     localAllocator = result
 

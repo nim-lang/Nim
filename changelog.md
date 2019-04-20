@@ -31,16 +31,6 @@
 
 - `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
   tree from the symbol declaration instead of just the initializer portion.
-- it is now possible to use statement list expressions after keywords with
-  indentation: raise, return, discard, yield. This helps parsing code produced 
-  by Nim template expansion where stmtListExpr can appear in place of any expression.
-  Example:
-```nim
-  raise 
-    var e = new(Exception)
-    e.msg = "My Exception msg"
-    e
-```
 
 - To use multi-methods, explicit `--multimethods:on` is now needed.
 
@@ -48,6 +38,9 @@
 #### Breaking changes in the standard library
 
 - `osproc.execProcess` now also takes a `workingDir` parameter.
+
+- `std/sha1.secureHash` now accepts `openArray[char]`, not `string`. (Former
+   successful matches should keep working, though former failures will not.)
 
 - `options.UnpackError` is no longer a ref type and inherits from `system.Defect`
   instead of `system.ValueError`.
@@ -95,7 +88,8 @@
 - two poorly documented and not used modules (`subexes`, `scgi`) were moved to
   graveyard (they are available as Nimble packages)
 
-
+- Custom types that should be supported by `strformat` (&) now need an
+  explicit overload of `formatValue`.
 
 #### Breaking changes in the compiler
 
@@ -185,6 +179,7 @@ proc enumToString*(enums: openArray[enum]): string =
   differently.
 
 - `securehash` is moved to `lib/deprecated`
+- The switch ``-d:useWinAnsi`` is not supported anymore.
 
 
 ### Language additions

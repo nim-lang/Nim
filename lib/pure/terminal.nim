@@ -35,9 +35,9 @@ type
       oldStdoutAttr: int16
       oldStderrAttr: int16
 
-var gTerm {.threadvar.}: PTerminal
+var gTerm {.threadvar.}: owned(PTerminal)
 
-proc newTerminal(): PTerminal {.gcsafe.}
+proc newTerminal(): owned(PTerminal) {.gcsafe.}
 
 proc getTerminal(): PTerminal {.inline.} =
   if isNil(gTerm):
@@ -900,7 +900,7 @@ proc disableTrueColors*() =
   else:
     term.trueColorIsEnabled = false
 
-proc newTerminal(): PTerminal =
+proc newTerminal(): owned(PTerminal) =
   new result
   when defined(windows):
     initTerminal(result)

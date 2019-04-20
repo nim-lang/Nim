@@ -57,7 +57,7 @@
 ## **See also:**
 ## * `strformat module<strformat.html>`_ for string interpolation and formatting
 ## * `unicode module<unicode.html>`_ for Unicode UTF-8 handling
-## * `sequtils module<collections/sequtils.html>`_ for operations on container
+## * `sequtils module<sequtils.html>`_ for operations on container
 ##   types (including strings)
 ## * `parseutils module<parseutils.html>`_ for lower-level parsing of tokens,
 ##   numbers, identifiers, etc.
@@ -2498,11 +2498,11 @@ proc formatEng*(f: BiggestFloat,
     # we can be a bit more efficient through knowledge that there will never be
     # an exponent in this part.
     if trim:
-        while splitResult[1].endsWith("0"):
-          # Trim last character
-          splitResult[1].setLen(splitResult[1].len-1)
-        if splitResult[1].len() > 0:
-          result &= decimalSep & splitResult[1]
+      while splitResult[1].endsWith("0"):
+        # Trim last character
+        splitResult[1].setLen(splitResult[1].len-1)
+      if splitResult[1].len() > 0:
+        result &= decimalSep & splitResult[1]
     else:
       result &= decimalSep & splitResult[1]
 

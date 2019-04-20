@@ -70,7 +70,7 @@ type
     tags: PNode # list of tags
     bottom, inTryStmt: int
     owner: PSym
-    owner_module: PSym
+    ownerModule: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -705,11 +705,11 @@ proc track(tracked: PEffects, n: PNode) =
     # p's effects are ours too:
     var a = n.sons[0]
     let op = a.typ
-    if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
+    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
       return
-    if op != nil:
-      if tracked.owner.kind != skMacro:
-        createTypeBoundOps(tracked.c, op, n.info)
+    if n.typ != nil:
+      if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        createTypeBoundOps(tracked.c, n.typ, n.info)
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
@@ -738,7 +738,7 @@ proc track(tracked: PEffects, n: PNode) =
         mergeTags(tracked, effectList.sons[tagEffects], n)
         gcsafeAndSideeffectCheck()
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i), a)
+      for i in 1 ..< n.len: trackOperand(tracked, n.sons[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
@@ -754,7 +754,7 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, n.sons[i])
   of nkDotExpr:
     guardDotAccess(tracked, n)
-    for i in 0 ..< len(n): track(tracked, n.sons[i])
+    for i in 0 ..< n.len: track(tracked, n.sons[i])
   of nkCheckedFieldExpr:
     track(tracked, n.sons[0])
     if warnProveField in tracked.config.notes:
@@ -776,7 +776,12 @@ proc track(tracked: PEffects, n: PNode) =
       let last = lastSon(child)
       if last.kind != nkEmpty: track(tracked, last)
       if tracked.owner.kind != skMacro:
-        createTypeBoundOps(tracked.c, child[0].typ, child.info)
+        if child.kind == nkVarTuple:
+          createTypeBoundOps(tracked.c, child[^1].typ, child.info)
+          for i in 0..child.len-3:
+            createTypeBoundOps(tracked.c, child[i].typ, child.info)
+        else:
+          createTypeBoundOps(tracked.c, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)
@@ -816,13 +821,28 @@ proc track(tracked: PEffects, n: PNode) =
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len
-    for i in 0 ..< len(n):
-      track(tracked, n.sons[i])
+    for i in 0 .. n.len-3:
+      let it = n[i]
+      track(tracked, it)
+      if tracked.owner.kind != skMacro:
+        if it.kind == nkVarTuple:
+          for x in it:
+            createTypeBoundOps(tracked.c, x.typ, x.info)
+        else:
+          createTypeBoundOps(tracked.c, it.typ, it.info)
+    let iterCall = n[n.len-2]
+    let loopBody = n[n.len-1]
+    if tracked.owner.kind != skMacro and iterCall.len > 1:
+      # XXX this is a bit hacky:
+      if iterCall[1].typ != nil and iterCall[1].typ.skipTypes(abstractVar).kind notin {tyVarargs, tyOpenArray}:
+        createTypeBoundOps(tracked.c, iterCall[1].typ, iterCall[1].info)
+    track(tracked, iterCall)
+    track(tracked, loopBody)
     setLen(tracked.init, oldState)
   of nkObjConstr:
     when false: track(tracked, n.sons[0])
     let oldFacts = tracked.guards.s.len
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       let x = n.sons[i]
       track(tracked, x)
       if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:
@@ -936,7 +956,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
   t.owner = s
-  t.owner_module = s.getModule
+  t.ownerModule = s.getModule
   t.init = @[]
   t.guards.s = @[]
   t.guards.o = initOperators(g)

@@ -172,7 +172,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
                                 outExt, RelativeDir"htmldocs", false)
   result.thisDir = result.destFile.splitFile.dir
 
-proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
+template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if conf.cmd != cmdRst2tex: addf(dest, xml, args)
   else: addf(dest, tex, args)
 
