@@ -17,9 +17,9 @@ import
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
 
-proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: string) =
+proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: AbsoluteFile) =
   let
-    pck = getPackageName(graph.config, filename)
+    pck = getPackageName(graph.config, filename.string)
     pck2 = if pck.len > 0: pck else: "unknown"
     pack = getIdent(graph.cache, pck2)
   var packSym = graph.packageSyms.strTableGet(pack)
@@ -27,6 +27,22 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
     packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, result.info)
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
+  else:
+    let existing = strTableGet(packSym.tab, result.name)
+    if existing != nil and existing.info.fileIndex != result.info.fileIndex:
+      when false:
+        # we used to produce an error:
+        localError(graph.config, result.info,
+          "module names need to be unique per Nimble package; module clashes with " &
+            toFullPath(graph.config, existing.info.fileIndex))
+      else:
+        # but starting with version 0.20 we now produce a fake Nimble package instead
+        # to resolve the conflicts:
+        let pck3 = fakePackageName(graph.config, filename)
+        packSym = newSym(skPackage, getIdent(graph.cache, pck3), nil, result.info)
+        initStrTable(packSym.tab)
+        graph.packageSyms.strTableAdd(packSym)
+
   result.owner = packSym
   result.position = int fileIdx
 
@@ -37,13 +53,7 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
-  let existing = strTableGet(packSym.tab, result.name)
-  if existing != nil and existing.info.fileIndex != result.info.fileIndex:
-    localError(graph.config, result.info,
-      "module names need to be unique per Nimble package; module clashes with " &
-        toFullPath(graph.config, existing.info.fileIndex))
-  # strTableIncl() for error corrections:
-  discard strTableIncl(packSym.tab, result)
+  strTableAdd(packSym.tab, result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
@@ -51,7 +61,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   new(result)
   result.id = -1             # for better error checking
   result.kind = skModule
-  let filename = toFullPath(graph.config, fileIdx)
+  let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   result.name = getIdent(graph.cache, splitFile(filename).name)
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
@@ -61,8 +71,8 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
 proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
   result = graph.getModule(fileIdx)
   if result == nil:
-    let filename = toFullPath(graph.config, fileIdx)
-    let (r, id) = loadModuleSym(graph, fileIdx, AbsoluteFile filename)
+    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+    let (r, id) = loadModuleSym(graph, fileIdx, filename)
     result = r
     if result == nil:
       result = newModule(graph, fileIdx)
