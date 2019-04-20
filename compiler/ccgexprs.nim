@@ -2703,7 +2703,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
             genProc(p.module, prc)
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
-  of nkGotoState: genGotoState(p, n)
+  of nkGotoState:
+    # simply never set it back to 0 here from here on...
+    inc p.splitDecls
+    genGotoState(p, n)
   of nkBreakState: genBreakState(p, n, d)
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
