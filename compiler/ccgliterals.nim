@@ -97,10 +97,6 @@ proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo): Rope =
   else:
     localError(m.config, info, "cannot determine how to produce code for string literal")
 
-proc genStringLiteralFromData(m: BModule; data: Rope; info: TLineInfo): Rope =
-  result = ropecg(m, "((#NimStringDesc*) &$1)",
-                [data])
-
 proc genNilStringLiteral(m: BModule; info: TLineInfo): Rope =
   result = ropecg(m, "((#NimStringDesc*) NIM_NIL)", [])
 

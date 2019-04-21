@@ -342,12 +342,17 @@ proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
     if result == nil: result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
+  let cachedUnion {.global.} = rope("union")
+  let cachedStruct {.global.} = rope("struct")
   let t = t.skipTypes({tyAlias, tySink})
-  if tfUnion in t.flags: rope("union") else: rope("struct")
+  if tfUnion in t.flags: cachedUnion
+  else: cachedStruct
 
-proc getForwardStructFormat(m: BModule): string =
-  if m.compileToCpp: result = "$1 $2;$n"
-  else: result = "typedef $1 $2 $2;$n"
+proc addForwardStructFormat(m: BModule, structOrUnion: Rope, typename: Rope) =
+  if m.compileToCpp:
+    m.s[cfsForwardTypes].addf "$1 $2;$n", [structOrUnion, typename]
+  else:
+    m.s[cfsForwardTypes].addf "typedef $1 $2 $2;$n", [structOrUnion, typename]
 
 proc seqStar(m: BModule): string =
   if m.config.selectedGC == gcDestructors: result = ""
@@ -364,8 +369,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     result = getTypeName(m, typ, sig)
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
-      addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-          [structOrUnion(typ), result])
+      addForwardStructFormat(m, structOrUnion(typ), result)
     else:
       pushType(m, concrete)
     doAssert m.forwTypeCache[sig] == result
@@ -737,8 +741,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     if result == nil:
       result = getTypeName(m, origTyp, sig)
       if not isImportedType(t):
-        addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-            [structOrUnion(t), result])
+        addForwardStructFormat(m, structOrUnion(t), result)
       m.forwTypeCache[sig] = result
     assert(cacheGetType(m.typeCache, sig) == nil)
     m.typeCache[sig] = result & seqStar(m)
@@ -849,8 +852,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         result = getTypeName(m, origTyp, sig)
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
-          addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
-             [structOrUnion(t), result])
+          addForwardStructFormat(m, structOrUnion(t), result)
         assert m.forwTypeCache[sig] == result
       m.typeCache[sig] = result # always call for sideeffects:
       if not incompleteType(t):
@@ -909,7 +911,8 @@ proc finishTypeDescriptions(m: BModule) =
     discard getTypeDesc(m, m.typeStack[i])
     inc(i)
 
-template cgDeclFrmt*(s: PSym): string = s.constraint.strVal
+template cgDeclFrmt*(s: PSym): string =
+  s.constraint.strVal
 
 proc isReloadable(m: BModule, prc: PSym): bool =
   return m.hcrOn and sfNonReloadable notin prc.flags
@@ -947,7 +950,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
          params])
   else:
     let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
-    result = prc.cgDeclFrmt % [rettype, asPtrStr, params]
+    result = runtimeFormat(prc.cgDeclFrmt, [rettype, asPtrStr, params])
 
 # ------------------ type info generation -------------------------------------
 
@@ -1356,10 +1359,10 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     # results are not deterministic!
     genTupleInfo(m, t, origType, result, info)
   else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
-  if t.deepCopy != nil:
-    genDeepCopyProc(m, t.deepCopy, result)
-  elif origType.deepCopy != nil:
-    genDeepCopyProc(m, origType.deepCopy, result)
+  if t.attachedOps[attachedDeepCopy] != nil:
+    genDeepCopyProc(m, t.attachedOps[attachedDeepCopy], result)
+  elif origType.attachedOps[attachedDeepCopy] != nil:
+    genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
   result = prefixTI.rope & result & ")".rope
 
 proc genTypeSection(m: BModule, n: PNode) =

@@ -206,15 +206,15 @@ proc indentLine(p: BProc, r: Rope): Rope =
     prepend(result, "\t".rope)
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
-           args: varargs[untyped]) =
+           args: untyped) =
   add(c, ropecg(m, frmt, args))
 
 template appcg(m: BModule, sec: TCFileSection, frmt: FormatStr,
-           args: varargs[untyped]) =
+           args: untyped) =
   add(m.s[sec], ropecg(m, frmt, args))
 
 template appcg(p: BProc, sec: TCProcSection, frmt: FormatStr,
-           args: varargs[untyped]) =
+           args: untyped) =
   add(p.s(sec), ropecg(p.module, frmt, args))
 
 template line(p: BProc, sec: TCProcSection, r: Rope) =
@@ -224,7 +224,7 @@ template line(p: BProc, sec: TCProcSection, r: string) =
   add(p.s(sec), indentLine(p, r.rope))
 
 template lineF(p: BProc, sec: TCProcSection, frmt: FormatStr,
-              args: openarray[Rope]) =
+              args: untyped) =
   add(p.s(sec), indentLine(p, frmt % args))
 
 template lineCg(p: BProc, sec: TCProcSection, frmt: FormatStr,
@@ -440,6 +440,15 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.flags = {}
   constructLoc(p, result, not needsInit)
 
+proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
+  inc(p.labels)
+  result.r = "T" & rope(p.labels) & "_"
+  linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t), result.r, value])
+  result.k = locTemp
+  result.lode = lodeTyp t
+  result.storage = OnStack
+  result.flags = {}
+
 proc getIntTemp(p: BProc, result: var TLoc) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
@@ -484,7 +493,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     add(result, " ")
     add(result, s.loc.r)
   else:
-    result = s.cgDeclFrmt % [result, s.loc.r]
+    result = runtimeFormat(s.cgDeclFrmt, [result, s.loc.r])
 
 proc assignLocalVar(p: BProc, n: PNode) =
   #assert(s.loc.k == locNone) # not yet assigned
@@ -535,7 +544,7 @@ proc assignGlobalVar(p: BProc, n: PNode) =
         if sfVolatile in s.flags: add(decl, " volatile")
         addf(decl, " $1;$n", [s.loc.r])
       else:
-        decl = (s.cgDeclFrmt & ";$n") % [td, s.loc.r]
+        decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
       add(p.module.s[cfsVars], decl)
   if p.withinLoop > 0:
     # fixes tests/run/tzeroarray:

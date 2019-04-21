@@ -62,8 +62,6 @@ SmallLshouldNotBeUsed            The letter 'l' should not be used as an
                                  identifier.
 EachIdentIsTuple                 The code contains a confusing ``var``
                                  declaration.
-ShadowIdent                      A local variable shadows another local
-                                 variable of an outer scope.
 User                             Some user defined warning.
 ==========================       ============================================
 

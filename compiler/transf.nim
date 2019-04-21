@@ -651,6 +651,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       var t = formal.typ
       if formal.ast != nil and formal.ast.typ.destructor != nil and t.destructor == nil:
         t = formal.ast.typ # better use the type that actually has a destructor.
+      elif t.destructor == nil and arg.typ.destructor != nil:
+        t = arg.typ
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
       #temp.sym.flags.incl sfCursor
@@ -1009,8 +1011,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)
-  #of nkAsgn:
-  #  result = transformAsgn(c, n)
+  of nkAsgn:
+    result = transformAsgn(c, n)
   of nkIdentDefs, nkConstDef:
     result = PTransNode(n)
     result[0] = transform(c, n[0])

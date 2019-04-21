@@ -33,7 +33,7 @@ type
     warnFieldXNotSupported, warnCommentXIgnored,
     warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
-    warnEachIdentIsTuple, warnShadowIdent,
+    warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnUser,
@@ -79,7 +79,6 @@ const
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
     warnEachIdentIsTuple: "each identifier is a tuple",
-    warnShadowIdent: "shadowed identifier: '$1'",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
@@ -132,7 +131,7 @@ const
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
+    "UnsafeCode", "EachIdentIsTuple",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "User"]
@@ -167,7 +166,7 @@ type
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
-  result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
+  result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,

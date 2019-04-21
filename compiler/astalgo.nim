@@ -424,19 +424,19 @@ proc value(this: var DebugPrinter; value: string) =
 
 proc value(this: var DebugPrinter; value: BiggestInt) =
   if this.useColor:
-     this.res.add numberStyle
+    this.res.add numberStyle
   this.res.add value
   if this.useColor:
-     this.res.add resetStyle
+    this.res.add resetStyle
 
 proc value[T: enum](this: var DebugPrinter; value: T) =
   if this.useColor:
-     this.res.add enumStyle
+    this.res.add enumStyle
   this.res.add "\""
   this.res.add $value
   this.res.add "\""
   if this.useColor:
-     this.res.add resetStyle
+    this.res.add resetStyle
 
 proc value[T: enum](this: var DebugPrinter; value: set[T]) =
   this.openBracket
@@ -463,12 +463,12 @@ template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
     this.res.add(this.currentLine - index)
     this.res.add " lines upwards>"
     if this.useColor:
-       this.res.add resetStyle
+      this.res.add resetStyle
     return
 
-proc value(this: var DebugPrinter; value: PType): void
-proc value(this: var DebugPrinter; value: PNode): void
-proc value(this: var DebugPrinter; value: PSym): void =
+proc value(this: var DebugPrinter; value: PType)
+proc value(this: var DebugPrinter; value: PNode)
+proc value(this: var DebugPrinter; value: PSym) =
   earlyExit(this, value)
 
   this.openCurly
@@ -492,7 +492,7 @@ proc value(this: var DebugPrinter; value: PSym): void =
 
   this.closeCurly
 
-proc value(this: var DebugPrinter; value: PType): void =
+proc value(this: var DebugPrinter; value: PType) =
   earlyExit(this, value)
 
   this.openCurly
@@ -530,7 +530,7 @@ proc value(this: var DebugPrinter; value: PType): void =
 
   this.closeCurly
 
-proc value(this: var DebugPrinter; value: PNode): void =
+proc value(this: var DebugPrinter; value: PNode) =
   earlyExit(this, value)
 
   this.openCurly
@@ -599,7 +599,7 @@ when declared(echo):
   proc debug(n: PNode; conf: ConfigRef) =
     var this: DebugPrinter
     this.visited = initTable[pointer, int]()
-    this.renderSymType = true
+    #this.renderSymType = true
     this.useColor = not defined(windows)
     this.value(n)
     echo($this.res)

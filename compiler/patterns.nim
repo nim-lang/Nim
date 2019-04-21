@@ -48,7 +48,7 @@ proc canonKind(n: PNode): TNodeKind =
 proc sameKinds(a, b: PNode): bool {.inline.} =
   result = a.kind == b.kind or a.canonKind == b.canonKind
 
-proc sameTrees(a, b: PNode): bool =
+proc sameTrees*(a, b: PNode): bool =
   if sameKinds(a, b):
     case a.kind
     of nkSym: result = a.sym == b.sym

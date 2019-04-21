@@ -1135,9 +1135,9 @@ proc genAsmStmt(p: BProc, t: PNode) =
   # work:
   if p.prc == nil:
     # top level asm statement?
-    addf(p.module.s[cfsProcHeaders], CC[p.config.cCompiler].asmStmtFrmt, [s])
+    add(p.module.s[cfsProcHeaders], runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s]))
   else:
-    lineF(p, cpsStmts, CC[p.config.cCompiler].asmStmtFrmt, [s])
+    add(p.s(cpsStmts), indentLine(p, runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])))
 
 proc determineSection(n: PNode): TCFileSection =
   result = cfsProcHeaders

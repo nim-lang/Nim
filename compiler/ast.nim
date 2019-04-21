@@ -878,6 +878,13 @@ type
 
   TTypeSeq* = seq[PType]
   TLockLevel* = distinct int16
+
+  TTypeAttachedOp* = enum ## as usual, order is important here
+    attachedDestructor,
+    attachedAsgn,
+    attachedSink,
+    attachedDeepCopy
+
   TType* {.acyclic.} = object of TIdObj # \
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
@@ -898,12 +905,7 @@ type
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
-    destructor*: PSym         # destructor. warning: nil here may not necessary
-                              # mean that there is no destructor.
-                              # see instantiateDestructor in semdestruct.nim
-    deepCopy*: PSym           # overriden 'deepCopy' operation
-    assignment*: PSym         # overriden '=' operation
-    sink*: PSym               # overriden '=sink' operation
+    attachedOps*: array[TTypeAttachedOp, PSym] # destructors, etc.
     methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
@@ -1276,6 +1278,7 @@ const
   UnspecifiedLockLevel* = TLockLevel(-1'i16)
   MaxLockLevel* = 1000'i16
   UnknownLockLevel* = TLockLevel(1001'i16)
+  AttachedOpToStr*: array[TTypeAttachedOp, string] = ["=destroy", "=", "=sink", "=deepcopy"]
 
 proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
@@ -1342,10 +1345,7 @@ proc assignType*(dest, src: PType) =
   dest.n = src.n
   dest.size = src.size
   dest.align = src.align
-  dest.destructor = src.destructor
-  dest.deepCopy = src.deepCopy
-  dest.sink = src.sink
-  dest.assignment = src.assignment
+  dest.attachedOps = src.attachedOps
   dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
@@ -1832,3 +1832,7 @@ proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1
   addSon(procType.n, newSymNode(param))
   rawAddSon(procType, param.typ)
+
+template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]
+template assignment*(t: PType): PSym = t.attachedOps[attachedAsgn]
+template asink*(t: PType): PSym = t.attachedOps[attachedSink]

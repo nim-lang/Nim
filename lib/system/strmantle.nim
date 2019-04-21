@@ -147,58 +147,58 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     has_sign = false
 
   # Sign?
-  if s[i] == '+' or s[i] == '-':
+  if i < s.len and (s[i] == '+' or s[i] == '-'):
     has_sign = true
     if s[i] == '-':
       sign = -1.0
     inc(i)
 
   # NaN?
-  if s[i] == 'N' or s[i] == 'n':
+  if i+2 < s.len and (s[i] == 'N' or s[i] == 'n'):
     if s[i+1] == 'A' or s[i+1] == 'a':
       if s[i+2] == 'N' or s[i+2] == 'n':
-        if s[i+3] notin IdentChars:
+        if i+3 >= s.len or s[i+3] notin IdentChars:
           number = NaN
           return i+3 - start
     return 0
 
   # Inf?
-  if s[i] == 'I' or s[i] == 'i':
+  if i+2 < s.len and (s[i] == 'I' or s[i] == 'i'):
     if s[i+1] == 'N' or s[i+1] == 'n':
       if s[i+2] == 'F' or s[i+2] == 'f':
-        if s[i+3] notin IdentChars:
+        if i+3 >= s.len or s[i+3] notin IdentChars:
           number = Inf*sign
           return i+3 - start
     return 0
 
-  if s[i] in {'0'..'9'}:
+  if i < s.len and s[i] in {'0'..'9'}:
     first_digit = (s[i].ord - '0'.ord)
   # Integer part?
-  while s[i] in {'0'..'9'}:
+  while i < s.len and s[i] in {'0'..'9'}:
     inc(kdigits)
     integer = integer * 10'u64 + (s[i].ord - '0'.ord).uint64
     inc(i)
-    while s[i] == '_': inc(i)
+    while i < s.len and s[i] == '_': inc(i)
 
   # Fractional part?
-  if s[i] == '.':
+  if i < s.len and s[i] == '.':
     inc(i)
     # if no integer part, Skip leading zeros
     if kdigits <= 0:
-      while s[i] == '0':
+      while i < s.len and s[i] == '0':
         inc(frac_exponent)
         inc(i)
-        while s[i] == '_': inc(i)
+        while i < s.len and s[i] == '_': inc(i)
 
-    if first_digit == -1 and s[i] in {'0'..'9'}:
+    if first_digit == -1 and i < s.len and s[i] in {'0'..'9'}:
       first_digit = (s[i].ord - '0'.ord)
     # get fractional part
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       inc(fdigits)
       inc(frac_exponent)
       integer = integer * 10'u64 + (s[i].ord - '0'.ord).uint64
       inc(i)
-      while s[i] == '_': inc(i)
+      while i < s.len and s[i] == '_': inc(i)
 
   # if has no digits: return error
   if kdigits + fdigits <= 0 and
@@ -206,7 +206,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
      (i == start + 1 and has_sign)): # or only '+' or '-
     return 0
 
-  if s[i] in {'e', 'E'}:
+  if i+1 < s.len and s[i] in {'e', 'E'}:
     inc(i)
     if s[i] == '+' or s[i] == '-':
       if s[i] == '-':
@@ -215,10 +215,10 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       inc(i)
     if s[i] notin {'0'..'9'}:
       return 0
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       exponent = exponent * 10 + (ord(s[i]) - ord('0'))
       inc(i)
-      while s[i] == '_': inc(i) # underscores are allowed and ignored
+      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
 
   var real_exponent = exp_sign*exponent - frac_exponent
   let exp_negative = real_exponent < 0
@@ -259,12 +259,12 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   result = i - start
   i = start
   # re-parse without error checking, any error should be handled by the code above.
-  if s[i] == '.': i.inc
-  while s[i] in {'0'..'9','+','-'}:
+  if i < s.len and s[i] == '.': i.inc
+  while i < s.len and s[i] in {'0'..'9','+','-'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)
     inc(i)
-    while s[i] in {'.', '_'}: # skip underscore and decimal point
+    while i < s.len and s[i] in {'.', '_'}: # skip underscore and decimal point
       inc(i)
 
   # insert exponent

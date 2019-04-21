@@ -486,9 +486,9 @@ The concept types can be parametric just like the regular generic types:
     M.data[m * M.N + n] = v
 
   # Adapt the Matrix type to the concept's requirements
-  template Rows*(M: type Matrix): int = M.M
-  template Cols*(M: type Matrix): int = M.N
-  template ValueType*(M: type Matrix): type = M.T
+  template Rows*(M: typedesc[Matrix]): int = M.M
+  template Cols*(M: typedesc[Matrix]): int = M.N
+  template ValueType*(M: typedesc[Matrix]): typedesc = M.T
 
   -------------
   ### usage.nim

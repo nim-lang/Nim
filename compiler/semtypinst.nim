@@ -384,13 +384,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
-  let dc = newbody.deepCopy
+  let dc = newbody.attachedOps[attachedDeepCopy]
   if not cl.allowMetaTypes:
-    if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
+    if dc != nil and sfFromGeneric notin newbody.attachedOps[attachedDeepCopy].flags:
       # 'deepCopy' needs to be instantiated for
       # generics *when the type is constructed*:
-      newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
-                                              attachedDeepCopy, 1)
+      newbody.attachedOps[attachedDeepCopy] = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
+                                                                   attachedDeepCopy, 1)
     if bodyIsNew and newbody.typeInst == nil:
       #doassert newbody.typeInst == nil
       newbody.typeInst = result
@@ -597,7 +597,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       of tySequence:
-        if cl.isReturnType and cl.c.config.selectedGc == gcDestructors and result.destructor.isNil and
+        if cl.isReturnType and cl.c.config.selectedGc == gcDestructors and
+            result.attachedOps[attachedDestructor].isNil and
             result[0].kind != tyEmpty and optNimV2 notin cl.c.config.globalOptions:
           let s = cl.c.graph.sysTypes[tySequence]
           var old = copyType(s, s.owner, keepId=false)
@@ -606,9 +607,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           old.n = nil
           old.flags = {tfHasAsgn}
           old.addSonSkipIntLit result[0]
-          result.destructor = old.destructor
-          result.assignment = old.assignment
-          result.sink = old.sink
+          result.attachedOps = old.attachedOps
           cl.c.typesWithOps.add((result, old))
 
       else: discard
@@ -625,19 +624,19 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           result.size = -1
 
 template typeBound(c, newty, oldty, field, info) =
-  let opr = newty.field
+  let opr = newty.attachedOps[field]
   if opr != nil and sfFromGeneric notin opr.flags:
     # '=' needs to be instantiated for generics when the type is constructed:
     #echo "DESTROY: instantiating ", astToStr(field), " for ", typeToString(oldty)
-    newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
+    newty.attachedOps[field] = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
   var i = 0
   while i < c.typesWithOps.len:
     let (newty, oldty) = c.typesWithOps[i]
-    typeBound(c, newty, oldty, destructor, info)
-    typeBound(c, newty, oldty, sink, info)
-    typeBound(c, newty, oldty, assignment, info)
+    typeBound(c, newty, oldty, attachedDestructor, info)
+    typeBound(c, newty, oldty, attachedSink, info)
+    typeBound(c, newty, oldty, attachedAsgn, info)
     inc i
   setLen(c.typesWithOps, 0)
 

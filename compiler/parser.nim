@@ -238,7 +238,6 @@ proc newIdentNodeP(ident: PIdent, p: TParser): PNode =
 
 proc parseExpr(p: var TParser): PNode
 proc parseStmt(p: var TParser): PNode
-proc parseStmtListExpr(p: var TParser): PNode
 proc parseTypeDesc(p: var TParser): PNode
 proc parseParamList(p: var TParser, retColon = true): PNode
 
@@ -1482,12 +1481,12 @@ proc parseFromStmt(p: var TParser): PNode =
   #expectNl(p)
 
 proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
-  #| returnStmt = 'return' stmtListExpr?
-  #| raiseStmt = 'raise' stmtListExpr?
-  #| yieldStmt = 'yield' stmtListExpr?
-  #| discardStmt = 'discard' stmtListExpr?
-  #| breakStmt = 'break' stmtListExpr?
-  #| continueStmt = 'break' stmtListExpr?
+  #| returnStmt = 'return' optInd expr?
+  #| raiseStmt = 'raise' optInd expr?
+  #| yieldStmt = 'yield' optInd expr?
+  #| discardStmt = 'discard' optInd expr?
+  #| breakStmt = 'break' optInd expr?
+  #| continueStmt = 'break' optInd expr?
   result = newNodeP(kind, p)
   getTok(p)
   if p.tok.tokType == tkComment:
@@ -1497,7 +1496,9 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
     # NL terminates:
     addSon(result, p.emptyNode)
   else:
-    addSon(result, parseStmtListExpr(p))
+    var e = parseExpr(p)
+    e = postExprBlocks(p, e)
+    addSon(result, e)
 
 proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   #| condStmt = expr colcom stmt COMMENT?
@@ -2251,17 +2252,6 @@ proc parseStmt(p: var TParser): PNode =
           if p.tok.tokType != tkSemiColon: break
           getTok(p)
           if err and p.tok.tokType == tkEof: break
-
-proc parseStmtListExpr(p: var TParser): PNode =
-  #| stmtListExpr = (IND{>} stmt) / expr
-  if p.tok.indent > p.currInd:
-    result = parseStmt(p)
-    result.kind = nkStmtListExpr
-    if result.len == 1:
-      result = result[0]
-  else:
-    result = parseExpr(p)
-    result = postExprBlocks(p, result)
 
 proc parseAll(p: var TParser): PNode =
   ## Parses the rest of the input stream held by the parser into a PNode.
