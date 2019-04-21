@@ -64,53 +64,6 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-template parseNum[T: SomeInteger](base: string, s: string, number: var T, start = 0, maxLen = 0): untyped =
-  var i = start
-  var output = T(0)
-  var foundDigit = false
-  let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
-  when base == "bin":
-    if i + 1 < last and s[i] == '0' and (s[i+1] in {'b', 'B'}): inc(i, 2)
-  elif base == "oct":
-    if i + 1 < last and s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
-  elif base == "hex":
-    if i + 1 < last and s[i] == '0' and (s[i+1] in {'x', 'X'}): inc(i, 2)
-    elif i < last and s[i] == '#': inc(i)
-  else:
-    {.fatal: base & " parsing is not implemented".}
-  while i < last:
-    when base == "bin":
-      case s[i]
-      of '_': discard
-      of '0'..'1':
-        output = output shl 1 or T(ord(s[i]) - ord('0'))
-        foundDigit = true
-      else: break
-    elif base == "oct":
-      case s[i]
-      of '_': discard
-      of '0'..'7':
-        output = output shl 3 or T(ord(s[i]) - ord('0'))
-        foundDigit = true
-      else: break
-    elif base == "hex":
-      case s[i]
-      of '_': discard
-      of '0'..'9':
-        output = output shl 4 or T(ord(s[i]) - ord('0'))
-        foundDigit = true
-      of 'a'..'f':
-        output = output shl 4 or T(ord(s[i]) - ord('a') + 10)
-        foundDigit = true
-      of 'A'..'F':
-        output = output shl 4 or T(ord(s[i]) - ord('A') + 10)
-        foundDigit = true
-      else: break
-    inc(i)
-  if foundDigit:
-    number = output
-    result = i - start
-
 proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int {.
   rtl, extern: "npuParseBin", noSideEffect.} =
   ## Parses a binary number and stores its value in ``number``.
@@ -144,7 +97,22 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     var num64: int64
     doAssert parseBin("010011100110100111101101010011100110100111101101", num64) == 48
     doAssert num64 == 86216859871725
-  parseNum("bin", s, number, start, maxLen)
+  var i = start
+  var output = T(0)
+  var foundDigit = false
+  let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
+  if i + 1 < last and s[i] == '0' and (s[i+1] in {'b', 'B'}): inc(i, 2)
+  while i < last:
+    case s[i]
+    of '_': discard
+    of '0'..'1':
+      output = output shl 1 or T(ord(s[i]) - ord('0'))
+      foundDigit = true
+    else: break
+    inc(i)
+  if foundDigit:
+    number = output
+    result = i - start
 
 proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int {.
   rtl, extern: "npuParseOct", noSideEffect.} =
@@ -179,7 +147,23 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     var num64: int64
     doAssert parseOct("2346475523464755", num64) == 16
     doAssert num64 == 86216859871725
-  parseNum("oct", s, number, start, maxLen)
+  var i = start
+  var output = T(0)
+  var foundDigit = false
+  let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
+  if i + 1 < last and s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
+  while i < last:
+    case s[i]
+    of '_': discard
+    of '0'..'7':
+      output = output shl 3 or T(ord(s[i]) - ord('0'))
+      foundDigit = true
+    else: break
+    inc(i)
+  if foundDigit:
+    number = output
+    result = i - start
+  
 
 proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int {.
   rtl, extern: "npuParseHex", noSideEffect.} =
@@ -215,7 +199,29 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     var num64: int64
     doAssert parseHex("4E69ED4E69ED", num64) == 12
     doAssert num64 == 86216859871725
-  parseNum("hex", s, number, start, maxLen)
+  var i = start
+  var output = T(0)
+  var foundDigit = false
+  let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
+  if i + 1 < last and s[i] == '0' and (s[i+1] in {'x', 'X'}): inc(i, 2)
+  elif i < last and s[i] == '#': inc(i)
+  while i < last:
+    case s[i]
+    of '_': discard
+    of '0'..'9':
+      output = output shl 4 or T(ord(s[i]) - ord('0'))
+      foundDigit = true
+    of 'a'..'f':
+      output = output shl 4 or T(ord(s[i]) - ord('a') + 10)
+      foundDigit = true
+    of 'A'..'F':
+      output = output shl 4 or T(ord(s[i]) - ord('A') + 10)
+      foundDigit = true
+    else: break
+    inc(i)
+  if foundDigit:
+    number = output
+    result = i - start  
 
 proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## Parses an identifier and stores it in ``ident``. Returns
