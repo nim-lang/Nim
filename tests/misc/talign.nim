@@ -1,4 +1,8 @@
 
+discard """
+  targets: "c cpp"
+  output: ""
+"""
 
 type
   MyImportedAlignedType {.importc: "__m128d", header: "<intrin.h>", align: 16, size: 16.} = object
@@ -48,6 +52,11 @@ proc test_type(t: typedesc) =
   const 
     s1 = sizeof(t)
     a1 = alignof(t)
+
+  proc test_val(a: t): t = 
+    result = a
+    
+  discard test_val(t())
   #echo s1, " ", a1, " --- ", sizeof_lowlevel(t), " ",  alignof_lowlevel(t)
   doAssert: s1 == sizeof_lowlevel(t)
   doAssert: a1 == alignof_lowlevel(t)

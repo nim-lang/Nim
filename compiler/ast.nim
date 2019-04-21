@@ -518,6 +518,7 @@ type
                       # or other type classes
     tfHasGCedMem,     # type contains GC'ed memory
     tfUserAligned     # type has user defined alignment or packed pragma
+    tfUserSize        # type has user defined size
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam

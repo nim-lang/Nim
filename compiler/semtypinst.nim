@@ -24,6 +24,10 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   if t.kind in tyTypeClasses: discard
   elif t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
+  elif tfUserAligned in t.flags and t.kind != tyObject:
+    localError(conf, info,  "align/packed pragma is allowed only for objects")
+  elif tfUserSize in t.flags and not (t.kind == tyEnum or (t.kind == tyObject and sfImportC in t.sym.flags)):
+    localError(conf, info,  "size pragma is allowed only for enums and imported objects")
   elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
     localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
   when false:
@@ -556,7 +560,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       #if not cl.allowMetaTypes:
       bailout()
       result = instCopyType(cl, t)
-      if result.sym == nil or sfImportc notin result.sym.flags:
+      if tfUserSize notin result.flags:
         result.size = -1 # needs to be recomputed
       #if not cl.allowMetaTypes:
       idTablePut(cl.localCache, t, result)
@@ -617,7 +621,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       if result.n != nil and t.kind == tyObject:
         # Invalidate the type size as we may alter its structure
         result.n = replaceObjBranches(cl, result.n)
-        if sfImportC notin result.sym.flags:
+        if tfUserSize notin t.flags:
           result.size = -1
 
 template typeBound(c, newty, oldty, field, info) =

@@ -815,8 +815,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         let size = expectIntLit(c, it)
         sym.typ.size = int16(size)
+        sym.typ.flags.incl tfUserSize
         if sym.typ.align > 0 and sym.typ.size < sym.typ.align:
           localError(c.config, it.info, "type size can't be less than its alignment")
+        else:
+          sym.typ.align = min(c.config.target.maxAlign, int16(sym.typ.size))
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
