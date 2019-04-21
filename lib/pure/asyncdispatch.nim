@@ -7,23 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-include "system/inclrtl"
-
-import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
-import options, math
-import asyncfutures except callSoon
-
-import nativesockets, net, deques
-
-export Port, SocketFlag
-export asyncfutures except callSoon
-export asyncstreams
-
-#{.injectStmt: newGcInvariant().}
-
-## AsyncDispatch
-## *************
-##
 ## This module implements asynchronous IO. This includes a dispatcher,
 ## a ``Future`` type implementation, and an ``async`` macro which allows
 ## asynchronous code to be written in a synchronous style with the ``await``
@@ -161,6 +144,20 @@ export asyncstreams
 ## ----------------
 ##
 ## * The effect system (``raises: []``) does not work with async procedures.
+
+include "system/inclrtl"
+
+import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
+import options, math
+import asyncfutures except callSoon
+
+import nativesockets, net, deques
+
+export Port, SocketFlag
+export asyncfutures except callSoon
+export asyncstreams
+
+#{.injectStmt: newGcInvariant().}
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
