@@ -57,8 +57,8 @@
 ##   # Run suites starting with 'bug #' and standalone tests starting with '#'
 ##   nim c -r test 'bug #*::' '::#*'
 ##
-## Example
-## -------
+## Examples
+## ========
 ##
 ## .. code:: nim
 ##
