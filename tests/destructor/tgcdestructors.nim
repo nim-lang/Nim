@@ -5,7 +5,8 @@ ho
 ha
 @["arg", "asdfklasdfkl", "asdkfj", "dfasj", "klfjl"]
 @[1, 2, 3]
-25 25'''
+@["red", "yellow", "orange", "rtrt1", "pink"]
+30 30'''
 """
 
 import allocators
@@ -139,7 +140,7 @@ type
   Obj* = object
     f*: seq[int]
 
-method main(o: Obj) =
+method main(o: Obj) {.base.} =
   for newb in o.f:
     discard
 
@@ -150,6 +151,23 @@ proc testforNoMove =
   echo o.f
 
 testforNoMove()
+
+# bug #11065
+type
+  Warm = seq[string]
+
+proc testWarm =
+  var w: Warm
+  w = @["red", "yellow", "orange"]
+
+  var x = "rt"
+  var y = "rt1"
+  w.add(x & y)
+
+  w.add("pink")
+  echo w
+
+testWarm()
 
 #echo s
 let (a, d) = allocCounters()

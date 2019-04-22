@@ -2239,14 +2239,15 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
 # not be called explicitly! The user may decide to do this manually though.
 
 when not defined(nimscript) and not defined(JS):
-  proc zeroMem*(p: pointer, size: Natural) {.inline, benign.}
+  proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
+    tags: [], locks: 0, raises: [].}
     ## Overwrites the contents of the memory at ``p`` with the value 0.
     ##
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is **unsafe**.
 
   proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], locks: 0.}
+    tags: [], locks: 0, raises: [].}
     ## Copies the contents from the memory at ``source`` to the memory
     ## at ``dest``.
     ## Exactly ``size`` bytes will be copied. The memory
@@ -2254,7 +2255,7 @@ when not defined(nimscript) and not defined(JS):
     ## memory this is **unsafe**.
 
   proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], locks: 0.}
+    tags: [], locks: 0, raises: [].}
     ## Copies the contents from the memory at ``source`` to the memory
     ## at ``dest``.
     ##
@@ -2263,7 +2264,8 @@ when not defined(nimscript) and not defined(JS):
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still **unsafe**, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect, tags: [], locks: 0.}
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
+    tags: [], locks: 0, raises: [].}
     ## Compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared.
     ##
