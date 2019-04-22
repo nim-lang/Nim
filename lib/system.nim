@@ -885,7 +885,14 @@ when defined(nimHasalignOf):
   template offsetOf*[T](value: T; member: untyped): int =
     offsetOfDotExpr(value.member)
 
-  #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
+else:
+  proc alignof*[T](x: T): int =
+    ## boostrap stub
+    discard
+
+  proc alignof*(x: typedesc): int =
+    ## boostrap stub
+    discard
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
