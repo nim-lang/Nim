@@ -6,7 +6,7 @@ runnableExamples:
   import subdir / subdir_b / utils
   doAssert bar(3, 4) == 7
   foo(enumValueA, enumValueB)
-  # # bug #11078
+  # bug #11078
   for x in "xx": discard
 
 
