@@ -28,3 +28,7 @@ bEnum()
 
 # bug #9432
 proc isValid*[T](x: T): bool = x.len > 0
+
+# bug #11078
+runnableExamples:
+  for x in "xx": discard
