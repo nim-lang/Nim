@@ -779,7 +779,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 # -------------------------------------------------------------------
 
 
-proc newTable*[A, B](initialSize=64): TableRef[A, B] =
+proc newTable*[A, B](initialSize=64): owned TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -799,7 +799,7 @@ proc newTable*[A, B](initialSize=64): TableRef[A, B] =
   new(result)
   result[] = initTable[A, B](initialSize)
 
-proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
+proc newTable*[A, B](pairs: openArray[(A, B)]): owned TableRef[A, B] =
   ## Creates a new ref hash table that contains the given ``pairs``.
   ##
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
@@ -814,7 +814,7 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
   new(result)
   result[] = toTable[A, B](pairs)
 
-proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
+proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): owned TableRef[C, B] =
   ## Index the collection with the proc provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
   result = newTable[C, B]()
@@ -1666,7 +1666,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
-proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](initialSize=64): owned OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -1687,7 +1687,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   new(result)
   result[] = initOrderedTable[A, B](initialSize)
 
-proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): owned OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that contains the given ``pairs``.
   ##
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
@@ -2364,7 +2364,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
-proc newCountTable*[A](initialSize=64): CountTableRef[A] =
+proc newCountTable*[A](initialSize=64): owned CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -2381,7 +2381,7 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   new(result)
   result[] = initCountTable[A](initialSize)
 
-proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
+proc newCountTable*[A](keys: openArray[A]): owned CountTableRef[A] =
   ## Creates a new ref count table with every member of a container ``keys``
   ## having a count of how many times it occurs in that container.
   result = newCountTable[A](rightSize(keys.len))
