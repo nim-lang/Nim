@@ -9,52 +9,6 @@
 
 # An ``include`` file for the different table implementations.
 
-# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
-# two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: Hash): bool {.inline.} =
-  result = hcode == 0
-
-proc isFilled(hcode: Hash): bool {.inline.} =
-  result = hcode != 0
-
-const
-  growthFactor = 2
-
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
-
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = (h + 1) and maxHash
-
-template rawGetKnownHCImpl() {.dirty.} =
-  if t.data.len == 0:
-    return -1
-  var h: Hash = hc and maxHash(t)   # start with real hash value
-  while isFilled(t.data[h].hcode):
-    # Compare hc THEN key with boolean short circuit. This makes the common case
-    # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
-    # It does slow down succeeding lookups by one extra Hash cmp&and..usually
-    # just a few clock cycles, generally worth it for any non-integer-like A.
-    if t.data[h].hcode == hc and t.data[h].key == key:
-      return h
-    h = nextTry(h, maxHash(t))
-  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
-
-template genHashImpl(key, hc: typed) =
-  hc = hash(key)
-  if hc == 0:       # This almost never taken branch should be very predictable.
-    hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
-
-template genHash(key: typed): Hash =
-  var res: Hash
-  genHashImpl(key, res)
-  res
-
-template rawGetImpl() {.dirty.} =
-  genHashImpl(key, hc)
-  rawGetKnownHCImpl()
-
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
@@ -67,14 +21,8 @@ template rawInsertImpl() {.dirty.} =
   data[h].val = val
   data[h].hcode = hc
 
-proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
-  rawGetKnownHCImpl()
-
 proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
-
-proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
-  rawGetImpl()
 
 proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
@@ -119,11 +67,6 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     result = false
     maybeRehashPutImpl(enlarge)
   else: result = true
-
-when not defined(nimHasDefault):
-  template default[T](t: typedesc[T]): T =
-    var v: T
-    v
 
 template delImplIdx(t, i) =
   let msk = maxHash(t)
@@ -172,7 +115,7 @@ template initImpl(result: typed, size: int) =
 template insertImpl() = # for CountTable
   if t.data.len == 0: initImpl(t, defaultInitialSize)
   if mustRehash(len(t.data), t.counter): enlarge(t)
-  rawInsert(t, t.data, key, val)
+  rawInsertCT(t, t.data, key, val)
   inc(t.counter)
 
 template getOrDefaultImpl(t, key): untyped =

@@ -84,6 +84,7 @@ type
 const
   defaultInitialSize* = 64
 
+include hashcommon
 include setimpl
 
 proc rightSize*(count: Natural): int {.inline.}

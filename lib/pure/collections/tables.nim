@@ -242,9 +242,7 @@ const
 
 # ------------------------------ helpers ---------------------------------
 
-template maxHash(t): untyped = high(t.data)
-template dataLen(t): untyped = len(t.data)
-
+include hashcommon
 include tableimpl
 
 proc rightSize*(count: Natural): int {.inline.}
@@ -1184,13 +1182,13 @@ type
 # ------------------------------ helpers ---------------------------------
 
 proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: Hash): int =
-  rawGetKnownHCImpl()
+  rawGetKnownHCImpl(t)
 
 proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
 
 proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
-  rawGetImpl()
+  rawGetImpl(t)
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
@@ -2089,7 +2087,7 @@ type
 
 # ------------------------------ helpers ---------------------------------
 
-proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
+proc rawInsertCT[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
   var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
@@ -2100,7 +2098,7 @@ proc enlarge[A](t: var CountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].val != 0: rawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].val != 0: rawInsertCT(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
 proc rawGet[A](t: CountTable[A], key: A): int =
