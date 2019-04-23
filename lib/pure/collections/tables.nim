@@ -19,7 +19,7 @@
 ## For consistency with every other data type in Nim these have **value**
 ## semantics, this means that ``=`` performs a copy of the hash table.
 ##
-## For `ref semantics<manual.html#types-ref-and-pointer-types>`_
+## For `ref semantics<manual.html#types-reference-and-pointer-types>`_
 ## use their ``Ref`` variants: `TableRef<#TableRef>`_,
 ## `OrderedTableRef<#OrderedTableRef>`_, and `CountTableRef<#CountTableRef>`_.
 ##
