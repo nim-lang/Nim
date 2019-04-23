@@ -64,59 +64,8 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-proc parseBinImpl[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
+proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
   {.inline, noSideEffect.} =
-  var i = start
-  var output = T(0)
-  var foundDigit = false
-  let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
-  if i + 1 < last and s[i] == '0' and (s[i+1] in {'b', 'B'}): inc(i, 2)
-  while i < last:
-    case s[i]
-    of '_': discard
-    of '0'..'1':
-      output = output shl 1 or T(ord(s[i]) - ord('0'))
-      foundDigit = true
-    else: break
-    inc(i)
-  if foundDigit:
-    number = output
-    result = i - start
-
-proc parseBin*[T: SomeUnsignedInt|int8|int16|int32|int64] (
-  s: string, number: var T, start = 0, maxLen = 0): int 
-  {.noSideEffect.} =
-  ## Parses a binary number and stores its value in ``number``.
-  ##
-  ## Returns the number of the parsed characters or 0 in case of an error.
-  ## If error, the value of ``number`` is not changed.
-  ##
-  ## If ``maxLen == 0``, the parsing continues until the first non-bin character
-  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
-  ## are parsed starting from the ``start`` position.
-  ## 
-  ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
-  runnableExamples:    
-    var num8: int8
-    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8) == 32
-    doAssert num8 == -19
-    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8, 3, 9) == 9
-    doAssert num8 == 78
-    doAssert parseBin("3", num8) == 0
-    
-    var num8u: uint8
-    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8u) == 32
-    doAssert num8u == 237
-    
-    var num64: int64
-    doAssert parseBin("010011100110100111101101010011100110100111101101", num64) == 48
-    doAssert num64 == 86216859871725
-  parseBinImpl(s, number, start, maxlen)
-
-proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int 
-  {.rtl, extern: "npuParseBin", noSideEffect.} =
   ## Parses a binary number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -134,20 +83,27 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int
     doAssert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
     doAssert num == 5138925
     doAssert parseBin("3", num) == 0
-  parseBinImpl(s, number, start, maxlen)
-
-proc parseOctImpl[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.inline, noSideEffect.} =
+    var num8: int8
+    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8) == 32
+    doAssert num8 == 0b1110_1101'i8
+    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8, 3, 9) == 9
+    doAssert num8 == 0b0100_1110'i8
+    var num8u: uint8
+    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8u) == 32
+    doAssert num8u == 237
+    var num64: int64
+    doAssert parseBin("0100111001101001111011010100111001101001", num64) == 40
+    doAssert num64 == 336784608873
   var i = start
   var output = T(0)
   var foundDigit = false
   let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
-  if i + 1 < last and s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
+  if i + 1 < last and s[i] == '0' and (s[i+1] in {'b', 'B'}): inc(i, 2)
   while i < last:
     case s[i]
     of '_': discard
-    of '0'..'7':
-      output = output shl 3 or T(ord(s[i]) - ord('0'))
+    of '0'..'1':
+      output = output shl 1 or T(ord(s[i]) - ord('0'))
       foundDigit = true
     else: break
     inc(i)
@@ -155,40 +111,8 @@ proc parseOctImpl[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 
     number = output
     result = i - start
 
-proc parseOct*[T: SomeUnsignedInt|int8|int16|int32|int64] (
-  s: string, number: var T, start = 0, maxLen = 0): int 
-  {.noSideEffect.} =
-  ## Parses an octal number and stores its value in ``number``.
-  ##
-  ## Returns the number of the parsed characters or 0 in case of an error.
-  ## If error, the value of ``number`` is not changed.
-  ##
-  ## If ``maxLen == 0``, the parsing continues until the first non-oct character
-  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
-  ## are parsed starting from the ``start`` position.
-  ## 
-  ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
-  runnableExamples:
-    var num8: int8
-    doAssert parseOct("0o_1464_755", num8) == 11
-    doAssert num8 == -19
-    doAssert parseOct("0o_1464_755", num8, 3, 3) == 3
-    doAssert num8 == 102
-    doAssert parseOct("8", num8) == 0
-    
-    var num8u: uint8
-    doAssert parseOct("1464755", num8u) == 7
-    doAssert num8u == 237
-    
-    var num64: int64
-    doAssert parseOct("2346475523464755", num64) == 16
-    doAssert num64 == 86216859871725
-  parseOctImpl(s, number, start, maxlen)
-
-proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int
-  {.rtl, extern: "npuParseOct", noSideEffect.} =
+proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
+  {.inline, noSideEffect.} =
   ## Parses an octal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -206,10 +130,65 @@ proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int
     doAssert parseOct("0o23464755", num) == 10
     doAssert num == 5138925
     doAssert parseOct("8", num) == 0
-  parseOctImpl(s, number, start, maxlen)
+    var num8: int8
+    doAssert parseOct("0o_1464_755", num8) == 11
+    doAssert num8 == -19
+    doAssert parseOct("0o_1464_755", num8, 3, 3) == 3
+    doAssert num8 == 102
+    var num8u: uint8
+    doAssert parseOct("1464755", num8u) == 7
+    doAssert num8u == 237
+    var num64: int64
+    doAssert parseOct("2346475523464755", num64) == 16
+    doAssert num64 == 86216859871725
+  var i = start
+  var output = T(0)
+  var foundDigit = false
+  let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
+  if i + 1 < last and s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
+  while i < last:
+    case s[i]
+    of '_': discard
+    of '0'..'7':
+      output = output shl 3 or T(ord(s[i]) - ord('0'))
+      foundDigit = true
+    else: break
+    inc(i)
+  if foundDigit:
+    number = output
+    result = i - start
 
-proc parseHexImpl[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
+proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
   {.inline, noSideEffect.} =
+  ## Parses a hexadecimal number and stores its value in ``number``.
+  ##
+  ## Returns the number of the parsed characters or 0 in case of an error.
+  ## If error, the value of ``number`` is not changed.
+  ##
+  ## If ``maxLen == 0``, the parsing continues until the first non-hex character
+  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
+  ## are parsed starting from the ``start`` position.
+  ## 
+  ## It does not check for overflow. If the value represented by the string is
+  ## too big to fit into ``number``, only the value of last fitting characters
+  ## will be stored in ``number`` without producing an error.
+  runnableExamples:
+    var num: int
+    doAssert parseHex("4E_69_ED", num) == 8
+    doAssert num == 5138925
+    doAssert parseHex("X", num) == 0
+    doAssert parseHex("#ABC", num) == 4
+    var num8: int8
+    doAssert parseHex("0x_4E_69_ED", num8) == 11
+    doAssert num8 == 0xED'i8
+    doAssert parseHex("0x_4E_69_ED", num8, 3, 2) == 2
+    doAssert num8 == 0x4E'i8
+    var num8u: uint8
+    doAssert parseHex("0x_4E_69_ED", num8u) == 11
+    doAssert num8u == 237
+    var num64: int64
+    doAssert parseHex("4E69ED4E69ED", num64) == 12
+    doAssert num64 == 86216859871725
   var i = start
   var output = T(0)
   var foundDigit = false
@@ -233,61 +212,6 @@ proc parseHexImpl[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 
   if foundDigit:
     number = output
     result = i - start
-
-proc parseHex*[T: SomeUnsignedInt|int8|int16|int32|int64] (
-  s: string, number: var T, start = 0, maxLen = 0): int 
-  {.noSideEffect.} =
-  ## Parses a hexadecimal number and stores its value in ``number``.
-  ##
-  ## Returns the number of the parsed characters or 0 in case of an error.
-  ## If error, the value of ``number`` is not changed.
-  ##
-  ## If ``maxLen == 0``, the parsing continues until the first non-hex character
-  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
-  ## are parsed starting from the ``start`` position.
-  ## 
-  ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
-  runnableExamples:    
-    var num8: int8
-    doAssert parseHex("0x_4E_69_ED", num8) == 11
-    doAssert num8 == -19
-    doAssert parseHex("0x_4E_69_ED", num8, 3, 2) == 2
-    doAssert num8 == 78
-    doAssert parseHex("X", num8) == 0
-    doAssert parseHex("#ABC", num8) == 4
-    
-    var num8u: uint8
-    doAssert parseHex("0x_4E_69_ED", num8u) == 11
-    doAssert num8u == 237
-    
-    var num64: int64
-    doAssert parseHex("4E69ED4E69ED", num64) == 12
-    doAssert num64 == 86216859871725
-  parseHexImpl(s, number, start, maxlen)
-
-proc parseHex*(s: string, number: var int, start = 0, maxLen = 0): int 
-  {.rtl, extern: "npuParseHex", noSideEffect.} =
-  ## Parses a hexadecimal number and stores its value in ``number``.
-  ##
-  ## Returns the number of the parsed characters or 0 in case of an error.
-  ## If error, the value of ``number`` is not changed.
-  ##
-  ## If ``maxLen == 0``, the parsing continues until the first non-hex character
-  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
-  ## are parsed starting from the ``start`` position.
-  ## 
-  ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
-  runnableExamples:
-    var num: int
-    doAssert parseHex("4E_69_ED", num) == 8
-    doAssert num == 5138925
-    doAssert parseHex("X", num) == 0
-    doAssert parseHex("#ABC", num) == 4
-  parseHexImpl(s, number, start, maxlen)
 
 proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## Parses an identifier and stores it in ``ident``. Returns
