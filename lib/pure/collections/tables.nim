@@ -242,7 +242,6 @@ const
 
 # ------------------------------ helpers ---------------------------------
 
-include hashcommon
 include tableimpl
 
 proc rightSize*(count: Natural): int {.inline.}
@@ -773,9 +772,6 @@ proc newTable*[A, B](initialsize = defaultInitialSize): TableRef[A, B] =
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
   ##
-  ## Starting from Nim v0.20, tables are initialized by default and it is
-  ## not necessary to call this function explicitly.
-  ##
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
   ##   from a collection of `(key, value)` pairs
@@ -1182,13 +1178,13 @@ type
 # ------------------------------ helpers ---------------------------------
 
 proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: Hash): int =
-  rawGetKnownHCImpl(t)
+  rawGetKnownHCImpl()
 
 proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
 
 proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
-  rawGetImpl(t)
+  rawGetImpl()
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
@@ -1246,6 +1242,8 @@ proc initOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTable[A, 
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
+  result.first = -1
+  result.last = -1
 
 proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given ``pairs``.
@@ -1695,9 +1693,6 @@ proc newOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTableRef[A
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
-  ##
-  ## Starting from Nim v0.20, tables are initialized by default and it is
-  ## not necessary to call this function explicitly.
   ##
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
@@ -2420,9 +2415,6 @@ proc newCountTable*[A](initialsize = defaultInitialSize): CountTableRef[A] =
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
   ## from this module.
-  ##
-  ## Starting from Nim v0.20, tables are initialized by default and it is
-  ## not necessary to call this function explicitly.
   ##
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating

@@ -36,7 +36,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-template rawGetKnownHCImpl(t: typed) {.dirty.} =
+template rawGetKnownHCImpl() {.dirty.} =
   if t.data.len == 0:
     return -1
   var h: Hash = hc and maxHash(t)   # start with real hash value
@@ -51,7 +51,7 @@ template rawGetKnownHCImpl(t: typed) {.dirty.} =
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
 proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
-  rawGetKnownHCImpl(t)
+  rawGetKnownHCImpl()
 
 template genHashImpl(key, hc: typed) =
   hc = hash(key)
@@ -63,9 +63,9 @@ template genHash(key: typed): Hash =
   genHashImpl(key, res)
   res
 
-template rawGetImpl(t: typed) {.dirty.} =
+template rawGetImpl() {.dirty.} =
   genHashImpl(key, hc)
-  rawGetKnownHCImpl(t)
+  rawGetKnownHCImpl()
 
 proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
-  rawGetImpl(t)
+  rawGetImpl()

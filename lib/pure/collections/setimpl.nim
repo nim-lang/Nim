@@ -9,6 +9,8 @@
 
 # An ``include`` file for the different hash set implementations.
 
+include hashcommon
+
 template initImpl(s: typed, size: int) =
   assert isPowerOfTwo(size)
   when s is OrderedSet:
@@ -97,8 +99,8 @@ template dollarImpl() {.dirty.} =
 
 # --------------------------- OrderedSet ------------------------------
 
-proc rawGet[A](s: OrderedSet[A], key: A, hc: var Hash): int {.inline.} =
-  rawGetImpl(s)
+proc rawGet[A](t: OrderedSet[A], key: A, hc: var Hash): int {.inline.} =
+  rawGetImpl()
 
 proc rawInsert[A](s: var OrderedSet[A], data: var OrderedKeyValuePairSeq[A],
                   key: A, hc: Hash, h: Hash) =

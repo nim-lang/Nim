@@ -9,6 +9,8 @@
 
 # An ``include`` file for the different table implementations.
 
+include hashcommon
+
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
@@ -106,9 +108,6 @@ template clearImpl() {.dirty.} =
 
 template initImpl(result: typed, size: int) =
   assert isPowerOfTwo(size)
-  when result is OrderedTable|OrderedTableRef:
-    result.first = -1
-    result.last = -1
   result.counter = 0
   newSeq(result.data, size)
 
