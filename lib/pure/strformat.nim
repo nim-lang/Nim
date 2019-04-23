@@ -419,6 +419,9 @@ proc formatValue*(result: var string; value: SomeInteger; specifier: string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
+  if specifier.len == 0:
+    result.add $value
+    return
   let spec = parseStandardFormatSpecifier(specifier)
   var radix = 10
   case spec.typ
@@ -718,6 +721,10 @@ when isMainModule:
   # bug #11089
   let flfoo: float = 1.0
   check &"{flfoo}", "1.0"
+
+  # bug #11092
+  check &"{high(int64)}", "9223372036854775807"
+  check &"{low(int64)}", "-9223372036854775808"
 
   import json
 
