@@ -1926,13 +1926,11 @@ const
     ## failure.
 
 when defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode".}: int
+  var programResult* {.importc: "process.exitCode", deprecated.}: int
   programResult = 0
-else:
-  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
-    ## Modify this variable to specify the exit code of the program
-    ## under normal circumstances. When the program is terminated
-    ## prematurely using `quit proc <#quit,int>`_, this value is ignored.
+elif hostOS != "standalone":
+  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated.}: int
+    ## deprecated, prefer ``quit``
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
