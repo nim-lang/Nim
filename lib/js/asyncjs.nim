@@ -50,7 +50,7 @@
 ##   proc loadGame(name: string): Future[Game] {.async.}
 ##
 ## JavaScript compatibility
-## ~~~~~~~~~~~~~~~~~~~~~~~~~
+## ========================
 ##
 ## Nim currently generates `async/await` JavaScript code which is supported in modern
 ## EcmaScript and most modern versions of browsers, Node.js and Electron.

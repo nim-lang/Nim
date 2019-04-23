@@ -12,10 +12,10 @@
 ## Windows ``LoadLibrary``.
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Loading a simple C function
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ---------------------------
 ##
 ## The following example demonstrates loading a function called 'greet'
 ## from a library that is determined at runtime based upon a language choice.

@@ -15,7 +15,6 @@
 ## bytes (i.e., a total of 24 bits) can therefore be represented by
 ## four 6-bit Base64 digits.
 ##
-##
 ## Basic usage
 ## ===========
 ##

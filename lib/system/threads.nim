@@ -19,7 +19,8 @@
 ## to prevent race conditions and improves efficiency. See `the manual for
 ## details of this memory model <manual.html#threads>`_.
 ##
-## Example:
+## Examples
+## ========
 ##
 ## .. code-block:: Nim
 ##
@@ -328,7 +329,7 @@ else:
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
 
-## we need to cache current threadId to not perform syscall all the time
+# we need to cache current threadId to not perform syscall all the time
 var threadId {.threadvar.}: int
 
 when defined(windows):

@@ -65,7 +65,7 @@
 ## error), if there is no error however it returns the value of the future.
 ##
 ## Asynchronous procedures
-## -----------------------
+## =======================
 ##
 ## Asynchronous procedures remove the pain of working with callbacks. They do
 ## this by allowing you to write asynchronous code the same way as you would
@@ -99,7 +99,7 @@
 ## exceptions in async procs.
 ##
 ## Handling Exceptions
-## ~~~~~~~~~~~~~~~~~~~
+## -------------------
 ##
 ## The most reliable way to handle exceptions is to use ``yield`` on a future
 ## then check the future's ``failed`` property. For example:
@@ -125,7 +125,7 @@
 ##
 ##
 ## Discarding futures
-## ------------------
+## ==================
 ##
 ## Futures should **never** be discarded. This is because they may contain
 ## errors. If you do not care for the result of a Future then you should
@@ -134,14 +134,14 @@
 ## ``waitFor`` for that purpose.
 ##
 ## Examples
-## --------
+## ========
 ##
 ## For examples take a look at the documentation for the modules implementing
 ## asynchronous IO. A good place to start is the
 ## `asyncnet module <asyncnet.html>`_.
 ##
 ## Limitations/Bugs
-## ----------------
+## ================
 ##
 ## * The effect system (``raises: []``) does not work with async procedures.
 
