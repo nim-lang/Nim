@@ -457,7 +457,7 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string): void
   if value >= 0.0:
     if spec.sign != '-':
       sign = true
-      if  value == 0.0:
+      if value == 0.0:
         if 1.0 / value == Inf:
           # only insert the sign if value != negZero
           f.insert($spec.sign, 0)
@@ -467,16 +467,16 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string): void
     sign = true
 
   if spec.padWithZero:
-    var sign_str = ""
+    var signStr = ""
     if sign:
-      sign_str = $f[0]
+      signStr = $f[0]
       f = f[1..^1]
 
     let toFill = spec.minimumWidth - f.len - ord(sign)
     if toFill > 0:
       f = repeat('0', toFill) & f
     if sign:
-      f = sign_str & f
+      f = signStr & f
 
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
