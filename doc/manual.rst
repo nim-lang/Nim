@@ -22,7 +22,10 @@ precise wording. This manual is constantly evolving into a proper specification.
 **Note**: The experimental features of Nim are
 covered `here <manual_experimental.html>`_.
 
-This document describes the lexis, the syntax, and the semantics of Nim.
+This document describes the lexis, the syntax, and the semantics of the Nim language.
+
+To learn how to compile Nim programs and generate documentation see
+`Compiler User Guide <nimc.html>`_ and `DocGen Tools Guide <docgen.html>`_.
 
 The language constructs are explained using an extended BNF, in which ``(a)*``
 means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and ``(a)?`` means an
