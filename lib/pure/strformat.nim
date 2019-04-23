@@ -432,10 +432,13 @@ proc formatValue*(result: var string; value: SomeInteger; specifier: string) =
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
   result.add formatInt(value, radix, spec)
 
-proc formatValue*(result: var string; value: SomeFloat; specifier: string): void =
+proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
   ## Standard format implementation for ``SomeFloat``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
+  if specifier.len == 0:
+    result.add $value
+    return
   let spec = parseStandardFormatSpecifier(specifier)
 
   var fmode = ffDefault
@@ -712,6 +715,9 @@ when isMainModule:
   for s in invalidUtf8:
     check &"{s:>5}", repeat(" ", 5-s.len) & s
 
+  # bug #11089
+  let flfoo: float = 1.0
+  check &"{flfoo}", "1.0"
 
   import json
 
