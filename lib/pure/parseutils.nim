@@ -65,7 +65,7 @@ proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
 proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.inline, noSideEffect.} =
+  {.noSideEffect.} =
   ## Parses a binary number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -112,7 +112,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     result = i - start
 
 proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.inline, noSideEffect.} =
+  {.noSideEffect.} =
   ## Parses an octal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -159,7 +159,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     result = i - start
 
 proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.inline, noSideEffect.} =
+  {.noSideEffect.} =
   ## Parses a hexadecimal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
