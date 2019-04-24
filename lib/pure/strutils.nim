@@ -1177,7 +1177,7 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
   ##
   ## None of these procs check for overflow. If the value represented by `s`
   ## is too big to fit into the return type, only the value of the rightmost
-  ## octal digits of `s` will be returned without producing an error.
+  ## hexadecimal digits of `s` will be returned without producing an error.
   runnableExamples:
     let a = "0x_1235_8df6"
     doAssert a.parseHexInt() == 305499638
