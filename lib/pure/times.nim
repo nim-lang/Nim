@@ -2652,7 +2652,7 @@ proc microseconds*(dur: Duration): int {.inline, deprecated.} =
     doAssert dur.microseconds == 7008
   result = convert(Nanoseconds, Microseconds, dur.nanosecond)
 
-proc nanoseconds*(dur: Duration): NanosecondRange {.inline.} =
+proc nanoseconds*(dur: Duration): NanosecondRange {.inline, deprecated.} =
   ## Number of whole microseconds represented by the **fractional**
   ## part of the duration.
   ##
