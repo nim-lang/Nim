@@ -97,11 +97,19 @@ proc fill*[T](a: var openArray[T], value: T) =
   fillImpl(a, 0, a.high, value)
 
 template fillWith*[T](a: var openArray[T], f: untyped) =
-  ## Fills the container ``a`` with ``f``.
+  ## Fills the container ``a`` by calling ``f`` for every element of ``a``.
+  ##
+  ## This is similar to `sequtils.newSeqWith <sequtils.html#newSeqWith.t,int,untyped>`_
+  ## but it is more memory efficient since it doesn't copy its result.
   runnableExamples:
     import random
     var a: array[6, int]
     a.fillWith(rand(10))
+    ## a = [7, 8, 4, 0, 2, 10]  <- `rand` was called for every element
+    ##
+    ## in contrast with:
+    a.fill(rand(10))
+    ## a = [7, 7, 7, 7, 7, 7]   <- `rand` was called only once
   fillImpl(a, 0, a.high, f)
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
