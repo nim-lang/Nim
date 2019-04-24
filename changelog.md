@@ -47,10 +47,16 @@
 
 - `system.ValueError` now inherits from `system.CatchableError` instead of `system.Defect`.
 
-- The procs `parseutils.parseBiggsetInt`, `parseutils.parseInt`,
+- The procs `parseutils.parseBiggestInt`, `parseutils.parseInt`,
   `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a
   `ValueError` when the parsed integer is outside of the valid range.
   Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
+
+- The procs `parseutils.parseBin`, `parseutils.parseOct` and `parseutils.parseHex`
+  were not clearing their `var` parameter `number` and used to push its value to
+  the left when storing the parsed string into it. Now they always set the value
+  of the parameter to `0` before storing the result of the parsing, unless the
+  string to parse is not valid and then the value of `number` is not changed.
 
 - `streams.StreamObject` now restricts its fields to only raise `system.Defect`,
   `system.IOError` and `system.OSError`.
