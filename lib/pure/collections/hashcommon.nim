@@ -18,9 +18,6 @@ when not defined(nimHasDefault):
     var v: T
     v
 
-template maxHash(t): untyped = high(t.data)
-template dataLen(t): untyped = len(t.data)
-
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
 proc isEmpty(hcode: Hash): bool {.inline.} =
@@ -37,7 +34,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 template rawGetKnownHCImpl() {.dirty.} =
-  if t.data.len == 0:
+  if t.dataLen == 0:
     return -1
   var h: Hash = hc and maxHash(t)   # start with real hash value
   while isFilled(t.data[h].hcode):

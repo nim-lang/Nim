@@ -242,6 +242,11 @@ const
 
 # ------------------------------ helpers ---------------------------------
 
+# Do NOT move these to tableimpl.nim, because sharedtables uses that
+# file and has its own implementation.
+template maxHash(t): untyped = high(t.data)
+template dataLen(t): untyped = len(t.data)
+
 include tableimpl
 
 proc rightSize*(count: Natural): int {.inline.}

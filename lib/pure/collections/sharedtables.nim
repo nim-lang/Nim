@@ -29,6 +29,14 @@ template maxHash(t): untyped = t.dataLen-1
 
 include tableimpl
 
+template st_maybeRehashPutImpl(enlarge) {.dirty.} =
+  if mustRehash(t.dataLen, t.counter):
+    enlarge(t)
+    index = rawGetKnownHC(t, key, hc)
+  index = -1 - index                  # important to transform for mgetOrPutImpl
+  rawInsert(t, t.data, key, val, hc, index)
+  inc(t.counter)
+
 proc enlarge[A, B](t: var SharedTable[A, B]) =
   let oldSize = t.dataLen
   let size = oldSize * growthFactor
@@ -176,7 +184,7 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
       var val: B
       mapper(key, val, pairExists)
       if pairExists:
-        maybeRehashPutImpl(enlarge)
+        st_maybeRehashPutImpl(enlarge)
 
 proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.

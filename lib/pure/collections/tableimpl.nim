@@ -38,7 +38,7 @@ template addImpl(enlarge) {.dirty.} =
   inc(t.counter)
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
-  if t.data.len == 0:
+  if t.dataLen == 0:
     initImpl(t, defaultInitialSize)
   if mustRehash(t.dataLen, t.counter):
     enlarge(t)
@@ -99,7 +99,7 @@ template delImpl() {.dirty.} =
   delImplIdx(t, i)
 
 template clearImpl() {.dirty.} =
-  for i in 0 ..< t.data.len:
+  for i in 0 ..< t.dataLen:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
       t.data[i].hcode = 0
     t.data[i].key = default(type(t.data[i].key))
@@ -112,7 +112,7 @@ template initImpl(result: typed, size: int) =
   newSeq(result.data, size)
 
 template insertImpl() = # for CountTable
-  if t.data.len == 0: initImpl(t, defaultInitialSize)
+  if t.dataLen == 0: initImpl(t, defaultInitialSize)
   if mustRehash(len(t.data), t.counter): enlarge(t)
   rawInsertCT(t, t.data, key, val)
   inc(t.counter)

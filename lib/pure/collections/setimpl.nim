@@ -9,6 +9,10 @@
 
 # An ``include`` file for the different hash set implementations.
 
+
+template maxHash(t): untyped = high(t.data)
+template dataLen(t): untyped = len(t.data)
+
 include hashcommon
 
 template initImpl(s: typed, size: int) =
