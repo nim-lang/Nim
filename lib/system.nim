@@ -3807,13 +3807,21 @@ template `..^`*(a, b: untyped): untyped =
   ## '..' and '^' is required.
   a .. ^b
 
-template `..<`*(a, b: untyped): untyped =
+template `..<`*[T](a: T; b: BackwardsIndex): untyped =
   ## A shortcut for `a .. pred(b)`.
   ##
   ## .. code-block:: Nim
   ##   for i in 5 ..< 9:
   ##     echo i # => 5; 6; 7; 8
-  a .. (when b is BackwardsIndex: succ(b) else: pred(b))
+  a .. succ(b)
+
+template `..<`*[T: not BackwardsIndex](a, b: T): untyped =
+  ## A shortcut for `a .. pred(b)`.
+  ##
+  ## .. code-block:: Nim
+  ##   for i in 5 ..< 9:
+  ##     echo i # => 5; 6; 7; 8
+  a .. pred(b)
 
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
