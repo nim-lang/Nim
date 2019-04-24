@@ -47,8 +47,9 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   when defined(nimscript):
     discard
   elif defined(useMalloc):
-    result = c_malloc(s) +! sizeof(RefHeader)
+    var orig = c_malloc(s)
     nimZeroMem(result, s)
+    result = orig +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
   inc allocs

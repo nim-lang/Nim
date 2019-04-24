@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-## AsyncMacro
-## *************
 ## `asyncdispatch` module depends on the `asyncmacro` module to work properly.
 
 import macros, strutils, asyncfutures

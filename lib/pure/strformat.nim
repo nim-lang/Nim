@@ -419,6 +419,9 @@ proc formatValue*(result: var string; value: SomeInteger; specifier: string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
+  if specifier.len == 0:
+    result.add $value
+    return
   let spec = parseStandardFormatSpecifier(specifier)
   var radix = 10
   case spec.typ
@@ -432,10 +435,13 @@ proc formatValue*(result: var string; value: SomeInteger; specifier: string) =
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
   result.add formatInt(value, radix, spec)
 
-proc formatValue*(result: var string; value: SomeFloat; specifier: string): void =
+proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
   ## Standard format implementation for ``SomeFloat``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
+  if specifier.len == 0:
+    result.add $value
+    return
   let spec = parseStandardFormatSpecifier(specifier)
 
   var fmode = ffDefault
@@ -457,7 +463,7 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string): void
   if value >= 0.0:
     if spec.sign != '-':
       sign = true
-      if  value == 0.0:
+      if value == 0.0:
         if 1.0 / value == Inf:
           # only insert the sign if value != negZero
           f.insert($spec.sign, 0)
@@ -467,16 +473,16 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string): void
     sign = true
 
   if spec.padWithZero:
-    var sign_str = ""
+    var signStr = ""
     if sign:
-      sign_str = $f[0]
+      signStr = $f[0]
       f = f[1..^1]
 
     let toFill = spec.minimumWidth - f.len - ord(sign)
     if toFill > 0:
       f = repeat('0', toFill) & f
     if sign:
-      f = sign_str & f
+      f = signStr & f
 
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
@@ -712,6 +718,13 @@ when isMainModule:
   for s in invalidUtf8:
     check &"{s:>5}", repeat(" ", 5-s.len) & s
 
+  # bug #11089
+  let flfoo: float = 1.0
+  check &"{flfoo}", "1.0"
+
+  # bug #11092
+  check &"{high(int64)}", "9223372036854775807"
+  check &"{low(int64)}", "-9223372036854775808"
 
   import json
 

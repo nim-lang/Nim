@@ -22,7 +22,10 @@ precise wording. This manual is constantly evolving into a proper specification.
 **Note**: The experimental features of Nim are
 covered `here <manual_experimental.html>`_.
 
-This document describes the lexis, the syntax, and the semantics of Nim.
+This document describes the lexis, the syntax, and the semantics of the Nim language.
+
+To learn how to compile Nim programs and generate documentation see
+`Compiler User Guide <nimc.html>`_ and `DocGen Tools Guide <docgen.html>`_.
 
 The language constructs are explained using an extended BNF, in which ``(a)*``
 means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and ``(a)?`` means an
@@ -2357,7 +2360,7 @@ argument's resolution:
   rem unresolvedExpression(undeclaredIdentifier)
 
 ``untyped`` and ``varargs[untyped]`` are the only metatype that are lazy in this sense, the other
-metatypes ``typed`` and ``type`` are not lazy.
+metatypes ``typed`` and ``typedesc`` are not lazy.
 
 
 Varargs matching
@@ -4434,7 +4437,7 @@ templates:
 | ``notin`` and ``isnot`` have the obvious meanings.
 
 The "types" of templates can be the symbols ``untyped``,
-``typed`` or ``type``. These are "meta types", they can only be used in certain
+``typed`` or ``typedesc``. These are "meta types", they can only be used in certain
 contexts. Regular types can be used too; this implies that ``typed`` expressions
 are expected.
 
@@ -4598,7 +4601,7 @@ In templates identifiers can be constructed with the backticks notation:
 .. code-block:: nim
     :test: "nim c $1"
 
-  template typedef(name: untyped, typ: type) =
+  template typedef(name: untyped, typ: typedesc) =
     type
       `T name`* {.inject.} = typ
       `P name`* {.inject.} = ref `T name`
@@ -4660,7 +4663,7 @@ template cannot be accessed in the instantiation context:
 .. code-block:: nim
     :test: "nim c $1"
 
-  template newException*(exceptn: type, message: string): untyped =
+  template newException*(exceptn: typedesc, message: string): untyped =
     var
       e: ref exceptn  # e is implicitly gensym'ed here
     new(e)
@@ -5095,27 +5098,26 @@ expression by coercing it to a corresponding ``static`` type:
 The complier will report any failure to evaluate the expression or a
 possible type mismatch error.
 
-type[T]
--------
+typedesc[T]
+-----------
 
 In many contexts, Nim allows you to treat the names of types as regular
 values. These values exists only during the compilation phase, but since
-all values must have a type, ``type`` is considered their special type.
+all values must have a type, ``typedesc`` is considered their special type.
 
-``type`` acts like a generic type. For instance, the type of the symbol
-``int`` is ``type[int]``. Just like with regular generic types, when the
-generic param is ommited, ``type`` denotes the type class of all types.
-As a syntactic convenience, you can also use ``type`` as a modifier.
-``type int`` is considered the same as ``type[int]``.
+``typedesc`` acts like a generic type. For instance, the type of the symbol
+``int`` is ``typedesc[int]``. Just like with regular generic types, when the
+generic param is ommited, ``typedesc`` denotes the type class of all types.
+As a syntactic convenience, you can also use ``typedesc`` as a modifier.
 
-Procs featuring ``type`` params are considered implicitly generic.
+Procs featuring ``typedesc`` params are considered implicitly generic.
 They will be instantiated for each unique combination of supplied types
 and within the body of the proc, the name of each param will refer to
 the bound concrete type:
 
 .. code-block:: nim
 
-  proc new(T: type): ref T =
+  proc new(T: typedesc): ref T =
     echo "allocating ", T.name
     new(result)
 
@@ -5126,14 +5128,14 @@ When multiple type params are present, they will bind freely to different
 types. To force a bind-once behavior one can use an explicit generic param:
 
 .. code-block:: nim
-  proc acceptOnlyTypePairs[T, U](A, B: type[T]; C, D: type[U])
+  proc acceptOnlyTypePairs[T, U](A, B: typedesc[T]; C, D: typedesc[U])
 
 Once bound, type params can appear in the rest of the proc signature:
 
 .. code-block:: nim
     :test: "nim c $1"
 
-  template declareVariableWithType(T: type, value: T) =
+  template declareVariableWithType(T: typedesc, value: T) =
     var x: T = value
 
   declareVariableWithType int, 42
@@ -5145,8 +5147,8 @@ types that will match the type param:
 .. code-block:: nim
     :test: "nim c $1"
 
-  template maxval(T: type int): int = high(int)
-  template maxval(T: type float): float = Inf
+  template maxval(T: typedesc[int]): int = high(int)
+  template maxval(T: typedesc[float]): float = Inf
 
   var i = int.maxval
   var f = float.maxval
@@ -5159,7 +5161,8 @@ The constraint can be a concrete type or a type class.
 typeof operator
 ---------------
 
-**Note**: ``typeof(x)`` can also be written as ``type(x)``.
+**Note**: ``typeof(x)`` can also be written as ``type(x)`` but ``type(x)``
+is discouraged.
 
 You can obtain the type of a given expression by constructing a ``typeof``
 value from it (in many other languages this is known as the `typeof`:idx:
@@ -6581,7 +6584,7 @@ Custom pragmas are defined using templates annotated with pragma ``pragma``:
 .. code-block:: nim
   template dbTable(name: string, table_space: string = "") {.pragma.}
   template dbKey(name: string = "", primary_key: bool = false) {.pragma.}
-  template dbForeignKey(t: type) {.pragma.}
+  template dbForeignKey(t: typedesc) {.pragma.}
   template dbIgnore {.pragma.}
 
 

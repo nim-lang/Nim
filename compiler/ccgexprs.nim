@@ -996,6 +996,23 @@ proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   of tyTuple: genTupleElem(p, n, d)
   else: internalError(p.config, n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
 
+proc isSimpleExpr(n: PNode): bool =
+  # calls all the way down --> can stay expression based
+  case n.kind
+  of nkCallKinds, nkDotExpr, nkPar, nkTupleConstr,
+      nkObjConstr, nkBracket, nkCurly, nkHiddenDeref, nkDerefExpr, nkHiddenAddr,
+      nkHiddenStdConv, nkHiddenSubConv, nkConv, nkAddr:
+    for c in n:
+      if not isSimpleExpr(c): return false
+    result = true
+  of nkStmtListExpr:
+    for i in 0..n.len-2:
+      if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
+    result = isSimpleExpr(n.lastSon)
+  else:
+    if n.isAtom:
+      result = true
+
 proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   # how to generate code?
   #  'expr1 and expr2' becomes:
@@ -1017,24 +1034,41 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   # tmp = a
   # end:
   # a = tmp
-  var
-    L: TLabel
-    tmp: TLoc
-  getTemp(p, e.typ, tmp)      # force it into a temp!
-  inc p.splitDecls
-  expr(p, e.sons[1], tmp)
-  L = getLabel(p)
-  if m == mOr:
-    lineF(p, cpsStmts, "if ($1) goto $2;$n", [rdLoc(tmp), L])
+  when false:
+    #if isSimpleExpr(e) and p.module.compileToCpp:
+    var tmpA, tmpB: TLoc
+    #getTemp(p, e.typ, tmpA)
+    #getTemp(p, e.typ, tmpB)
+    initLocExprSingleUse(p, e.sons[1], tmpA)
+    initLocExprSingleUse(p, e.sons[2], tmpB)
+    tmpB.k = locExpr
+    if m == mOr:
+      tmpB.r = "((" & rdLoc(tmpA) & ")||(" & rdLoc(tmpB) & "))"
+    else:
+      tmpB.r = "((" & rdLoc(tmpA) & ")&&(" & rdLoc(tmpB) & "))"
+    if d.k == locNone:
+      d = tmpB
+    else:
+      genAssignment(p, d, tmpB, {})
   else:
-    lineF(p, cpsStmts, "if (!($1)) goto $2;$n", [rdLoc(tmp), L])
-  expr(p, e.sons[2], tmp)
-  fixLabel(p, L)
-  if d.k == locNone:
-    d = tmp
-  else:
-    genAssignment(p, d, tmp, {}) # no need for deep copying
-  dec p.splitDecls
+    var
+      L: TLabel
+      tmp: TLoc
+    getTemp(p, e.typ, tmp)      # force it into a temp!
+    inc p.splitDecls
+    expr(p, e.sons[1], tmp)
+    L = getLabel(p)
+    if m == mOr:
+      lineF(p, cpsStmts, "if ($1) goto $2;$n", [rdLoc(tmp), L])
+    else:
+      lineF(p, cpsStmts, "if (!($1)) goto $2;$n", [rdLoc(tmp), L])
+    expr(p, e.sons[2], tmp)
+    fixLabel(p, L)
+    if d.k == locNone:
+      d = tmp
+    else:
+      genAssignment(p, d, tmp, {}) # no need for deep copying
+    dec p.splitDecls
 
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
@@ -2669,7 +2703,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
             genProc(p.module, prc)
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
-  of nkGotoState: genGotoState(p, n)
+  of nkGotoState:
+    # simply never set it back to 0 here from here on...
+    inc p.splitDecls
+    genGotoState(p, n)
   of nkBreakState: genBreakState(p, n, d)
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 

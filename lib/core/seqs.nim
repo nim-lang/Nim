@@ -104,6 +104,10 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
     compilerRtl, noSideEffect, raises: [].} =
   {.noSideEffect.}:
+    template `+!`(p: pointer, s: int): pointer =
+      cast[pointer](cast[int](p) +% s)
+
+    const headerSize = sizeof(int) + sizeof(Allocator)
     if addlen <= 0:
       result = p
     elif p == nil:
@@ -112,14 +116,23 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
       var p = cast[ptr PayloadBase](p)
-      let allocator = if p.allocator == nil: getLocalAllocator() else: p.allocator
       let cap = max(resize(p.cap), len+addlen)
-      var q = cast[ptr PayloadBase](allocator.realloc(allocator, p,
-        sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
-        sizeof(int) + sizeof(Allocator) + elemSize * cap))
-      q.allocator = allocator
-      q.cap = cap
-      result = q
+      if p.allocator == nil:
+        let allocator = getLocalAllocator()
+        var q = cast[ptr PayloadBase](allocator.alloc(allocator,
+          headerSize + elemSize * cap))
+        copyMem(q +! headerSize, p +! headerSize, len * elemSize)
+        q.allocator = allocator
+        q.cap = cap
+        result = q
+      else:
+        let allocator = p.allocator
+        var q = cast[ptr PayloadBase](allocator.realloc(allocator, p,
+          headerSize + elemSize * p.cap,
+          headerSize + elemSize * cap))
+        q.allocator = allocator
+        q.cap = cap
+        result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
   mixin `=destroy`

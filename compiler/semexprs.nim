@@ -937,7 +937,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
   let isPush = hintExtendedContext in c.config.notes
   if isPush: pushInfoContext(c.config, n.info)
   result = semExpr(c, n, {efWantStmt})
-  result = discardCheck(c, result, {})
+  discardCheck(c, result, {})
   if isPush: popInfoContext(c.config)
 
 proc isTypeExpr(n: PNode): bool =
@@ -1528,8 +1528,10 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
 
 proc asgnToResult(c: PContext, n, le, ri: PNode) =
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
-  if ri.typ != nil and ri.typ.skipTypes(abstractInst).kind == tyOwned and
-      le.typ != nil and le.typ.skipTypes(abstractInst).kind != tyOwned and ri.kind in nkCallKinds:
+  const absInst = abstractInst - {tyOwned}
+  if ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
+      le.typ != nil and le.typ.skipTypes(absInst).kind != tyOwned and
+      ri.kind in nkCallKinds+{nkObjConstr}:
     localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer; " &
       "use 'owned(" & typeToString(le.typ) & ")' as the return type")
 
@@ -1673,7 +1675,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       a.sons[1] = result
       result = semAsgn(c, a)
   else:
-    result = discardCheck(c, result, {})
+    discardCheck(c, result, {})
 
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
