@@ -123,6 +123,8 @@ proc dbQuote*(s: string): string =
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
+  if args.len == 0:
+    return string(formatstr)
   result = ""
   var a = 0
   for c in items(string(formatstr)):
