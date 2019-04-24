@@ -1267,15 +1267,17 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
 
   result = ti1 + (-ti2)
 
-proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
+proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current local date as a string of the format ``YYYY-MM-DD``.
-  var dt = now()
+  runnableExamples:
+    echo getDateStr(now() - 1.months)
   result = $dt.year & '-' & intToStr(ord(dt.month), 2) &
     '-' & intToStr(dt.monthday, 2)
 
-proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
+proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current local clock time as a string of the format ``HH:MM:SS``.
-  var dt = now()
+  runnableExamples:
+    echo getClockStr(now() - 1.hours)
   result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
     ':' & intToStr(dt.second, 2)
 
