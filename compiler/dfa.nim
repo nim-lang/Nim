@@ -567,19 +567,36 @@ proc genReturn(c: var Con; n: PNode) =
 
 const
   InterestingSyms = {skVar, skResult, skLet, skParam, skForVar, skTemp}
-  PathKinds* = {nkDotExpr, nkCheckedFieldExpr,
+  PathKinds0 = {nkDotExpr, nkCheckedFieldExpr,
                 nkBracketExpr, nkDerefExpr, nkHiddenDeref,
                 nkAddr, nkHiddenAddr,
-                nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}
+                nkObjDownConv, nkObjUpConv}
+  PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv}
+
+proc getRoot(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of PathKinds0:
+      result = result[0]
+    of PathKinds1:
+      result = result[1]
+    else: break
+
+proc skipConvDfa*(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkObjDownConv, nkObjUpConv:
+      result = result[0]
+    of PathKinds1:
+      result = result[1]
+    else: break
 
 proc genUse(c: var Con; orig: PNode) =
-  var n = orig
-  var iters = 0
-  while n.kind in PathKinds:
-    n = n[0]
-    inc iters
+  let n = dfa.getRoot(orig)
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use, sym: if iters > 0: nil else: n.sym)
+    c.code.add Instr(n: orig, kind: use, sym: if orig != n: nil else: n.sym)
 
 proc aliases(obj, field: PNode): bool =
   var n = field
@@ -729,7 +746,7 @@ proc gen(c: var Con; n: PNode) =
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.
     genDef(c, n[0])
-  of PathKinds:
+  of PathKinds0 - {nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}:
     genUse(c, n)
   of nkIfStmt, nkIfExpr: genIf(c, n)
   of nkWhenStmt:
@@ -746,8 +763,8 @@ proc gen(c: var Con; n: PNode) =
      nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
-  of nkDiscardStmt: gen(c, n.sons[0])
-  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast:
+  of nkDiscardStmt, nkObjDownConv, nkObjUpConv: gen(c, n.sons[0])
+  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, nkHiddenSubConv, nkHiddenStdConv:
     gen(c, n.sons[1])
   of nkStringToCString, nkCStringToString: gen(c, n.sons[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)

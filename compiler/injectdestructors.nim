@@ -195,15 +195,17 @@ proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
   c.otherRead = nil
   var instr = -1
+  let m = dfa.skipConvDfa(n)
+
   for i in 0..<c.g.len:
     # This comparison is correct and MUST not be ``instrTargets``:
-    if c.g[i].kind == use and c.g[i].n == n:
+    if c.g[i].kind == use and c.g[i].n == m:
       if instr < 0:
         instr = i
         break
 
   dbg:
-    echo "starting point for ", n, " is ", instr
+    echo "starting point for ", n, " is ", instr, " ", n.kind
 
   if instr < 0: return false
   # we go through all paths beginning from 'instr+1' and need to
@@ -625,7 +627,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
   of nkHiddenSubConv, nkHiddenStdConv:
-    if ri[1].kind in movableNodeKinds:
+    if sameType(ri.typ, ri[1].typ):
+      result = moveOrCopy(dest, ri[1], c)
+    elif ri[1].kind in movableNodeKinds:
       result = moveOrCopy(dest, ri[1], c)
       var b = newNodeIT(ri.kind, ri.info, ri.typ)
       b.add ri[0] # add empty node
