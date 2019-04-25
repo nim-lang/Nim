@@ -419,6 +419,15 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
+proc isSinkTypeForParam(t: PType): bool =
+  # a parameter like 'seq[owned T]' must not be used only once, but its
+  # elements must, so we detect this case here:
+  if isSinkType(t):
+    if t.skipTypes({tyGenericInst, tyAlias}).kind in {tyArray, tyVarargs, tyOpenArray, tySequence}:
+      result = false
+    else:
+      result = true
+
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
@@ -452,7 +461,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       let L = if parameters != nil: parameters.len else: 0
       result.add arg[0]
       for i in 1..<arg.len:
-        result.add pArg(arg[i], c, i < L and isSinkType(parameters[i]))
+        result.add pArg(arg[i], c, i < L and isSinkTypeForParam(parameters[i]))
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkTripleStrLit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
@@ -529,7 +538,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     let L = if parameters != nil: parameters.len else: 0
     ri2.add ri[0]
     for i in 1..<ri.len:
-      ri2.add pArg(ri[i], c, i < L and isSinkType(parameters[i]))
+      ri2.add pArg(ri[i], c, i < L and isSinkTypeForParam(parameters[i]))
     #recurse(ri, ri2)
     result.add ri2
   of nkBracketExpr:
@@ -730,7 +739,7 @@ proc p(n: PNode; c: var Con): PNode =
     let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
     for i in 1 ..< n.len:
-      n.sons[i] = pArg(n[i], c, i < L and isSinkType(parameters[i]))
+      n.sons[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
     if n.typ != nil and hasDestructor(n.typ):
       discard "produce temp creation"
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
