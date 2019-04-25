@@ -22,17 +22,8 @@
 ## 2. Read or write stream
 ## 3. Close stream
 ##
-## It is here that an implementation example with
-## `StringStream <#StringStream>`_.
-##
 ## StringStream example
 ## --------------------
-##
-## Step 1: Open input stream:
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^
-##
-## Open StringStream. For more information on `"""The first line..."""`,
-## see `Triple quoted string literals <manual.html#lexical-analysis-triple-quoted-string-literals>`_ .
 ##
 ## .. code-block:: Nim
 ##
@@ -41,14 +32,6 @@
 ##  var strm = newStringStream("""The first line
 ##  the second line
 ##  the third line""")
-##
-## Step 2: Read stream
-## ^^^^^^^^^^^^^^^^^^^
-##
-## Read stream. `readLine proc <#readLine,Stream,TaintedString>`_ reads a line
-## of text from the stream. In this example, read three times and exit the loop.
-##
-## .. code-block:: Nim
 ##
 ##  var line = ""
 ##
@@ -60,29 +43,7 @@
 ##  # The second line
 ##  # The third line
 ##
-## Step 3: Close stream
-## ^^^^^^^^^^^^^^^^^^^^
-##
-## Close stream. Call `close proc <#close,Stream>`_ or
-## `flush proc <#flush,Stream>`_ if save data that written in the file
-## stream to file.
-##
-## .. code-block:: Nim
-##
 ##  strm.close()
-##
-## You can use `defer statement <manual.html#exception-handling-defer-statement>`_ 
-## to close stream. defer statement is available with procedure. But defer
-## statement is not available with Top-level.
-## 
-## defer statement example is here:
-##
-## .. code-block:: Nim
-##
-##  defer: strm.close()
-##
-## Similarly, it is here that an implementation example with
-## `FileStream <#FileStream>`_.
 ##
 ## FileStream example
 ## ------------------
@@ -138,7 +99,6 @@ proc newEIO(msg: string): owned(ref IOError) =
 
 type
   Stream* = ref StreamObj
-    ## A stream.
     ## All procedures of this module use this type.
     ## Procedures don't directly use `StreamObj <#StreamObj>`_.
   StreamObj* = object of RootObj
@@ -272,8 +232,7 @@ when not defined(js):
   proc readAll*(s: Stream): string =
     ## Reads all available data.
     ##
-    ## **Note:**
-    ## * Not available this when backend is js
+    ## **Note:** Not available for JS backend.
     runnableExamples:
       var strm = newStringStream("The first line\nthe second line\nthe third line")
       doAssert strm.readAll() == "The first line\nthe second line\nthe third line"
@@ -447,8 +406,6 @@ proc peekBool*(s: Stream): bool =
   runnableExamples:
     var strm = newStringStream("12")
     doAssert strm.peekBool()
-    doAssert strm.peekBool()
-    doAssert strm.peekBool()
     strm.close()
   peek(s, result)
 
@@ -466,7 +423,6 @@ proc peekInt8*(s: Stream): int8 =
   ## Peeks an int8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
     var strm = newStringStream("12")
-    doAssert strm.peekInt8() == 49
     doAssert strm.peekInt8() == 49
     doAssert strm.peekInt8() == 49
     strm.close()
@@ -862,15 +818,13 @@ when not defined(js):
 
   type
     StringStream* = ref StringStreamObj
-      ## A stream that encapsulates a string
+      ## A stream that encapsulates a string.
       ##
-      ## **Note:**
-      ## * Not available this when backend is js
+      ## **Note:** Not available for JS backend.
     StringStreamObj* = object of StreamObj
       ## A string stream object.
       ##
-      ## **Note:**
-      ## * Not available this when backend is js
+      ## **Note:** Not available for JS backend.
       data*: string ## A string data.
                     ## This is updated when called `writeLine` etc.
       pos: int
@@ -936,8 +890,7 @@ when not defined(js):
   proc newStringStream*(s: string = ""): owned StringStream =
     ## Creates a new stream from the string `s`.
     ##
-    ## **Note:**
-    ## * Not available this when backend is js
+    ## **Note:** Not available for JS backend.
     ##
     ## See also:
     ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
@@ -966,15 +919,13 @@ when not defined(js):
 
   type
     FileStream* = ref FileStreamObj
-      ## A stream that encapsulates a `File`
+      ## A stream that encapsulates a `File`.
       ##
-      ## **Note:**
-      ## * Not available this when backend is js
+      ## **Note:** Not available for JS backend.
     FileStreamObj* = object of Stream
       ## A file stream object.
       ##
-      ## **Note:**
-      ## * Not available this when backend is js
+      ## **Note:** Not available for JS backend.
       f: File
 
   proc fsClose(s: Stream) =
@@ -1004,8 +955,7 @@ when not defined(js):
   proc newFileStream*(f: File): owned FileStream =
     ## Creates a new stream from the file `f`.
     ##
-    ## **Note:**
-    ## * Not available this when backend is js
+    ## **Note:** Not available for JS backend.
     ##
     ## See also:
     ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
@@ -1053,7 +1003,7 @@ when not defined(js):
     ##   To prevent unexpected behavior and ensure proper error handling,
     ##   use `openFileStream proc <#openFileStream,string,FileMode,int>`_
     ##   instead.
-    ## * Not available this when backend is js
+    ## * Not available for JS backend.
     ##
     ## See also:
     ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
@@ -1082,8 +1032,7 @@ when not defined(js):
     ## Creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, an IO exception is raised.
     ##
-    ## **Note:**
-    ## * Not available this when backend is js
+    ## **Note:** Not available for JS backend.
     ##
     ## See also:
     ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
