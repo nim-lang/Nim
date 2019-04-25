@@ -2866,3 +2866,99 @@ when isMainModule:
     doAssert "test1" == orf.getOrDefault("test1", "test1")
     orf["test2"] = "test2"
     doAssert "test2" == orf.getOrDefault("test2", "test1")
+
+  block tableWithoutInit:
+    var
+      a: Table[string, int]
+      b: Table[string, int]
+      c: Table[string, int]
+      d: Table[string, int]
+      e: Table[string, int]
+
+    a["a"] = 7
+    doAssert a.hasKey("a")
+    doAssert a.len == 1
+    doAssert a["a"] == 7
+    a["a"] = 9
+    doAssert a.len == 1
+    doAssert a["a"] == 9
+
+    doAssert b.hasKeyOrPut("b", 5) == false
+    doAssert b.hasKey("b")
+    doAssert b.hasKeyOrPut("b", 8)
+    doAssert b["b"] == 5
+
+    doAssert c.getOrDefault("a") == 0
+    doAssert c.getOrDefault("a", 3) == 3
+    c["a"] = 6
+    doAssert c.getOrDefault("a", 3) == 6
+
+    doAssert d.mgetOrPut("a", 3) == 3
+    doAssert d.mgetOrPut("a", 6) == 3
+
+    var x = 99
+    doAssert e.take("a", x) == false
+    doAssert x == 99
+    e["a"] = 77
+    doAssert e.take("a", x)
+    doAssert x == 77
+
+  block orderedTableWithoutInit:
+    var
+      a: OrderedTable[string, int]
+      b: OrderedTable[string, int]
+      c: OrderedTable[string, int]
+      d: OrderedTable[string, int]
+
+    a["a"] = 7
+    doAssert a.hasKey("a")
+    doAssert a.len == 1
+    doAssert a["a"] == 7
+    a["a"] = 9
+    doAssert a.len == 1
+    doAssert a["a"] == 9
+
+    doAssert b.hasKeyOrPut("b", 5) == false
+    doAssert b.hasKey("b")
+    doAssert b.hasKeyOrPut("b", 8)
+    doAssert b["b"] == 5
+
+    doAssert c.getOrDefault("a") == 0
+    doAssert c.getOrDefault("a", 3) == 3
+    c["a"] = 6
+    doAssert c.getOrDefault("a", 3) == 6
+
+    doAssert d.mgetOrPut("a", 3) == 3
+    doAssert d.mgetOrPut("a", 6) == 3
+
+  block countTableWithoutInit:
+    var
+      a: CountTable[string]
+      b: CountTable[string]
+      c: CountTable[string]
+      d: CountTable[string]
+      e: CountTable[string]
+
+    a["a"] = 7
+    doAssert a.hasKey("a")
+    doAssert a.len == 1
+    doAssert a["a"] == 7
+    a["a"] = 9
+    doAssert a.len == 1
+    doAssert a["a"] == 9
+
+    doAssert b["b"] == 0
+    b.inc("b")
+    doAssert b["b"] == 1
+
+    doAssert c.getOrDefault("a") == 0
+    doAssert c.getOrDefault("a", 3) == 3
+    c["a"] = 6
+    doAssert c.getOrDefault("a", 3) == 6
+
+    e["f"] = 3
+    merge(d, e)
+    doAssert d.hasKey("f")
+    d.inc("f")
+    merge(d, e)
+    doAssert d["f"] == 7

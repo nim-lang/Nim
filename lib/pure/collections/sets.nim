@@ -26,7 +26,7 @@
 ##   `symmetric difference <#symmetricDifference,HashSet[A],HashSet[A]>`_
 ##
 ## .. code-block::
-##   echo toHashSet([9, 5, 1])         # {9, 1, 5}
+##   echo toHashSet([9, 5, 1])     # {9, 1, 5}
 ##   echo toOrderedSet([9, 5, 1])  # {9, 5, 1}
 ##
 ##   let
@@ -1176,6 +1176,69 @@ when isMainModule and not defined(release):
       bb.incl(x)
       bb.incl(y)
       assert aa == bb
+
+    block setsWithoutInit:
+      var
+        a: HashSet[int]
+        b: HashSet[int]
+        c: HashSet[int]
+        d: HashSet[int]
+        e: HashSet[int]
+
+      doAssert a.containsOrIncl(3) == false
+      doAssert a.contains(3)
+      doAssert a.len == 1
+      doAssert a.containsOrIncl(3)
+      a.incl(3)
+      doAssert a.len == 1
+      a.incl(6)
+      doAssert a.len == 2
+
+      b.incl(5)
+      doAssert b.len == 1
+      b.excl(5)
+      b.excl(c)
+      doAssert b.missingOrExcl(5)
+      doAssert b.disjoint(c)
+
+      d = b + c
+      doAssert d.len == 0
+      d = b * c
+      doAssert d.len == 0
+      d = b - c
+      doAssert d.len == 0
+      d = b -+- c
+      doAssert d.len == 0
+
+      doAssert (d < e) == false
+      doAssert d <= e
+      doAssert d == e
+
+    block setsWithoutInit:
+      var
+        a: OrderedSet[int]
+        b: OrderedSet[int]
+        c: OrderedSet[int]
+        d: HashSet[int]
+
+
+      doAssert a.containsOrIncl(3) == false
+      doAssert a.contains(3)
+      doAssert a.len == 1
+      doAssert a.containsOrIncl(3)
+      a.incl(3)
+      doAssert a.len == 1
+      a.incl(6)
+      doAssert a.len == 2
+
+      b.incl(5)
+      doAssert b.len == 1
+      doAssert b.missingOrExcl(5) == false
+      doAssert b.missingOrExcl(5)
+
+      doAssert c.missingOrExcl(9)
+      d.incl(c)
+      doAssert d.len == 0
 
     when not defined(testing):
       echo "Micro tests run successfully."
