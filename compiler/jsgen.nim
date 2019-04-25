@@ -1520,7 +1520,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   let f = n[0].sym
   if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
   if sfInfixCall in f.flags:
-    let pat = n.sons[0].sym.loc.r.data
+    let pat = $n.sons[0].sym.loc.r
     internalAssert p.config, pat.len > 0
     if pat.contains({'#', '(', '@'}):
       var typ = skipTypes(n.sons[0].typ, abstractInst)

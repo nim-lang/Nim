@@ -438,8 +438,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
-  # don't call '$' here for efficiency:
-  let pat = ri.sons[0].sym.loc.r.data
+  let pat = $ri.sons[0].sym.loc.r
   internalAssert p.config, pat.len > 0
   if pat.contains({'#', '(', '@', '\''}):
     var pl = genPatternCall(p, ri, pat, typ)
@@ -487,8 +486,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   assert(sonsLen(typ) == sonsLen(typ.n))
 
-  # don't call '$' here for efficiency:
-  let pat = ri.sons[0].sym.loc.r.data
+  let pat = $ri.sons[0].sym.loc.r
   internalAssert p.config, pat.len > 0
   var start = 3
   if ' ' in pat:

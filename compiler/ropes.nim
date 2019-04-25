@@ -65,22 +65,47 @@ type
                        # performance of the code generator (assignments
                        # copy the format strings
                        # though it is not necessary)
-  Rope* = ref RopeObj
+  Rope* = ptr RopeObj
   RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
                                           # by nil to safe space
     left, right: Rope
     L: int                    # <= 0 if a leaf
-    data*: string
+    data: UncheckedArray[char]
 
 proc len*(a: Rope): int =
   ## the rope's length
   if a == nil: result = 0
   else: result = abs a.L
 
+proc c_memcpy*(a, b: pointer, size: csize): pointer {.
+  importc: "memcpy", header: "<string.h>", discardable.}
+proc c_strcmp*(a, b: cstring): cint {.
+  importc: "strcmp", header: "<string.h>", noSideEffect.}
+
 proc newRope(data: string = ""): Rope =
-  new(result)
+  result = cast[Rope](alloc(sizeof(RopeObj) + len(data) + 1))
+  result.left = nil
+  result.right = nil
   result.L = -len(data)
-  result.data = data
+  if data.len > 0:
+    c_memcpy(result.data[0].addr, data[0].unsafeAddr, data.len + 1)
+  else:
+    result.data[0] = '\0'
+
+proc isLeafWithValue(self: Rope; value: string): bool =
+  if self.L > 0:
+    # not a leaf
+    return false
+
+  let len = -self.L
+  if len != value.len:
+    return false
+
+  if len == 0:
+    return true
+
+  return c_strcmp(self.data[0].unsafeAddr, value[0].unsafeAddr) == 0
+
 
 when not compileOption("threads"):
   var
@@ -112,7 +137,7 @@ proc insertInCache(s: string): Rope =
     inc gCacheTries
     var h = hash(s) and high(cache)
     result = cache[h]
-    if isNil(result) or result.data != s:
+    if isNil(result) or not isLeafWithValue(result, s):
       inc gCacheMisses
       result = newRope(s)
       cache[h] = result
@@ -167,7 +192,7 @@ proc add*(a: var Rope, b: string) =
   ## adds `b` to the rope `a`.
   a = a & b
 
-iterator leaves*(r: Rope): string =
+iterator leaves*(r: Rope): cstring =
   ## iterates over any leaf string in the rope `r`.
   if r != nil:
     var stack = @[r]
@@ -178,7 +203,7 @@ iterator leaves*(r: Rope): string =
         stack.add(it.right)
         it = it.left
         assert(it != nil)
-      yield it.data
+      yield it.data[0].unsafeAddr
 
 iterator items*(r: Rope): char =
   ## iterates over any character in the rope `r`.
@@ -202,7 +227,12 @@ proc `$`*(r: Rope): string =
   ## converts a rope back to a string.
   result = newString(r.len)
   setLen(result, 0)
-  for s in leaves(r): add(result, s)
+
+  if r.L <= 0:
+    # optimization branch (don't allocate a stack seq)
+    result.add r.data[0].unsafeAddr
+  else:
+    for s in leaves(r): add(result, s)
 
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
