@@ -394,242 +394,485 @@ proc peekChar*(s: Stream): char =
 proc readBool*(s: Stream): bool =
   ## Reads a bool from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("12")
-    doAssert strm.readBool()
-    doAssert strm.readBool()
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(true)
+    strm.write(false)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readBool() == true
+    doAssert strm.readBool() == false
     ## strm.readBool() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekBool*(s: Stream): bool =
   ## Peeks a bool from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("12")
-    doAssert strm.peekBool()
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(true)
+    strm.write(false)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekBool() == true
+    ## not false
+    doAssert strm.peekBool() == true
+    doAssert strm.readBool() == true
+    doAssert strm.peekBool() == false
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readInt8*(s: Stream): int8 =
   ## Reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("12")
-    doAssert strm.readInt8() == 49
-    doAssert strm.readInt8() == 50
-    ## strm.readInt8() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i8)
+    strm.write(2'i8)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readInt8() == 1'i8
+    doAssert strm.readInt8() == 2'i8
+    ## doAssert strm.readInt8() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekInt8*(s: Stream): int8 =
   ## Peeks an int8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("12")
-    doAssert strm.peekInt8() == 49
-    doAssert strm.peekInt8() == 49
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i8)
+    strm.write(2'i8)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekInt8() == 1'i8
+    ## not 2'i8
+    doAssert strm.peekInt8() == 1'i8
+    doAssert strm.readInt8() == 1'i8
+    doAssert strm.peekInt8() == 2'i8
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readInt16*(s: Stream): int16 =
   ## Reads an int16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("001020")
-    doAssert strm.readInt16() == 12336
-    doAssert strm.readInt16() == 12337
-    doAssert strm.readInt16() == 12338
-    ## strm.readInt16() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i16)
+    strm.write(2'i16)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readInt16() == 1'i16
+    doAssert strm.readInt16() == 2'i16
+    ## doAssert strm.readInt16() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekInt16*(s: Stream): int16 =
   ## Peeks an int16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("001020")
-    doAssert strm.peekInt16() == 12336
-    doAssert strm.peekInt16() == 12336
-    doAssert strm.peekInt16() == 12336
-    doAssert strm.peekInt16() == 12336
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i16)
+    strm.write(2'i16)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekInt16() == 1'i16
+    ## not 2'i16
+    doAssert strm.peekInt16() == 1'i16
+    doAssert strm.readInt16() == 1'i16
+    doAssert strm.peekInt16() == 2'i16
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readInt32*(s: Stream): int32 =
   ## Reads an int32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000010002000")
-    doAssert strm.readInt32() == 808464432
-    doAssert strm.readInt32() == 808464433
-    doAssert strm.readInt32() == 808464434
-    ## strm.readInt32() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i32)
+    strm.write(2'i32)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readInt32() == 1'i32
+    doAssert strm.readInt32() == 2'i32
+    ## doAssert strm.readInt32() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekInt32*(s: Stream): int32 =
   ## Peeks an int32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000010002000")
-    doAssert strm.peekInt32() == 808464432
-    doAssert strm.peekInt32() == 808464432
-    doAssert strm.peekInt32() == 808464432
-    doAssert strm.peekInt32() == 808464432
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i32)
+    strm.write(2'i32)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekInt32() == 1'i32
+    ## not 2'i32
+    doAssert strm.peekInt32() == 1'i32
+    doAssert strm.readInt32() == 1'i32
+    doAssert strm.peekInt32() == 2'i32
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readInt64*(s: Stream): int64 =
   ## Reads an int64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000000001000000020000000")
-    doAssert strm.readInt64() == 3472328296227680304
-    doAssert strm.readInt64() == 3472328296227680305
-    doAssert strm.readInt64() == 3472328296227680306
-    ## strm.readInt64() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i64)
+    strm.write(2'i64)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readInt64() == 1'i64
+    doAssert strm.readInt64() == 2'i64
+    ## doAssert strm.readInt64() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekInt64*(s: Stream): int64 =
   ## Peeks an int64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000000001000000020000000")
-    doAssert strm.peekInt64() == 3472328296227680304
-    doAssert strm.peekInt64() == 3472328296227680304
-    doAssert strm.peekInt64() == 3472328296227680304
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'i64)
+    strm.write(2'i64)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekInt64() == 1'i64
+    ## not 2'i64
+    doAssert strm.peekInt64() == 1'i64
+    doAssert strm.readInt64() == 1'i64
+    doAssert strm.peekInt64() == 2'i64
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readUint8*(s: Stream): uint8 =
   ## Reads an uint8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("012")
-    doAssert strm.readUint8() == 48
-    doAssert strm.readUint8() == 49
-    doAssert strm.readUint8() == 50
-    ## strm.readUint8() --> raies IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u8)
+    strm.write(2'u8)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readUint8() == 1'u8
+    doAssert strm.readUint8() == 2'u8
+    ## doAssert strm.readUint8() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekUint8*(s: Stream): uint8 =
   ## Peeks an uint8 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("012")
-    doAssert strm.peekUint8() == 48
-    doAssert strm.peekUint8() == 48
-    doAssert strm.peekUint8() == 48
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u8)
+    strm.write(2'u8)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekUint8() == 1'u8
+    ## not 2'u8
+    doAssert strm.peekUint8() == 1'u8
+    doAssert strm.readUint8() == 1'u8
+    doAssert strm.peekUint8() == 2'u8
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readUint16*(s: Stream): uint16 =
   ## Reads an uint16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("001020")
-    doAssert strm.readUint16() == 12336
-    doAssert strm.readUint16() == 12337
-    doAssert strm.readUint16() == 12338
-    ## strm.readUint16() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u16)
+    strm.write(2'u16)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readUint16() == 1'u16
+    doAssert strm.readUint16() == 2'u16
+    ## doAssert strm.readUint16() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekUint16*(s: Stream): uint16 =
   ## Peeks an uint16 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("001020")
-    doAssert strm.peekUint16() == 12336
-    doAssert strm.peekUint16() == 12336
-    doAssert strm.peekUint16() == 12336
-    doAssert strm.peekUint16() == 12336
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u16)
+    strm.write(2'u16)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekUint16() == 1'u16
+    ## not 2'u16
+    doAssert strm.peekUint16() == 1'u16
+    doAssert strm.readUint16() == 1'u16
+    doAssert strm.peekUint16() == 2'u16
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readUint32*(s: Stream): uint32 =
   ## Reads an uint32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000010002000")
-    doAssert strm.readUint32() == 808464432
-    doAssert strm.readUint32() == 808464433
-    doAssert strm.readUint32() == 808464434
-    ## strm.readUint32() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u32)
+    strm.write(2'u32)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readUint32() == 1'u32
+    doAssert strm.readUint32() == 2'u32
+    ## doAssert strm.readUint32() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekUint32*(s: Stream): uint32 =
   ## Peeks an uint32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000010002000")
-    doAssert strm.peekUint32() == 808464432
-    doAssert strm.peekUint32() == 808464432
-    doAssert strm.peekUint32() == 808464432
-    doAssert strm.peekUint32() == 808464432
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u32)
+    strm.write(2'u32)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekUint32() == 1'u32
+    ## not 2'u32
+    doAssert strm.peekUint32() == 1'u32
+    doAssert strm.readUint32() == 1'u32
+    doAssert strm.peekUint32() == 2'u32
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readUint64*(s: Stream): uint64 =
   ## Reads an uint64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000000001000000020000000")
-    doAssert strm.readUint64() == 3472328296227680304'u64
-    doAssert strm.readUint64() == 3472328296227680305'u64
-    doAssert strm.readUint64() == 3472328296227680306'u64
-    ## strm.readUint64() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u64)
+    strm.write(2'u64)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readUint64() == 1'u64
+    doAssert strm.readUint64() == 2'u64
+    ## doAssert strm.readUint64() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekUint64*(s: Stream): uint64 =
   ## Peeks an uint64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000000001000000020000000")
-    doAssert strm.peekUint64() == 3472328296227680304'u64
-    doAssert strm.peekUint64() == 3472328296227680304'u64
-    doAssert strm.peekUint64() == 3472328296227680304'u64
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'u64)
+    strm.write(2'u64)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekUint64() == 1'u64
+    ## not 2'u64
+    doAssert strm.peekUint64() == 1'u64
+    doAssert strm.readUint64() == 1'u64
+    doAssert strm.peekUint64() == 2'u64
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readFloat32*(s: Stream): float32 =
   ## Reads a float32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000010002000")
-    doAssert strm.readFloat32() == 0.00000000064096905560973027604632'f32
-    doAssert strm.readFloat32() == 0.00000000064096911112088150730415'f32
-    doAssert strm.readFloat32() == 0.00000000064096916663203273856197'f32
-    ## strm.readFloat32() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'f32)
+    strm.write(2'f32)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readFloat32() == 1'f32
+    doAssert strm.readFloat32() == 2'f32
+    ## doAssert strm.readFloat32() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekFloat32*(s: Stream): float32 =
   ## Peeks a float32 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000010002000")
-    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
-    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
-    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
-    doAssert strm.peekFloat32() == 0.00000000064096905560973027604632'f32
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'f32)
+    strm.write(2'f32)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekFloat32() == 1'f32
+    ## not 2'f32
+    doAssert strm.peekFloat32() == 1'f32
+    doAssert strm.readFloat32() == 1'f32
+    doAssert strm.peekFloat32() == 2'f32
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readFloat64*(s: Stream): float64 =
   ## Reads a float64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000000001000000020000000")
-    echo strm.readFloat64()
-    echo strm.readFloat64()
-    echo strm.readFloat64()
-    # issues #11056
-    # doAssert strm.readFloat64() == 1.39804328609528886042614983922832e-76'f64
-    # doAssert strm.readFloat64() == 1.39804328609528916724449142033623e-76'f64
-    # doAssert strm.readFloat64() == 1.39804328609528947406283300144414e-76'f64
-    ## strm.readFloat64() --> raise IOError
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'f64)
+    strm.write(2'f64)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.readFloat64() == 1'f64
+    doAssert strm.readFloat64() == 2'f64
+    ## doAssert strm.readFloat64() --> raise IOError
     strm.close()
+    
+    removeFile("somefile.txt")
   read(s, result)
 
 proc peekFloat64*(s: Stream): float64 =
   ## Peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
   runnableExamples:
-    var strm = newStringStream("000000001000000020000000")
-    echo strm.peekFloat64()
-    echo strm.peekFloat64()
-    echo strm.peekFloat64()
-    echo strm.peekFloat64()
-    # issues #11056
-    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
-    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
-    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
-    # doAssert strm.peekFloat64() == 1.39804328609528886042614983922832e-76'f64
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmReadWrite)
+    ## setup for reading data
+    strm.write(1'f64)
+    strm.write(2'f64)
+    strm.flush()
+    strm.setPosition(0)
+    
+    ## get data
+    doAssert strm.peekFloat64() == 1'f64
+    ## not 2'f64
+    doAssert strm.peekFloat64() == 1'f64
+    doAssert strm.readFloat64() == 1'f64
+    doAssert strm.peekFloat64() == 2'f64
     strm.close()
+    
+    removeFile("somefile.txt")
   peek(s, result)
 
 proc readStr*(s: Stream, length: int): TaintedString =
@@ -652,9 +895,10 @@ proc peekStr*(s: Stream, length: int): TaintedString =
   runnableExamples:
     var strm = newStringStream("abcde")
     doAssert strm.peekStr(2) == "ab"
+    ## not "cd
     doAssert strm.peekStr(2) == "ab"
-    doAssert strm.peekStr(2) == "ab"
-    doAssert strm.peekStr(2) == "ab"
+    doAssert strm.readStr(2) == "ab"
+    doAssert strm.peekStr(2) == "cd"
     strm.close()
   result = newString(length).TaintedString
   var L = peekData(s, cstring(result), length)
