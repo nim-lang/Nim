@@ -1992,18 +1992,7 @@ when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
 when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
   proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
-when defined(gcDestructors):
-  proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
-    ## Generic proc for adding a data item `y` to a container `x`.
-    ##
-    ## For containers that have an order, `add` means *append*. New generic
-    ## containers should also call their adding proc `add` for consistency.
-    ## Generic code becomes much easier to write if the Nim naming scheme is
-    ## respected.
-    let xl = x.len
-    setLen(x, xl + 1)
-    x[xl] = y
-else:
+when not defined(gcDestructors):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##

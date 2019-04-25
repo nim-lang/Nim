@@ -153,6 +153,20 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   for i in oldLen .. newLen-1:
     xu.p.data[i] = value
 
+proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
+  ## Generic proc for adding a data item `y` to a container `x`.
+  ##
+  ## For containers that have an order, `add` means *append*. New generic
+  ## containers should also call their adding proc `add` for consistency.
+  ## Generic code becomes much easier to write if the Nim naming scheme is
+  ## respected.
+  let oldLen = x.len
+  var xu = cast[ptr NimSeqV2[T]](addr x)
+  if xu.p == nil or xu.p.cap < oldLen+1:
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T)))
+  xu.len = oldLen+1
+  xu.p.data[oldLen] = value
+
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:
     if newlen < s.len:
