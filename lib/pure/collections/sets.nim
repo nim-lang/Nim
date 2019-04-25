@@ -430,7 +430,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
       c = intersection(a, b)
     assert c == toHashSet(["b"])
 
-  result = initHashSet[A](min(s1.data.len, s2.data.len))
+  result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
   for item in s1:
     if item in s2: incl(result, item)
 

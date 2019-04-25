@@ -55,6 +55,8 @@ template inclImpl() {.dirty.} =
     inc(s.counter)
 
 template containsOrInclImpl() {.dirty.} =
+  if s.data.len == 0:
+    initImpl(s, defaultInitialSize)
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index >= 0:
@@ -129,6 +131,8 @@ proc enlarge[A](s: var OrderedSet[A]) =
     h = nxt
 
 proc exclImpl[A](s: var OrderedSet[A], key: A) : bool {.inline.} =
+  if len(s.data) == 0:
+    return true
   var n: OrderedKeyValuePairSeq[A]
   newSeq(n, len(s.data))
   var h = s.first

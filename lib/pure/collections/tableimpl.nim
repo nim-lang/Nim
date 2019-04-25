@@ -31,6 +31,8 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
   rawInsertImpl()
 
 template addImpl(enlarge) {.dirty.} =
+  if t.dataLen == 0:
+    initImpl(t, defaultInitialSize)
   if mustRehash(t.dataLen, t.counter): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
@@ -48,12 +50,16 @@ template maybeRehashPutImpl(enlarge) {.dirty.} =
   inc(t.counter)
 
 template putImpl(enlarge) {.dirty.} =
+  if t.dataLen == 0:
+    initImpl(t, defaultInitialSize)
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
   else: maybeRehashPutImpl(enlarge)
 
 template mgetOrPutImpl(enlarge) {.dirty.} =
+  if t.dataLen == 0:
+    initImpl(t, defaultInitialSize)
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -63,6 +69,8 @@ template mgetOrPutImpl(enlarge) {.dirty.} =
   result = t.data[index].val
 
 template hasKeyOrPutImpl(enlarge) {.dirty.} =
+  if t.dataLen == 0:
+    initImpl(t, defaultInitialSize)
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -114,7 +122,7 @@ template initImpl(result: typed, size: int) =
 template insertImpl() = # for CountTable
   if t.dataLen == 0: initImpl(t, defaultInitialSize)
   if mustRehash(len(t.data), t.counter): enlarge(t)
-  rawInsertCT(t, t.data, key, val)
+  ctRawInsert(t, t.data, key, val)
   inc(t.counter)
 
 template getOrDefaultImpl(t, key): untyped =

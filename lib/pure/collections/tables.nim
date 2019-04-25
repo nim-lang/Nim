@@ -2087,7 +2087,7 @@ type
 
 # ------------------------------ helpers ---------------------------------
 
-proc rawInsertCT[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
+proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
   var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
@@ -2098,7 +2098,7 @@ proc enlarge[A](t: var CountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].val != 0: rawInsertCT(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].val != 0: ctRawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
 proc rawGet[A](t: CountTable[A], key: A): int =
