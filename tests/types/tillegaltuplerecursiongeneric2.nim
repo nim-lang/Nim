@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid recursion in type 'TPearl'"
+  errormsg: "illegal recursion in type 'TPearl'"
 """
 
 type

@@ -1349,7 +1349,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   # generic/partial specialized parent
   let tx = result.skipTypes(abstractPtrs, 50)
   if tx.isNil or isTupleRecursive(tx):
-    localError(c.config, n.info, "invalid recursion in type '$1'" % typeToString(result[0]))
+    localError(c.config, n.info, "illegal recursion in type '$1'" % typeToString(result[0]))
     return errorType(c)
   if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
     semObjectTypeForInheritedGenericInst(c, n, tx)
