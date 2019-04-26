@@ -65,7 +65,7 @@ type
                        # performance of the code generator (assignments
                        # copy the format strings
                        # though it is not necessary)
-  Rope* = ptr RopeObj
+  Rope* = ref RopeObj
   RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
                                           # by nil to safe space
     left, right: Rope
@@ -82,15 +82,13 @@ proc c_memcpy*(a, b: pointer, size: csize): pointer {.
 proc c_strcmp*(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
 
-proc newRope(data: string = ""): Rope =
-  result = cast[Rope](alloc(sizeof(RopeObj) + len(data) + 1))
+proc newRope(data: string): Rope =
+  assert data.len > 0, "empty ropes should be nil"
+  result.unsafeNew(sizeof(RopeObj) + len(data) + 1)
   result.left = nil
   result.right = nil
   result.L = -len(data)
-  if data.len > 0:
-    c_memcpy(result.data[0].addr, data[0].unsafeAddr, data.len + 1)
-  else:
-    result.data[0] = '\0'
+  discard c_memcpy(result.data[0].addr, data[0].unsafeAddr, data.len + 1)
 
 proc isLeafWithValue(self: Rope; value: string): bool =
   if self.L > 0:
@@ -167,7 +165,7 @@ proc `&`*(a, b: Rope): Rope =
   elif b == nil:
     result = a
   else:
-    result = newRope()
+    result.new
     result.L = abs(a.L) + abs(b.L)
     result.left = a
     result.right = b
