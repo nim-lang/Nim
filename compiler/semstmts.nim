@@ -439,8 +439,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var length = sonsLen(a)
 
     var typ: PType = nil
-    if a.sons[length-2].kind != nkEmpty:
-      typ = semTypeNode(c, a.sons[length-2], nil)
+    let n = a.sons[length-2]
+    if n.kind != nkEmpty:
+      typ = semTypeNode(c, n, nil)
+      if typ.isMetaType:
+        localError(c.config, n.info, errTIsNotAConcreteType % typ.typeToString)
 
     var def: PNode = c.graph.emptyNode
     if a.sons[length-1].kind != nkEmpty:
