@@ -1,0 +1,74 @@
+discard """
+  cmd: '''nim c --newruntime $file'''
+  output: '''button
+clicked!'''
+  disabled: "true"
+"""
+
+type
+  Widget* = ref object of RootObj
+    drawImpl: owned(proc (self: Widget))
+
+  Button* = ref object of Widget
+    caption: string
+    onclick: owned(proc())
+
+  Window* = ref object of Widget
+    elements: seq[owned Widget]
+
+
+proc newButton(caption: string; onclick: owned(proc())): owned Button =
+  proc draw(self: Widget) =
+    let b = Button(self)
+    echo b.caption
+
+  #result = Button(drawImpl: draw, caption: caption, onclick: onclick)
+  new(result)
+  result.drawImpl = draw
+  result.caption = caption
+  result.onclick = onclick
+
+iterator unitems*[T](a: seq[owned T]): T {.inline.} =
+  ## Iterates over each item of `a`.
+  var i = 0
+  let L = len(a)
+  while i < L:
+    yield a[i]
+    inc(i)
+    assert(len(a) == L, "seq modified while iterating over it")
+
+proc newWindow(): owned Window =
+  proc draw(self: Widget) =
+    let w = Window(self)
+    for e in unitems(w.elements):
+      let d = (proc(self: Widget))e.drawImpl
+      if not d.isNil: d(e)
+
+  result = Window(drawImpl: draw, elements: @[])
+
+proc draw(w: Widget) =
+  let d = (proc(self: Widget))w.drawImpl
+  if not d.isNil: d(w)
+
+proc add*(w: Window; elem: owned Widget) =
+  w.elements.add elem
+
+proc main =
+  var w = newWindow()
+
+  var b = newButton("button", nil)
+  #let u: Button = b
+  b.onclick = proc () =
+    b.caption = "clicked!"
+  w.add b
+
+  w.draw()
+  # simulate button click:
+  #u.onclick()
+
+  w.draw()
+
+main()
+
+let (a, d) = allocCounters()
+discard cprintf("%ld %ld  new: %ld\n", a, d, allocs)

@@ -1918,14 +1918,14 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
   let etyp = skipTypes(e.typ, abstractRange+{tyOwned})
+  let srcTyp = skipTypes(e.sons[1].typ, abstractRange)
   if etyp.kind in ValueTypes and lfIndirect notin a.flags:
     putIntoDest(p, d, e, "(*($1*) ($2))" %
         [getTypeDesc(p.module, e.typ), addrLoc(p.config, a)], a.storage)
-  elif etyp.kind == tyProc and etyp.callConv == ccClosure:
+  elif etyp.kind == tyProc and etyp.callConv == ccClosure and srcTyp.callConv != ccClosure:
     putIntoDest(p, d, e, "(($1) ($2))" %
         [getClosureType(p.module, etyp, clHalfWithEnv), rdCharLoc(a)], a.storage)
   else:
-    let srcTyp = skipTypes(e.sons[1].typ, abstractRange)
     # C++ does not like direct casts from pointer to shorter integral types
     if srcTyp.kind in {tyPtr, tyPointer} and etyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) (ptrdiff_t) ($2))" %

@@ -701,6 +701,15 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
 proc isCursor(n: PNode): bool {.inline.} =
   result = n.kind == nkSym and sfCursor in n.sym.flags
 
+proc keepVar(n, it: PNode, c: var Con): PNode =
+  # keep the var but transform 'ri':
+  result = copyNode(n)
+  var itCopy = copyNode(it)
+  for j in 0..it.len-2:
+    itCopy.add it[j]
+  itCopy.add p(it[it.len-1], c)
+  result.add itCopy
+
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
@@ -726,15 +735,10 @@ proc p(n: PNode; c: var Con): PNode =
             if ri.kind != nkEmpty:
               let r = moveOrCopy(v, ri, c)
               result.add r
+          else:
+            result.add keepVar(n, it, c)
       else:
-        # keep it, but transform 'ri':
-        var varSection = copyNode(n)
-        var itCopy = copyNode(it)
-        for j in 0..L-2:
-          itCopy.add it[j]
-        itCopy.add p(ri, c)
-        varSection.add itCopy
-        result.add varSection
+        result.add keepVar(n, it, c)
   of nkCallKinds:
     let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
@@ -752,7 +756,7 @@ proc p(n: PNode; c: var Con): PNode =
     else:
       result = n
   of nkAsgn, nkFastAsgn:
-    if hasDestructor(n[0].typ):
+    if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda, nkClosure}:
       result = moveOrCopy(n[0], n[1], c)
     else:
       result = copyNode(n)
