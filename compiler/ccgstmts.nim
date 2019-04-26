@@ -227,8 +227,9 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
   if not p.module.compileToCpp or optNoCppExceptions in p.config.globalOptions:
     # Pop exceptions that was handled by the
     # except-blocks we are in
-    for i in countdown(howManyExcepts-1, 0):
-      linefmt(p, cpsStmts, "#popCurrentException();$n", [])
+    if not p.noSafePoints:
+      for i in countdown(howManyExcepts-1, 0):
+        linefmt(p, cpsStmts, "#popCurrentException();$n", [])
 
 proc genGotoState(p: BProc, n: PNode) =
   # we resist the temptation to translate it into duff's device as it later
