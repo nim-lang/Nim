@@ -313,14 +313,6 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
     if pred(s[i]):
       yield s[i]
 
-iterator items*[T](xs: iterator: T): T =
-  ## iterates over each element yielded by a closure iterator. This may
-  ## not seem particularly useful on its own, but this allows closure
-  ## iterators to be used by the the mapIt, filterIt, allIt, anyIt, etc.
-  ## templates.
-  for x in xs:
-    yield x
-
 proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
