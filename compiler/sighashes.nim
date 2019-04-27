@@ -349,7 +349,7 @@ proc hashBodyTree(graph: ModuleGraph, c: var MD5Context, n: PNode) =
     c &= n.strVal
   else:
     for i in 0..<n.len:
-      hashTree(c, n.sons[i])
+      hashBodyTree(graph, c, n.sons[i])
 
 proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
   ## compute unique digest of the proc/func/method symbols
@@ -369,7 +369,7 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
   if sym.ast != nil:
     md5Init(c)
     c.md5Update(cast[cstring](result.addr), sizeof(result))
-    c.hashTree(sym.ast[bodyPos])
+    hashBodyTree(graph, c, sym.ast[bodyPos])
     c.md5Final(result.Md5Digest)
     graph.symBodyHashes[sym.id] = result
 
