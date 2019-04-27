@@ -5,6 +5,9 @@ clicked!'''
   disabled: "true"
 """
 
+import core / allocators
+import system / ansi_c
+
 type
   Widget* = ref object of RootObj
     drawImpl: owned(proc (self: Widget))
@@ -71,4 +74,4 @@ proc main =
 main()
 
 let (a, d) = allocCounters()
-discard cprintf("%ld %ld  new: %ld\n", a, d, allocs)
+discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, allocs)

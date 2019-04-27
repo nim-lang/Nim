@@ -732,11 +732,9 @@ proc p(n: PNode; c: var Con): PNode =
             # make sure it's destroyed at the end of the proc:
             if not isUnpackedTuple(it[0].sym):
               c.destroys.add genDestroy(c, v.typ, v)
-            if ri.kind != nkEmpty:
-              let r = moveOrCopy(v, ri, c)
-              result.add r
-          else:
-            result.add keepVar(n, it, c)
+          if ri.kind != nkEmpty:
+            let r = moveOrCopy(v, ri, c)
+            result.add r
       else:
         result.add keepVar(n, it, c)
   of nkCallKinds:
