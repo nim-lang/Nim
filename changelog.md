@@ -158,6 +158,9 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `system.default`.
 
+- Added `sequtils.items` for closure iterators, allows closure iterators 
+  to be used by the the mapIt, filterIt, allIt, anyIt, etc.
+
 
 ### Library changes
 
