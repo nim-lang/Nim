@@ -316,6 +316,10 @@ proc makePtrType(c: Con, baseType: PType): PType =
   result = newType(tyPtr, c.owner)
   addSonSkipIntLit(result, baseType)
 
+proc addDestroy(c: var Con; n: PNode) =
+  # append to front:
+  c.destroys = newTree(nkStmtList, n, c.destroys)
+
 proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = t.attachedOps[kind]
 
@@ -731,7 +735,7 @@ proc p(n: PNode; c: var Con): PNode =
             c.addTopVar v
             # make sure it's destroyed at the end of the proc:
             if not isUnpackedTuple(it[0].sym):
-              c.destroys.add genDestroy(c, v.typ, v)
+              c.addDestroy genDestroy(c, v.typ, v)
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -750,7 +754,7 @@ proc p(n: PNode; c: var Con): PNode =
       sinkExpr.add n
       result.add sinkExpr
       result.add tmp
-      c.destroys.add genDestroy(c, n.typ, tmp)
+      c.addDestroy genDestroy(c, n.typ, tmp)
     else:
       result = n
   of nkAsgn, nkFastAsgn:
@@ -814,7 +818,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     for i in 1 ..< params.len:
       let param = params[i].sym
       if isSinkParam(param) and hasDestructor(param.typ.skipTypes({tySink})):
-        c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
+        c.addDestroy genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)

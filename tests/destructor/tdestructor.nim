@@ -7,8 +7,8 @@ mygeneric1 constructed
 mygeneric1 destroyed
 ----
 mygeneric2 constructed
-myobj destroyed
 mygeneric2 destroyed
+myobj destroyed
 ----
 mygeneric3 constructed
 mygeneric1 destroyed
@@ -20,10 +20,10 @@ mygeneric2 destroyed
 ----
 ----
 myobj destroyed
+myobj destroyed
+myobj destroyed
+myobj destroyed
 mygeneric1 destroyed
-myobj destroyed
-myobj destroyed
-myobj destroyed
 ---
 myobj destroyed
 myobj destroyed
