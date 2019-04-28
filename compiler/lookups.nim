@@ -257,7 +257,8 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   while candidate != nil:
     if i == 0: err.add " --use one of the following:\n"
     else: err.add "\n"
-    err.add candidate.owner.name.s & "." & typeToString(candidate.typ)
+    err.add candidate.owner.name.s & "." & candidate.name.s
+    err.add ": " & typeToString(candidate.typ)
     candidate = nextIdentIter(ti, c.importTable.symbols)
     inc i
   localError(c.config, info, errGenerated, err)
