@@ -1,8 +1,8 @@
 discard """
   cmd: '''nim c --newruntime $file'''
   output: '''button
-clicked!'''
-  disabled: "true"
+clicked!
+1 1  alloc/dealloc pairs: 0'''
 """
 
 import core / allocators
@@ -41,13 +41,14 @@ iterator unitems*[T](a: seq[owned T]): T {.inline.} =
     assert(len(a) == L, "seq modified while iterating over it")
 
 proc newWindow(): owned Window =
-  proc draw(self: Widget) =
+  proc windraw(self: Widget) =
     let w = Window(self)
-    for e in unitems(w.elements):
+    for i in 0..<len(w.elements):
+      let e = Widget(w.elements[i])
       let d = (proc(self: Widget))e.drawImpl
       if not d.isNil: d(e)
 
-  result = Window(drawImpl: draw, elements: @[])
+  result = Window(drawImpl: windraw, elements: @[])
 
 proc draw(w: Widget) =
   let d = (proc(self: Widget))w.drawImpl
@@ -60,14 +61,14 @@ proc main =
   var w = newWindow()
 
   var b = newButton("button", nil)
-  #let u: Button = b
+  let u: Button = b
   b.onclick = proc () =
     b.caption = "clicked!"
   w.add b
 
   w.draw()
   # simulate button click:
-  #u.onclick()
+  u.onclick()
 
   w.draw()
 

@@ -633,13 +633,19 @@ proc instrTargets*(ins: Instr; loc: PNode): bool =
     # use x; question does it affect 'x.f'? Yes.
     result = aliases(ins.n, loc) or aliases(loc, ins.n)
 
-proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
-  var n = n
+proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
+  var n = orig
   while true:
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenDeref:
+       nkObjDownConv, nkObjUpConv:
       n = n[0]
+    of nkHiddenDeref, nkDerefExpr:
+      # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
+      # pointer indirection.
+      n = n[0]
+      return n.kind == nkSym and n.sym.owner == owner and (isSinkParam(n.sym) or
+          n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned, tyVar})
     of nkBracketExpr:
       let x = n[0]
       if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:

@@ -4,8 +4,8 @@ destroy
 destroy
 5
 123
-destroy Foo: 5
-destroy Foo: 123'''
+destroy Foo: 123
+destroy Foo: 5'''
 joinable: false
 """
 
