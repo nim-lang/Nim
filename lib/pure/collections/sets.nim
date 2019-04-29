@@ -26,7 +26,7 @@
 ##   `symmetric difference <#symmetricDifference,HashSet[A],HashSet[A]>`_
 ##
 ## .. code-block::
-##   echo toHashSet([9, 5, 1])         # {9, 1, 5}
+##   echo toHashSet([9, 5, 1])     # {9, 1, 5}
 ##   echo toOrderedSet([9, 5, 1])  # {9, 5, 1}
 ##
 ##   let
@@ -69,140 +69,24 @@ type
     data: KeyValuePairSeq[A]
     counter: int
 
+type
+  OrderedKeyValuePair[A] = tuple[
+    hcode: Hash, next: int, key: A]
+  OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
+  OrderedSet* {.myShallow.} [A] = object ## \
+    ## A generic hash set that remembers insertion order.
+    ##
+    ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc
+    ## <#initOrderedSet,int>`_ before calling other procs on it.
+    data: OrderedKeyValuePairSeq[A]
+    counter, first, last: int
 
-# ---------------------- helpers -----------------------------------
+const
+  defaultInitialSize* = 64
 
-const growthFactor = 2
-
-when not defined(nimHasDefault):
-  template default[T](t: typedesc[T]): T =
-    ## Used by clear methods to get a default value.
-    var v: T
-    v
-
-# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
-# two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: Hash): bool {.inline.} =
-  result = hcode == 0
-
-proc isFilled(hcode: Hash): bool {.inline.} =
-  result = hcode != 0
-
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = (h + 1) and maxHash
-
-template rawGetKnownHCImpl() {.dirty.} =
-  var h: Hash = hc and high(s.data)  # start with real hash value
-  while isFilled(s.data[h].hcode):
-    # Compare hc THEN key with boolean short circuit. This makes the common case
-    # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
-    # It does slow down succeeding lookups by one extra Hash cmp&and..usually
-    # just a few clock cycles, generally worth it for any non-integer-like A.
-    if s.data[h].hcode == hc and s.data[h].key == key:  # compare hc THEN key
-      return h
-    h = nextTry(h, high(s.data))
-  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
-
-template genHash(key: typed): Hash =
-  var hc = hash(key)
-  if hc == 0:       # This almost never taken branch should be very predictable.
-    hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
-  hc
-
-template rawGetImpl() {.dirty.} =
-  hc = genHash(key)
-  rawGetKnownHCImpl()
-
-template rawInsertImpl() {.dirty.} =
-  data[h].key = key
-  data[h].hcode = hc
-
-proc rawGetKnownHC[A](s: HashSet[A], key: A, hc: Hash): int {.inline.} =
-  rawGetKnownHCImpl()
-
-proc rawGet[A](s: HashSet[A], key: A, hc: var Hash): int {.inline.} =
-  rawGetImpl()
-
-proc rawInsert[A](s: var HashSet[A], data: var KeyValuePairSeq[A], key: A,
-                  hc: Hash, h: Hash) =
-  rawInsertImpl()
-
-proc enlarge[A](s: var HashSet[A]) =
-  var n: KeyValuePairSeq[A]
-  newSeq(n, len(s.data) * growthFactor)
-  swap(s.data, n)                   # n is now old seq
-  for i in countup(0, high(n)):
-    if isFilled(n[i].hcode):
-      var j = -1 - rawGetKnownHC(s, n[i].key, n[i].hcode)
-      rawInsert(s, s.data, n[i].key, n[i].hcode, j)
-
-template inclImpl() {.dirty.} =
-  var hc: Hash
-  var index = rawGet(s, key, hc)
-  if index < 0:
-    if mustRehash(len(s.data), s.counter):
-      enlarge(s)
-      index = rawGetKnownHC(s, key, hc)
-    rawInsert(s, s.data, key, hc, -1 - index)
-    inc(s.counter)
-
-template containsOrInclImpl() {.dirty.} =
-  var hc: Hash
-  var index = rawGet(s, key, hc)
-  if index >= 0:
-    result = true
-  else:
-    if mustRehash(len(s.data), s.counter):
-      enlarge(s)
-      index = rawGetKnownHC(s, key, hc)
-    rawInsert(s, s.data, key, hc, -1 - index)
-    inc(s.counter)
-
-template doWhile(a, b) =
-  while true:
-    b
-    if not a: break
-
-proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
-  assert s.isValid, "The set needs to be initialized."
-  var hc: Hash
-  var i = rawGet(s, key, hc)
-  var msk = high(s.data)
-  result = true
-
-  if i >= 0:
-    result = false
-    dec(s.counter)
-    while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-      var j = i         # The correctness of this depends on (h+1) in nextTry,
-      var r = j         # though may be adaptable to other simple sequences.
-      s.data[i].hcode = 0              # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
-      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-        i = (i + 1) and msk            # increment mod table size
-        if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
-          return
-        r = s.data[i].hcode and msk    # "home" location of key@i
-      shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
-
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
-
-template dollarImpl() {.dirty.} =
-  result = "{"
-  for key in items(s):
-    if result.len > 1: result.add(", ")
-    result.addQuoted(key)
-  result.add("}")
+include setimpl
 
 proc rightSize*(count: Natural): int {.inline.}
-
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------
@@ -210,7 +94,7 @@ proc rightSize*(count: Natural): int {.inline.}
 # ---------------------------------------------------------------------
 
 
-proc init*[A](s: var HashSet[A], initialSize=64) =
+proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ## Initializes a hash set.
   ##
   ## The `initialSize` parameter needs to be a power of two (default: 64).
@@ -218,9 +102,8 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo>`_ or `rightSize proc
   ## <#rightSize,Natural>`_ from this module.
   ##
-  ## All set variables must be initialized before
-  ## use with other procs from this module, with the exception of `isValid proc
-  ## <#isValid,HashSet[A]>`_ and `len() <#len,HashSet[A]>`_.
+  ## Starting from Nim v0.20, sets are initialized by default and it is
+  ## not necessary to call this function explicitly.
   ##
   ## You can call this proc on a previously initialized hash set, which will
   ## discard all its values. This might be more convenient than iterating over
@@ -235,42 +118,26 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
     init(a)
     assert a.isValid
 
-  assert isPowerOfTwo(initialSize)
-  s.counter = 0
-  newSeq(s.data, initialSize)
+  initImpl(s, initialSize)
 
-proc initHashSet*[A](initialSize=64): HashSet[A] =
+proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
   ## Wrapper around `init proc <#init,HashSet[A],int>`_ for initialization of
   ## hash sets.
   ##
   ## Returns an empty hash set you can assign directly in ``var`` blocks in a
   ## single line.
   ##
+  ## Starting from Nim v0.20, sets are initialized by default and it is
+  ## not necessary to call this function explicitly.
+  ##
   ## See also:
   ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
     var a = initHashSet[int]()
-    assert a.isValid
     a.incl(3)
     assert len(a) == 1
-  result.init(initialSize)
 
-proc isValid*[A](s: HashSet[A]): bool =
-  ## Returns `true` if the set has been initialized (with `initHashSet proc
-  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
-  ##
-  ## Most operations over an uninitialized set will crash at runtime and
-  ## `assert <system.html#assert>`_ in debug builds. You can use this proc in
-  ## your own procs to verify that sets passed to your procs are correctly
-  ## initialized.
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block ::
-  ##   proc savePreferences(options: HashSet[string]) =
-  ##     assert options.isValid, "Pass an initialized set!"
-  ##     # Do stuff here, may crash in release builds!
-  result = s.data.len > 0
+  result.init(initialSize)
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## Returns the element that is actually stored in `s` which has the same
@@ -278,7 +145,6 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
-  assert s.isValid, "The set needs to be initialized."
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
@@ -305,7 +171,6 @@ proc contains*[A](s: HashSet[A], key: A): bool =
     assert values.contains(2)
     assert 2 in values
 
-  assert s.isValid, "The set needs to be initialized."
   var hc: Hash
   var index = rawGet(s, key, hc)
   result = index >= 0
@@ -325,7 +190,6 @@ proc incl*[A](s: var HashSet[A], key: A) =
     values.incl(2)
     assert values.len == 1
 
-  assert s.isValid, "The set needs to be initialized."
   inclImpl()
 
 proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
@@ -344,8 +208,6 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
     values.incl(others)
     assert values.len == 5
 
-  assert s.isValid, "The set `s` needs to be initialized."
-  assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
 proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
@@ -368,14 +230,6 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
   result = initHashSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
-proc initSet*[A](initialSize=64): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
-  ## Deprecated since v0.20, use `initHashSet`.
-
-proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
-  ## Deprecated since v0.20, use `toHashSet`.
-
 iterator items*[A](s: HashSet[A]): A =
   ## Iterates over elements of the set `s`.
   ##
@@ -395,8 +249,7 @@ iterator items*[A](s: HashSet[A]): A =
   ##   assert a.len == 2
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
-  assert s.isValid, "The set needs to be initialized."
-  for h in 0..high(s.data):
+  for h in 0 .. high(s.data):
     if isFilled(s.data[h].hcode): yield s.data[h].key
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
@@ -417,7 +270,6 @@ proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
     assert values.containsOrIncl(2) == true
     assert values.containsOrIncl(3) == false
 
-  assert s.isValid, "The set needs to be initialized."
   containsOrInclImpl()
 
 proc excl*[A](s: var HashSet[A], key: A) =
@@ -434,6 +286,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
     s.excl(2)
     s.excl(2)
     assert s.len == 3
+
   discard exclImpl(s, key)
 
 proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
@@ -453,8 +306,6 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
     assert len(numbers) == 3
     ## numbers == {1, 3, 5}
 
-  assert s.isValid, "The set `s` needs to be initialized."
-  assert other.isValid, "The set `other` needs to be initialized."
   for item in other: discard exclImpl(s, item)
 
 proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
@@ -474,6 +325,7 @@ proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
     assert s.missingOrExcl(4) == true
     assert s.missingOrExcl(6) == false
     assert s.missingOrExcl(6) == true
+
   exclImpl(s, key)
 
 proc pop*[A](s: var HashSet[A]): A =
@@ -489,7 +341,7 @@ proc pop*[A](s: var HashSet[A]): A =
     assert s.pop == 2
     doAssertRaises(KeyError, echo s.pop)
 
-  for h in 0..high(s.data):
+  for h in 0 .. high(s.data):
     if isFilled(s.data[h].hcode):
       result = s.data[h].key
       excl(s, result)
@@ -510,7 +362,7 @@ proc clear*[A](s: var HashSet[A]) =
     assert len(s) == 0
 
   s.counter = 0
-  for i in 0..<s.data.len:
+  for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].key = default(type(s.data[i].key))
 
@@ -525,6 +377,7 @@ proc len*[A](s: HashSet[A]): int =
     assert len(a) == 0
     let s = toHashSet([3, 5, 7])
     assert len(s) == 3
+
   result = s.counter
 
 proc card*[A](s: HashSet[A]): int =
@@ -554,8 +407,6 @@ proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
       c = union(a, b)
     assert c == toHashSet(["a", "b", "c"])
 
-  assert s1.isValid, "The set `s1` needs to be initialized."
-  assert s2.isValid, "The set `s2` needs to be initialized."
   result = s1
   incl(result, s2)
 
@@ -579,9 +430,7 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
       c = intersection(a, b)
     assert c == toHashSet(["b"])
 
-  assert s1.isValid, "The set `s1` needs to be initialized."
-  assert s2.isValid, "The set `s2` needs to be initialized."
-  result = initHashSet[A](min(s1.data.len, s2.data.len))
+  result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
   for item in s1:
     if item in s2: incl(result, item)
 
@@ -604,8 +453,6 @@ proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
       c = difference(a, b)
     assert c == toHashSet(["a"])
 
-  assert s1.isValid, "The set `s1` needs to be initialized."
-  assert s2.isValid, "The set `s2` needs to be initialized."
   result = initHashSet[A]()
   for item in s1:
     if not contains(s2, item):
@@ -631,8 +478,6 @@ proc symmetricDifference*[A](s1, s2: HashSet[A]): HashSet[A] =
       c = symmetricDifference(a, b)
     assert c == toHashSet(["a", "c"])
 
-  assert s1.isValid, "The set `s1` needs to be initialized."
-  assert s2.isValid, "The set `s2` needs to be initialized."
   result = s1
   for item in s2:
     if containsOrIncl(result, item): excl(result, item)
@@ -663,8 +508,6 @@ proc disjoint*[A](s1, s2: HashSet[A]): bool =
     assert disjoint(a, b) == false
     assert disjoint(a, b - a) == true
 
-  assert s1.isValid, "The set `s1` needs to be initialized."
-  assert s2.isValid, "The set `s2` needs to be initialized."
   for item in s1:
     if item in s2: return false
   return true
@@ -681,6 +524,7 @@ proc `<`*[A](s, t: HashSet[A]): bool =
       c = intersection(a, b)
     assert c < a and c < b
     assert(not (a < a))
+
   s.counter != t.counter and s <= t
 
 proc `<=`*[A](s, t: HashSet[A]): bool =
@@ -711,6 +555,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
       a = toHashSet([1, 2])
       b = toHashSet([2, 1])
     assert a == b
+
   s.counter == t.counter and s <= t
 
 proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
@@ -729,8 +574,7 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
 
 proc hash*[A](s: HashSet[A]): Hash =
   ## Hashing of HashSet.
-  assert s.isValid, "The set needs to be initialized."
-  for h in 0..high(s.data):
+  for h in 0 .. high(s.data):
     result = result xor s.data[h].hcode
   result = !$result
 
@@ -747,7 +591,6 @@ proc `$`*[A](s: HashSet[A]): string =
   ##   # --> {2, 4, 5}
   ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
-  assert s.isValid, "The set needs to be initialized."
   dollarImpl()
 
 proc rightSize*(count: Natural): int {.inline.} =
@@ -760,8 +603,28 @@ proc rightSize*(count: Natural): int {.inline.} =
   result = nextPowerOfTwo(count * 3 div 2  +  4)
 
 
+proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
+     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
+  ## Deprecated since v0.20, use `initHashSet <#initHashSet,int>`_.
 
+proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
+     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
+  ## Deprecated since v0.20, use `toHashSet <#toHashSet,openArray[A]>`_.
 
+proc isValid*[A](s: HashSet[A]): bool {.deprecated:
+     "Deprecated since v0.20; sets are initialized by default"} =
+  ## **Deprecated since v0.20; sets are initialized by default**
+  ##
+  ## Returns `true` if the set has been initialized (with `initHashSet proc
+  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block ::
+  ##   proc savePreferences(options: HashSet[string]) =
+  ##     assert options.isValid, "Pass an initialized set!"
+  ##     # Do stuff here, may crash in release builds!
+  result = s.data.len > 0
 
 
 
@@ -769,89 +632,19 @@ proc rightSize*(count: Natural): int {.inline.} =
 # --------------------------- OrderedSet ------------------------------
 # ---------------------------------------------------------------------
 
-type
-  OrderedKeyValuePair[A] = tuple[
-    hcode: Hash, next: int, key: A]
-  OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
-  OrderedSet* {.myShallow.} [A] = object ## \
-    ## A generic hash set that remembers insertion order.
-    ##
-    ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc
-    ## <#initOrderedSet,int>`_ before calling other procs on it.
-    data: OrderedKeyValuePairSeq[A]
-    counter, first, last: int
-
-
-# ---------------------- helpers -----------------------------------
-
 template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
-  var h = s.first
-  var idx = 0
-  while h >= 0:
-    var nxt = s.data[h].next
-    if isFilled(s.data[h].hcode):
-      yieldStmt
-      inc(idx)
-    h = nxt
-
-proc rawGetKnownHC[A](s: OrderedSet[A], key: A, hc: Hash): int {.inline.} =
-  rawGetKnownHCImpl()
-
-proc rawGet[A](s: OrderedSet[A], key: A, hc: var Hash): int {.inline.} =
-  rawGetImpl()
-
-proc rawInsert[A](s: var OrderedSet[A], data: var OrderedKeyValuePairSeq[A],
-                  key: A, hc: Hash, h: Hash) =
-  rawInsertImpl()
-  data[h].next = -1
-  if s.first < 0: s.first = h
-  if s.last >= 0: data[s.last].next = h
-  s.last = h
-
-proc enlarge[A](s: var OrderedSet[A]) =
-  var n: OrderedKeyValuePairSeq[A]
-  newSeq(n, len(s.data) * growthFactor)
-  var h = s.first
-  s.first = -1
-  s.last = -1
-  swap(s.data, n)
-  while h >= 0:
-    var nxt = n[h].next
-    if isFilled(n[h].hcode):
-      var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
-      rawInsert(s, s.data, n[h].key, n[h].hcode, j)
-    h = nxt
-
-proc isValid*[A](s: OrderedSet[A]): bool
-
-proc exclImpl[A](s: var OrderedSet[A], key: A) : bool {. inline .} =
-  assert s.isValid, "The set needs to be initialized."
-  var n: OrderedKeyValuePairSeq[A]
-  newSeq(n, len(s.data))
-  var h = s.first
-  s.first = -1
-  s.last = -1
-  swap(s.data, n)
-  let hc = genHash(key)
-  result = true
-  while h >= 0:
-    var nxt = n[h].next
-    if isFilled(n[h].hcode):
-      if n[h].hcode == hc and n[h].key == key:
-        dec s.counter
-        result = false
-      else:
-        var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
-        rawInsert(s, s.data, n[h].key, n[h].hcode, j)
-    h = nxt
+  if s.data.len > 0:
+    var h = s.first
+    var idx = 0
+    while h >= 0:
+      var nxt = s.data[h].next
+      if isFilled(s.data[h].hcode):
+        yieldStmt
+        inc(idx)
+      h = nxt
 
 
-
-# -----------------------------------------------------------------------
-
-
-
-proc init*[A](s: var OrderedSet[A], initialSize=64) =
+proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ## Initializes an ordered hash set.
   ##
   ## The `initialSize` parameter needs to be a power of two (default: 64).
@@ -859,9 +652,8 @@ proc init*[A](s: var OrderedSet[A], initialSize=64) =
   ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo>`_ or `rightSize proc
   ## <#rightSize,Natural>`_ from this module.
   ##
-  ## All set variables must be initialized before
-  ## use with other procs from this module, with the exception of `isValid proc
-  ## <#isValid,HashSet[A]>`_ and `len() <#len,HashSet[A]>`_.
+  ## Starting from Nim v0.20, sets are initialized by default and it is
+  ## not necessary to call this function explicitly.
   ##
   ## You can call this proc on a previously initialized hash set, which will
   ## discard all its values. This might be more convenient than iterating over
@@ -876,26 +668,25 @@ proc init*[A](s: var OrderedSet[A], initialSize=64) =
     init(a)
     assert a.isValid
 
-  assert isPowerOfTwo(initialSize)
-  s.counter = 0
-  s.first = -1
-  s.last = -1
-  newSeq(s.data, initialSize)
+  initImpl(s, initialSize)
 
-proc initOrderedSet*[A](initialSize=64): OrderedSet[A] =
+proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
   ## Wrapper around `init proc <#init,OrderedSet[A],int>`_ for initialization of
   ## ordered hash sets.
   ##
   ## Returns an empty ordered hash set you can assign directly in ``var`` blocks
   ## in a single line.
   ##
+  ## Starting from Nim v0.20, sets are initialized by default and it is
+  ## not necessary to call this function explicitly.
+  ##
   ## See also:
   ## * `toOrderedSet proc <#toOrderedSet,openArray[A]>`_
   runnableExamples:
     var a = initOrderedSet[int]()
-    assert a.isValid
     a.incl(3)
     assert len(a) == 1
+
   result.init(initialSize)
 
 proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
@@ -918,23 +709,6 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   result = initOrderedSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
-proc isValid*[A](s: OrderedSet[A]): bool =
-  ## Returns `true` if the set has been initialized (with `initHashSet proc
-  ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
-  ##
-  ## Most operations over an uninitialized set will crash at runtime and
-  ## `assert <system.html#assert>`_ in debug builds. You can use this proc in
-  ## your own procs to verify that sets passed to your procs are correctly
-  ## initialized.
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block ::
-  ##   proc savePreferences(options: OrderedSet[string]) =
-  ##     assert options.isValid, "Pass an initialized set!"
-  ##     # Do stuff here, may crash in release builds!
-  result = s.data.len > 0
-
 proc contains*[A](s: OrderedSet[A], key: A): bool =
   ## Returns true if `key` is in `s`.
   ##
@@ -952,7 +726,6 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
     assert values.contains(2)
     assert 2 in values
 
-  assert s.isValid, "The set needs to be initialized."
   var hc: Hash
   var index = rawGet(s, key, hc)
   result = index >= 0
@@ -972,7 +745,6 @@ proc incl*[A](s: var OrderedSet[A], key: A) =
     values.incl(2)
     assert values.len == 1
 
-  assert s.isValid, "The set needs to be initialized."
   inclImpl()
 
 proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
@@ -988,8 +760,7 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
       others = toOrderedSet([3, 4, 5])
     values.incl(others)
     assert values.len == 5
-  assert s.isValid, "The set `s` needs to be initialized."
-  assert other.isValid, "The set `other` needs to be initialized."
+
   for item in items(other): incl(s, item)
 
 proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
@@ -1009,7 +780,6 @@ proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
     assert values.containsOrIncl(2) == true
     assert values.containsOrIncl(3) == false
 
-  assert s.isValid, "The set needs to be initialized."
   containsOrInclImpl()
 
 proc excl*[A](s: var OrderedSet[A], key: A) =
@@ -1025,6 +795,7 @@ proc excl*[A](s: var OrderedSet[A], key: A) =
     s.excl(2)
     s.excl(2)
     assert s.len == 3
+
   discard exclImpl(s, key)
 
 proc missingOrExcl*[A](s: var OrderedSet[A], key: A): bool =
@@ -1044,6 +815,7 @@ proc missingOrExcl*[A](s: var OrderedSet[A], key: A): bool =
     assert s.missingOrExcl(4) == true
     assert s.missingOrExcl(6) == false
     assert s.missingOrExcl(6) == true
+
   exclImpl(s, key)
 
 proc clear*[A](s: var OrderedSet[A]) =
@@ -1059,7 +831,7 @@ proc clear*[A](s: var OrderedSet[A]) =
   s.counter = 0
   s.first = -1
   s.last = -1
-  for i in 0..<s.data.len:
+  for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].next = 0
     s.data[i].key = default(type(s.data[i].key))
@@ -1075,6 +847,7 @@ proc len*[A](s: OrderedSet[A]): int {.inline.} =
     assert len(a) == 0
     let s = toHashSet([3, 5, 7])
     assert len(s) == 3
+
   result = s.counter
 
 proc card*[A](s: OrderedSet[A]): int {.inline.} =
@@ -1110,7 +883,6 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
 
 proc hash*[A](s: OrderedSet[A]): Hash =
   ## Hashing of OrderedSet.
-  assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     result = result !& s.data[h].hcode
   result = !$result
@@ -1129,7 +901,6 @@ proc `$`*[A](s: OrderedSet[A]): string =
   ##   # --> {2, 4, 5}
   ##   echo toOrderedSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
-  assert s.isValid, "The set needs to be initialized."
   dollarImpl()
 
 
@@ -1152,10 +923,8 @@ iterator items*[A](s: OrderedSet[A]): A =
   ##   # --> Got 5
   ##   # --> Got 8
   ##   # --> Got 4
-  assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     yield s.data[h].key
-
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   ## Iterates through (position, value) tuples of OrderedSet `s`.
@@ -1166,10 +935,25 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
       p.add(x)
     assert p == @[(0, 'a'), (1, 'b'), (2, 'r'), (3, 'c'), (4, 'd')]
 
-  assert s.isValid, "The set needs to be initialized"
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
 
+
+
+proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
+     "Deprecated since v0.20; sets are initialized by default"} =
+  ## **Deprecated since v0.20; sets are initialized by default**
+  ##
+  ## Returns `true` if the set has been initialized (with `initHashSet proc
+  ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block ::
+  ##   proc savePreferences(options: OrderedSet[string]) =
+  ##     assert options.isValid, "Pass an initialized set!"
+  ##     # Do stuff here, may crash in release builds!
+  result = s.data.len > 0
 
 
 # -----------------------------------------------------------------------
@@ -1179,7 +963,7 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 when isMainModule and not defined(release):
   proc testModule() =
     ## Internal micro test to validate docstrings and such.
-    block isValidTest:
+    block isValidTest: # isValid is deprecated
       var options: HashSet[string]
       proc savePreferences(options: HashSet[string]) =
         assert options.isValid, "Pass an initialized set!"
@@ -1280,7 +1064,7 @@ when isMainModule and not defined(release):
       var b = a.map(proc (x: int): string = $x)
       assert b == toHashSet(["1", "2", "3"])
 
-    block isValidTest:
+    block isValidTest: # isValid is deprecated
       var cards: OrderedSet[string]
       proc saveTarotCards(cards: OrderedSet[string]) =
         assert cards.isValid, "Pass an initialized set!"
@@ -1392,6 +1176,69 @@ when isMainModule and not defined(release):
       bb.incl(x)
       bb.incl(y)
       assert aa == bb
+
+    block setsWithoutInit:
+      var
+        a: HashSet[int]
+        b: HashSet[int]
+        c: HashSet[int]
+        d: HashSet[int]
+        e: HashSet[int]
+
+      doAssert a.containsOrIncl(3) == false
+      doAssert a.contains(3)
+      doAssert a.len == 1
+      doAssert a.containsOrIncl(3)
+      a.incl(3)
+      doAssert a.len == 1
+      a.incl(6)
+      doAssert a.len == 2
+
+      b.incl(5)
+      doAssert b.len == 1
+      b.excl(5)
+      b.excl(c)
+      doAssert b.missingOrExcl(5)
+      doAssert b.disjoint(c)
+
+      d = b + c
+      doAssert d.len == 0
+      d = b * c
+      doAssert d.len == 0
+      d = b - c
+      doAssert d.len == 0
+      d = b -+- c
+      doAssert d.len == 0
+
+      doAssert (d < e) == false
+      doAssert d <= e
+      doAssert d == e
+
+    block setsWithoutInit:
+      var
+        a: OrderedSet[int]
+        b: OrderedSet[int]
+        c: OrderedSet[int]
+        d: HashSet[int]
+
+
+      doAssert a.containsOrIncl(3) == false
+      doAssert a.contains(3)
+      doAssert a.len == 1
+      doAssert a.containsOrIncl(3)
+      a.incl(3)
+      doAssert a.len == 1
+      a.incl(6)
+      doAssert a.len == 2
+
+      b.incl(5)
+      doAssert b.len == 1
+      doAssert b.missingOrExcl(5) == false
+      doAssert b.missingOrExcl(5)
+
+      doAssert c.missingOrExcl(9)
+      d.incl(c)
+      doAssert d.len == 0
 
     when not defined(testing):
       echo "Micro tests run successfully."

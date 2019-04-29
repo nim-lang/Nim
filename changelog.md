@@ -97,6 +97,7 @@
 - Custom types that should be supported by `strformat` (&) now need an
   explicit overload of `formatValue`.
 
+
 #### Breaking changes in the compiler
 
 - The compiler now implements the "generic symbol prepass" for `when` statements
@@ -113,6 +114,7 @@ proc enumToString*(enums: openArray[enum]): string =
 ```
 
 - ``discard x`` is now illegal when `x` is a function symbol.
+
 - Implicit imports via ``--import: module`` in a config file are now restricted
   to the main package.
 
@@ -188,6 +190,7 @@ proc enumToString*(enums: openArray[enum]): string =
   differently.
 
 - `securehash` is moved to `lib/deprecated`
+
 - The switch ``-d:useWinAnsi`` is not supported anymore.
 
 
@@ -211,14 +214,19 @@ proc enumToString*(enums: openArray[enum]): string =
   it's more recognizable and allows tools like github to recognize it as Nim,
   see [#9647](https://github.com/nim-lang/Nim/issues/9647).
   The previous extension will continue to work.
+
 - Pragma syntax is now consistent. Previous syntax where type pragmas did not
   follow the type name is now deprecated. Also pragma before generic parameter
   list is deprecated to be consistent with how pragmas are used with a proc. See
   [#8514](https://github.com/nim-lang/Nim/issues/8514) and
   [#1872](https://github.com/nim-lang/Nim/issues/1872) for further details.
 
+- Hash sets and tables are initialized by default. The explicit `initHashSet`,
+  `initTable`, etc. are not needed anymore.
+
 
 ### Tool changes
+
 - `jsondoc` now include a `moduleDescription` field with the module
   description. `jsondoc0` shows comments as it's own objects as shown in the
   documentation.
@@ -227,6 +235,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 
 ### Compiler changes
+
 - The deprecated `fmod` proc is now unavailable on the VM'.
 - A new `--outdir` option was added.
 - The compiled JavaScript file for the project produced by executing `nim js`
@@ -234,5 +243,6 @@ proc enumToString*(enums: openArray[enum]): string =
 - The `--hotCodeReloading` has been implemented for the native targets.
   The compiler also provides a new more flexible API for handling the
   hot code reloading events in the code.
+
 
 ### Bugfixes

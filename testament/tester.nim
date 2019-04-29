@@ -515,6 +515,8 @@ const disabledFilesDefault = @[
   "LockFreeHash.nim",
   "sharedstrings.nim",
   "tableimpl.nim",
+  "setimpl.nim",
+  "hashcommon.nim",
 
   # Error: undeclared identifier: 'hasThreadSupport'
   "ioselectors_epoll.nim",
