@@ -8,29 +8,91 @@
 #
 
 ## This module provides a stream interface and two implementations thereof:
-## the `FileStream` and the `StringStream` which implement the stream
-## interface for Nim file objects (`File`) and strings. Other modules
-## may provide other implementations for this standard stream interface.
+## the `FileStream <#FileStream>`_ and the `StringStream <#StringStream>`_
+## which implement the stream interface for Nim file objects (`File`) and
+## strings.
 ##
-## Examples:
+## Other modules may provide other implementations for this standard
+## stream interface.
+##
+## Basic usage
+## ===========
+##
+## The basic flow of using this module is:
+##
+## 1. Open input stream
+## 2. Read or write stream
+## 3. Close stream
+##
+## StringStream example
+## --------------------
 ##
 ## .. code-block:: Nim
 ##
 ##  import streams
-##  var
-##    ss = newStringStream("""The first line
+##
+##  var strm = newStringStream("""The first line
 ##  the second line
 ##  the third line""")
-##    line = ""
-##  while ss.readLine(line):
-##    echo line
-##  ss.close()
 ##
-##  var fs = newFileStream("somefile.txt", fmRead)
-##  if not isNil(fs):
-##    while fs.readLine(line):
+##  var line = ""
+##
+##  while strm.readLine(line):
+##    echo line
+##
+##  # Output:
+##  # The first line
+##  # the second line
+##  # the third line
+##
+##  strm.close()
+##
+## FileStream example
+## ------------------
+##
+## Write file stream example:
+##
+## .. code-block:: Nim
+##
+##  import streams
+##
+##  var strm = newFileStream("somefile.txt", fmWrite)
+##  var line = ""
+##
+##  if not isNil(strm):
+##    strm.writeLine("The first line")
+##    strm.writeLine("the second line")
+##    strm.writeLine("the third line")
+##    strm.close()
+##
+##  # Output (somefile.txt):
+##  # The first line
+##  # the second line
+##  # the third line
+##
+## Read file stream example:
+##
+## .. code-block:: Nim
+##
+##  import streams
+##
+##  var strm = newFileStream("somefile.txt", fmRead)
+##  var line = ""
+##
+##  if not isNil(strm):
+##    while strm.readLine(line):
 ##      echo line
-##    fs.close()
+##    strm.close()
+##
+##  # Output:
+##  # The first line
+##  # the second line
+##  # the third line
+##
+## See also
+## ========
+## * `asyncstreams module <asyncstreams.html>`_
+## * `io module <io.html>`_ for `FileMode enum <io.html#FileMode>`_
 
 include "system/inclrtl"
 
@@ -40,11 +102,14 @@ proc newEIO(msg: string): owned(ref IOError) =
 
 type
   Stream* = ref StreamObj
-  StreamObj* = object of RootObj ## Stream interface that supports
-                                 ## writing or reading. Note that these fields
-                                 ## here shouldn't be used directly. They are
-                                 ## accessible so that a stream implementation
-                                 ## can override them.
+    ## All procedures of this module use this type.
+    ## Procedures don't directly use `StreamObj <#StreamObj>`_.
+  StreamObj* = object of RootObj
+    ## Stream interface that supports writing or reading.
+    ##
+    ## **Note:**
+    ## * That these fields here shouldn't be used directly.
+    ##   They are accessible so that a stream implementation can override them.
     closeImpl*: proc (s: Stream)
       {.nimcall, raises: [Exception, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
     atEndImpl*: proc (s: Stream): bool
@@ -68,32 +133,103 @@ type
       {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
 proc flush*(s: Stream) =
-  ## flushes the buffers that the stream `s` might use.
+  ## Flushes the buffers that the stream `s` might use.
+  ##
+  ## This procedure causes any unwritten data for that stream to be delivered
+  ## to the host environment to be written to the file.
+  ##
+  ## See also:
+  ## * `close proc <#close,Stream>`_
+  runnableExamples:
+    from os import removeFile
+
+    var strm = newFileStream("somefile.txt", fmWrite)
+
+    doAssert "Before write:" & readFile("somefile.txt") == "Before write:"
+    strm.write("hello")
+    doAssert "After  write:" & readFile("somefile.txt") == "After  write:"
+
+    strm.flush()
+    doAssert "After  flush:" & readFile("somefile.txt") == "After  flush:hello"
+    strm.write("HELLO")
+    strm.flush()
+    doAssert "After  flush:" & readFile("somefile.txt") == "After  flush:helloHELLO"
+
+    strm.close()
+    doAssert "After  close:" & readFile("somefile.txt") == "After  close:helloHELLO"
+    removeFile("somefile.txt")
+
   if not isNil(s.flushImpl): s.flushImpl(s)
 
 proc close*(s: Stream) =
-  ## closes the stream `s`.
+  ## Closes the stream `s`.
+  ##
+  ## See also:
+  ## * `flush proc <#flush,Stream>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    ## do something...
+    strm.close()
   if not isNil(s.closeImpl): s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
-  ## checks if more data can be read from `f`. Returns true if all data has
+  ## Checks if more data can be read from `s`. Returns ``true`` if all data has
   ## been read.
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    var line = ""
+    doAssert strm.atEnd() == false
+    while strm.readLine(line):
+      discard
+    doAssert strm.atEnd() == true
+    strm.close()
+
   result = s.atEndImpl(s)
 
 proc setPosition*(s: Stream, pos: int) =
-  ## sets the position `pos` of the stream `s`.
+  ## Sets the position `pos` of the stream `s`.
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    strm.setPosition(4)
+    doAssert strm.readLine() == "first line"
+    strm.setPosition(0)
+    doAssert strm.readLine() == "The first line"
+    strm.close()
+
   s.setPositionImpl(s, pos)
 
 proc getPosition*(s: Stream): int =
-  ## retrieves the current position in the stream `s`.
+  ## Retrieves the current position in the stream `s`.
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    doAssert strm.getPosition() == 0
+    discard strm.readLine()
+    doAssert strm.getPosition() == 15
+    strm.close()
+
   result = s.getPositionImpl(s)
 
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
-  ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
+  ## Low level proc that reads data into an untyped `buffer` of `bufLen` size.
+  runnableExamples:
+    var strm = newStringStream("abcde")
+    var buffer: array[6, char]
+    doAssert strm.readData(addr(buffer), 1024) == 5
+    doAssert buffer == ['a', 'b', 'c', 'd', 'e', '\x00']
+    doAssert strm.atEnd() == true
+    strm.close()
+
   result = s.readDataImpl(s, buffer, bufLen)
 
 proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
-  ## low level proc that reads data into a string ``buffer`` at ``slice``.
+  ## Low level proc that reads data into a string ``buffer`` at ``slice``.
+  runnableExamples:
+    var strm = newStringStream("abcde")
+    var buffer = "12345"
+    doAssert strm.readDataStr(buffer, 0..3) == 4
+    doAssert buffer == "abcd5"
+    strm.close()
+
   if s.readDataStrImpl != nil:
     result = s.readDataStrImpl(s, buffer, slice)
   else:
@@ -103,6 +239,14 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
 when not defined(js):
   proc readAll*(s: Stream): string =
     ## Reads all available data.
+    ##
+    ## **Note:** Not available for JS backend.
+    runnableExamples:
+      var strm = newStringStream("The first line\nthe second line\nthe third line")
+      doAssert strm.readAll() == "The first line\nthe second line\nthe third line"
+      doAssert strm.atEnd() == true
+      strm.close()
+
     const bufferSize = 1024
     var buffer {.noinit.}: array[bufferSize, char]
     while true:
@@ -116,173 +260,611 @@ when not defined(js):
         break
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
-  ## low level proc that reads data into an untyped `buffer` of `bufLen` size
-  ## without moving stream position
+  ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
+  ## without moving stream position.
+  runnableExamples:
+    var strm = newStringStream("abcde")
+    var buffer: array[6, char]
+    doAssert strm.peekData(addr(buffer), 1024) == 5
+    doAssert buffer == ['a', 'b', 'c', 'd', 'e', '\x00']
+    doAssert strm.atEnd() == false
+    strm.close()
+
   result = s.peekDataImpl(s, buffer, bufLen)
 
 proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
-  ## low level proc that writes an untyped `buffer` of `bufLen` size
+  ## Low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
+  runnableExamples:
+    ## writeData
+    var strm = newStringStream("")
+    var buffer = ['a', 'b', 'c', 'd', 'e']
+    strm.writeData(addr(buffer), sizeof(buffer))
+    doAssert strm.atEnd() == true
+    ## readData
+    strm.setPosition(0)
+    var buffer2: array[6, char]
+    doAssert strm.readData(addr(buffer2), sizeof(buffer2)) == 5
+    doAssert buffer2 == ['a', 'b', 'c', 'd', 'e', '\x00']
+    strm.close()
+
   s.writeDataImpl(s, buffer, bufLen)
 
 proc write*[T](s: Stream, x: T) =
-  ## generic write procedure. Writes `x` to the stream `s`. Implementation:
+  ## Generic write procedure. Writes `x` to the stream `s`. Implementation:
   ##
   ## .. code-block:: Nim
   ##
   ##     s.writeData(s, addr(x), sizeof(x))
+  runnableExamples:
+    var strm = newStringStream("")
+    strm.write("abcde")
+    strm.setPosition(0)
+    doAssert strm.readAll() == "abcde"
+    strm.close()
+
   var y: T
   shallowCopy(y, x)
   writeData(s, addr(y), sizeof(y))
 
 proc write*(s: Stream, x: string) =
-  ## writes the string `x` to the the stream `s`. No length field or
+  ## Writes the string `x` to the the stream `s`. No length field or
   ## terminating zero is written.
+  runnableExamples:
+    var strm = newStringStream("")
+    strm.write("THE FIRST LINE")
+    strm.setPosition(0)
+    doAssert strm.readLine() == "THE FIRST LINE"
+    strm.close()
+
   when nimvm:
     writeData(s, cstring(x), x.len)
   else:
     if x.len > 0: writeData(s, cstring(x), x.len)
 
 proc write*(s: Stream, args: varargs[string, `$`]) =
-  ## writes one or more strings to the the stream. No length fields or
+  ## Writes one or more strings to the the stream. No length fields or
   ## terminating zeros are written.
+  runnableExamples:
+    var strm = newStringStream("")
+    strm.write(1, 2, 3, 4)
+    strm.setPosition(0)
+    doAssert strm.readLine() == "1234"
+    strm.close()
+
   for str in args: write(s, str)
 
 proc writeLine*(s: Stream, args: varargs[string, `$`]) =
-  ## writes one or more strings to the the stream `s` followed
+  ## Writes one or more strings to the the stream `s` followed
   ## by a new line. No length field or terminating zero is written.
+  runnableExamples:
+    var strm = newStringStream("")
+    strm.writeLine(1, 2)
+    strm.writeLine(3, 4)
+    strm.setPosition(0)
+    doAssert strm.readAll() == "12\n34\n"
+    strm.close()
+
   for str in args: write(s, str)
   write(s, "\n")
 
 proc read*[T](s: Stream, result: var T) =
-  ## generic read procedure. Reads `result` from the stream `s`.
+  ## Generic read procedure. Reads `result` from the stream `s`.
+  runnableExamples:
+    var strm = newStringStream("012")
+    ## readInt
+    var i: int8
+    strm.read(i)
+    doAssert i == 48
+    ## readData
+    var buffer: array[2, char]
+    strm.read(buffer)
+    doAssert buffer == ['1', '2']
+    strm.close()
+
   if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
 proc peek*[T](s: Stream, result: var T) =
-  ## generic peek procedure. Peeks `result` from the stream `s`.
+  ## Generic peek procedure. Peeks `result` from the stream `s`.
+  runnableExamples:
+    var strm = newStringStream("012")
+    ## peekInt
+    var i: int8
+    strm.peek(i)
+    doAssert i == 48
+    ## peekData
+    var buffer: array[2, char]
+    strm.peek(buffer)
+    doAssert buffer == ['0', '1']
+    strm.close()
+
   if peekData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
 proc readChar*(s: Stream): char =
-  ## reads a char from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads a char from the stream `s`.
+  ##
+  ## Raises `IOError` if an error occurred.
   ## Returns '\\0' as an EOF marker.
+  runnableExamples:
+    var strm = newStringStream("12\n3")
+    doAssert strm.readChar() == '1'
+    doAssert strm.readChar() == '2'
+    doAssert strm.readChar() == '\n'
+    doAssert strm.readChar() == '3'
+    doAssert strm.readChar() == '\x00'
+    strm.close()
+
   if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc peekChar*(s: Stream): char =
-  ## peeks a char from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks a char from the stream `s`. Raises `IOError` if an error occurred.
   ## Returns '\\0' as an EOF marker.
+  runnableExamples:
+    var strm = newStringStream("12\n3")
+    doAssert strm.peekChar() == '1'
+    doAssert strm.peekChar() == '1'
+    discard strm.readAll()
+    doAssert strm.peekChar() == '\x00'
+    strm.close()
+
   if peekData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc readBool*(s: Stream): bool =
-  ## reads a bool from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads a bool from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(true)
+    strm.write(false)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readBool() == true
+    doAssert strm.readBool() == false
+    doAssertRaises(IOError): discard strm.readBool()
+    strm.close()
+
   read(s, result)
 
 proc peekBool*(s: Stream): bool =
-  ## peeks a bool from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks a bool from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(true)
+    strm.write(false)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekBool() == true
+    ## not false
+    doAssert strm.peekBool() == true
+    doAssert strm.readBool() == true
+    doAssert strm.peekBool() == false
+    strm.close()
+
   peek(s, result)
 
 proc readInt8*(s: Stream): int8 =
-  ## reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i8)
+    strm.write(2'i8)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readInt8() == 1'i8
+    doAssert strm.readInt8() == 2'i8
+    doAssertRaises(IOError): discard strm.readInt8()
+    strm.close()
+
   read(s, result)
 
 proc peekInt8*(s: Stream): int8 =
-  ## peeks an int8 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an int8 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i8)
+    strm.write(2'i8)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekInt8() == 1'i8
+    ## not 2'i8
+    doAssert strm.peekInt8() == 1'i8
+    doAssert strm.readInt8() == 1'i8
+    doAssert strm.peekInt8() == 2'i8
+    strm.close()
+
   peek(s, result)
 
 proc readInt16*(s: Stream): int16 =
-  ## reads an int16 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an int16 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i16)
+    strm.write(2'i16)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readInt16() == 1'i16
+    doAssert strm.readInt16() == 2'i16
+    doAssertRaises(IOError): discard strm.readInt16()
+    strm.close()
+
   read(s, result)
 
 proc peekInt16*(s: Stream): int16 =
-  ## peeks an int16 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an int16 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i16)
+    strm.write(2'i16)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekInt16() == 1'i16
+    ## not 2'i16
+    doAssert strm.peekInt16() == 1'i16
+    doAssert strm.readInt16() == 1'i16
+    doAssert strm.peekInt16() == 2'i16
+    strm.close()
+
   peek(s, result)
 
 proc readInt32*(s: Stream): int32 =
-  ## reads an int32 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an int32 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i32)
+    strm.write(2'i32)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readInt32() == 1'i32
+    doAssert strm.readInt32() == 2'i32
+    doAssertRaises(IOError): discard strm.readInt32()
+    strm.close()
+
   read(s, result)
 
 proc peekInt32*(s: Stream): int32 =
-  ## peeks an int32 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an int32 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i32)
+    strm.write(2'i32)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekInt32() == 1'i32
+    ## not 2'i32
+    doAssert strm.peekInt32() == 1'i32
+    doAssert strm.readInt32() == 1'i32
+    doAssert strm.peekInt32() == 2'i32
+    strm.close()
+
   peek(s, result)
 
 proc readInt64*(s: Stream): int64 =
-  ## reads an int64 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an int64 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i64)
+    strm.write(2'i64)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readInt64() == 1'i64
+    doAssert strm.readInt64() == 2'i64
+    doAssertRaises(IOError): discard strm.readInt64()
+    strm.close()
+
   read(s, result)
 
 proc peekInt64*(s: Stream): int64 =
-  ## peeks an int64 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an int64 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'i64)
+    strm.write(2'i64)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekInt64() == 1'i64
+    ## not 2'i64
+    doAssert strm.peekInt64() == 1'i64
+    doAssert strm.readInt64() == 1'i64
+    doAssert strm.peekInt64() == 2'i64
+    strm.close()
+
   peek(s, result)
 
 proc readUint8*(s: Stream): uint8 =
-  ## reads an uint8 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an uint8 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u8)
+    strm.write(2'u8)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readUint8() == 1'u8
+    doAssert strm.readUint8() == 2'u8
+    doAssertRaises(IOError): discard strm.readUint8()
+    strm.close()
+
   read(s, result)
 
 proc peekUint8*(s: Stream): uint8 =
-  ## peeks an uint8 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an uint8 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u8)
+    strm.write(2'u8)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekUint8() == 1'u8
+    ## not 2'u8
+    doAssert strm.peekUint8() == 1'u8
+    doAssert strm.readUint8() == 1'u8
+    doAssert strm.peekUint8() == 2'u8
+    strm.close()
+
   peek(s, result)
 
 proc readUint16*(s: Stream): uint16 =
-  ## reads an uint16 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an uint16 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u16)
+    strm.write(2'u16)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readUint16() == 1'u16
+    doAssert strm.readUint16() == 2'u16
+    doAssertRaises(IOError): discard strm.readUint16()
+    strm.close()
+
   read(s, result)
 
 proc peekUint16*(s: Stream): uint16 =
-  ## peeks an uint16 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an uint16 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u16)
+    strm.write(2'u16)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekUint16() == 1'u16
+    ## not 2'u16
+    doAssert strm.peekUint16() == 1'u16
+    doAssert strm.readUint16() == 1'u16
+    doAssert strm.peekUint16() == 2'u16
+    strm.close()
+
   peek(s, result)
 
 proc readUint32*(s: Stream): uint32 =
-  ## reads an uint32 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an uint32 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u32)
+    strm.write(2'u32)
+    strm.flush()
+    strm.setPosition(0)
+
+    ## get data
+    doAssert strm.readUint32() == 1'u32
+    doAssert strm.readUint32() == 2'u32
+    doAssertRaises(IOError): discard strm.readUint32()
+    strm.close()
+
   read(s, result)
 
 proc peekUint32*(s: Stream): uint32 =
-  ## peeks an uint32 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an uint32 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u32)
+    strm.write(2'u32)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekUint32() == 1'u32
+    ## not 2'u32
+    doAssert strm.peekUint32() == 1'u32
+    doAssert strm.readUint32() == 1'u32
+    doAssert strm.peekUint32() == 2'u32
+    strm.close()
+
   peek(s, result)
 
 proc readUint64*(s: Stream): uint64 =
-  ## reads an uint64 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads an uint64 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u64)
+    strm.write(2'u64)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readUint64() == 1'u64
+    doAssert strm.readUint64() == 2'u64
+    doAssertRaises(IOError): discard strm.readUint64()
+    strm.close()
+
   read(s, result)
 
 proc peekUint64*(s: Stream): uint64 =
-  ## peeks an uint64 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks an uint64 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'u64)
+    strm.write(2'u64)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekUint64() == 1'u64
+    ## not 2'u64
+    doAssert strm.peekUint64() == 1'u64
+    doAssert strm.readUint64() == 1'u64
+    doAssert strm.peekUint64() == 2'u64
+    strm.close()
+
   peek(s, result)
 
 proc readFloat32*(s: Stream): float32 =
-  ## reads a float32 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads a float32 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'f32)
+    strm.write(2'f32)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readFloat32() == 1'f32
+    doAssert strm.readFloat32() == 2'f32
+    doAssertRaises(IOError): discard strm.readFloat32()
+    strm.close()
+
   read(s, result)
 
 proc peekFloat32*(s: Stream): float32 =
-  ## peeks a float32 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks a float32 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'f32)
+    strm.write(2'f32)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekFloat32() == 1'f32
+    ## not 2'f32
+    doAssert strm.peekFloat32() == 1'f32
+    doAssert strm.readFloat32() == 1'f32
+    doAssert strm.peekFloat32() == 2'f32
+    strm.close()
+
   peek(s, result)
 
 proc readFloat64*(s: Stream): float64 =
-  ## reads a float64 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Reads a float64 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'f64)
+    strm.write(2'f64)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.readFloat64() == 1'f64
+    doAssert strm.readFloat64() == 2'f64
+    doAssertRaises(IOError): discard strm.readFloat64()
+    strm.close()
+
   read(s, result)
 
 proc peekFloat64*(s: Stream): float64 =
-  ## peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
+  ## Peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
+  runnableExamples:
+    var strm = newStringStream()
+    ## setup for reading data
+    strm.write(1'f64)
+    strm.write(2'f64)
+    strm.flush()
+    strm.setPosition(0)
+    ## get data
+    doAssert strm.peekFloat64() == 1'f64
+    ## not 2'f64
+    doAssert strm.peekFloat64() == 1'f64
+    doAssert strm.readFloat64() == 1'f64
+    doAssert strm.peekFloat64() == 2'f64
+    strm.close()
+
   peek(s, result)
 
 proc readStr*(s: Stream, length: int): TaintedString =
-  ## reads a string of length `length` from the stream `s`. Raises `IOError` if
+  ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
+  runnableExamples:
+    var strm = newStringStream("abcde")
+    doAssert strm.readStr(2) == "ab"
+    doAssert strm.readStr(2) == "cd"
+    doAssert strm.readStr(2) == "e"
+    doAssert strm.readStr(2) == ""
+    strm.close()
+
   result = newString(length).TaintedString
   var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
-  ## peeks a string of length `length` from the stream `s`. Raises `IOError` if
+  ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
+  runnableExamples:
+    var strm = newStringStream("abcde")
+    doAssert strm.peekStr(2) == "ab"
+    ## not "cd
+    doAssert strm.peekStr(2) == "ab"
+    doAssert strm.readStr(2) == "ab"
+    doAssert strm.peekStr(2) == "cd"
+    strm.close()
+
   result = newString(length).TaintedString
   var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =
-  ## reads a line of text from the stream `s` into `line`. `line` must not be
+  ## Reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
+  ##
   ## A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
+  ##
+  ## See also:
+  ## * `readLine(Stream) proc <#readLine,Stream>`_
+  ## * `peekLine(Stream) proc <#peekLine,Stream>`_
+  ## * `peekLine(Stream, TaintedString) proc <#peekLine,Stream,TaintedString>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    var line = ""
+    doAssert strm.readLine(line) == true
+    doAssert line == "The first line"
+    doAssert strm.readLine(line) == true
+    doAssert line == "the second line"
+    doAssert strm.readLine(line) == true
+    doAssert line == "the third line"
+    doAssert strm.readLine(line) == false
+    doAssert line == ""
+    strm.close()
+
   line.string.setLen(0)
   while true:
     var c = readChar(s)
@@ -297,19 +879,53 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
   result = true
 
 proc peekLine*(s: Stream, line: var TaintedString): bool =
-  ## peeks a line of text from the stream `s` into `line`. `line` must not be
+  ## Peeks a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
+  ##
   ## A line of text may be delimited by ``CR``, ``LF`` or
   ## ``CRLF``. The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
+  ##
+  ## See also:
+  ## * `readLine(Stream) proc <#readLine,Stream>`_
+  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
+  ## * `peekLine(Stream) proc <#peekLine,Stream>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    var line = ""
+    doAssert strm.peekLine(line) == true
+    doAssert line == "The first line"
+    doAssert strm.peekLine(line) == true
+    ## not "the second line"
+    doAssert line == "The first line"
+    doAssert strm.readLine(line) == true
+    doAssert line == "The first line"
+    doAssert strm.peekLine(line) == true
+    doAssert line == "the second line"
+    strm.close()
+
   let pos = getPosition(s)
   defer: setPosition(s, pos)
   result = readLine(s, line)
 
 proc readLine*(s: Stream): TaintedString =
-  ## Reads a line from a stream `s`. Note: This is not very efficient. Raises
-  ## `IOError` if an error occurred.
+  ## Reads a line from a stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** This is not very efficient.
+  ##
+  ## See also:
+  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
+  ## * `peekLine(Stream) proc <#peekLine,Stream>`_
+  ## * `peekLine(Stream, TaintedString) proc <#peekLine,Stream,TaintedString>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    doAssert strm.readLine() == "The first line"
+    doAssert strm.readLine() == "the second line"
+    doAssert strm.readLine() == "the third line"
+    doAssertRaises(IOError): discard strm.readLine()
+    strm.close()
+
   result = TaintedString""
   if s.atEnd:
     raise newEIO("cannot read from stream")
@@ -324,8 +940,23 @@ proc readLine*(s: Stream): TaintedString =
       result.string.add(c)
 
 proc peekLine*(s: Stream): TaintedString =
-  ## Peeks a line from a stream `s`. Note: This is not very efficient. Raises
-  ## `IOError` if an error occurred.
+  ## Peeks a line from a stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** This is not very efficient.
+  ##
+  ## See also:
+  ## * `readLine(Stream) proc <#readLine,Stream>`_
+  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
+  ## * `peekLine(Stream, TaintedString) proc <#peekLine,Stream,TaintedString>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    doAssert strm.peekLine() == "The first line"
+    ## not "the second line"
+    doAssert strm.peekLine() == "The first line"
+    doAssert strm.readLine() == "The first line"
+    doAssert strm.peekLine() == "the second line"
+    strm.close()
+
   let pos = getPosition(s)
   defer: setPosition(s, pos)
   result = readLine(s)
@@ -333,6 +964,18 @@ proc peekLine*(s: Stream): TaintedString =
 iterator lines*(s: Stream): TaintedString =
   ## Iterates over every line in the stream.
   ## The iteration is based on ``readLine``.
+  ##
+  ## See also:
+  ## * `readLine(Stream) proc <#readLine,Stream>`_
+  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
+  runnableExamples:
+    var strm = newStringStream("The first line\nthe second line\nthe third line")
+    var lines: seq[string]
+    for line in strm.lines():
+      lines.add line
+    doAssert lines == @["The first line", "the second line", "the third line"]
+    strm.close()
+
   var line: TaintedString
   while s.readLine(line):
     yield line
@@ -340,9 +983,16 @@ iterator lines*(s: Stream): TaintedString =
 when not defined(js):
 
   type
-    StringStream* = ref StringStreamObj ## a stream that encapsulates a string
+    StringStream* = ref StringStreamObj
+      ## A stream that encapsulates a string.
+      ##
+      ## **Note:** Not available for JS backend.
     StringStreamObj* = object of StreamObj
-      data*: string
+      ## A string stream object.
+      ##
+      ## **Note:** Not available for JS backend.
+      data*: string ## A string data.
+                    ## This is updated when called `writeLine` etc.
       pos: int
 
   proc ssAtEnd(s: Stream): bool =
@@ -404,7 +1054,24 @@ when not defined(js):
       s.data = nil
 
   proc newStringStream*(s: string = ""): owned StringStream =
-    ## creates a new stream from the string `s`.
+    ## Creates a new stream from the string `s`.
+    ##
+    ## **Note:** Not available for JS backend.
+    ##
+    ## See also:
+    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+    ##   opened File.
+    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_  creates a
+    ##   file stream from the file name and the mode.
+    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+    ##   file stream from the file name and the mode.
+    runnableExamples:
+      var strm = newStringStream("The first line\nthe second line\nthe third line")
+      doAssert strm.readLine() == "The first line"
+      doAssert strm.readLine() == "the second line"
+      doAssert strm.readLine() == "the third line"
+      strm.close()
+
     new(result)
     result.data = s
     result.pos = 0
@@ -418,8 +1085,14 @@ when not defined(js):
     result.readDataStrImpl = ssReadDataStr
 
   type
-    FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
+    FileStream* = ref FileStreamObj
+      ## A stream that encapsulates a `File`.
+      ##
+      ## **Note:** Not available for JS backend.
     FileStreamObj* = object of Stream
+      ## A file stream object.
+      ##
+      ## **Note:** Not available for JS backend.
       f: File
 
   proc fsClose(s: Stream) =
@@ -447,7 +1120,35 @@ when not defined(js):
       raise newEIO("cannot write to stream")
 
   proc newFileStream*(f: File): owned FileStream =
-    ## creates a new stream from the file `f`.
+    ## Creates a new stream from the file `f`.
+    ##
+    ## **Note:** Not available for JS backend.
+    ##
+    ## See also:
+    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+    ##   from string.
+    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
+    ##   as using `open proc <system.html#open,File,string,FileMode,int>`_
+    ##   on Examples.
+    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+    ##   file stream from the file name and the mode.
+    runnableExamples:
+      ## Input (somefile.txt):
+      ## The first line
+      ## the second line
+      ## the third line
+      var f: File
+      if open(f, "somefile.txt", fmRead, -1):
+        var strm = newFileStream(f)
+        var line = ""
+        while strm.readLine(line):
+          echo line
+        ## Output:
+        ## The first line
+        ## the second line
+        ## the third line
+        strm.close()
+
     new(result)
     result.f = f
     result.closeImpl = fsClose
@@ -461,26 +1162,76 @@ when not defined(js):
     result.flushImpl = fsFlush
 
   proc newFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
-    ## creates a new stream from the file named `filename` with the mode `mode`.
-    ## If the file cannot be opened, nil is returned. See the `system
-    ## <system.html>`_ module for a list of available FileMode enums.
-    ## **This function returns nil in case of failure. To prevent unexpected
-    ## behavior and ensure proper error handling, use openFileStream instead.**
+    ## Creates a new stream from the file named `filename` with the mode `mode`.
+    ##
+    ## If the file cannot be opened, `nil` is returned. See the `io module
+    ## <io.html>`_ for a list of available `FileMode enums <io.html#FileMode>`_.
+    ##
+    ## **Note:**
+    ## * **This function returns nil in case of failure.**
+    ##   To prevent unexpected behavior and ensure proper error handling,
+    ##   use `openFileStream proc <#openFileStream,string,FileMode,int>`_
+    ##   instead.
+    ## * Not available for JS backend.
+    ##
+    ## See also:
+    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+    ##   from string.
+    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+    ##   opened File.
+    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+    ##   file stream from the file name and the mode.
+    runnableExamples:
+      from os import removeFile
+      var strm = newFileStream("somefile.txt", fmWrite)
+      if not isNil(strm):
+        strm.writeLine("The first line")
+        strm.writeLine("the second line")
+        strm.writeLine("the third line")
+        strm.close()
+        ## Output (somefile.txt)
+        ## The first line
+        ## the second line
+        ## the third line
+        removeFile("somefile.txt")
+
     var f: File
     if open(f, filename, mode, bufSize): result = newFileStream(f)
 
   proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
-    ## creates a new stream from the file named `filename` with the mode `mode`.
+    ## Creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, an IO exception is raised.
+    ##
+    ## **Note:** Not available for JS backend.
+    ##
+    ## See also:
+    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+    ##   from string.
+    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+    ##   opened File.
+    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_  creates a
+    ##   file stream from the file name and the mode.
+    runnableExamples:
+      try:
+        ## Input (somefile.txt):
+        ## The first line
+        ## the second line
+        ## the third line
+        var strm = openFileStream("somefile.txt")
+        echo strm.readLine()
+        ## Output:
+        ## The first line
+        strm.close()
+      except:
+        stderr.write getCurrentExceptionMsg()
+
     var f: File
     if open(f, filename, mode, bufSize):
       return newFileStream(f)
     else:
-      raise newEIO("cannot open file")
+      raise newEIO("cannot open file\n")
 
-when true:
-  discard
-else:
+when false:
   type
     FileHandleStream* = ref FileHandleStreamObj
     FileHandleStreamObj* = object of Stream
