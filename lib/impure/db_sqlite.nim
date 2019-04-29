@@ -89,14 +89,14 @@ import db_common
 export db_common
 
 type
-  DbConn* = PSqlite3  ## encapsulates a database connection
-  Row* = seq[string]  ## a row of a dataset. NULL database values will be
+  DbConn* = PSqlite3  ## Encapsulates a database connection.
+  Row* = seq[string]  ## A row of a dataset. NULL database values will be
                        ## converted to nil.
-  InstantRow* = Pstmt  ## a handle that can be used to get a row's column
-                       ## text on demand
+  InstantRow* = Pstmt  ## A handle that can be used to get a row's column
+                       ## text on demand.
 
 proc dbError*(db: DbConn) {.noreturn.} =
-  ## raises a DbError exception.
+  ## Raises a DbError exception.
   var e: ref DbError
   new(e)
   e.msg = $sqlite3.errmsg(db)
@@ -123,7 +123,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.
               tags: [ReadDbEffect, WriteDbEffect].} =
-  ## tries to execute the query and returns true if successful, false otherwise.
+  ## Tries to execute the query and returns true if successful, false otherwise.
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
@@ -134,7 +134,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
-  ## executes the query and raises DbError if not successful.
+  ## Executes the query and raises DbError if not successful.
   if not tryExec(db, query, args): dbError(db)
 
 proc newRow(L: int): Row =
@@ -176,7 +176,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
-  ## same as fastRows but returns a handle that can be used to get column text
+  ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
   var stmt = setupQuery(db, query, args)
   try:
@@ -210,7 +210,7 @@ proc setColumns(columns: var DbColumns; x: PStmt) =
 iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
-  ## same as fastRows but returns a handle that can be used to get column text
+  ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
   var stmt = setupQuery(db, query, args)
   setColumns(columns, stmt)
@@ -221,16 +221,16 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
     if finalize(stmt) != SQLITE_OK: dbError(db)
 
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
-  ## returns text for given column of the row
+  ## Returns text for given column of the row.
   $column_text(row, col)
 
 proc len*(row: InstantRow): int32 {.inline.} =
-  ## returns number of columns in the row
+  ## Returns number of columns in the row.
   column_count(row)
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
-  ## retrieves a single row. If the query doesn't return any rows, this proc
+  ## Retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
@@ -241,19 +241,19 @@ proc getRow*(db: DbConn, query: SqlQuery,
 
 proc getAllRows*(db: DbConn, query: SqlQuery,
                  args: varargs[string, `$`]): seq[Row] {.tags: [ReadDbEffect].} =
-  ## executes the query and returns the whole result dataset.
+  ## Executes the query and returns the whole result dataset.
   result = @[]
   for r in fastRows(db, query, args):
     result.add(r)
 
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
-  ## same as `FastRows`, but slower and safe.
+  ## Same as `FastRows`, but slower and safe.
   for r in fastRows(db, query, args): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.tags: [ReadDbEffect].} =
-  ## executes the query and returns the first column of the first row of the
+  ## Executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
   var stmt = setupQuery(db, query, args)
@@ -271,7 +271,7 @@ proc getValue*(db: DbConn, query: SqlQuery,
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64
                   {.tags: [WriteDbEffect], raises: [].} =
-  ## executes the query (typically "INSERT") and returns the
+  ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
@@ -285,7 +285,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
 
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
-  ## executes the query (typically "INSERT") and returns the
+  ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
   ## named ``id``.
@@ -295,13 +295,13 @@ proc insertID*(db: DbConn, query: SqlQuery,
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.
                        tags: [ReadDbEffect, WriteDbEffect].} =
-  ## executes the query (typically "UPDATE") and returns the
+  ## Executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   exec(db, query, args)
   result = changes(db)
 
 proc close*(db: DbConn) {.tags: [DbEffect].} =
-  ## closes the database connection.
+  ## Closes the database connection.
   if sqlite3.close(db) != SQLITE_OK: dbError(db)
 
 proc open*(connection, user, password, database: string): DbConn {.
