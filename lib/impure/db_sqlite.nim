@@ -80,6 +80,11 @@
 ##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
 ##
 ##  theDb.close()
+##
+## See also
+## ========
+##
+## * TODO
 
 {.deadCodeElim: on.}  # dce option deprecated
 
@@ -97,6 +102,7 @@ type
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## Raises a DbError exception.
+  ## TODO example
   var e: ref DbError
   new(e)
   e.msg = $sqlite3.errmsg(db)
@@ -104,6 +110,7 @@ proc dbError*(db: DbConn) {.noreturn.} =
 
 proc dbQuote*(s: string): string =
   ## DB quotes the string.
+  ## TODO example
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
@@ -124,6 +131,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.
               tags: [ReadDbEffect, WriteDbEffect].} =
   ## Tries to execute the query and returns true if successful, false otherwise.
+  ## TODO example
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
@@ -135,6 +143,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## Executes the query and raises DbError if not successful.
+  ## TODO example
   if not tryExec(db, query, args): dbError(db)
 
 proc newRow(L: int): Row =
@@ -163,6 +172,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
   ## database query to raise a DbError exception ``unable to close due to ...``.
+  ## TODO example
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   var result = newRow(L)
@@ -178,6 +188,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       {.tags: [ReadDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
+  ## TODO example
   var stmt = setupQuery(db, query, args)
   try:
     while step(stmt) == SQLITE_ROW:
@@ -212,6 +223,7 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
                       {.tags: [ReadDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
+  ## TODO example
   var stmt = setupQuery(db, query, args)
   setColumns(columns, stmt)
   try:
@@ -222,16 +234,19 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
 
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ## Returns text for given column of the row.
+  ## TODO example
   $column_text(row, col)
 
 proc len*(row: InstantRow): int32 {.inline.} =
   ## Returns number of columns in the row.
+  ## TODO example
   column_count(row)
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
+  ## TODO example
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   result = newRow(L)
@@ -242,6 +257,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
 proc getAllRows*(db: DbConn, query: SqlQuery,
                  args: varargs[string, `$`]): seq[Row] {.tags: [ReadDbEffect].} =
   ## Executes the query and returns the whole result dataset.
+  ## TODO example
   result = @[]
   for r in fastRows(db, query, args):
     result.add(r)
@@ -249,6 +265,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Same as `FastRows`, but slower and safe.
+  ## TODO example
   for r in fastRows(db, query, args): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
@@ -256,6 +273,7 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## Executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
+  ## TODO example
   var stmt = setupQuery(db, query, args)
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
@@ -273,6 +291,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
                   {.tags: [WriteDbEffect], raises: [].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
+  ## TODO example
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
@@ -289,6 +308,7 @@ proc insertID*(db: DbConn, query: SqlQuery,
   ## generated ID for the row. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
   ## named ``id``.
+  ## TODO example
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
@@ -297,17 +317,20 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
                        tags: [ReadDbEffect, WriteDbEffect].} =
   ## Executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
+  ## TODO example
   exec(db, query, args)
   result = changes(db)
 
 proc close*(db: DbConn) {.tags: [DbEffect].} =
   ## Closes the database connection.
+  ## TODO example
   if sqlite3.close(db) != SQLITE_OK: dbError(db)
 
 proc open*(connection, user, password, database: string): DbConn {.
   tags: [DbEffect].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established. Only the ``connection`` parameter is used for ``sqlite``.
+  ## TODO example
   var db: DbConn
   if sqlite3.open(connection, db) == SQLITE_OK:
     result = db
@@ -323,6 +346,7 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   ## According to SQLite3 documentation, any attempt to change
   ## the encoding after the database is created will be silently
   ## ignored.
+  ## TODO example
   exec(connection, sql"PRAGMA encoding = ?", [encoding])
   result = connection.getValue(sql"PRAGMA encoding") == encoding
 
