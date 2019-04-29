@@ -1361,6 +1361,9 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     r.res = s.loc.r
   of skProc, skFunc, skConverter, skMethod:
+    if sfCompileTime in s.flags:
+      localError(p.config, n.info, "request to generate code for .compileTime proc: " &
+          s.name.s)
     discard mangleName(p.module, s)
     r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone or
