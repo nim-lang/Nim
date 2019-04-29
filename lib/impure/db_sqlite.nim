@@ -10,9 +10,6 @@
 ## A higher level `SQLite`:idx: database wrapper. This interface
 ## is implemented for other databases too.
 ##
-## See also: `db_odbc <db_odbc.html>`_, `db_postgres <db_postgres.html>`_,
-## `db_mysql <db_mysql.html>`_.
-##
 ## Parameter substitution
 ## ======================
 ##
@@ -21,7 +18,8 @@
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
-##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##
+##    sql"INSERT INTO my_table (colA, colB, colC) VALUES (?, ?, ?)"
 ##
 ## Examples
 ## ========
@@ -30,61 +28,72 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_sqlite
-##     let db = open("mytest.db", "", "", "")  # user, password, database name can be empty
-##     db.close()
+##
+##    import db_sqlite
+##
+##    # user, password, database name can be empty.
+##    # These params are not used on db_sqlite module.
+##    let db = open("mytest.db", "", "", "")
+##    db.close()
 ##
 ## Creating a table
 ## ----------------
 ##
 ## .. code-block:: Nim
-##      db.exec(sql"DROP TABLE IF EXISTS myTable")
-##      db.exec(sql("""CREATE TABLE myTable (
-##                       id integer,
-##                       name varchar(50) not null)"""))
+##
+##    db.exec(sql"DROP TABLE IF EXISTS my_table")
+##    db.exec(sql("""CREATE TABLE my_table (
+##                     id   INTEGER,
+##                     name VARCHAR(50) NOT NULL
+##                   )"""))
 ##
 ## Inserting data
 ## --------------
 ##
 ## .. code-block:: Nim
-##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
-##             "Jack")
+##
+##    db.exec(sql"INSERT INTO my_table (id, name) VALUES (0, ?)",
+##            "Jack")
 ##
 ## Larger example
 ## --------------
 ##
 ## .. code-block:: nim
 ##
-##  import db_sqlite, math
+##    import db_sqlite, math
 ##
-##  let theDb = open("mytest.db", "", "", "")
+##    let db = open("mytest.db", "", "", "")
 ##
-##  theDb.exec(sql"Drop table if exists myTestTbl")
-##  theDb.exec(sql("""create table myTestTbl (
-##       Id    INTEGER PRIMARY KEY,
-##       Name  VARCHAR(50) NOT NULL,
-##       i     INT(11),
-##       f     DECIMAL(18,10))"""))
+##    db.exec(sql"DROP TABLE IF EXISTS my_table")
+##    db.exec(sql("""CREATE TABLE my_table (
+##                     id    INTEGER PRIMARY KEY,
+##                     name  VARCHAR(50) NOT NULL,
+##                     i     INT(11),
+##                     f     DECIMAL(18, 10)
+##                   )"""))
 ##
-##  theDb.exec(sql"BEGIN")
-##  for i in 1..1000:
-##    theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##          "Item#" & $i, i, sqrt(i.float))
-##  theDb.exec(sql"COMMIT")
+##    db.exec(sql"BEGIN")
+##    for i in 1..1000:
+##      db.exec(sql"INSERT INTO my_table (name, i, f) VALUES (?, ?, ?)",
+##              "Item#" & $i, i, sqrt(i.float))
+##    db.exec(sql"COMMIT")
 ##
-##  for x in theDb.fastRows(sql"select * from myTestTbl"):
-##    echo x
+##    for x in db.fastRows(sql"SELECT * FROM my_table"):
+##      echo x
 ##
-##  let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##        "Item#1001", 1001, sqrt(1001.0))
-##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+##    let id = db.tryInsertId(sql"""INSERT INTO my_table (name, i, f)
+##                                  VALUES (?, ?, ?)""",
+##                            "Item#1001", 1001, sqrt(1001.0))
+##    echo "Inserted item: ", db.getValue(sql"SELECT name FROM my_table WHERE id=?", id)
 ##
-##  theDb.close()
+##    db.close()
 ##
 ## See also
 ## ========
 ##
-## * TODO
+## * `db_odbc module <db_odbc.html>`_ for ODBC database wrapper
+## * `db_mysql <db_mysql.html>`_ for MySQL database wrapper
+## * `db_postgres <db_postgres.html>`_ for PostgreSQL database wrapper
 
 {.deadCodeElim: on.}  # dce option deprecated
 
@@ -328,8 +337,10 @@ proc close*(db: DbConn) {.tags: [DbEffect].} =
 
 proc open*(connection, user, password, database: string): DbConn {.
   tags: [DbEffect].} =
-  ## opens a database connection. Raises `EDb` if the connection could not
-  ## be established. Only the ``connection`` parameter is used for ``sqlite``.
+  ## Opens a database connection. Raises `EDb` if the connection could not
+  ## be established.
+  ##
+  ## **Note:** Only the ``connection`` parameter is used for ``sqlite``.
   ## TODO example
   var db: DbConn
   if sqlite3.open(connection, db) == SQLITE_OK:
@@ -339,10 +350,10 @@ proc open*(connection, user, password, database: string): DbConn {.
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
   tags: [DbEffect].} =
-  ## sets the encoding of a database connection, returns true for
+  ## Sets the encoding of a database connection, returns true for
   ## success, false for failure.
   ##
-  ## Note that the encoding cannot be changed once it's been set.
+  ## **Note:** that the encoding cannot be changed once it's been set.
   ## According to SQLite3 documentation, any attempt to change
   ## the encoding after the database is created will be silently
   ## ignored.
