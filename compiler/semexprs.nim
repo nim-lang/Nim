@@ -2343,7 +2343,7 @@ proc checkPar(c: PContext; n: PNode): TParKind =
     for i in 0 ..< length:
       if result == paTupleFields:
         if (n.sons[i].kind != nkExprColonExpr) or
-            not (n.sons[i].sons[0].kind in {nkSym, nkIdent}):
+            n.sons[i].sons[0].kind notin {nkSym, nkIdent}:
           localError(c.config, n.sons[i].info, errNamedExprExpected)
           return paNone
       else:
@@ -2366,6 +2366,11 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       localError(c.config, n.sons[i].info, errFieldInitTwice % id.s)
     n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1],
                                         flags*{efAllowDestructor})
+
+    if n.sons[i].sons[1].typ.kind == tyTypeDesc:
+      localError(c.config, n.sons[i].sons[1].info, "typedesc not allowed as tuple field.")
+      n.sons[i].sons[1].typ = errorType(c)
+
     var f = newSymS(skField, n.sons[i].sons[0], c)
     f.typ = skipIntLit(n.sons[i].sons[1].typ)
     f.position = i
@@ -2383,14 +2388,6 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     n.sons[i] = semExprWithType(c, n.sons[i], flags*{efAllowDestructor})
     addSonSkipIntLit(typ, n.sons[i].typ)
   result.typ = typ
-
-proc isTupleType(n: PNode): bool =
-  if n.len == 0:
-    return false # don't interpret () as type
-  for i in 0 ..< n.len:
-    if n[i].typ == nil or n[i].typ.kind != tyTypeDesc:
-      return false
-  return true
 
 include semobjconstr
 
@@ -2643,12 +2640,20 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     of paNone: result = errorNode(c, n)
     of paTuplePositions:
       var tupexp = semTuplePositionsConstr(c, n, flags)
-      if isTupleType(tupexp):
-        # reinterpret as type
-        var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
-        result.typ = makeTypeDesc(c, typ)
-      else:
-        result = tupexp
+      block isTupleTypeCheck:
+        var isTupleType: bool
+        if tupexp.len > 0: # don't interpret () as type
+          isTupleType = tupexp[0].typ.kind == tyTypeDesc
+          for i in 1 ..< tupexp.len:
+            if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
+              localError(c.config, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
+              result = errorNode(c,n)
+              break isTupleTypeCheck
+        if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
+          var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+          result.typ = makeTypeDesc(c, typ)
+        else:
+          result = tupexp
     of paTupleFields: result = semTupleFieldsConstr(c, n, flags)
     of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
