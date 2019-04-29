@@ -1133,6 +1133,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
       if typ == nil:
         typ = def.typ
+        if typ.kind == tySequence and def.typ[0].kind == tyEmpty or
+            typ.kind == tyArray and def.typ[1].kind == tyEmpty:
+          localError(c.config, a.info, "cannot infer the type of parameter '" & a[0].ident.s & "'")
+
         if typ.kind == tyTypeDesc:
           # consider a proc such as:
           # proc takesType(T = int)
