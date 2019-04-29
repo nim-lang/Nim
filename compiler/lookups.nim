@@ -255,7 +255,7 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
   while candidate != nil:
-    if i == 0: err.add " --use one of the following:\n"
+    if i == 0: err.add " -- use one of the following:\n"
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     err.add ": " & typeToString(candidate.typ)
