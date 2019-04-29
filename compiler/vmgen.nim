@@ -957,7 +957,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genNarrow(n.sons[1], d)
     c.genAsgnPatch(n.sons[1], d)
     c.freeTemp(d)
-  of mOrd, mChr, mArrToSeq: c.gen(n.sons[1], dest)
+  of mOrd, mChr, mArrToSeq, mUnown: c.gen(n.sons[1], dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)
     c.genNew(n)

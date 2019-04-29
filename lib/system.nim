@@ -1619,7 +1619,7 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
   ##   assert @[1, 2] isnot enum
 
 when defined(nimV2) and not defined(nimscript):
-  type owned*{.magic: "BuiltinType".}[T]
+  type owned*{.magic: "BuiltinType".}[T] ## type constructor to mark a ref/ptr or a closure as `owned`.
 
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
@@ -1637,8 +1637,13 @@ when defined(nimV2) and not defined(nimscript):
       var r: owned(ref t)
     new(r)
     return r
+
+  proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
+    ## Use the expression ``x`` ignoring its ownership attribute.
+
 else:
   template owned*(t: typeDesc): typedesc = t
+  template unown*(x: typed): typed = x
 
   proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)

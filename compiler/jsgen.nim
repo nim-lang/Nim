@@ -640,7 +640,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mInt64ToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
   of mFloatToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
   of mCStrToStr: applyFormat("cstrToNimstr($1)", "cstrToNimstr($1)")
-  of mStrToStr: applyFormat("$1", "$1")
+  of mStrToStr, mUnown: applyFormat("$1", "$1")
   else:
     assert false, $op
 

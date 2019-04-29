@@ -322,6 +322,39 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(c.graph, n.info, tyBool)
   result = n
 
+proc semUnown(c: PContext; n: PNode): PNode =
+  proc unownedType(c: PContext; t: PType): PType =
+    case t.kind
+    of tyTuple:
+      var elems = newSeq[PType](t.len)
+      var someChange = false
+      for i in 0..<t.len:
+        elems[i] = unownedType(c, t[i])
+        if elems[i] != t[i]: someChange = true
+      if someChange:
+        result = newType(tyTuple, t.owner)
+        # we have to use 'rawAddSon' here so that type flags are
+        # properly computed:
+        for e in elems: result.rawAddSon(e)
+      else:
+        result = t
+    of tyOwned: result = t.sons[0]
+    of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyLent,
+       tyGenericInst, tyAlias:
+      let L = t.len-1
+      let b = unownedType(c, t[L])
+      if b != t[L]:
+        result = copyType(t, t.owner, keepId = false)
+        result[L] = b
+        result.flags.excl tfHasOwned
+      else:
+        result = t
+    else:
+      result = t
+
+  result = copyTree(n[1])
+  result.typ = unownedType(c, result.typ)
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -433,4 +466,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let t = n[1].typ.skipTypes(abstractVar)
     if t.destructor != nil:
       result.sons[0] = newSymNode(t.destructor)
+  of mUnown:
+    result = semUnown(c, n)
   else: result = n
