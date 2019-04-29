@@ -607,7 +607,7 @@ proc aliases(obj, field: PNode): bool =
     if sameTrees(obj, n): return true
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenDeref:
+       nkObjDownConv, nkObjUpConv, nkHiddenDeref, nkDerefExpr:
       n = n[0]
     of nkBracketExpr:
       let x = n[0]
