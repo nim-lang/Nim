@@ -290,20 +290,13 @@ proc getRow*(db: DbConn, query: SqlQuery,
   ## .. code-block:: Nim
   ##
   ##    let db = open("mytest.db", "", "", "")
-  ##    # setup datas
-  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-  ##    db.exec(sql"""CREATE TABLE my_table (
-  ##                     id   INTEGER,
-  ##                     name VARCHAR(50) NOT NULL
-  ##                  )""")
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (1, 'item#1')
-  ##                  """)
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (2, 'item#2')
-  ##                  """)
   ##
-  ##    # get rows
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | 'item#1' |
+  ##    # |  2 | 'item#2' |
+  ##
   ##    doAssert db.getRow(sql"SELECT id, name FROM my_table") == Row(@["1", "item#1"])
   ##    doAssert db.getRow(sql"SELECT id, name FROM my_table WHERE id = 2") == Row(@["2", "item#2"])
   ##    db.close()
@@ -323,18 +316,12 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   ## .. code-block:: Nim
   ##
   ##    let db = open("mytest.db", "", "", "")
-  ##    # setup datas
-  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-  ##    db.exec(sql"""CREATE TABLE my_table (
-  ##                     id   INTEGER,
-  ##                     name VARCHAR(50) NOT NULL
-  ##                  )""")
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (1, 'item#1')
-  ##                  """)
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (2, 'item#2')
-  ##                  """)
+  ##
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | 'item#1' |
+  ##    # |  2 | 'item#2' |
   ##
   ##    doAssert db.getAllRows(sql"SELECT id, name FROM my_table") == @[Row(@["1", "item#1"]), Row(@["2", "item#2"])]
   ##    db.close()
@@ -351,21 +338,16 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ## .. code-block:: Nim
   ##
   ##    let db = open("mytest.db", "", "", "")
-  ##    # setup datas
-  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-  ##    db.exec(sql"""CREATE TABLE my_table (
-  ##                     id   INTEGER,
-  ##                     name VARCHAR(50) NOT NULL
-  ##                  )""")
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (1, 'item#1')
-  ##                  """)
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (2, 'item#2')
-  ##                  """)
+  ##
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | 'item#1' |
+  ##    # |  2 | 'item#2' |
   ##
   ##    for row in db.rows(sql"SELECT id, name FROM my_table"):
   ##      echo row
+  ##
   ##    ## Output:
   ##    ## @["1", "item#1"]
   ##    ## @["2", "item#2"]
@@ -384,18 +366,12 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## .. code-block:: Nim
   ##
   ##    let db = open("mytest.db", "", "", "")
-  ##    # setup datas
-  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-  ##    db.exec(sql"""CREATE TABLE my_table (
-  ##                     id   INTEGER,
-  ##                     name VARCHAR(50) NOT NULL
-  ##                  )""")
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (1, 'item#1')
-  ##                  """)
-  ##    db.exec(sql"""INSERT INTO my_table (id, name)
-  ##                  VALUES (2, 'item#2')
-  ##                  """)
+  ##
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | 'item#1' |
+  ##    # |  2 | 'item#2' |
   ##
   ##    doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = 2") == "item#2"
   ##    doAssert db.getValue(sql"SELECT id, name FROM my_table") == "1"
