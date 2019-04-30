@@ -92,7 +92,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
         rawImportSymbol(c, e)
         e = nextIdentIter(it, fromMod.tab)
     else: rawImportSymbol(c, s)
-  suggestSym(c.config, n.info, s, c.graph.usageSym, false)
+    suggestSym(c.config, n.info, s, c.graph.usageSym, false)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   var i: TTabIter
