@@ -129,7 +129,7 @@ proc dbQuote*(s: string): string =
   ## Escape the `'` char to `''`.
   runnableExamples:
     doAssert dbQuote("'") == "''''"
-    doAssert dbQuote("This is a Bob's pen.") == "'This is a Bob''s pen.'"
+    doAssert dbQuote("A Foobar's pen.") == "'A Foobar''s pen.'"
 
   result = "'"
   for c in items(s):
@@ -219,8 +219,8 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ##    # Records of my_table:
   ##    # | id | name     |
   ##    # |----|----------|
-  ##    # |  1 | 'item#1' |
-  ##    # |  2 | 'item#2' |
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
   ##
   ##    for row in db.fastRows(sql"SELECT id, name FROM my_table"):
   ##      echo row
@@ -315,8 +315,8 @@ proc getRow*(db: DbConn, query: SqlQuery,
   ##    # Records of my_table:
   ##    # | id | name     |
   ##    # |----|----------|
-  ##    # |  1 | 'item#1' |
-  ##    # |  2 | 'item#2' |
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
   ##
   ##    doAssert db.getRow(sql"SELECT id, name FROM my_table"
   ##                       ) == Row(@["1", "item#1"])
@@ -350,8 +350,8 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   ##    # Records of my_table:
   ##    # | id | name     |
   ##    # |----|----------|
-  ##    # |  1 | 'item#1' |
-  ##    # |  2 | 'item#2' |
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
   ##
   ##    doAssert db.getAllRows(sql"SELECT id, name FROM my_table") == @[Row(@["1", "item#1"]), Row(@["2", "item#2"])]
   ##    db.close()
@@ -372,8 +372,8 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ##    # Records of my_table:
   ##    # | id | name     |
   ##    # |----|----------|
-  ##    # |  1 | 'item#1' |
-  ##    # |  2 | 'item#2' |
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
   ##
   ##    for row in db.rows(sql"SELECT id, name FROM my_table"):
   ##      echo row
@@ -400,8 +400,8 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ##    # Records of my_table:
   ##    # | id | name     |
   ##    # |----|----------|
-  ##    # |  1 | 'item#1' |
-  ##    # |  2 | 'item#2' |
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
   ##
   ##    doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = ?",
   ##                         2) == "item#2"
@@ -479,7 +479,22 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
                        tags: [ReadDbEffect, WriteDbEffect].} =
   ## Executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
+  ##
+  ##    doAssert db.execAffectedRows(sql"UPDATE my_table SET name = 'TEST'") == 2
+  ##
+  ##    db.close()
   exec(db, query, args)
   result = changes(db)
 
@@ -508,7 +523,7 @@ proc open*(connection, user, password, database: string): DbConn {.
   ##    try:
   ##      let db = open("mytest.db", "", "", "")
   ##      ## do something...
-  ##      ## db.exec(sql"SELECT * FROM my_table")
+  ##      ## db.getAllRows(sql"SELECT * FROM my_table")
   ##      db.close()
   ##    except:
   ##      stderr.writeLine(getCurrentExceptionMsg())
