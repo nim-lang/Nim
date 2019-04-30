@@ -92,8 +92,8 @@
 ## ========
 ##
 ## * `db_odbc module <db_odbc.html>`_ for ODBC database wrapper
-## * `db_mysql <db_mysql.html>`_ for MySQL database wrapper
-## * `db_postgres <db_postgres.html>`_ for PostgreSQL database wrapper
+## * `db_mysql module <db_mysql.html>`_ for MySQL database wrapper
+## * `db_postgres module <db_postgres.html>`_ for PostgreSQL database wrapper
 
 {.deadCodeElim: on.}  # dce option deprecated
 
@@ -206,8 +206,9 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## This is very fast, but potentially dangerous.  Use this iterator only
   ## if you require **ALL** the rows.
   ##
-  ## Breaking the fastRows() iterator during a loop will cause the next
-  ## database query to raise a DbError exception ``unable to close due to ...``.
+  ## **Note:** Breaking the fastRows() iterator during a loop will cause the
+  ## next database query to raise a DbError exception ``unable to close due
+  ## to ...``.
   ##
   ## **Examples:**
   ##
@@ -290,11 +291,13 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
 
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ## Returns text for given column of the row.
+  ##
   ## TODO example
   $column_text(row, col)
 
 proc len*(row: InstantRow): int32 {.inline.} =
   ## Returns number of columns in the row.
+  ##
   ## TODO example
   column_count(row)
 
@@ -423,7 +426,17 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
                   {.tags: [WriteDbEffect], raises: [].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    db.exec(sql"CREATE TABLE my_table (id INTEGER, name VARCHAR(50) NOT NULL)")
+  ##
+  ##    doAssert db.tryInsertID(sql"INSERT INTO not_exist_table (id, name) VALUES (?, ?)",
+  ##                            1, "item#1") == -1
+  ##    db.close()
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
@@ -437,10 +450,27 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
   ## Executes the query (typically "INSERT") and returns the
-  ## generated ID for the row. For Postgre this adds
-  ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``.
-  ## TODO example
+  ## generated ID for the row. Raise DBError when failed to insert row.
+  ## For Postgre this adds ``RETURNING id`` to the query, so it only works
+  ## if your primary key is named ``id``.
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    db.exec(sql"CREATE TABLE my_table (id INTEGER, name VARCHAR(50) NOT NULL)")
+  ##
+  ##    for i in 0..2:
+  ##      let id = db.insertID(sql"INSERT INTO my_table (id, name) VALUES (?, ?)", i, "item#" & $i)
+  ##      echo "LoopIndex = ", i, ", InsertID = ", id
+  ##
+  ##    # Output:
+  ##    # LoopIndex = 0, InsertID = 1
+  ##    # LoopIndex = 1, InsertID = 2
+  ##    # LoopIndex = 2, InsertID = 3
+  ##
+  ##    db.close()
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
