@@ -274,7 +274,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
       var j: Hash = eh and maxHash(t)
       while isFilled(t.data[j].hcode):
         j = nextTry(j, maxHash(t))
-      rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
+      rawInsert(t, t.data, move n[i].key, move n[i].val, eh, j)
 
 
 
