@@ -42,10 +42,10 @@
 ## .. code-block:: Nim
 ##
 ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-##    db.exec(sql("""CREATE TABLE my_table (
+##    db.exec(sql"""CREATE TABLE my_table (
 ##                     id   INTEGER,
 ##                     name VARCHAR(50) NOT NULL
-##                   )"""))
+##                  )""")
 ##
 ## Inserting data
 ## --------------
@@ -65,12 +65,12 @@
 ##    let db = open("mytest.db", "", "", "")
 ##
 ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
-##    db.exec(sql("""CREATE TABLE my_table (
+##    db.exec(sql"""CREATE TABLE my_table (
 ##                     id    INTEGER PRIMARY KEY,
 ##                     name  VARCHAR(50) NOT NULL,
 ##                     i     INT(11),
 ##                     f     DECIMAL(18, 10)
-##                   )"""))
+##                  )""")
 ##
 ##    db.exec(sql"BEGIN")
 ##    for i in 1..1000:
@@ -111,15 +111,26 @@ type
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## Raises a DbError exception.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    if not db.tryExec(sql"SELECT * FROM not_exist_table"):
+  ##      dbError(db)
+  ##    db.close()
   var e: ref DbError
   new(e)
   e.msg = $sqlite3.errmsg(db)
   raise e
 
 proc dbQuote*(s: string): string =
-  ## DB quotes the string.
-  ## TODO example
+  ## Escape the `'` char to `''`.
+  runnableExamples:
+    doAssert dbQuote("'") == "''''"
+    doAssert dbQuote("This is a Bob's pen.") == "'This is a Bob''s pen.'"
+
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
@@ -140,7 +151,15 @@ proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.
               tags: [ReadDbEffect, WriteDbEffect].} =
   ## Tries to execute the query and returns true if successful, false otherwise.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    if not db.tryExec(sql"SELECT * FROM my_table"):
+  ##      dbError(db)
+  ##    db.close()
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
@@ -152,7 +171,17 @@ proc tryExec*(db: DbConn, query: SqlQuery,
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## Executes the query and raises DbError if not successful.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    db.exec(sql"""CREATE TABLE my_table (
+  ##                     id   INTEGER,
+  ##                     name VARCHAR(50) NOT NULL
+  ##                  )""")
+  ##    db.close()
   if not tryExec(db, query, args): dbError(db)
 
 proc newRow(L: int): Row =
@@ -255,7 +284,29 @@ proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    # setup datas
+  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
+  ##    db.exec(sql"""CREATE TABLE my_table (
+  ##                     id   INTEGER,
+  ##                     name VARCHAR(50) NOT NULL
+  ##                  )""")
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (1, 'item#1')
+  ##                  """)
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (2, 'item#2')
+  ##                  """)
+  ##
+  ##    # get rows
+  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table") == Row(@["1", "item#1"])
+  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table WHERE id = 2") == Row(@["2", "item#2"])
+  ##    db.close()
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   result = newRow(L)
@@ -266,7 +317,27 @@ proc getRow*(db: DbConn, query: SqlQuery,
 proc getAllRows*(db: DbConn, query: SqlQuery,
                  args: varargs[string, `$`]): seq[Row] {.tags: [ReadDbEffect].} =
   ## Executes the query and returns the whole result dataset.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    # setup datas
+  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
+  ##    db.exec(sql"""CREATE TABLE my_table (
+  ##                     id   INTEGER,
+  ##                     name VARCHAR(50) NOT NULL
+  ##                  )""")
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (1, 'item#1')
+  ##                  """)
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (2, 'item#2')
+  ##                  """)
+  ##
+  ##    doAssert db.getAllRows(sql"SELECT id, name FROM my_table") == @[Row(@["1", "item#1"]), Row(@["2", "item#2"])]
+  ##    db.close()
   result = @[]
   for r in fastRows(db, query, args):
     result.add(r)
@@ -274,7 +345,32 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Same as `FastRows`, but slower and safe.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    # setup datas
+  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
+  ##    db.exec(sql"""CREATE TABLE my_table (
+  ##                     id   INTEGER,
+  ##                     name VARCHAR(50) NOT NULL
+  ##                  )""")
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (1, 'item#1')
+  ##                  """)
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (2, 'item#2')
+  ##                  """)
+  ##
+  ##    for row in db.rows(sql"SELECT id, name FROM my_table"):
+  ##      echo row
+  ##    ## Output:
+  ##    ## @["1", "item#1"]
+  ##    ## @["2", "item#2"]
+  ##
+  ##    db.close()
   for r in fastRows(db, query, args): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
@@ -282,7 +378,30 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## Executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    # setup datas
+  ##    db.exec(sql"DROP TABLE IF EXISTS my_table")
+  ##    db.exec(sql"""CREATE TABLE my_table (
+  ##                     id   INTEGER,
+  ##                     name VARCHAR(50) NOT NULL
+  ##                  )""")
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (1, 'item#1')
+  ##                  """)
+  ##    db.exec(sql"""INSERT INTO my_table (id, name)
+  ##                  VALUES (2, 'item#2')
+  ##                  """)
+  ##
+  ##    doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = 2") == "item#2"
+  ##    doAssert db.getValue(sql"SELECT id, name FROM my_table") == "1"
+  ##    doAssert db.getValue(sql"SELECT name, id FROM my_table") == "item#1"
+  ##
+  ##    db.close()
   var stmt = setupQuery(db, query, args)
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
@@ -332,7 +451,13 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
 
 proc close*(db: DbConn) {.tags: [DbEffect].} =
   ## Closes the database connection.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##    db.close()
   if sqlite3.close(db) != SQLITE_OK: dbError(db)
 
 proc open*(connection, user, password, database: string): DbConn {.
@@ -341,7 +466,18 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## be established.
   ##
   ## **Note:** Only the ``connection`` parameter is used for ``sqlite``.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    try:
+  ##      let db = open("mytest.db", "", "", "")
+  ##      ## do something...
+  ##      ## db.exec(sql"SELECT * FROM my_table")
+  ##      db.close()
+  ##    except:
+  ##      stderr.writeLine(getCurrentExceptionMsg())
   var db: DbConn
   if sqlite3.open(connection, db) == SQLITE_OK:
     result = db
