@@ -819,7 +819,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     let params = owner.typ.n
     for i in 1 ..< params.len:
       let param = params[i].sym
-      if isSinkParam(param) and hasDestructor(param.typ.skipTypes({tySink})):
+      if isSinkTypeForParam(param.typ) and hasDestructor(param.typ.skipTypes({tySink})):
         c.addDestroy genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
   #if optNimV2 in c.graph.config.globalOptions:
