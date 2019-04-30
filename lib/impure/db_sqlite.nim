@@ -177,10 +177,8 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   ## .. code-block:: Nim
   ##
   ##    let db = open("mytest.db", "", "", "")
-  ##    db.exec(sql"""CREATE TABLE my_table (
-  ##                     id   INTEGER,
-  ##                     name VARCHAR(50) NOT NULL
-  ##                  )""")
+  ##    db.exec(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
+  ##            1, "item#1")
   ##    db.close()
   if not tryExec(db, query, args): dbError(db)
 
@@ -210,7 +208,27 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
   ## database query to raise a DbError exception ``unable to close due to ...``.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | 'item#1' |
+  ##    # |  2 | 'item#2' |
+  ##
+  ##    for row in db.fastRows(sql"SELECT id, name FROM my_table"):
+  ##      echo row
+  ##
+  ##    # Output:
+  ##    # @["1", "item#1"]
+  ##    # @["2", "item#2"]
+  ##
+  ##    db.close()
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   var result = newRow(L)
@@ -297,8 +315,17 @@ proc getRow*(db: DbConn, query: SqlQuery,
   ##    # |  1 | 'item#1' |
   ##    # |  2 | 'item#2' |
   ##
-  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table") == Row(@["1", "item#1"])
-  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table WHERE id = 2") == Row(@["2", "item#2"])
+  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table"
+  ##                       ) == Row(@["1", "item#1"])
+  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table WHERE id = ?",
+  ##                       2) == Row(@["2", "item#2"])
+  ##
+  ##    # Returns empty.
+  ##    doAssert db.getRow(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
+  ##                       3, "item#3") == @[]
+  ##    doAssert db.getRow(sql"DELETE FROM my_table WHERE id = ?", 3) == @[]
+  ##    doAssert db.getRow(sql"UPDATE my_table SET name = 'ITEM#1' WHERE id = ?",
+  ##                       1) == @[]
   ##    db.close()
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
@@ -373,7 +400,8 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ##    # |  1 | 'item#1' |
   ##    # |  2 | 'item#2' |
   ##
-  ##    doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = 2") == "item#2"
+  ##    doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = ?",
+  ##                         2) == "item#2"
   ##    doAssert db.getValue(sql"SELECT id, name FROM my_table") == "1"
   ##    doAssert db.getValue(sql"SELECT name, id FROM my_table") == "item#1"
   ##
