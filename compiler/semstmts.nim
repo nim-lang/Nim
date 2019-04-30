@@ -43,7 +43,7 @@ proc semDiscard(c: PContext, n: PNode): PNode =
     n.sons[0] = semExprWithType(c, n.sons[0])
     let sonType = n.sons[0].typ
     let sonKind = n.sons[0].kind
-    if isEmptyType(sonType) or sonType.kind == tyNone or n.sons[0].kind == nkTypeOfExpr:
+    if isEmptyType(sonType) or sonType.kind in {tyNone, tyTypeDesc} or sonKind == nkTypeOfExpr:
       localError(c.config, n.info, errInvalidDiscard)
     if sonType.kind == tyProc and sonKind notin nkCallKinds:
       # tyProc is disallowed to prevent ``discard foo`` to be valid, when ``discard foo()`` is meant.
