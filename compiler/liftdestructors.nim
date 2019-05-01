@@ -593,12 +593,13 @@ proc createTypeBoundOps(c: PContext; orig: PType; info: TLineInfo) =
   if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.skipTypes({tyAlias}).flags != {}: return
   incl orig.flags, tfCheckedForDestructor
 
-  let h = sighashes.hashType(orig, {CoType, CoConsiderOwned})
+  let h = sighashes.hashType(orig, {CoType, CoConsiderOwned, CoDistinct})
   var canon = c.graph.canonTypes.getOrDefault(h)
   var overwrite = false
   if canon == nil:
-    c.graph.canonTypes[h] = orig
-    canon = orig
+    let typ = orig.skipTypes({tyGenericInst, tyAlias})
+    c.graph.canonTypes[h] = typ
+    canon = typ
   elif canon != orig:
     overwrite = true
 
@@ -608,17 +609,17 @@ proc createTypeBoundOps(c: PContext; orig: PType; info: TLineInfo) =
   # 3. we have a lifted destructor.
   # 4. We have a custom destructor.
   # 5. We have a (custom) generic destructor.
-  let typ = canon.skipTypes({tyGenericInst, tyAlias})
+
   # we generate the destructor first so that other operators can depend on it:
   for k in attachedDestructor..attachedSink:
-    if typ.attachedOps[k] == nil:
-      discard produceSym(c, typ, k, info)
+    if canon.attachedOps[k] == nil:
+      discard produceSym(c, canon, k, info)
     else:
-      inst(typ.attachedOps[k], typ)
+      inst(canon.attachedOps[k], canon)
 
   if overwrite:
     for k in attachedDestructor..attachedSink:
-      orig.attachedOps[k] = typ.attachedOps[k]
+      orig.attachedOps[k] = canon.attachedOps[k]
 
   if not isTrival(orig.destructor):
     #or not isTrival(orig.assignment) or

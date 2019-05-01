@@ -325,7 +325,7 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
 
   if op == nil:
     # give up and find the canonical type instead:
-    let h = sighashes.hashType(t, {CoType, CoConsiderOwned})
+    let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = canon.attachedOps[kind]
