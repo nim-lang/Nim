@@ -1,6 +1,6 @@
 # Include file that implements 'getEnv' and friends. Do not import it!
 
-when not declared(os):
+when not declared(os) and not declared(ospaths):
   {.error: "This is an include file for os.nim!".}
 
 from parseutils import skipIgnoreCase
