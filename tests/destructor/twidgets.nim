@@ -38,7 +38,7 @@ iterator unitems*[T](a: seq[owned T]): T {.inline.} =
   while i < L:
     yield a[i]
     inc(i)
-    assert(len(a) == L, "seq modified while iterating over it")
+    assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 proc newWindow(): owned Window =
   proc windraw(self: Widget) =
