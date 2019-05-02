@@ -1526,18 +1526,51 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
 
-proc asgnToResult(c: PContext, n, le, ri: PNode) =
+proc borrowCheck(c: PContext, n, le, ri: PNode) =
+  const
+    PathKinds0 = {nkDotExpr, nkCheckedFieldExpr,
+                  nkBracketExpr, nkAddr, nkHiddenAddr,
+                  nkObjDownConv, nkObjUpConv}
+    PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv}
+
+  proc getRoot(n: PNode; followDeref: bool): PNode =
+    result = n
+    while true:
+      case result.kind
+      of nkDerefExpr, nkHiddenDeref:
+        if followDeref: result = result[0]
+        else: break
+      of PathKinds0:
+        result = result[0]
+      of PathKinds1:
+        result = result[1]
+      else: break
+
+  proc scopedLifetime(c: PContext; ri: PNode): bool {.inline.} =
+    let n = getRoot(ri, followDeref = false)
+    result = (ri.kind in nkCallKinds+{nkObjConstr}) or
+      (n.kind == nkSym and n.sym.owner == c.p.owner)
+
+  proc escapes(c: PContext; le: PNode): bool {.inline.} =
+    # param[].foo[] = self  definitely escapes, we don't need to
+    # care about pointer derefs:
+    let n = getRoot(le, followDeref = true)
+    result = n.kind == nkSym and n.sym.kind == skParam
+
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   const absInst = abstractInst - {tyOwned}
   if ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
       le.typ != nil and le.typ.skipTypes(absInst).kind != tyOwned and
-      ri.kind in nkCallKinds+{nkObjConstr}:
-    localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer; " &
-      "use 'owned(" & typeToString(le.typ) & ")' as the return type")
+      scopedLifetime(c, ri):
+    if le.kind == nkSym and le.sym.kind == skResult:
+      localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer; " &
+        "use 'owned(" & typeToString(le.typ) & ")' as the return type")
+    elif escapes(c, le):
+      localError(c.config, n.info,
+        "assignment produces a dangling ref: the unowned ref lives longer than the owned ref")
 
 template resultTypeIsInferrable(typ: PType): untyped =
   typ.isMetaType and typ.kind != tyTypeDesc
-
 
 proc goodLineInfo(arg: PNode): TLineinfo =
   if arg.kind == nkStmtListExpr and arg.len > 0:
@@ -1625,7 +1658,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.owner.typ.sons[0] = rhsTyp
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
-      asgnToResult(c, n, n.sons[0], rhs)
+    borrowCheck(c, n, lhs, rhs)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
     liftTypeBoundOps(c, lhs.typ, lhs.info)

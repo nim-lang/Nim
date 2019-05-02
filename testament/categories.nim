@@ -515,30 +515,21 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       let buildPath = packagesDir / name
       if not existsDir(buildPath):
         if hasDep:
-          let nimbleProcess = startProcess("nimble", "", ["install", "-y", name],
-                                           options = {poUsePath, poStdErrToStdOut})
-          let nimbleStatus = waitForExitEx(nimbleProcess)
-          nimbleProcess.close
+          let (nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", name])
           if nimbleStatus != QuitSuccess:
-            r.addResult(test, targetC, "", "'nimble install' failed", reInstallFailed)
+            r.addResult(test, targetC, "", "'nimble install' failed\n" & nimbleOutput, reInstallFailed)
             continue
 
-        let installProcess = startProcess("git", "", ["clone", url, buildPath],
-                                          options = {poUsePath, poStdErrToStdOut})
-        let installStatus = waitForExitEx(installProcess)
-        installProcess.close
+        let (installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
         if installStatus != QuitSuccess:
-          r.addResult(test, targetC, "", "'git clone' failed", reInstallFailed)
+          r.addResult(test, targetC, "", "'git clone' failed\n" & installOutput, reInstallFailed)
           continue
 
       let cmdArgs = parseCmdLine(cmd)
-      let buildProcess = startProcess(cmdArgs[0], buildPath, cmdArgs[1..^1],
-                                      options = {poUsePath, poStdErrToStdOut})
-      let buildStatus = waitForExitEx(buildProcess)
-      buildProcess.close
 
+      let (buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
       if buildStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "package test failed", reBuildFailed)
+        r.addResult(test, targetC, "", "package test failed\n" & buildOutput, reBuildFailed)
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
@@ -654,8 +645,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
   proc onStdout(line: string) = echo line
-  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
-    onStdout = if verboseMegatest: onStdout else: nil)
+  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo buf.string
     quit("megatest compilation failed")
