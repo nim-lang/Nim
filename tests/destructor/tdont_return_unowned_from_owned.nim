@@ -9,13 +9,13 @@ proc new[T](a: var ref T; finalizer: proc (x: ref T) {.nimcall.})
 
 expression: new(result)
 tdont_return_unowned_from_owned.nim(30, 6) Error: illformed AST:
+tdont_return_unowned_from_owned.nim(38, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
+tdont_return_unowned_from_owned.nim(39, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
+tdont_return_unowned_from_owned.nim(43, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type
 '''
-  errormsg: "illformed AST:"
-  line: 30
+  errormsg: "cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type"
+  line: 43
 """
-
-
-
 # bug #11073
 type
   Obj = ref object
@@ -33,3 +33,11 @@ let a = newObjA()
 let b = newObjB()
 let c = newObjC()
 
+proc testA(result: var (RootRef, RootRef)) =
+  let r: owned RootRef = RootRef()
+  result[0] = r
+  result[1] = RootRef()
+
+proc testB(): RootRef =
+  let r: owned RootRef = RootRef()
+  result = r
