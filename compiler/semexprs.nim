@@ -1527,11 +1527,15 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
 
 proc asgnToResult(c: PContext, n, le, ri: PNode) =
+  proc scopedLifetime(c: PContext; ri: PNode): bool {.inline.} =
+    result = (ri.kind in nkCallKinds+{nkObjConstr}) or
+      (ri.kind == nkSym and ri.sym.owner == c.p.owner)
+
   # Special typing rule: do not allow to pass 'owned T' to 'T' in 'result = x':
   const absInst = abstractInst - {tyOwned}
   if ri.typ != nil and ri.typ.skipTypes(absInst).kind == tyOwned and
       le.typ != nil and le.typ.skipTypes(absInst).kind != tyOwned and
-      ri.kind in nkCallKinds+{nkObjConstr}:
+      scopedLifetime(c, ri):
     localError(c.config, n.info, "cannot return an owned pointer as an unowned pointer; " &
       "use 'owned(" & typeToString(le.typ) & ")' as the return type")
 
