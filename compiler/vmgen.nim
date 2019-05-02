@@ -931,6 +931,21 @@ proc ldNullOpcode(t: PType): TOpcode =
   assert t != nil
   if fitsRegister(t): opcLdNullReg else: opcLdNull
 
+proc whichAsgnOpc(n: PNode): TOpcode =
+  case n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc}).kind
+  of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
+    opcAsgnInt
+  of tyString, tyCString:
+    opcAsgnStr
+  of tyFloat..tyFloat128:
+    opcAsgnFloat
+  of tyRef, tyNil, tyVar, tyLent, tyPtr:
+    opcAsgnRef
+  else:
+    opcAsgnComplex
+
+proc whichAsgnOpc(n: PNode; opc: TOpcode): TOpcode = opc
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
@@ -1330,6 +1345,17 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy: discard "ignore calls to the default destructor"
+  of mMove:
+    let arg = n[1]
+    let a = c.genx(arg)
+    assert dest >= 0
+    if dest < 0: dest = c.getTemp(arg.typ)
+    gABC(c, arg, whichAsgnOpc(arg), dest, a, 1)
+    # XXX use ldNullOpcode() here?
+    c.gABx(n, opcLdNull, a, c.genType(arg.typ))
+    c.gABx(n, opcNodeToReg, a, a)
+    c.genAsgnPatch(arg, a)
+    c.freeTemp(a)
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
@@ -1422,21 +1448,6 @@ proc genDeref(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
     assert n.typ != nil
     if {gfNodeAddr, gfNode} * flags == {} and fitsRegister(n.typ):
       c.gABC(n, opcNodeToReg, dest, dest)
-
-proc whichAsgnOpc(n: PNode): TOpcode =
-  case n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc}).kind
-  of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
-    opcAsgnInt
-  of tyString, tyCString:
-    opcAsgnStr
-  of tyFloat..tyFloat128:
-    opcAsgnFloat
-  of tyRef, tyNil, tyVar, tyLent, tyPtr:
-    opcAsgnRef
-  else:
-    opcAsgnComplex
-
-proc whichAsgnOpc(n: PNode; opc: TOpcode): TOpcode = opc
 
 proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   let tmp = c.genx(ri)
