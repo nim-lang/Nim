@@ -7,12 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-import parseutils, strutils, os, osproc, streams, parsecfg
+import sequtils, parseutils, strutils, os, osproc, streams, parsecfg
 
 var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
+
+var skips*: seq[string]
 
 type
   TTestAction* = enum
@@ -245,3 +247,6 @@ proc parseSpec*(filename: string): TSpec =
     of cfgEof:
       break
   close(p)
+
+  if skips.anyIt(it in result.file):
+    result.err = reDisabled

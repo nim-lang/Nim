@@ -689,22 +689,9 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
 # ---------------------------------------------------------------------------
 
-proc loadSkipFrom(name: string): seq[string] =
-  # One skip per line, comments start with #
-  # used by `nlvm` (at least)
-  try:
-    for line in lines(name):
-      let sline = line.strip()
-      if sline.len > 0 and not sline.startsWith("#"):
-        result.add sline
-  except:
-    echo "Could not load " & name & ", ignoring"
-
 proc processCategory(r: var TResults, cat: Category,
-                     options, testsDir, skipFrom: string,
+                     options, testsDir: string,
                      runJoinableTests: bool) =
-  let skips = loadSkipFrom(skipFrom)
-
   case cat.string.normalize
   of "rodfiles":
     when false:
@@ -760,9 +747,6 @@ proc processCategory(r: var TResults, cat: Category,
 
     for i, name in files:
       var test = makeTest(name, options, cat)
-      if skips.anyIt(it in name):
-        test.spec.err = reDisabled
-
       if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
         discard "run the test"
       else:
