@@ -452,6 +452,25 @@ suite "ttimes":
       doAssert dt.format("zz") == tz[2]
       doAssert dt.format("zzz") == tz[3]
 
+  test "format locale":
+    let loc = DateTimeLocale(
+      month_MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
+      month_MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
+      day_ddd: ["Red", "Ora.", "Yel.", "Gre.", "Blu.", "Vio.", "Whi."],
+      day_dddd: ["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
+    )
+    var dt = initDateTime(1, mJan, -0001,
+                          17, 01, 02, 123_456_789,
+                          staticTz(hours = 1, minutes = 2, seconds = 3))
+    check dt.format("d", loc) == "1"
+    check dt.format("dd", loc) == "01"
+    check dt.format("ddd", loc) == "Blu."
+    check dt.format("dddd", loc) == "Blue"
+    check dt.format("M", loc) == "1"
+    check dt.format("MM", loc) == "01"
+    check dt.format("MMM", loc) == "Fir"
+    check dt.format("MMMM", loc) == "Firsty"
+
   test "parse":
     check $parse("20180101", "yyyyMMdd", utc()) == "2018-01-01T00:00:00Z"
     parseTestExcp("+120180101", "yyyyMMdd")
@@ -472,6 +491,16 @@ suite "ttimes":
     discard parse("'", "''")
 
     parseTestExcp("2000 A", "yyyy g")
+
+  test "parse locale":
+    let loc = DateTimeLocale(
+      month_MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
+      month_MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
+      day_ddd: ["Red", "Ora.", "Yel.", "Gre.", "Blu.", "Vio.", "Whi."],
+      day_dddd: ["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
+    )
+    check $parse("02 Fir 2019", "dd MMM yyyy", utc(), loc) == "2019-01-02T00:00:00Z"
+    check $parse("Fourthy 6, 2017", "MMMM d, yyyy", utc(), loc) == "2017-04-06T00:00:00Z"
 
   test "countLeapYears":
     # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
