@@ -2641,6 +2641,20 @@ when defined(nimNewRoof):
       yield i
       inc i
 
+  template dotdotLessImpl(t) {.dirty.} =
+    iterator `..<`*(a, b: t): t {.inline.} =
+      ## A type specialized version of ``..<`` for convenience so that
+      ## mixing integer types works better.
+      var res = a
+      while res < b:
+        yield res
+        inc(res)
+
+  dotdotLessImpl(int64)
+  dotdotLessImpl(int32)
+  dotdotLessImpl(uint64)
+  dotdotLessImpl(uint32)
+
 else:
   iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
     ## Counts from ordinal value `a` up to `b` (inclusive) with the given
