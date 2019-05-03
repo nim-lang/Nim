@@ -1619,7 +1619,7 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
   ##   assert @[1, 2] isnot enum
 
 when defined(nimV2) and not defined(nimscript):
-  type owned*{.magic: "BuiltinType".}[T]
+  type owned*{.magic: "BuiltinType".}[T] ## type constructor to mark a ref/ptr or a closure as `owned`.
 
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
@@ -1637,8 +1637,16 @@ when defined(nimV2) and not defined(nimscript):
       var r: owned(ref t)
     new(r)
     return r
+
+  proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
+    ## Use the expression ``x`` ignoring its ownership attribute.
+
+  # This is only required to make 0.20 compile with the 0.19 line.
+  template `<//>`*(t: untyped): untyped = owned(t)
+
 else:
   template owned*(t: typeDesc): typedesc = t
+  template unown*(x: typed): typed = x
 
   proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
@@ -1656,6 +1664,9 @@ else:
       var r: ref t
     new(r)
     return r
+
+  # This is only required to make 0.20 compile with the 0.19 line.
+  template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
   ## Useful for ``disarming`` dangling pointers explicitly for the
@@ -1926,13 +1937,11 @@ const
     ## failure.
 
 when defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode".}: int
+  var programResult* {.importc: "process.exitCode", deprecated.}: int
   programResult = 0
-else:
-  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
-    ## Modify this variable to specify the exit code of the program
-    ## under normal circumstances. When the program is terminated
-    ## prematurely using `quit proc <#quit,int>`_, this value is ignored.
+elif hostOS != "standalone":
+  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated.}: int
+    ## deprecated, prefer ``quit``
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
@@ -1994,18 +2003,7 @@ when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
 when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
   proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
-when defined(gcDestructors):
-  proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
-    ## Generic proc for adding a data item `y` to a container `x`.
-    ##
-    ## For containers that have an order, `add` means *append*. New generic
-    ## containers should also call their adding proc `add` for consistency.
-    ## Generic code becomes much easier to write if the Nim naming scheme is
-    ## respected.
-    let xl = x.len
-    setLen(x, xl + 1)
-    x[xl] = y
-else:
+when not defined(gcDestructors):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
@@ -2239,14 +2237,15 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
 # not be called explicitly! The user may decide to do this manually though.
 
 when not defined(nimscript) and not defined(JS):
-  proc zeroMem*(p: pointer, size: Natural) {.inline, benign.}
+  proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
+    tags: [], locks: 0, raises: [].}
     ## Overwrites the contents of the memory at ``p`` with the value 0.
     ##
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is **unsafe**.
 
   proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], locks: 0.}
+    tags: [], locks: 0, raises: [].}
     ## Copies the contents from the memory at ``source`` to the memory
     ## at ``dest``.
     ## Exactly ``size`` bytes will be copied. The memory
@@ -2254,7 +2253,7 @@ when not defined(nimscript) and not defined(JS):
     ## memory this is **unsafe**.
 
   proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign,
-    tags: [], locks: 0.}
+    tags: [], locks: 0, raises: [].}
     ## Copies the contents from the memory at ``source`` to the memory
     ## at ``dest``.
     ##
@@ -2263,7 +2262,8 @@ when not defined(nimscript) and not defined(JS):
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still **unsafe**, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect, tags: [], locks: 0.}
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
+    tags: [], locks: 0, raises: [].}
     ## Compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared.
     ##

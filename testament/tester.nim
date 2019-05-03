@@ -19,8 +19,6 @@ include compiler/nodejs
 var useColors = true
 var backendLogging = true
 var simulate = false
-var verboseMegatest = false # very verbose but can be useful
-var verboseCommands = false
 
 const
   testsDir = "tests" & DirSep
@@ -39,8 +37,6 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
-  --verboseMegatest         log to stdout megatetest compilation
-  --verboseCommands         log to stdout info about commands being run
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
@@ -48,6 +44,7 @@ Options:
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messagescoloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
+  --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
 """ % resultsFile
 
 type
@@ -91,11 +88,11 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string, onStdout: proc(line: string) = nil): tuple[
+proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
-  var p = startProcess(command, args=args, options=options)
+  var p = startProcess(command, workingDir=workingDir, args=args, options={poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -111,19 +108,10 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
     if outp.readLine(line):
       result.output.string.add(line.string)
       result.output.string.add("\n")
-      if onStdout != nil: onStdout(line.string)
     else:
       result.exitCode = peekExitCode(p)
       if result.exitCode != -1: break
   close(p)
-
-  if verboseCommands:
-    var command2 = command
-    if args.len > 0: command2.add " " & args.quoteShellCommand
-    echo (msg: "execCmdEx2",
-      command: command2,
-      options: options,
-      exitCode: result.exitCode)
 
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
@@ -266,17 +254,25 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
     maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
-    maybeStyledEcho fgYellow, "Expected:"
-    maybeStyledEcho styleBright, expected, "\n"
-    maybeStyledEcho fgYellow, "Gotten:"
-    maybeStyledEcho styleBright, given, "\n"
+    if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
+      # expected is empty, no reason to print it.
+      echo given
+    else:
+      maybeStyledEcho fgYellow, "Expected:"
+      maybeStyledEcho styleBright, expected, "\n"
+      maybeStyledEcho fgYellow, "Gotten:"
+      maybeStyledEcho styleBright, given, "\n"
+
 
   if backendLogging and existsEnv("APPVEYOR"):
     let (outcome, msg) =
-      if success == reSuccess:
+      case success
+      of reSuccess:
         ("Passed", "")
-      elif success in {reDisabled, reJoined}:
+      of reDisabled, reJoined:
         ("Skipped", "")
+      of reBuildFailed, reNimcCrash, reInstallFailed:
+        ("Failed", "Failure: " & $success & "\n" & given)
       else:
         ("Failed", "Failure: " & $success & "\nExpected:\n" & expected & "\n\n" & "Gotten:\n" & given)
     var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options,
@@ -320,7 +316,7 @@ proc generatedFile(test: TTest, target: TTarget): string =
     let (_, name, _) = test.name.splitFile
     let ext = targetToExt[target]
     result = nimcacheDir(test.name, test.options, target) /
-             ("compiler_" & name.changeFileExt(ext))
+              name.replace("_", "__").changeFileExt(ext)
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
@@ -424,7 +420,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.getCmd, test.name, test.options, target)
       if given.err != reSuccess:
-        r.addResult(test, target, "", given.msg, given.err)
+        r.addResult(test, target, "", given.nimout, given.err)
         continue
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
@@ -445,7 +441,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         args = concat(@[exeFile], args)
       else:
         exeCmd = exeFile
-      var (buf, exitCode) = execCmdEx2(exeCmd, args, options = {poStdErrToStdOut}, input = expected.input)
+      var (buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
       if exitCode != 0: exitCode = 1
@@ -514,6 +510,8 @@ const disabledFilesDefault = @[
   "LockFreeHash.nim",
   "sharedstrings.nim",
   "tableimpl.nim",
+  "setimpl.nim",
+  "hashcommon.nim",
 
   # Error: undeclared identifier: 'hasThreadSupport'
   "ioselectors_epoll.nim",
@@ -545,14 +543,13 @@ proc main() =
   var optFailing = false
   var targetsStr = ""
   var isMainProcess = true
+  var skipFrom = ""
 
   var p = initOptParser()
   p.next()
   while p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
-    of "verbosemegatest": verboseMegatest = true
-    of "verbosecommands": verboseCommands = true
     of "failing": optFailing = true
     of "pedantic": discard "now always enabled"
     of "targets":
@@ -580,6 +577,8 @@ proc main() =
         backendLogging = false
       else:
         quit Usage
+    of "skipfrom":
+      skipFrom = p.val.string
     else:
       quit Usage
     p.next()
@@ -597,6 +596,9 @@ proc main() =
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
+
+    if skipFrom.len > 0:
+      myself &= " " & quoteShell("--skipFrom:" & skipFrom)
 
     var cats: seq[string]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
@@ -617,13 +619,13 @@ proc main() =
     if simulate:
       for i, cati in cats:
         progressStatus(i)
-        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
+        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = false)
     else:
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = true)
   of "pcat":
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
@@ -631,7 +633,7 @@ proc main() =
     isMainProcess = false
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = false)
   of "r", "run":
     # at least one directory is required in the path, to use as a category name
     let pathParts = split(p.key.string, {DirSep, AltSep})

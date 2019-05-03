@@ -211,7 +211,7 @@ proc ropeConcat*(a: varargs[Rope]): Rope =
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
 
-proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
+proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
   var length = len(frmt)
   result = nil
@@ -269,7 +269,10 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
       add(result, substr(frmt, start, i - 1))
   assert(ropeInvariant(result))
 
-proc addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
+proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
+  runtimeFormat(frmt, args)
+
+template addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
   ## shortcut for ``add(c, frmt % args)``.
   add(c, frmt % args)
 

@@ -11,7 +11,7 @@
 ## asynchronous dispatcher defined in the ``asyncdispatch`` module.
 ##
 ## Asynchronous IO in Nim
-## ----------------------
+## ======================
 ##
 ## Async IO in Nim consists of multiple layers (from highest to lowest):
 ##
@@ -49,7 +49,7 @@
 ## over all the layers, providing some extra features such as buffering.
 ##
 ## SSL
-## ----
+## ===
 ##
 ## SSL can be enabled by compiling with the ``-d:ssl`` flag.
 ##
@@ -58,10 +58,10 @@
 ## the newly created SSL context to get an SSL socket.
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Chat server
-## ^^^^^^^^^^^
+## -----------
 ##
 ## The following example demonstrates a simple chat server.
 ##

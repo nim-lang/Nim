@@ -7,23 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-include "system/inclrtl"
-
-import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
-import options, math
-import asyncfutures except callSoon
-
-import nativesockets, net, deques
-
-export Port, SocketFlag
-export asyncfutures except callSoon
-export asyncstreams
-
-#{.injectStmt: newGcInvariant().}
-
-## AsyncDispatch
-## *************
-##
 ## This module implements asynchronous IO. This includes a dispatcher,
 ## a ``Future`` type implementation, and an ``async`` macro which allows
 ## asynchronous code to be written in a synchronous style with the ``await``
@@ -82,7 +65,7 @@ export asyncstreams
 ## error), if there is no error however it returns the value of the future.
 ##
 ## Asynchronous procedures
-## -----------------------
+## =======================
 ##
 ## Asynchronous procedures remove the pain of working with callbacks. They do
 ## this by allowing you to write asynchronous code the same way as you would
@@ -116,7 +99,7 @@ export asyncstreams
 ## exceptions in async procs.
 ##
 ## Handling Exceptions
-## ~~~~~~~~~~~~~~~~~~~
+## -------------------
 ##
 ## The most reliable way to handle exceptions is to use ``yield`` on a future
 ## then check the future's ``failed`` property. For example:
@@ -142,7 +125,7 @@ export asyncstreams
 ##
 ##
 ## Discarding futures
-## ------------------
+## ==================
 ##
 ## Futures should **never** be discarded. This is because they may contain
 ## errors. If you do not care for the result of a Future then you should
@@ -151,16 +134,30 @@ export asyncstreams
 ## ``waitFor`` for that purpose.
 ##
 ## Examples
-## --------
+## ========
 ##
 ## For examples take a look at the documentation for the modules implementing
 ## asynchronous IO. A good place to start is the
 ## `asyncnet module <asyncnet.html>`_.
 ##
 ## Limitations/Bugs
-## ----------------
+## ================
 ##
 ## * The effect system (``raises: []``) does not work with async procedures.
+
+include "system/inclrtl"
+
+import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
+import options, math
+import asyncfutures except callSoon
+
+import nativesockets, net, deques
+
+export Port, SocketFlag
+export asyncfutures except callSoon
+export asyncstreams
+
+#{.injectStmt: newGcInvariant().}
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 

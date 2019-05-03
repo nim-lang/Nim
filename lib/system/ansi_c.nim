@@ -148,4 +148,4 @@ proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable, inline.} 
   # we cannot throw an exception here!
   discard c_fwrite(s, 1, s.len, f)
 
-{.pop}
+{.pop.}

@@ -4,7 +4,9 @@ discard """
 ho
 ha
 @["arg", "asdfklasdfkl", "asdkfj", "dfasj", "klfjl"]
-22 22'''
+@[1, 2, 3]
+@["red", "yellow", "orange", "rtrt1", "pink"]
+30 30'''
 """
 
 import allocators
@@ -131,6 +133,41 @@ proc other =
   echo parseCmdLine("arg asdfklasdfkl asdkfj dfasj klfjl")
 
 other()
+
+# bug #11050
+
+type
+  Obj* = object
+    f*: seq[int]
+
+method main(o: Obj) {.base.} =
+  for newb in o.f:
+    discard
+
+# test that o.f was not moved!
+proc testforNoMove =
+  var o = Obj(f: @[1, 2, 3])
+  main(o)
+  echo o.f
+
+testforNoMove()
+
+# bug #11065
+type
+  Warm = seq[string]
+
+proc testWarm =
+  var w: Warm
+  w = @["red", "yellow", "orange"]
+
+  var x = "rt"
+  var y = "rt1"
+  w.add(x & y)
+
+  w.add("pink")
+  echo w
+
+testWarm()
 
 #echo s
 let (a, d) = allocCounters()

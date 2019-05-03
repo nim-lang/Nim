@@ -1076,20 +1076,24 @@ proc expectKind*(n: NimNode; k: set[NimNodeKind]) {.compileTime.} =
   ## macros that check the AST that is passed to them.
   if n.kind notin k: error("Expected one of " & $k & ", got " & $n.kind, n)
 
-proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode()];
-    body: NimNode = newStmtList(), procType = nnkProcDef): NimNode {.compileTime.} =
+proc newProc*(name = newEmptyNode();
+              params: openArray[NimNode] = [newEmptyNode()];
+              body: NimNode = newStmtList();
+              procType = nnkProcDef;
+              pragmas: NimNode = newEmptyNode()): NimNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
   ## The ``params`` array must start with the return type of the proc,
   ## followed by a list of IdentDefs which specify the params.
   if procType notin RoutineNodes:
     error("Expected one of " & $RoutineNodes & ", got " & $procType)
+  pragmas.expectKind({nnkEmpty, nnkPragma})
   result = newNimNode(procType).add(
     name,
     newEmptyNode(),
     newEmptyNode(),
     newNimNode(nnkFormalParams).add(params),
-    newEmptyNode(),  # pragmas
+    pragmas,
     newEmptyNode(),
     body)
 

@@ -949,6 +949,14 @@ macro mapLiterals*(constructor, op: untyped;
   ## works for nested tuples of arrays of sets etc.
   result = mapLitsImpl(constructor, op, nested.boolVal)
 
+iterator items*[T](xs: iterator: T): T =
+  ## iterates over each element yielded by a closure iterator. This may
+  ## not seem particularly useful on its own, but this allows closure
+  ## iterators to be used by the the mapIt, filterIt, allIt, anyIt, etc.
+  ## templates.
+  for x in xs():
+    yield x
+
 when isMainModule:
   import strutils
   from algorithm import sorted
@@ -1381,6 +1389,14 @@ when isMainModule:
     let outp = inp.split(",").mapIt(it.split(":"))
     doAssert outp == @[@["a", "b"], @["c", "d"]]
 
+
+  block:
+    proc iter(len: int): auto =
+      result = iterator(): int =
+        for i in 0..<len:
+          yield i
+
+    doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
 
   when not defined(testing):
     echo "Finished doc tests"

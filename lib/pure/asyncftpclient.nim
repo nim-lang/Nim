@@ -16,7 +16,7 @@
 ## * Navigation through the FTP server's directories.
 ##
 ## Connecting to an FTP server
-## ------------------------
+## ===========================
 ##
 ## In order to begin any sort of transfer of files you must first
 ## connect to an FTP server. You can do so with the ``connect`` procedure.
@@ -34,7 +34,7 @@
 ## client will be connected after the ``await ftp.connect()`` call.
 ##
 ## Uploading a new file
-## --------------------
+## ====================
 ##
 ## After a connection is made you can use the ``store`` procedure to upload
 ## a new file to the FTP server. Make sure to check you are in the correct
@@ -53,7 +53,7 @@
 ##      waitFor(main())
 ##
 ## Checking the progress of a file transfer
-## ----------------------------------------
+## ========================================
 ##
 ## The progress of either a file upload or a file download can be checked
 ## by specifying a ``onProgressChanged`` procedure to the ``store`` or

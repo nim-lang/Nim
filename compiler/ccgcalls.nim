@@ -46,13 +46,23 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       add(pl, ~")")
-      if p.module.compileToCpp and lfSingleUse in d.flags:
-        # do not generate spurious temporaries for C++! For C we're better off
-        # with them to prevent undefined behaviour and because the codegen
-        # is free to emit expressions multiple times!
-        d.k = locCall
-        d.r = pl
-        excl d.flags, lfSingleUse
+      if p.module.compileToCpp:
+        if lfSingleUse in d.flags:
+          # do not generate spurious temporaries for C++! For C we're better off
+          # with them to prevent undefined behaviour and because the codegen
+          # is free to emit expressions multiple times!
+          d.k = locCall
+          d.r = pl
+          excl d.flags, lfSingleUse
+        else:
+          if d.k == locNone and p.splitDecls == 0:
+            getTempCpp(p, typ.sons[0], d, pl)
+          else:
+            if d.k == locNone: getTemp(p, typ.sons[0], d)
+            var list: TLoc
+            initLoc(list, locCall, d.lode, OnUnknown)
+            list.r = pl
+            genAssignment(p, d, list, {}) # no need for deep copying
       else:
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         assert(d.t != nil)        # generate an assignment to d:
@@ -218,10 +228,12 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
-    lineF(p, cpsStmts, callPattern & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
+    if tfIterator in typ.flags:
+      lineF(p, cpsStmts, PatIter & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
+    else:
+      lineF(p, cpsStmts, PatProc & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
   let rawProc = getRawProcType(p, typ)
-  let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
     if isInvalidReturnType(p.config, typ.sons[0]):
       if sonsLen(ri) > 1: add(pl, ~", ")
@@ -246,7 +258,11 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, d.lode, OnUnknown)
-      list.r = callPattern % [rdLoc(op), pl, pl.addComma, rawProc]
+      if tfIterator in typ.flags:
+        list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
+      else:
+        list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()

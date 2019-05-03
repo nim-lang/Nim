@@ -527,7 +527,7 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
 
 proc isTrival(caller: PNode): bool {.inline.} =
-  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil}
+  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved}
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
   let a = skipConvAndClosure(n)
@@ -738,7 +738,7 @@ proc track(tracked: PEffects, n: PNode) =
         mergeTags(tracked, effectList.sons[tagEffects], n)
         gcsafeAndSideeffectCheck()
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i), a)
+      for i in 1 ..< n.len: trackOperand(tracked, n.sons[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
@@ -754,7 +754,7 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, n.sons[i])
   of nkDotExpr:
     guardDotAccess(tracked, n)
-    for i in 0 ..< len(n): track(tracked, n.sons[i])
+    for i in 0 ..< n.len: track(tracked, n.sons[i])
   of nkCheckedFieldExpr:
     track(tracked, n.sons[0])
     if warnProveField in tracked.config.notes:
@@ -821,7 +821,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len
-    for i in 0 .. len(n)-3:
+    for i in 0 .. n.len-3:
       let it = n[i]
       track(tracked, it)
       if tracked.owner.kind != skMacro:
@@ -830,13 +830,19 @@ proc track(tracked: PEffects, n: PNode) =
             createTypeBoundOps(tracked.c, x.typ, x.info)
         else:
           createTypeBoundOps(tracked.c, it.typ, it.info)
-    for i in len(n)-2..len(n)-1:
-      track(tracked, n.sons[i])
+    let iterCall = n[n.len-2]
+    let loopBody = n[n.len-1]
+    if tracked.owner.kind != skMacro and iterCall.safelen > 1:
+      # XXX this is a bit hacky:
+      if iterCall[1].typ != nil and iterCall[1].typ.skipTypes(abstractVar).kind notin {tyVarargs, tyOpenArray}:
+        createTypeBoundOps(tracked.c, iterCall[1].typ, iterCall[1].info)
+    track(tracked, iterCall)
+    track(tracked, loopBody)
     setLen(tracked.init, oldState)
   of nkObjConstr:
     when false: track(tracked, n.sons[0])
     let oldFacts = tracked.guards.s.len
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       let x = n.sons[i]
       track(tracked, x)
       if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:

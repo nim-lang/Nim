@@ -20,11 +20,12 @@ type
   TGen = object of PPassContext
     doc: PDoc
     module: PSym
+    config: ConfigRef
   PGen = ref TGen
 
 template shouldProcess(g): bool =
   (g.module.owner.id == g.doc.conf.mainPackageId and optWholeProject in g.doc.conf.globalOptions) or
-      sfMainModule in g.module.flags
+      sfMainModule in g.module.flags or g.config.projectMainIdx == g.module.info.fileIndex
 
 template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
@@ -60,6 +61,7 @@ template myOpenImpl(ext: untyped) {.dirty.} =
   var g: PGen
   new(g)
   g.module = module
+  g.config = graph.config
   var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
       graph.cache, graph.config, ext)
   d.hasToc = true

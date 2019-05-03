@@ -32,9 +32,9 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils, 
+  intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
   pathutils, transf
-  
+
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -365,92 +365,92 @@ proc genOr(p: PProc, a, b: PNode, r: var TCompRes) =
     line(p, "}")
 
 type
-  TMagicFrmt = array[0..3, string]
+  TMagicFrmt = array[0..1, string]
   TMagicOps = array[mAddI..mStrToStr, TMagicFrmt]
 
-const # magic checked op; magic unchecked op; checked op; unchecked op
-  jsOps: TMagicOps = [
-    ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # AddI
-    ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # SubI
-    ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
-    ["divInt", "", "divInt($1, $2)", "Math.trunc($1 / $2)"], # DivI
-    ["modInt", "", "modInt($1, $2)", "Math.trunc($1 % $2)"], # ModI
-    ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
-    ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
-    ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
-    ["", "", "($1 - $2)", "($1 - $2)"], # SubF64
-    ["", "", "($1 * $2)", "($1 * $2)"], # MulF64
-    ["", "", "($1 / $2)", "($1 / $2)"], # DivF64
-    ["", "", "", ""], # ShrI
-    ["", "", "($1 << $2)", "($1 << $2)"], # ShlI
-    ["", "", "($1 >> $2)", "($1 >> $2)"], # AshrI
-    ["", "", "($1 & $2)", "($1 & $2)"], # BitandI
-    ["", "", "($1 | $2)", "($1 | $2)"], # BitorI
-    ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI
-    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI
-    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI
-    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
-    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
-    ["", "", "", ""], # addU
-    ["", "", "", ""], # subU
-    ["", "", "", ""], # mulU
-    ["", "", "", ""], # divU
-    ["", "", "($1 % $2)", "($1 % $2)"], # modU
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqI
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtI
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # leU
-    ["", "", "($1 < $2)", "($1 < $2)"], # ltU
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # leU64
-    ["", "", "($1 < $2)", "($1 < $2)"], # ltU64
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqEnum
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeEnum
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtEnum
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqCh
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeCh
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtCh
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqB
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeB
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtB
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqRef
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqUntracedRef
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LePtr
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtPtr
-    ["", "", "($1 != $2)", "($1 != $2)"], # Xor
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
-    ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
-    ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
-    ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
-    ["", "", "!($1)", "!($1)"], # Not
-    ["", "", "+($1)", "+($1)"], # UnaryPlusI
-    ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "+($1)", "+($1)"], # UnaryPlusF64
-    ["", "", "-($1)", "-($1)"], # UnaryMinusF64
-    ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64
-    ["Ze8ToI", "Ze8ToI", "Ze8ToI($1)", "Ze8ToI($1)"], # mZe8ToI
-    ["Ze8ToI64", "Ze8ToI64", "Ze8ToI64($1)", "Ze8ToI64($1)"], # mZe8ToI64
-    ["Ze16ToI", "Ze16ToI", "Ze16ToI($1)", "Ze16ToI($1)"], # mZe16ToI
-    ["Ze16ToI64", "Ze16ToI64", "Ze16ToI64($1)", "Ze16ToI64($1)"], # mZe16ToI64
-    ["Ze32ToI64", "Ze32ToI64", "Ze32ToI64($1)", "Ze32ToI64($1)"], # mZe32ToI64
-    ["ZeIToI64", "ZeIToI64", "ZeIToI64($1)", "ZeIToI64($1)"], # mZeIToI64
-    ["toU8", "toU8", "toU8($1)", "toU8($1)"], # toU8
-    ["toU16", "toU16", "toU16($1)", "toU16($1)"], # toU16
-    ["toU32", "toU32", "toU32($1)", "toU32($1)"], # toU32
-    ["", "", "$1", "$1"],     # ToFloat
-    ["", "", "$1", "$1"],     # ToBiggestFloat
-    ["", "", "Math.trunc($1)", "Math.trunc($1)"], # ToInt
-    ["", "", "Math.trunc($1)", "Math.trunc($1)"], # ToBiggestInt
-    ["nimCharToStr", "nimCharToStr", "nimCharToStr($1)", "nimCharToStr($1)"],
-    ["nimBoolToStr", "nimBoolToStr", "nimBoolToStr($1)", "nimBoolToStr($1)"],
-    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],
-    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],
-    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],
-    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr($1)", "cstrToNimstr($1)"],
-    ["", "", "$1", "$1"]]
+const # magic checked op; magic unchecked op;
+  jsMagics: TMagicOps = [
+    ["addInt", ""], # AddI
+    ["subInt", ""], # SubI
+    ["mulInt", ""], # MulI
+    ["divInt", ""], # DivI
+    ["modInt", ""], # ModI
+    ["addInt", ""], # Succ
+    ["subInt", ""], # Pred
+    ["", ""], # AddF64
+    ["", ""], # SubF64
+    ["", ""], # MulF64
+    ["", ""], # DivF64
+    ["", ""], # ShrI
+    ["", ""], # ShlI
+    ["", ""], # AshrI
+    ["", ""], # BitandI
+    ["", ""], # BitorI
+    ["", ""], # BitxorI
+    ["nimMin", "nimMin"], # MinI
+    ["nimMax", "nimMax"], # MaxI
+    ["nimMin", "nimMin"], # MinF64
+    ["nimMax", "nimMax"], # MaxF64
+    ["", ""], # addU
+    ["", ""], # subU
+    ["", ""], # mulU
+    ["", ""], # divU
+    ["", ""], # modU
+    ["", ""], # EqI
+    ["", ""], # LeI
+    ["", ""], # LtI
+    ["", ""], # EqF64
+    ["", ""], # LeF64
+    ["", ""], # LtF64
+    ["", ""], # leU
+    ["", ""], # ltU
+    ["", ""], # leU64
+    ["", ""], # ltU64
+    ["", ""], # EqEnum
+    ["", ""], # LeEnum
+    ["", ""], # LtEnum
+    ["", ""], # EqCh
+    ["", ""], # LeCh
+    ["", ""], # LtCh
+    ["", ""], # EqB
+    ["", ""], # LeB
+    ["", ""], # LtB
+    ["", ""], # EqRef
+    ["", ""], # EqUntracedRef
+    ["", ""], # LePtr
+    ["", ""], # LtPtr
+    ["", ""], # Xor
+    ["", ""], # EqCString
+    ["", ""], # EqProc
+    ["negInt", ""], # UnaryMinusI
+    ["negInt64", ""], # UnaryMinusI64
+    ["absInt", ""], # AbsI
+    ["", ""], # Not
+    ["", ""], # UnaryPlusI
+    ["", ""], # BitnotI
+    ["", ""], # UnaryPlusF64
+    ["", ""], # UnaryMinusF64
+    ["", ""], # AbsF64
+    ["Ze8ToI", "Ze8ToI"], # mZe8ToI
+    ["Ze8ToI64", "Ze8ToI64"], # mZe8ToI64
+    ["Ze16ToI", "Ze16ToI"], # mZe16ToI
+    ["Ze16ToI64", "Ze16ToI64"], # mZe16ToI64
+    ["Ze32ToI64", "Ze32ToI64"], # mZe32ToI64
+    ["ZeIToI64", "ZeIToI64"], # mZeIToI64
+    ["toU8", "toU8"], # toU8
+    ["toU16", "toU16"], # toU16
+    ["toU32", "toU32"], # toU32
+    ["", ""],     # ToFloat
+    ["", ""],     # ToBiggestFloat
+    ["", ""], # ToInt
+    ["", ""], # ToBiggestInt
+    ["nimCharToStr", "nimCharToStr"],
+    ["nimBoolToStr", "nimBoolToStr"],
+    ["cstrToNimstr", "cstrToNimstr"],
+    ["cstrToNimstr", "cstrToNimstr"],
+    ["cstrToNimstr", "cstrToNimstr"],
+    ["cstrToNimstr", "cstrToNimstr"],
+    ["", ""]]
 
 proc needsTemp(p: PProc; n: PNode): bool =
   # check if n contains a call to determine
@@ -478,7 +478,7 @@ proc maybeMakeTemp(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
   else:
     (a: a, tmp: b)
 
-proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
+template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   # $1 and $2 in the `frmt` string bind to lhs and rhs of the expr,
   # if $3 or $4 are present they will be substituted with temps for
   # lhs and rhs respectively
@@ -490,8 +490,8 @@ proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   var
     a, tmp = x.rdLoc
     b, tmp2 = y.rdLoc
-  if "$3" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
-  if "$4" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
+  when "$3" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
+  when "$4" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
 
   r.res = frmt % [a, b, tmp, tmp2]
   r.kind = resExpr
@@ -520,7 +520,7 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
     r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
   r.kind = resExpr
 
-proc ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
+template ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   var x, y, z: TCompRes
   useMagic(p, magic)
   gen(p, n.sons[1], x)
@@ -529,7 +529,7 @@ proc ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = frmt % [x.rdLoc, y.rdLoc, z.rdLoc]
   r.kind = resExpr
 
-proc unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
+template unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   # $1 binds to n[1], if $2 is present it will be substituted to a tmp of $1
   useMagic(p, magic)
   gen(p, n.sons[1], r)
@@ -541,15 +541,108 @@ proc unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
 proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   var
     x, y: TCompRes
+    xLoc,yLoc: Rope
   let i = ord(optOverflowCheck notin p.options)
-  useMagic(p, jsOps[op][i])
+  useMagic(p, jsMagics[op][i])
   if sonsLen(n) > 2:
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
-    r.res = jsOps[op][i + 2] % [x.rdLoc, y.rdLoc]
+    xLoc = x.rdLoc
+    yLoc = y.rdLoc
   else:
     gen(p, n.sons[1], r)
-    r.res = jsOps[op][i + 2] % [r.rdLoc]
+    xLoc = r.rdLoc
+
+  template applyFormat(frmtA, frmtB: string) =
+    if i == 0:
+      r.res = frmtA % [xLoc, yLoc]
+    else:
+      r.res = frmtB % [xLoc, yLoc]
+
+  case op:
+  of mAddI: applyFormat("addInt($1, $2)", "($1 + $2)")
+  of mSubI: applyFormat("subInt($1, $2)", "($1 - $2)")
+  of mMulI: applyFormat("mulInt($1, $2)", "($1 * $2)")
+  of mDivI: applyFormat("divInt($1, $2)", "Math.trunc($1 / $2)")
+  of mModI: applyFormat("modInt($1, $2)", "Math.trunc($1 % $2)")
+  of mSucc: applyFormat("addInt($1, $2)", "($1 + $2)")
+  of mPred: applyFormat("subInt($1, $2)", "($1 - $2)")
+  of mAddF64: applyFormat("($1 + $2)", "($1 + $2)")
+  of mSubF64: applyFormat("($1 - $2)", "($1 - $2)")
+  of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
+  of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
+  of mShrI: applyFormat("", "")
+  of mShlI: applyFormat("($1 << $2)", "($1 << $2)")
+  of mAshrI: applyFormat("($1 >> $2)", "($1 >> $2)")
+  of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
+  of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
+  of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
+  of mMinI: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
+  of mMaxI: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
+  of mMinF64: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
+  of mMaxF64: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
+  of mAddU: applyFormat("", "")
+  of msubU: applyFormat("", "")
+  of mmulU: applyFormat("", "")
+  of mdivU: applyFormat("", "")
+  of mmodU: applyFormat("($1 % $2)", "($1 % $2)")
+  of mEqI: applyFormat("($1 == $2)", "($1 == $2)")
+  of mLeI: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtI: applyFormat("($1 < $2)", "($1 < $2)")
+  of mEqF64: applyFormat("($1 == $2)", "($1 == $2)")
+  of mLeF64: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtF64: applyFormat("($1 < $2)", "($1 < $2)")
+  of mleU: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mltU: applyFormat("($1 < $2)", "($1 < $2)")
+  of mleU64: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mltU64: applyFormat("($1 < $2)", "($1 < $2)")
+  of mEqEnum: applyFormat("($1 == $2)", "($1 == $2)")
+  of mLeEnum: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtEnum: applyFormat("($1 < $2)", "($1 < $2)")
+  of mEqCh: applyFormat("($1 == $2)", "($1 == $2)")
+  of mLeCh: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtCh: applyFormat("($1 < $2)", "($1 < $2)")
+  of mEqB: applyFormat("($1 == $2)", "($1 == $2)")
+  of mLeB: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtB: applyFormat("($1 < $2)", "($1 < $2)")
+  of mEqRef: applyFormat("($1 == $2)", "($1 == $2)")
+  of mEqUntracedRef: applyFormat("($1 == $2)", "($1 == $2)")
+  of mLePtr: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtPtr: applyFormat("($1 < $2)", "($1 < $2)")
+  of mXor: applyFormat("($1 != $2)", "($1 != $2)")
+  of mEqCString: applyFormat("($1 == $2)", "($1 == $2)")
+  of mEqProc: applyFormat("($1 == $2)", "($1 == $2)")
+  of mUnaryMinusI: applyFormat("negInt($1)", "-($1)")
+  of mUnaryMinusI64: applyFormat("negInt64($1)", "-($1)")
+  of mAbsI: applyFormat("absInt($1)", "Math.abs($1)")
+  of mNot: applyFormat("!($1)", "!($1)")
+  of mUnaryPlusI: applyFormat("+($1)", "+($1)")
+  of mBitnotI: applyFormat("~($1)", "~($1)")
+  of mUnaryPlusF64: applyFormat("+($1)", "+($1)")
+  of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
+  of mAbsF64: applyFormat("Math.abs($1)", "Math.abs($1)")
+  of mZe8ToI: applyFormat("Ze8ToI($1)", "Ze8ToI($1)")
+  of mZe8ToI64: applyFormat("Ze8ToI64($1)", "Ze8ToI64($1)")
+  of mZe16ToI: applyFormat("Ze16ToI($1)", "Ze16ToI($1)")
+  of mZe16ToI64: applyFormat("Ze16ToI64($1)", "Ze16ToI64($1)")
+  of mZe32ToI64: applyFormat("Ze32ToI64($1)", "Ze32ToI64($1)")
+  of mZeIToI64: applyFormat("ZeIToI64($1)", "ZeIToI64($1)")
+  of mtoU8: applyFormat("toU8($1)", "toU8($1)")
+  of mtoU16: applyFormat("toU16($1)", "toU16($1)")
+  of mtoU32: applyFormat("toU32($1)", "toU32($1)")
+  of mToFloat: applyFormat("$1", "$1")
+  of mToBiggestFloat: applyFormat("$1", "$1")
+  of mToInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
+  of mToBiggestInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
+  of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
+  of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
+  of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
+  of mInt64ToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
+  of mFloatToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
+  of mCStrToStr: applyFormat("cstrToNimstr($1)", "cstrToNimstr($1)")
+  of mStrToStr, mUnown: applyFormat("$1", "$1")
+  else:
+    assert false, $op
 
 proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   case op
@@ -1268,6 +1361,9 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
     r.res = s.loc.r
   of skProc, skFunc, skConverter, skMethod:
+    if sfCompileTime in s.flags:
+      localError(p.config, n.info, "request to generate code for .compileTime proc: " &
+          s.name.s)
     discard mangleName(p.module, s)
     r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone or
@@ -1603,6 +1699,9 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       varCode = "var $2"
   else:
+    # Is this really a thought through feature?  this basically unused
+    # feature makes it impossible for almost all format strings in
+    # this function to be checked at compile time.
     varCode = v.constraint.strVal
 
   if n.kind == nkEmpty:
@@ -1611,8 +1710,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       lineF(p, "var $1 = null;$n", [varName])
       lineF(p, "var $1_Idx = 0;$n", [varName])
     else:
-      lineF(p, varCode & " = $3;$n",
-                [returnType, varName, createVar(p, v.typ, isIndirect(v))])
+      line(p, runtimeFormat(varCode & " = $3;$n", [returnType, varName, createVar(p, v.typ, isIndirect(v))]))
   else:
     gen(p, n, a)
     case mapType(p, v.typ)
@@ -1626,29 +1724,29 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       let targetBaseIndex = {sfAddrTaken, sfGlobal} * v.flags == {}
       if a.typ == etyBaseIndex:
         if targetBaseIndex:
-          lineF(p, varCode & " = $3, $2_Idx = $4;$n",
-                   [returnType, v.loc.r, a.address, a.res])
+          line(p, runtimeFormat(varCode & " = $3, $2_Idx = $4;$n",
+                   [returnType, v.loc.r, a.address, a.res]))
         else:
           if isIndirect(v):
-            lineF(p, varCode & " = [[$3, $4]];$n",
-                     [returnType, v.loc.r, a.address, a.res])
+            line(p, runtimeFormat(varCode & " = [[$3, $4]];$n",
+                     [returnType, v.loc.r, a.address, a.res]))
           else:
-            lineF(p, varCode & " = [$3, $4];$n",
-                     [returnType, v.loc.r, a.address, a.res])
+            line(p, runtimeFormat(varCode & " = [$3, $4];$n",
+                     [returnType, v.loc.r, a.address, a.res]))
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
           lineF(p, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
                    [tmp, a.res, v.loc.r])
         else:
-          lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, a.res])
+          line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
       return
     else:
       s = a.res
     if isIndirect(v):
-      lineF(p, varCode & " = [$3];$n", [returnType, v.loc.r, s])
+      line(p, runtimeFormat(varCode & " = [$3];$n", [returnType, v.loc.r, s]))
     else:
-      lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, s])
+      line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, s]))
 
   if useReloadingGuard:
     dec p.extraIndent
@@ -2117,7 +2215,7 @@ proc genReturnStmt(p: PProc, n: PNode) =
   lineF(p, "break BeforeRet;$n", [])
 
 proc frameCreate(p: PProc; procname, filename: Rope): Rope =
-  let frameFmt =
+  const frameFmt =
     "var F={procname:$1,prev:framePtr,filename:$2,line:0};$n"
 
   result = p.indentLine(frameFmt % [procname, filename])
@@ -2185,7 +2283,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
 
   var def: Rope
   if not prc.constraint.isNil:
-    def = (prc.constraint.strVal & " {$n$#$#$#$#$#") %
+    def = runtimeFormat(prc.constraint.strVal & " {$n$#$#$#$#$#",
             [ returnType,
               name,
               header,
@@ -2193,7 +2291,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
               optionalLine(p.locals),
               optionalLine(resultAsgn),
               optionalLine(genProcBody(p, prc)),
-              optionalLine(p.indentLine(returnStmt))]
+              optionalLine(p.indentLine(returnStmt))])
   else:
     result = ~"\L"
 

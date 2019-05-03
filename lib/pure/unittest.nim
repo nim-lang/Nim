@@ -57,8 +57,8 @@
 ##   # Run suites starting with 'bug #' and standalone tests starting with '#'
 ##   nim c -r test 'bug #*::' '::#*'
 ##
-## Example
-## -------
+## Examples
+## ========
 ##
 ## .. code:: nim
 ##
@@ -177,13 +177,13 @@ proc addOutputFormatter*(formatter: OutputFormatter) =
   formatters.add(formatter)
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
-                                colorOutput = true): ConsoleOutputFormatter =
+                                colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
   )
 
-proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
+proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
   when declared(stdout):
     # Reading settings
     # On a terminal this branch is executed
@@ -263,7 +263,7 @@ proc xmlEscape(s: string): string =
       else:
         result.add(c)
 
-proc newJUnitOutputFormatter*(stream: Stream): JUnitOutputFormatter =
+proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
   ## The ``stream`` is NOT closed automatically when the test are finished,

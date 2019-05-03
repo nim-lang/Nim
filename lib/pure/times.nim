@@ -17,7 +17,8 @@
   resolution used by ``getTime()`` depends on the platform and backend
   (JS is limited to millisecond precision).
 
-  Examples:
+  Examples
+  ========
 
   .. code-block:: nim
     import times, os
@@ -38,7 +39,7 @@
     echo "One month from now     : ", now() + 1.months
 
   Parsing and Formatting Dates
-  ----------------------------
+  ============================
 
   The ``DateTime`` type can be parsed and formatted using the different
   ``parse`` and ``format`` procedures.
@@ -128,7 +129,7 @@
   only for years in the range 1..9999).
 
   Duration vs TimeInterval
-  ----------------------------
+  ============================
   The ``times`` module exports two similiar types that are both used to
   represent some amount of time: `Duration <#Duration>`_ and
   `TimeInterval <#TimeInterval>`_.
@@ -137,7 +138,7 @@
   needed).
 
   Duration
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ----------------------------
   A ``Duration`` represents a duration of time stored as seconds and
   nanoseconds. A ``Duration`` is always fully normalized, so
 ``initDuration(hours = 1)`` and ``initDuration(minutes = 60)`` are equivilant.
@@ -147,7 +148,7 @@
   is more performant and easier to understand it should generally prefered.
 
   TimeInterval
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ----------------------------
   A ``TimeInterval`` represents some amount of time expressed in calendar
   units, for example "1 year and 2 days". Since some units cannot be
   normalized (the length of a year is different for leap years for example),
@@ -164,7 +165,7 @@
   ``Duration`` doesn't have.
 
   How long is a day?
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ----------------------------
   It should be especially noted that the handling of days differs between
   ``TimeInterval`` and ``Duration``. The ``Duration`` type always treats a day
   as exactly 86400 seconds. For ``TimeInterval``, it's more complex.
@@ -2651,7 +2652,7 @@ proc microseconds*(dur: Duration): int {.inline, deprecated.} =
     doAssert dur.microseconds == 7008
   result = convert(Nanoseconds, Microseconds, dur.nanosecond)
 
-proc nanoseconds*(dur: Duration): NanosecondRange {.inline.} =
+proc nanoseconds*(dur: Duration): NanosecondRange {.inline, deprecated.} =
   ## Number of whole microseconds represented by the **fractional**
   ## part of the duration.
   ##

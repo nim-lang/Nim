@@ -38,6 +38,7 @@ Hello World!
 * Your Nim version (output of `nim -v`).
 * Was it working in the previous Nim releases?
 * A link to a related issue or discussion.
+* A project reference where (and how) the issue causes problems.
 -->
 ```
 $ nim -v

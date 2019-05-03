@@ -567,19 +567,36 @@ proc genReturn(c: var Con; n: PNode) =
 
 const
   InterestingSyms = {skVar, skResult, skLet, skParam, skForVar, skTemp}
-  PathKinds* = {nkDotExpr, nkCheckedFieldExpr,
+  PathKinds0 = {nkDotExpr, nkCheckedFieldExpr,
                 nkBracketExpr, nkDerefExpr, nkHiddenDeref,
                 nkAddr, nkHiddenAddr,
-                nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}
+                nkObjDownConv, nkObjUpConv}
+  PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv}
+
+proc getRoot(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of PathKinds0:
+      result = result[0]
+    of PathKinds1:
+      result = result[1]
+    else: break
+
+proc skipConvDfa*(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkObjDownConv, nkObjUpConv:
+      result = result[0]
+    of PathKinds1:
+      result = result[1]
+    else: break
 
 proc genUse(c: var Con; orig: PNode) =
-  var n = orig
-  var iters = 0
-  while n.kind in PathKinds:
-    n = n[0]
-    inc iters
+  let n = dfa.getRoot(orig)
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use, sym: if iters > 0: nil else: n.sym)
+    c.code.add Instr(n: orig, kind: use, sym: if orig != n: nil else: n.sym)
 
 proc aliases(obj, field: PNode): bool =
   var n = field
@@ -590,7 +607,7 @@ proc aliases(obj, field: PNode): bool =
     if sameTrees(obj, n): return true
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenDeref:
+       nkObjDownConv, nkObjUpConv, nkHiddenDeref, nkDerefExpr:
       n = n[0]
     of nkBracketExpr:
       let x = n[0]
@@ -616,13 +633,19 @@ proc instrTargets*(ins: Instr; loc: PNode): bool =
     # use x; question does it affect 'x.f'? Yes.
     result = aliases(ins.n, loc) or aliases(loc, ins.n)
 
-proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
-  var n = n
+proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
+  var n = orig
   while true:
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenDeref:
+       nkObjDownConv, nkObjUpConv:
       n = n[0]
+    of nkHiddenDeref, nkDerefExpr:
+      # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
+      # pointer indirection.
+      n = n[0]
+      return n.kind == nkSym and n.sym.owner == owner and (isSinkParam(n.sym) or
+          n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned, tyVar})
     of nkBracketExpr:
       let x = n[0]
       if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:
@@ -633,11 +656,25 @@ proc isAnalysableFieldAccess*(n: PNode; owner: PSym): bool =
       break
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
-  result = n.kind == nkSym and n.sym.owner == owner and owner.kind != skModule
+  result = n.kind == nkSym and n.sym.owner == owner and
+    owner.kind != skModule and
+    (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
+  # Note: There is a different move analyzer possible that checks for
+  # consume(param.key); param.key = newValue  for all paths. Then code like
+  #
+  #   let splited = split(move self.root, x)
+  #   self.root = merge(splited.lower, splited.greater)
+  #
+  # could be written without the ``move self.root``. However, this would be
+  # wrong! Then the write barrier for the ``self.root`` assignment would
+  # free the old data and all is lost! Lesson: Don't be too smart, trust the
+  # lower level C++ optimizer to specialize this code.
 
 proc genDef(c: var Con; n: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: n, kind: def, sym: n.sym)
+  elif isAnalysableFieldAccess(n, c.owner):
+    c.code.add Instr(n: n, kind: def, sym: nil)
 
 proc canRaise(fn: PNode): bool =
   const magicsThatCanRaise = {
@@ -715,7 +752,7 @@ proc gen(c: var Con; n: PNode) =
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.
     genDef(c, n[0])
-  of PathKinds:
+  of PathKinds0 - {nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}:
     genUse(c, n)
   of nkIfStmt, nkIfExpr: genIf(c, n)
   of nkWhenStmt:
@@ -732,8 +769,8 @@ proc gen(c: var Con; n: PNode) =
      nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
-  of nkDiscardStmt: gen(c, n.sons[0])
-  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast:
+  of nkDiscardStmt, nkObjDownConv, nkObjUpConv: gen(c, n.sons[0])
+  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, nkHiddenSubConv, nkHiddenStdConv:
     gen(c, n.sons[1])
   of nkStringToCString, nkCStringToString: gen(c, n.sons[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)
