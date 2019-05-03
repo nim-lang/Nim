@@ -48,6 +48,7 @@ Options:
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messagescoloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
+  --megatest:on|off         Enable or disable megatest. Default is on.
   --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
 """ % resultsFile
 
@@ -569,6 +570,7 @@ proc main() =
   var targetsStr = ""
   var isMainProcess = true
   var skipFrom = ""
+  var useMegatest = true
 
   var p = initOptParser()
   p.next()
@@ -596,6 +598,14 @@ proc main() =
         quit Usage
     of "simulate":
       simulate = true
+    of "megatest":
+      case p.val.string:
+      of "on":
+        useMegatest = true
+      of "off":
+        useMegatest = false
+      else:
+        quit Usage
     of "backendlogging":
       case p.val.string:
       of "on":
@@ -635,10 +645,12 @@ proc main() =
       if kind == pcDir and cat notin ["testdata", "nimcache"]:
         cats.add cat
     cats.add AdditionalCategories
+    if useMegatest: cats.add MegaTestCat
 
     var cmds: seq[string]
     for cat in cats:
-      cmds.add(myself & " pcat " & quoteShell(cat) & rest)
+      let runtype = if useMegatest: " pcat " else: " cat "
+      cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
       echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
