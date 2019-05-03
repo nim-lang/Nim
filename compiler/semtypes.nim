@@ -950,7 +950,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if tfUnresolved notin paramType.flags:
       # naked typedescs are not bindOnce types
       if paramType.base.kind == tyNone and paramTypId != nil and
-          paramTypId.id == getIdent(c.cache, "typedesc").id:
+          (paramTypId.id == getIdent(c.cache, "typedesc").id or
+          paramTypId.id == getIdent(c.cache, "type").id):
         # XXX Why doesn't this check for tyTypeDesc instead?
         paramTypId = nil
       let t = c.newTypeWithSons(tyTypeDesc, @[paramType.base])
