@@ -53,6 +53,9 @@ type
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
+const
+  IntSize = sizeof(int)
+
 proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
@@ -136,6 +139,17 @@ proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
   result = ord(x)
 
+template multibyteHashImpl(result: Hash, x: typed, start, stop: int) =
+  var i = start
+  while i <= stop+1 - IntSize:
+    let n = cast[ptr int](unsafeAddr x[i])[]
+    result = result !& n
+    i += IntSize
+  while i <= stop:
+    result = result !& ord(x[i])
+    inc i
+  result = !$result
+
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
@@ -145,28 +159,16 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  var h: Hash = 0
-  for i in 0..x.len-1:
-    h = h !& ord(x[i])
-  result = !$h
+  multibyteHashImpl(result, x, 0, high(x))
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
   runnableExamples:
     doAssert hash(cstring"abracadabra") == hash("abracadabra")
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
+    doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  var h: Hash = 0
-  var i = 0
-  when defined(js):
-    while i < x.len:
-      h = h !& ord(x[i])
-      inc i
-  else:
-    while x[i] != 0.char:
-      h = h !& ord(x[i])
-      inc i
-  result = !$h
+  multibyteHashImpl(result, x, 0, high(x))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -177,10 +179,13 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  var h: Hash = 0
-  for i in sPos..ePos:
-    h = h !& ord(sBuf[i])
-  result = !$h
+  multibyteHashImpl(result, sBuf, sPos, ePos)
+
+proc addLowercaseChar(x: var string, c: char) {.inline.} =
+  if c in {'A'..'Z'}:
+    x.add chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+  else:
+    x.add c
 
 proc hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
@@ -190,20 +195,15 @@ proc hashIgnoreStyle*(x: string): Hash =
   runnableExamples:
     doAssert hashIgnoreStyle("aBr_aCa_dAB_ra") == hash("abracadabra")
 
-  var h: Hash = 0
-  var i = 0
-  let xLen = x.len
-  while i < xLen:
-    var c = x[i]
-    if c == '_':
-      inc(i)
-    else:
-      if c in {'A'..'Z'}:
-        c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-      h = h !& ord(c)
-      inc(i)
-
-  result = !$h
+  var
+    i = 0
+    cleanedString = newStringOfCap(len(x))
+  while i <= high(x):
+    let c = x[i]
+    if c != '_':
+      cleanedString.addLowercaseChar(c)
+    inc i
+  result = hash(cleanedString)
 
 proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -215,18 +215,15 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
     var a = "ABracada_b_r_a"
     doAssert hashIgnoreStyle(a, 0, 3) == hashIgnoreStyle(a, 7, a.high)
 
-  var h: Hash = 0
-  var i = sPos
+  var
+    remainingLength = ePos - sPos + 1
+    i = sPos
+    cleanedString = newStringOfCap(remainingLength)
   while i <= ePos:
-    var c = sBuf[i]
-    if c == '_':
-      inc(i)
-    else:
-      if c in {'A'..'Z'}:
-        c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-      h = h !& ord(c)
-      inc(i)
-  result = !$h
+    let c = sBuf[i]
+    if c != '_': cleanedString.addLowercaseChar(c)
+    inc i
+  result = hash(cleanedString)
 
 proc hashIgnoreCase*(x: string): Hash =
   ## Efficient hashing of strings; case is ignored.
@@ -236,13 +233,13 @@ proc hashIgnoreCase*(x: string): Hash =
   runnableExamples:
     doAssert hashIgnoreCase("ABRAcaDABRA") == hashIgnoreCase("abRACAdabra")
 
-  var h: Hash = 0
-  for i in 0..x.len-1:
-    var c = x[i]
-    if c in {'A'..'Z'}:
-      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-    h = h !& ord(c)
-  result = !$h
+  var
+    lowerString = newStringOfCap(len(x))
+    i = 0
+  while i <= high(x):
+    lowerString.addLowercaseChar(x[i])
+    inc i
+  result = hash(lowerString)
 
 proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -254,13 +251,14 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     var a = "ABracadabRA"
     doAssert hashIgnoreCase(a, 0, 3) == hashIgnoreCase(a, 7, 10)
 
-  var h: Hash = 0
-  for i in sPos..ePos:
-    var c = sBuf[i]
-    if c in {'A'..'Z'}:
-      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-    h = h !& ord(c)
-  result = !$h
+  var
+    remainingLength = ePos - sPos + 1
+    lowerString = newStringOfCap(remainingLength)
+    i = sPos
+  while i <= ePos:
+    lowerString.addLowercaseChar(sBuf[i])
+    inc i
+  result = hash(lowerString)
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
@@ -282,8 +280,12 @@ proc hash*[T: tuple](x: T): Hash =
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
-  for it in items(x): result = result !& hash(it)
-  result = !$result
+  when A is char|byte:
+    multibyteHashImpl(result, x, 0, x.high)
+  else:
+    for it in items(x):
+      result = result !& hash(it)
+    result = !$result
 
 proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## Efficient hashing of portions of arrays and sequences, from starting
@@ -294,13 +296,17 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
-  for i in sPos..ePos:
-    result = result !& hash(aBuf[i])
-  result = !$result
+  when A is char|byte:
+    multibyteHashImpl(result, aBuf, sPos, ePos)
+  else:
+    for i in sPos .. ePos:
+      result = result !& hash(aBuf[i])
+    result = !$result
 
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
-  for it in items(x): result = result !& hash(it)
+  for it in items(x):
+    result = result !& hash(it)
   result = !$result
 
 
@@ -309,8 +315,16 @@ when isMainModule:
   doAssert( hash("aa bb aaaa1234") == hash(cstring("aa bb aaaa1234")) )
   doAssert( hashIgnoreCase("aA bb aAAa1234") == hash("aa bb aaaa1234") )
   doAssert( hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234") )
-  let xx = @['H','e','l','l','o']
-  let ss = "Hello"
+  let
+    xx = @['H','e','l','l','o']
+    ss = "Hello"
   doAssert( hash(xx) == hash(ss) )
   doAssert( hash(xx) == hash(xx, 0, xx.high) )
   doAssert( hash(ss) == hash(ss, 0, ss.high) )
+  let # longer than 8 characters
+    xxl = @['H','e','l','l','o','w','e','e','n','s']
+    ssl = "Helloweens"
+  doAssert( hash(xxl) == hash(ssl) )
+  doAssert( hash(xxl) == hash(xxl, 0, xxl.high) )
+  doAssert( hash(ssl) == hash(ssl, 0, ssl.high) )
+  doAssert( hash(xx) == hash(xxl, 0, 4) )
