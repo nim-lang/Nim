@@ -1,5 +1,5 @@
 discard """
-  errormsg: "ambiguous identifier: 'range' --use system.range or mrange.range"
+  errormsg: "ambiguous identifier: 'range' -- use system.range or mrange.range"
   line: 13
 """
 
