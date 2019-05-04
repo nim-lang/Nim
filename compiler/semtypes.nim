@@ -38,12 +38,6 @@ const
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
-const
-  mStaticTy = {mStatic}
-  mTypeTy = {mType, mTypeOf}
-  # XXX: This should be needed only temporarily until the C
-  # sources are rebuilt
-
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   if prev == nil:
     result = newTypeS(kind, c)
@@ -386,7 +380,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         else:
           localError(c.config, n.info, errTypeExpected)
           return errorSym(c, n)
-      if result.kind != skType and result.magic notin (mStaticTy + mTypeTy):
+      if result.kind != skType and result.magic notin {mStatic, mType, mTypeOf}:
         # this implements the wanted ``var v: V, x: V`` feature ...
         var ov: TOverloadIter
         var amb = initOverloadIter(ov, c, n)
@@ -1637,10 +1631,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           incl result.flags, tfHasAsgn
     of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
-    of mTypeDesc, mTypeTy:
+    of mTypeDesc, mType, mTypeOf:
       result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
       result.flags.incl tfExplicit
-    of mStaticTy:
+    of mStatic:
       result = semStaticType(c, n[1], prev)
     of mExpr:
       result = semTypeNode(c, n.sons[0], nil)
