@@ -67,10 +67,9 @@ proc cacheTypeInst*(inst: PType) =
   #      update the refcount
   let gt = inst.sons[0]
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
-  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
+  if t.kind in {tyStatic, tyError, tyGenericParam} + tyTypeClasses:
     return
   gt.sym.typeInstCache.safeAdd(inst)
-
 
 type
   LayeredIdTable* = object
@@ -335,6 +334,9 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header.sons[i])
+
+  if body.kind == tyError:
+    return
 
   let bbody = lastSon body
   var newbody = replaceTypeVarsT(cl, bbody)

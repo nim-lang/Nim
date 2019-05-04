@@ -972,7 +972,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       if lifted != nil: paramType.sons[i] = lifted
 
     let body = paramType.base
-    if body.kind == tyForward:
+    if body.kind in {tyForward, tyError}:
       # this may happen for proc type appearing in a type section
       # before one of its param types
       return

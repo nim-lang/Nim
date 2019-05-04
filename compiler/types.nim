@@ -130,6 +130,7 @@ proc elemType*(t: PType): PType =
   case t.kind
   of tyGenericInst, tyDistinct, tyAlias, tySink: result = elemType(lastSon(t))
   of tyArray: result = t.sons[1]
+  of tyError: result = t
   else: result = t.lastSon
   assert(result != nil)
 
