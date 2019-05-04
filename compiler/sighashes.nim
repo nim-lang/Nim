@@ -36,6 +36,7 @@ type
     CoOwnerSig
     CoIgnoreRange
     CoConsiderOwned
+    CoDistinct
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
@@ -97,7 +98,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
   of tyDistinct:
-    if {CoType, CoConsiderOwned} * flags == {CoType} or t.sym == nil:
+    if CoDistinct in flags:
+      if t.sym != nil: c.hashSym(t.sym)
+      if t.sym == nil or tfFromGeneric in t.flags:
+        c.hashType t.lastSon, flags
+    elif CoType in flags or t.sym == nil:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
