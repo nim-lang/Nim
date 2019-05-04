@@ -659,8 +659,11 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##   # value: [2, 4, 6, 8]
   ##   # key: o
   ##   # value: [1, 5, 7, 9]
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
   ## Iterates over any ``(key, value)`` pair in the table ``t`` (must be
@@ -678,8 +681,11 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
       v.add(v[0] + 10)
     doAssert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.toTable
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator keys*[A, B](t: Table[A, B]): A =
   ## Iterates over any key in the table ``t``.
@@ -696,8 +702,11 @@ iterator keys*[A, B](t: Table[A, B]): A =
       a[k].add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield t.data[h].key
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield t.data[h].key
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator values*[A, B](t: Table[A, B]): B =
   ## Iterates over any value in the table ``t``.
@@ -714,8 +723,11 @@ iterator values*[A, B](t: Table[A, B]): B =
     for v in a.values:
       doAssert v.len == 4
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mvalues*[A, B](t: var Table[A, B]): var B =
   ## Iterates over any value in the table ``t`` (must be
@@ -733,8 +745,11 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
       v.add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## Iterates over any value in the table ``t`` that belongs to the given ``key``.
@@ -756,9 +771,11 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ##   # 20
   ##   # 30
   var h: Hash = genHash(key) and high(t.data)
+  let L = len(t)
   while isFilled(t.data[h].hcode):
     if t.data[h].key == key:
       yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
     h = nextTry(h, high(t.data))
 
 
@@ -1075,8 +1092,11 @@ iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ##   # value: [2, 4, 6, 8]
   ##   # key: o
   ##   # value: [1, 5, 7, 9]
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
   ## Iterates over any ``(key, value)`` pair in the table ``t``. The values
@@ -1094,8 +1114,11 @@ iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
       v.add(v[0] + 10)
     doAssert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.newTable
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator keys*[A, B](t: TableRef[A, B]): A =
   ## Iterates over any key in the table ``t``.
@@ -1112,8 +1135,11 @@ iterator keys*[A, B](t: TableRef[A, B]): A =
       a[k].add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield t.data[h].key
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield t.data[h].key
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator values*[A, B](t: TableRef[A, B]): B =
   ## Iterates over any value in the table ``t``.
@@ -1130,8 +1156,11 @@ iterator values*[A, B](t: TableRef[A, B]): B =
     for v in a.values:
       doAssert v.len == 4
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mvalues*[A, B](t: TableRef[A, B]): var B =
   ## Iterates over any value in the table ``t``. The values can be modified.
@@ -1148,8 +1177,11 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
       v.add(99)
     doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
 
-  for h in 0..high(t.data):
-    if isFilled(t.data[h].hcode): yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if isFilled(t.data[h].hcode):
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 
 
@@ -1605,8 +1637,11 @@ iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   ##   # key: e
   ##   # value: [2, 4, 6, 8]
+
+  let L = len(t)
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
   ## Iterates over any ``(key, value)`` pair in the table ``t`` (must be
@@ -1624,8 +1659,10 @@ iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
       v.add(v[0] + 10)
     doAssert a == {'o': @[1, 5, 7, 9, 11], 'e': @[2, 4, 6, 8, 12]}.toOrderedTable
 
+  let L = len(t)
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator keys*[A, B](t: OrderedTable[A, B]): A =
   ## Iterates over any key in the table ``t`` in insertion order.
@@ -1642,8 +1679,10 @@ iterator keys*[A, B](t: OrderedTable[A, B]): A =
       a[k].add(99)
     doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.toOrderedTable
 
+  let L = len(t)
   forAllOrderedPairs:
     yield t.data[h].key
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator values*[A, B](t: OrderedTable[A, B]): B =
   ## Iterates over any value in the table ``t`` in insertion order.
@@ -1660,8 +1699,10 @@ iterator values*[A, B](t: OrderedTable[A, B]): B =
     for v in a.values:
       doAssert v.len == 4
 
+  let L = len(t)
   forAllOrderedPairs:
     yield t.data[h].val
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
   ## Iterates over any value in the table ``t`` (must be
@@ -1679,8 +1720,11 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
     for v in a.mvalues:
       v.add(99)
     doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.toOrderedTable
+
+  let L = len(t)
   forAllOrderedPairs:
     yield t.data[h].val
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 
 
@@ -1983,8 +2027,11 @@ iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   ##   # key: e
   ##   # value: [2, 4, 6, 8]
+
+  let L = len(t)
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
   ## Iterates over any ``(key, value)`` pair in the table ``t`` in insertion
@@ -2002,8 +2049,10 @@ iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
       v.add(v[0] + 10)
     doAssert a == {'o': @[1, 5, 7, 9, 11], 'e': @[2, 4, 6, 8, 12]}.newOrderedTable
 
+  let L = len(t)
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
   ## Iterates over any key in the table ``t`` in insertion order.
@@ -2020,8 +2069,10 @@ iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
       a[k].add(99)
     doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.newOrderedTable
 
+  let L = len(t)
   forAllOrderedPairs:
     yield t.data[h].key
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator values*[A, B](t: OrderedTableRef[A, B]): B =
   ## Iterates over any value in the table ``t`` in insertion order.
@@ -2038,8 +2089,10 @@ iterator values*[A, B](t: OrderedTableRef[A, B]): B =
     for v in a.values:
       doAssert v.len == 4
 
+  let L = len(t)
   forAllOrderedPairs:
     yield t.data[h].val
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
   ## Iterates over any value in the table ``t`` in insertion order. The values
@@ -2057,8 +2110,10 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
       v.add(99)
     doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.newOrderedTable
 
+  let L = len(t)
   forAllOrderedPairs:
     yield t.data[h].val
+    assert(len(t) == L, "the length of the table changed while iterating over it")
 
 
 
@@ -2198,7 +2253,7 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## * `largest proc<#largest,CountTable[A]>`_
   assert t.len > 0
   var minIdx = -1
-  for h in 0..high(t.data):
+  for h in 0 .. high(t.data):
     if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
       minIdx = h
   result.key = t.data[minIdx].key
@@ -2211,7 +2266,7 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## * `smallest proc<#smallest,CountTable[A]>`_
   assert t.len > 0
   var maxIdx = 0
-  for h in 1..high(t.data):
+  for h in 1 .. high(t.data):
     if t.data[maxIdx].val < t.data[h].val: maxIdx = h
   result.key = t.data[maxIdx].key
   result.val = t.data[maxIdx].val
@@ -2335,8 +2390,11 @@ iterator pairs*[A](t: CountTable[A]): (A, int) =
   ##   # value: 1
   ##   # key: r
   ##   # value: 2
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
   ## Iterates over any ``(key, value)`` pair in the table ``t`` (must be
@@ -2351,8 +2409,11 @@ iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
       v = 2
     doAssert a == toCountTable("aabbccddrr")
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator keys*[A](t: CountTable[A]): A =
   ## Iterates over any key in the table ``t``.
@@ -2366,8 +2427,11 @@ iterator keys*[A](t: CountTable[A]): A =
       a[k] = 2
     doAssert a == toCountTable("aabbccddrr")
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield t.data[h].key
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield t.data[h].key
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator values*[A](t: CountTable[A]): int =
   ## Iterates over any value in the table ``t``.
@@ -2381,8 +2445,11 @@ iterator values*[A](t: CountTable[A]): int =
     for v in values(a):
       assert v < 10
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mvalues*[A](t: var CountTable[A]): var int =
   ## Iterates over any value in the table ``t`` (must be
@@ -2397,8 +2464,11 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
       v = 2
     doAssert a == toCountTable("aabbccddrr")
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 
 
@@ -2585,8 +2655,11 @@ iterator pairs*[A](t: CountTableRef[A]): (A, int) =
   ##   # value: 1
   ##   # key: r
   ##   # value: 2
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mpairs*[A](t: CountTableRef[A]): (A, var int) =
   ## Iterates over any ``(key, value)`` pair in the table ``t``. The values can
@@ -2601,8 +2674,11 @@ iterator mpairs*[A](t: CountTableRef[A]): (A, var int) =
       v = 2
     doAssert a == newCountTable("aabbccddrr")
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "table modified while iterating over it")
 
 iterator keys*[A](t: CountTableRef[A]): A =
   ## Iterates over any key in the table ``t``.
@@ -2616,8 +2692,11 @@ iterator keys*[A](t: CountTableRef[A]): A =
       a[k] = 2
     doAssert a == newCountTable("aabbccddrr")
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield t.data[h].key
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield t.data[h].key
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator values*[A](t: CountTableRef[A]): int =
   ## Iterates over any value in the table ``t``.
@@ -2631,8 +2710,11 @@ iterator values*[A](t: CountTableRef[A]): int =
     for v in values(a):
       assert v < 10
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 iterator mvalues*[A](t: CountTableRef[A]): var int =
   ## Iterates over any value in the table ``t``. The values can be modified.
@@ -2646,8 +2728,11 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
       v = 2
     doAssert a == newCountTable("aabbccddrr")
 
-  for h in 0..high(t.data):
-    if t.data[h].val != 0: yield t.data[h].val
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      yield t.data[h].val
+      assert(len(t) == L, "the length of the table changed while iterating over it")
 
 
 
