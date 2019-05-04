@@ -1126,6 +1126,7 @@ as ``MyEnum.value``:
   echo amb    # Error: Unclear whether it's MyEnum.amb or OtherEnum.amb
   echo MyEnum.amb # OK.
 
+To implement bit fields with enums see `Bit fields <#set-type-bit-fields>`_
 
 String type
 -----------
