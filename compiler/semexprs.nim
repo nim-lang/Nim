@@ -709,13 +709,17 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       n.typ.flags.incl tfUnresolved
 
   # optimization pass: not necessary for correctness of the semantic pass
-  if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
+  if callee.kind == skConst or
+     {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
      {sfForward, sfImportc} * callee.flags == {} and n.typ != nil:
-    if sfCompileTime notin callee.flags and
-        optImplicitStatic notin c.config.options: return
+
+    if callee.kind != skConst and
+       sfCompileTime notin callee.flags and
+       optImplicitStatic notin c.config.options: return
 
     if callee.magic notin ctfeWhitelist: return
-    if callee.kind notin {skProc, skFunc, skConverter} or callee.isGenericRoutine:
+
+    if callee.kind notin {skProc, skFunc, skConverter, skConst} or callee.isGenericRoutine:
       return
 
     if n.typ != nil and typeAllowed(n.typ, skConst) != nil: return
