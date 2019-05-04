@@ -372,7 +372,11 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     openScope(c)
     n.sons[L-2] = semTemplBody(c, n.sons[L-2])
     for i in countup(0, L - 3):
-      addLocalDecl(c, n.sons[i], skForVar)
+      if n[i].kind == nkVarTuple:
+        for j in 0 ..< sonsLen(n[i])-1:
+          addLocalDecl(c, n[i][j], skForVar)
+      else:
+        addLocalDecl(c, n.sons[i], skForVar)
     openScope(c)
     n.sons[L-1] = semTemplBody(c, n.sons[L-1])
     closeScope(c)
