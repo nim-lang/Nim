@@ -617,11 +617,17 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
         # If it has no sideEffect, it should be evaluated. But not here.
         return
       of mLow:
-        result = newIntNodeT(firstOrd(g.config, n.sons[1].typ), n, g)
+        if skipTypes(n.sons[1].typ, abstractVarRange).kind in tyFloat..tyFloat64:
+          result = newFloatNodeT(firstFloat(n.sons[1].typ), n, g)
+        else:
+          result = newIntNodeT(firstOrd(g.config, n.sons[1].typ), n, g)
       of mHigh:
         if skipTypes(n.sons[1].typ, abstractVar+{tyUserTypeClassInst}).kind notin
             {tySequence, tyString, tyCString, tyOpenArray, tyVarargs}:
-          result = newIntNodeT(lastOrd(g.config, skipTypes(n[1].typ, abstractVar)), n, g)
+          if skipTypes(n.sons[1].typ, abstractVarRange).kind in tyFloat..tyFloat64:
+            result = newFloatNodeT(lastFloat(n.sons[1].typ), n, g)
+          else:
+            result = newIntNodeT(lastOrd(g.config, skipTypes(n[1].typ, abstractVar)), n, g)
         else:
           var a = getArrayConstr(m, n.sons[1], g)
           if a.kind == nkBracket:
