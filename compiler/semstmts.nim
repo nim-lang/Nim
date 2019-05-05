@@ -452,6 +452,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         # prevent the all too common 'var x = int' bug:
         localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
         def.typ = errorType(c)
+      elif def.typ.kind == tyError:
+        localError(c.config, def.info, "cannot assign '$1' to variable. Is this an empty macro?" %
+          renderTree(a.sons[length-1], {renderNoComments}))
 
       if typ != nil:
         if typ.isMetaType:
