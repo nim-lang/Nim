@@ -113,7 +113,7 @@ const
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
 proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
-  let srcTyp = src.typ
+  let srcTyp = src.typ.skipTypes({tyStatic})
   result = convOK
   if sameType(targetTyp, srcTyp) and targetTyp.sym == srcTyp.sym:
     # don't annoy conversions that may be needed on another processor:
@@ -137,27 +137,35 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
       d = d.lastSon
       s = s.lastSon
     inc pointers
+
+  let targetBaseTyp = skipTypes(targetTyp, abstractVarRange)
+  let srcBaseTyp = skipTypes(srcTyp, abstractVarRange-{tyTypeDesc})
+
   if d == nil:
     result = convNotLegal
   elif d.kind == tyObject and s.kind == tyObject:
     result = checkConversionBetweenObjects(d, s, pointers)
-  elif (skipTypes(targetTyp, abstractVarRange).kind in IntegralTypes) and
-      (skipTypes(srcTyp, abstractVarRange-{tyTypeDesc}).kind in
-        IntegralTypes + {tyFloat..tyFloat64}):
-    # accept conversion to integral types, unless outside of range
+  elif (targetBaseTyp.kind in IntegralTypes) and
+      (srcBaseTyp.kind in IntegralTypes):
     if targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and
           src.intVal notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
-          src.floatVal notin
-            (firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp)).toBiggestFloatSlice:
+          src.floatVal.int64 notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
+        result = convNotInRange
+    elif targetBaseTyp.kind in tyFloat..tyFloat64:
+      if src.kind in nkFloatLit..nkFloat64Lit and
+          src.floatVal notin firstFloat(targetTyp)..lastFloat(targetTyp):
+        result = convNotInRange
+      elif src.kind in nkCharLit..nkUInt64Lit and
+          src.intVal.float notin firstFloat(targetTyp)..lastFloat(targetTyp):
         result = convNotInRange
   else:
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
     of isNone, isGeneric:
-      if not compareTypes(castDest.skipTypes(abstractVar), src.skipTypes({tyOwned}), dcEqIgnoreDistinct):
+      if not compareTypes(targetTyp.skipTypes(abstractVar), srcTyp.skipTypes({tyOwned}), dcEqIgnoreDistinct):
         result = convNotLegal
     else:
       discard
@@ -285,7 +293,7 @@ proc semConv(c: PContext, n: PNode): PNode =
     of convNotInRange:
       let value =
         if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
-      localError(c.config, n.info, errGenerated, value & " can't be converted to " &
+      localError(c.config, n.info, errGenerated, value & " can't be converted to type " &
         result.typ.typeToString)
   else:
     for i in countup(0, sonsLen(op) - 1):
