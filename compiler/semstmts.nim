@@ -641,7 +641,8 @@ proc semConst(c: PContext, n: PNode): PNode =
         addSon(b, copyTree(def))
       else:
         setVarType(c, v, typ.sons[j])
-        v.ast = def[j]
+        v.ast = if def[j].kind != nkExprColonExpr: def[j]
+                else: def[j].sons[1]
         b.sons[j] = newSymNode(v)
     addSon(result,b)
   dec c.inStaticContext
