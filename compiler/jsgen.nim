@@ -2503,6 +2503,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkPragmaBlock: gen(p, n.lastSon, r)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
+  of nkExprColonExpr: gen(p, n.sons[1], r)
   else: internalError(p.config, n.info, "gen: unknown node type: " & $n.kind)
 
 proc newModule(g: ModuleGraph; module: PSym): BModule =

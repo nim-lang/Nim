@@ -2850,7 +2850,7 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
 
 proc genConstExpr(p: BProc, n: PNode): Rope =
   case n.kind
-  of nkHiddenStdConv, nkHiddenSubConv:
+  of nkHiddenStdConv, nkHiddenSubConv, nkExprColonExpr:
     result = genConstExpr(p, n.sons[1])
   of nkCurly:
     var cs: TBitSet

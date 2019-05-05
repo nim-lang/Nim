@@ -701,7 +701,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       for i in countup(0, sonsLen(n) - 1):
         var a = getConstExpr(m, n.sons[i].sons[1], g)
         if a == nil: return nil
-        result.sons[i] = a
+        result.sons[i].sons[1] = a
     else:
       for i in countup(0, sonsLen(n) - 1):
         var a = getConstExpr(m, n.sons[i], g)
