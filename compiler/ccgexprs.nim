@@ -2708,6 +2708,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     inc p.splitDecls
     genGotoState(p, n)
   of nkBreakState: genBreakState(p, n, d)
+  of nkExprColonExpr: expr(p, n.sons[1], d)
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
 proc genNamedConstExpr(p: BProc, n: PNode): Rope =
@@ -2850,7 +2851,7 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
 
 proc genConstExpr(p: BProc, n: PNode): Rope =
   case n.kind
-  of nkHiddenStdConv, nkHiddenSubConv, nkExprColonExpr:
+  of nkHiddenStdConv, nkHiddenSubConv:
     result = genConstExpr(p, n.sons[1])
   of nkCurly:
     var cs: TBitSet
