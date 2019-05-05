@@ -1927,7 +1927,9 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
     processQuotations(c, n.sons[i], op, quotes, ids)
 
 proc semQuoteAst(c: PContext, n: PNode): PNode =
-  internalAssert c.config, n.len == 2 or n.len == 3
+  if n.len != 2 and n.len != 3:
+    localError(c.config, n.info, "'quote' expects 1 or 2 arguments")
+    return n
   # We transform the do block into a template with a param for
   # each interpolation. We'll pass this template to getAst.
   var
