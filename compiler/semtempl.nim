@@ -308,6 +308,15 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   for i in 0 ..< n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
 
+# Taken from `proc implicitIterator` in semstmts.nim
+proc addImplIterator(c: PContext, it: string, arg: PNode): PNode =
+  result = newNodeI(nkCall, arg.info)
+  result.add(newIdentNode(getIdent(c.cache, it), arg.info))
+  if arg.typ != nil and arg.typ.kind in {tyVar, tyLent}:
+    result.add newDeref(arg)
+  else:
+    result.add arg
+
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   semIdeForTemplateOrGenericCheck(c.c.config, n, c.cursorInBody)
@@ -370,6 +379,13 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkForStmt, nkParForStmt:
     var L = sonsLen(n)
     openScope(c)
+    # Bug #11167
+    # Code taken from `semFor` in semstmts.nim
+    if n[L-2].kind notin nkCallKinds:
+      if L == 3:
+        n[L-2] = addImplIterator(c.c, "items", n[L-2])
+      elif L == 4:
+        n[L-2] = addImplIterator(c.c, "pairs", n[L-2])
     n.sons[L-2] = semTemplBody(c, n.sons[L-2])
     for i in countup(0, L - 3):
       if n[i].kind == nkVarTuple:
