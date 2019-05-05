@@ -561,9 +561,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
   ## Within the quoted AST, you are able to interpolate NimNode expressions
   ## from the surrounding scope. If no operator is given, quoting is done using
   ## backticks. Otherwise, the given operator must be used as a prefix operator
-  ## for any interpolated expression. The original meaning of the interpolation
-  ## operator may be obtained by escaping it (by prefixing it with itself):
-  ## e.g. `@` is escaped as `@@`, `@@` is escaped as `@@@` and so on.
+  ## for any interpolated expression.
   ##
   ## Example:
   ##
