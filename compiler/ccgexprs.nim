@@ -1912,7 +1912,7 @@ proc genOrd(p: BProc, e: PNode, d: var TLoc) =
 
 proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
   const
-    ValueTypes = {tyTuple, tyObject, tyArray, tyOpenArray, tyVarargs}
+    ValueTypes = {tyTuple, tyObject, tyArray, tyOpenArray, tyVarargs, tyUncheckedArray}
   # we use whatever C gives us. Except if we have a value-type, we need to go
   # through its address:
   var a: TLoc
