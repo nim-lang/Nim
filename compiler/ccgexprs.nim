@@ -995,6 +995,7 @@ proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   of tyCString: genCStringElem(p, n, n.sons[0], n.sons[1], d)
   of tyTuple: genTupleElem(p, n, d)
   else: internalError(p.config, n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
+  discard getTypeDesc(p.module, n.typ)
 
 proc isSimpleExpr(n: PNode): bool =
   # calls all the way down --> can stay expression based
