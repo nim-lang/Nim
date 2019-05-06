@@ -1606,3 +1606,28 @@ validation errors:
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for
 ``string``.
+
+
+Aliasing restrictions in parameter passing
+==========================================
+
+**Note**: The aliasing restrictions are currently not enforced by the
+implementation and need to be fleshed out futher.
+
+"Aliasing" here means that the underlying storage locations overlap in memory
+at runtime. An "output parameter" is a parameter of type ``var T``, an input
+parameter is any parameter that is not of type ``var``.
+
+1. Two output parameters should never be aliased.
+2. An input and an output parameter should not be aliased.
+3. An output parameter should never be aliased with a global or thread local
+   variable referenced by the called proc.
+4. An input parameter should not be aliased with a global or thread local
+   variable updated by the called proc.
+
+One problem with rules 3 and 4 is that they affect specific global or thread
+local variables, but Nim's effect tracking only tracks "uses no global variable"
+via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different rule:
+
+5. A global or thread local variable (or a location derived from such a location)
+   can only passed to a parameter of a ``.noSideEffect`` proc.
