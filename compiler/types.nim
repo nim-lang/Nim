@@ -1199,9 +1199,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     case t2.kind
     of tyVar, tyLent:
       if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
-    of tyOpenArray:
+    of tyOpenArray, tyUncheckedArray:
       if kind != skParam: result = t
-      else: result = typeAllowedAux(marker, t2, kind, flags)
+      else: result = typeAllowedAux(marker, t2.sons[0], skParam, flags)
     else:
       if kind notin {skParam, skResult}: result = t
       else: result = typeAllowedAux(marker, t2, kind, flags)
