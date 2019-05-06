@@ -663,7 +663,7 @@ proc compileCFiles(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      add(prettyCmds, if hintCC in conf.notes: "CC: " & name else: "")
+      add(prettyCmds, if hintCC in conf.notes: "CC: " & demaglePackageName(name) else: "")
     if optGenScript in conf.globalOptions:
       add(script, compileCmd)
       add(script, "\n")
