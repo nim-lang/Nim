@@ -316,7 +316,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       n.typ = getSysType(c.graph, n.info, tyInt)
     of tyArray:
       n.typ = typ.sons[0] # indextype
-    of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32:
+    of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32, tyFloat..tyFloat64:
       # do not skip the range!
       n.typ = n.sons[1].typ.skipTypes(abstractVar)
     of tyGenericParam:

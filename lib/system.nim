@@ -303,7 +303,7 @@ else:
 type sink*{.magic: "BuiltinType".}[T]
 type lent*{.magic: "BuiltinType".}[T]
 
-proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
   ## Returns the highest possible value of an ordinal value `x`.
   ##
   ## As a special semantic rule, `x` may also be a type identifier.
@@ -314,7 +314,7 @@ proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ## .. code-block:: Nim
   ##  high(2) # => 9223372036854775807
 
-proc high*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum|range](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
   ## Returns the highest possible value of an ordinal or enum type.
   ##
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
@@ -375,7 +375,7 @@ proc high*(x: string): int {.magic: "High", noSideEffect.}
   ##  var str = "Hello world!"
   ##  high(str) # => 11
 
-proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
+proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ##
@@ -385,7 +385,7 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ## .. code-block:: Nim
   ##  low(2) # => -9223372036854775808
 
-proc low*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+proc low*[T: Ordinal|enum|range](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible value of an ordinal or enum type.
   ##
   ## ``low(int)`` is Nim's way of writing `INT_MIN`:idx: or `MIN_INT`:idx:.
