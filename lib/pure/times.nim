@@ -258,12 +258,6 @@ elif defined(windows):
   proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>".}
 
 type
-  DateTimeLocale* = object
-    month_MMM*: array[12, string]
-    month_MMMM*: array[12, string]
-    day_ddd*: array[7, string]
-    day_dddd*: array[7, string]
-  
   Month* = enum ## Represents a month. Note that the enum starts at ``1``,
                 ## so ``ord(month)`` will give the month number in the
                 ## range ``1..12``.
@@ -288,6 +282,12 @@ type
     dFri = "Friday"
     dSat = "Saturday"
     dSun = "Sunday"
+  
+  DateTimeLocale* = object
+    month_MMM*: array[mJan..mDec, string]
+    month_MMMM*: array[mJan..mDec, string]
+    day_ddd*: array[dMon..dSun, string]
+    day_dddd*: array[dMon..dSun, string]
 
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
@@ -427,7 +427,7 @@ const unitWeights: array[FixedTimeUnit, int64] = [
   7 * secondsInDay * 1e9.int64,
 ]
 
-const default_locale = DateTimeLocale(
+const DefaultLocale* = DateTimeLocale(
   month_MMM: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
   month_MMMM: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
   day_ddd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -1917,9 +1917,9 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc
   of dd:
     result.add dt.monthday.intToStr(2)
   of ddd:
-    result.add loc.day_ddd[dt.weekday.int]
+    result.add loc.day_ddd[dt.weekday]
   of dddd:
-    result.add loc.day_dddd[dt.weekday.int]
+    result.add loc.day_dddd[dt.weekday]
   of h:
     result.add(
       if dt.hour == 0:   "12"
@@ -1945,9 +1945,9 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc
   of MM:
     result.add ord(dt.month).intToStr(2)
   of MMM:
-    result.add loc.month_MMM[dt.month.int-1]
+    result.add loc.month_MMM[dt.month]
   of MMMM:
-    result.add loc.month_MMMM[dt.month.int-1]
+    result.add loc.month_MMMM[dt.month]
   of s:
     result.add $dt.second
   of ss:
@@ -2079,7 +2079,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
-        parsed.month = some(n+1)
+        parsed.month = some(n.int)
         break
   of MMMM:
     result = false
@@ -2087,7 +2087,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
-        parsed.month = some(n+1)
+        parsed.month = some(n.int)
         break
   of s:
     parsed.second = takeInt(1..2)
@@ -2258,7 +2258,7 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
     result.utcOffset = p.utcOffset.get()
     result = result.toTime.inZone(zone)
 
-proc format*(dt: DateTime, f: TimeFormat, loc: DateTimeLocale = default_locale): string {.raises: [].} =
+proc format*(dt: DateTime, f: TimeFormat, loc: DateTimeLocale = DefaultLocale): string {.raises: [].} =
   ## Format ``dt`` using the format specified by ``f``.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
@@ -2278,7 +2278,7 @@ proc format*(dt: DateTime, f: TimeFormat, loc: DateTimeLocale = default_locale):
       formatPattern(dt, f.patterns[idx].FormatPattern, result = result, loc = loc)
       idx.inc
 
-proc format*(dt: DateTime, f: string, loc: DateTimeLocale = default_locale): string
+proc format*(dt: DateTime, f: string, loc: DateTimeLocale = DefaultLocale): string
     {.raises: [TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format ``dt``.
   ##
@@ -2322,12 +2322,13 @@ template formatValue*(result: var string; value: Time, specifier: string) =
   ## adapter for strformat. Not intended to be called directly.
   result.add format(value, specifier)
 
-proc parse*(input: string, f: TimeFormat, zone: Timezone = local(), loc: DateTimeLocale = default_locale): DateTime
+proc parse*(input: string, f: TimeFormat, zone: Timezone = local(), loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, Defect].} =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
   ## the ``zone`` timezone. If a UTC offset was parsed, the result will be
   ## converted to the ``zone`` timezone.
+  ##
   ## Month and day names from the passed in ``loc`` are used.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
@@ -2364,7 +2365,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local(), loc: DateTim
 
   result = toDateTime(parsed, zone, f, input)
 
-proc parse*(input, f: string, tz: Timezone = local(), loc: DateTimeLocale = default_locale): DateTime
+proc parse*(input, f: string, tz: Timezone = local(), loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
@@ -2377,7 +2378,7 @@ proc parse*(input, f: string, tz: Timezone = local(), loc: DateTimeLocale = defa
   let dtFormat = initTimeFormat(f)
   result = input.parse(dtFormat, tz, loc = loc)
 
-proc parse*(input: string, f: static[string], zone: Timezone = local(), loc: DateTimeLocale = default_locale):
+proc parse*(input: string, f: static[string], zone: Timezone = local(), loc: DateTimeLocale = DefaultLocale):
     DateTime {.raises: [TimeParseError, Defect].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)

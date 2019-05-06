@@ -459,13 +459,11 @@ suite "ttimes":
       day_ddd: ["Red", "Ora.", "Yel.", "Gre.", "Blu.", "Vio.", "Whi."],
       day_dddd: ["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
     )
-    var dt = initDateTime(1, mJan, -0001,
-                          17, 01, 02, 123_456_789,
-                          staticTz(hours = 1, minutes = 2, seconds = 3))
-    check dt.format("d", loc) == "1"
-    check dt.format("dd", loc) == "01"
-    check dt.format("ddd", loc) == "Blu."
-    check dt.format("dddd", loc) == "Blue"
+    var dt = initDateTime(5, mJan, 2010, 17, 01, 02, utc())
+    check dt.format("d", loc) == "5"
+    check dt.format("dd", loc) == "05"
+    check dt.format("ddd", loc) == "Ora."
+    check dt.format("dddd", loc) == "Orange"
     check dt.format("M", loc) == "1"
     check dt.format("MM", loc) == "01"
     check dt.format("MMM", loc) == "Fir"
