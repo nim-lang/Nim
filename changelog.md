@@ -193,6 +193,8 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - The switch ``-d:useWinAnsi`` is not supported anymore.
 
+- In `times` module, procs `format` and `parse` accept a new optional `DateTimeLocale` argument for formatting/parsing dates in other languages.
+
 
 ### Language additions
 
