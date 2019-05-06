@@ -37,7 +37,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   case templ.kind
   of nkSym:
     var s = templ.sym
-    if s.owner == nil or s.owner.id == c.owner.id:
+    if (s.owner == nil and s.kind == skParam) or s.owner == c.owner:
       if s.kind == skParam and sfGenSym notin s.flags:
         handleParam actual.sons[s.position]
       elif (s.owner != nil) and (s.kind == skGenericParam or
