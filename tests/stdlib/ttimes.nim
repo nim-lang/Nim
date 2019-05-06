@@ -454,10 +454,10 @@ suite "ttimes":
 
   test "format locale":
     let loc = DateTimeLocale(
-      month_MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
-      month_MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
-      day_ddd: ["Red", "Ora.", "Yel.", "Gre.", "Blu.", "Vio.", "Whi."],
-      day_dddd: ["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
+      MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
+      MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
+      ddd: ["Red", "Ora.", "Yel.", "Gre.", "Blu.", "Vio.", "Whi."],
+      dddd: ["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
     )
     var dt = initDateTime(5, mJan, 2010, 17, 01, 02, utc())
     check dt.format("d", loc) == "5"
@@ -492,10 +492,10 @@ suite "ttimes":
 
   test "parse locale":
     let loc = DateTimeLocale(
-      month_MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
-      month_MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
-      day_ddd: ["Red", "Ora.", "Yel.", "Gre.", "Blu.", "Vio.", "Whi."],
-      day_dddd: ["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
+      MMM: ["Fir","Sec","Thi","Fou","Fif","Six","Sev","Eig","Nin","Ten","Ele","Twe"],
+      MMMM: ["Firsty", "Secondy", "Thirdy", "Fourthy", "Fifthy", "Sixthy", "Seventhy", "Eighthy", "Ninthy", "Tenthy", "Eleventhy", "Twelfthy"],
+      ddd: ["Red", "Ora.", "Yel.", "Gre.", "Blu.", "Vio.", "Whi."],
+      dddd: ["Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
     )
     check $parse("02 Fir 2019", "dd MMM yyyy", utc(), loc) == "2019-01-02T00:00:00Z"
     check $parse("Fourthy 6, 2017", "MMMM d, yyyy", utc(), loc) == "2017-04-06T00:00:00Z"

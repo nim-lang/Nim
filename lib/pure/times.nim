@@ -284,10 +284,10 @@ type
     dSun = "Sunday"
   
   DateTimeLocale* = object
-    month_MMM*: array[mJan..mDec, string]
-    month_MMMM*: array[mJan..mDec, string]
-    day_ddd*: array[dMon..dSun, string]
-    day_dddd*: array[dMon..dSun, string]
+    MMM*: array[mJan..mDec, string]
+    MMMM*: array[mJan..mDec, string]
+    ddd*: array[dMon..dSun, string]
+    dddd*: array[dMon..dSun, string]
 
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
@@ -428,10 +428,10 @@ const unitWeights: array[FixedTimeUnit, int64] = [
 ]
 
 const DefaultLocale* = DateTimeLocale(
-  month_MMM: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-  month_MMMM: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-  day_ddd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-  day_dddd: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+  MMM: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  MMMM: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  ddd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  dddd: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
 )
 
 proc convert*[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit, quantity: T): T
@@ -1917,9 +1917,9 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc
   of dd:
     result.add dt.monthday.intToStr(2)
   of ddd:
-    result.add loc.day_ddd[dt.weekday]
+    result.add loc.ddd[dt.weekday]
   of dddd:
-    result.add loc.day_dddd[dt.weekday]
+    result.add loc.dddd[dt.weekday]
   of h:
     result.add(
       if dt.hour == 0:   "12"
@@ -1945,9 +1945,9 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc
   of MM:
     result.add ord(dt.month).intToStr(2)
   of MMM:
-    result.add loc.month_MMM[dt.month]
+    result.add loc.MMM[dt.month]
   of MMMM:
-    result.add loc.month_MMMM[dt.month]
+    result.add loc.MMMM[dt.month]
   of s:
     result.add $dt.second
   of ss:
@@ -2041,14 +2041,14 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     result = monthday in MonthdayRange
   of ddd:
     result = false
-    for v in loc.day_ddd:
+    for v in loc.ddd:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
         break
   of dddd:
     result = false
-    for v in loc.day_dddd:
+    for v in loc.dddd:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
@@ -2075,7 +2075,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     parsed.month = some(month)
   of MMM:
     result = false
-    for n,v in loc.month_MMM:
+    for n,v in loc.MMM:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
@@ -2083,7 +2083,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
         break
   of MMMM:
     result = false
-    for n,v in loc.month_MMMM:
+    for n,v in loc.MMMM:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
