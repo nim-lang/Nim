@@ -171,7 +171,6 @@ proc buildVccTool() =
   nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim")
 
 proc bundleWinTools() =
-  # TODO: consider building under `bin` instead of `.`
   nimCompile("tools/finish.nim", outputDir = "")
 
   buildVccTool()
