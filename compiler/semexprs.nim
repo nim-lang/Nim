@@ -164,7 +164,7 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
   let src = src.skipTypes(tyUserTypeClasses)
-  if skipTypes(dst, abstractInst-{tyOpenArray,tyUncheckedArray}).kind in {tyOpenArray, tyUncheckedArray}:
+  if skipTypes(dst, abstractInst-{tyOpenArray}).kind in {tyOpenArray}:
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
