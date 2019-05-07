@@ -48,25 +48,25 @@ proc bitSetInit(b: var TBitSet, length: int) =
   newSeq(b, length)
 
 proc bitSetUnion(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] or y[i]
+  for i in 0 .. high(x): x[i] = x[i] or y[i]
 
 proc bitSetDiff(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] and not y[i]
+  for i in 0 .. high(x): x[i] = x[i] and not y[i]
 
 proc bitSetSymDiff(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] xor y[i]
+  for i in 0 .. high(x): x[i] = x[i] xor y[i]
 
 proc bitSetIntersect(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] and y[i]
+  for i in 0 .. high(x): x[i] = x[i] and y[i]
 
 proc bitSetEquals(x, y: TBitSet): bool =
-  for i in countup(0, high(x)):
+  for i in 0 .. high(x):
     if x[i] != y[i]:
       return false
   result = true
 
 proc bitSetContains(x, y: TBitSet): bool =
-  for i in countup(0, high(x)):
+  for i in 0 .. high(x):
     if (x[i] and not y[i]) != int8(0):
       return false
   result = true

@@ -510,7 +510,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
       var blen = len(it)
       # first opcExcept contains the end label of the 'except' block:
       let endExcept = c.xjmp(it, opcExcept, 0)
-      for j in countup(0, blen - 2):
+      for j in 0 .. blen - 2:
         assert(it.sons[j].kind == nkType)
         let typ = it.sons[j].typ.skipTypes(abstractPtrs-{tyTypeDesc})
         c.gABx(it, opcExcept, 0, c.genType(typ))

@@ -386,7 +386,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
       if blen == 1:
         catchesAll(tracked)
       else:
-        for j in countup(0, blen - 2):
+        for j in 0 .. blen - 2:
           if b.sons[j].isInfixAs():
             assert(b.sons[j][1].kind == nkType)
             catches(tracked, b.sons[j][1].typ)

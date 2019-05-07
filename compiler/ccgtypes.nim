@@ -1080,7 +1080,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
       of nkOfBranch:
         if sonsLen(b) < 2:
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in countup(0, sonsLen(b) - 2):
+        for j in 0 .. sonsLen(b) - 2:
           if b.sons[j].kind == nkRange:
             var x = int(getOrdValue(b.sons[j].sons[0]))
             var y = int(getOrdValue(b.sons[j].sons[1]))

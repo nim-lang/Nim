@@ -1154,7 +1154,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in countup(0, sonsLen(branch) - 2):
+      for j in 0 .. sonsLen(branch) - 2:
         if overlap(regs[ra].regToNode, branch.sons[j]):
           cond = true
           break

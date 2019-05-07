@@ -157,7 +157,7 @@ proc `&`*(a: string, b: Rope): Rope =
 
 proc `&`*(a: openArray[Rope]): Rope =
   ## the concatenation operator for an openarray of ropes.
-  for i in countup(0, high(a)): result = result & a[i]
+  for i in 0 .. high(a): result = result & a[i]
 
 proc add*(a: var Rope, b: Rope) =
   ## adds `b` to the rope `a`.
@@ -206,7 +206,7 @@ proc `$`*(r: Rope): string =
 
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
-  for i in countup(0, high(a)): result = result & a[i]
+  for i in 0 .. high(a): result = result & a[i]
 
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a

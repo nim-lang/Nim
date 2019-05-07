@@ -192,7 +192,7 @@ proc relevantCol(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
   var t = methods[0].typ.sons[col].skipTypes(skipPtrs)
   if t.kind == tyObject:
-    for i in countup(1, high(methods)):
+    for i in 1 .. high(methods):
       let t2 = skipTypes(methods[i].typ.sons[col], skipPtrs)
       if not sameType(t2, t):
         return true
@@ -240,7 +240,7 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
       if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
         addSon(nilchecks, newTree(nkCall,
             newSymNode(getCompilerProc(g, "chckNilDisp")), newSymNode(param)))
-  for meth in countup(0, high(methods)):
+  for meth in 0 .. high(methods):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
     for col in 1 ..< paramLen:

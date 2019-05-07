@@ -630,7 +630,7 @@ proc objectSetRawInsert(data: var TObjectSeq, obj: RootRef) =
 proc objectSetEnlarge(t: var TObjectSet) =
   var n: TObjectSeq
   newSeq(n, len(t.data) * GrowthFactor)
-  for i in countup(0, high(t.data)):
+  for i in 0 .. high(t.data):
     if t.data[i] != nil: objectSetRawInsert(n, t.data[i])
   swap(t.data, n)
 
@@ -709,7 +709,7 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
 proc strTableEnlarge(t: var TStrTable) =
   var n: seq[PSym]
   newSeq(n, len(t.data) * GrowthFactor)
-  for i in countup(0, high(t.data)):
+  for i in 0 .. high(t.data):
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
   swap(t.data, n)
 
@@ -845,7 +845,7 @@ iterator items*(tab: TStrTable): PSym =
     s = nextIter(it, tab)
 
 proc hasEmptySlot(data: TIdPairSeq): bool =
-  for h in countup(0, high(data)):
+  for h in 0 .. high(data):
     if data[h].key == nil:
       return true
   result = false
@@ -900,7 +900,7 @@ proc idTablePut(t: var TIdTable, key: PIdObj, val: RootRef) =
   else:
     if mustRehash(len(t.data), t.counter):
       newSeq(n, len(t.data) * GrowthFactor)
-      for i in countup(0, high(t.data)):
+      for i in 0 .. high(t.data):
         if t.data[i].key != nil:
           idTableRawInsert(n, t.data[i].key, t.data[i].val)
       assert(hasEmptySlot(n))
@@ -946,7 +946,7 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
     if mustRehash(len(t.data), t.counter):
       var n: TIdNodePairSeq
       newSeq(n, len(t.data) * GrowthFactor)
-      for i in countup(0, high(t.data)):
+      for i in 0 .. high(t.data):
         if t.data[i].key != nil:
           idNodeTableRawInsert(n, t.data[i].key, t.data[i].val)
       swap(t.data, n)
@@ -994,8 +994,8 @@ proc iiTablePut(t: var TIITable, key, val: int) =
     if mustRehash(len(t.data), t.counter):
       var n: TIIPairSeq
       newSeq(n, len(t.data) * GrowthFactor)
-      for i in countup(0, high(n)): n[i].key = InvalidKey
-      for i in countup(0, high(t.data)):
+      for i in 0 .. high(n): n[i].key = InvalidKey
+      for i in 0 .. high(t.data):
         if t.data[i].key != InvalidKey:
           iiTableRawInsert(n, t.data[i].key, t.data[i].val)
       swap(t.data, n)

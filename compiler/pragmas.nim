@@ -209,7 +209,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   var v: string
   if n.sons[1].kind == nkIdent: v = n.sons[1].ident.s
   else: v = expectStrLit(c, n)
-  for m in countup(low(TMagic), high(TMagic)):
+  for m in low(TMagic) .. high(TMagic):
     if substr($m, 1) == v:
       s.magic = m
       break

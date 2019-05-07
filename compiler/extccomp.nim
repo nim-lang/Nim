@@ -370,7 +370,7 @@ proc libNameTmpl(conf: ConfigRef): string {.inline.} =
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
   ## if the name doesn't refer to any known compiler.
-  for i in countup(succ(ccNone), high(TSystemCC)):
+  for i in succ(ccNone) .. high(TSystemCC):
     if cmpIgnoreStyle(name, CC[i].name) == 0:
       return i
   result = ccNone
@@ -412,7 +412,7 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.ccompilerpath = getConfigVar(conf, conf.cCompiler, ".path")
-  for i in countup(low(CC), high(CC)): undefSymbol(conf.symbols, CC[i].name)
+  for i in low(CC) .. high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
@@ -434,7 +434,7 @@ proc addCompileOptionCmd*(conf: ConfigRef; option: string) =
 
 proc initVars*(conf: ConfigRef) =
   # we need to define the symbol here, because ``CC`` may have never been set!
-  for i in countup(low(CC), high(CC)): undefSymbol(conf.symbols, CC[i].name)
+  for i in low(CC) .. high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
@@ -787,7 +787,7 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
   if conf.numberOfProcessors == 0: conf.numberOfProcessors = countProcessors()
   var res = 0
   if conf.numberOfProcessors <= 1:
-    for i in countup(0, high(cmds)):
+    for i in 0 .. high(cmds):
       tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
         res = execWithEcho(conf, cmds[i])
       if res != 0:

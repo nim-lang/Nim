@@ -984,7 +984,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             check = newNodeI(nkCheckedFieldExpr, n.info)
             addSon(check, c.graph.emptyNode) # make space for access node
           s = newNodeIT(nkCurly, n.info, setType)
-          for j in countup(0, sonsLen(it) - 2): addSon(s, copyTree(it.sons[j]))
+          for j in 0 .. sonsLen(it) - 2: addSon(s, copyTree(it.sons[j]))
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
           addSon(inExpr, newSymNode(c.graph.opContains, n.info))
           addSon(inExpr, s)
@@ -1046,7 +1046,7 @@ proc readTypeParameter(c: PContext, typ: PType,
     let ty = if typ.kind == tyCompositeTypeClass: typ.sons[1].skipGenericAlias
              else: typ.skipGenericAlias
     let tbody = ty.sons[0]
-    for s in countup(0, tbody.len-2):
+    for s in 0 .. tbody.len-2:
       let tParam = tbody.sons[s]
       if tParam.sym.name.id == paramName.id:
         let rawTyp = ty.sons[s + 1]

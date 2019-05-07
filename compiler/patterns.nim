@@ -182,7 +182,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
       if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
         var arglist: PNode
         if plen <= sonsLen(n):
-          for i in countup(0, plen - 2):
+          for i in 0 .. plen - 2:
             if not matches(c, p.sons[i], n.sons[i]): return
           if plen == sonsLen(n) and lastSon(n).kind == nkHiddenStdConv and
               lastSon(n).sons[1].kind == nkBracket:
@@ -194,11 +194,11 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
             arglist = newNodeI(nkArgList, n.info, sonsLen(n) - plen + 1)
             # f(1, 2, 3)
             # p(X)
-            for i in countup(0, sonsLen(n) - plen):
+            for i in 0 .. sonsLen(n) - plen:
               arglist.sons[i] = n.sons[i + plen - 1]
           return bindOrCheck(c, v.sym, arglist)
         elif plen-1 == sonsLen(n):
-          for i in countup(0, plen - 2):
+          for i in 0 .. plen - 2:
             if not matches(c, p.sons[i], n.sons[i]): return
           arglist = newNodeI(nkArgList, n.info)
           return bindOrCheck(c, v.sym, arglist)

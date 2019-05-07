@@ -84,7 +84,7 @@ proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
   else:
     if mustRehash(len(t.data), t.counter):
       newSeq(n, len(t.data) * GrowthFactor)
-      for i in countup(0, high(t.data)):
+      for i in 0 .. high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)
@@ -101,7 +101,7 @@ proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int =
   else:
     if mustRehash(len(t.data), t.counter):
       newSeq(n, len(t.data) * GrowthFactor)
-      for i in countup(0, high(t.data)):
+      for i in 0 .. high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)

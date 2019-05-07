@@ -203,7 +203,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         internalError(c.graph.config, it.info, "transformVarSection: not nkVarTuple")
       var L = sonsLen(it)
       var defs = newTransNode(it.kind, it.info, L)
-      for j in countup(0, L-3):
+      for j in 0 .. L-3:
         if it[j].kind == nkSym:
           let x = freshVar(c, it.sons[j].sym)
           idNodeTablePut(c.transCon.mapping, it.sons[j].sym, x)
@@ -390,7 +390,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     else:
       # Unpack the tuple into the loop variables
       # XXX: BUG: what if `n` is an expression with side-effects?
-      for i in countup(0, sonsLen(c.transCon.forStmt) - 3):
+      for i in 0 .. sonsLen(c.transCon.forStmt) - 3:
         let lhs = c.transCon.forStmt.sons[i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         add(result, asgnTo(lhs, rhs))
@@ -620,7 +620,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   discard c.breakSyms.pop
 
   var v = newNodeI(nkVarSection, n.info)
-  for i in countup(0, length - 3):
+  for i in 0 .. length - 3:
     if n[i].kind == nkVarTuple:
       for j in 0 ..< sonsLen(n[i])-1:
         addVar(v, copyTree(n[i][j])) # declare new vars

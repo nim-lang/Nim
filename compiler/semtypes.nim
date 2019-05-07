@@ -431,7 +431,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       typ = errorType(c)
     if a.sons[length - 1].kind != nkEmpty:
       localError(c.config, a.sons[length - 1].info, errInitHereNotAllowed)
-    for j in countup(0, length - 3):
+    for j in 0 .. length - 3:
       var field = newSymG(skField, a.sons[j], c)
       field.typ = typ
       field.position = counter
@@ -489,8 +489,8 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
-  for i in countup(1, branchIndex):
-    for j in countup(0, sonsLen(t.sons[i]) - 2):
+  for i in 1 .. branchIndex:
+    for j in 0 .. sonsLen(t.sons[i]) - 2:
       if i == branchIndex and j == currentEx: break
       if overlap(t.sons[i].sons[j].skipConv, ex):
         localError(c.config, ex.info, errDuplicateCaseLabel)
@@ -699,7 +699,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       propagateToOwner(rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
-    for i in countup(0, sonsLen(n)-3):
+    for i in 0 .. sonsLen(n)-3:
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
       suggestSym(c.config, n.sons[i].info, f, c.graph.usageSym)
       f.typ = typ
@@ -1159,7 +1159,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       continue
 
-    for j in countup(0, length-3):
+    for j in 0 .. length-3:
       var arg = newSymG(skParam, a.sons[j], c)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
         let param = strTableGet(c.signatures, arg.name)
@@ -1237,7 +1237,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1, c.config)
   var length = sonsLen(n)
-  for i in countup(0, length - 2):
+  for i in 0 .. length - 2:
     n.sons[i] = semStmt(c, n.sons[i], {})
   if length > 0:
     result = semTypeNode(c, n.sons[length - 1], prev)
@@ -1917,7 +1917,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
 
     typ.flags.incl tfGenericTypeParam
 
-    for j in countup(0, L-3):
+    for j in 0 .. L-3:
       let finalType = if j == 0: typ
                       else: copyType(typ, typ.owner, false)
                       # it's important the we create an unique

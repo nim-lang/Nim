@@ -298,7 +298,7 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
     when defined(nimsuggest):
       dec c.c.inTypeContext
     a.sons[L-1] = semTemplBody(c, a.sons[L-1])
-    for j in countup(0, L-3):
+    for j in 0 .. L-3:
       addLocalDecl(c, a.sons[j], symKind)
 
 proc semPattern(c: PContext, n: PNode): PNode
@@ -363,7 +363,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       var a = n.sons[i]
       checkMinSonsLen(a, 1, c.c.config)
       var L = sonsLen(a)
-      for j in countup(0, L-2):
+      for j in 0 .. L-2:
         a.sons[j] = semTemplBody(c, a.sons[j])
       a.sons[L-1] = semTemplBodyScope(c, a.sons[L-1])
     closeScope(c)
@@ -371,7 +371,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     var L = sonsLen(n)
     openScope(c)
     n.sons[L-2] = semTemplBody(c, n.sons[L-2])
-    for i in countup(0, L - 3):
+    for i in 0 .. L - 3:
       if n[i].kind == nkVarTuple:
         for j in 0 ..< sonsLen(n[i])-1:
           addLocalDecl(c, n[i][j], skForVar)
@@ -403,7 +403,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       checkMinSonsLen(a, 1, c.c.config)
       var L = sonsLen(a)
       openScope(c)
-      for j in countup(0, L-2):
+      for j in 0 .. L-2:
         if a.sons[j].isInfixAs():
           addLocalDecl(c, a.sons[j].sons[2], skLet)
           a.sons[j].sons[1] = semTemplBody(c, a.sons[j][1])

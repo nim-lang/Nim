@@ -110,7 +110,7 @@ proc newIdentCache*(): IdentCache =
   result.idDelegator = result.getIdent":delegator"
   result.emptyIdent = result.getIdent("")
   # initialize the keywords:
-  for s in countup(succ(low(specialWords)), high(specialWords)):
+  for s in succ(low(specialWords)) .. high(specialWords):
     result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
 
 proc whichKeyword*(id: PIdent): TSpecialWord =

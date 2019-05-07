@@ -1134,7 +1134,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in countup(0, sonsLen(e) - 2):
+  for i in 0 .. sonsLen(e) - 2:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
     if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -1173,7 +1173,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e.sons[1], dest)
-  for i in countup(0, sonsLen(e) - 3):
+  for i in 0 .. sonsLen(e) - 3:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 2], a)
     if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -2477,7 +2477,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       add(r, "->Sup")
     else:
       add(r, ".Sup")
-    for i in countup(2, abs(inheritanceDiff(dest, src))): add(r, ".Sup")
+    for i in 2 .. abs(inheritanceDiff(dest, src)): add(r, ".Sup")
     if isRef:
       # it can happen that we end up generating '&&x->Sup' here, so we pack
       # the '&x->Sup' into a temporary and then those address is taken
@@ -2806,7 +2806,7 @@ proc genConstObjConstr(p: BProc; n: PNode): Rope =
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)
   result = rope("{")
-  for i in countup(0, length - 2):
+  for i in 0 .. length - 2:
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
   if length > 0:
     add(result, genNamedConstExpr(p, n.sons[length - 1]))

@@ -780,7 +780,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       var excAlias: PNode = nil
 
       useMagic(p, "isObj")
-      for j in countup(0, blen - 2):
+      for j in 0 .. blen - 2:
         var throwObj: PNode
         let it = n.sons[i].sons[j]
 
@@ -862,7 +862,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     let it = n.sons[i]
     case it.kind
     of nkOfBranch:
-      for j in countup(0, sonsLen(it) - 2):
+      for j in 0 .. sonsLen(it) - 2:
         let e = it.sons[j]
         if e.kind == nkRange:
           var v = copyNode(e.sons[0])
@@ -1811,7 +1811,7 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add("($1 || []).concat(" % [a.res])
 
-  for i in countup(2, sonsLen(n) - 2):
+  for i in 2 .. sonsLen(n) - 2:
     gen(p, n.sons[i], a)
     if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])

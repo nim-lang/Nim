@@ -133,7 +133,7 @@ proc equalSets*(conf: ConfigRef; a, b: PNode): bool =
 proc complement*(conf: ConfigRef; a: PNode): PNode =
   var x: TBitSet
   toBitSet(conf, a, x)
-  for i in countup(0, high(x)): x[i] = not x[i]
+  for i in 0 .. high(x): x[i] = not x[i]
   result = toTreeSet(conf, x, a.typ, a.info)
 
 proc deduplicate*(conf: ConfigRef; a: PNode): PNode =

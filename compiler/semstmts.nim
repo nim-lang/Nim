@@ -207,7 +207,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var last = sonsLen(n) - 1
   var catchAllExcepts = 0
 
-  for i in countup(1, last):
+  for i in 1 .. last:
     let a = n.sons[i]
     checkMinSonsLen(a, 1, c.config)
     openScope(c)
@@ -365,7 +365,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
     var length = sonsLen(a)
     if a.sons[length-2].kind != nkEmpty:
       let typ = semTypeNode(c, a.sons[length-2], nil)
-      for j in countup(0, length-3):
+      for j in 0 .. length-3:
         let v = semIdentDef(c, a.sons[j], skParam)
         styleCheckDef(c.config, v)
         onDef(a[j].info, v)
@@ -504,7 +504,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         a.kind == nkIdentDefs and a.len > 3:
       message(c.config, a.info, warnEachIdentIsTuple)
 
-    for j in countup(0, length-3):
+    for j in 0 .. length-3:
       if a[j].kind == nkDotExpr:
         fillPartialObject(c, a[j],
           if a.kind != nkVarTuple: typ else: tup.sons[j])
@@ -624,7 +624,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       b.sons[length-2] = a.sons[length-2]
       b.sons[length-1] = def
 
-    for j in countup(0, length-3):
+    for j in 0 .. length-3:
       var v = semIdentDef(c, a.sons[j], skConst)
       if sfGenSym notin v.flags: addInterfaceDecl(c, v)
       elif v.owner == nil: v.owner = getCurrOwner(c)
@@ -699,7 +699,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   elif length-2 != sonsLen(iter):
     localError(c.config, n.info, errWrongNumberOfVariables)
   else:
-    for i in countup(0, length - 3):
+    for i in 0 .. length - 3:
       if n.sons[i].kind == nkVarTuple:
         var mutable = false
         if iter[i].kind == tyVar:

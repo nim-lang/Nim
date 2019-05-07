@@ -134,7 +134,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       let inst = t.typeInst
       t.typeInst = nil
       assert inst.kind == tyGenericInst
-      for i in countup(0, inst.len - 2):
+      for i in 0 .. inst.len - 2:
         c.hashType inst.sons[i], flags
       t.typeInst = inst
       return

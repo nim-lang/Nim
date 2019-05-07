@@ -1158,17 +1158,17 @@ const                         # for all kind of hash tables:
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
+  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
   newSeq(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
+  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
   setLen(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
+  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
   when defined(nimNoNilSeqs):
@@ -1520,7 +1520,7 @@ proc delSon*(father: PNode, idx: int) =
   else:
     if isNil(father.sons): return
   var length = sonsLen(father)
-  for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
+  for i in idx .. length - 2: father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)
 
 proc copyNode*(src: PNode): PNode =

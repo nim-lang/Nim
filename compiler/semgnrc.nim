@@ -343,7 +343,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       var a = n.sons[i]
       checkMinSonsLen(a, 1, c.config)
       var L = sonsLen(a)
-      for j in countup(0, L-2):
+      for j in 0 .. L-2:
         a.sons[j] = semGenericStmt(c, a.sons[j], flags, ctx)
       a.sons[L - 1] = semGenericStmtScope(c, a.sons[L-1], flags, ctx)
     closeScope(c)
@@ -351,7 +351,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var L = sonsLen(n)
     openScope(c)
     n.sons[L - 2] = semGenericStmt(c, n.sons[L-2], flags, ctx)
-    for i in countup(0, L - 3):
+    for i in 0 .. L - 3:
       if (n.sons[i].kind == nkVarTuple):
         for s in n.sons[i]:
           if (s.kind == nkIdent):
@@ -377,7 +377,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       checkMinSonsLen(a, 1, c.config)
       var L = sonsLen(a)
       openScope(c)
-      for j in countup(0, L-2):
+      for j in 0 .. L-2:
         if a.sons[j].isInfixAs():
           addTempDecl(c, getIdentNode(c, a.sons[j][2]), skLet)
           a.sons[j].sons[1] = semGenericStmt(c, a.sons[j][1], flags+{withinTypeDesc}, ctx)
@@ -395,7 +395,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       var L = sonsLen(a)
       a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, ctx)
       a.sons[L-1] = semGenericStmt(c, a.sons[L-1], flags, ctx)
-      for j in countup(0, L-3):
+      for j in 0 .. L-3:
         addTempDecl(c, getIdentNode(c, a.sons[j]), skVar)
   of nkGenericParams:
     for i in 0 ..< sonsLen(n):
@@ -405,7 +405,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       var L = sonsLen(a)
       a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, ctx)
       # do not perform symbol lookup for default expressions
-      for j in countup(0, L-3):
+      for j in 0 .. L-3:
         addTempDecl(c, getIdentNode(c, a.sons[j]), skType)
   of nkConstSection:
     for i in 0 ..< sonsLen(n):
@@ -459,7 +459,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       var L = sonsLen(a)
       a.sons[L-2] = semGenericStmt(c, a.sons[L-2], flags+{withinTypeDesc}, ctx)
       a.sons[L-1] = semGenericStmt(c, a.sons[L-1], flags, ctx)
-      for j in countup(0, L-3):
+      for j in 0 .. L-3:
         addTempDecl(c, getIdentNode(c, a.sons[j]), skParam)
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
      nkFuncDef, nkIteratorDef, nkLambdaKinds:

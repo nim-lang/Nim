@@ -465,7 +465,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyGenericBody:
     result = typeToString(t.lastSon) & '['
-    for i in countup(0, sonsLen(t)-2):
+    for i in 0 .. sonsLen(t)-2:
       if i > 0: add(result, ", ")
       add(result, typeToString(t.sons[i], preferTypeName))
     add(result, ']')
@@ -506,7 +506,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
-    for i in countup(1, sonsLen(t) - 2):
+    for i in 1 .. sonsLen(t) - 2:
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i]))
     result.add "]"

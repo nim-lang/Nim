@@ -128,7 +128,7 @@ proc hashType(c: var MD5Context, t: PType) =
   of tyUserTypeClassInst:
     let body = t.base
     c.hashSym body.sym
-    for i in countup(1, sonsLen(t) - 2):
+    for i in 1 .. sonsLen(t) - 2:
       c.hashType t.sons[i]
   of tyFromExpr:
     c.hashTree(t.n)

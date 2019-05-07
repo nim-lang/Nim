@@ -48,7 +48,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
       of nkOfBranch:
         if sonsLen(b) < 2:
           internalError(p.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in countup(0, sonsLen(b) - 2):
+        for j in 0 .. sonsLen(b) - 2:
           if u != nil: add(u, ", ")
           if b.sons[j].kind == nkRange:
             addf(u, "[$1, $2]", [rope(getOrdValue(b.sons[j].sons[0])),

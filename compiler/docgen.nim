@@ -177,7 +177,7 @@ template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArra
   else: addf(dest, tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
-  for i in countup(0, high(varnames)):
+  for i in 0 .. high(varnames):
     if cmpIgnoreStyle(varnames[i], id) == 0:
       return i
   result = -1
@@ -971,12 +971,12 @@ proc genOutFile(d: PDoc): Rope =
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
-  for i in countup(low(TSymKind), high(TSymKind)):
+  for i in low(TSymKind) .. high(TSymKind):
     genSection(d, i)
     add(toc, d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in countup(low(TSymKind), high(TSymKind)): add(code, d.section[i])
+  for i in low(TSymKind) .. high(TSymKind): add(code, d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:

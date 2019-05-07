@@ -302,7 +302,7 @@ proc gcom(g: var TSrcGen, n: PNode) =
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
-  for i in countup(0, high(g.comStack)): gcom(g, g.comStack[i])
+  for i in 0 .. high(g.comStack): gcom(g, g.comStack[i])
   popAllComs(g)
 
 proc lsub(g: TSrcGen; n: PNode): int
@@ -393,7 +393,7 @@ proc atom(g: TSrcGen; n: PNode): string =
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in countup(start, sonsLen(n) + theEnd):
+  for i in start .. sonsLen(n) + theEnd:
     let param = n.sons[i]
     if nfDefaultParam notin param.flags:
       inc(result, lsub(g, param))
@@ -404,7 +404,7 @@ proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in countup(start, sonsLen(n) + theEnd): inc(result, lsub(g, n.sons[i]))
+  for i in start .. sonsLen(n) + theEnd: inc(result, lsub(g, n.sons[i]))
 
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
@@ -563,7 +563,7 @@ proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
                theEnd: int = - 1, separator = tkComma) =
-  for i in countup(start, sonsLen(n) + theEnd):
+  for i in start .. sonsLen(n) + theEnd:
     var c = i < sonsLen(n) + theEnd
     var sublen = lsub(g, n.sons[i]) + ord(c)
     if not fits(g, sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
@@ -598,7 +598,7 @@ proc gsemicolon(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) =
 
 proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
            theEnd: int = - 1) =
-  for i in countup(start, sonsLen(n) + theEnd): gsub(g, n.sons[i], c)
+  for i in start .. sonsLen(n) + theEnd: gsub(g, n.sons[i], c)
 
 proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
               k: string) =
@@ -616,7 +616,7 @@ proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
   result = n.comment.len > 0
   if not result:
     # check further
-    for i in countup(start, sonsLen(n) + theEnd):
+    for i in start .. sonsLen(n) + theEnd:
       if (lsub(g, n.sons[i]) > MaxLineLen):
         result = true
         break
