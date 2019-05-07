@@ -130,7 +130,7 @@ block trefs:
 block tsharedcases:
   proc typeNameLen(x: typedesc): int {.compileTime.} =
     result = x.name.len
-  macro selectType(a, b: typedesc): typedesc =
+  macro selectType(a, b: typed): typedesc =
     result = a
 
   type

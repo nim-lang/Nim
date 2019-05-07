@@ -1,8 +1,8 @@
 discard """
   nimout: '''
-instantiation 1 with None and None
-instantiation 2 with None and None
-instantiation 3 with None and None
+instantiation 1 with typeDesc[int] and typeDesc[float]
+instantiation 2 with typeDesc[float] and typeDesc[string]
+instantiation 3 with typeDesc[string] and typeDesc[string]
 counter: 3
 '''
   output: "int\nfloat\nint\nstring"
@@ -12,9 +12,9 @@ import typetraits, macros
 
 var counter {.compileTime.} = 0
 
-macro makeBar(A, B: typedesc): typedesc =
+macro makeBar(A, B: typed): typedesc =
   inc counter
-  echo "instantiation ", counter, " with ", A.name, " and ", B.name
+  echo "instantiation ", counter, " with ", A.getTypeInst.repr, " and ", B.getTypeInst.repr
   result = A
 
 type
