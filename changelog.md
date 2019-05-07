@@ -119,6 +119,8 @@ proc enumToString*(enums: openArray[enum]): string =
 - Implicit imports via ``--import: module`` in a config file are now restricted
   to the main package.
 
+- To return a ``typedesc`` from a macro, it now has to be wrapped in a
+  ``NimNode`` like everything else.
 
 ### Library additions
 
@@ -161,7 +163,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `system.default`.
 
-- Added `sequtils.items` for closure iterators, allows closure iterators 
+- Added `sequtils.items` for closure iterators, allows closure iterators
   to be used by the the mapIt, filterIt, allIt, anyIt, etc.
 
 
