@@ -768,6 +768,8 @@ type
     lfHeader,                 # include header file for symbol
     lfImportCompilerProc,     # ``importc`` of a compilerproc
     lfSingleUse               # no location yet and will only be used once
+    lfEnforceDeref            # a copyMem is required to dereference if this a
+      # ptr array due to C array limitations. See #1181, #6422, #11171
   TStorageLoc* = enum
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section

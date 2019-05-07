@@ -1,5 +1,8 @@
 discard """
-  output: "OK"
+  output: '''[1, 2, 3, 4]
+3
+OK
+'''
 """
 
 var
@@ -49,5 +52,18 @@ proc getFilledBuffer(sz: int): ref seq[char] =
 let aa = getFilledBuffer(3)
 for i in 0..aa[].len-1:
   doAssert(aa[i] == chr(i))
+
+var
+  x = [1, 2, 3, 4]
+  y1 = block: (
+    a: (block:
+      echo x
+      cast[ptr array[2, int]](addr(x[0]))[]),
+    b: 3)
+  y2 = block:
+    echo y1.a[0] + y1.a[1]
+    cast[ptr array[4, int]](addr(x))[]
+doAssert y1 == ([1, 2], 3)
+doAssert y2 == [1, 2, 3, 4]
 
 echo "OK"

@@ -123,13 +123,13 @@ proc genVarTuple(p: BProc, n: PNode) =
     if forHcr or isGlobalInBlock:
       hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
 
-proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)
+proc genDeref(p: BProc, e: PNode, d: var TLoc)
 
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
   if ri.kind in nkCallKinds and (ri.sons[0].kind != nkSym or
                                  ri.sons[0].sym.magic == mNone):
     genAsgnCall(p, le, ri, a)
-  elif ri.kind in {nkDerefExpr, nkHiddenDeref}:
+  else:
     # this is a hacky way to fix #1181 (tmissingderef)::
     #
     #  var arr1 = cast[ptr array[4, int8]](addr foo)[]
@@ -137,8 +137,7 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
     # However, fixing this properly really requires modelling 'array' as
     # a 'struct' in C to preserve dereferencing semantics completely. Not
     # worth the effort until version 1.0 is out.
-    genDeref(p, ri, a, enforceDeref=true)
-  else:
+    a.flags.incl(lfEnforceDeref)
     expr(p, ri, a)
 
 proc assignLabel(b: var TBlock): Rope {.inline.} =
@@ -597,10 +596,12 @@ proc genWhileStmt(p: BProc, t: PNode) =
   dec(p.withinLoop)
 
 proc genBlock(p: BProc, n: PNode, d: var TLoc) =
-  # bug #4505: allocate the temp in the outer scope
-  # so that it can escape the generated {}:
-  if not isEmptyType(n.typ) and d.k == locNone:
-    getTemp(p, n.typ, d)
+  if not isEmptyType(n.typ):
+    # bug #4505: allocate the temp in the outer scope
+    # so that it can escape the generated {}:
+    if d.k == locNone:
+      getTemp(p, n.typ, d)
+    d.flags.incl(lfEnforceDeref)
   preserveBreakIdx:
     p.breakIdx = startBlock(p)
     if n.sons[0].kind != nkEmpty:
@@ -1232,44 +1233,18 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, dotExpr.sons[1].sym)
   genAssignment(p, a, tmp, {})
 
-proc patchAsgnStmtListExpr(father, orig, n: PNode) =
-  case n.kind
-  of nkDerefExpr, nkHiddenDeref:
-    let asgn = copyNode(orig)
-    asgn.add orig[0]
-    asgn.add n
-    father.add asgn
-  of nkStmtList, nkStmtListExpr:
-    for x in n:
-      patchAsgnStmtListExpr(father, orig, x)
-  else:
-    father.add n
-
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   if e.sons[0].kind == nkSym and sfGoto in e.sons[0].sym.flags:
     genLineDir(p, e)
     genGotoVar(p, e.sons[1])
   elif not fieldDiscriminantCheckNeeded(p, e):
-    # this fixes bug #6422 but we really need to change the representation of
-    # arrays in the backend...
     let le = e[0]
     let ri = e[1]
-    var needsRepair = false
-    var it = ri
-    while it.kind in {nkStmtList, nkStmtListExpr}:
-      it = it.lastSon
-      needsRepair = true
-    if it.kind in {nkDerefExpr, nkHiddenDeref} and needsRepair:
-      var patchedTree = newNodeI(nkStmtList, e.info)
-      patchAsgnStmtListExpr(patchedTree, e, ri)
-      genStmts(p, patchedTree)
-      return
     var a: TLoc
     discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
-    if le.kind in {nkDerefExpr, nkHiddenDeref}:
-      genDeref(p, le, a, enforceDeref=true)
-    else:
-      initLocExpr(p, le, a)
+    initLoc(a, locNone, le, OnUnknown)
+    a.flags.incl(lfEnforceDeref)
+    expr(p, le, a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
     genLineDir(p, ri)
