@@ -718,14 +718,10 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  let
-    enforceDeref = lfEnforceDeref in d.flags
-    mt = mapType(p.config, e.sons[0].typ)
-  if mt in {ctArray, ctPtrToArray} and not enforceDeref:
+  let mt = mapType(p.config, e.sons[0].typ)
+  if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
-    #if e[0].kind != nkBracketExpr:
-    #  message(e.info, warnUser, "CAME HERE " & renderTree(e))
     expr(p, e.sons[0], d)
     if e.sons[0].typ.skipTypes(abstractInstOwned).kind == tyRef:
       d.storage = OnHeap
@@ -762,7 +758,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
            e.kind == nkHiddenDeref:
         putIntoDest(p, d, e, rdLoc(a), a.storage)
         return
-    if enforceDeref and mt == ctPtrToArray:
+    if mt == ctPtrToArray and lfEnforceDeref in d.flags:
       # we lie about the type for better C interop: 'ptr array[3,T]' is
       # translated to 'ptr T', but for deref'ing this produces wrong code.
       # See tmissingderef. So we get rid of the deref instead. The codegen
