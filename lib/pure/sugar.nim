@@ -122,12 +122,18 @@ macro `->`*(p, b: untyped): untyped =
 
   result = createProcType(p, b)
 
-type ListComprehension = object
-var lc* {.deprecated.}: ListComprehension
+template `|`*(a,b: untyped): untyped =
+  ## This template should never expand. At some point in the future it
+  ## will be reved without replacement. When it causes problems,
+  ## unexport with ``import future except `|` ``. It is just a hack to
+  ## get useful error messages for the old `[]` brackeds based list
+  ## comprehension syntax.
+  {.error: "this should never expand. If it does use ``import future except `|` ``.".}
 
-template `|`*(lc: ListComprehension, comp: untyped): untyped {.deprecated.} = lc
+template lc*: untyped =
+  {.error: "list comprehension syntax got changed. replace lc[ x | ... ] with lc( x | ... ) now!".}
 
-macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped {.deprecated.} =
+macro lc*(comp, typ: untyped): untyped =
   ## List comprehension, returns a sequence. `comp` is the actual list
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
   ## the type that will be stored inside the result seq.
