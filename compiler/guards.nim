@@ -443,7 +443,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkEmpty, nkNilLit: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 

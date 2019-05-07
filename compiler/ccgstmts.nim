@@ -779,7 +779,7 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
 proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
   # count how many constant strings there are in the case:
   var strings = 0
-  for i in countup(1, sonsLen(t) - 1):
+  for i in 1 ..< sonsLen(t):
     if t.sons[i].kind == nkOfBranch: inc(strings, sonsLen(t.sons[i]) - 1)
   if strings > stringCaseThreshold:
     var bitMask = math.nextPowerOfTwo(strings) - 1
@@ -788,7 +788,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, t.sons[0], a) # fist pass: gnerate ifs+goto:
     var labId = p.labels
-    for i in countup(1, sonsLen(t) - 1):
+    for i in 1 ..< sonsLen(t):
       inc(p.labels)
       if t.sons[i].kind == nkOfBranch:
         genCaseStringBranch(p, t.sons[i], a, "LA" & rope(p.labels) & "_",

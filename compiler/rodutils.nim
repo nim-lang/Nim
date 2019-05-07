@@ -56,7 +56,7 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
       result = $buf.cstring
 
 proc encodeStr*(s: string, result: var string) =
-  for i in countup(0, len(s) - 1):
+  for i in 0 ..< len(s):
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
     else: add(result, '\\' & toHex(ord(s[i]), 2))

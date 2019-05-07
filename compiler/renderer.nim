@@ -262,7 +262,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   put(g, kind, str)
 
 proc containsNL(s: string): bool =
-  for i in countup(0, len(s) - 1):
+  for i in 0 ..< len(s):
     case s[i]
     of '\x0D', '\x0A':
       return true
@@ -554,7 +554,7 @@ proc hasCom(n: PNode): bool =
   case n.kind
   of nkEmpty..nkNilLit: discard
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if hasCom(n.sons[i]): return true
 
 proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
@@ -606,7 +606,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
   putWithSpace(g, kind, k)
   gcoms(g)
   indentNL(g)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     optNL(g)
     gsub(g, n.sons[i], c)
     gcoms(g)
@@ -662,7 +662,7 @@ proc gif(g: var TSrcGen, n: PNode) =
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0].sons[1], c)
   var length = sonsLen(n)
-  for i in countup(1, length - 1):
+  for i in 1 ..< length:
     optNL(g)
     gsub(g, n.sons[i], c)
 
@@ -1043,7 +1043,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkClosedSymChoice, nkOpenSymChoice:
     if renderIds in g.flags:
       put(g, tkParLe, "(")
-      for i in countup(0, sonsLen(n) - 1):
+      for i in 0 ..< sonsLen(n):
         if i > 0: put(g, tkOpr, "|")
         if n.sons[i].kind == nkSym:
           let s = n[i].sym
@@ -1240,7 +1240,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkObject, "object")
   of nkRecList:
     indentNL(g)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       optNL(g)
       gsub(g, n.sons[i], c)
       gcoms(g)
@@ -1336,7 +1336,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     if L > 1:
       gcoms(g)
       indentNL(g)
-      for i in countup(0, L - 1):
+      for i in 0 ..< L:
         optNL(g)
         gsub(g, n.sons[i])
         gcoms(g)
@@ -1538,7 +1538,7 @@ proc renderModule*(n: PNode, infile, outfile: string,
     g: TSrcGen
   initSrcGen(g, renderFlags, conf)
   g.fid = fid
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     gsub(g, n.sons[i])
     optNL(g)
     case n.sons[i].kind

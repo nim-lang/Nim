@@ -24,7 +24,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
       result = genObjectFields(p, typ, n.sons[0])
     else:
       s = nil
-      for i in countup(0, length - 1):
+      for i in 0 ..< length:
         if i > 0: add(s, ", \L")
         add(s, genObjectFields(p, typ, n.sons[i]))
       result = ("{kind: 2, len: $1, offset: 0, " &
@@ -41,7 +41,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
     if (n.sons[0].kind != nkSym): internalError(p.config, n.info, "genObjectFields")
     field = n.sons[0].sym
     s = genTypeInfo(p, field.typ)
-    for i in countup(1, length - 1):
+    for i in 1 ..< length:
       b = n.sons[i]           # branch
       u = nil
       case b.kind
@@ -103,7 +103,7 @@ proc genTupleInfo(p: PProc, typ: PType, name: Rope) =
 proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
   let length = sonsLen(typ.n)
   var s: Rope = nil
-  for i in countup(0, length - 1):
+  for i in 0 ..< length:
     if (typ.n.sons[i].kind != nkSym): internalError(p.config, typ.n.info, "genEnumInfo")
     let field = typ.n.sons[i].sym
     if i > 0: add(s, ", \L")

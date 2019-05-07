@@ -33,7 +33,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     # we have to use the same bitwidth
     # as the target CPU
     var b = 0'i64
-    for i in countup(0, len(s) - 1):
+    for i in 0 ..< len(s):
       b = b +% ord(s[i])
       b = b +% `shl`(b, 10)
       b = b xor `shr`(b, 6)
@@ -43,7 +43,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     result = b
   else:
     var a = 0'i32
-    for i in countup(0, len(s) - 1):
+    for i in 0 ..< len(s):
       a = a +% ord(s[i]).int32
       a = a +% `shl`(a, 10'i32)
       a = a xor `shr`(a, 6'i32)

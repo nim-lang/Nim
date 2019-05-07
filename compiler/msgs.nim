@@ -27,7 +27,7 @@ proc makeCString*(s: string): Rope =
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   add(res, "\"")
-  for i in countup(0, len(s) - 1):
+  for i in 0 ..< len(s):
     if (i + 1) mod MaxLineLength == 0:
       add(res, "\"\L\"")
     toCChar(s[i], res)

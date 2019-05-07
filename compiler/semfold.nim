@@ -122,7 +122,7 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
     result = $chr(int(x) and 0xff)
   of tyEnum:
     var n = t.n
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if n.sons[i].kind != nkSym: internalError(g.config, a.info, "ordinalValToString")
       var field = n.sons[i].sym
       if field.position == x:
@@ -356,7 +356,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
 
 proc getConstIfExpr(c: PSym, n: PNode; g: ModuleGraph): PNode =
   result = nil
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     var it = n.sons[i]
     if it.len == 2:
       var e = getConstExpr(c, it.sons[0], g)
@@ -512,7 +512,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
   var field = n.sons[1].sym
-  for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
+  for i in ord(x.kind == nkObjConstr) ..< sonsLen(x):
     var it = x.sons[i]
     if it.kind != nkExprColonExpr:
       # lookup per index:
@@ -527,7 +527,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
 proc foldConStrStr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
   result.strVal = ""
-  for i in countup(1, sonsLen(n) - 1):
+  for i in 1 ..< sonsLen(n):
     let a = getConstExpr(m, n.sons[i], g)
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
@@ -673,7 +673,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       n.sons[0] = a
   of nkBracket:
     result = copyTree(n)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       var a = getConstExpr(m, n.sons[i], g)
       if a == nil: return nil
       result.sons[i] = a
@@ -688,14 +688,14 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     addSon(result, b)
   of nkCurly:
     result = copyTree(n)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       var a = getConstExpr(m, n.sons[i], g)
       if a == nil: return nil
       result.sons[i] = a
     incl(result.flags, nfAllConst)
   #of nkObjConstr:
   #  result = copyTree(n)
-  #  for i in countup(1, sonsLen(n) - 1):
+  #  for i in 1 ..< sonsLen(n):
   #    var a = getConstExpr(m, n.sons[i].sons[1])
   #    if a == nil: return nil
   #    result.sons[i].sons[1] = a
@@ -704,12 +704,12 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     # tuple constructor
     result = copyTree(n)
     if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr):
-      for i in countup(0, sonsLen(n) - 1):
+      for i in 0 ..< sonsLen(n):
         var a = getConstExpr(m, n.sons[i].sons[1], g)
         if a == nil: return nil
         result.sons[i].sons[1] = a
     else:
-      for i in countup(0, sonsLen(n) - 1):
+      for i in 0 ..< sonsLen(n):
         var a = getConstExpr(m, n.sons[i], g)
         if a == nil: return nil
         result.sons[i] = a

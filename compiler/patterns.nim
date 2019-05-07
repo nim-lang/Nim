@@ -60,7 +60,7 @@ proc sameTrees*(a, b: PNode): bool =
     of nkType: result = sameTypeOrNil(a.typ, b.typ)
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTrees(a.sons[i], b.sons[i]): return
         result = true
 
@@ -203,7 +203,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
           arglist = newNodeI(nkArgList, n.info)
           return bindOrCheck(c, v.sym, arglist)
       if plen == sonsLen(n):
-        for i in countup(0, sonsLen(p) - 1):
+        for i in 0 ..< sonsLen(p):
           if not matches(c, p.sons[i], n.sons[i]): return
         result = true
 
