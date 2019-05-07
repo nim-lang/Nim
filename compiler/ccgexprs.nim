@@ -717,9 +717,9 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       skipTypes(typ, abstractInstOwned).kind == tyVar and
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
-proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
+proc genDeref(p: BProc, e: PNode, d: var TLoc) =
   let mt = mapType(p.config, e.sons[0].typ)
-  if mt in {ctArray, ctPtrToArray} and not enforceDeref:
+  if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
     #if e[0].kind != nkBracketExpr:
@@ -760,7 +760,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
            e.kind == nkHiddenDeref:
         putIntoDest(p, d, e, rdLoc(a), a.storage)
         return
-    if enforceDeref and mt == ctPtrToArray:
+    if lfEnforceDeref in d.flags and mt == ctPtrToArray:
       # we lie about the type for better C interop: 'ptr array[3,T]' is
       # translated to 'ptr T', but for deref'ing this produces wrong code.
       # See tmissingderef. So we get rid of the deref instead. The codegen
@@ -2343,6 +2343,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
       if it.kind == nkExprColonExpr: it = it.sons[1]
       initLoc(rec, locExpr, it, d.storage)
       rec.r = "$1.Field$2" % [rdLoc(d), rope(i)]
+      rec.flags.incl(lfEnforceDeref)
       expr(p, it, rec)
 
 proc isConstClosure(n: PNode): bool {.inline.} =
