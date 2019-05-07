@@ -1237,17 +1237,19 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if kind != skParam: result = t
   of tyGenericInst, tyDistinct, tyAlias, tyInferred:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
-  of tyUncheckedArray:
-    if taHeap in flags:
-      result = typeAllowedAux(marker, lastSon(t), kind, flags)
-    else:
-      result = t
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
         {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
   of tyOpenArray, tyVarargs, tySink:
-    if kind != skParam: result = t
-    else: result = typeAllowedAux(marker, t.sons[0], skVar, flags)
+    if kind != skParam:
+      result = t
+    else:
+      result = typeAllowedAux(marker, t.sons[0], skVar, flags)
+  of tyUncheckedArray:
+    if kind != skParam and taHeap notin flags:
+      result = t
+    else:
+      result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tySequence, tyOpt:
     if t.sons[0].kind != tyEmpty:
       result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
