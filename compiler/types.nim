@@ -1517,11 +1517,12 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
-  if t == nil: return
+  if t == nil:
+    return false
+  if cycleDetector.containsOrIncl(t.id):
+    return true
   case t.kind:
     of tyTuple:
-      if cycleDetector.containsOrIncl(t.id):
-        return true
       var cycleDetectorCopy: IntSet
       for i in  0..<t.len:
         assign(cycleDetectorCopy, cycleDetector)
@@ -1530,7 +1531,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
       return isTupleRecursive(t.lastSon, cycleDetector)
     else:
-      discard
+      return false
 
 proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
