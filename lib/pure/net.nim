@@ -1083,7 +1083,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
   ## For buffered sockets it can be as big as ``BufferSize``.
   ##
   ## If this function does not determine that there is data on the socket
-  ## within ``timeout`` ms, an ETimeout error will be raised.
+  ## within ``timeout`` ms, a TimeoutError error will be raised.
   result = 1
   if size <= 0: assert false
   if timeout == -1: return size
@@ -1138,7 +1138,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ## lower than 0 is never returned.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified an TimeoutError exception will be raised.
+  ## within the time specified a TimeoutError exception will be raised.
   ##
   ## **Note**: ``data`` must be initialised.
   ##
@@ -1165,7 +1165,7 @@ proc recv*(socket: Socket, size: int, timeout = -1,
   ## This function will throw an OSError exception when an error occurs.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified an ETimeout exception will be raised.
+  ## within the time specified a TimeoutError exception will be raised.
   ##
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
@@ -1206,7 +1206,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
   ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
-  ## the specified time an ETimeout exception will be raised.
+  ## the specified time a TimeoutError exception will be raised.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
@@ -1261,7 +1261,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
-  ## the specified time an ETimeout exception will be raised.
+  ## the specified time a TimeoutError exception will be raised.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
@@ -1303,7 +1303,7 @@ proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.
   ##
   ## An optional timeout can be specified in milliseconds, if skipping the
-  ## bytes takes longer than specified an ETimeout exception will be raised.
+  ## bytes takes longer than specified a TimeoutError exception will be raised.
   ##
   ## Returns the number of skipped bytes.
   var waited = 0.0
