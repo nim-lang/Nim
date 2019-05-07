@@ -152,14 +152,15 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
           src.intVal notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
-          src.floatVal.int64 notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
+          (classify(src.floatVal) in {fcNaN, fcNegInf, fcInf} or
+            src.floatVal.int64 notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp)):
         result = convNotInRange
     elif targetBaseTyp.kind in tyFloat..tyFloat64:
       if src.kind in nkFloatLit..nkFloat64Lit and
-          src.floatVal notin firstFloat(targetTyp)..lastFloat(targetTyp):
+          not floatRangeCheck(src.floatVal, targetTyp):
         result = convNotInRange
       elif src.kind in nkCharLit..nkUInt64Lit and
-          src.intVal.float notin firstFloat(targetTyp)..lastFloat(targetTyp):
+          not floatRangeCheck(src.intval.float, targetTyp):
         result = convNotInRange
   else:
     # we use d, s here to speed up that operation a bit:
@@ -293,7 +294,7 @@ proc semConv(c: PContext, n: PNode): PNode =
     of convNotInRange:
       let value =
         if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
-      localError(c.config, n.info, errGenerated, value & " can't be converted to type " &
+      localError(c.config, n.info, errGenerated, value & " can't be converted to " &
         result.typ.typeToString)
   else:
     for i in countup(0, sonsLen(op) - 1):

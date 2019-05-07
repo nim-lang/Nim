@@ -2,22 +2,25 @@ template reject(x) =
     static: assert(not compiles(x))
 
 reject:
-    const i = int8(300)
+    const x = int8(300)
+
+reject:
+    const x = int64(NaN)
 
 type
     R = range[0..10]
 
 reject:
-    const r = R(11)
+    const x = R(11)
 
 reject:
     const x = R(11.0)
 
 reject:
-    const y = R(NaN)
+    const x = R(NaN)
 
 reject:
-    const z = R(Inf)
+    const x = R(Inf)
 
 type
     FloatRange = range[0'f..10'f]
@@ -26,10 +29,13 @@ reject:
     const x = FloatRange(-1'f)
 
 reject:
-    const y = FloatRange(-1)
+    const x = FloatRange(-1)
 
 reject:
-    const z = FloatRange(NaN)
+    const x = FloatRange(NaN)
+
+block:
+    const x = float32(NaN)
 
 type E = enum a, b, c
 

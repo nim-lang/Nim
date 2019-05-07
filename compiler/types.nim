@@ -741,6 +741,22 @@ proc lastFloat*(t: PType): BiggestFloat =
     internalError(newPartialConfigRef(), "invalid kind for lastFloat(" & $t.kind & ')')
     NaN
 
+proc floatRangeCheck*(x: BiggestFloat, t: PType): bool =
+  case t.kind
+  # This needs to be special cased since NaN is never
+  # part of firstFloat(t) .. lastFloat(t)
+  of tyFloat..tyFloat128:
+    true
+  of tyRange:
+    x in firstFloat(t) .. lastFloat(t)
+  of tyVar:
+    floatRangeCheck(x, t.sons[0])
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
+     tyStatic, tyInferred, tyUserTypeClasses:
+    floatRangeCheck(x, lastSon(t))
+  else:
+    internalError(newPartialConfigRef(), "invalid kind for floatRangeCheck:" & $t.kind)
+    false
 
 proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.skipTypes(tyUserTypeClasses).kind
