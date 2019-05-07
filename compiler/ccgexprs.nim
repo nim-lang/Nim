@@ -721,7 +721,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
   let
     enforceDeref = lfEnforceDeref in d.flags
     mt = mapType(p.config, e.sons[0].typ)
-  if mt in {ctArray, ctPtrToArray} and enforceDeref:
+  if mt in {ctArray, ctPtrToArray} and not enforceDeref:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
     #if e[0].kind != nkBracketExpr:
