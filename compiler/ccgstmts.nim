@@ -596,9 +596,9 @@ proc genWhileStmt(p: BProc, t: PNode) =
   dec(p.withinLoop)
 
 proc genBlock(p: BProc, n: PNode, d: var TLoc) =
-  # bug #4505: allocate the temp in the outer scope
-  # so that it can escape the generated {}:
   if not isEmptyType(n.typ):
+    # bug #4505: allocate the temp in the outer scope
+    # so that it can escape the generated {}:
     if d.k == locNone:
       getTemp(p, n.typ, d)
     d.flags.incl(lfEnforceDeref)
