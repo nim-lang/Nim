@@ -123,8 +123,6 @@ proc genVarTuple(p: BProc, n: PNode) =
     if forHcr or isGlobalInBlock:
       hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
 
-proc genDeref(p: BProc, e: PNode, d: var TLoc)
-
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
   if ri.kind in nkCallKinds and (ri.sons[0].kind != nkSym or
                                  ri.sons[0].sym.magic == mNone):
