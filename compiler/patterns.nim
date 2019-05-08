@@ -60,7 +60,7 @@ proc sameTrees*(a, b: PNode): bool =
     of nkType: result = sameTypeOrNil(a.typ, b.typ)
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTrees(a.sons[i], b.sons[i]): return
         result = true
 
@@ -182,7 +182,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
       if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
         var arglist: PNode
         if plen <= sonsLen(n):
-          for i in countup(0, plen - 2):
+          for i in 0 .. plen - 2:
             if not matches(c, p.sons[i], n.sons[i]): return
           if plen == sonsLen(n) and lastSon(n).kind == nkHiddenStdConv and
               lastSon(n).sons[1].kind == nkBracket:
@@ -194,16 +194,16 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
             arglist = newNodeI(nkArgList, n.info, sonsLen(n) - plen + 1)
             # f(1, 2, 3)
             # p(X)
-            for i in countup(0, sonsLen(n) - plen):
+            for i in 0 .. sonsLen(n) - plen:
               arglist.sons[i] = n.sons[i + plen - 1]
           return bindOrCheck(c, v.sym, arglist)
         elif plen-1 == sonsLen(n):
-          for i in countup(0, plen - 2):
+          for i in 0 .. plen - 2:
             if not matches(c, p.sons[i], n.sons[i]): return
           arglist = newNodeI(nkArgList, n.info)
           return bindOrCheck(c, v.sym, arglist)
       if plen == sonsLen(n):
-        for i in countup(0, sonsLen(p) - 1):
+        for i in 0 ..< sonsLen(p):
           if not matches(c, p.sons[i], n.sons[i]): return
         result = true
 

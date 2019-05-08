@@ -262,7 +262,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   put(g, kind, str)
 
 proc containsNL(s: string): bool =
-  for i in countup(0, len(s) - 1):
+  for i in 0 ..< len(s):
     case s[i]
     of '\x0D', '\x0A':
       return true
@@ -302,7 +302,7 @@ proc gcom(g: var TSrcGen, n: PNode) =
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
-  for i in countup(0, high(g.comStack)): gcom(g, g.comStack[i])
+  for i in 0 .. high(g.comStack): gcom(g, g.comStack[i])
   popAllComs(g)
 
 proc lsub(g: TSrcGen; n: PNode): int
@@ -393,7 +393,7 @@ proc atom(g: TSrcGen; n: PNode): string =
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in countup(start, sonsLen(n) + theEnd):
+  for i in start .. sonsLen(n) + theEnd:
     let param = n.sons[i]
     if nfDefaultParam notin param.flags:
       inc(result, lsub(g, param))
@@ -404,7 +404,7 @@ proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in countup(start, sonsLen(n) + theEnd): inc(result, lsub(g, n.sons[i]))
+  for i in start .. sonsLen(n) + theEnd: inc(result, lsub(g, n.sons[i]))
 
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
@@ -554,7 +554,7 @@ proc hasCom(n: PNode): bool =
   case n.kind
   of nkEmpty..nkNilLit: discard
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if hasCom(n.sons[i]): return true
 
 proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
@@ -563,7 +563,7 @@ proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
                theEnd: int = - 1, separator = tkComma) =
-  for i in countup(start, sonsLen(n) + theEnd):
+  for i in start .. sonsLen(n) + theEnd:
     var c = i < sonsLen(n) + theEnd
     var sublen = lsub(g, n.sons[i]) + ord(c)
     if not fits(g, sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
@@ -598,7 +598,7 @@ proc gsemicolon(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) =
 
 proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
            theEnd: int = - 1) =
-  for i in countup(start, sonsLen(n) + theEnd): gsub(g, n.sons[i], c)
+  for i in start .. sonsLen(n) + theEnd: gsub(g, n.sons[i], c)
 
 proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
               k: string) =
@@ -606,7 +606,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
   putWithSpace(g, kind, k)
   gcoms(g)
   indentNL(g)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     optNL(g)
     gsub(g, n.sons[i], c)
     gcoms(g)
@@ -616,7 +616,7 @@ proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
   result = n.comment.len > 0
   if not result:
     # check further
-    for i in countup(start, sonsLen(n) + theEnd):
+    for i in start .. sonsLen(n) + theEnd:
       if (lsub(g, n.sons[i]) > MaxLineLen):
         result = true
         break
@@ -662,7 +662,7 @@ proc gif(g: var TSrcGen, n: PNode) =
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0].sons[1], c)
   var length = sonsLen(n)
-  for i in countup(1, length - 1):
+  for i in 1 ..< length:
     optNL(g)
     gsub(g, n.sons[i], c)
 
@@ -1043,7 +1043,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkClosedSymChoice, nkOpenSymChoice:
     if renderIds in g.flags:
       put(g, tkParLe, "(")
-      for i in countup(0, sonsLen(n) - 1):
+      for i in 0 ..< sonsLen(n):
         if i > 0: put(g, tkOpr, "|")
         if n.sons[i].kind == nkSym:
           let s = n[i].sym
@@ -1240,7 +1240,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkObject, "object")
   of nkRecList:
     indentNL(g)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       optNL(g)
       gsub(g, n.sons[i], c)
       gcoms(g)
@@ -1336,7 +1336,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     if L > 1:
       gcoms(g)
       indentNL(g)
-      for i in countup(0, L - 1):
+      for i in 0 ..< L:
         optNL(g)
         gsub(g, n.sons[i])
         gcoms(g)
@@ -1538,7 +1538,7 @@ proc renderModule*(n: PNode, infile, outfile: string,
     g: TSrcGen
   initSrcGen(g, renderFlags, conf)
   g.fid = fid
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     gsub(g, n.sons[i])
     optNL(g)
     case n.sons[i].kind

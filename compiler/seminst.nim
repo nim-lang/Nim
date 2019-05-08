@@ -14,11 +14,11 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   template rec(n) = addObjFieldsToLocalScope(c, n)
   case n.kind
   of nkRecList:
-    for i in countup(0, len(n)-1):
+    for i in 0 ..< len(n):
       rec n[i]
   of nkRecCase:
     if n.len > 0: rec n.sons[0]
-    for i in countup(1, len(n)-1):
+    for i in 1 ..< len(n):
       if n[i].kind in {nkOfBranch, nkElse}: rec lastSon(n[i])
   of nkSym:
     let f = n.sym
@@ -152,7 +152,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     dec c.inGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
-  for i in countup(0, c.generics.len - 1):
+  for i in 0 ..< c.generics.len:
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
       pushProcCon(c, oldPrc)

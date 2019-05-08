@@ -101,7 +101,7 @@ proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
 proc genRawSetData(cs: TBitSet, size: int): Rope =
   if size > 8:
     result = "{$n" % []
-    for i in countup(0, size - 1):
+    for i in 0 ..< size:
       if i < size - 1:
         # not last iteration?
         if (i + 1) mod 8 == 0:
@@ -845,7 +845,7 @@ proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
 proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
   var test, u, v: TLoc
-  for i in countup(1, sonsLen(e) - 1):
+  for i in 1 ..< sonsLen(e):
     var it = e.sons[i]
     assert(it.kind in nkCallKinds)
     assert(it.sons[0].kind == nkSym)
@@ -1130,7 +1130,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in countup(0, sonsLen(e) - 2):
+  for i in 0 .. sonsLen(e) - 2:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
     if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -1169,7 +1169,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e.sons[1], dest)
-  for i in countup(0, sonsLen(e) - 3):
+  for i in 0 .. sonsLen(e) - 3:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 2], a)
     if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -1447,7 +1447,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     # generate call to newSeq before adding the elements per hand:
     genNewSeqAux(p, dest[], l,
       optNilSeqs notin p.options and n.len == 0)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), intLiteral(i), dataField(p)])
     arr.storage = OnHeap            # we know that sequences are on the heap
@@ -1479,7 +1479,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   initLocExpr(p, n.sons[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
-    for i in countup(0, L - 1):
+    for i in 0 ..< L:
       initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
       elem.r = ropecg(p.module, "$1$3[$2]", [rdLoc(d), intLiteral(i), dataField(p)])
       elem.storage = OnHeap # we know that sequences are on the heap
@@ -1796,7 +1796,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
     var length = sonsLen(e.sons[1])
     if length > 0:
       b.r = rope("(")
-      for i in countup(0, length - 1):
+      for i in 0 ..< length:
         let it = e.sons[1].sons[i]
         if it.kind == nkRange:
           initLocExpr(p, it.sons[0], x)
@@ -2336,7 +2336,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     if d.k == locNone: getTemp(p, t, d)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
       initLoc(rec, locExpr, it, d.storage)
@@ -2378,7 +2378,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n.sons[i], arr)
@@ -2473,7 +2473,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       add(r, "->Sup")
     else:
       add(r, ".Sup")
-    for i in countup(2, abs(inheritanceDiff(dest, src))): add(r, ".Sup")
+    for i in 2 .. abs(inheritanceDiff(dest, src)): add(r, ".Sup")
     if isRef:
       # it can happen that we end up generating '&&x->Sup' here, so we pack
       # the '&x->Sup' into a temporary and then those address is taken
@@ -2753,7 +2753,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode, result: var Rope; cou
       getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj.sons[0], cons, result, count)
-    for i in countup(1, sonsLen(obj) - 1):
+    for i in 1 ..< sonsLen(obj):
       getNullValueAux(p, t, lastSon(obj.sons[i]), cons, result, count)
   of nkSym:
     if count > 0: result.add ", "
@@ -2802,7 +2802,7 @@ proc genConstObjConstr(p: BProc; n: PNode): Rope =
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)
   result = rope("{")
-  for i in countup(0, length - 2):
+  for i in 0 .. length - 2:
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
   if length > 0:
     add(result, genNamedConstExpr(p, n.sons[length - 1]))
@@ -2813,7 +2813,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
   if n.len > 0:
     # array part needs extra curlies:
     data.add(", {")
-    for i in countup(0, n.len - 1):
+    for i in 0 ..< n.len:
       if i > 0: data.addf(",$n", [])
       data.add genConstExpr(p, n.sons[i])
     data.add("}")
@@ -2833,7 +2833,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
 
 proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
   var data = rope"{"
-  for i in countup(0, n.len - 1):
+  for i in 0 ..< n.len:
     if i > 0: data.addf(",$n", [])
     data.add genConstExpr(p, n.sons[i])
   data.add("}")

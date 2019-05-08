@@ -75,7 +75,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkLetSection, nkVarSection, nkUsingStmt:
     for a in n:
       if a.kind in {nkIdentDefs, nkVarTuple}:
-        for j in countup(0, a.len-3): decl(a[j])
+        for j in 0 .. a.len-3: decl(a[j])
         for j in a.len-2..a.len-1: deps(a[j])
   of nkConstSection, nkTypeSection:
     for a in n:

@@ -235,7 +235,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
   var L = len(sq)
-  for i in countup(0, L - 1):
+  for i in 0 ..< L:
     if sq[i].id == s.id: return
   setLen(sq, L + 1)
   sq[L] = s

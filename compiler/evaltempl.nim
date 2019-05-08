@@ -64,7 +64,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in countup(0, sonsLen(templ) - 1):
+      for i in 0 ..< sonsLen(templ):
         evalTemplateAux(templ.sons[i], actual, c, res)
       result.add res
     else:
@@ -78,7 +78,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       c.isDeclarative = true
       isDeclarative = true
     var res = copyNode(c, templ, actual)
-    for i in countup(0, sonsLen(templ) - 1):
+    for i in 0 ..< sonsLen(templ):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
     if isDeclarative: c.isDeclarative = false
@@ -189,7 +189,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
       result.info = n.info
-    for i in countup(0, safeLen(body) - 1):
+    for i in 0 ..< safeLen(body):
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)

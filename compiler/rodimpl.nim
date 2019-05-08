@@ -154,7 +154,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       encodeNode(g, n.info, n.sons[i], result)
   add(result, ')')
 
@@ -248,7 +248,7 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     add(result, '\21')
     encodeVInt(t.typeInst.uniqueId, result)
     pushType(w, t.typeInst)
-  for i in countup(0, sonsLen(t) - 1):
+  for i in 0 ..< sonsLen(t):
     if t.sons[i] == nil:
       add(result, "^()")
     else:

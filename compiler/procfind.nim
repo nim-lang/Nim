@@ -15,7 +15,7 @@ import
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if sonsLen(procA) != sonsLen(procB): return false
-  for i in countup(0, sonsLen(procA) - 1):
+  for i in 0 ..< sonsLen(procA):
     if procA.sons[i].kind != nkSym:
       return false
     if procB.sons[i].kind != nkSym:
@@ -98,7 +98,7 @@ when false:
     var length = sonsLen(child)
     result = false
     if length == sonsLen(parent):
-      for i in countup(1, length - 1):
+      for i in 1 ..< length:
         var m = child.sons[i].sym
         var n = parent.sons[i].sym
         assert((m.kind == skParam) and (n.kind == skParam))

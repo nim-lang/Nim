@@ -119,7 +119,7 @@ proc transform(c: PTransf, n: PNode): PTransNode
 
 proc transformSons(c: PTransf, n: PNode): PTransNode =
   result = newTransNode(n)
-  for i in countup(0, sonsLen(n)-1):
+  for i in 0 ..< sonsLen(n):
     result[i] = transform(c, n.sons[i])
 
 proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PTransNode): PTransNode =
@@ -176,7 +176,7 @@ proc freshVar(c: PTransf; v: PSym): PNode =
 
 proc transformVarSection(c: PTransf, v: PNode): PTransNode =
   result = newTransNode(v)
-  for i in countup(0, sonsLen(v)-1):
+  for i in 0 ..< sonsLen(v):
     var it = v.sons[i]
     if it.kind == nkCommentStmt:
       result[i] = PTransNode(it)
@@ -203,7 +203,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         internalError(c.graph.config, it.info, "transformVarSection: not nkVarTuple")
       var L = sonsLen(it)
       var defs = newTransNode(it.kind, it.info, L)
-      for j in countup(0, L-3):
+      for j in 0 .. L-3:
         if it[j].kind == nkSym:
           let x = freshVar(c, it.sons[j].sym)
           idNodeTablePut(c.transCon.mapping, it.sons[j].sym, x)
@@ -219,7 +219,7 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
   result = PTransNode(v)
   when false:
     result = newTransNode(v)
-    for i in countup(0, sonsLen(v)-1):
+    for i in 0 ..< sonsLen(v):
       var it = v.sons[i]
       if it.kind == nkCommentStmt:
         result[i] = PTransNode(it)
@@ -236,7 +236,7 @@ proc hasContinue(n: PNode): bool =
   of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: discard
   of nkContinueStmt: result = true
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if hasContinue(n.sons[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
@@ -318,7 +318,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
     return PTransNode(n)
   else:
     result = newTransNode(n)
-    for i in countup(0, sonsLen(n)-1):
+    for i in 0 ..< sonsLen(n):
       result[i] = introduceNewLocalVars(c, n.sons[i])
 
 proc transformAsgn(c: PTransf, n: PNode): PTransNode =
@@ -375,7 +375,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
       c.transCon.forStmt.len != 3:
     e = skipConv(e)
     if e.kind in {nkPar, nkTupleConstr}:
-      for i in countup(0, sonsLen(e) - 1):
+      for i in 0 ..< sonsLen(e):
         var v = e.sons[i]
         if v.kind == nkExprColonExpr: v = v.sons[1]
         if c.transCon.forStmt[i].kind == nkVarTuple:
@@ -390,7 +390,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     else:
       # Unpack the tuple into the loop variables
       # XXX: BUG: what if `n` is an expression with side-effects?
-      for i in countup(0, sonsLen(c.transCon.forStmt) - 3):
+      for i in 0 .. sonsLen(c.transCon.forStmt) - 3:
         let lhs = c.transCon.forStmt.sons[i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         add(result, asgnTo(lhs, rhs))
@@ -570,7 +570,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = paDirectMapping
   of nkPar, nkTupleConstr, nkCurly, nkBracket:
     result = paFastAsgn
-    for i in countup(0, sonsLen(arg) - 1):
+    for i in 0 ..< sonsLen(arg):
       if putArgInto(arg.sons[i], formal) != paDirectMapping: return
     result = paDirectMapping
   else:
@@ -620,7 +620,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   discard c.breakSyms.pop
 
   var v = newNodeI(nkVarSection, n.info)
-  for i in countup(0, length - 3):
+  for i in 0 .. length - 3:
     if n[i].kind == nkVarTuple:
       for j in 0 ..< sonsLen(n[i])-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
@@ -638,7 +638,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   if iter.kind != skIterator: return result
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
-  for i in countup(1, sonsLen(call) - 1):
+  for i in 1 ..< sonsLen(call):
     var arg = transform(c, call.sons[i]).PNode
     let ff = skipTypes(iter.typ, abstractInst)
     # can happen for 'nim check':
@@ -736,7 +736,7 @@ proc flattenTreeAux(d, a: PNode, op: PSym) =
   let op2 = getMergeOp(a)
   if op2 != nil and
       (op2.id == op.id or op.magic != mNone and op2.magic == op.magic):
-    for i in countup(1, sonsLen(a)-1): flattenTreeAux(d, a.sons[i], op)
+    for i in 1 ..< sonsLen(a): flattenTreeAux(d, a.sons[i], op)
   else:
     addSon(d, copyTree(a))
 

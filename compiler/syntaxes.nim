@@ -85,13 +85,13 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
     llStreamClose(s)
 
 proc getFilter(ident: PIdent): TFilterKind =
-  for i in countup(low(TFilterKind), high(TFilterKind)):
+  for i in low(TFilterKind) .. high(TFilterKind):
     if cmpIgnoreStyle(ident.s, filterNames[i]) == 0:
       return i
   result = filtNone
 
 proc getParser(conf: ConfigRef; n: PNode; ident: PIdent): TParserKind =
-  for i in countup(low(TParserKind), high(TParserKind)):
+  for i in low(TParserKind) .. high(TParserKind):
     if cmpIgnoreStyle(ident.s, parserNames[i]) == 0:
       return i
   localError(conf, n.info, "unknown parser: " & ident.s)
@@ -131,7 +131,7 @@ proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
   result = start
   if n.kind == nkEmpty: return
   if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "|":
-    for i in countup(1, 2):
+    for i in 1 .. 2:
       if n.sons[i].kind == nkInfix:
         result = evalPipe(p, n.sons[i], filename, result)
       else:

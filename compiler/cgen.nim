@@ -202,7 +202,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
 
 proc indentLine(p: BProc, r: Rope): Rope =
   result = r
-  for i in countup(0, p.blocks.len-1):
+  for i in 0 ..< p.blocks.len:
     prepend(result, "\t".rope)
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
@@ -664,7 +664,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       libCandidates(lib.path.strVal, s)
       rawMessage(m.config, hintDependency, lib.path.strVal)
       var loadlib: Rope = nil
-      for i in countup(0, high(s)):
+      for i in 0 .. high(s):
         inc(m.labels)
         if i > 0: add(loadlib, "||")
         let n = newStrNode(nkStrLit, s[i])
@@ -1004,7 +1004,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
 
-  for i in countup(1, sonsLen(prc.typ.n) - 1):
+  for i in 1 ..< sonsLen(prc.typ.n):
     let param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param, prc.typ[0])
@@ -1710,7 +1710,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     add(result, "#define nimfr_(x, y)\n#define nimln_(x, y)\n")
   add(result, genSectionEnd(cfsFrameDefines, m.config))
 
-  for i in countup(cfsForwardTypes, cfsProcs):
+  for i in cfsForwardTypes .. cfsProcs:
     if m.s[i].len > 0:
       moduleIsEmpty = false
       add(result, genSectionStart(i, m.config))
@@ -1811,7 +1811,7 @@ proc writeHeader(m: BModule) =
   generateHeaders(m)
 
   generateThreadLocalStorage(m)
-  for i in countup(cfsHeaders, cfsProcs):
+  for i in cfsHeaders .. cfsProcs:
     add(result, genSectionStart(i, m.config))
     add(result, m.s[i])
     add(result, genSectionEnd(i, m.config))

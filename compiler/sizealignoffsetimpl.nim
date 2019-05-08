@@ -337,7 +337,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   of tyTuple:
     maxAlign = 1
     sizeAccum = 0
-    for i in countup(0, sonsLen(typ) - 1):
+    for i in 0 ..< sonsLen(typ):
       let child = typ.sons[i]
       computeSizeAlign(conf, child)
       if child.size < 0:

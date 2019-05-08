@@ -138,13 +138,13 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer)
 proc getField(conf: ConfigRef, n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       result = getField(conf, n.sons[i], position)
       if result != nil: return
   of nkRecCase:
     result = getField(conf, n.sons[0], position)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in 1 ..< sonsLen(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = getField(conf, lastSon(n.sons[i]), position)
@@ -158,7 +158,7 @@ proc packObject(conf: ConfigRef, x: PNode, typ: PType, res: pointer) =
   internalAssert conf, x.kind in {nkObjConstr, nkPar, nkTupleConstr}
   # compute the field's offsets:
   discard getSize(conf, typ)
-  for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
+  for i in ord(x.kind == nkObjConstr) ..< sonsLen(x):
     var it = x.sons[i]
     if it.kind == nkExprColonExpr:
       internalAssert conf, it.sons[0].kind == nkSym
@@ -245,7 +245,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode
 proc unpackObjectAdd(conf: ConfigRef, x: pointer, n, result: PNode) =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       unpackObjectAdd(conf, x, n.sons[i], result)
   of nkRecCase:
     globalError(conf, result.info, "case objects cannot be unpacked")
@@ -275,7 +275,7 @@ proc unpackObject(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
       globalError(conf, n.info, "cannot map value from FFI")
     if typ.n.isNil:
       globalError(conf, n.info, "cannot unpack unnamed tuple")
-    for i in countup(ord(n.kind == nkObjConstr), sonsLen(n) - 1):
+    for i in ord(n.kind == nkObjConstr) ..< sonsLen(n):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr:
         internalAssert conf, it.sons[0].kind == nkSym

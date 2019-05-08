@@ -386,7 +386,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
       if blen == 1:
         catchesAll(tracked)
       else:
-        for j in countup(0, blen - 2):
+        for j in 0 .. blen - 2:
           if b.sons[j].isInfixAs():
             assert(b.sons[j][1].kind == nkType)
             catches(tracked, b.sons[j][1].typ)
@@ -430,7 +430,7 @@ proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
 proc trackPragmaStmt(tracked: PEffects, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     var it = n.sons[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:

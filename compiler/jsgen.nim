@@ -109,7 +109,7 @@ proc indentLine(p: PProc, r: Rope): Rope =
   result = r
   var p = p
   while true:
-    for i in countup(0, p.blocks.len - 1 + p.extraIndent):
+    for i in 0 ..< p.blocks.len + p.extraIndent:
       prepend(result, "\t".rope)
     if p.up == nil or p.up.prc != p.prc.owner:
       break
@@ -780,7 +780,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       var excAlias: PNode = nil
 
       useMagic(p, "isObj")
-      for j in countup(0, blen - 2):
+      for j in 0 .. blen - 2:
         var throwObj: PNode
         let it = n.sons[i].sons[j]
 
@@ -858,11 +858,11 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
-  for i in countup(1, sonsLen(n) - 1):
+  for i in 1 ..< sonsLen(n):
     let it = n.sons[i]
     case it.kind
     of nkOfBranch:
-      for j in countup(0, sonsLen(it) - 2):
+      for j in 0 .. sonsLen(it) - 2:
         let e = it.sons[j]
         if e.kind == nkRange:
           var v = copyNode(e.sons[0])
@@ -930,7 +930,7 @@ proc genBreakStmt(p: PProc, n: PNode) =
 proc genAsmOrEmitStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
@@ -968,7 +968,7 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     let it = n.sons[i]
     if sonsLen(it) != 1:
       if i > 0:
@@ -987,7 +987,7 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
 
 proc generateHeader(p: PProc, typ: PType): Rope =
   result = nil
-  for i in countup(1, sonsLen(typ.n) - 1):
+  for i in 1 ..< sonsLen(typ.n):
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
@@ -1000,7 +1000,7 @@ proc generateHeader(p: PProc, typ: PType): Rope =
       add(result, "_Idx")
 
 proc countJsParams(typ: PType): int =
-  for i in countup(1, sonsLen(typ.n) - 1):
+  for i in 1 ..< sonsLen(typ.n):
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
@@ -1443,7 +1443,7 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   var emitted = start-1
 
-  for i in countup(start, sonsLen(n) - 1):
+  for i in start ..< sonsLen(n):
     let it = n.sons[i]
     var paramType: PNode = nil
     if i < sonsLen(typ):
@@ -1562,7 +1562,7 @@ proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
   useMagic(p, "toJSStr") # Used in rawEcho
   useMagic(p, "rawEcho")
   add(r.res, "rawEcho(")
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     let it = n.sons[i]
     if it.typ.isCompileTimeOnly: continue
     if i > 0: add(r.res, ", ")
@@ -1578,11 +1578,11 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope
 proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: var Rope) =
   case rec.kind
   of nkRecList:
-    for i in countup(0, sonsLen(rec) - 1):
+    for i in 0 ..< sonsLen(rec):
       createRecordVarAux(p, rec.sons[i], excludedFieldIDs, output)
   of nkRecCase:
     createRecordVarAux(p, rec.sons[0], excludedFieldIDs, output)
-    for i in countup(1, sonsLen(rec) - 1):
+    for i in 1 ..< sonsLen(rec):
       createRecordVarAux(p, lastSon(rec.sons[i]), excludedFieldIDs, output)
   of nkSym:
     # Do not produce code for void types
@@ -1753,7 +1753,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     lineF(p, "}$n")
 
 proc genVarStmt(p: PProc, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     var a = n.sons[i]
     if a.kind != nkCommentStmt:
       if a.kind == nkVarTuple:
@@ -1811,7 +1811,7 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add("($1 || []).concat(" % [a.res])
 
-  for i in countup(2, sonsLen(n) - 2):
+  for i in 2 .. sonsLen(n) - 2:
     gen(p, n.sons[i], a)
     if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
@@ -1831,7 +1831,7 @@ proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
   r.res = rope("array(")
   let x = skipConv(n[1])
   if x.kind == nkBracket:
-    for i in countup(0, x.len - 1):
+    for i in 0 ..< x.len:
       let it = x[i]
       if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
         if i > 0: r.res.add(", ")
@@ -2070,7 +2070,7 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
   useMagic(p, "setConstr")
   r.res = rope("setConstr(")
   r.kind = resExpr
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     if i > 0: add(r.res, ", ")
     var it = n.sons[i]
     if it.kind == nkRange:
@@ -2092,7 +2092,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = rope("[")
   r.kind = resExpr
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     if i > 0: add(r.res, ", ")
     gen(p, n.sons[i], a)
     if a.typ == etyBaseIndex:
@@ -2109,7 +2109,7 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = rope("{")
   r.kind = resExpr
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     if i > 0: add(r.res, ", ")
     var it = n.sons[i]
     if it.kind == nkExprColonExpr: it = it.sons[1]
@@ -2129,7 +2129,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
   var initList : Rope
   var fieldIDs = initIntSet()
-  for i in countup(1, sonsLen(n) - 1):
+  for i in 1 ..< sonsLen(n):
     if i > 1: add(initList, ", ")
     var it = n.sons[i]
     internalAssert p.config, it.kind == nkExprColonExpr
@@ -2463,7 +2463,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     # this shows the distinction is nice for backends and should be kept
     # in the frontend
     let isExpr = not isEmptyType(n.typ)
-    for i in countup(0, sonsLen(n) - 1 - isExpr.ord):
+    for i in 0 ..< sonsLen(n) - isExpr.ord:
       genStmt(p, n.sons[i])
     if isExpr:
       gen(p, lastSon(n), r)

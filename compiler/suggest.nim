@@ -275,7 +275,7 @@ template wholeSymTab(cond, section: untyped) =
                                  pm, c.inTypeContext > 0, scopeN))
 
 proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var Suggestions) =
-  for i in countup(0, sonsLen(list) - 1):
+  for i in 0 ..< sonsLen(list):
     if list.sons[i].kind == nkSym:
       suggestField(c, list.sons[i].sym, f, info, outputs)
     #else: InternalError(list.info, "getSymFromList")
@@ -283,12 +283,12 @@ proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var S
 proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], f, info, outputs)
+    for i in 0 ..< sonsLen(n): suggestObject(c, n.sons[i], f, info, outputs)
   of nkRecCase:
     var L = sonsLen(n)
     if L > 0:
       suggestObject(c, n.sons[0], f, info, outputs)
-      for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), f, info, outputs)
+      for i in 1 ..< L: suggestObject(c, lastSon(n.sons[i]), f, info, outputs)
   of nkSym: suggestField(c, n.sym, f, info, outputs)
   else: discard
 
