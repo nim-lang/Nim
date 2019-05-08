@@ -394,22 +394,23 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     else: result = isNone
 
 proc isConvertibleToRange(f, a: PType): bool =
-  # be less picky for tyRange, as that it is used for array indexing:
   if f.kind in {tyInt..tyInt64, tyUInt..tyUInt64} and
      a.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
     case f.kind
-    of tyInt, tyInt64: result = true
-    of tyInt8: result = a.kind in {tyInt8, tyInt}
-    of tyInt16: result = a.kind in {tyInt8, tyInt16, tyInt}
-    of tyInt32: result = a.kind in {tyInt8, tyInt16, tyInt32, tyInt}
-    of tyUInt, tyUInt64: result = true
-    of tyUInt8: result = a.kind in {tyUInt8, tyUInt}
-    of tyUInt16: result = a.kind in {tyUInt8, tyUInt16, tyUInt}
-    of tyUInt32: result = a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
+    of tyInt8: result = isIntLit(a) or a.kind in {tyInt8}
+    of tyInt16: result = isIntLit(a) or a.kind in {tyInt8, tyInt16}
+    of tyInt32: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32}
+    # This is wrong, but seems like there's a lot of code that relies on it :(
+    of tyInt: result = true
+    of tyInt64: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32, tyInt, tyInt64}
+    of tyUInt8: result = isIntLit(a) or a.kind in {tyUInt8}
+    of tyUInt16: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16}
+    of tyUInt32: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32}
+    of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
+    of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt, tyUInt64}
     else: result = false
-  elif f.kind in {tyFloat..tyFloat128} and
-       a.kind in {tyFloat..tyFloat128}:
-    result = true
+  elif f.kind in {tyFloat..tyFloat128}:
+    result = isIntLit(a) or a.kind in {tyFloat..tyFloat128}
 
 proc handleFloatRange(f, a: PType): TTypeRelation =
   if a.kind == f.kind:
