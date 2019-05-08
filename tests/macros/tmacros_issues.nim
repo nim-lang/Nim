@@ -4,7 +4,7 @@ IntLit 5
 proc (x: int): string => typeDesc[proc[string, int]]
 proc (x: int): void => typeDesc[proc[void, int]]
 proc (x: int) => typeDesc[proc[void, int]]
-x => UncheckedArray[int]
+x => seq[int]
 a
 s
 d
@@ -111,7 +111,7 @@ block t2211:
   showType(proc(x:int): void)
   showType(proc(x:int))
 
-  var x: UncheckedArray[int]
+  var x: seq[int]
   showType(x)
 
 

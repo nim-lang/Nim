@@ -1199,9 +1199,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     case t2.kind
     of tyVar, tyLent:
       if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
-    of tyOpenArray:
+    of tyOpenArray, tyUncheckedArray:
       if kind != skParam: result = t
-      else: result = typeAllowedAux(marker, t2, kind, flags)
+      else: result = typeAllowedAux(marker, t2.sons[0], skParam, flags)
     else:
       if kind notin {skParam, skResult}: result = t
       else: result = typeAllowedAux(marker, t2, kind, flags)
@@ -1235,14 +1235,21 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias, tyInferred, tyUncheckedArray:
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
         {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
   of tyOpenArray, tyVarargs, tySink:
-    if kind != skParam: result = t
-    else: result = typeAllowedAux(marker, t.sons[0], skVar, flags)
+    if kind != skParam:
+      result = t
+    else:
+      result = typeAllowedAux(marker, t.sons[0], skVar, flags)
+  of tyUncheckedArray:
+    if kind != skParam and taHeap notin flags:
+      result = t
+    else:
+      result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tySequence, tyOpt:
     if t.sons[0].kind != tyEmpty:
       result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
