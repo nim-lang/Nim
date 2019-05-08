@@ -318,9 +318,14 @@ proc rand*(max: float): float {.benign.} =
     ## f = 8.717181376738381e-07
   rand(state, max)
 
-proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
   ## state.
+  ##
+  ## Allowed input types are:
+  ## * Integer
+  ## * Floats
+  ## * Enums without holes 
   ##
   ## See also:
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice and uses the
@@ -333,9 +338,14 @@ proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 6
-  result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
+    let f = r.rand(-1.0 .. 1.0)
+    ## f = 0.8741183448756229
+  when T is SomeFloat:
+    result = rand(r, x.b - x.a) + x.a
+  else: # Integers and Enum types
+    result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
 
-proc rand*[T: Ordinal](x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
