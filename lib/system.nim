@@ -264,10 +264,11 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
-  ## Resets an object `obj` to its initial (binary zero) value.
-  ##
-  ## This needs to be called before any possible `object branch transition`:idx:.
+when not defined(nimV2):
+  proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+    ## Resets an object `obj` to its initial (binary zero) value.
+    ##
+    ## This needs to be called before any possible `object branch transition`:idx:.
 
 proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
@@ -4440,6 +4441,14 @@ when defined(genode):
         # Perform application initialization
         # and return to thread entrypoint.
 
+
+when defined(nimV2):
+  proc reset*[T](obj: var T) =
+    ## Resets an object `obj` to its initial (binary zero) value.
+    ## Destructor is invoked if T type has destructor.
+    mixin `=destroy`
+    `=destroy`(obj)
+    zeroMem(obj.addr, sizeof(obj))
 
 import system/widestrs
 export widestrs

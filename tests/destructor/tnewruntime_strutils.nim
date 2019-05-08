@@ -1,6 +1,8 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''442 442'''
+  output: '''442 442
+443 443
+'''
 """
 
 import strutils, os
@@ -187,5 +189,13 @@ proc staticTests =
 nonStaticTests()
 staticTests()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)
+block:
+  let (a, d) = allocCounters()
+  discard cprintf("%ld %ld\n", a, d)
+
+var x = newSeq[string](2)
+reset(x)
+
+block:
+  let (a, d) = allocCounters()
+  discard cprintf("%ld %ld\n", a, d)
