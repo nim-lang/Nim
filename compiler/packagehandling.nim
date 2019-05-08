@@ -43,7 +43,7 @@ proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
   result = relativeTo(path, conf.projectPath, '/').string.multiReplace(
     {"/": "7", "..": "_", "7": "77", "_": "__", ":": "8", "8": "88"})
 
-proc demaglePackageName*(path: string): string =
+proc demanglePackageName*(path: string): string =
   result = path.multiReplace(
     {"88": "8", "8": ":", "77": "7", "__": "_", "_7": "../", "7": "/"})
 

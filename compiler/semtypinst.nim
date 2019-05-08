@@ -254,7 +254,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   # (e.g. skGenericParam and skType).
   # Note: `s.magic` may be `mType` in an example such as:
   # proc foo[T](a: T, b = myDefault(type(a)))
-  if s.kind in routineKinds or s.magic != mNone:
+  if s.kind in routineKinds+{skLet, skConst, skVar} or s.magic != mNone:
     return s
 
   #result = PSym(idTableGet(cl.symMap, s))
