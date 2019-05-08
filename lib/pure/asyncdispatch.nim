@@ -140,6 +140,27 @@
 ## asynchronous IO. A good place to start is the
 ## `asyncnet module <asyncnet.html>`_.
 ##
+## Investigating pending futures
+## =============================
+##
+## It's possible to get into a situation where an async proc, or more accurately
+## a ``Future[T]`` gets stuck and
+## never completes. This can happen for various reasons and can cause serious
+## memory leaks. When this occurs it's hard to identify the procedure that is
+## stuck.
+##
+## Thankfully there is a mechanism which tracks the count of each pending future.
+## All you need to do to enable it is compile with ``-d:futureLogging`` and
+## use the ``getFuturesInProgress`` procedure to get the list of pending futures
+## together with the stack traces to the moment of their creation.
+##
+## You may also find it useful to use this
+## `prometheus package <https://github.com/dom96/prometheus>`_ which will log
+## the pending futures into prometheus, allowing you to analyse them via a nice
+## graph.
+##
+##
+##
 ## Limitations/Bugs
 ## ================
 ##

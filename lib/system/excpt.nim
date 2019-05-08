@@ -445,6 +445,12 @@ proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
   else:
     result = move(e.trace)
 
+proc getStackTraceEntries*(): seq[StackTraceEntry] =
+  ## Returns the stack trace entries for the current stack trace.
+  ## This is not yet available for the JS backend.
+  when hasSomeStackTrace:
+    rawWriteStackTrace(result)
+
 const nimCallDepthLimit {.intdefine.} = 2000
 
 proc callDepthLimitReached() {.noinline.} =
