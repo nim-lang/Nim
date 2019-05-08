@@ -2133,6 +2133,7 @@ type
     ## <#initCountTable,int>`_.
     data: seq[tuple[key: A, val: int]]
     counter: int
+    isSorted: bool
   CountTableRef*[A] = ref CountTable[A] ## Ref version of
     ## `CountTable<#CountTable>`_.
     ##
@@ -2209,12 +2210,14 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key
   ##   is in the table
+  assert(not t.isSorted, "CountTable must not be used after sorting")
   ctget(t, key, 0)
 
 proc mget*[A](t: var CountTable[A], key: A): var int =
   ## Retrieves the value at ``t[key]``. The value can be modified.
   ##
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
+  assert(not t.isSorted, "CountTable must not be used after sorting")
   get(t, key)
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
@@ -2224,6 +2227,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
   ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
   ##   value of a key
+  assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
   let h = rawGet(t, key)
   if h >= 0:
@@ -2239,6 +2243,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     a.inc('b', 10)
     doAssert a == toCountTable("aaabbbbbbbbbbb")
 
+  assert(not t.isSorted, "CountTable must not be used after sorting")
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
@@ -2280,6 +2285,7 @@ proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
   ## * `getOrDefault proc<#getOrDefault,CountTable[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
+  assert(not t.isSorted, "CountTable must not be used after sorting")
   result = rawGet(t, key) >= 0
 
 proc contains*[A](t: CountTable[A], key: A): bool =
@@ -2304,6 +2310,7 @@ proc len*[A](t: CountTable[A]): int =
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
+  t.isSorted = false
 
 func ctCmp[T](a, b: tuple[key: T, val: int]): int =
   result = system.cmp(a.val, b.val)
@@ -2312,7 +2319,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
   ## highest counter comes first.
   ##
-  ## **This is destructive! You must not modify ``t`` afterwards!**
+  ## **WARNING:** This is destructive! Once sorted, you must not modify ``t`` afterwards!
   ##
   ## You can use the iterators `pairs<#pairs.i,CountTable[A]>`_,
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_
@@ -2327,6 +2334,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
     doAssert toSeq(a.values) == @[1, 1, 2, 2, 5]
 
   t.data.sort(cmp=ctCmp, order=order)
+  t.isSorted = true
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   ## Merges the second table into the first one (must be declared as `var`).
@@ -2336,6 +2344,7 @@ proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
     a.merge(b)
     doAssert a == toCountTable("aaabbbccc")
 
+  assert(not s.isSorted, "CountTable must not be used after sorting")
   for key, value in t:
     s.inc(key, value)
 
