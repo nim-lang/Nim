@@ -733,6 +733,7 @@ proc p(n: PNode; c: var Con): PNode =
         for j in 0..L-3:
           let v = it[j]
           if v.kind == nkSym:
+            if sfCompileTime in v.sym.flags: continue
             # move the variable declaration to the top of the frame:
             c.addTopVar v
             # make sure it's destroyed at the end of the proc:
