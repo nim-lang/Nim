@@ -83,18 +83,6 @@ proc genVarTuple(p: BProc, n: PNode) =
     # check with the boolean if the initializing code for the tuple should be ran
     lineCg(p, cpsStmts, "if ($1)$n", [hcrCond])
     startBlock(p)
-  defer:
-    if forHcr:
-      # end the block where the tuple gets initialized
-      endBlock(p)
-    if forHcr or isGlobalInBlock:
-      # insert the registration of the globals for the different parts of the tuple at the
-      # start of the current scope (after they have been iterated) and init a boolean to
-      # check if any of them is newly introduced and the initializing code has to be ran
-      lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
-      for curr in hcrGlobals:
-        lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
-               [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n.sons[0].sym), curr.tp])
 
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
@@ -122,6 +110,19 @@ proc genVarTuple(p: BProc, n: PNode) =
     putLocIntoDest(p, v.loc, field)
     if forHcr or isGlobalInBlock:
       hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
+
+  if forHcr:
+    # end the block where the tuple gets initialized
+    endBlock(p)
+  if forHcr or isGlobalInBlock:
+    # insert the registration of the globals for the different parts of the tuple at the
+    # start of the current scope (after they have been iterated) and init a boolean to
+    # check if any of them is newly introduced and the initializing code has to be ran
+    lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
+    for curr in hcrGlobals:
+      lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
+              [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n.sons[0].sym), curr.tp])
+
 
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
   if ri.kind in nkCallKinds and (ri.sons[0].kind != nkSym or
@@ -362,13 +363,11 @@ proc genSingleVar(p: BProc, a: PNode) =
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     startBlock(targetProc)
-  defer:
-    if forHcr:
-      endBlock(targetProc)
-
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)
     loadInto(targetProc, a.sons[0], a.sons[2], v.loc)
+  if forHcr:
+    endBlock(targetProc)
 
 proc genClosureVar(p: BProc, a: PNode) =
   var immediateAsgn = a.sons[2].kind != nkEmpty
