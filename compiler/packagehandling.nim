@@ -41,11 +41,11 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
 proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
   # foo/../bar becomes foo7_7bar
   result = relativeTo(path, conf.projectPath, '/').string.multiReplace(
-    {"/": "7", "..": "_", "7": "77", "_": "__"})
+    {"/": "7", "..": "_", "7": "77", "_": "__", ":": "8", "8": "88"})
 
 proc demaglePackageName*(path: string): string =
   result = path.multiReplace(
-    {"77": "7", "__": "_", "_7": "../", "7": "/"})
+    {"88": "8", "8": ":", "77": "7", "__": "_", "_7": "../", "7": "/"})
 
 proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   let x = getPackageName(conf, path.string)
