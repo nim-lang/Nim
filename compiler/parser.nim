@@ -1783,7 +1783,6 @@ proc parseEnum(p: var TParser): PNode =
   getTok(p)
   addSon(result, p.emptyNode)
   optInd(p, result)
-  #flexComment(p, result)
   # progress guaranteed
   while true:
     flexComment(p, result)
