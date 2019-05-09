@@ -89,10 +89,34 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
+proc shellEscape(arg: string): string =
+  # Escape everything except POSIX filename characters.
+  for c in arg:
+    if isAlphaNumeric(c) or c in "-_./":
+      result.add c
+    elif c == '\n':
+      result.add "'\n'"
+    elif int(c) > 127:
+      # don't touch non-ASCII (could be wrong, good enough for tester)
+      result.add 'c'
+    else:
+      result.add '\\'
+      result.add 'c'
+
 proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
+                cmdLine: string,
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+
+  # format the command line.  This isn't 100% correct, but for logging
+  # purposes within tester (no unicode in commands) it is good enough.
+  # It also doesn't special case windows properly.
+  result.cmdLine.add shellEscape(command)
+  for arg in args:
+    result.cmdLine.add ' '
+    result.cmdLine.add shellEscape(arg)
+
   var p = startProcess(command, workingDir=workingDir, args=args, options={poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
 
@@ -103,7 +127,7 @@ proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: str
   instream.write(input)
   close instream
 
-  result = (TaintedString"", -1)
+  result.exitCode =  -1
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
@@ -447,7 +471,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         args = concat(@[exeFile], args)
       else:
         exeCmd = exeFile
-      var (buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+      var (cmdLine, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
       if exitCode != 0: exitCode = 1
