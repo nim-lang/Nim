@@ -1009,9 +1009,9 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
     skipComment(p, result)
     if realInd(p):
       withInd(p):
-        rawSkipComment(p, result)
         # progress guaranteed
         while true:
+          rawSkipComment(p, result)
           case p.tok.tokType
           of tkSymbol, tkAccent:
             var a = parseIdentColonEquals(p, {})
@@ -1019,6 +1019,8 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
               rawSkipComment(p, a)
             addSon(result, a)
           of tkEof: break
+          of tkComment:
+            continue
           else:
             parMessage(p, errIdentifierExpected, p.tok)
             break
@@ -1781,9 +1783,11 @@ proc parseEnum(p: var TParser): PNode =
   getTok(p)
   addSon(result, p.emptyNode)
   optInd(p, result)
-  flexComment(p, result)
+  #flexComment(p, result)
   # progress guaranteed
   while true:
+    flexComment(p, result)
+    if p.tok.tokType == tkComment: continue
     var a = parseSymbol(p)
     if a.kind == nkEmpty: return
 
@@ -1899,9 +1903,12 @@ proc parseObjectPart(p: var TParser): PNode =
     withInd(p):
       rawSkipComment(p, result)
       while sameInd(p):
+        rawSkipComment(p, result)
         case p.tok.tokType
         of tkCase, tkWhen, tkSymbol, tkAccent, tkNil, tkDiscard:
           addSon(result, parseObjectPart(p))
+        of tkComment:
+          continue
         else:
           parMessage(p, errIdentifierExpected, p.tok)
           break

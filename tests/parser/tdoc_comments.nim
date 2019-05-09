@@ -40,6 +40,23 @@ type
   MyObject2* = object ## Comment behind declaration
     field1*: int
 
+  objobj = object
+    ## Many
+
+    ## Comments
+
+    ## Make
+
+    ## Me
+    field1: int
+    ## Many
+
+    ## Comments
+
+    ## Make
+
+    ## Me
+    field2: int
 
 type
   MyTuple1* = tuple
@@ -54,6 +71,23 @@ type
   MyTuple2* = tuple ## Comment behind declaration
     field1: int
 
+  tuptup = tuple
+    ## Many
+
+    ## Comments
+
+    ## Make
+
+    ## Me
+    field1: int
+    ## Many
+
+    ## Comments
+
+    ## Make
+
+    ## Me
+    field2: int
 
 type
   MyEnum1* = enum
@@ -69,3 +103,21 @@ type
 
   MyEnum3* = enum
     value5  ## only document the enum value
+
+  enuenu = enum
+    ## Many
+
+    ## Comments
+
+    ## Make
+
+    ## Me
+    value6
+    ## Many
+
+    ## Comments
+
+    ## Make
+
+    ## Me
+    value7
