@@ -196,6 +196,9 @@ block:
 var x = newSeq[string](2)
 reset(x)
 
+var x2 = 2
+reset(x2)
+
 block:
   let (a, d) = allocCounters()
   discard cprintf("%ld %ld\n", a, d)
