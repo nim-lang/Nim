@@ -92,16 +92,16 @@ proc getFileDir(filename: string): string =
 proc shellEscape(arg: string): string =
   # Escape everything except POSIX filename characters.
   for c in arg:
-    if isAlphaNumeric(c) or c in "-_./":
+    if isAlphaNumeric(c) or c in "-_./:[]":
       result.add c
     elif c == '\n':
       result.add "'\n'"
     elif int(c) > 127:
       # don't touch non-ASCII (could be wrong, good enough for tester)
-      result.add 'c'
+      result.add c
     else:
       result.add '\\'
-      result.add 'c'
+      result.add c
 
 proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
                 cmdLine: string,
@@ -154,6 +154,10 @@ proc prepareTestArgs(cmdTemplate, filename, options: string,
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, target, extraOptions)
+  for i, it in c:
+    if i != 0:
+      result.cmd.add ' '
+    result.cmd.add shellEscape(it)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -395,7 +399,7 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
       givenmsg = given.nimout.strip
       nimoutCheck(test, expectedmsg, given)
   else:
-    givenmsg = given.nimout.strip
+    givenmsg = "$ " & given.cmd & "\n" & given.nimout
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
@@ -450,7 +454,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.getCmd, test.name, test.options, target)
       if given.err != reSuccess:
-        r.addResult(test, target, "", given.nimout, given.err)
+        r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
         continue
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
