@@ -2144,7 +2144,7 @@ algorithm returns true:
     of array:
       result = b == openArray and typeEquals(a.baseType, b.baseType)
       if a.baseType == char and a.indexType.rangeA == 0:
-        result = b = cstring
+        result = b == cstring
     of cstring, ptr:
       result = b == pointer
     of string:
