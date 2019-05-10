@@ -486,10 +486,10 @@ proc runCI(cmd: string) =
     # main bottleneck here
     execFold("Run tester", "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines")
 
-    execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
-    execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
+    execFold("Run nimdoc tests", "nim c -r nimdoc/testerNimdoc.nim")
+    execFold("Run nimpretty tests", "nim c -r nimpretty/testerNimpretty.nim")
     when defined(posix):
-      execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
+      execFold("Run nimsuggest tests", "nim c -r nimsuggest/testerNimsuggest.nim")
 
     ## remaining actions
     when defined(posix):
