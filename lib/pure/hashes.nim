@@ -139,19 +139,23 @@ proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
   result = ord(x)
 
-template multibyteHashImpl(result: Hash, x: typed, start, stop: int) =
+template singleByteHashImpl(result: Hash, x: typed, start, stop: int) =
+  for i in start .. stop:
+    result = result !& hash(x[i])
+
+template multiByteHashImpl(result: Hash, x: typed, start, stop: int) =
+  let stepSize = IntSize div sizeof(x[start])
   var i = start
   while i <= stop+1 - IntSize:
-    let n = cast[ptr int](unsafeAddr x[i])[]
+    let n = cast[ptr Hash](unsafeAddr x[i])[]
     result = result !& n
-    i += IntSize
-  while i <= stop:
-    result = result !& ord(x[i])
-    inc i
-  result = !$result
+    i += stepSize
+  singleByteHashImpl(result, x, i, stop) # hash the remaining elements
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
   ##
   ## See also:
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
@@ -159,27 +163,46 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  multibyteHashImpl(result, x, 0, high(x))
+  when nimvm:
+    singleByteHashImpl(result, x, 0, high(x))
+  else:
+    multiByteHashImpl(result, x, 0, high(x))
+  result = !$result
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     doAssert hash(cstring"abracadabra") == hash("abracadabra")
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  multibyteHashImpl(result, x, 0, high(x))
+  when nimvm:
+    var i = 0
+    while x[i] != '\0':
+      result = result !& ord(x[i])
+      inc i
+  else:
+    multiByteHashImpl(result, x, 0, high(x))
+  result = !$result
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included).
   ##
   ## ``hash(myStr, 0, myStr.high)`` is equivalent to ``hash(myStr)``.
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  multibyteHashImpl(result, sBuf, sPos, ePos)
+  when nimvm:
+    singleByteHashImpl(result, sBuf, sPos, ePos)
+  else:
+    multiByteHashImpl(result, sBuf, sPos, ePos)
+  result = !$result
 
 proc addLowercaseChar(x: var string, c: char) {.inline.} =
   if c in {'A'..'Z'}:
@@ -189,6 +212,8 @@ proc addLowercaseChar(x: var string, c: char) {.inline.} =
 
 proc hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
   ##
   ## See also:
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
@@ -211,6 +236,8 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ##
   ## ``hashIgnoreStyle(myBuf, 0, myBuf.high)`` is equivalent
   ## to ``hashIgnoreStyle(myBuf)``.
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     var a = "ABracada_b_r_a"
     doAssert hashIgnoreStyle(a, 0, 3) == hashIgnoreStyle(a, 7, a.high)
@@ -228,17 +255,16 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
 proc hashIgnoreCase*(x: string): Hash =
   ## Efficient hashing of strings; case is ignored.
   ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
+  ##
   ## See also:
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   runnableExamples:
     doAssert hashIgnoreCase("ABRAcaDABRA") == hashIgnoreCase("abRACAdabra")
 
-  var
-    lowerString = newStringOfCap(len(x))
-    i = 0
-  while i <= high(x):
+  var lowerString = newStringOfCap(len(x))
+  for i in 0 ..< len(x):
     lowerString.addLowercaseChar(x[i])
-    inc i
   result = hash(lowerString)
 
 proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
@@ -247,17 +273,17 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ##
   ## ``hashIgnoreCase(myBuf, 0, myBuf.high)`` is equivalent
   ## to ``hashIgnoreCase(myBuf)``.
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     var a = "ABracadabRA"
     doAssert hashIgnoreCase(a, 0, 3) == hashIgnoreCase(a, 7, 10)
 
   var
-    remainingLength = ePos - sPos + 1
-    lowerString = newStringOfCap(remainingLength)
-    i = sPos
-  while i <= ePos:
+    sliceLength = ePos - sPos + 1
+    lowerString = newStringOfCap(sliceLength)
+  for i in sPos .. ePos:
     lowerString.addLowercaseChar(sBuf[i])
-    inc i
   result = hash(lowerString)
 
 proc hash*(x: float): Hash {.inline.} =
@@ -280,28 +306,30 @@ proc hash*[T: tuple](x: T): Hash =
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
-  when A is char|byte:
-    multibyteHashImpl(result, x, 0, x.high)
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
+  when not nimvm and (A is char|SomeInteger):
+    multiByteHashImpl(result, x, 0, x.high)
   else:
-    for it in items(x):
-      result = result !& hash(it)
-    result = !$result
+    singleByteHashImpl(result, x, 0, x.high)
+  result = !$result
 
 proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## Efficient hashing of portions of arrays and sequences, from starting
   ## position `sPos` to ending position `ePos` (included).
   ##
   ## ``hash(myBuf, 0, myBuf.high)`` is equivalent to ``hash(myBuf)``.
+  ##
+  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
-  when A is char|byte:
-    multibyteHashImpl(result, aBuf, sPos, ePos)
+  when not nimvm and (A is char|SomeInteger):
+    multiByteHashImpl(result, aBuf, sPos, ePos)
   else:
-    for i in sPos .. ePos:
-      result = result !& hash(aBuf[i])
-    result = !$result
+    singleByteHashImpl(result, aBuf, sPos, ePos)
+  result = !$result
 
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
@@ -311,20 +339,42 @@ proc hash*[A](x: set[A]): Hash =
 
 
 when isMainModule:
-  doAssert( hash("aa bb aaaa1234") == hash("aa bb aaaa1234", 0, 13) )
-  doAssert( hash("aa bb aaaa1234") == hash(cstring("aa bb aaaa1234")) )
-  doAssert( hashIgnoreCase("aA bb aAAa1234") == hash("aa bb aaaa1234") )
-  doAssert( hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234") )
-  let
-    xx = @['H','e','l','l','o']
-    ss = "Hello"
-  doAssert( hash(xx) == hash(ss) )
-  doAssert( hash(xx) == hash(xx, 0, xx.high) )
-  doAssert( hash(ss) == hash(ss, 0, ss.high) )
-  let # longer than 8 characters
-    xxl = @['H','e','l','l','o','w','e','e','n','s']
-    ssl = "Helloweens"
-  doAssert( hash(xxl) == hash(ssl) )
-  doAssert( hash(xxl) == hash(xxl, 0, xxl.high) )
-  doAssert( hash(ssl) == hash(ssl, 0, ssl.high) )
-  doAssert( hash(xx) == hash(xxl, 0, 4) )
+  block empty:
+    var
+      a = ""
+      b = newSeq[char]()
+      c = newSeq[int]()
+    doAssert hash(a) == 0
+    doAssert hash(b) == 0
+    doAssert hash(c) == 0
+    doAssert hashIgnoreCase(a) == 0
+    doAssert hashIgnoreStyle(a) == 0
+  block sameButDifferent:
+    doAssert hash("aa bb aaaa1234") == hash("aa bb aaaa1234", 0, 13)
+    doAssert hash("aa bb aaaa1234") == hash(cstring"aa bb aaaa1234")
+    doAssert hashIgnoreCase("aA bb aAAa1234") == hash("aa bb aaaa1234")
+    doAssert hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234")
+  block smallSize: # no multibyte hashing
+    let
+      xx = @['H','e','l','l','o']
+      ii = @[72, 101, 108, 108, 111]
+      ss = "Hello"
+    doAssert hash(xx) == hash(ii)
+    doAssert hash(xx) == hash(ss)
+    doAssert hash(xx) == hash(xx, 0, xx.high)
+    doAssert hash(ss) == hash(ss, 0, ss.high)
+  block largeSize: # longer than 8 characters, should trigger multibyte hashing
+    let
+      xx = @['H','e','l','l','o']
+      xxl = @['H','e','l','l','o','w','e','e','n','s']
+      ssl = "Helloweens"
+    doAssert hash(xxl) == hash(ssl)
+    doAssert hash(xxl) == hash(xxl, 0, xxl.high)
+    doAssert hash(ssl) == hash(ssl, 0, ssl.high)
+    doAssert hash(xx) == hash(xxl, 0, 4)
+  block misc:
+    let
+      a = [1'u8, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4]
+      b = [1'i8, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4]
+    doAssert hash(a) == hash(b)
+    doAssert hash(a, 2, 5) == hash(b, 2, 5)
