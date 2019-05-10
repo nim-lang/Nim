@@ -738,7 +738,7 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
       of nkOfBranch, nkElse:
         addInheritedFieldsAux(c, check, pos, lastSon(n.sons[i]))
       else: internalError(c.config, n.info, "addInheritedFieldsAux(record case branch)")
-  of nkRecList:
+  of nkRecList, nkRecWhen, nkElifBranch, nkElse:
     for i in 0 ..< sonsLen(n):
       addInheritedFieldsAux(c, check, pos, n.sons[i])
   of nkSym:
