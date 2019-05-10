@@ -17,8 +17,8 @@ type
     tyEmpty,
     tyArrayConstr,
     tyNil,
-    tyExpr,
-    tyStmt,
+    tyUntyped,
+    tyTyped,
     tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body

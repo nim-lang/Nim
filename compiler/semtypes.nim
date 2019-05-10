@@ -1110,7 +1110,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       var owner = getCurrOwner(c).owner
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
       if (owner.kind != skModule or owner.owner.name.s != "stdlib") and
-        kind == skProc and (typ.kind == tyStmt or typ.kind == tyExpr):
+        kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
           localError(c.config, a.sons[length-2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros")
 
     if hasDefault:
@@ -1155,7 +1155,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
-        typ = newTypeS(tyExpr, c)
+        typ = newTypeS(tyUntyped, c)
     elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       continue
 
@@ -1192,14 +1192,14 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
-      if kind notin {skMacro, skTemplate} and r.kind in {tyStmt, tyExpr}:
+      if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped}:
         localError(c.config, n.sons[0].info, "return type '" & typeToString(r) &
             "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
       elif r.kind == tyAnything:
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
-        r = newTypeS(tyExpr, c)
+        r = newTypeS(tyUntyped, c)
       else:
         if r.sym == nil or sfAnon notin r.sym.flags:
           let lifted = liftParamType(c, kind, genericParams, r, "result",
@@ -1824,9 +1824,9 @@ proc processMagicType(c: PContext, m: PSym) =
     if m.name.s == "auto":
       setMagicIntegral(c.config, m, tyAnything, 0)
     else:
-      setMagicIntegral(c.config, m, tyExpr, 0)
+      setMagicIntegral(c.config, m, tyUntyped, 0)
   of mStmt:
-    setMagicIntegral(c.config, m, tyStmt, 0)
+    setMagicIntegral(c.config, m, tyTyped, 0)
   of mTypeDesc, mType:
     setMagicIntegral(c.config, m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))

@@ -91,7 +91,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
   if result == Yes:
     # check for return type:
     if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]):
-      if b.typ.sons[0] != nil and b.typ.sons[0].kind == tyExpr:
+      if b.typ.sons[0] != nil and b.typ.sons[0].kind == tyUntyped:
         # infer 'auto' from the base to make it consistent:
         b.typ.sons[0] = a.typ.sons[0]
       else:

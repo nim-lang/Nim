@@ -258,7 +258,7 @@ proc getQuality(s: PSym): range[0..100] =
   if s.typ != nil and s.typ.len > 1:
     var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
-    if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return 50
+    if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
   return 100
 
 template wholeSymTab(cond, section: untyped) =
@@ -319,7 +319,7 @@ proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var Suggestions) =
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
   if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
-    # special rule: if system and some weird generic match via 'tyExpr'
+    # special rule: if system and some weird generic match via 'tyUntyped'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion
     let m = s.getModule()
@@ -327,7 +327,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
       if s.kind == skType: return
       var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
       if exp.kind == tyVarargs: exp = elemType(exp)
-      if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
+      if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
 
 proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Suggestions) =

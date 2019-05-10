@@ -152,7 +152,7 @@ proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
 proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
   ## Maps a Nim type to a C type
   case typ.kind
-  of tyNone, tyStmt: result = ctVoid
+  of tyNone, tyTyped: result = ctVoid
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(conf, typ)

@@ -214,7 +214,7 @@ proc sumGeneric(t: PType): int =
       break
     of tyStatic:
       return t.sons[0].sumGeneric + 1
-    of tyGenericParam, tyExpr, tyStmt: break
+    of tyGenericParam, tyUntyped, tyTyped: break
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
@@ -988,7 +988,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   result = isNone
   assert(f != nil)
 
-  if f.kind == tyExpr:
+  if f.kind == tyUntyped:
     if aOrig != nil: put(c, f, aOrig)
     return isGeneric
 
@@ -1215,7 +1215,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     if f.kind == tyVarargs:
       if tfVarargs in a.flags:
         return typeRel(c, f.base, a.lastSon)
-      if f.sons[0].kind == tyStmt: return
+      if f.sons[0].kind == tyTyped: return
 
     template matchArrayOrSeq(aBase: PType) =
       let ff = f.base
@@ -1770,7 +1770,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       else:
         result = isNone
 
-  of tyStmt:
+  of tyTyped:
     if aOrig != nil:
       put(c, f, aOrig)
     result = isGeneric
@@ -1975,7 +1975,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
     incMatches(m, r)
-    if f.kind == tyStmt:
+    if f.kind == tyTyped:
       return arg
     elif f.kind == tyTypeDesc:
       return arg
@@ -2173,9 +2173,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       if x.state != csMatch:
         internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
       # ambiguous: more than one symbol fits!
-      # See tsymchoice_for_expr as an example. 'f.kind == tyExpr' should match
+      # See tsymchoice_for_expr as an example. 'f.kind == tyUntyped' should match
       # anyway:
-      if f.kind in {tyExpr, tyStmt}: result = arg
+      if f.kind in {tyUntyped, tyTyped}: result = arg
       else: result = nil
     else:
       # only one valid interpretation found:
@@ -2199,8 +2199,8 @@ proc setSon(father: PNode, at: int, son: PNode) =
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
 proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
-  if formal.kind == tyExpr and formal.len != 1:
-    # {tyTypeDesc, tyExpr, tyStmt, tyProxy}:
+  if formal.kind == tyUntyped and formal.len != 1:
+    # {tyTypeDesc, tyUntyped, tyTyped, tyProxy}:
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
@@ -2209,7 +2209,7 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     let flags = {efDetermineType, efAllowStmt}
                 #if formal.kind == tyIter: {efDetermineType, efWantIterator}
                 #else: {efDetermineType, efAllowStmt}
-                #elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
+                #elif formal.kind == tyTyped: {efDetermineType, efWantStmt}
                 #else: {efDetermineType}
     result = c.semOperand(c, a, flags)
   else:
@@ -2244,7 +2244,7 @@ proc incrIndexType(t: PType) =
   inc t.sons[0].n.sons[1].intVal
 
 template isVarargsUntyped(x): untyped =
-  x.kind == tyVarargs and x.sons[0].kind == tyExpr
+  x.kind == tyVarargs and x.sons[0].kind == tyUntyped
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =

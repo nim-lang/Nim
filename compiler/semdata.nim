@@ -213,7 +213,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.enforceVoidContext = PType(kind: tyStmt)
+  result.enforceVoidContext = PType(kind: tyTyped)
   result.ambiguousSymbols = initIntSet()
   result.optionStack = @[]
   result.libs = @[]

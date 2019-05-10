@@ -204,7 +204,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   field.id = -s.id
   let t = skipIntLit(s.typ)
   field.typ = t
-  assert t.kind != tyStmt
+  assert t.kind != tyTyped
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
@@ -216,7 +216,7 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable
     field.id = -s.id
     let t = skipIntLit(s.typ)
     field.typ = t
-    assert t.kind != tyStmt
+    assert t.kind != tyTyped
     field.position = sonsLen(obj.n)
     addSon(obj.n, newSymNode(field))
     result = field
