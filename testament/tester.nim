@@ -90,9 +90,16 @@ proc getFileDir(filename: string): string =
     result = getCurrentDir() / result
 
 proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
+                cmdLine: string,
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+
+  result.cmdLine.add quoteShell(command)
+  for arg in args:
+    result.cmdLine.add ' '
+    result.cmdLine.add quoteShell(arg)
+
   var p = startProcess(command, workingDir=workingDir, args=args, options={poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
 
@@ -103,7 +110,7 @@ proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: str
   instream.write(input)
   close instream
 
-  result = (TaintedString"", -1)
+  result.exitCode =  -1
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
@@ -130,6 +137,7 @@ proc prepareTestArgs(cmdTemplate, filename, options: string,
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, target, extraOptions)
+  result.cmd = quoteShellCommand(c)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -371,7 +379,7 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
       givenmsg = given.nimout.strip
       nimoutCheck(test, expectedmsg, given)
   else:
-    givenmsg = given.nimout.strip
+    givenmsg = "$ " & given.cmd & "\n" & given.nimout
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
@@ -426,7 +434,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.getCmd, test.name, test.options, target)
       if given.err != reSuccess:
-        r.addResult(test, target, "", given.nimout, given.err)
+        r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
         continue
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
@@ -447,7 +455,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         args = concat(@[exeFile], args)
       else:
         exeCmd = exeFile
-      var (buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+      var (cmdLine, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
       if exitCode != 0: exitCode = 1

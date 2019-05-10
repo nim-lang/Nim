@@ -515,21 +515,24 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       let buildPath = packagesDir / name
       if not existsDir(buildPath):
         if hasDep:
-          let (nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", name])
+          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", name])
           if nimbleStatus != QuitSuccess:
-            r.addResult(test, targetC, "", "'nimble install' failed\n" & nimbleOutput, reInstallFailed)
+            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
+            r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
-        let (installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
+        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
         if installStatus != QuitSuccess:
-          r.addResult(test, targetC, "", "'git clone' failed\n" & installOutput, reInstallFailed)
+          let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
+          r.addResult(test, targetC, "", message, reInstallFailed)
           continue
 
       let cmdArgs = parseCmdLine(cmd)
 
-      let (buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
+      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
       if buildStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "package test failed\n" & buildOutput, reBuildFailed)
+        let message = "package test failed\n$ " & buildCmdLine & "\n" & buildOutput
+        r.addResult(test, targetC, "", message, reBuildFailed)
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
@@ -646,8 +649,9 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
   proc onStdout(line: string) = echo line
-  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
+  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
+    echo "$ ", cmdLine
     echo buf.string
     quit("megatest compilation failed")
 
