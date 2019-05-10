@@ -282,7 +282,7 @@ type
     dFri = "Friday"
     dSat = "Saturday"
     dSun = "Sunday"
-  
+
   DateTimeLocale* = object
     MMM*: array[mJan..mDec, string]
     MMMM*: array[mJan..mDec, string]
@@ -2484,56 +2484,55 @@ when not defined(JS):
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int
 
-  when not defined(useNimRtl):
-    proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-      ## gets time spent that the CPU spent to run the current process in
-      ## seconds. This may be more useful for benchmarking than ``epochTime``.
-      ## However, it may measure the real time instead (depending on the OS).
-      ## The value of the result has no meaning.
-      ## To generate useful timing values, take the difference between
-      ## the results of two ``cpuTime`` calls:
-      runnableExamples:
-        var t0 = cpuTime()
-        # some useless work here (calculate fibonacci)
-        var fib = @[0, 1, 1]
-        for i in 1..10:
-          fib.add(fib[^1] + fib[^2])
-        echo "CPU time [s] ", cpuTime() - t0
-        echo "Fib is [s] ", fib
-      when defined(posix) and not defined(osx):
-        # 'clocksPerSec' is a compile-time constant, possibly a
-        # rather awful one, so use clock_gettime instead
-        var ts: Timespec
-        discard clock_gettime(cpuClockId, ts)
-        result = toFloat(ts.tv_sec.int) +
-          toFloat(ts.tv_nsec.int) / 1_000_000_000
-      else:
-        result = toFloat(int(getClock())) / toFloat(clocksPerSec)
+  proc cpuTime*(): float {.tags: [TimeEffect].} =
+    ## gets time spent that the CPU spent to run the current process in
+    ## seconds. This may be more useful for benchmarking than ``epochTime``.
+    ## However, it may measure the real time instead (depending on the OS).
+    ## The value of the result has no meaning.
+    ## To generate useful timing values, take the difference between
+    ## the results of two ``cpuTime`` calls:
+    runnableExamples:
+      var t0 = cpuTime()
+      # some useless work here (calculate fibonacci)
+      var fib = @[0, 1, 1]
+      for i in 1..10:
+        fib.add(fib[^1] + fib[^2])
+      echo "CPU time [s] ", cpuTime() - t0
+      echo "Fib is [s] ", fib
+    when defined(posix) and not defined(osx):
+      # 'clocksPerSec' is a compile-time constant, possibly a
+      # rather awful one, so use clock_gettime instead
+      var ts: Timespec
+      discard clock_gettime(cpuClockId, ts)
+      result = toFloat(ts.tv_sec.int) +
+        toFloat(ts.tv_nsec.int) / 1_000_000_000
+    else:
+      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
-    proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-      ## gets time after the UNIX epoch (1970) in seconds. It is a float
-      ## because sub-second resolution is likely to be supported (depending
-      ## on the hardware/OS).
-      ##
-      ## ``getTime`` should generally be prefered over this proc.
-      when defined(macosx):
-        var a: Timeval
-        gettimeofday(a)
-        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
-      elif defined(posix):
-        var ts: Timespec
-        discard clock_gettime(realTimeClockId, ts)
-        result = toBiggestFloat(ts.tv_sec.int64) +
-          toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
-      elif defined(windows):
-        var f: winlean.FILETIME
-        getSystemTimeAsFileTime(f)
-        var i64 = rdFileTime(f) - epochDiff
-        var secs = i64 div rateDiff
-        var subsecs = i64 mod rateDiff
-        result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-      else:
-        {.error: "unknown OS".}
+  proc epochTime*(): float {.tags: [TimeEffect].} =
+    ## gets time after the UNIX epoch (1970) in seconds. It is a float
+    ## because sub-second resolution is likely to be supported (depending
+    ## on the hardware/OS).
+    ##
+    ## ``getTime`` should generally be prefered over this proc.
+    when defined(macosx):
+      var a: Timeval
+      gettimeofday(a)
+      result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
+    elif defined(posix):
+      var ts: Timespec
+      discard clock_gettime(realTimeClockId, ts)
+      result = toBiggestFloat(ts.tv_sec.int64) +
+        toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
+    elif defined(windows):
+      var f: winlean.FILETIME
+      getSystemTimeAsFileTime(f)
+      var i64 = rdFileTime(f) - epochDiff
+      var secs = i64 div rateDiff
+      var subsecs = i64 mod rateDiff
+      result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+    else:
+      {.error: "unknown OS".}
 
 when defined(JS):
   proc epochTime*(): float {.tags: [TimeEffect].} =
