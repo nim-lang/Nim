@@ -15,7 +15,7 @@
 ## * array
 ##
 ## The system module defines several common functions, such as:
-## * ``newseq[T]`` for creating new sequences of type ``T``
+## * ``newSeq[T]`` for creating new sequences of type ``T``
 ## * ``@`` for converting arrays and strings to sequences
 ## * ``add`` for adding new elements to strings and sequences
 ## * ``&`` for string and seq concatenation
