@@ -1575,6 +1575,9 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   n.typ = t
   genLit(c, n, dest)
 
+proc importcCond(s: PSym): bool {.inline.} =
+  sfImportc in s.flags and (lfDynamicLib notin s.loc.flags or s.ast == nil)
+
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
     if compiletimeFFI in c.config.features:
@@ -1584,7 +1587,7 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
       localError(c.config, info, "VM is not allowed to 'importc'")
   else:
     localError(c.config, info,
-               "cannot 'importc' variable at compile time")
+               "cannot 'importc' variable at compile time; " & s.name.s)
 
 proc getNullValue*(typ: PType, info: TLineInfo; conf: ConfigRef): PNode
 
@@ -1612,7 +1615,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if sfImportc in s.flags: c.importcSym(n.info, s)
+      if importcCond(s): c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
@@ -1815,7 +1818,7 @@ proc genVarSection(c: PCtx; n: PNode) =
       checkCanEval(c, a.sons[0])
       if s.isGlobal:
         if s.position == 0:
-          if sfImportc in s.flags: c.importcSym(a.info, s)
+          if importcCond(s): c.importcSym(a.info, s)
           else:
             let sa = getNullValue(s.typ, a.info, c.config)
             #if s.ast.isNil: getNullValue(s.typ, a.info)
@@ -1972,7 +1975,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if procIsCallback(c, s): discard
-      elif sfImportc in s.flags: c.importcSym(n.info, s)
+      elif importcCond(s): c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
       let constVal = if s.ast != nil: s.ast else: s.typ.n
