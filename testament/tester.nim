@@ -89,33 +89,16 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc shellEscape(arg: string): string =
-  # Escape everything except POSIX filename characters.
-  for c in arg:
-    if isAlphaNumeric(c) or c in "-_./:[]":
-      result.add c
-    elif c == '\n':
-      result.add "'\n'"
-    elif int(c) > 127:
-      # don't touch non-ASCII (could be wrong, good enough for tester)
-      result.add c
-    else:
-      result.add '\\'
-      result.add c
-
 proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
                 cmdLine: string,
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
 
-  # format the command line.  This isn't 100% correct, but for logging
-  # purposes within tester (no unicode in commands) it is good enough.
-  # It also doesn't special case windows properly.
-  result.cmdLine.add shellEscape(command)
+  result.cmdLine.add quoteShell(command)
   for arg in args:
     result.cmdLine.add ' '
-    result.cmdLine.add shellEscape(arg)
+    result.cmdLine.add quoteShell(arg)
 
   var p = startProcess(command, workingDir=workingDir, args=args, options={poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
@@ -154,10 +137,7 @@ proc prepareTestArgs(cmdTemplate, filename, options: string,
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, target, extraOptions)
-  for i, it in c:
-    if i != 0:
-      result.cmd.add ' '
-    result.cmd.add shellEscape(it)
+  result.cmd = quoteShellCommand(c)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
