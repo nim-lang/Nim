@@ -99,7 +99,8 @@ type
   TConvStatus = enum
     convOK,
     convNotNeedeed,
-    convNotLegal
+    convNotLegal,
+    convNotInRange
 
 proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvStatus =
   let diff = inheritanceDiff(castDest, src)
@@ -111,18 +112,16 @@ proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvSt
 const
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
-proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
+proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
+  let srcTyp = src.typ.skipTypes({tyStatic})
   result = convOK
-  # We're interested in the inner type and not in the static tag
-  var src = src.skipTypes({tyStatic})
-  if sameType(castDest, src) and castDest.sym == src.sym:
+  if sameType(targetTyp, srcTyp) and targetTyp.sym == srcTyp.sym:
     # don't annoy conversions that may be needed on another processor:
-    if castDest.kind notin IntegralTypes+{tyRange}:
+    if targetTyp.kind notin IntegralTypes+{tyRange}:
       result = convNotNeedeed
     return
-  # Save for later
-  var d = skipTypes(castDest, abstractVar)
-  var s = src
+  var d = skipTypes(targetTyp, abstractVar)
+  var s = srcTyp
   if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
     s = s.lastSon
   s = skipTypes(s, abstractVar-{tyTypeDesc, tyOwned})
@@ -138,19 +137,36 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
       d = d.lastSon
       s = s.lastSon
     inc pointers
+
+  let targetBaseTyp = skipTypes(targetTyp, abstractVarRange)
+  let srcBaseTyp = skipTypes(srcTyp, abstractVarRange-{tyTypeDesc})
+
   if d == nil:
     result = convNotLegal
   elif d.kind == tyObject and s.kind == tyObject:
     result = checkConversionBetweenObjects(d, s, pointers)
-  elif (skipTypes(castDest, abstractVarRange).kind in IntegralTypes) and
-      (skipTypes(src, abstractVarRange-{tyTypeDesc}).kind in IntegralTypes):
-    # accept conversion between integral types
-    discard
+  elif (targetBaseTyp.kind in IntegralTypes) and
+      (srcBaseTyp.kind in IntegralTypes):
+    if targetTyp.isOrdinalType:
+      if src.kind in nkCharLit..nkUInt64Lit and
+          src.intVal notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
+        result = convNotInRange
+      elif src.kind in nkFloatLit..nkFloat64Lit and
+          (classify(src.floatVal) in {fcNaN, fcNegInf, fcInf} or
+            src.floatVal.int64 notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp)):
+        result = convNotInRange
+    elif targetBaseTyp.kind in tyFloat..tyFloat64:
+      if src.kind in nkFloatLit..nkFloat64Lit and
+          not floatRangeCheck(src.floatVal, targetTyp):
+        result = convNotInRange
+      elif src.kind in nkCharLit..nkUInt64Lit and
+          not floatRangeCheck(src.intval.float, targetTyp):
+        result = convNotInRange
   else:
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
     of isNone, isGeneric:
-      if not compareTypes(castDest.skipTypes(abstractVar), src.skipTypes({tyOwned}), dcEqIgnoreDistinct):
+      if not compareTypes(targetTyp.skipTypes(abstractVar), srcTyp.skipTypes({tyOwned}), dcEqIgnoreDistinct):
         result = convNotLegal
     else:
       discard
@@ -260,7 +276,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   addSon(result, op)
 
   if not isSymChoice(op):
-    let status = checkConvertible(c, result.typ, op.typ)
+    let status = checkConvertible(c, result.typ, op)
     case status
     of convOK:
       # handle SomeProcType(SomeGenericProc)
@@ -275,10 +291,15 @@ proc semConv(c: PContext, n: PNode): PNode =
       if result == nil:
         localError(c.config, n.info, "illegal conversion from '$1' to '$2'" %
           [op.typ.typeToString, result.typ.typeToString])
+    of convNotInRange:
+      let value =
+        if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
+      localError(c.config, n.info, errGenerated, value & " can't be converted to " &
+        result.typ.typeToString)
   else:
     for i in 0 ..< sonsLen(op):
       let it = op.sons[i]
-      let status = checkConvertible(c, result.typ, it.typ)
+      let status = checkConvertible(c, result.typ, it)
       if status in {convOK, convNotNeedeed}:
         markUsed(c.config, n.info, it.sym, c.graph.usageSym)
         onUse(n.info, it.sym)

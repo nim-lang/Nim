@@ -559,9 +559,6 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mBuildOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.hostOS].name), n, g)
       of mBuildCPU: result = newStrNodeT(platform.CPU[g.config.target.hostCPU].name.toLowerAscii, n, g)
       of mAppType: result = getAppType(n, g)
-      of mNaN: result = newFloatNodeT(NaN, n, g)
-      of mInf: result = newFloatNodeT(Inf, n, g)
-      of mNegInf: result = newFloatNodeT(NegInf, n, g)
       of mIntDefine:
         if isDefined(g.config, s.name.s):
           try:
@@ -733,7 +730,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     var a = getConstExpr(m, n.sons[1], g)
     if a == nil: return
     # XXX: we should enable `check` for other conversion types too
-    result = foldConv(n, a, g, check=n.kind == nkHiddenSubConv)
+    result = foldConv(n, a, g, check=n.kind == nkHiddenStdConv)
   of nkCast:
     var a = getConstExpr(m, n.sons[1], g)
     if a == nil: return

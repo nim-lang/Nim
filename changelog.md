@@ -34,6 +34,7 @@
 
 - To use multi-methods, explicit `--multimethods:on` is now needed.
 
+- Compile time checks for integer and float conversions are now stricter. For example, `const x = uint32(-1)` now gives a compile time error instead of being equivalent to `const x = 0xFFFFFFFF'u32`.
 
 #### Breaking changes in the standard library
 

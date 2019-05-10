@@ -832,9 +832,9 @@ template hasOverlappedIoCompleted*(lpOverlapped): bool =
   (cast[uint](lpOverlapped.internal) != STATUS_PENDING)
 
 const
- IOC_OUT* = 0x40000000
- IOC_IN*  = 0x80000000
- IOC_WS2* = 0x08000000
+ IOC_OUT* = 0x40000000'i32
+ IOC_IN*  = 0x80000000'i32
+ IOC_WS2* = 0x08000000'i32
  IOC_INOUT* = IOC_IN or IOC_OUT
 
 template WSAIORW*(x,y): untyped = (IOC_INOUT or x or y)
