@@ -14,7 +14,7 @@ template selectType(x: int): type =
 template simpleTypeTempl: type =
   string
 
-macro typeFromMacro: type = bindSym"string"
+macro typeFromMacro: type = string
 
 # The tests below check that the result variable of the
 # selected type matches the literal types in the code:

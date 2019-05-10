@@ -1548,7 +1548,10 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.typ.sons[0] != nil and not isInlineIterator(s):
     let resultType =
       if s.kind == skMacro:
-        sysTypeFromName(c.graph, n.info, "NimNode")
+        if s.typ.sons[0].kind == tyTypeDesc:
+          s.typ.sons[0]
+        else:
+          sysTypeFromName(c.graph, n.info, "NimNode")
       else:
         s.typ.sons[0]
     addResult(c, resultType, n.info, s.kind)
