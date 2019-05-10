@@ -11,7 +11,7 @@
 
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
-  marshal, backend, parseopt, specs, htmlgenTestament, browsers, terminal,
+  marshal, backend, parseopt, specs, htmlgen_testament, browsers, terminal,
   algorithm, times, sets, md5, sequtils
 
 include compiler/nodejs

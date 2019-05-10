@@ -3569,7 +3569,7 @@ when not defined(JS): #and not defined(nimscript):
       discardable, benign.}
       ## Atomic decrement of `memLoc`. Returns the value after the operation.
 
-    include "system/systemAtomics.nim"
+    include "system/system_atomics.nim"
 
     type
       PSafePoint = ptr TSafePoint

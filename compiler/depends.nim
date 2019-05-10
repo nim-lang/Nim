@@ -10,7 +10,7 @@
 # This module implements a dependency file generator.
 
 import
-  os, options, ast, astalgo, msgs, compilerRopes, idents, passes, modulepaths,
+  os, options, ast, astalgo, msgs, compiler_ropes, idents, passes, modulepaths,
   pathutils
 
 from modulegraphs import ModuleGraph, PPassContext

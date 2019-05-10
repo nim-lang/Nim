@@ -11,7 +11,7 @@
 
 import
   ast, strutils, hashes, options, lexer, astalgo, trees, treetab, wordrecg,
-  compilerRopes, msgs, os, condsyms, idents, renderer, types, platform,
+  compiler_ropes, msgs, os, condsyms, idents, renderer, types, platform,
   math, magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,

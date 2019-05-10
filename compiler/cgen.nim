@@ -12,7 +12,7 @@
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
-  ccgutils, os, compilerRopes, math, passes, wordrecg, treetab, cgmeth,
+  ccgutils, os, compiler_ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr
 

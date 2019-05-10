@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, nversion, options, strutils, std / sha1, compilerRopes,
+  lineinfos, hashes, nversion, options, strutils, std / sha1, compiler_ropes,
   idents, intsets, idgen
 
 type

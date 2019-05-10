@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables, compilerRopes, platform, terminal, macros,
+  options, strutils, os, tables, compiler_ropes, platform, terminal, macros,
   lineinfos, pathutils
 
 proc toCChar*(c: char; result: var string) =

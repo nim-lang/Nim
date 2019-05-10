@@ -10,7 +10,7 @@
 ## This module contains the ``TMsgKind`` enum as well as the
 ## ``TLineInfo`` object.
 
-import compilerRopes, tables, pathutils
+import compiler_ropes, tables, pathutils
 
 const
   explanationsBaseUrl* = "https://nim-lang.org/docs/manual"

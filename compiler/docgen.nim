@@ -12,7 +12,7 @@
 # by knowing how the anchors are going to be named.
 
 import
-  ast, strutils, strtabs, options, msgs, os, compilerRopes, idents,
+  ast, strutils, strtabs, options, msgs, os, compiler_ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, json, xmltree, cgi, trees, types,

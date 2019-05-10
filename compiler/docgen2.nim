@@ -11,7 +11,7 @@
 # semantic checking.
 
 import
-  os, options, ast, astalgo, msgs, compilerRopes, idents, passes, docgen,
+  os, options, ast, astalgo, msgs, compiler_ropes, idents, passes, docgen,
   lineinfos, pathutils
 
 from modulegraphs import ModuleGraph, PPassContext

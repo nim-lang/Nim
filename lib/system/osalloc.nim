@@ -78,7 +78,7 @@ when defined(emscripten):
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
 elif defined(genode):
-  include genode/allocGenode # osAllocPages, osTryAllocPages, osDeallocPages
+  include "genode/alloc_genode.nim" # osAllocPages, osTryAllocPages, osDeallocPages
 
 elif defined(nintendoswitch):
 

@@ -9,7 +9,7 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, compilerRopes, md5, modulegraphs
+import ast, tables, compiler_ropes, md5, modulegraphs
 from hashes import Hash
 from astalgo import debug
 import types
