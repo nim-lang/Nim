@@ -181,7 +181,7 @@ when not defined(useNimRtl):
       add result, "[]"
       return
     result.add(reprPointer(p))
-    result.add '['
+    result.add "@["
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
