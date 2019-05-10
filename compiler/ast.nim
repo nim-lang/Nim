@@ -10,8 +10,8 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, nversion, options, strutils, std / sha1, ropes, idents,
-  intsets, idgen
+  lineinfos, hashes, nversion, options, strutils, std / sha1, compilerRopes,
+  idents, intsets, idgen
 
 type
   TCallingConvention* = enum

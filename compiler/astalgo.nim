@@ -12,7 +12,7 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
+  ast, hashes, intsets, strutils, options, lineinfos, compilerRopes, idents, rodutils,
   msgs
 
 proc hashNode*(p: RootRef): Hash

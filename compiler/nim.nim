@@ -19,7 +19,7 @@ when defined(i386) and defined(windows) and defined(vcc):
   {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
+  commands, lexer, condsyms, options, msgs, nversion, nimconf, compilerRopes,
   extccomp, strutils, os, osproc, platform, main, parseopt,
   scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
   pathutils

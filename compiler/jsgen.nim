@@ -31,7 +31,7 @@ implements the required case distinction.
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
-  times, ropes, math, passes, ccgutils, wordrecg, renderer,
+  times, compilerRopes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
   pathutils, transf
 
@@ -122,7 +122,7 @@ template line(p: PProc, added: Rope) =
   add(p.body, indentLine(p, added))
 
 template lineF(p: PProc, frmt: FormatStr, args: varargs[Rope]) =
-  add(p.body, indentLine(p, ropes.`%`(frmt, args)))
+  add(p.body, indentLine(p, compilerRopes.`%`(frmt, args)))
 
 template nested(p, body) =
   inc p.extraIndent
@@ -2219,7 +2219,7 @@ proc frameCreate(p: PProc; procname, filename: Rope): Rope =
     "var F={procname:$1,prev:framePtr,filename:$2,line:0};$n"
 
   result = p.indentLine(frameFmt % [procname, filename])
-  result.add p.indentLine(ropes.`%`("framePtr = F;$n", []))
+  result.add p.indentLine(compilerRopes.`%`("framePtr = F;$n", []))
 
 proc frameDestroy(p: PProc): Rope =
   result = p.indentLine rope(("framePtr = F.prev;") & "\L")

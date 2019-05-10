@@ -9,9 +9,9 @@
 
 ## This module implements the new compilation cache.
 
-import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
-  renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
-  btrees, trees, condsyms, nversion, pathutils
+import strutils, os, intsets, tables, compilerRopes, db_sqlite, msgs, options,
+       types, renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth,
+       extccomp, btrees, trees, condsyms, nversion, pathutils
 
 ## Todo:
 ## - Dependency computation should use *signature* hashes in order to

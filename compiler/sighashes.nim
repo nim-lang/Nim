@@ -9,7 +9,7 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs
+import ast, tables, compilerRopes, md5, modulegraphs
 from hashes import Hash
 from astalgo import debug
 import types
@@ -405,4 +405,3 @@ proc idOrSig*(s: PSym, currentModule: string,
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)
-

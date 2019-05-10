@@ -18,7 +18,7 @@ import
   wordrecg, sem, semdata, idents, passes, extccomp,
   cgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  parser, modules, ccgutils, sigmatch, ropes,
+  parser, modules, ccgutils, sigmatch, compilerRopes,
   modulegraphs, tables, rod, lineinfos, pathutils
 
 when not defined(leanCompiler):

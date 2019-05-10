@@ -11,7 +11,7 @@
 
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
-  wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
+  wordrecg, compilerRopes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils
 
 const

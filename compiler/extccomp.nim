@@ -13,7 +13,7 @@
 # nim files.
 
 import
-  ropes, os, strutils, osproc, platform, condsyms, options, msgs,
+  compilerRopes, os, strutils, osproc, platform, condsyms, options, msgs,
   lineinfos, std / sha1, streams, pathutils, sequtils, times
 
 type

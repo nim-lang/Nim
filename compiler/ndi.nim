@@ -10,7 +10,7 @@
 ## This module implements the generation of ``.ndi`` files for better debugging
 ## support of Nim code. "ndi" stands for "Nim debug info".
 
-import ast, msgs, ropes, options, pathutils
+import ast, msgs, compilerRopes, options, pathutils
 
 type
   NdiFile* = object

@@ -12,7 +12,7 @@
 import
   strutils, os, intsets, strtabs
 
-import options, ast, astalgo, msgs, semdata, ropes, idents,
+import options, ast, astalgo, msgs, semdata, compilerRopes, idents,
   lineinfos, pathutils
 
 const
