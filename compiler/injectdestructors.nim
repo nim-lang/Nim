@@ -830,7 +830,13 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
   if c.destroys.len > 0:
-    result.add newTryFinally(body, c.destroys)
+    if owner.kind == skModule:
+      result.add body
+      if g.globalDestructors.isNil:
+        g.globalDestructors = newNodeI(nkStmtList, n.info)
+      g.globalDestructors.add c.destroys
+    else:
+      result.add newTryFinally(body, c.destroys)
   else:
     result.add body
 
