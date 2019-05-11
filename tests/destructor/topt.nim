@@ -3,6 +3,7 @@ discard """
   output: '''5
 vseq destroy
 '''
+joinable: false
 """
 type
   opt*[T] = object
