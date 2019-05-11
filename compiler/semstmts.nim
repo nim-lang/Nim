@@ -27,7 +27,7 @@ const
     "it is used as an operand to another routine and the types " &
     "of the generic paramers can be inferred from the expected signature."
   errCannotInferTypeOfTheLiteral = "cannot infer the type of the $1"
-  errCannotInferReturnType = "cannot infer the return type of the proc"
+  errCannotInferReturnType = "cannot infer the return type of '$1'"
   errCannotInferStaticParam = "cannot infer the value of the static param '$1'"
   errProcHasNoConcreteType = "'$1' doesn't have a concrete type, due to unspecified generic parameters."
   errLetNeedsInit = "'let' symbol requires an initialization"
@@ -1534,8 +1534,7 @@ proc activate(c: PContext, n: PNode) =
       discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
-  if s.typ.sons[0] != nil and not
-      (s.kind == skIterator and s.typ.callConv != ccClosure):
+  if s.typ.sons[0] != nil and not isInlineIterator(s):
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
@@ -1768,8 +1767,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif s.kind == skFunc:
     incl(s.flags, sfNoSideEffect)
     incl(s.typ.flags, tfNoSideEffect)
-  var proto = searchForProc(c, oldScope, s)
-  if proto == nil or isAnon:
+  var proto: PSym = if isAnon: nil
+                    else: searchForProc(c, oldScope, s)
+  if proto == nil:
     if s.kind == skIterator:
       if s.typ.callConv != ccClosure:
         s.typ.callConv = if isAnon: ccClosure else: ccInline
@@ -1920,6 +1920,8 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
+  if s.typ.callConv == ccInline and t.sons[0] != nil and t.sons[0].kind == tyExpr:
+    localError(c.config, n.info, errCannotInferReturnType % s.name.s)
   if isAnon and s.typ.callConv == ccInline:
     localError(c.config, n.info, "inline iterators are not first-class / cannot be assigned to variables")
   # iterators are either 'inline' or 'closure'; for backwards compatibility,

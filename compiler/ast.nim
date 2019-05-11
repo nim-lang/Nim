@@ -1813,6 +1813,9 @@ template detailedInfo*(sym: PSym): string =
 proc isInlineIterator*(s: PSym): bool {.inline.} =
   s.kind == skIterator and s.typ.callConv != ccClosure
 
+proc isClosureIterator*(s: PSym): bool {.inline.} =
+  s.kind == skIterator and s.typ.callConv == ccClosure
+
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)
 
