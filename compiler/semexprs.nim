@@ -1674,6 +1674,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         var rhsTyp = rhs.typ
         if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
           rhsTyp = rhsTyp.lastSon
+        if isClosureIterator(c.p.owner) and
+            cmpTypes(c, c.p.owner.typ.sons[0], rhsTyp) notin {isGeneric, isEqual}:
+          typeMismatch(c.config, n.info, c.p.owner.typ.sons[0], rhsTyp)
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.config, c.p.resultSym != nil
           # Make sure the type is valid for the result variable
@@ -1696,8 +1699,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
 proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1, c.config)
-  if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or (
-     c.p.owner.kind == skIterator and c.p.owner.typ.callConv == ccClosure):
+  if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or
+      isClosureIterator(c.p.owner):
     if n.sons[0].kind != nkEmpty:
       # transform ``return expr`` to ``result = expr; return``
       if c.p.resultSym != nil:
@@ -1742,7 +1745,8 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       c.p.resultSym.typ = errorType(c)
       c.p.owner.typ.sons[0] = nil
     else:
-      localError(c.config, c.p.resultSym.info, errCannotInferReturnType)
+      localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
+        c.p.owner.name.s)
 
   closeScope(c)
 
@@ -1786,6 +1790,8 @@ proc semYield(c: PContext, n: PNode): PNode =
       if resultTypeIsInferrable(restype):
         let inferred = n.sons[0].typ
         iterType.sons[0] = inferred
+        if c.p.resultSym != nil:
+          c.p.resultSym.typ = inferred
 
       semYieldVarResult(c, n, restype)
     else:
