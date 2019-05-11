@@ -133,7 +133,7 @@ proc fixNilType(c: PContext; n: PNode) =
 proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
   if c.matchedConcept != nil or efInTypeof in flags: return
 
-  if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
+  if result.typ != nil and result.typ.kind notin {tyTyped, tyVoid}:
     if implicitlyDiscardable(result):
       var n = newNodeI(nkDiscardStmt, result.info, 1)
       n[0] = result
@@ -166,7 +166,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
       it.sons[0] = semExprBranchScope(c, it.sons[0])
       typ = commonType(typ, it.sons[0])
     else: illFormedAst(it, c.config)
-  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
+  if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
     for it in n: discardCheck(c, it.lastSon, flags)
     result.kind = nkIfStmt
@@ -265,7 +265,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     closeScope(c)
 
   dec c.p.inTryStmt
-  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr}:
+  if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}:
     discardCheck(c, n.sons[0], flags)
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
     if typ == c.enforceVoidContext:
@@ -919,7 +919,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else:
       localError(c.config, n.info, "not all cases are covered")
   closeScope(c)
-  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
+  if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
     # propagate any enforced VoidContext:
@@ -1952,7 +1952,7 @@ proc semMethod(c: PContext, n: PNode): PNode =
   # test case):
   let disp = getDispatcher(s)
   # auto return type?
-  if disp != nil and disp.typ.sons[0] != nil and disp.typ.sons[0].kind == tyExpr:
+  if disp != nil and disp.typ.sons[0] != nil and disp.typ.sons[0].kind == tyUntyped:
     let ret = s.typ.sons[0]
     disp.typ.sons[0] = ret
     if disp.ast[resultPos].kind == nkSym:
@@ -1989,7 +1989,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   var allUntyped = true
   for i in 1 .. t.n.len-1:
     let param = t.n.sons[i].sym
-    if param.typ.kind != tyExpr: allUntyped = false
+    if param.typ.kind != tyUntyped: allUntyped = false
   if allUntyped: incl(s.flags, sfAllUntyped)
   if t.sons[0] == nil: localError(c.config, n.info, "macro needs a return type")
   if n.sons[bodyPos].kind == nkEmpty:

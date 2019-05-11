@@ -79,7 +79,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   result = arg
   let x = result.skipConv
-  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyExpr:
+  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
     changeType(c, x, formal, check=true)
   else:
     result = skipHiddenSubConv(result)
@@ -106,7 +106,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
 
-template commonTypeBegin*(): PType = PType(kind: tyExpr)
+template commonTypeBegin*(): PType = PType(kind: tyUntyped)
 
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
@@ -116,10 +116,10 @@ proc commonType*(x, y: PType): PType =
   var a = skipTypes(x, {tyGenericInst, tyAlias, tySink})
   var b = skipTypes(y, {tyGenericInst, tyAlias, tySink})
   result = x
-  if a.kind in {tyExpr, tyNil}: result = y
-  elif b.kind in {tyExpr, tyNil}: result = x
-  elif a.kind == tyStmt: result = a
-  elif b.kind == tyStmt: result = b
+  if a.kind in {tyUntyped, tyNil}: result = y
+  elif b.kind in {tyUntyped, tyNil}: result = x
+  elif a.kind == tyTyped: result = a
+  elif b.kind == tyTyped: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
     if a.len == 0: result = a
@@ -290,7 +290,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
   when true:
-    if eOrig.typ.kind in {tyExpr, tyStmt, tyTypeDesc}:
+    if eOrig.typ.kind in {tyUntyped, tyTyped, tyTypeDesc}:
       result = semExprWithType(c, evaluated)
     else:
       result = evaluated
@@ -406,12 +406,12 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     result = semStmt(c, result, flags)
   else:
     case s.typ.sons[0].kind
-    of tyExpr:
+    of tyUntyped:
       # BUGFIX: we cannot expect a type here, because module aliases would not
       # work then (see the ``tmodulealias`` test)
       # semExprWithType(c, result)
       result = semExpr(c, result, flags)
-    of tyStmt:
+    of tyTyped:
       result = semStmt(c, result, flags)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType

@@ -78,7 +78,7 @@ proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
     result = matchNodeKinds(p.constraint, n)
     if not result: return
   if isNil(n.typ):
-    result = p.typ.kind in {tyVoid, tyStmt}
+    result = p.typ.kind in {tyVoid, tyTyped}
   else:
     result = sigmatch.argtypeMatches(c.c, p.typ, n.typ, fromHlo = true)
 
@@ -241,7 +241,7 @@ proc aliasAnalysisRequested(params: PNode): bool =
       if whichAlias(param) != aqNone: return true
 
 proc addToArgList(result, n: PNode) =
-  if n.typ != nil and n.typ.kind != tyStmt:
+  if n.typ != nil and n.typ.kind != tyTyped:
     if n.kind != nkArgList: result.add(n)
     else:
       for i in 0 ..< n.len: result.add(n.sons[i])

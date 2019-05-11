@@ -573,7 +573,7 @@ proc fixAbstractType(c: PContext, n: PNode) =
       if skipTypes(it.sons[1].typ, abstractVar).kind in
             {tyNil, tyTuple, tySet} or it[1].isArrayConstr:
         var s = skipTypes(it.typ, abstractVar)
-        if s.kind != tyExpr:
+        if s.kind != tyUntyped:
           changeType(c, it.sons[1], s, check=true)
         n.sons[i] = it.sons[1]
 
@@ -1779,7 +1779,7 @@ proc semYield(c: PContext, n: PNode): PNode =
     var iterType = c.p.owner.typ
     let restype = iterType.sons[0]
     if restype != nil:
-      if restype.kind != tyExpr:
+      if restype.kind != tyUntyped:
         n.sons[0] = fitNode(c, restype, n.sons[0], n.info)
       if n.sons[0].typ == nil: internalError(c.config, n.info, "semYield")
 
@@ -1878,7 +1878,7 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
 
   if isCallExpr(macroCall):
     for i in 1 ..< macroCall.len:
-      #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
+      #if macroCall.sons[0].typ.sons[i].kind != tyUntyped:
       macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
     # performing overloading resolution here produces too serious regressions:
     let headSymbol = macroCall[0]

@@ -522,7 +522,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result.add(" or ")
   of tyNot:
     result = "not " & typeToString(t.sons[0])
-  of tyExpr:
+  of tyUntyped:
     #internalAssert t.len == 0
     result = "untyped"
   of tyFromExpr:
@@ -1033,7 +1033,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
-     tyInt..tyUInt64, tyStmt, tyExpr, tyVoid:
+     tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -1231,7 +1231,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyTypeDesc:
     # XXX: This is still a horrible idea...
     result = nil
-  of tyExpr, tyStmt, tyStatic:
+  of tyUntyped, tyTyped, tyStatic:
     if kind notin {skParam, skResult}: result = t
   of tyVoid:
     if taField notin flags: result = t
@@ -1475,7 +1475,7 @@ proc skipConvTakeType*(n: PNode): PNode =
 
 proc isEmptyContainer*(t: PType): bool =
   case t.kind
-  of tyExpr, tyNil: result = true
+  of tyUntyped, tyNil: result = true
   of tyArray: result = t.sons[1].kind == tyEmpty
   of tySet, tySequence, tyOpenArray, tyVarargs:
     result = t.sons[0].kind == tyEmpty
@@ -1506,7 +1506,7 @@ proc skipHiddenSubConv*(n: PNode): PNode =
     result = n.sons[1]
     let arg = result.typ
     let dest = takeType(formal, arg)
-    if dest == arg and formal.kind != tyExpr:
+    if dest == arg and formal.kind != tyUntyped:
       #echo n.info, " came here for ", formal.typeToString
       result = n
     else:

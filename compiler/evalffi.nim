@@ -90,8 +90,8 @@ proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.TType =
     else: result = nil
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
-  of tyVar, tyLent, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
-     tyStmt, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
+  of tyVar, tyLent, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyUntyped,
+     tyTyped, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
     result = addr libffi.type_pointer
   of tyDistinct, tyAlias, tySink:
     result = mapType(conf, t.sons[0])
@@ -498,4 +498,3 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
     let t = args[i+start].typ
     args[i+start] = unpack(conf, cargs[i], t, args[i+start])
     dealloc cargs[i]
-

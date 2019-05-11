@@ -595,21 +595,21 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     for i in 1 .. s.typ.n.len-1:
       let param = s.typ.n.sons[i].sym
       param.flags.excl sfGenSym
-      if param.typ.kind != tyExpr: allUntyped = false
+      if param.typ.kind != tyUntyped: allUntyped = false
     if sonsLen(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
         n.sons[genericParamsPos] = gp
-    # no explicit return type? -> use tyStmt
+    # no explicit return type? -> use tyTyped
     if n.sons[paramsPos].sons[0].kind == nkEmpty:
       # use ``stmt`` as implicit result type
-      s.typ.sons[0] = newTypeS(tyStmt, c)
+      s.typ.sons[0] = newTypeS(tyTyped, c)
       s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
   else:
     s.typ = newTypeS(tyProc, c)
-    # XXX why do we need tyStmt as a return type again?
+    # XXX why do we need tyTyped as a return type again?
     s.typ.n = newNodeI(nkFormalParams, n.info)
-    rawAddSon(s.typ, newTypeS(tyStmt, c))
+    rawAddSon(s.typ, newTypeS(tyTyped, c))
     addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
   if allUntyped: incl(s.flags, sfAllUntyped)
   if n.sons[patternPos].kind != nkEmpty:

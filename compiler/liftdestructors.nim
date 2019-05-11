@@ -487,7 +487,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     localError(c.graph.config, c.info, "cannot copy openArray")
   of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
-     tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
+     tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
      tyTypeDesc, tyGenericInvocation, tyForward:
     #internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
     discard
