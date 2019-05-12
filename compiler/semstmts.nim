@@ -1920,7 +1920,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
-  if s.typ.callConv == ccInline and t.sons[0] != nil and t.sons[0].kind == tyExpr:
+  if s.typ.callConv == ccInline and t.sons[0] != nil and t.sons[0].kind == tyUntyped:
     localError(c.config, n.info, errCannotInferReturnType % s.name.s)
   if isAnon and s.typ.callConv == ccInline:
     localError(c.config, n.info, "inline iterators are not first-class / cannot be assigned to variables")
