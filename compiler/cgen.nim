@@ -536,7 +536,7 @@ proc assignGlobalVar(p: BProc, n: PNode) =
       var decl: Rope = nil
       var td = getTypeDesc(p.module, s.loc.t)
       if s.constraint.isNil:
-        if {sfExported, sfCompilerProc} * s.flags == {} or p.hcrOn: add(decl, "static ")
+        if {sfImportc, sfExported, sfCompilerProc} * s.flags == {} or p.hcrOn: add(decl, "static ")
         elif sfImportc in s.flags: add(decl, "extern ")
         add(decl, td)
         if p.hcrOn: add(decl, "*")
