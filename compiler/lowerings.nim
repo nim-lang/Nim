@@ -300,8 +300,8 @@ proc genAddrOf*(n: PNode): PNode =
   result.typ = newType(tyPtr, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
-proc genDeref*(n: PNode): PNode =
-  result = newNodeIT(nkHiddenDeref, n.info,
+proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
+  result = newNodeIT(k, n.info,
                      n.typ.skipTypes(abstractInst).sons[0])
   result.add n
 

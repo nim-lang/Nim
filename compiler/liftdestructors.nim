@@ -364,10 +364,10 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   #var disposeCall = genBuiltin(c.graph, mDispose, "dispose", x)
 
   if isFinal(elemType):
-    addDestructorCall(c, elemType, actions, genDeref(x))
+    addDestructorCall(c, elemType, actions, genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.graph, "nimRawDispose", c.info, x)
   else:
-    addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x))
+    addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.graph, "nimDestroyAndDispose", c.info, x)
 
   case c.kind
