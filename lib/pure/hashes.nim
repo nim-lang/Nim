@@ -139,9 +139,9 @@ proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
   result = ord(x)
 
-template singleByteHashImpl(result: Hash, x: typed, start, stop: int) =
+proc singleByteHashImpl[T](h: var Hash, x: openArray[T], start, stop: int) {.inline.} =
   for i in start .. stop:
-    result = result !& hash(x[i])
+    h = h !& hash(x[i])
 
 template multiByteHashImpl(result: Hash, x: typed, start, stop: int) =
   let stepSize = IntSize div sizeof(x[start])
@@ -179,12 +179,21 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
   when nimvm:
-    var i = 0
-    while x[i] != '\0':
+    var j = 0
+    while x[j] != '\0':
+      result = result !& ord(x[j])
+      inc j
+  else:
+    var
+      i = 0
+      l = len(x)
+    while i < l - IntSize:
+      let n = cast[ptr Hash](unsafeAddr x[i])[]
+      result = result !& n
+      i += IntSize
+    while i < l:
       result = result !& ord(x[i])
       inc i
-  else:
-    multiByteHashImpl(result, x, 0, high(x))
   result = !$result
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
