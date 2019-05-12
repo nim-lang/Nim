@@ -1012,17 +1012,12 @@ proc fromBin*[T: SomeInteger](s: string): T =
   ## binary digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0b_0100_1000_1000_1000_1110_1110_1001_1001"
-    let i: int = fromBin[int](s)
-    doAssert i == 1216933529
-    let i8: int8 = fromBin[int8](s)
-    doAssert i8 == 0b1001_1001'i8
-    doAssert i8 == -103'i8
-    let i16: int16 = s.fromBin[:int16]
-    doAssert i16 == 0b1110_1110_1001_1001'i16
-    let u8: uint8 = fromBin[uint8](s)
-    doAssert u8 == 153
-    let u64: uint64 = s.fromBin[:uint64]
-    doAssert u64 == 1216933529'u64
+    doAssert fromBin[int](s) == 1216933529
+    doAssert fromBin[int8](s) == 0b1001_1001'i8
+    doAssert fromBin[int8](s) == -103'i8
+    doAssert fromBin[uint8](s) == 153
+    doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
+    doAssert s.fromBin[:uint64] == 1216933529'u64
 
   let p = parseutils.parseBin(s, result)
   if p != s.len or p == 0:
@@ -1040,17 +1035,12 @@ proc fromOct*[T: SomeInteger](s: string): T =
   ## octal digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0o_123_456_777"
-    let i: int = fromOct[int](s)
-    doAssert i == 21913087
-    let i8: int8 = fromOct[int8](s)
-    doAssert i8 == 0o377'i8
-    doAssert i8 == -1'i8
-    let i16: int16 = s.fromOct[:int16]
-    doAssert i16 == 24063'i16
-    let u8: uint8 = fromOct[uint8](s)
-    doAssert u8 == 255'u8
-    let u64: uint64 = s.fromOct[:uint64]
-    doAssert u64 == 21913087'u64
+    doAssert fromOct[int](s) == 21913087
+    doAssert fromOct[int8](s) == 0o377'i8
+    doAssert fromOct[int8](s) == -1'i8
+    doAssert fromOct[uint8](s) == 255'u8
+    doAssert s.fromOct[:int16] == 24063'i16
+    doAssert s.fromOct[:uint64] == 21913087'u64
 
   let p = parseutils.parseOct(s, result)
   if p != s.len or p == 0:
@@ -1068,17 +1058,12 @@ proc fromHex*[T: SomeInteger](s: string): T =
   ## hex digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0x_1235_8df6"
-    let i: int = fromHex[int](s)
-    doAssert i == 305499638
-    let i8: int8 = fromHex[int8](s)
-    doAssert i8 == 0xf6'i8
-    doAssert i8 == -10'i8
-    let i16: int16 = s.fromHex[:int16]
-    doAssert i16 == -29194'i16
-    let u8: uint8 = fromHex[uint8](s)
-    doAssert u8 == 246'u8
-    let u64: uint64 = s.fromHex[:uint64]
-    doAssert u64 == 305499638'u64
+    doAssert fromHex[int](s) == 305499638
+    doAssert fromHex[int8](s) == 0xf6'i8
+    doAssert fromHex[int8](s) == -10'i8
+    doAssert fromHex[uint8](s) == 246'u8
+    doAssert s.fromHex[:int16] == -29194'i16
+    doAssert s.fromHex[:uint64] == 305499638'u64
 
   let p = parseutils.parseHex(s, result)
   if p != s.len or p == 0:
