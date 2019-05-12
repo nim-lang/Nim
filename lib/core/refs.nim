@@ -42,7 +42,7 @@ type
     greyStack: seq[Cell]
 
 var
-  gch {.threadvar.}: GcHeap
+  gch {.threadvar, compilerProc.}: GcHeap
 
 proc `=trace`[T](a: ref T) =
   if not marked(a):

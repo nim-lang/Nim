@@ -80,7 +80,7 @@ type
       indentation: int
 
 var
-  gch {.rtlThreadVar.}: GcHeap
+  gch {.rtlThreadVar, compilerProc.}: GcHeap
 
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
