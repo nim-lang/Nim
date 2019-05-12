@@ -217,10 +217,10 @@ type
       nil
 
 when emulatedThreadVars:
-  var globalsSlot: ThreadVarSlot
+  var globalsSlot {.compilerProc.}: ThreadVarSlot
 
   when not defined(useNimRtl):
-    var mainThread: GcThread
+    var mainThread {.compilerProc.}: GcThread
 
   proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
     result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
