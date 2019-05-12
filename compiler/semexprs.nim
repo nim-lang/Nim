@@ -1747,7 +1747,10 @@ proc semProcBody(c: PContext, n: PNode): PNode =
     else:
       localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
         c.p.owner.name.s)
-
+  if isInlineIterator(c.p.owner) and c.p.owner.typ.sons[0] != nil and
+      c.p.owner.typ.sons[0].kind == tyUntyped:
+    localError(c.config, c.p.owner.info, errCannotInferReturnType %
+      c.p.owner.name.s)
   closeScope(c)
 
 proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
