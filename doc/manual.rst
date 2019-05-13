@@ -4382,6 +4382,8 @@ A symbol can be forced to be open by a `mixin`:idx: declaration:
     new result
     init result
 
+``mixin`` statements only make sense in templates and generics.
+
 
 Bind statement
 --------------
@@ -4410,6 +4412,7 @@ definition):
 But a ``bind`` is rarely useful because symbol binding from the definition
 scope is the default.
 
+``bind`` statements only make sense in templates and generics.
 
 
 Templates
