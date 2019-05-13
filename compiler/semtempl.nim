@@ -199,8 +199,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   else:
     if (n.kind == nkPragmaExpr and sonsLen(n) >= 2 and n.sons[1].kind == nkPragma):
       let pragmaNode = n.sons[1]
-      let numPragmas = sonsLen(pragmaNode)
-      for i in 0 .. numPragmas-1:
+      for i in 0..<pragmaNode.sons.len:
         openScope(c)
         pragmaNode.sons[i] = semTemplBody(c,pragmaNode.sons[i])
         closeScope(c)
