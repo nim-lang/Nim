@@ -2620,6 +2620,9 @@ proc getClassName(t: PType): Rope =
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = myProcess(b, n)
   var m = BModule(b)
+  if sfMainModule in m.module.flags:
+    for destructorCall in graph.globalDestructors:
+      n.add destructorCall
   if passes.skipCodegen(m.config, n): return n
   if sfMainModule in m.module.flags:
     let code = wholeCode(graph, m)
