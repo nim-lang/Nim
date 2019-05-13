@@ -93,9 +93,10 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   line.intVal = toLinenumber(info)
   var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
   column.intVal = toColumn(info)
-  result.add(filename)
-  result.add(line)
-  result.add(column)
+  # filename: string, line: int, column: int
+  result.add(newTree(nkExprColonExpr, n.typ.n[0], filename))
+  result.add(newTree(nkExprColonExpr, n.typ.n[1], line))
+  result.add(newTree(nkExprColonExpr, n.typ.n[2], column))
 
 proc toNode(t: PType, i: TLineInfo): PNode =
   result = newNodeIT(nkType, i, t)
