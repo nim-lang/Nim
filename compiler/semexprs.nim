@@ -1674,9 +1674,6 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         var rhsTyp = rhs.typ
         if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
           rhsTyp = rhsTyp.lastSon
-        if isClosureIterator(c.p.owner) and
-            cmpTypes(c, c.p.owner.typ.sons[0], rhsTyp) notin {isGeneric, isEqual}:
-          typeMismatch(c.config, n.info, c.p.owner.typ.sons[0], rhsTyp)
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.config, c.p.resultSym != nil
           # Make sure the type is valid for the result variable
