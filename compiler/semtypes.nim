@@ -610,9 +610,10 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
     discard
-  else:
-    if not isOrdinalType(typ):
-      localError(c.config, n.info, "selector must be of an ordinal type, float or string")
+  of tyForward:
+    errorUndeclaredIdentifier(c, n.sons[0].info, typ.sym.name.s)
+  elif not isOrdinalType(typ):
+    localError(c.config, n.sons[0].info, "selector must be of an ordinal type, float or string")
   for i in 1 ..< sonsLen(n):
     var b = copyTree(n.sons[i])
     addSon(a, b)
