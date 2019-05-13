@@ -1963,6 +1963,9 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil: return
   var m = BModule(b)
+  if sfMainModule in m.module.flags:
+    for destructorCall in graph.globalDestructors:
+      n.add destructorCall
   if passes.skipCodegen(m.config, n): return
   # if the module is cached, we don't regenerate the main proc
   # nor the dispatchers? But if the dispatchers changed?

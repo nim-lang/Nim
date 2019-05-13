@@ -316,10 +316,6 @@ proc makePtrType(c: Con, baseType: PType): PType =
   result = newType(tyPtr, c.owner)
   addSonSkipIntLit(result, baseType)
 
-proc addDestroy(c: var Con; n: PNode) =
-  # append to front:
-  c.destroys = newTree(nkStmtList, n, c.destroys)
-
 proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = t.attachedOps[kind]
 
@@ -738,7 +734,7 @@ proc p(n: PNode; c: var Con): PNode =
             c.addTopVar v
             # make sure it's destroyed at the end of the proc:
             if not isUnpackedTuple(it[0].sym):
-              c.addDestroy genDestroy(c, v.typ, v)
+              c.destroys.add genDestroy(c, v.typ, v)
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -757,7 +753,7 @@ proc p(n: PNode; c: var Con): PNode =
       sinkExpr.add n
       result.add sinkExpr
       result.add tmp
-      c.addDestroy genDestroy(c, n.typ, tmp)
+      c.destroys.add genDestroy(c, n.typ, tmp)
     else:
       result = n
   of nkAsgn, nkFastAsgn:
@@ -799,6 +795,19 @@ proc p(n: PNode; c: var Con): PNode =
     result = copyNode(n)
     recurse(n, result)
 
+proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =
+  result = newNodeI(nkStmtList, destroys.info)
+  for i in 0 ..< destroys.len:
+    if destroys[i][1][0].sym.kind == skTemp:
+      result.add destroys[i]
+      destroys[i] = c.emptyNode
+
+proc reverseDestroys(destroys: PNode) =
+  var reversed: seq[PNode]
+  for i in countdown(destroys.len - 1, 0):
+    reversed.add(destroys[i])
+  destroys.sons = reversed
+
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if sfGeneratedOp in owner.flags or isInlineIterator(owner): return n
   var c: Con
@@ -821,7 +830,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     for i in 1 ..< params.len:
       let param = params[i].sym
       if isSinkTypeForParam(param.typ) and hasDestructor(param.typ.skipTypes({tySink})):
-        c.addDestroy genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
+        c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
@@ -830,7 +839,12 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
   if c.destroys.len > 0:
-    result.add newTryFinally(body, c.destroys)
+    reverseDestroys(c.destroys)
+    if owner.kind == skModule:
+      result.add newTryFinally(body, extractDestroysForTemporaries(c, c.destroys))
+      g.globalDestructors.add c.destroys
+    else:
+      result.add newTryFinally(body, c.destroys)
   else:
     result.add body
 
