@@ -1695,13 +1695,12 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   result = getFileHeader(m.config, cfile)
   result.add(genMergeInfo(m))
 
-  if m.config.cppCustomNamespace.len > 0:
-    result.add openNamespaceNim(m.config.cppCustomNamespace)
-
   generateThreadLocalStorage(m)
   generateHeaders(m)
   add(result, genSectionStart(cfsHeaders, m.config))
   add(result, m.s[cfsHeaders])
+  if m.config.cppCustomNamespace.len > 0:
+    result.add openNamespaceNim(m.config.cppCustomNamespace)
   add(result, genSectionEnd(cfsHeaders, m.config))
   add(result, genSectionStart(cfsFrameDefines, m.config))
   if m.s[cfsFrameDefines].len > 0:
