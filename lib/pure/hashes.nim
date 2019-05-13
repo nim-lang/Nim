@@ -139,14 +139,14 @@ proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
   result = ord(x)
 
-proc singleByteHashImpl[T](h: var Hash, x: openArray[T], start, stop: int) {.inline.} =
+template singleByteHashImpl(result: Hash, x: typed, start, stop: int) =
   for i in start .. stop:
-    h = h !& hash(x[i])
+    result = result !& hash(x[i])
 
 template multiByteHashImpl(result: Hash, x: typed, start, stop: int) =
   let stepSize = IntSize div sizeof(x[start])
   var i = start
-  while i <= stop+1 - IntSize:
+  while i <= stop+1 - stepSize:
     let n = cast[ptr Hash](unsafeAddr x[i])[]
     result = result !& n
     i += stepSize
@@ -163,7 +163,7 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  when nimvm:
+  when defined(booting):
     singleByteHashImpl(result, x, 0, high(x))
   else:
     multiByteHashImpl(result, x, 0, high(x))
@@ -178,22 +178,10 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  when nimvm:
-    var j = 0
-    while x[j] != '\0':
-      result = result !& ord(x[j])
-      inc j
+  when defined(booting):
+    singleByteHashImpl(result, x, 0, high(x))
   else:
-    var
-      i = 0
-      l = len(x)
-    while i < l - IntSize:
-      let n = cast[ptr Hash](unsafeAddr x[i])[]
-      result = result !& n
-      i += IntSize
-    while i < l:
-      result = result !& ord(x[i])
-      inc i
+    multiByteHashImpl(result, x, 0, high(x))
   result = !$result
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
@@ -207,7 +195,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  when nimvm:
+  when defined(booting):
     singleByteHashImpl(result, sBuf, sPos, ePos)
   else:
     multiByteHashImpl(result, sBuf, sPos, ePos)
@@ -317,7 +305,7 @@ proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
   ##
   ## **Note:** hashes at compile-time differ from hashes at runtime.
-  when not nimvm and (A is char|SomeInteger):
+  when not defined(booting) and (A is char|SomeInteger):
     multiByteHashImpl(result, x, 0, x.high)
   else:
     singleByteHashImpl(result, x, 0, x.high)
@@ -334,7 +322,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
-  when not nimvm and (A is char|SomeInteger):
+  when not defined(booting) and (A is char|SomeInteger):
     multiByteHashImpl(result, aBuf, sPos, ePos)
   else:
     singleByteHashImpl(result, aBuf, sPos, ePos)
