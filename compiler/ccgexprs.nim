@@ -661,11 +661,9 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   initLocExpr(p, e.sons[1], a)
   t = skipTypes(e.typ, abstractRange)
 
-
   template applyFormat(frmt: untyped) =
     putIntoDest(p, d, e, frmt % [rdLoc(a), rope(getSize(p.config, t) * 8),
                 getSimpleTypeDesc(p.module, e.typ)])
-
 
   case op
   of mNot:
@@ -709,8 +707,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     applyFormat("float64ToInt64($1)")
   else:
     assert false, $op
-
-
 
 proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
   result = p.module.compileToCpp and
