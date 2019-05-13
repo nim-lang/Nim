@@ -500,7 +500,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
       if (kevent.flags and EV_ERROR) != 0:
         rkey.events = {Event.Error}
-        rkey.errorCode = kevent.data.OSErrorCode
+        rkey.errorCode = OSErrorCode(kevent.data)
 
       case kevent.filter:
       of EVFILT_READ:
@@ -576,7 +576,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
           # This assumes we are dealing with sockets.
           # TODO: For future-proofing it might be a good idea to give the
           #       user access to the raw `kevent`.
-          rkey.errorCode = ECONNRESET.OSErrorCode
+          rkey.errorCode = OSErrorCode(ECONNRESET)
         rkey.events.incl(Event.Error)
 
       results[k] = rkey
