@@ -27,7 +27,7 @@ const
     "it is used as an operand to another routine and the types " &
     "of the generic paramers can be inferred from the expected signature."
   errCannotInferTypeOfTheLiteral = "cannot infer the type of the $1"
-  errCannotInferReturnType = "cannot infer the return type of the proc"
+  errCannotInferReturnType = "cannot infer the return type of '$1'"
   errCannotInferStaticParam = "cannot infer the value of the static param '$1'"
   errProcHasNoConcreteType = "'$1' doesn't have a concrete type, due to unspecified generic parameters."
   errLetNeedsInit = "'let' symbol requires an initialization"
@@ -35,6 +35,9 @@ const
   errImplOfXexpected = "implementation of '$1' expected"
   errRecursiveDependencyX = "recursive dependency: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
+  errCannotAssignMacroSymbol = "cannot assign macro symbol to $1 here. Forgot to invoke the macro with '()'?"
+  errInvalidTypeDescAssign = "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
+  errInlineIteratorNotFirstClass = "inline iterators are not first-class / cannot be assigned to variables"
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
@@ -445,12 +448,16 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var def: PNode = c.graph.emptyNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
-      if def.typ.kind == tyProc and def.kind == nkSym and def.sym.kind == skMacro:
-        localError(c.config, def.info, "cannot assign macro symbol to variable here. Forgot to invoke the macro with '()'?")
-        def.typ = errorType(c)
+      if def.typ.kind == tyProc and def.kind == nkSym:
+        if def.sym.kind == skMacro:
+          localError(c.config, def.info, errCannotAssignMacroSymbol % "variable")
+          def.typ = errorType(c)
+        elif isInlineIterator(def.sym):
+          localError(c.config, def.info, errInlineIteratorNotFirstClass)
+          def.typ = errorType(c)
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         # prevent the all too common 'var x = int' bug:
-        localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
+        localError(c.config, def.info, errInvalidTypeDescAssign)
         def.typ = errorType(c)
 
       if typ != nil:
@@ -589,12 +596,16 @@ proc semConst(c: PContext, n: PNode): PNode =
       localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
 
-    if def.typ.kind == tyProc and def.kind == nkSym and def.sym.kind == skMacro:
-        localError(c.config, def.info, "cannot assign macro symbol to constant here. Forgot to invoke the macro with '()'?")
+    if def.typ.kind == tyProc and def.kind == nkSym:
+      if def.sym.kind == skMacro:
+        localError(c.config, def.info, errCannotAssignMacroSymbol % "constant")
+        def.typ = errorType(c)
+      elif isInlineIterator(def.sym):
+        localError(c.config, def.info, errInlineIteratorNotFirstClass)
         def.typ = errorType(c)
     elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
       # prevent the all too common 'const x = int' bug:
-      localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
+      localError(c.config, def.info, errInvalidTypeDescAssign)
       def.typ = errorType(c)
 
     # check type compatibility between def.typ and typ:
@@ -1534,8 +1545,7 @@ proc activate(c: PContext, n: PNode) =
       discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
-  if s.typ.sons[0] != nil and not
-      (s.kind == skIterator and s.typ.callConv != ccClosure):
+  if s.typ.sons[0] != nil and not isInlineIterator(s):
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
@@ -1768,8 +1778,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif s.kind == skFunc:
     incl(s.flags, sfNoSideEffect)
     incl(s.typ.flags, tfNoSideEffect)
-  var proto = searchForProc(c, oldScope, s)
-  if proto == nil or isAnon:
+  var proto: PSym = if isAnon: nil
+                    else: searchForProc(c, oldScope, s)
+  if proto == nil:
     if s.kind == skIterator:
       if s.typ.callConv != ccClosure:
         s.typ.callConv = if isAnon: ccClosure else: ccInline
@@ -1921,7 +1932,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
   if isAnon and s.typ.callConv == ccInline:
-    localError(c.config, n.info, "inline iterators are not first-class / cannot be assigned to variables")
+    localError(c.config, n.info, errInlineIteratorNotFirstClass)
   # iterators are either 'inline' or 'closure'; for backwards compatibility,
   # we require first class iterators to be marked with 'closure' explicitly
   # -- at least for 0.9.2.
