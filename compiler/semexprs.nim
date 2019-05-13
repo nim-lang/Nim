@@ -143,8 +143,8 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
 
   if d == nil:
     result = convNotLegal
-  elif d.kind == tyObject and s.kind == tyObject:
-    result = checkConversionBetweenObjects(d, s, pointers)
+  elif d.skipTypes(abstractInst).kind == tyObject and s.skipTypes(abstractInst).kind == tyObject:
+    result = checkConversionBetweenObjects(d.skipTypes(abstractInst), s.skipTypes(abstractInst), pointers)
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
     if targetTyp.isOrdinalType:
