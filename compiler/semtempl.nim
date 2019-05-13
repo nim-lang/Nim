@@ -197,6 +197,12 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     else:
       replaceIdentBySym(c.c, n, ident)
   else:
+    if (n.kind == nkPragmaExpr and sonsLen(n) >= 2 and n.sons[1].kind == nkPragma):
+      let pragmaNode = n.sons[1]
+      for i in 0..<pragmaNode.sons.len:
+        openScope(c)
+        pragmaNode.sons[i] = semTemplBody(c,pragmaNode.sons[i])
+        closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
       # fix #2670, consider:
