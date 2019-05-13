@@ -323,9 +323,10 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
         result &= e.sym.name.s
         return
 
-  if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
-  elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
-  elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
+  let y = x and ((1 shl (size*8)) - 1)
+  if nfBase2 in n.flags: result = "0b" & toBin(y, size * 8)
+  elif nfBase8 in n.flags: result = "0o" & toOct(y, size * 3)
+  elif nfBase16 in n.flags: result = "0x" & toHex(y, size * 2)
   else: result = $x
 
 proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =

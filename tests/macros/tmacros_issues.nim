@@ -26,6 +26,7 @@ range[0 .. 100]
 array[0 .. 100, int]
 10
 test
+0o377'i8
 '''
 """
 
@@ -236,3 +237,10 @@ block tbugs:
   sampleMacroInt(42)
   sampleMacroBool(false)
   sampleMacroBool(system.true)
+
+
+# bug #11131
+macro toRendererBug(n): untyped =
+  result = newLit repr(n)
+
+echo toRendererBug(0o377'i8)
