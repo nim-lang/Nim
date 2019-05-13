@@ -990,7 +990,7 @@ const
   miscPos* = 5  # used for undocumented and hacky stuff
   bodyPos* = 6       # position of body; use rodread.getBody() instead!
   resultPos* = 7
-  dispatcherPos* = 8 # caution: if method has no 'result' it can be position 7!
+  dispatcherPos* = 8
 
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
@@ -1711,8 +1711,7 @@ proc toVar*(typ: PType): PType =
 proc toRef*(typ: PType): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
-  result = typ
-  if typ.kind == tyObject:
+  if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
     result = newType(tyRef, typ.owner)
     rawAddSon(result, typ)
 
@@ -1720,19 +1719,19 @@ proc toObject*(typ: PType): PType =
   ## If ``typ`` is a tyRef then its immediate son is returned (which in many
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
-  result = typ
-  if result.kind == tyRef:
-    result = result.lastSon
+  let t = typ.skipTypes({tyAlias, tyGenericInst})
+  if t.kind == tyRef: t.lastSon
+  else: typ
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
   assert(t != nil)
 
-  if t.kind != tyObject:
+  if t.kind notin {tyObject, tyGenericInst}:
     return false
 
   var base = t
-  while base != nil:
+  while base != nil and base.kind in {tyRef, tyObject, tyGenericInst}:
     if base.sym != nil and base.sym.magic == mException:
       return true
     base = base.lastSon

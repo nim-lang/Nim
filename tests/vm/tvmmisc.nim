@@ -31,7 +31,7 @@ static:
   assert str == "abc"
 
 # #6086
-import math, sequtils, future
+import math, sequtils, sugar
 
 block:
   proc f: int =
@@ -148,3 +148,22 @@ static:
 
   static:
     doAssert foo().i == 1
+
+
+# #10886
+
+proc tor(): bool =
+  result = true
+  result = false or result
+
+proc tand(): bool =
+  result = false
+  result = true and result
+
+const
+  ctor = tor()
+  ctand = not tand()
+
+static:
+  doAssert ctor
+  doAssert ctand

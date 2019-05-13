@@ -71,6 +71,7 @@ type
     opcSubStr, opcParseFloat, opcConv, opcCast,
     opcQuit,
     opcNarrowS, opcNarrowU,
+    opcSignExtend,
 
     opcAddStrCh,
     opcAddStrStr,

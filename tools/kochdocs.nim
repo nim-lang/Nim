@@ -54,6 +54,11 @@ proc execCleanPath*(cmd: string,
 proc nimexec*(cmd: string) =
   exec findNim() & " " & cmd
 
+proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
+  let output = outputDir / input.splitFile.name.exe
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  exec cmd
+
 const
   pdf = """
 doc/manual.rst

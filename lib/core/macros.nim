@@ -649,7 +649,7 @@ proc newLit*(f: float64): NimNode {.compileTime.} =
   result = newNimNode(nnkFloat64Lit)
   result.floatVal = f
 
-when compiles(float128):
+when declared(float128):
   proc newLit*(f: float128): NimNode {.compileTime.} =
     ## produces a new float literal node.
     result = newNimNode(nnkFloat128Lit)
@@ -976,6 +976,8 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
   ##    )
   ##
   result = newNimNode(nnkIfStmt)
+  if len(branches) < 1:
+    error("If statement must have at least one branch")
   for i in branches:
     result.add(newTree(nnkElifBranch, i.cond, i.body))
 

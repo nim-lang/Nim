@@ -361,16 +361,28 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
   for endPos in endings: c.patch(endPos)
   c.clearDest(n, dest)
 
+proc isTemp(c: PCtx; dest: TDest): bool =
+  result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown
+
 proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   #   asgn dest, a
   #   tjmp|fjmp L1
   #   asgn dest, b
   # L1:
-  if dest < 0: dest = getTemp(c, n.typ)
-  c.gen(n.sons[1], dest)
-  let L1 = c.xjmp(n, opc, dest)
-  c.gen(n.sons[2], dest)
+  let copyBack = dest < 0 or not isTemp(c, dest)
+  let tmp = if copyBack:
+              getTemp(c, n.typ)
+            else:
+              TRegister dest
+  c.gen(n.sons[1], tmp)
+  let L1 = c.xjmp(n, opc, tmp)
+  c.gen(n.sons[2], tmp)
   c.patch(L1)
+  if dest < 0:
+    dest = tmp
+  elif copyBack:
+    c.gABC(n, opcAsgnInt, dest, tmp)
+    freeTemp(c, tmp)
 
 proc canonValue*(n: PNode): PNode =
   result = n
@@ -938,11 +950,18 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
 
-  of mShlI: genBinaryABCnarrowU(c, n, dest, opcShlInt)
-  of mAshrI: genBinaryABCnarrow(c, n, dest, opcAshrInt)
-  of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
-  of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
-  of mBitxorI: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
+  of mShlI:
+    genBinaryABC(c, n, dest, opcShlInt)
+    # genNarrowU modified
+    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
+      c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
+    elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and t.size < 8):
+      c.gABC(n, opcSignExtend, dest, TRegister(t.size*8))
+  of mAshrI: genBinaryABC(c, n, dest, opcAshrInt)
+  of mBitandI: genBinaryABC(c, n, dest, opcBitandInt)
+  of mBitorI: genBinaryABC(c, n, dest, opcBitorInt)
+  of mBitxorI: genBinaryABC(c, n, dest, opcBitxorInt)
   of mAddU: genBinaryABCnarrowU(c, n, dest, opcAddu)
   of mSubU: genBinaryABCnarrowU(c, n, dest, opcSubu)
   of mMulU: genBinaryABCnarrowU(c, n, dest, opcMulu)
@@ -961,7 +980,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
   of mEqProc, mEqRef, mEqUntracedRef:
     genBinaryABC(c, n, dest, opcEqRef)
-  of mXor: genBinaryABCnarrowU(c, n, dest, opcXor)
+  of mXor: genBinaryABC(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
   of mUnaryMinusI, mUnaryMinusI64:
     genUnaryABC(c, n, dest, opcUnaryMinusInt)
@@ -970,7 +989,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
   of mBitnotI:
     genUnaryABC(c, n, dest, opcBitnotInt)
-    genNarrowU(c, n, dest)
+    #genNarrowU modified, do not narrow signed types
+    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
+      c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
   of mToFloat, mToBiggestFloat, mToInt,
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
@@ -1385,9 +1407,6 @@ proc checkCanEval(c: PCtx; n: PNode) =
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
     cannotEval(c, n)
-
-proc isTemp(c: PCtx; dest: TDest): bool =
-  result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown
 
 template needsAdditionalCopy(n): untyped =
   not c.isTemp(dest) and not fitsRegister(n.typ)
