@@ -166,7 +166,10 @@ proc hash*(x: string): Hash =
   when defined(booting):
     singleByteHashImpl(result, x, 0, high(x))
   else:
-    multiByteHashImpl(result, x, 0, high(x))
+    when nimvm:
+      singleByteHashImpl(result, x, 0, high(x))
+    else:
+      multiByteHashImpl(result, x, 0, high(x))
   result = !$result
 
 proc hash*(x: cstring): Hash =
@@ -181,7 +184,10 @@ proc hash*(x: cstring): Hash =
   when defined(booting):
     singleByteHashImpl(result, x, 0, high(x))
   else:
-    multiByteHashImpl(result, x, 0, high(x))
+    when nimvm:
+      singleByteHashImpl(result, x, 0, high(x))
+    else:
+      multiByteHashImpl(result, x, 0, high(x))
   result = !$result
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
@@ -198,7 +204,10 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   when defined(booting):
     singleByteHashImpl(result, sBuf, sPos, ePos)
   else:
-    multiByteHashImpl(result, sBuf, sPos, ePos)
+    when nimvm:
+      singleByteHashImpl(result, sBuf, sPos, ePos)
+    else:
+      multiByteHashImpl(result, sBuf, sPos, ePos)
   result = !$result
 
 proc addLowercaseChar(x: var string, c: char) {.inline.} =
@@ -306,7 +315,10 @@ proc hash*[A](x: openArray[A]): Hash =
   ##
   ## **Note:** hashes at compile-time differ from hashes at runtime.
   when not defined(booting) and (A is char|SomeInteger):
-    multiByteHashImpl(result, x, 0, x.high)
+    when nimvm:
+      singleByteHashImpl(result, x, 0, x.high)
+    else:
+      multiByteHashImpl(result, x, 0, x.high)
   else:
     singleByteHashImpl(result, x, 0, x.high)
   result = !$result
@@ -323,7 +335,10 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
   when not defined(booting) and (A is char|SomeInteger):
-    multiByteHashImpl(result, aBuf, sPos, ePos)
+    when nimvm:
+      singleByteHashImpl(result, aBuf, sPos, ePos)
+    else:
+      multiByteHashImpl(result, aBuf, sPos, ePos)
   else:
     singleByteHashImpl(result, aBuf, sPos, ePos)
   result = !$result
