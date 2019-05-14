@@ -163,13 +163,10 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  when defined(booting):
+  when nimvm:
     singleByteHashImpl(result, x, 0, high(x))
   else:
-    when nimvm:
-      singleByteHashImpl(result, x, 0, high(x))
-    else:
-      multiByteHashImpl(result, x, 0, high(x))
+    multiByteHashImpl(result, x, 0, high(x))
   result = !$result
 
 proc hash*(x: cstring): Hash =
@@ -181,13 +178,10 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  when defined(booting):
+  when nimvm:
     singleByteHashImpl(result, x, 0, high(x))
   else:
-    when nimvm:
-      singleByteHashImpl(result, x, 0, high(x))
-    else:
-      multiByteHashImpl(result, x, 0, high(x))
+    multiByteHashImpl(result, x, 0, high(x))
   result = !$result
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
@@ -201,13 +195,10 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  when defined(booting):
+  when nimvm:
     singleByteHashImpl(result, sBuf, sPos, ePos)
   else:
-    when nimvm:
-      singleByteHashImpl(result, sBuf, sPos, ePos)
-    else:
-      multiByteHashImpl(result, sBuf, sPos, ePos)
+    multiByteHashImpl(result, sBuf, sPos, ePos)
   result = !$result
 
 proc addLowercaseChar(x: var string, c: char) {.inline.} =
@@ -314,13 +305,13 @@ proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
   ##
   ## **Note:** hashes at compile-time differ from hashes at runtime.
-  when not defined(booting) and (A is char|SomeInteger):
-    when nimvm:
-      singleByteHashImpl(result, x, 0, x.high)
-    else:
-      multiByteHashImpl(result, x, 0, x.high)
-  else:
+  when nimvm:
     singleByteHashImpl(result, x, 0, x.high)
+  else:
+    when A is char|SomeInteger:
+      multiByteHashImpl(result, x, 0, x.high)
+    else:
+      singleByteHashImpl(result, x, 0, x.high)
   result = !$result
 
 proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
@@ -334,13 +325,13 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
-  when not defined(booting) and (A is char|SomeInteger):
-    when nimvm:
-      singleByteHashImpl(result, aBuf, sPos, ePos)
-    else:
-      multiByteHashImpl(result, aBuf, sPos, ePos)
-  else:
+  when nimvm:
     singleByteHashImpl(result, aBuf, sPos, ePos)
+  else:
+    when A is char|SomeInteger:
+      multiByteHashImpl(result, aBuf, sPos, ePos)
+    else:
+      singleByteHashImpl(result, aBuf, sPos, ePos)
   result = !$result
 
 proc hash*[A](x: set[A]): Hash =
