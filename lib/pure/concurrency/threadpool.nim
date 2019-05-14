@@ -18,7 +18,7 @@
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}
 
-import cpuinfo, cpuload, locks
+import cpuinfo, cpuload, locks, os
 
 {.push stackTrace:off.}
 
@@ -570,17 +570,15 @@ proc sync*() =
   ## A simple barrier to wait for all ``spawn``'ed tasks.
   ##
   ## If you need more elaborate waiting, you have to use an explicit barrier.
-  var toRelease = 0
   while true:
     var allReady = true
     for i in 0 ..< currentPoolSize:
       if not allReady: break
       allReady = allReady and workersData[i].ready
     if allReady: break
-    blockUntil(gSomeReady)
-    inc toRelease
-
-  for i in 0 ..< toRelease:
-    signal(gSomeReady)
+    sleep(100)
+    # We cannot "blockUntil(gSomeReady)" because workers may be shut down between
+    # the time we establish that some are not "ready" and the time we wait for a
+    # "signal(gSomeReady)" from inside "slave()" that can never come.
 
 setup()
