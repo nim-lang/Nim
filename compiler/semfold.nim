@@ -671,12 +671,12 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     if a != nil:
       result = n
       n.sons[0] = a
-  of nkBracket:
-    result = copyTree(n)
-    for i in 0 ..< sonsLen(n):
-      var a = getConstExpr(m, n.sons[i], g)
+  of nkBracket, nkCurly:
+    result = copyNode(n)
+    for i, son in n.pairs:
+      var a = getConstExpr(m, son, g)
       if a == nil: return nil
-      result.sons[i] = a
+      result.add a
     incl(result.flags, nfAllConst)
   of nkRange:
     var a = getConstExpr(m, n.sons[0], g)
@@ -686,13 +686,6 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     result = copyNode(n)
     addSon(result, a)
     addSon(result, b)
-  of nkCurly:
-    result = copyTree(n)
-    for i in 0 ..< sonsLen(n):
-      var a = getConstExpr(m, n.sons[i], g)
-      if a == nil: return nil
-      result.sons[i] = a
-    incl(result.flags, nfAllConst)
   #of nkObjConstr:
   #  result = copyTree(n)
   #  for i in 1 ..< sonsLen(n):
@@ -702,17 +695,20 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   #  incl(result.flags, nfAllConst)
   of nkPar, nkTupleConstr:
     # tuple constructor
-    result = copyTree(n)
+    result = copyNode(n)
     if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr):
-      for i in 0 ..< sonsLen(n):
-        var a = getConstExpr(m, n.sons[i].sons[1], g)
+      for i, expr in n.pairs:
+        let exprNew = copyNode(expr) # nkExprColonExpr
+        exprNew.add expr[0]
+        let a = getConstExpr(m, expr[1], g)
         if a == nil: return nil
-        result.sons[i].sons[1] = a
+        exprNew.add a
+        result.add exprNew
     else:
-      for i in 0 ..< sonsLen(n):
-        var a = getConstExpr(m, n.sons[i], g)
+      for i, expr in n.pairs:
+        let a = getConstExpr(m, expr, g)
         if a == nil: return nil
-        result.sons[i] = a
+        result.add a
     incl(result.flags, nfAllConst)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     var a = getConstExpr(m, n.sons[0], g)
