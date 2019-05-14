@@ -153,6 +153,8 @@ type
     isint*: int32
     p*: pointer
 
+proc pqinitOpenSSL*(do_ssl: int32, do_crypto: int32) {.cdecl, dynlib: dllName,
+    importc: "PQinitOpenSSL".}
 proc pqconnectStart*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName,
     importc: "PQconnectStart".}
 proc pqconnectPoll*(conn: PPGconn): PostgresPollingStatusType{.cdecl,
