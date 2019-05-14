@@ -72,6 +72,10 @@ type
 
   TExprFlags* = set[TExprFlag]
 
+  TVariantFact = object
+    discriminator*: PSym
+    branch*: PNode
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     enforceVoidContext*: PType
@@ -138,6 +142,7 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
+    variantFacts*: seq[TVariantFact]
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -416,3 +421,9 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
+
+proc addVariantFact*(c: PContext, discriminator: PSym, branch: PNode) =
+  c.variantFacts.add(TVariantFact(discriminator: discriminator, branch: branch))
+
+proc popVariantFact*(c: PContext) =
+  discard c.variantFacts.pop()

@@ -901,7 +901,9 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       checkMinSonsLen(x, 2, c.config)
       semCaseBranch(c, n, x, i, covered)
       var last = sonsLen(x)-1
+      if n.sons[0].kind == nkSym: c.addVariantFact(n.sons[0].sym, n.sons[i])
       x.sons[last] = semExprBranchScope(c, x.sons[last])
+      if n.sons[0].kind == nkSym: c.popVariantFact()
       typ = commonType(typ, x.sons[last])
     of nkElifBranch:
       chckCovered = false

@@ -77,12 +77,17 @@ proc semConstrField(c: PContext, flags: TExprFlags,
 
 proc caseBranchMatchesExpr(branch, matched: PNode): bool =
   for i in 0 .. branch.len-2:
-    if branch[i].kind == nkRange:
+    if branch[i].kind == nkRange or matched.kind == nkRange:
       if overlap(branch[i], matched): return true
     elif exprStructuralEquivalent(branch[i], matched):
       return true
 
   return false
+
+proc caseBranchMatchesFact(branch, matched: PNode): bool =
+  for i in 0 .. matched.len-2:
+    if not caseBranchMatchesExpr(branch, matched[i]): return false
+  return true
 
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
   # XXX: Perhaps this proc already exists somewhere
@@ -173,10 +178,30 @@ proc semConstructFields(c: PContext, recNode: PNode,
           selectedBranch = i
 
     if selectedBranch != -1:
-      let branchNode = recNode[selectedBranch]
-      let flags = flags*{efAllowDestructor} + {efNeedStatic, efPreferNilResult}
-      let discriminatorVal = semConstrField(c, flags,
-                                            discriminator.sym, initExpr)
+      let
+        branchNode = recNode[selectedBranch]
+        flags = flags*{efAllowDestructor} + {efPreferStatic, efPreferNilResult}
+      var
+        discriminatorVal = semConstrField(c, flags, discriminator.sym, initExpr)
+        branchFact: PNode
+      if discriminatorVal.kind == nkSym:
+        block found:
+          for i in countdown(c.variantFacts.high, 0):
+            if c.variantFacts[i].discriminator == discriminatorVal.sym:
+              branchFact = c.variantFacts[i].branch
+              break found
+          discriminatorVal = nil
+      elif discriminatorVal.kind != nkIntLit:
+        discriminatorVal = nil
+
+      template wrongBranchError(i) =
+        let fields = fieldsPresentInBranch(i)
+        localError(c.config, initExpr.info,
+          "a case selecting discriminator '$1' with value '$2' " &
+          "appears in the object construction, but the field(s) $3 " &
+          "are in conflict with this value.",
+          [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
+
       if discriminatorVal == nil:
         let fields = fieldsPresentInBranch(selectedBranch)
         localError(c.config, initExpr.info,
@@ -184,17 +209,13 @@ proc semConstructFields(c: PContext, recNode: PNode,
           "in order to prove that it's safe to initialize $2.") %
           [discriminator.sym.name.s, fields])
         mergeInitStatus(result, initNone)
+      elif discriminatorVal.kind == nkSym:
+        discriminatorVal = discriminatorVal.skipHidden
+        if branchNode.kind != nkElse:
+          if not branchNode.caseBranchMatchesFact(branchFact):
+            wrongBranchError(selectedBranch)
       else:
-        let discriminatorVal = discriminatorVal.skipHidden
-
-        template wrongBranchError(i) =
-          let fields = fieldsPresentInBranch(i)
-          localError(c.config, initExpr.info,
-            "a case selecting discriminator '$1' with value '$2' " &
-            "appears in the object construction, but the field(s) $3 " &
-            "are in conflict with this value.",
-            [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
-
+        discriminatorVal = discriminatorVal.skipHidden
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
             wrongBranchError(selectedBranch)
