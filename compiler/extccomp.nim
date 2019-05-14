@@ -504,30 +504,29 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
-proc cFileSpecificOptions(conf: ConfigRef; cfilename: AbsoluteFile): string =
+proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
   result = conf.compileOptions
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
       addOpt(result, option)
 
-  let trunk = splitFile(cfilename).name
   if optCDebug in conf.globalOptions:
-    let key = trunk & ".debug"
+    let key = nimname & ".debug"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getDebug(conf, conf.cCompiler))
   if optOptimizeSpeed in conf.options:
-    let key = trunk & ".speed"
+    let key = nimname & ".speed"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getOptSpeed(conf, conf.cCompiler))
   elif optOptimizeSize in conf.options:
-    let key = trunk & ".size"
+    let key = nimname & ".size"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getOptSize(conf, conf.cCompiler))
-  let key = trunk & ".always"
+  let key = nimname & ".always"
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
 
 proc getCompileOptions(conf: ConfigRef): string =
-  result = cFileSpecificOptions(conf, AbsoluteFile"__dummy__")
+  result = cFileSpecificOptions(conf, "__dummy__")
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
@@ -557,7 +556,7 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): string =
   var c = conf.cCompiler
-  var options = cFileSpecificOptions(conf, cfile.cname)
+  var options = cFileSpecificOptions(conf, cfile.nimname)
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
@@ -647,7 +646,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
   conf.toCompile.add(c)
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
-  var c = Cfile(cname: filename,
+  var c = Cfile(nimname: splitFile(filename).name, cname: filename,
     obj: toObjFile(conf, completeCFilePath(conf, filename, false)),
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)

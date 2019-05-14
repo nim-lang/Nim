@@ -147,6 +147,7 @@ type
     External   ## file was introduced via .compile pragma
 
   Cfile* = object
+    nimname*: string
     cname*, obj*: AbsoluteFile
     flags*: set[CFileFlag]
   CfileList* = seq[Cfile]

@@ -471,7 +471,8 @@ proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
 
 proc processCompile(c: PContext, n: PNode) =
   proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile) =
-    var cf = Cfile(cname: src, obj: dest, flags: {CfileFlag.External})
+    var cf = Cfile(nimname: splitFile(src).name,
+                   cname: src, obj: dest, flags: {CfileFlag.External})
     extccomp.addExternalFileToCompile(c.config, cf)
     recordPragma(c, it, "compile", src.string, dest.string)
 

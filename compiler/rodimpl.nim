@@ -846,7 +846,9 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       of "error": localError(g.config, n.info, errUser, n[1].strVal)
       of "compile":
         internalAssert g.config, n.len == 3 and n[2].kind == nkStrLit
-        var cf = Cfile(cname: AbsoluteFile n[1].strVal, obj: AbsoluteFile n[2].strVal,
+        let cname = AbsoluteFile n[1].strVal,
+        var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                       obj: AbsoluteFile n[2].strVal,
                        flags: {CfileFlag.External})
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":

@@ -1898,7 +1898,6 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
 # it would generate multiple 'main' procs, for instance.
 
 proc writeModule(m: BModule, pending: bool) =
-  # generate code for the init statements of the module:
   let cfile = getCFile(m)
 
   if true or optForceFullMake in m.config.globalOptions:
@@ -1910,7 +1909,8 @@ proc writeModule(m: BModule, pending: bool) =
       add(m.s[cfsProcHeaders], m.g.mainModProcs)
       generateThreadVarsSize(m)
 
-    var cf = Cfile(cname: cfile, obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+    var cf = Cfile(nimname: m.module.name.s, cname: cfile,
+                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     var code = genModule(m, cf)
     if code != nil:
       when hasTinyCBackend:
@@ -1921,7 +1921,8 @@ proc writeModule(m: BModule, pending: bool) =
       if not shouldRecompile(m, code, cf): cf.flags = {CfileFlag.Cached}
       addFileToCompile(m.config, cf)
   elif pending and mergeRequired(m) and sfMainModule notin m.module.flags:
-    let cf = Cfile(cname: cfile, obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+    let cf = Cfile(nimname: m.module.name.s, cname: cfile,
+                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     mergeFiles(cfile, m)
     genInitCode(m)
     finishTypeDescriptions(m)
@@ -1934,14 +1935,16 @@ proc writeModule(m: BModule, pending: bool) =
     # Consider: first compilation compiles ``system.nim`` and produces
     # ``system.c`` but then compilation fails due to an error. This means
     # that ``system.o`` is missing, so we need to call the C compiler for it:
-    var cf = Cfile(cname: cfile, obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+    var cf = Cfile(nimname: m.module.name.s, cname: cfile,
+                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   close(m.ndi)
 
 proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
-  var cf = Cfile(cname: cfile, obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+  var cf = Cfile(nimname: m.module.name.s, cname: cfile,
+                 obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
 
   if mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)
