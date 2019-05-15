@@ -317,10 +317,7 @@ else:
   proc verifySelectParams(timeout: int) =
     # Timeout of -1 means: wait forever
     # Anything higher is the time to wait in miliseconds.
-    if timeout < -1:
-      raise newException(
-        ValueError, "Cannot select with a negative value, got " & $timeout
-      )
+    doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)
 
   when defined(linux):
     include ioselects/ioselectors_epoll
