@@ -17,13 +17,16 @@ Some of these are not covered by the ``.experimental`` pragma or
 one may want to use Nim libraries using these features without using them
 oneself.
 
+**Note**: Unless otherwise indicated, these features are not to be removed,
+but refined and overhauled.
+
 
 Package level objects
 =====================
 
 Every Nim module resides in a (nimble) package. An object type can be attached
 to the package it resides in. If that is done, the type can be referenced from
-other modules as an `incomplete`:idx: object type. This features allows to
+other modules as an `incomplete`:idx: object type. This feature allows to
 break up recursive type dependencies accross module boundaries. Incomplete
 object types are always passed ``byref`` and can only be used in pointer like
 contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
