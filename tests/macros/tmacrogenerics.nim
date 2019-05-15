@@ -12,7 +12,7 @@ import typetraits, macros
 
 var counter {.compileTime.} = 0
 
-macro makeBar(A, B: typed): typedesc =
+macro makeBar(A, B: typedesc): typedesc =
   inc counter
   echo "instantiation ", counter, " with ", A.getTypeInst.repr, " and ", B.getTypeInst.repr
   result = A
