@@ -2459,6 +2459,23 @@ proc semExport(c: PContext, n: PNode): PNode =
           strTableAdd(c.module.tab, s)
         s = nextOverloadIter(o, c, a)
 
+proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  var tupexp = semTuplePositionsConstr(c, n, flags)
+  var isTupleType: bool
+  if tupexp.len > 0: # don't interpret () as type
+    isTupleType = tupexp[0].typ.kind == tyTypeDesc
+    # check if either everything or nothing is tyTypeDesc
+    for i in 1 ..< tupexp.len:
+      if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
+        localError(c.config, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
+        return(errorNode(c,n))
+  if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
+    result = n
+    var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    result.typ = makeTypeDesc(c, typ)
+  else:
+    result = tupexp
+
 proc shouldBeBracketExpr(n: PNode): bool =
   assert n.kind in nkCallKinds
   let a = n.sons[0]
@@ -2638,22 +2655,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkPar, nkTupleConstr:
     case checkPar(c, n)
     of paNone: result = errorNode(c, n)
-    of paTuplePositions:
-      var tupexp = semTuplePositionsConstr(c, n, flags)
-      block isTupleTypeCheck:
-        var isTupleType: bool
-        if tupexp.len > 0: # don't interpret () as type
-          isTupleType = tupexp[0].typ.kind == tyTypeDesc
-          for i in 1 ..< tupexp.len:
-            if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
-              localError(c.config, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
-              result = errorNode(c,n)
-              break isTupleTypeCheck
-        if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
-          var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
-          result.typ = makeTypeDesc(c, typ)
-        else:
-          result = tupexp
+    of paTuplePositions: result = semTupleConstr(c, n, flags)
     of paTupleFields: result = semTupleFieldsConstr(c, n, flags)
     of paSingle: result = semExpr(c, n.sons[0], flags)
   of nkCurly: result = semSetConstr(c, n)
