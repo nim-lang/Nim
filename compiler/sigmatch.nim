@@ -124,6 +124,12 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
   initIdTable(c.bindings)
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
+  when false:
+    let old = PType(idTableGet(c.bindings, key))
+    if old != nil:
+      echo "Putting ", typeToString(key), " ", typeToString(val), " and old is ", typeToString(old)
+      if typeToString(old) == "seq[string]":
+        writeStackTrace()
   idTablePut(c.bindings, key, val.skipIntLit)
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
@@ -1520,7 +1526,12 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           elif x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError(c.c.graph.config, "wrong instantiated type!")
           else:
-            put(c, f.sons[i], x)
+            let key = f.sons[i]
+            let old = PType(idTableGet(c.bindings, key))
+            if old == nil:
+              put(c, key, x)
+            elif typeRel(c, old, x, flags + {trDontBind}) == isNone:
+              return isNone
 
       if result == isNone:
         # Here object inheriting from generic/specialized generic object
