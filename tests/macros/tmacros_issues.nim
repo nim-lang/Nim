@@ -19,6 +19,14 @@ nil
 42
 false
 true
+12345
+abcde
+123.456
+statick block ok
+12345
+abcde
+123.456
+macro block ok
 '''
 
   output: '''
@@ -244,3 +252,28 @@ macro toRendererBug(n): untyped =
   result = newLit repr(n)
 
 echo toRendererBug(0o377'i8)
+
+# bug #10751
+
+type
+  MyTuple = tuple
+    a: int
+    b: string
+    c: tuple[d: float, e: string]
+
+proc processTuple(arg: MyTuple) {.compileTime.} =
+  echo arg.a  # nkExprColonExpr.strVal
+  echo arg.b
+  echo arg.c.d
+
+const myconst = (a: 12345, b: "abcde", c: (d: 123.456, e: "xyz"))
+
+static:
+  processTuple(myconst) # # copy (12345, "abcde") (unnecessary)
+  echo "statick block ok"
+
+macro foo(arg: static MyTuple): untyped =
+  processTuple(arg)  # (a: 12345, b: "abcde")
+  echo "macro block ok"
+
+foo(myconst)

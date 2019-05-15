@@ -310,7 +310,7 @@ proc newConfigRef*(): ConfigRef =
     globalOptions: DefaultGlobalOptions,
     m: initMsgConfig(),
     evalExpr: "",
-    cppDefines: initSet[string](),
+    cppDefines: initHashSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],

@@ -629,6 +629,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkObjConstr:
         let n = src.sons[rc + 1].skipColon
         regs[ra].node = n
+      of nkTupleConstr:
+        let n = src.sons[rc].skipColon
+        regs[ra].node = n
       else:
         let n = src.sons[rc]
         regs[ra].node = n
