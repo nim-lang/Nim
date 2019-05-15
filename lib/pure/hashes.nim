@@ -139,18 +139,27 @@ proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
   result = ord(x)
 
-template singleByteHashImpl(result: Hash, x: typed, start, stop: int) =
+template bytewiseHashing(result: Hash, x: typed, start, stop: int) =
   for i in start .. stop:
     result = result !& hash(x[i])
+  result = !$result
 
-template multiByteHashImpl(result: Hash, x: typed, start, stop: int) =
-  let stepSize = IntSize div sizeof(x[start])
+template hashImpl(result: Hash, x: typed, start, stop: int) =
+  let
+    elementSize = sizeof(x[start])
+    stepSize = IntSize div elementSize
   var i = start
   while i <= stop+1 - stepSize:
-    let n = cast[ptr Hash](unsafeAddr x[i])[]
+    var n = 0
+    when nimvm:
+      # we cannot cast in VM, so we do it manually
+      for j in countdown(stepsize-1, 0):
+        n = (n shl (8*elementSize)) or ord(x[i+j])
+    else:
+      n = cast[ptr Hash](unsafeAddr x[i])[]
     result = result !& n
     i += stepSize
-  singleByteHashImpl(result, x, i, stop) # hash the remaining elements
+  bytewiseHashing(result, x, i, stop) # hash the remaining elements and finish
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
@@ -163,11 +172,7 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  when nimvm:
-    singleByteHashImpl(result, x, 0, high(x))
-  else:
-    multiByteHashImpl(result, x, 0, high(x))
-  result = !$result
+  hashImpl(result, x, 0, high(x))
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
@@ -178,11 +183,7 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  when nimvm:
-    singleByteHashImpl(result, x, 0, high(x))
-  else:
-    multiByteHashImpl(result, x, 0, high(x))
-  result = !$result
+  hashImpl(result, x, 0, high(x))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -195,11 +196,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  when nimvm:
-    singleByteHashImpl(result, sBuf, sPos, ePos)
-  else:
-    multiByteHashImpl(result, sBuf, sPos, ePos)
-  result = !$result
+  hashImpl(result, sBuf, sPos, ePos)
 
 proc addLowercaseChar(x: var string, c: char) {.inline.} =
   if c in {'A'..'Z'}:
@@ -305,14 +302,10 @@ proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
   ##
   ## **Note:** hashes at compile-time differ from hashes at runtime.
-  when nimvm:
-    singleByteHashImpl(result, x, 0, x.high)
+  when A is char|SomeInteger:
+    hashImpl(result, x, 0, x.high)
   else:
-    when A is char|SomeInteger:
-      multiByteHashImpl(result, x, 0, x.high)
-    else:
-      singleByteHashImpl(result, x, 0, x.high)
-  result = !$result
+    bytewiseHashing(result, x, 0, x.high)
 
 proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## Efficient hashing of portions of arrays and sequences, from starting
@@ -325,14 +318,10 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
-  when nimvm:
-    singleByteHashImpl(result, aBuf, sPos, ePos)
+  when A is char|SomeInteger:
+    hashImpl(result, aBuf, sPos, ePos)
   else:
-    when A is char|SomeInteger:
-      multiByteHashImpl(result, aBuf, sPos, ePos)
-    else:
-      singleByteHashImpl(result, aBuf, sPos, ePos)
-  result = !$result
+    bytewiseHashing(result, aBuf, sPos, ePos)
 
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
