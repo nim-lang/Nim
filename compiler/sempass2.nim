@@ -977,7 +977,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   initEffects(g, effects, s, t, c)
   track(t, body)
   if not isEmptyType(s.typ.sons[0]) and
-      {tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} and
+      ({tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} or
+      s.typ.sons[0].skipTypes(abstractInst).kind == tyVar) and
       s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:
