@@ -943,7 +943,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCharLit: put(g, tkCharLit, atom(g, n))
   of nkNilLit: put(g, tkNil, atom(g, n))    # complex expressions
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
-    if n.len > 0 and isBracket(n[0]):
+    if renderIds notin g.flags and n.len > 0 and isBracket(n[0]):
       gsub(g, n, 1)
       put(g, tkBracketLe, "[")
       gcomma(g, n, 2)

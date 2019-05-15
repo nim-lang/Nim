@@ -201,6 +201,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard
+  of nkOpenSymChoice, nkClosedSymChoice: result = n
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)
     if result.sym.typ.kind == tyVoid:
