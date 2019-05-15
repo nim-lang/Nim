@@ -211,11 +211,10 @@ proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
     didSomeWork = true
 
 proc adjustTimeout(pollTimeout: int, nextTimer: Option[int]): int {.inline.} =
-  if nextTimer.isNone():
+  if nextTimer.isNone() or pollTimeout == -1:
     return pollTimeout
 
-  result = nextTimer.get()
-  if pollTimeout == -1: return
+  result = max(nextTimer.get(), 0)
   result = min(pollTimeout, result)
 
 proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}

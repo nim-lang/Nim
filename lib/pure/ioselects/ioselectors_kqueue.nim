@@ -44,8 +44,8 @@ elif defined(netbsd) or defined(openbsd):
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
-      kqFD : cint
-      maxFD : int
+      kqFD: cint
+      maxFD: int
       changes: ptr SharedArray[KEvent]
       fds: ptr SharedArray[SelectorKey[T]]
       count: int
@@ -57,8 +57,8 @@ when hasThreadSupport:
 else:
   type
     SelectorImpl[T] = object
-      kqFD : cint
-      maxFD : int
+      kqFD: cint
+      maxFD: int
       changes: seq[KEvent]
       fds: seq[SelectorKey[T]]
       count: int
@@ -446,6 +446,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
     resTable: array[MAX_KQUEUE_EVENTS, KEvent]
     ptv = addr tv
     maxres = MAX_KQUEUE_EVENTS
+
+  verifySelectParams(timeout)
 
   if timeout != -1:
     if timeout >= 1000:
