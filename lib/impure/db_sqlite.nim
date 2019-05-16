@@ -24,6 +24,12 @@
 ## Basic usage
 ## ===========
 ##
+## The basic flow of using this module is:
+##
+## 1. Open database connection
+## 2. Execute SQL query
+## 3. Close database connection
+##
 ## Opening a connection to a database
 ## ----------------------------------
 ##
@@ -126,7 +132,8 @@ proc dbError*(db: DbConn) {.noreturn.} =
   raise e
 
 proc dbQuote*(s: string): string =
-  ## Escape the `'` char to `''`.
+  ## Escapes the `'`(single quote) char to `''`.
+  ## Because single quote is used for defining VARCHAR in SQL.
   runnableExamples:
     doAssert dbQuote("'") == "''''"
     doAssert dbQuote("A Foobar's pen.") == "'A Foobar''s pen.'"
@@ -177,9 +184,13 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   ## .. code-block:: Nim
   ##
   ##    let db = open("mytest.db", "", "", "")
-  ##    db.exec(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
-  ##            1, "item#1")
-  ##    db.close()
+  ##    try:
+  ##      db.exec(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
+  ##              1, "item#1")
+  ##    except:
+  ##      stderr.writeLine(getCurrentExceptionMsg())
+  ##    finally:
+  ##      db.close()
   if not tryExec(db, query, args): dbError(db)
 
 proc newRow(L: int): Row =
@@ -243,9 +254,36 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
-  ## Same as fastRows but returns a handle that can be used to get column text
+  ## Same as `fastRows iterator <#fastRows.i,DbConn,SqlQuery,varargs[string,]>`_
+  ## but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
-  ## TODO example
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
+  ##
+  ##    for row in db.instantRows(sql"SELECT * FROM my_table"):
+  ##      echo "id:" & row[0]
+  ##      echo "name:" & row[1]
+  ##      echo "length:" & $len(row)
+  ##
+  ##    # Output:
+  ##    # id:1
+  ##    # name:item#1
+  ##    # length:2
+  ##    # id:2
+  ##    # name:item#2
+  ##    # length:2
+  ##
+  ##    db.close()
   var stmt = setupQuery(db, query, args)
   try:
     while step(stmt) == SQLITE_ROW:
@@ -278,9 +316,33 @@ proc setColumns(columns: var DbColumns; x: PStmt) =
 iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
-  ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the iterator body.
-  ## TODO example
+  ## Same as `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_.
+  ## And sets information of columns to `columns`.
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##    let db = open("mytest.db", "", "", "")
+  ##
+  ##    # Records of my_table:
+  ##    # | id | name     |
+  ##    # |----|----------|
+  ##    # |  1 | item#1   |
+  ##    # |  2 | item#2   |
+  ##
+  ##    var columns: DbColumns
+  ##    for row in db.instantRows(columns, sql"SELECT * FROM my_table"):
+  ##      discard
+  ##    echo columns[0]
+  ##
+  ##    # Output:
+  ##    # (name: "id", tableName: "my_table", typ: (kind: dbNull,
+  ##    # notNull: false, name: "INTEGER", size: 0, maxReprLen: 0, precision: 0,
+  ##    # scale: 0, min: 0, max: 0, validValues: @[]), primaryKey: false,
+  ##    # foreignKey: false)
+  ##
+  ##    db.close()
   var stmt = setupQuery(db, query, args)
   setColumns(columns, stmt)
   try:
@@ -292,13 +354,17 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ## Returns text for given column of the row.
   ##
-  ## TODO example
+  ## See also:
+  ## * `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_
+  ##   example code
   $column_text(row, col)
 
 proc len*(row: InstantRow): int32 {.inline.} =
   ## Returns number of columns in the row.
   ##
-  ## TODO example
+  ## See also:
+  ## * `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_
+  ##   example code
   column_count(row)
 
 proc getRow*(db: DbConn, query: SqlQuery,
@@ -361,7 +427,8 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
 
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
-  ## Same as `FastRows`, but slower and safe.
+  ## Same as `fastRows iterator <#fastRows.i,DbConn,SqlQuery,varargs[string,]>`_,
+  ## but slower and safe.
   ##
   ## **Examples:**
   ##
