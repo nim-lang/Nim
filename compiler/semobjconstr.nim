@@ -77,17 +77,35 @@ proc semConstrField(c: PContext, flags: TExprFlags,
 
 proc caseBranchMatchesExpr(branch, matched: PNode): bool =
   for i in 0 .. branch.len-2:
-    if branch[i].kind == nkRange or matched.kind == nkRange:
+    if branch[i].kind == nkRange:
       if overlap(branch[i], matched): return true
     elif exprStructuralEquivalent(branch[i], matched):
       return true
 
   return false
 
-proc caseBranchMatchesFact(branch, matched: PNode): bool =
-  for i in 0 .. matched.len-2:
-    if not caseBranchMatchesExpr(branch, matched[i]): return false
-  return true
+proc addBranchVals(s: var IntSet, b: PNode) =
+  for i in 0 .. b.len-2:
+    if b[i].kind == nkIntLit:
+      s.incl(b[i].intVal.int)
+    elif b[i].kind == nkRange:
+      for k in b[i][0].intVal.int .. b[i][1].intVal.int:
+        s.incl(k)
+
+proc possibleBranchVals(n: PNode, i: int): IntSet =
+  result = initIntSet()
+  if n[i].kind == nkElse:
+    discard
+    # for i in 1 .. n.len-2:
+      # result.addBranchVals(n[i])
+  else:
+    result.addBranchVals(n[i])
+
+proc usefulCaseInfo(c: PContext, discriminator: PSym): (PNode, int) =
+  for i in countdown(high(c.p.caseContext), 0):
+    let (caseNode, index) = c.p.caseContext[i]
+    if caseNode[0].kind == nkSym and caseNode[0].sym == discriminator:
+      return (caseNode, index)
 
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
   # XXX: Perhaps this proc already exists somewhere
@@ -181,18 +199,15 @@ proc semConstructFields(c: PContext, recNode: PNode,
       let
         branchNode = recNode[selectedBranch]
         flags = flags*{efAllowDestructor} + {efPreferStatic, efPreferNilResult}
-      var
         discriminatorVal = semConstrField(c, flags, discriminator.sym, initExpr)
-        branchFact: PNode
-      if discriminatorVal.kind == nkSym:
-        block found:
-          for i in countdown(c.variantFacts.high, 0):
-            if c.variantFacts[i].discriminator == discriminatorVal.sym:
-              branchFact = c.variantFacts[i].branch
-              break found
-          discriminatorVal = nil
-      elif discriminatorVal.kind != nkIntLit:
-        discriminatorVal = nil
+
+      template badDiscriminatorError =
+        let fields = fieldsPresentInBranch(selectedBranch)
+        localError(c.config, initExpr.info,
+          ("you must provide a compile-time value for the discriminator '$1' " &
+          "in order to prove that it's safe to initialize $2.") %
+          [discriminator.sym.name.s, fields])
+        mergeInitStatus(result, initNone)
 
       template wrongBranchError(i) =
         let fields = fieldsPresentInBranch(i)
@@ -202,20 +217,10 @@ proc semConstructFields(c: PContext, recNode: PNode,
           "are in conflict with this value.",
           [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
 
-      if discriminatorVal == nil:
-        let fields = fieldsPresentInBranch(selectedBranch)
-        localError(c.config, initExpr.info,
-          ("you must provide a compile-time value for the discriminator '$1' " &
-          "in order to prove that it's safe to initialize $2.") %
-          [discriminator.sym.name.s, fields])
-        mergeInitStatus(result, initNone)
-      elif discriminatorVal.kind == nkSym:
-        discriminatorVal = discriminatorVal.skipHidden
-        if branchNode.kind != nkElse:
-          if not branchNode.caseBranchMatchesFact(branchFact):
-            wrongBranchError(selectedBranch)
-      else:
-        discriminatorVal = discriminatorVal.skipHidden
+      if discriminatorVal == nil or discriminatorVal.kind notin {nkIntLit, nkSym}:
+        badDiscriminatorError()
+      elif discriminatorVal.kind == nkIntLit:
+        let discriminatorVal = discriminatorVal.skipHidden
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
             wrongBranchError(selectedBranch)
@@ -225,6 +230,14 @@ proc semConstructFields(c: PContext, recNode: PNode,
             if recNode[i].caseBranchMatchesExpr(discriminatorVal):
               wrongBranchError(i)
               break
+      else:
+        let
+          discriminatorVal = discriminatorVal.skipHidden
+          caseInfo = usefulCaseInfo(c, discriminatorVal.sym)
+        if caseInfo[0] == nil: badDiscriminatorError()
+        elif not (possibleBranchVals(caseInfo[0], caseInfo[1]) <=
+                  possibleBranchVals(recNode, selectedBranch)):
+          badDiscriminatorError()
 
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:
