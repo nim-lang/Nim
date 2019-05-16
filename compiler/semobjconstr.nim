@@ -84,28 +84,32 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 
   return false
 
-proc addBranchVals(s: var IntSet, b: PNode) =
-  for i in 0 .. b.len-2:
-    if b[i].kind == nkIntLit:
-      s.incl(b[i].intVal.int)
-    elif b[i].kind == nkRange:
-      for k in b[i][0].intVal.int .. b[i][1].intVal.int:
-        s.incl(k)
-
-proc possibleBranchVals(n: PNode, i: int): IntSet =
-  result = initIntSet()
-  if n[i].kind == nkElse:
-    discard
-    # for i in 1 .. n.len-2:
-      # result.addBranchVals(n[i])
-  else:
-    result.addBranchVals(n[i])
-
-proc usefulCaseInfo(c: PContext, discriminator: PSym): (PNode, int) =
+proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
   for i in countdown(high(c.p.caseContext), 0):
     let (caseNode, index) = c.p.caseContext[i]
-    if caseNode[0].kind == nkSym and caseNode[0].sym == discriminator:
+    if caseNode[0].kind == nkSym and caseNode[0].sym == discrimator.sym:
       return (caseNode, index)
+
+proc mergedBranchRanges(b: PNode): seq[(int, int)] =
+  for i in 0 .. b.len-2:
+    if b[i].kind == nkIntLit:
+      result.add (b[i].intVal.int, b[i].intVal.int)
+    elif b[i].kind == nkRange:
+      result.add (b[i][0].intVal.int, b[i][1].intVal.int)
+  sort(result)
+  for i in countdown(result.high, 1):
+    if result[i-1][1] == result[i][0] - 1:
+      result[i][0] = result[i-1][0]
+      result.del(i-1)
+
+proc isSafeConstruction(c: PContext, discriminator, recCase: PNode,
+                              recIndex: int): bool =
+  let (ctorCase, ctorIndex) = findUsefulCaseContext(c, discriminator)
+  if ctorCase == nil or ctorCase[ctorIndex].kind == nkElifBranch: return false
+  let
+    recBranch = recCase[recIndex]
+    ctorBranch = ctorCase[ctorIndex]
+  return false
 
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
   # XXX: Perhaps this proc already exists somewhere
@@ -196,11 +200,6 @@ proc semConstructFields(c: PContext, recNode: PNode,
           selectedBranch = i
 
     if selectedBranch != -1:
-      let
-        branchNode = recNode[selectedBranch]
-        flags = flags*{efAllowDestructor} + {efPreferStatic, efPreferNilResult}
-        discriminatorVal = semConstrField(c, flags, discriminator.sym, initExpr)
-
       template badDiscriminatorError =
         let fields = fieldsPresentInBranch(selectedBranch)
         localError(c.config, initExpr.info,
@@ -217,10 +216,17 @@ proc semConstructFields(c: PContext, recNode: PNode,
           "are in conflict with this value.",
           [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
 
-      if discriminatorVal == nil or discriminatorVal.kind notin {nkIntLit, nkSym}:
+      let
+        branchNode = recNode[selectedBranch]
+        flags = flags*{efAllowDestructor} + {efPreferStatic, efPreferNilResult}
+      var discriminatorVal = semConstrField(c, flags, discriminator.sym,
+                                            initExpr)
+      if discriminatorVal != nil:
+        discriminatorVal = discriminatorVal.skipHidden
+      if discriminatorVal == nil or discriminatorVal.kind notin
+          {nkIntLit, nkSym}:
         badDiscriminatorError()
       elif discriminatorVal.kind == nkIntLit:
-        let discriminatorVal = discriminatorVal.skipHidden
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
             wrongBranchError(selectedBranch)
@@ -230,14 +236,8 @@ proc semConstructFields(c: PContext, recNode: PNode,
             if recNode[i].caseBranchMatchesExpr(discriminatorVal):
               wrongBranchError(i)
               break
-      else:
-        let
-          discriminatorVal = discriminatorVal.skipHidden
-          caseInfo = usefulCaseInfo(c, discriminatorVal.sym)
-        if caseInfo[0] == nil: badDiscriminatorError()
-        elif not (possibleBranchVals(caseInfo[0], caseInfo[1]) <=
-                  possibleBranchVals(recNode, selectedBranch)):
-          badDiscriminatorError()
+      elif not isSafeConstruction(c, discriminatorVal, recNode, selectedBranch):
+        badDiscriminatorError()
 
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:
