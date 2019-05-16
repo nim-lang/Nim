@@ -65,7 +65,7 @@ proc finalizeRegEx(x: Regex) =
   # Fortunately the implementation is unlikely to change.
   pcre.free_substring(cast[cstring](x.h))
   if not isNil(x.e):
-    pcre.free_substring(cast[cstring](x.e))
+    pcre.free_study(x.e)
 
 proc re*(s: string, flags = {reStudy}): Regex =
   ## Constructor of regular expressions.
