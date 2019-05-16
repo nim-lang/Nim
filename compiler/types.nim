@@ -1255,8 +1255,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
-        {tyBool, tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}:
-      result = t
+      {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
   of tyOpenArray, tyVarargs, tySink:
     if kind != skParam:
       result = t
