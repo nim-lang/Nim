@@ -21,8 +21,8 @@
 ##
 ##    sql"INSERT INTO my_table (colA, colB, colC) VALUES (?, ?, ?)"
 ##
-## Examples
-## ========
+## Basic usage
+## ===========
 ##
 ## Opening a connection to a database
 ## ----------------------------------
@@ -105,7 +105,7 @@ export db_common
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
   Row* = seq[string]  ## A row of a dataset. NULL database values will be
-                       ## converted to nil.
+                      ## converted to nil.
   InstantRow* = Pstmt  ## A handle that can be used to get a row's column
                        ## text on demand.
 
@@ -170,7 +170,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
-  ## Executes the query and raises DbError if not successful.
+  ## Executes the query and raises a DbError exception if not successful.
   ##
   ## **Examples:**
   ##
@@ -450,8 +450,8 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
   ## Executes the query (typically "INSERT") and returns the
-  ## generated ID for the row. Raise DBError when failed to insert row.
-  ## For Postgre this adds ``RETURNING id`` to the query, so it only works
+  ## generated ID for the row. Raise a DbError exception when failed to insert
+  ## row. For Postgre this adds ``RETURNING id`` to the query, so it only works
   ## if your primary key is named ``id``.
   ##
   ## **Examples:**
@@ -511,8 +511,8 @@ proc close*(db: DbConn) {.tags: [DbEffect].} =
 
 proc open*(connection, user, password, database: string): DbConn {.
   tags: [DbEffect].} =
-  ## Opens a database connection. Raises `EDb` if the connection could not
-  ## be established.
+  ## Opens a database connection. Raises a DbError exception if the connection
+  ## could not be established.
   ##
   ## **Note:** Only the ``connection`` parameter is used for ``sqlite``.
   ##
@@ -535,14 +535,13 @@ proc open*(connection, user, password, database: string): DbConn {.
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
   tags: [DbEffect].} =
-  ## Sets the encoding of a database connection, returns true for
-  ## success, false for failure.
+  ## Sets the encoding of a database connection, returns `true` for
+  ## success, `false` for failure.
   ##
   ## **Note:** that the encoding cannot be changed once it's been set.
   ## According to SQLite3 documentation, any attempt to change
   ## the encoding after the database is created will be silently
   ## ignored.
-  ## TODO example
   exec(connection, sql"PRAGMA encoding = ?", [encoding])
   result = connection.getValue(sql"PRAGMA encoding") == encoding
 
