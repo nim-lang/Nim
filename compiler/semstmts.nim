@@ -872,6 +872,7 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
 proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   checkMinSonsLen(n, 2, c.config)
+  add(c.p.caseContext, (n, 0))
   openScope(c)
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
@@ -892,6 +893,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     localError(c.config, n.info, errSelectorMustBeOfCertainTypes)
     return
   for i in 1 ..< sonsLen(n):
+    c.p.caseContext[^1].index = i
     var x = n.sons[i]
     when defined(nimsuggest):
       if c.config.ideCmd == ideSug and exactEquals(c.config.m.trackPos, x.info) and caseTyp.kind == tyEnum:
@@ -901,9 +903,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       checkMinSonsLen(x, 2, c.config)
       semCaseBranch(c, n, x, i, covered)
       var last = sonsLen(x)-1
-      if n.sons[0].kind == nkSym: c.addVariantFact(n.sons[0].sym, n.sons[i])
       x.sons[last] = semExprBranchScope(c, x.sons[last])
-      if n.sons[0].kind == nkSym: c.popVariantFact()
       typ = commonType(typ, x.sons[last])
     of nkElifBranch:
       chckCovered = false
@@ -932,6 +932,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else:
       localError(c.config, n.info, "not all cases are covered")
   closeScope(c)
+  discard pop(c.p.caseContext)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
