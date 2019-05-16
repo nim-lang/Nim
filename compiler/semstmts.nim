@@ -893,7 +893,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       result = handleCaseStmtMacro(c, n)
       if result != nil: return result
 
-    localError(c.config, n.info, errSelectorMustBeOfCertainTypes)
+    localError(c.config, n.sons[0].info, errSelectorMustBeOfCertainTypes)
     return
   for i in 1 ..< sonsLen(n):
     var x = n.sons[i]
