@@ -878,10 +878,14 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var covered: BiggestInt = 0
   var typ = commonTypeBegin
   var hasElse = false
-  let caseTyp = skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc})
+  let caseTyp = skipTypes(n.sons[0].typ, abstractVar-{tyTypeDesc})
+  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
   case caseTyp.kind
-  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
+  of shouldChckCovered:
     chckCovered = true
+  of tyRange:
+    if skipTypes(caseTyp.sons[0], abstractInst).kind in shouldChckCovered:
+      chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
     discard
   else:
