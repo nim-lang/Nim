@@ -30,7 +30,7 @@ proc next*(it: var PathIter; x: string): (int, int) =
     # absolute path:
     inc it.i
     when doslikeFileSystem: # UNC paths have leading `\\`
-      if hasNext(it, x) and x[it.i] in {DirSep, AltSep} and x.count(x[it.i]) < x.len:
+      if hasNext(it, x) and x[it.i] == DirSep and x.count(DirSep) < x.len:
         inc it.i
   else:
     while it.i < x.len and x[it.i] notin {DirSep, AltSep}: inc it.i
