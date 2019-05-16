@@ -223,7 +223,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
       localError(c.config, n.info, "type mismatch")
-    elif not rangeT[0].isOrdinalType and rangeT[0].kind notin tyFloat..tyFloat128:
+    elif not rangeT[0].isOrdinalType and rangeT[0].kind notin tyFloat..tyFloat128 or
+        rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")
     elif enumHasHoles(rangeT[0]):
       localError(c.config, n.info, "enum '$1' has holes" % typeToString(rangeT[0]))
@@ -605,11 +606,15 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   var covered: BiggestInt = 0
   var chckCovered = false
   var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
+  const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
   case typ.kind
-  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool, tyRange:
+  of shouldChckCovered:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
     discard
+  of tyRange:
+    if skipTypes(typ.sons[0], abstractInst).kind in shouldChckCovered:
+      chckCovered = true
   of tyForward:
     errorUndeclaredIdentifier(c, n.sons[0].info, typ.sym.name.s)
   elif not isOrdinalType(typ):
