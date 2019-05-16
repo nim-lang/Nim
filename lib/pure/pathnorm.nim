@@ -14,7 +14,6 @@
 # Yes, this uses import here, not include so that
 # we don't end up exporting these symbols from pathnorm and os:
 import "includes/osseps"
-from strutils import count
 
 type
   PathIter* = object
@@ -30,7 +29,8 @@ proc next*(it: var PathIter; x: string): (int, int) =
     # absolute path:
     inc it.i
     when doslikeFileSystem: # UNC paths have leading `\\`
-      if hasNext(it, x) and x[it.i] == DirSep and x.count(DirSep) < x.len:
+      if hasNext(it, x) and x[it.i] == DirSep and
+          it.i+1 < x.len and x[it.i+1] != DirSep:
         inc it.i
   else:
     while it.i < x.len and x[it.i] notin {DirSep, AltSep}: inc it.i
@@ -38,7 +38,6 @@ proc next*(it: var PathIter; x: string): (int, int) =
     result = (it.prev, it.i-1)
   elif hasNext(it, x):
     result = next(it, x)
-
   # skip all separators:
   while it.i < x.len and x[it.i] in {DirSep, AltSep}: inc it.i
   it.notFirst = true
