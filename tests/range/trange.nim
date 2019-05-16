@@ -2,9 +2,6 @@ discard """
   output: '''
 TSubRange: 5 from 1 to 10
 #FF3722
-TRUE
-FALSE
-TRUE
 '''
 """
 
