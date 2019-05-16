@@ -2,6 +2,9 @@ discard """
   output: '''
 TSubRange: 5 from 1 to 10
 #FF3722
+TRUE
+FALSE
+TRUE
 '''
 """
 
@@ -118,3 +121,24 @@ block:
     x3 = R32(4)
 
   doAssert $x1 & $x2 & $x3 == "444"
+
+block:
+  type
+    BoolRange = range[false..true]
+    JustFalse = range[false..false]
+    JustTrue = range[true..true]
+  
+  let
+    a = BoolRange(true)
+    b = JustFalse(false)
+    c = JustTrue(true)
+
+  case a:
+  of true: echo "TRUE"
+  of false: echo "FALSE"
+
+  case b:
+  of false: echo "FALSE"
+
+  case c:
+  of true: echo "TRUE"
