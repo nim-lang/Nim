@@ -84,6 +84,65 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 
   return false
 
+type
+  Pairs = seq[(BiggestInt, BiggestInt)]
+
+proc isSubsetOf(lesser, greater: Pairs): bool =
+  result = true
+  for i in 0 ..< lesser.len:
+    block checkNextSubset:
+      for j in 0 ..< greater.len:
+        if lesser[i][0] >= greater[j][0] and lesser[i][1] <= greater[j][1]:
+          break checkNextSubset
+      return false
+
+proc addBranchVals(s: var Pairs, b: PNode) =
+  for i in 0 .. b.len-2:
+    if b[i].kind == nkIntLit:
+      s.add (b[i].intVal, b[i].intVal)
+    elif b[i].kind == nkRange:
+      s.add (b[i][0].intVal, b[i][1].intVal)
+
+proc mergeBranchVals(s: var Pairs) =
+  sort(s)
+  for i in countdown(s.high, 1):
+    if s[i-1][1] == s[i][0]-1:
+      s[i][0] = s[i-1][0]
+      s.del(i-1)
+
+proc invertBranchVals(c: PContext, t: PType, s: Pairs): Pairs =
+  let
+    first = firstOrd(c.config, t)
+    last = lastOrd(c.config, t)
+  if s.len == 0: return @[(first, last)]
+  if s[0][0] != first:
+    result.add (first, s[0][0]-1)
+  for i in 0 ..< s.len-1:
+    result.add (s[i][1]+1, s[i+1][0]-1)
+  if s[^1][1] != last:
+    result.add (s[^1][1]+1, last)
+
+proc branchVals(c: PContext, caseNode: PNode, caseIdx: int): Pairs =
+  if caseNode[caseIdx].kind == nkOfBranch:
+    result.addBranchVals(caseNode[caseIdx])
+    mergeBranchVals(result)
+  else:
+    for i in 1 .. caseNode.len-2:
+      result.addBranchVals(caseNode[i])
+    mergeBranchVals(result)
+    result = invertBranchVals(c, caseNode.sons[0].typ, result)
+
+proc isSafeConstruction(c: PContext, rec: PNode, recIdx: int, ctor: PNode,
+                        ctorIdx: int): bool =
+  if ctor == nil or ctor[ctorIdx].kind == nkElifBranch: return false
+  result = branchVals(c, ctor, ctorIdx).isSubsetOf(branchVals(c, rec, recIdx))
+
+proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
+  for i in countdown(c.p.caseContext.high, 0):
+    let (caseNode, index) = c.p.caseContext[i]
+    if caseNode[0].kind == nkSym and caseNode[0].sym == discrimator.sym:
+      return (caseNode, index)
+
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
   # XXX: Perhaps this proc already exists somewhere
   let endsWithElse = caseExpr[^1].kind == nkElse
@@ -173,28 +232,45 @@ proc semConstructFields(c: PContext, recNode: PNode,
           selectedBranch = i
 
     if selectedBranch != -1:
-      let branchNode = recNode[selectedBranch]
-      let flags = flags*{efAllowDestructor} + {efNeedStatic, efPreferNilResult}
-      let discriminatorVal = semConstrField(c, flags,
-                                            discriminator.sym, initExpr)
-      if discriminatorVal == nil:
+      template badDiscriminatorError =
         let fields = fieldsPresentInBranch(selectedBranch)
         localError(c.config, initExpr.info,
           ("you must provide a compile-time value for the discriminator '$1' " &
           "in order to prove that it's safe to initialize $2.") %
           [discriminator.sym.name.s, fields])
         mergeInitStatus(result, initNone)
-      else:
-        let discriminatorVal = discriminatorVal.skipHidden
 
-        template wrongBranchError(i) =
-          let fields = fieldsPresentInBranch(i)
-          localError(c.config, initExpr.info,
-            "a case selecting discriminator '$1' with value '$2' " &
-            "appears in the object construction, but the field(s) $3 " &
-            "are in conflict with this value.",
-            [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
+      template wrongBranchError(i) =
+        let fields = fieldsPresentInBranch(i)
+        localError(c.config, initExpr.info,
+          "a case selecting discriminator '$1' with value '$2' " &
+          "appears in the object construction, but the field(s) $3 " &
+          "are in conflict with this value.",
+          [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
 
+      let branchNode = recNode[selectedBranch]
+      let flags = flags*{efAllowDestructor} + {efPreferStatic,
+                                               efPreferNilResult}
+      var discriminatorVal = semConstrField(c, flags,
+                                            discriminator.sym, initExpr)
+
+      if discriminatorVal != nil: discriminatorVal = discriminatorVal.skipHidden
+      if discriminatorVal == nil: badDiscriminatorError()
+      elif discriminatorVal.kind == nkSym:
+        let (ctorCase, ctorIndex) = findUsefulCaseContext(c, discriminatorVal)
+        if ctorCase == nil:
+          badDiscriminatorError()
+        elif not isOrdinalType(discriminatorVal.sym.typ):
+          localError(c.config, discriminatorVal.info,
+            "runtime discriminator selection with initialized branch fields " &
+            "can only be proven safe by a case statement selector variable " &
+            "of an ordinal type.")
+        elif not isSafeConstruction(c, recNode, selectedBranch, ctorCase,
+                                    ctorIndex):
+          localError(c.config, discriminatorVal.info,
+            "runtime discriminator selection with initialized branch fields " &
+            "cannot be proven safe.")
+      elif discriminatorVal.kind in nkLiterals:
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
             wrongBranchError(selectedBranch)
@@ -204,6 +280,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
             if recNode[i].caseBranchMatchesExpr(discriminatorVal):
               wrongBranchError(i)
               break
+      else: badDiscriminatorError()
 
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:
