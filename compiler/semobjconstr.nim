@@ -97,11 +97,12 @@ proc isSubsetOf(lesser, greater: Pairs): bool =
       return false
 
 proc addBranchVals(s: var Pairs, b: PNode) =
-  for i in 0 .. b.len-2:
-    if b[i].kind == nkIntLit:
-      s.add (b[i].intVal, b[i].intVal)
-    elif b[i].kind == nkRange:
-      s.add (b[i][0].intVal, b[i][1].intVal)
+  if b.kind != nkElifBranch:
+    for i in 0 .. b.len-2:
+      if b[i].kind == nkIntLit:
+        s.add (b[i].intVal, b[i].intVal)
+      elif b[i].kind == nkRange:
+        s.add (b[i][0].intVal, b[i][1].intVal)
 
 proc mergeBranchVals(s: var Pairs) =
   sort(s)
