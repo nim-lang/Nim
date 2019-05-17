@@ -97,7 +97,6 @@ proc mergedBranchRanges(b: PNode): seq[(int, int)] =
     elif b[i].kind == nkRange:
       result.add (b[i][0].intVal.int, b[i][1].intVal.int)
   sort(result)
-<<<<<<< HEAD
   for i in countdown(high(result), 1):
     if result[i-1][1] == result[i][0]-1:
       result[i][0] = result[i-1][0]
@@ -105,16 +104,6 @@ proc mergedBranchRanges(b: PNode): seq[(int, int)] =
 
 proc isSafeConstruction(c: PContext, recCase: PNode, recIndex: int,
                         ctorCase: PNode, ctorIndex: int): bool =
-=======
-  for i in countdown(result.high, 1):
-    if result[i-1][1] == result[i][0] - 1:
-      result[i][0] = result[i-1][0]
-      result.del(i-1)
-
-proc isSafeConstruction(c: PContext, discriminator, recCase: PNode,
-                              recIndex: int): bool =
-  let (ctorCase, ctorIndex) = findUsefulCaseContext(c, discriminator)
->>>>>>> d5ff694a04a9df53419c0a7128b7afe81924c896
   if ctorCase == nil or ctorCase[ctorIndex].kind == nkElifBranch: return false
   let
     recBranch = recCase[recIndex]
@@ -231,7 +220,6 @@ proc semConstructFields(c: PContext, recNode: PNode,
         flags = flags*{efAllowDestructor} + {efPreferStatic, efPreferNilResult}
       var discriminatorVal = semConstrField(c, flags, discriminator.sym,
                                             initExpr)
-<<<<<<< HEAD
       if discriminatorVal != nil: discriminatorVal = discriminatorVal.skipHidden
       if discriminatorVal == nil: badDiscriminatorError()
       elif discriminatorVal.kind == nkSym:
@@ -247,14 +235,6 @@ proc semConstructFields(c: PContext, recNode: PNode,
             "runtime discriminator selection with initialized branch fields " &
             "cannot be proven safe.")
       elif discriminatorVal.kind in nkLiterals:
-=======
-      if discriminatorVal != nil:
-        discriminatorVal = discriminatorVal.skipHidden
-      if discriminatorVal == nil or discriminatorVal.kind notin
-          {nkIntLit, nkSym}:
-        badDiscriminatorError()
-      elif discriminatorVal.kind == nkIntLit:
->>>>>>> d5ff694a04a9df53419c0a7128b7afe81924c896
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
             wrongBranchError(selectedBranch)
@@ -264,12 +244,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
             if recNode[i].caseBranchMatchesExpr(discriminatorVal):
               wrongBranchError(i)
               break
-<<<<<<< HEAD
       else: badDiscriminatorError()
-=======
-      elif not isSafeConstruction(c, discriminatorVal, recNode, selectedBranch):
-        badDiscriminatorError()
->>>>>>> d5ff694a04a9df53419c0a7128b7afe81924c896
 
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:
