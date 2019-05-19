@@ -353,6 +353,9 @@ proc SSL_CTX_get_ex_new_index*(argl: clong, argp: pointer, new_func: pointer, du
 proc SSL_CTX_set_ex_data*(ssl: SslCtx, idx: cint, arg: pointer): cint {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_get_ex_data*(ssl: SslCtx, idx: cint): pointer {.cdecl, dynlib: DLLSSLName, importc.}
 
+proc SSL_CTX_set_default_passwd_cb*(ssl: SslCtx, callback: pointer) {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_get_default_passwd_cb*(ssl: SslCtx): pointer {.cdecl, dynlib: DLLSSLName, importc.}
+
 proc SSL_set_fd*(ssl: SslPtr, fd: SocketHandle): cint{.cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_shutdown*(ssl: SslPtr): cInt{.cdecl, dynlib: DLLSSLName, importc.}
