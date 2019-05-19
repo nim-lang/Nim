@@ -10,17 +10,6 @@
 ## A higher level `SQLite`:idx: database wrapper. This interface
 ## is implemented for other databases too.
 ##
-## Parameter substitution
-## ======================
-##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
-## value should be placed. For example:
-##
-## .. code-block:: Nim
-##
-##    sql"INSERT INTO my_table (colA, colB, colC) VALUES (?, ?, ?)"
-##
 ## Basic usage
 ## ===========
 ##
@@ -29,6 +18,17 @@
 ## 1. Open database connection
 ## 2. Execute SQL query
 ## 3. Close database connection
+##
+## Parameter substitution
+## ----------------------
+##
+## All ``db_*`` modules support the same form of parameter substitution.
+## That is, using the ``?`` (question mark) to signify the place where a
+## value should be placed. For example:
+##
+## .. code-block:: Nim
+##
+##    sql"INSERT INTO my_table (colA, colB, colC) VALUES (?, ?, ?)"
 ##
 ## Opening a connection to a database
 ## ----------------------------------
@@ -110,13 +110,13 @@ export db_common
 
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
-  Row* = seq[string]  ## A row of a dataset. NULL database values will be
-                      ## converted to nil.
-  InstantRow* = Pstmt  ## A handle that can be used to get a row's column
-                       ## text on demand.
+  Row* = seq[string]  ## A row of a dataset. `NULL` database values will be
+                      ## converted to an empty string.
+  InstantRow* = Pstmt ## A handle that can be used to get a row's column
+                      ## text on demand.
 
 proc dbError*(db: DbConn) {.noreturn.} =
-  ## Raises a DbError exception.
+  ## Raises a `DbError` exception.
   ##
   ## **Examples:**
   ##
@@ -132,8 +132,8 @@ proc dbError*(db: DbConn) {.noreturn.} =
   raise e
 
 proc dbQuote*(s: string): string =
-  ## Escapes the `'`(single quote) char to `''`.
-  ## Because single quote is used for defining VARCHAR in SQL.
+  ## Escapes the `'` (single quote) char to `''`.
+  ## Because single quote is used for defining `VARCHAR` in SQL.
   runnableExamples:
     doAssert dbQuote("'") == "''''"
     doAssert dbQuote("A Foobar's pen.") == "'A Foobar''s pen.'"
@@ -157,7 +157,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.
               tags: [ReadDbEffect, WriteDbEffect].} =
-  ## Tries to execute the query and returns true if successful, false otherwise.
+  ## Tries to execute the query and returns `true` if successful, `false` otherwise.
   ##
   ## **Examples:**
   ##
@@ -177,7 +177,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
-  ## Executes the query and raises a DbError exception if not successful.
+  ## Executes the query and raises a `DbError` exception if not successful.
   ##
   ## **Examples:**
   ##
@@ -214,11 +214,11 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Executes the query and iterates over the result dataset.
   ##
-  ## This is very fast, but potentially dangerous.  Use this iterator only
+  ## This is very fast, but potentially dangerous. Use this iterator only
   ## if you require **ALL** the rows.
   ##
-  ## **Note:** Breaking the fastRows() iterator during a loop will cause the
-  ## next database query to raise a DbError exception ``unable to close due
+  ## **Note:** Breaking the `fastRows()` iterator during a loop will cause the
+  ## next database query to raise a `DbError` exception ``unable to close due
   ## to ...``.
   ##
   ## **Examples:**
@@ -254,9 +254,9 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
-  ## Same as `fastRows iterator <#fastRows.i,DbConn,SqlQuery,varargs[string,]>`_
+  ## Similar to `fastRows iterator <#fastRows.i,DbConn,SqlQuery,varargs[string,]>`_
   ## but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the iterator body.
+  ## on demand using `[]`. Returned handle is valid only within the iterator body.
   ##
   ## **Examples:**
   ##
@@ -316,8 +316,8 @@ proc setColumns(columns: var DbColumns; x: PStmt) =
 iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
-  ## Same as `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_.
-  ## And sets information of columns to `columns`.
+  ## Similar to `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_,
+  ## but sets information about columns to `columns`.
   ##
   ## **Examples:**
   ##
@@ -360,7 +360,7 @@ proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   $column_text(row, col)
 
 proc len*(row: InstantRow): int32 {.inline.} =
-  ## Returns number of columns in the row.
+  ## Returns number of columns in a row.
   ##
   ## See also:
   ## * `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_
@@ -370,7 +370,7 @@ proc len*(row: InstantRow): int32 {.inline.} =
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Retrieves a single row. If the query doesn't return any rows, this proc
-  ## will return a Row with empty strings for each column.
+  ## will return a `Row` with empty strings for each column.
   ##
   ## **Examples:**
   ##
@@ -427,7 +427,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
 
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
-  ## Same as `fastRows iterator <#fastRows.i,DbConn,SqlQuery,varargs[string,]>`_,
+  ## Similar to `fastRows iterator <#fastRows.i,DbConn,SqlQuery,varargs[string,]>`_,
   ## but slower and safe.
   ##
   ## **Examples:**
@@ -455,8 +455,8 @@ iterator rows*(db: DbConn, query: SqlQuery,
 proc getValue*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.tags: [ReadDbEffect].} =
   ## Executes the query and returns the first column of the first row of the
-  ## result dataset. Returns "" if the dataset contains no rows or the database
-  ## value is NULL.
+  ## result dataset. Returns `""` if the dataset contains no rows or the database
+  ## value is `NULL`.
   ##
   ## **Examples:**
   ##
@@ -517,8 +517,10 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
   ## Executes the query (typically "INSERT") and returns the
-  ## generated ID for the row. Raise a DbError exception when failed to insert
-  ## row. For Postgre this adds ``RETURNING id`` to the query, so it only works
+  ## generated ID for the row.
+  ##
+  ## Raises a `DbError` exception when failed to insert row.
+  ## For Postgre this adds ``RETURNING id`` to the query, so it only works
   ## if your primary key is named ``id``.
   ##
   ## **Examples:**
@@ -578,7 +580,7 @@ proc close*(db: DbConn) {.tags: [DbEffect].} =
 
 proc open*(connection, user, password, database: string): DbConn {.
   tags: [DbEffect].} =
-  ## Opens a database connection. Raises a DbError exception if the connection
+  ## Opens a database connection. Raises a `DbError` exception if the connection
   ## could not be established.
   ##
   ## **Note:** Only the ``connection`` parameter is used for ``sqlite``.
@@ -605,7 +607,7 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   ## Sets the encoding of a database connection, returns `true` for
   ## success, `false` for failure.
   ##
-  ## **Note:** that the encoding cannot be changed once it's been set.
+  ## **Note:** The encoding cannot be changed once it's been set.
   ## According to SQLite3 documentation, any attempt to change
   ## the encoding after the database is created will be silently
   ## ignored.
