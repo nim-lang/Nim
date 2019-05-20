@@ -139,6 +139,11 @@ proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
   result = ord(x)
 
+proc hash*(x: float): Hash {.inline.} =
+  ## Efficient hashing of floats.
+  var y = x + 1.0
+  result = cast[ptr Hash](addr(y))[]
+
 template bytewiseHashing(result: Hash, x: typed, start, stop: int) =
   for i in start .. stop:
     result = result !& hash(x[i])
@@ -164,8 +169,6 @@ template hashImpl(result: Hash, x: typed, start, stop: int) =
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
-  ##
   ## See also:
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
@@ -176,8 +179,6 @@ proc hash*(x: string): Hash =
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
-  ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     doAssert hash(cstring"abracadabra") == hash("abracadabra")
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
@@ -190,100 +191,100 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## position `sPos` to ending position `ePos` (included).
   ##
   ## ``hash(myStr, 0, myStr.high)`` is equivalent to ``hash(myStr)``.
-  ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
   hashImpl(result, sBuf, sPos, ePos)
 
-proc addLowercaseChar(x: var string, c: char) {.inline.} =
-  if c in {'A'..'Z'}:
-    x.add chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-  else:
-    x.add c
-
 proc hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
   ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
+  ## **Note:** This uses different hashing algorithm than `hash(string)`.
   ##
   ## See also:
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
-    doAssert hashIgnoreStyle("aBr_aCa_dAB_ra") == hash("abracadabra")
+    doAssert hashIgnoreStyle("aBr_aCa_dAB_ra") == hashIgnoreStyle("abracadabra")
+    doAssert hashIgnoreStyle("abcdefghi") != hash("abcdefghi")
 
-  var
-    i = 0
-    cleanedString = newStringOfCap(len(x))
-  while i <= high(x):
-    let c = x[i]
-    if c != '_':
-      cleanedString.addLowercaseChar(c)
-    inc i
-  result = hash(cleanedString)
+  var h: Hash = 0
+  var i = 0
+  let xLen = x.len
+  while i < xLen:
+    var c = x[i]
+    if c == '_':
+      inc(i)
+    else:
+      if c in {'A'..'Z'}:
+        c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+      h = h !& ord(c)
+      inc(i)
+  result = !$h
 
 proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); style is ignored.
   ##
+  ## **Note:** This uses different hashing algorithm than `hash(string)`.
+  ##
   ## ``hashIgnoreStyle(myBuf, 0, myBuf.high)`` is equivalent
   ## to ``hashIgnoreStyle(myBuf)``.
-  ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     var a = "ABracada_b_r_a"
     doAssert hashIgnoreStyle(a, 0, 3) == hashIgnoreStyle(a, 7, a.high)
 
-  var
-    remainingLength = ePos - sPos + 1
-    i = sPos
-    cleanedString = newStringOfCap(remainingLength)
+  var h: Hash = 0
+  var i = sPos
   while i <= ePos:
-    let c = sBuf[i]
-    if c != '_': cleanedString.addLowercaseChar(c)
-    inc i
-  result = hash(cleanedString)
+    var c = sBuf[i]
+    if c == '_':
+      inc(i)
+    else:
+      if c in {'A'..'Z'}:
+        c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+      h = h !& ord(c)
+      inc(i)
+  result = !$h
 
 proc hashIgnoreCase*(x: string): Hash =
   ## Efficient hashing of strings; case is ignored.
   ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
+  ## **Note:** This uses different hashing algorithm than `hash(string)`.
   ##
   ## See also:
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   runnableExamples:
     doAssert hashIgnoreCase("ABRAcaDABRA") == hashIgnoreCase("abRACAdabra")
+    doAssert hashIgnoreCase("abcdefghi") != hash("abcdefghi")
 
-  var lowerString = newStringOfCap(len(x))
-  for i in 0 ..< len(x):
-    lowerString.addLowercaseChar(x[i])
-  result = hash(lowerString)
+  var h: Hash = 0
+  for i in 0..x.len-1:
+    var c = x[i]
+    if c in {'A'..'Z'}:
+      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+    h = h !& ord(c)
+  result = !$h
 
 proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); case is ignored.
   ##
+  ## **Note:** This uses different hashing algorithm than `hash(string)`.
+  ##
   ## ``hashIgnoreCase(myBuf, 0, myBuf.high)`` is equivalent
   ## to ``hashIgnoreCase(myBuf)``.
-  ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     var a = "ABracadabRA"
     doAssert hashIgnoreCase(a, 0, 3) == hashIgnoreCase(a, 7, 10)
 
-  var
-    sliceLength = ePos - sPos + 1
-    lowerString = newStringOfCap(sliceLength)
-  for i in sPos .. ePos:
-    lowerString.addLowercaseChar(sBuf[i])
-  result = hash(lowerString)
-
-proc hash*(x: float): Hash {.inline.} =
-  ## Efficient hashing of floats.
-  var y = x + 1.0
-  result = cast[ptr Hash](addr(y))[]
+  var h: Hash = 0
+  for i in sPos..ePos:
+    var c = sBuf[i]
+    if c in {'A'..'Z'}:
+      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+    h = h !& ord(c)
+  result = !$h
 
 
 # Forward declarations before methods that hash containers. This allows
@@ -300,8 +301,6 @@ proc hash*[T: tuple](x: T): Hash =
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
-  ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
   when A is char|SomeInteger:
     hashImpl(result, x, 0, x.high)
   else:
@@ -312,8 +311,6 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## position `sPos` to ending position `ePos` (included).
   ##
   ## ``hash(myBuf, 0, myBuf.high)`` is equivalent to ``hash(myBuf)``.
-  ##
-  ## **Note:** hashes at compile-time differ from hashes at runtime.
   runnableExamples:
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
@@ -344,7 +341,7 @@ when isMainModule:
   block sameButDifferent:
     doAssert hash("aa bb aaaa1234") == hash("aa bb aaaa1234", 0, 13)
     doAssert hash("aa bb aaaa1234") == hash(cstring"aa bb aaaa1234")
-    doAssert hashIgnoreCase("aA bb aAAa1234") == hash("aa bb aaaa1234")
+    doAssert hashIgnoreCase("aA bb aAAa1234") == hashIgnoreCase("aa bb aaaa1234")
     doAssert hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234")
   block smallSize: # no multibyte hashing
     let
