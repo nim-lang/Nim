@@ -746,7 +746,7 @@ block t5632:
 
 block t7247:
   type n8 = range[0'i8..127'i8]
-  var tab = initSet[n8]()
+  var tab = initHashSet[n8]()
   doAssert tab.contains(8) == false
 
 
