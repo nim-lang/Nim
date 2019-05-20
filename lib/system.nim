@@ -1824,7 +1824,10 @@ proc add*(x: var string, y: openArray[char]) {.noSideEffect.} =
   ##   assert(tmp == "ab")
   let xl = x.len
   setLen(x, xl + y.len)
-  for i in 0..high(y): x[xl+i] = y[i]
+  var i = 0
+  while i < y.len:
+    x[xl+i] = y[i]
+    inc i
 
 
 type
