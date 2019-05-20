@@ -32,21 +32,6 @@ type
 
 proc resetIdentCache*() = discard
 
-proc legacyHashIgnoreStyle*(x: string): Hash =
-  var h: Hash = 0
-  var i = 0
-  let xLen = x.len
-  while i < xLen:
-    var c = x[i]
-    if c == '_':
-      inc(i)
-    else:
-      if c in {'A'..'Z'}:
-        c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-      h = h !& ord(c)
-      inc(i)
-  result = !$h
-
 proc cmpIgnoreStyle*(a, b: cstring, blen: int): int =
   if a[0] != b[0]: return 1
   var i = 0
@@ -113,7 +98,7 @@ proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIden
 
 proc getIdent*(ic: IdentCache; identifier: string): PIdent =
   result = getIdent(ic, cstring(identifier), len(identifier),
-                    legacyHashIgnoreStyle(identifier))
+                    hashIgnoreStyle(identifier))
 
 proc getIdent*(ic: IdentCache; identifier: string, h: Hash): PIdent =
   result = getIdent(ic, cstring(identifier), len(identifier), h)
@@ -126,7 +111,7 @@ proc newIdentCache*(): IdentCache =
   result.emptyIdent = result.getIdent("")
   # initialize the keywords:
   for s in succ(low(specialWords)) .. high(specialWords):
-    result.getIdent(specialWords[s], legacyHashIgnoreStyle(specialWords[s])).id = ord(s)
+    result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
 
 proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
