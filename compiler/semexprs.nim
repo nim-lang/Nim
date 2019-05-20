@@ -804,7 +804,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     of skMacro, skTemplate: discard
     else:
       if callee.kind == skIterator and callee.id == c.p.owner.id:
-        localError(c.config, n.info, errRecursiveDependencyX % callee.name.s)
+        localError(c.config, n.info, errRecursiveDependencyIteratorX % callee.name.s)
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
         result.sons[0] = newSymNode(errorSym(c, n))

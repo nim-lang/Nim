@@ -34,6 +34,7 @@ const
   errThreadvarCannotInit = "a thread var cannot be initialized explicitly; this would only run for the main thread"
   errImplOfXexpected = "implementation of '$1' expected"
   errRecursiveDependencyX = "recursive dependency: '$1'"
+  errRecursiveDependencyIteratorX = "recursion is not supported in iterators: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
   errCannotAssignMacroSymbol = "cannot assign macro symbol to $1 here. Forgot to invoke the macro with '()'?"
   errInvalidTypeDescAssign = "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
