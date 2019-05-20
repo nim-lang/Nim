@@ -414,40 +414,32 @@ proc peekChar*(s: Stream): char =
 proc readBool*(s: Stream): bool =
   ## Reads a bool from the stream `s`.
   ##
-  ## A bool is one byte long and it is either `0000_0001` (true)
-  ## or `0000_0000` (false), any other value or an error
-  ## raises `IOError`.
+  ## A bool is one byte long and it is `true` for every non-zero
+  ## (`0000_0000`) value.
+  ## Raises `IOError` if an error occurred.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
     strm.write(true)
     strm.write(false)
-    ## not a Boolean:
-    strm.write(9'i8)
     strm.flush()
     strm.setPosition(0)
     ## get data
     doAssert strm.readBool() == true
     doAssert strm.readBool() == false
     doAssertRaises(IOError): discard strm.readBool()
-    doAssertRaises(IOError): discard strm.readBool()
     strm.close()
 
   var t: byte
   read(s, t)
-  if t == 1.byte:
-    result = true
-  elif t == 0.byte:
-    result = false
-  else:
-    raise newEIO("not a valid Boolean value")
+  result = t != 0.byte
 
 proc peekBool*(s: Stream): bool =
   ## Peeks a bool from the stream `s`.
   ##
-  ## A bool is one byte long and it is either `0000_0001` (true)
-  ## or `0000_0000` (false), any other value or an error
-  ## raises `IOError`.
+  ## A bool is one byte long and it is `true` for every non-zero
+  ## (`0000_0000`) value.
+  ## Raises `IOError` if an error occurred.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -465,12 +457,7 @@ proc peekBool*(s: Stream): bool =
 
   var t: byte
   peek(s, t)
-  if t == 1.byte:
-    result = true
-  elif t == 0.byte:
-    result = false
-  else:
-    raise newEIO("not a valid Boolean value")
+  result = t != 0.byte
 
 proc readInt8*(s: Stream): int8 =
   ## Reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
