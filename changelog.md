@@ -36,6 +36,9 @@
 
 - Compile time checks for integer and float conversions are now stricter. For example, `const x = uint32(-1)` now gives a compile time error instead of being equivalent to `const x = 0xFFFFFFFF'u32`.
 
+- A bug allowed ``macro foo(): int = 123`` to compile even though a
+  macros has to return a ``NimNode``. This has been fixed.
+
 #### Breaking changes in the standard library
 
 - `osproc.execProcess` now also takes a `workingDir` parameter.
@@ -161,7 +164,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `system.default`.
 
-- Added `sequtils.items` for closure iterators, allows closure iterators 
+- Added `sequtils.items` for closure iterators, allows closure iterators
   to be used by the the mapIt, filterIt, allIt, anyIt, etc.
 
 
