@@ -656,13 +656,12 @@ template convertRune(s, runeProc) =
   result = newString(len(s))
   var
     i = 0
-    lastIndex = 0
+    resultIndex = 0
     rune: Rune
   while i < len(s):
-    lastIndex = i
     fastRuneAt(s, i, rune, doInc=true)
     rune = runeProc(rune)
-    rune.fastToUTF8Copy(result, lastIndex)
+    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
 
 proc toUpper*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
@@ -689,17 +688,16 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
 
   var
     i = 0
-    lastIndex = 0
+    resultIndex = 0
     rune: Rune
   result = newString(len(s))
   while i < len(s):
-    lastIndex = i
     fastRuneAt(s, i, rune)
     if rune.isUpper():
       rune = rune.toLower()
     elif rune.isLower():
       rune = rune.toUpper()
-    rune.fastToUTF8Copy(result, lastIndex)
+    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
 
 proc capitalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1".} =
@@ -779,20 +777,19 @@ proc title*(s: string): string {.noSideEffect, procvar,
 
   var
     i = 0
-    lastIndex = 0
+    resultIndex = 0
     rune: Rune
   result = newString(len(s))
   var firstRune = true
 
   while i < len(s):
-    lastIndex = i
     fastRuneAt(s, i, rune)
     if not rune.isWhiteSpace() and firstRune:
       rune = rune.toUpper()
       firstRune = false
     elif rune.isWhiteSpace():
       firstRune = true
-    rune.fastToUTF8Copy(result, lastIndex)
+    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
 
 
 iterator runes*(s: string): Rune =
@@ -1468,3 +1465,13 @@ when isMainModule:
     doAssert alignLeft("1232", 6) == "1232  "
     doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
     doAssert alignLeft("1232", 6, "×".asRune) == "1232××"
+
+  block differentSizes:
+    # upper and lower variants have different number of bytes
+    doAssert toLower("AẞC") == "aßc"
+    doAssert toLower("ȺẞCD") == "ⱥßcd"
+    doAssert toUpper("ⱥbc") == "ȺBC"
+    doAssert toUpper("rsⱦuv") == "RSȾUV"
+    doAssert swapCase("ⱥbCd") == "ȺBcD"
+    doAssert swapCase("XyꟆaB") == "xYᶎAb"
+    doAssert swapCase("aᵹcᲈd") == "AꝽCꙊD"
