@@ -26,7 +26,31 @@
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
-when useWinVersion:
+# To force openSSL version use -d:sslVersion=1.0.0
+# See: #10281, #10230
+# General issue:
+# Other dynamic libraries (like libpg) load diffetent openSSL version then what nim loads.
+# Having two different openSSL loaded version causes a crash.
+# Use this compile time define to force the openSSL version that your other dynamic libraries want.
+const sslVersion {.strdefine.}: string = ""
+when sslVersion != "":
+  when defined(macosx):
+    const
+      DLLSSLName* = "libssl." & sslVersion & ".dylib"
+      DLLUtilName* = "libcrypto." & sslVersion & ".dylib"
+    from posix import SocketHandle
+  elif defined(windows):
+    const
+      DLLSSLName* = "libssl-" & sslVersion & ".dll"
+      DLLUtilName* =  "libcrypto-" & sslVersion & ".dll"
+    from winlean import SocketHandle
+  else:
+    const
+      DLLSSLName* = "libssl.so." & sslVersion
+      DLLUtilName* = "libcrypto.so." & sslVersion
+    from posix import SocketHandle
+
+elif useWinVersion:
   when not defined(nimOldDlls) and defined(cpu64):
     const
       DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
@@ -39,7 +63,6 @@ when useWinVersion:
   from winlean import SocketHandle
 else:
   when defined(osx):
-    # todo: find a better workaround for #10281 (caused by #10230)
     const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
   else:
     const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.46|.45|.44|.43|.41|.39|.38|.10|)"
