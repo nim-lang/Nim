@@ -350,11 +350,10 @@ proc tailDir*(path: string): string {.
     assert tailDir("/usr/local/bin") == "usr/local/bin"
     assert tailDir("usr/local/bin") == "local/bin"
 
-  var q = 1
-  if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
-  for i in 0..len(path)-q:
-    if path[i] in {DirSep, AltSep}:
-      return substr(path, i+1)
+  result = normalizePath(path)
+  for i in 0 .. result.high:
+    if result[i] in {DirSep, AltSep}:
+      return substr(result, i+1)
   result = ""
 
 proc isRootDir*(path: string): bool {.
