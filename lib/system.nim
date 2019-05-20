@@ -1815,7 +1815,7 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("ab")
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
-proc add*(x: var string, y: openArray[char]) {.noSideEffect.}
+proc add*(x: var string, y: openArray[char]) {.noSideEffect.} =
   ## Appends `y` to `x` in place.
   ##
   ## .. code-block:: Nim
