@@ -1517,6 +1517,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
+  if n == nil: return "<nil tree>"
   var g: TSrcGen
   initSrcGen(g, renderFlags, newPartialConfigRef())
   # do not indent the initial statement list so that
