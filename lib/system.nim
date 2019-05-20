@@ -1815,6 +1815,16 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("ab")
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
+proc add*(x: var string, y: openArray[char]) {.noSideEffect.}
+  ## Appends `y` to `x` in place.
+  ##
+  ## .. code-block:: Nim
+  ##   var tmp = ""
+  ##   tmp.add("xabx".toOpenArray(1, 2))
+  ##   assert(tmp == "ab")
+  let xl = x.len
+  setLen(x, xl + y.len)
+  for i in 0..high(y): x[xl+i] = y[i]
 
 
 type
@@ -4369,7 +4379,7 @@ template once*(body: untyped): untyped =
 
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
-proc substr*(s: string, first, last: int): string =
+proc substr*(s: openArray[char], first, last: int): string =
   ## Copies a slice of `s` into a new string and returns this new
   ## string.
   ##
@@ -4390,7 +4400,7 @@ proc substr*(s: string, first, last: int): string =
   for i in 0 .. L-1:
     result[i] = s[i+first]
 
-proc substr*(s: string, first = 0): string =
+proc substr*(s: openArray[char], first = 0): string =
   result = substr(s, first, high(s))
 
 when defined(nimconfig):
