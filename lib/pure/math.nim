@@ -646,9 +646,9 @@ when not defined(JS): # C
     # this implementation was inspired by Go-lang Math.Trunc
     proc truncImpl(f: float64): float64 =
       const
-        mask : uint64 = 0x7FF
+        mask: uint64 = 0x7FF
         shift: uint64 = 64 - 12
-        bias : uint64 = 0x3FF
+        bias: uint64 = 0x3FF
 
       if f < 1:
         if f < 0: return -truncImpl(-f)
@@ -666,9 +666,9 @@ when not defined(JS): # C
 
     proc truncImpl(f: float32): float32 =
       const
-        mask : uint32 = 0xFF
+        mask: uint32 = 0xFF
         shift: uint32 = 32 - 9
-        bias : uint32 = 0x7F
+        bias: uint32 = 0x7F
 
       if f < 1:
         if f < 0: return -truncImpl(-f)
@@ -846,7 +846,7 @@ when not defined(JS):
     ## m.
     ##
     ## .. code-block:: nim
-    ##  var x : int
+    ##  var x: int
     ##  echo frexp(5.0, x) # 0.625
     ##  echo x # 3
     var exp: int32
