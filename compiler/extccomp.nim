@@ -759,7 +759,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
 template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
   getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
 
-template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped): typed =
+template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped) =
   try:
     body
   except OSError:

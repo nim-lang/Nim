@@ -36,8 +36,12 @@
 
 - Compile time checks for integer and float conversions are now stricter. For example, `const x = uint32(-1)` now gives a compile time error instead of being equivalent to `const x = 0xFFFFFFFF'u32`.
 
-- A bug allowed ``macro foo(): int = 123`` to compile even though a
-  macros has to return a ``NimNode``. This has been fixed.
+- Using `typed` as the result type in templates/macros now means
+  "expression with a type". The old meaning of `typed` is preserved
+  as `void` or no result type at all.
+
+- A bug allowed `macro foo(): int = 123` to compile even though a
+  macros has to return a `NimNode`. This has been fixed.
 
 #### Breaking changes in the standard library
 

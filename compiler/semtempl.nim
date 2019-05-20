@@ -606,11 +606,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
         n.sons[genericParamsPos] = gp
-    # no explicit return type? -> use tyTyped
-    if n.sons[paramsPos].sons[0].kind == nkEmpty:
-      # use ``stmt`` as implicit result type
-      s.typ.sons[0] = newTypeS(tyTyped, c)
-      s.typ.n.sons[0] = newNodeIT(nkType, n.info, s.typ.sons[0])
   else:
     s.typ = newTypeS(tyProc, c)
     # XXX why do we need tyTyped as a return type again?

@@ -1356,7 +1356,7 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
 proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) =
-  if t != nil:
+  if owner == skMacro or t != nil:
     var s = newSym(skResult, getIdent(c.cache, "result"), getCurrOwner(c), info)
     s.typ = t
     incl(s.flags, sfUsed)
@@ -1550,16 +1550,16 @@ proc activate(c: PContext, n: PNode) =
       discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
-  if s.typ.sons[0] != nil and not isInlineIterator(s):
+  if s.kind == skMacro:
     let resultType =
-      if s.kind == skMacro:
-        if s.typ.sons[0].kind == tyTypeDesc:
-          s.typ.sons[0]
-        else:
-          sysTypeFromName(c.graph, n.info, "NimNode")
-      else:
+      if s.typ.sons[0] != nil and s.typ.sons[0].kind == tyTypeDesc:
         s.typ.sons[0]
+      else:
+        sysTypeFromName(c.graph, n.info, "NimNode")
     addResult(c, resultType, n.info, s.kind)
+    addResultNode(c, n)
+  elif s.typ.sons[0] != nil and not isInlineIterator(s):
+    addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
 proc canonType(c: PContext, t: PType): PType =
@@ -1888,7 +1888,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           # context as it may even be evaluated in 'system.compiles':
           trackProc(c, s, s.ast[bodyPos])
       else:
-        if s.typ.sons[0] != nil and kind != skIterator:
+        if (s.typ.sons[0] != nil and kind != skIterator) or kind == skMacro:
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
 
         openScope(c)
@@ -2015,7 +2015,6 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
     let param = t.n.sons[i].sym
     if param.typ.kind != tyUntyped: allUntyped = false
   if allUntyped: incl(s.flags, sfAllUntyped)
-  if t.sons[0] == nil: localError(c.config, n.info, "macro needs a return type")
   if n.sons[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 
