@@ -3834,36 +3834,35 @@ template `^^`(s, i: untyped): untyped =
 template `[]`*(s: string; i: int): char = arrGet(s, i)
 template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
-when hasAlloc or defined(nimscript):
-  proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
-    ## Slice operation for strings.
-    ## Returns the inclusive range `[s[x.a], s[x.b]]`:
-    ##
-    ## .. code-block:: Nim
-    ##    var s = "abcdef"
-    ##    assert s[1..3] == "bcd"
-    let a = s ^^ x.a
-    let L = (s ^^ x.b) - a + 1
-    result = newString(L)
-    for i in 0 ..< L: result[i] = s[i + a]
+proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
+  ## Slice operation for strings.
+  ## Returns the inclusive range `[s[x.a], s[x.b]]`:
+  ##
+  ## .. code-block:: Nim
+  ##    var s = "abcdef"
+  ##    assert s[1..3] == "bcd"
+  let a = s ^^ x.a
+  let L = (s ^^ x.b) - a + 1
+  result = newString(L)
+  for i in 0 ..< L: result[i] = s[i + a]
 
-  proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
-    ## Slice assignment for strings.
-    ##
-    ## If ``b.len`` is not exactly the number of elements that are referred to
-    ## by `x`, a `splice`:idx: is performed:
-    ##
-    runnableExamples:
-      var s = "abcdefgh"
-      s[1 .. ^2] = "xyz"
-      assert s == "axyzh"
+proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
+  ## Slice assignment for strings.
+  ##
+  ## If ``b.len`` is not exactly the number of elements that are referred to
+  ## by `x`, a `splice`:idx: is performed:
+  ##
+  runnableExamples:
+    var s = "abcdefgh"
+    s[1 .. ^2] = "xyz"
+    assert s == "axyzh"
 
-    var a = s ^^ x.a
-    var L = (s ^^ x.b) - a + 1
-    if L == b.len:
-      for i in 0..<L: s[i+a] = b[i]
-    else:
-      spliceImpl(s, a, L, b)
+  var a = s ^^ x.a
+  var L = (s ^^ x.b) - a + 1
+  if L == b.len:
+    for i in 0..<L: s[i+a] = b[i]
+  else:
+    spliceImpl(s, a, L, b)
 
 proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for arrays.
