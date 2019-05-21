@@ -1102,7 +1102,7 @@ else:
 
     # In case of a 32-bit time_t, we fallback to the closest available
     # timezone information.
-    var a = clamp(unix, low(CTime), high(CTime)).CTime
+    var a = clamp(unix, low(CTime).clong, high(CTime).clong).CTime
     let tmPtr = localtime(a)
     if not tmPtr.isNil:
       let tm = tmPtr[]
