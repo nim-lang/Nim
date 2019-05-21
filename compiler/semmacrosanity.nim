@@ -34,6 +34,15 @@ proc ithField(n: PNode, field: var int): PSym =
     else: dec(field)
   else: discard
 
+proc ithField(t: PType, field: var int): PSym =
+  var base = t.sons[0]
+  while base != nil:
+    let b = skipTypes(base, skipPtrs)
+    result = ithField(b.n, field)
+    if result != nil: return result
+    base = b.sons[0]
+  result = ithField(t.n, field)
+
 proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
   let x = t.skipTypes(abstractInst+{tyRange})
   # Note: x can be unequal to t and we need to be careful to use 't'
@@ -44,7 +53,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
     n.typ = t
     for i in 1 ..< n.len:
       var j = i-1
-      let field = x.n.ithField(j)
+      let field = x.ithField(j)
       if field.isNil:
         globalError conf, n.info, "invalid field at index " & $i
       else:
