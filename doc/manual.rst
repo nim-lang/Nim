@@ -827,7 +827,10 @@ Ordinal types have the following characteristics:
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are not ordinal types.
+the types ``uint`` and ``uint64`` are not ordinal types. (This will be changed
+in later versions of the language.)
+
+A distinct type is an ordinal type if its base type is an ordinal type.
 
 
 Pre-defined integer types
@@ -1800,6 +1803,8 @@ of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
 base type and vice versa are allowed. See also ``distinctBase`` to get the
 reverse operation.
+
+A distinct type is an ordinal type if its base type is an ordinal type.
 
 
 Modelling currencies
