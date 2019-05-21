@@ -975,23 +975,28 @@ proc `^`*[T](x: T, y: Natural): T =
   ## * `sqrt proc <#sqrt,float64>`_
   ## * `cbrt proc <#cbrt,float64>`_
   ##
-  ## .. code-block:: nim
-  ##  echo 2^3  # 8
-  ##  echo -2^3 # -8
-  when compiles(y >= T(0)):
-    assert y >= T(0)
-  else:
-    assert T(y) >= T(0)
-  var (x, y) = (x, y)
-  result = 1
+  runnableExamples:
+    assert -3.0^0 == 1.0
+    assert -3^1 == -3
+    assert -3^2 == 9
+    assert -3.0^3 == -27.0
+    assert -3.0^4 == 81.0
 
-  while true:
-    if (y and 1) != 0:
-      result *= x
-    y = y shr 1
-    if y == 0:
-      break
-    x *= x
+  case y
+  of 0: result = 1
+  of 1: result = x
+  of 2: result = x * x
+  of 3: result = x * x * x
+  else:
+    var (x, y) = (x, y)
+    result = 1
+    while true:
+      if (y and 1) != 0:
+        result *= x
+      y = y shr 1
+      if y == 0:
+        break
+      x *= x
 
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
