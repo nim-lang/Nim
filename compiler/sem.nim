@@ -407,12 +407,11 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   else:
     case s.typ.sons[0].kind
     of tyUntyped:
-      # BUGFIX: we cannot expect a type here, because module aliases would not
-      # work then (see the ``tmodulealias`` test)
-      # semExprWithType(c, result)
+      # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags)
     of tyTyped:
-      result = semStmt(c, result, flags)
+      # More restrictive version.
+      result = semExprWithType(c, result, flags)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)

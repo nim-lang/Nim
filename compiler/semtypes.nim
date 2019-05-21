@@ -855,6 +855,7 @@ proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,
   # which are subset of `static[T]`, hence they could
   # be treated in the same way
+  if t == nil: return nil
   if t.kind == tyStatic: return t
   if t.kind == tyAnd:
     for s in t.sons:
@@ -868,7 +869,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
       var a = copySym(param)
       a.typ = staticType.base
       addDecl(c, a)
-    elif param.typ.kind == tyTypeDesc:
+    elif param.typ != nil and param.typ.kind == tyTypeDesc:
       addDecl(c, param)
     else:
       # within a macro, every param has the type NimNode!
@@ -1193,6 +1194,18 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var r: PType
   if n.sons[0].kind != nkEmpty:
     r = semTypeNode(c, n.sons[0], nil)
+
+  if r != nil and kind in {skMacro, skTemplate} and r.kind == tyTyped:
+    # XXX: To implement the propesed change in the warning, just
+    # delete this entire if block. The rest is (at least at time of
+    # writing this comment) already implemented.
+    let info = n.sons[0].info
+    const msg = "`typed` will change its meaning in future versions of Nim. " &
+                "`void` or no return type declaration at all has the same " &
+                "meaning as the current meaning of `typed` as return type " &
+                "declaration."
+    message(c.config, info, warnDeprecated, msg)
+    r = nil
 
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the

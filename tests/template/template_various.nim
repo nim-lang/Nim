@@ -77,7 +77,7 @@ block generic_templates:
 block tgetast_typeliar:
   proc error(s: string) = quit s
 
-  macro assertOrReturn(condition: bool; message: string): typed =
+  macro assertOrReturn2(condition: bool; message: string) =
     var line = condition.lineInfo()
     result = quote do:
       block:
@@ -86,8 +86,10 @@ block tgetast_typeliar:
           return
 
   macro assertOrReturn(condition: bool): typed =
-    var message = condition.toStrLit()
-    result = getAst assertOrReturn(condition, message)
+    var message : NimNode = newLit(condition.repr)
+    # echo message
+    result = getAst assertOrReturn2(condition, message)
+    echo result.repr
 
   proc point(size: int16): tuple[x, y: int16] =
     # returns random point in square area with given `size`
@@ -245,7 +247,3 @@ block ttempl5:
 block templreturntype:
   template `=~` (a: int, b: int): bool = false
   var foo = 2 =~ 3
-
-
-
-
