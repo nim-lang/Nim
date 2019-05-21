@@ -1392,8 +1392,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if roota.base == rootf.base:
         let nextFlags = flags + {trNoCovariance}
         var hasCovariance = false
-        const noBug {.booldefine.} = false
-        result = when noBug: isGeneric else: isEqual
+        result = isEqual
 
         for i in 1 .. rootf.sonsLen-2:
           let ff = rootf.sons[i]
