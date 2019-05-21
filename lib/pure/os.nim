@@ -327,12 +327,16 @@ proc parentDir*(path: string): string {.
     when defined(posix):
       assert parentDir("/usr/local/bin") == "/usr/local"
       assert parentDir("foo/bar/") == "foo"
+      assert parentDir("foo/bar//") == "foo"
+      assert parentDir("//foo//bar//") == "//foo"
       assert parentDir("./foo") == "."
       assert parentDir("/foo") == ""
 
-  let sepPos = parentDirPos(path)
+  result = normalizePathEnd(path)
+  var sepPos = parentDirPos(result)
   if sepPos >= 0:
-    result = substr(path, 0, sepPos-1)
+    while sepPos >= 0 and result[sepPos] in {DirSep, AltSep}: dec sepPos
+    result = substr(result, 0, sepPos)
   else:
     result = ""
 
@@ -347,14 +351,18 @@ proc tailDir*(path: string): string {.
   runnableExamples:
     assert tailDir("/bin") == "bin"
     assert tailDir("bin") == ""
+    assert tailDir("bin/") == ""
     assert tailDir("/usr/local/bin") == "usr/local/bin"
+    assert tailDir("//usr//local//bin//") == "usr//local//bin//"
+    assert tailDir("./usr/local/bin") == "usr/local/bin"
     assert tailDir("usr/local/bin") == "local/bin"
 
-  var q = 1
-  if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
-  for i in 0..len(path)-q:
+  var i = 0
+  while i < len(path):
     if path[i] in {DirSep, AltSep}:
-      return substr(path, i+1)
+      while i < len(path) and path[i] in {DirSep, AltSep}: inc i
+      return substr(path, i)
+    inc i
   result = ""
 
 proc isRootDir*(path: string): bool {.
