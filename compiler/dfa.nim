@@ -82,7 +82,7 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
       result.add renderTree(c[i].n)
     of goto, fork, join:
       result.add "L"
-      result.add c[i].dest+i
+      result.addInt c[i].dest+i
     result.add("\t#")
     result.add(debugInfo(c[i].n.info))
     result.add("\n")

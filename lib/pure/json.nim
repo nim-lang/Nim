@@ -692,12 +692,12 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
   of JInt:
     if lstArr: result.indent(currIndent)
     when defined(js): result.add($node.num)
-    else: result.add(node.num)
+    else: result.addInt(node.num)
   of JFloat:
     if lstArr: result.indent(currIndent)
     # Fixme: implement new system.add ops for the JS target
     when defined(js): result.add($node.fnum)
-    else: result.add(node.fnum)
+    else: result.addFloat(node.fnum)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
@@ -773,10 +773,10 @@ proc toUgly*(result: var string, node: JsonNode) =
     node.str.escapeJson(result)
   of JInt:
     when defined(js): result.add($node.num)
-    else: result.add(node.num)
+    else: result.addInt(node.num)
   of JFloat:
     when defined(js): result.add($node.fnum)
-    else: result.add(node.fnum)
+    else: result.addFloat(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:

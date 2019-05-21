@@ -111,7 +111,7 @@ proc cgFormatValue(result: var string; value: string): void =
   result.add value
 
 proc cgFormatValue(result: var string; value: BiggestInt): void =
-  result.add value
+  result.addInt value
 
 # TODO: please document
 macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
