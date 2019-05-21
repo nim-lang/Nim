@@ -40,14 +40,14 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h +% h shl 15
   result = h
 
-proc add*(result: var string; x: int64) =
+proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
   ##   var
   ##     a = "123"
   ##     b = 45
-  ##   a.add(b) # a <- "12345"
+  ##   a.addInt(b) # a <- "12345"
   let base = result.len
   setLen(result, base + sizeof(x)*4)
   var i = 0
@@ -66,18 +66,22 @@ proc add*(result: var string; x: int64) =
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
 
+proc add*(result: var string; x: int64) {.deprecated:
+  "Deprecated since v0.20, use 'addInt'".} =
+  addInt(result, x)
+
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
-  result.add x
+  result.addInt x
 
-proc add*(result: var string; x: float) =
+proc addFloat*(result: var string; x: float) =
   ## Converts float to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
   ##   var
   ##     a = "123"
   ##     b = 45.67
-  ##   a.add(b) # a <- "12345.67"
+  ##   a.addFloat(b) # a <- "12345.67"
   when nimvm:
     result.add $x
   else:
@@ -113,9 +117,13 @@ proc add*(result: var string; x: float) =
         result.add buf[i]
         inc i
 
+proc add*(result: var string; x: float) {.deprecated:
+  "Deprecated since v0.20, use 'addFloat'".} =
+  addFloat(result, x)
+
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
-  result.add f
+  result.addFloat f
 
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
@@ -284,7 +292,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
-  result.add x
+  result.addInt x
 
 proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"

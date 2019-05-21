@@ -425,7 +425,7 @@ proc value(this: var DebugPrinter; value: string) =
 proc value(this: var DebugPrinter; value: BiggestInt) =
   if this.useColor:
     this.res.add numberStyle
-  this.res.add value
+  this.res.addInt value
   if this.useColor:
     this.res.add resetStyle
 
@@ -460,7 +460,7 @@ template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
     if this.useColor:
       this.res.add backrefStyle
     this.res.add "<defined "
-    this.res.add(this.currentLine - index)
+    this.res.addInt(this.currentLine - index)
     this.res.add " lines upwards>"
     if this.useColor:
       this.res.add resetStyle
