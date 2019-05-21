@@ -130,9 +130,8 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
       echo "Putting ", typeToString(key), " ", typeToString(val), " and old is ", typeToString(old)
       if typeToString(old) == "seq[string]":
         writeStackTrace()
-    if typeToString(key) == "K":
-      echo "putting to K ", typeToString(val)
-      writeStackTrace()
+    if c.c.module.name.s == "temp3":
+      echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit)
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
@@ -1392,6 +1391,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if roota.base == rootf.base:
         let nextFlags = flags + {trNoCovariance}
         var hasCovariance = false
+        # YYYY
         result = isEqual
 
         for i in 1 .. rootf.sonsLen-2:
@@ -1437,7 +1437,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           let baseType = aAsObject.base
           if baseType != nil:
             c.inheritancePenalty += 1
-            return typeRel(c, f, baseType)
+            let ret = typeRel(c, f, baseType)
+            return if ret == isEqual: isSubtype else: ret
 
         result = isNone
     else:
@@ -1792,6 +1793,21 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if a.kind == tyNone: result = isEqual
   else:
     internalError c.c.graph.config, " unknown type kind " & $f.kind
+
+when false:
+  var nowDebug = false
+  var dbgCount = 0
+
+  proc typeRel(c: var TCandidate, f, aOrig: PType,
+              flags: TTypeRelFlags = {}): TTypeRelation =
+    if nowDebug:
+      echo f, " <- ", aOrig
+      inc dbgCount
+      if dbgCount == 2:
+        writeStackTrace()
+    result = typeRelImpl(c, f, aOrig, flags)
+    if nowDebug:
+      echo f, " <- ", aOrig, " res ", result
 
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate
