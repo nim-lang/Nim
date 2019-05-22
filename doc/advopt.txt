@@ -49,8 +49,6 @@ Advanced options:
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
-  --header:FILE             the compiler should produce a .h file (FILE
-                            is optional)
   -c, --compileOnly:on|off  compile Nim files only; do not assemble or link
   --noLinking:on|off        compile Nim and generated files but do not link
   --noMain:on|off           do not generate a main procedure

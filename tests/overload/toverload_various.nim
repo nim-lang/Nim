@@ -15,6 +15,7 @@ static: const
 static: literal
 static: constant folding
 static: static string
+foo1
 '''
 """
 
@@ -197,3 +198,25 @@ doAssert goo[int](1) == "T: int"
 doAssert goo[int](tmp1) == "T: int"
 doAssert goo[int](tmp2) == "T: int"
 doAssert goo[int](tmp3) == "T: int"
+
+# bug #6076
+
+type A[T] = object
+
+proc regr(a: A[void]) = echo "foo1"
+proc regr[T](a: A[T]) = doAssert(false)
+
+regr(A[void]())
+
+
+type Foo[T] = object
+
+proc regr[T](p: Foo[T]): seq[T] =
+  discard
+
+proc regr(p: Foo[void]): seq[int] =
+  discard
+
+
+discard regr(Foo[int]())
+discard regr(Foo[void]())

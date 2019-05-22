@@ -338,8 +338,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     of tyArray:
       n.typ = typ.sons[0] # indextype
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32, tyFloat..tyFloat64:
-      # do not skip the range!
-      n.typ = n.sons[1].typ.skipTypes(abstractVar)
+      n.typ = n.sons[1].typ.skipTypes({tyTypeDesc})
     of tyGenericParam:
       # prepare this for resolving in semtypinst:
       # we must use copyTree here in order to avoid creating a cycle
