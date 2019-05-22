@@ -133,7 +133,7 @@ proc foo(a: openArray[char]) =
 
 let str = "123"
 foo(toOpenArrayByte(str))
-foo(toOpenArrayChar(str))
+foo(toOpenArray(str))
 
 template boundedOpenArray[T](x: seq[T], first, last: int): openarray[T] =
   toOpenarray(x, max(0, first), min(x.high, last))

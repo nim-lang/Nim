@@ -171,7 +171,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `sequtils.items` for closure iterators, allows closure iterators
   to be used by the the mapIt, filterIt, allIt, anyIt, etc.
 
-- Added `system.toOpenArrayChar` proc and `system.toOpenArray` templates.
+- Added `system.toOpenArray` and `system.toOpenArrayByte` templates.
 
 ### Library changes
 
