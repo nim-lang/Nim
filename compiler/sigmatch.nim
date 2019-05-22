@@ -190,6 +190,9 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
   copyIdTable(a.bindings, b.bindings)
 
 proc sumGeneric(t: PType): int =
+  # count the "genericness" so that Foo[Foo[T]] has the value 3
+  # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
+  # specific than Foo[T].
   var t = t
   var isvar = 1
   while true:
@@ -202,9 +205,9 @@ proc sumGeneric(t: PType): int =
     of tyOr:
       var maxBranch = 0
       for branch in t.sons:
-        let branchSum = branch.sumGeneric
+        let branchSum = sumGeneric(branch)
         if branchSum > maxBranch: maxBranch = branchSum
-      inc result, maxBranch + 1
+      inc result, maxBranch
       break
     of tyVar:
       t = t.sons[0]
@@ -218,10 +221,10 @@ proc sumGeneric(t: PType): int =
       result += ord(t.kind in {tyGenericInvocation, tyAnd})
       for i in 0 ..< t.len:
         if t.sons[i] != nil:
-          result += t.sons[i].sumGeneric
+          result += sumGeneric(t.sons[i])
       break
     of tyStatic:
-      return t.sons[0].sumGeneric + 1
+      return sumGeneric(t.sons[0]) + 1
     of tyGenericParam, tyUntyped, tyTyped: break
     of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
