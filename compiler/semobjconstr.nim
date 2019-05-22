@@ -157,7 +157,7 @@ proc difference(xs, ys: TRanges): TRanges =
 proc formatUnsafeBranchVals(c: PContext, t: PType, diffVals: TRanges): string =
   template toStr(val): untyped =
     if t.kind != tyEnum: $val
-    else: t.n.sons[val].sym.name.s
+    else: t.n.sons[val.int].sym.name.s
 
   var strs: seq[string]
   for val in diffVals:
