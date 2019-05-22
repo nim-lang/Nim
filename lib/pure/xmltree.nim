@@ -683,7 +683,7 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode], caseInsensitive
     if child.k != xnElement:
       continue
     if child.tag == tag or
-        (caseInsensitive and child.tag.toLowerAscii == tag.toLowerAscii):
+        (caseInsensitive and cmpIgnoreCase(child.tag, tag) == 0):
       result.add(child)
     child.findAll(tag, result)
 
