@@ -649,7 +649,7 @@ proc child*(n: XmlNode, name: string): XmlNode =
       if i.tag == name:
         return i
 
-proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
+proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode], caseInsensitive = false) =
   ## Iterates over all the children of `n` returning those matching `tag`.
   ##
   ## Found nodes satisfying the condition will be appended to the `result`
@@ -658,8 +658,8 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
     var
       b = newElement("good")
       c = newElement("bad")
-      d = newElement("bad")
-      e = newElement("good")
+      d = newElement("BAD")
+      e = newElement("GOOD")
     b.add newText("b text")
     c.add newText("c text")
     d.add newText("d text")
@@ -667,34 +667,46 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
     let a = newXmlTree("father", [b, c, d, e])
     var s = newSeq[XmlNode]()
     a.findAll("good", s)
-    assert $s == "@[<good>b text</good>, <good>e text</good>]"
+    assert $s == "@[<good>b text</good>]"
+    s.setLen(0)
+    a.findAll("good", s, caseInsensitive = true)
+    assert $s == "@[<good>b text</good>, <GOOD>e text</GOOD>]"
+    s.setLen(0)
+    a.findAll("BAD", s)
+    assert $s == "@[<BAD>d text</BAD>]"
+    s.setLen(0)
+    a.findAll("BAD", s, caseInsensitive = true)
+    assert $s == "@[<bad>c text</bad>, <BAD>d text</BAD>]"
 
   assert n.k == xnElement
   for child in n.items():
     if child.k != xnElement:
       continue
-    if child.tag == tag:
+    if child.tag == tag or
+        (caseInsensitive and cmpIgnoreCase(child.tag, tag) == 0):
       result.add(child)
     child.findAll(tag, result)
 
-proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
+proc findAll*(n: XmlNode, tag: string, caseInsensitive = false): seq[XmlNode] =
   ## A shortcut version to assign in let blocks.
   runnableExamples:
     var
       b = newElement("good")
       c = newElement("bad")
-      d = newElement("bad")
-      e = newElement("good")
+      d = newElement("BAD")
+      e = newElement("GOOD")
     b.add newText("b text")
     c.add newText("c text")
     d.add newText("d text")
     e.add newText("e text")
     let a = newXmlTree("father", [b, c, d, e])
-    assert $(a.findAll("good")) == "@[<good>b text</good>, <good>e text</good>]"
-    assert $(a.findAll("bad")) == "@[<bad>c text</bad>, <bad>d text</bad>]"
+    assert $(a.findAll("good")) == "@[<good>b text</good>]"
+    assert $(a.findAll("BAD")) == "@[<BAD>d text</BAD>]"
+    assert $(a.findAll("good", caseInsensitive = true)) == "@[<good>b text</good>, <GOOD>e text</GOOD>]"
+    assert $(a.findAll("BAD", caseInsensitive = true)) == "@[<bad>c text</bad>, <BAD>d text</BAD>]"
 
   newSeq(result, 0)
-  findAll(n, tag, result)
+  findAll(n, tag, result, caseInsensitive)
 
 proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
   if a.kind == nnkCall:
