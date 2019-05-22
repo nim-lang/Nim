@@ -147,8 +147,8 @@ proc difference(xs, ys: TRanges): TRanges =
                   else: x.a
           nextB = if yi+1 < ys.len: min(x.b, y(1).a-1)
                   else: x.b
-        maybeAdd(prevA .. y.a-1)
-        maybeAdd(y.b+1 .. nextB)
+        if y.a != low(BiggestInt): maybeAdd(prevA .. y.a-1)
+        if y.b != high(BiggestInt): maybeAdd(y.b+1 .. nextB)
         overlapped = true
       if y.b >= x.b: break
       inc(yi)
