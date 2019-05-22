@@ -1782,8 +1782,9 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     # initialize inherited fields:
     var base = t.sons[0]
     while base != nil:
-      getNullValueAux(skipTypes(base, skipPtrs).n, result, conf)
-      base = base.sons[0]
+      let b = skipTypes(base, skipPtrs)
+      getNullValueAux(b.n, result, conf)
+      base = b.sons[0]
     getNullValueAux(t.n, result, conf)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
