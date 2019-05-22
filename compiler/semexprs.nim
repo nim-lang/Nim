@@ -1473,6 +1473,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         # type parameters: partial generic specialization
         n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
         result = explicitGenericInstantiation(c, n, s)
+        n.sons[0] = result
       of skMacro, skTemplate:
         if efInCall in flags:
           # We are processing macroOrTmpl[] in macroOrTmpl[](...) call.

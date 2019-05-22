@@ -174,3 +174,26 @@ block tstaticoverload:
   foo("literal")
   foo("constant" & " " & "folding")
   foo(staticString("static string"))
+
+# bug #8568 (2)
+
+proc goo(a: int): string = "int"
+proc goo(a: static[int]): string = "static int"
+proc goo(a: var int): string = "var int"
+proc goo[T: int](a: T): string = "T: int"
+#proc goo[T](a: T): string = "nur T"
+
+const tmp1 = 1
+let tmp2 = 1
+var tmp3 = 1
+
+doAssert goo(1) == "static int"
+doAssert goo(tmp1) == "static int"
+doAssert goo(tmp2) == "int"
+doAssert goo(tmp3) == "var int"
+
+doAssert goo[int](1) == "T: int"
+
+doAssert goo[int](tmp1) == "T: int"
+doAssert goo[int](tmp2) == "T: int"
+doAssert goo[int](tmp3) == "T: int"
