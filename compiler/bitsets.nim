@@ -85,7 +85,7 @@ const populationCount: array[low(int8)..high(int8), int8] = block:
         ((x and 0b00100000'i8) shr 5) +
         ((x and 0b01000000'i8) shr 6) +
         ((x and 0b10000000'i8) shr 7)
-        
+
 
     for it in low(int8)..high(int8):
       arr[it] = countSetBits(it)
