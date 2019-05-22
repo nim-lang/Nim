@@ -4414,6 +4414,18 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArrayByte*(x: string; first, last: int): openarray[byte] {.
     magic: "Slice".}
+  proc toOpenArrayChar*(x: string; first, last: int): openarray[char] {.
+    magic: "Slice".}
+  template toOpenArray*[T](x: seq[T]): openarray[T] =
+    toOpenArray(x, 0, x.high)
+  template toOpenArray*[T](x: openarray[T]): openarray[T] =
+    toOpenArray(x, 0, x.high)
+  template toOpenArray*[I, T](x: array[I, T]): openarray[T] =
+    toOpenArray(x, 0, x.high)
+  template toOpenArrayByte*(x: string): openarray[byte] =
+    toOpenArrayByte(x, 0, x.high)
+  template toOpenArrayChar*(x: string): openarray[char] =
+    toOpenArrayChar(x, 0, x.high)
 
 type
   ForLoopStmt* {.compilerProc.} = object ## \

@@ -16,16 +16,12 @@ discard """
 2
 3
 2
-48
 49
 50
 51
-52
-53
-54
-55
-56
-57
+1
+2
+3
 2
 '''
 """
@@ -132,9 +128,12 @@ oaFirstElm(toOpenArray(qData, 1, 3))
 proc foo(a: openArray[byte]) =
   for x in a: echo x
 
-let str = "0123456789"
-foo(toOpenArrayByte(str, 0, str.high))
+proc foo(a: openArray[char]) =
+  for x in a: echo x
 
+let str = "123"
+foo(toOpenArrayByte(str))
+foo(toOpenArrayChar(str))
 
 template boundedOpenArray[T](x: seq[T], first, last: int): openarray[T] =
   toOpenarray(x, max(0, first), min(x.high, last))
