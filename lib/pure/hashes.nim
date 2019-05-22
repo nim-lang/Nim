@@ -42,7 +42,7 @@
 ## * `md5 module <md5.html>`_ for MD5 checksum algorithm
 ## * `base64 module <base64.html>`_ for a base64 encoder and decoder
 ## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
-## * `tables modlule <tables.html>`_ for hash tables
+## * `tables module <tables.html>`_ for hash tables
 
 
 import
