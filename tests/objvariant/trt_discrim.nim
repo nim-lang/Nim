@@ -87,7 +87,7 @@ reject: # elif branches are ignored
 let holedKind = hk5
 
 reject: # Only ordinals, no holed enums...
-  case kind
+  case holedKind
   of hk1, hk2, hk3: discard HoledObj(kind: holedKind, i32: 1)
   of hk4: discard HoledObj(kind: holedKind, f32: 2.0)
   else: discard HoledObj(kind: holedKind, str: "3")

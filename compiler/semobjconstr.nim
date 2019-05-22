@@ -85,58 +85,87 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
   return false
 
 type
-  Pairs = seq[(BiggestInt, BiggestInt)]
+  TRanges = seq[Slice[BiggestInt]]
 
-proc isSubsetOf(lesser, greater: Pairs): bool =
-  result = true
-  for i in 0 ..< lesser.len:
-    block checkNextSubset:
-      for j in 0 ..< greater.len:
-        if lesser[i][0] >= greater[j][0] and lesser[i][1] <= greater[j][1]:
-          break checkNextSubset
-      return false
-
-proc addBranchVals(s: var Pairs, b: PNode) =
+proc addBranchVals(s: var TRanges, b: PNode) =
   if b.kind != nkElifBranch:
     for i in 0 .. b.len-2:
       if b[i].kind == nkIntLit:
-        s.add (b[i].intVal, b[i].intVal)
+        s.add(b[i].intVal .. b[i].intVal)
       elif b[i].kind == nkRange:
-        s.add (b[i][0].intVal, b[i][1].intVal)
+        s.add(b[i][0].intVal .. b[i][1].intVal)
 
-proc mergeBranchVals(s: var Pairs) =
-  sort(s)
-  for i in countdown(s.high, 1):
-    if s[i-1][1] == s[i][0]-1:
-      s[i][0] = s[i-1][0]
-      s.del(i-1)
+proc mergeBranchVals(s: var TRanges): TRanges =
+  if s.len == 0: return
+  sort(s, proc (x, y: Slice[BiggestInt]): int = cmp(x.a, y.a))
+  result.add(s[0])
+  for i in 1 ..< s.len:
+    if result[^1].b == s[i].a-1:
+      result[^1].b = s[i].b
+    else:
+      result.add(s[i])
 
-proc invertBranchVals(c: PContext, t: PType, s: Pairs): Pairs =
+proc invertBranchVals(c: PContext, t: PType, s: TRanges): TRanges =
   let
     first = firstOrd(c.config, t)
     last = lastOrd(c.config, t)
-  if s.len == 0: return @[(first, last)]
-  if s[0][0] != first:
-    result.add (first, s[0][0]-1)
+  if s.len == 0: return @[first .. last]
+  if s[0].a != first:
+    result.add(first .. s[0].a-1)
   for i in 0 ..< s.len-1:
-    result.add (s[i][1]+1, s[i+1][0]-1)
-  if s[^1][1] != last:
-    result.add (s[^1][1]+1, last)
+    result.add(s[i].b+1 .. s[i+1].a-1)
+  if s[^1].b != last:
+    result.add(s[^1].b+1 .. last)
 
-proc branchVals(c: PContext, caseNode: PNode, caseIdx: int): Pairs =
+proc branchVals(c: PContext, caseNode: PNode, caseIdx: int): TRanges =
   if caseNode[caseIdx].kind == nkOfBranch:
     result.addBranchVals(caseNode[caseIdx])
-    mergeBranchVals(result)
+    result = mergeBranchVals(result)
   else:
     for i in 1 .. caseNode.len-2:
       result.addBranchVals(caseNode[i])
-    mergeBranchVals(result)
+    result = mergeBranchVals(result)
     result = invertBranchVals(c, caseNode.sons[0].typ, result)
 
-proc isSafeConstruction(c: PContext, rec: PNode, recIdx: int, ctor: PNode,
-                        ctorIdx: int): bool =
-  if ctor == nil or ctor[ctorIdx].kind == nkElifBranch: return false
-  result = branchVals(c, ctor, ctorIdx).isSubsetOf(branchVals(c, rec, recIdx))
+proc difference(xs, ys: TRanges): TRanges =
+  template maybeAdd(value): untyped =
+    let val = value
+    if val.a <= val.b and (result.len == 0 or result[^1] != val):
+      result.add(val)
+
+  var yi = 0
+  for x in xs:
+    var overlapped = false
+    while yi < ys.len:
+      template y(offset = 0): untyped = ys[yi+offset]
+      if y.a <= x.a and y.b >= x.b:
+        overlapped = true
+        break
+      if y.a in x or y.b in x:
+        let
+          prevA = if yi-1 >= 0: max(y(-1).b+1, x.a)
+                  else: x.a
+          nextB = if yi+1 < ys.len: min(x.b, y(1).a-1)
+                  else: x.b
+        maybeAdd(prevA .. y.a-1)
+        maybeAdd(y.b+1 .. nextB)
+        overlapped = true
+      if y.b >= x.b: break
+      inc(yi)
+    if not overlapped: result.add(x.a .. x.b)
+
+proc formatUnsafeBranchVals(c: PContext, t: PType, diffVals: TRanges): string =
+  template toStr(val): untyped =
+    if t.kind != tyEnum: $val
+    else: t.n.sons[val].sym.name.s
+
+  var strs: seq[string]
+  for val in diffVals:
+    if val.a == val.b:
+      strs.add(toStr(val.a))
+    else:
+      strs.add(toStr(val.a) & " .. " & toStr(val.b))
+  result = strs.join(", ")
 
 proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
   for i in countdown(c.p.caseContext.high, 0):
@@ -255,23 +284,33 @@ proc semConstructFields(c: PContext, recNode: PNode,
       var discriminatorVal = semConstrField(c, flags,
                                             discriminator.sym, initExpr)
 
-      if discriminatorVal != nil: discriminatorVal = discriminatorVal.skipHidden
-      if discriminatorVal == nil: badDiscriminatorError()
+      if discriminatorVal != nil:
+        discriminatorVal = discriminatorVal.skipHidden
+      if discriminatorVal == nil:
+        badDiscriminatorError()
       elif discriminatorVal.kind == nkSym:
-        let (ctorCase, ctorIndex) = findUsefulCaseContext(c, discriminatorVal)
+        let (ctorCase, ctorIdx) = findUsefulCaseContext(c, discriminatorVal)
         if ctorCase == nil:
           badDiscriminatorError()
         elif not isOrdinalType(discriminatorVal.sym.typ):
           localError(c.config, discriminatorVal.info,
-            "runtime discriminator selection with initialized branch fields " &
-            "can only be proven safe by a case statement selector variable " &
-            "of an ordinal type.")
-        elif not isSafeConstruction(c, recNode, selectedBranch, ctorCase,
-                                    ctorIndex):
-          localError(c.config, discriminatorVal.info,
-            "runtime discriminator selection with initialized branch fields " &
-            "cannot be proven safe.")
-      elif discriminatorVal.kind in nkLiterals:
+            "branch initialization with a runtime discriminator only " &
+            "supports ordinal types.")
+        elif ctorCase[ctorIdx].kind == nkElifBranch:
+          localError(c.config, discriminatorVal.info, "branch initialization " &
+            "with a runtime discriminator is not supported inside of an " &
+            "`elif` branch.")
+        else:
+          var
+            ctorBranchVals = branchVals(c, ctorCase, ctorIdx)
+            recBranchVals = branchVals(c, recNode, selectedBranch)
+            branchValsDiff = difference(ctorBranchVals, recBranchVals)
+          if branchValsDiff.len != 0:
+            localError(c.config, discriminatorVal.info, ("possible values " &
+              "{$2} are in conflict with discriminator values for " &
+              "selected object branch $1.") % [$selectedBranch,
+              formatUnsafeBranchVals(c, recNode.sons[0].typ, branchValsDiff)])
+      else:
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
             wrongBranchError(selectedBranch)
@@ -281,7 +320,6 @@ proc semConstructFields(c: PContext, recNode: PNode,
             if recNode[i].caseBranchMatchesExpr(discriminatorVal):
               wrongBranchError(i)
               break
-      else: badDiscriminatorError()
 
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:
