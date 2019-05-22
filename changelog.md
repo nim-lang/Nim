@@ -34,7 +34,9 @@
 
 - To use multi-methods, explicit `--multimethods:on` is now needed.
 
-- Compile time checks for integer and float conversions are now stricter. For example, `const x = uint32(-1)` now gives a compile time error instead of being equivalent to `const x = 0xFFFFFFFF'u32`.
+- Compile time checks for integer and float conversions are now stricter.
+  For example, `const x = uint32(-1)` now gives a compile time error instead
+  of being equivalent to `const x = 0xFFFFFFFF'u32`.
 
 - Using `typed` as the result type in templates/macros now means
   "expression with a type". The old meaning of `typed` is preserved
@@ -42,6 +44,7 @@
 
 - A bug allowed `macro foo(): int = 123` to compile even though a
   macros has to return a `NimNode`. This has been fixed.
+
 
 #### Breaking changes in the standard library
 
@@ -104,6 +107,10 @@
 
 - Custom types that should be supported by `strformat` (&) now need an
   explicit overload of `formatValue`.
+
+- procs `string.add(int)` and `string.add(float)` which implicitly convert
+  ints and floats to string have been deprecated.
+  Use `string.addInt(int)` and `string.addFloat(float)` instead.
 
 
 #### Breaking changes in the compiler
@@ -201,7 +208,8 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - The switch ``-d:useWinAnsi`` is not supported anymore.
 
-- In `times` module, procs `format` and `parse` accept a new optional `DateTimeLocale` argument for formatting/parsing dates in other languages.
+- In `times` module, procs `format` and `parse` accept a new optional
+  `DateTimeLocale` argument for formatting/parsing dates in other languages.
 
 
 ### Language additions
