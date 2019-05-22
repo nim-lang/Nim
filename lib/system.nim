@@ -4202,9 +4202,9 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
-  elif T is int:
+  elif T is int and not defined(JS):
     s.addInt(x)
-  elif T is float:
+  elif T is float and not defined(JS):
     s.addFloat(x)
   elif compiles(s.add(x)):
     s.add(x)
