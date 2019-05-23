@@ -130,6 +130,7 @@ proc branchVals(c: PContext, caseNode: PNode, caseIdx: int): TRanges =
 proc difference(xs, ys: TRanges): TRanges =
   template maybeAdd(value): untyped =
     let val = value
+    # Filter out invalid and duplicate interval, simplifies things considerably.
     if val.a <= val.b and (result.len == 0 or result[^1] != val):
       result.add(val)
 
@@ -138,20 +139,26 @@ proc difference(xs, ys: TRanges): TRanges =
     var overlapped = false
     while yi < ys.len:
       template y(offset = 0): untyped = ys[yi+offset]
+      # y covers all of x: emit nothing and skip to next x interval.
       if y.a <= x.a and y.b >= x.b:
         overlapped = true
         break
       if y.a in x or y.b in x:
+        # Emit on both sides of y with possibly duplicate/incorrect intervals
         let
+          # Cap to the start of x or after the end of the previous y
           prevA = if yi-1 >= 0: max(y(-1).b+1, x.a)
                   else: x.a
+          # Cap to the end of x or before the start of the next y
           nextB = if yi+1 < ys.len: min(x.b, y(1).a-1)
                   else: x.b
         if y.a != low(BiggestInt): maybeAdd(prevA .. y.a-1)
         if y.b != high(BiggestInt): maybeAdd(y.b+1 .. nextB)
         overlapped = true
+      # y may be useful to next x if y continues beyond x: skip to next x
       if y.b >= x.b: break
       inc(yi)
+    # No y segment touched x: emit all of x
     if not overlapped: result.add(x.a .. x.b)
 
 proc formatUnsafeBranchVals(c: PContext, t: PType, diffVals: TRanges): string =
