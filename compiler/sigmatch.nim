@@ -329,7 +329,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation
 
-proc concreteType(c: TCandidate, t: PType): PType =
+proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   case t.kind
   of tyNil:
     result = nil              # what should it be?
@@ -351,6 +351,13 @@ proc concreteType(c: TCandidate, t: PType): PType =
   of tyGenericInvocation:
     result = t
     doAssert(false, "cannot resolve type: " & typeToString(t))
+  of tyOwned:
+    # bug #11257: the comparison system.`==`[T: proc](x, y: T) works
+    # better without the 'owned' type:
+    if f != nil and f.len > 0 and f.sons[0].skipTypes({tyBuiltInTypeClass}).kind == tyProc:
+      result = t.lastSon
+    else:
+      result = t
   else:
     result = t                # Note: empty is valid here
 
@@ -1663,9 +1670,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # check if 'T' has a constraint as in 'proc p[T: Constraint](x: T)'
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
           let oldInheritancePenalty = c.inheritancePenalty
-          result = typeRel(c, f.lastSon, a, flags + {trDontBind})
+          result = typeRel(c, f.sons[0], a, flags + {trDontBind})
           if doBind and result notin {isNone, isGeneric}:
-            let concrete = concreteType(c, a)
+            let concrete = concreteType(c, a, f)
             if concrete == nil: return isNone
             put(c, f, concrete)
           # bug #6526
@@ -1684,7 +1691,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           a.sym.kind = skType
           a.flags.excl tfWildcard
         else:
-          concrete = concreteType(c, a)
+          concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone
         if doBind:

@@ -1,12 +1,15 @@
 discard """
   cmd: "nim c --newruntime $file"
-  errormsg: "sink parameter `a` is already consumed at tconsume_twice.nim(8, 6)"
-  line: 10
+  errormsg: "sink parameter `a` is already consumed at tconsume_twice.nim(11, 10)"
+  line: 13
 """
+type
+  Foo = ref object
 
-proc consumeTwice(a: owned proc()): owned proc() =
-  if a == nil:
+proc use(a: owned Foo): bool = discard
+proc consumeTwice(a: owned Foo): owned Foo =
+  if use(a):
     return
   return a
 
-assert consumeTwice(proc() = discard) != nil
+assert consumeTwice(Foo()) != nil
