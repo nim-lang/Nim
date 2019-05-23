@@ -2083,19 +2083,14 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
 
   let gp = sym.ast[genericParamsPos]
   for i in 0 ..< gp.len:
-    if sfImmediate notin sym.flags:
-      let idx = sym.typ.len + i
-      if idx < n.len:
-        tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
-      else:
-        dec(g.config.evalMacroCounter)
-        c.callsite = nil
-        localError(c.config, n.info, "expected " & $gp.len &
-                   " generic parameter(s)")
-    elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
+    let idx = sym.typ.len + i
+    if idx < n.len:
+      tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
+    else:
       dec(g.config.evalMacroCounter)
       c.callsite = nil
-      globalError(c.config, n.info, "static[T] or typedesc nor supported for .immediate macros")
+      localError(c.config, n.info, "expected " & $gp.len &
+                 " generic parameter(s)")
   # temporary storage:
   #for i in L ..< maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
