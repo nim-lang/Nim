@@ -2598,9 +2598,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
           result = semTemplateExpr(c, n, s, flags)
       of skType:
         # XXX think about this more (``set`` procs)
-        if n.len == 2:
+        let ambig = contains(c.ambiguousSymbols, s.id)
+        if not ambig and n.len == 2:
           result = semConv(c, n)
-        elif contains(c.ambiguousSymbols, s.id) and n.len == 1:
+        elif ambig and n.len == 1:
           errorUseQualifier(c, n.info, s)
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
