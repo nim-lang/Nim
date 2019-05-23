@@ -178,13 +178,13 @@ proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
-      var variantA = isLastRead(location, c, pc+1, pc)
+      let variantA = isLastRead(location, c, pc+1, pc)
       if variantA < 0: return -1
-      let variantB = isLastRead(location, c, pc + c.g[pc].dest, pc)
+      var variantB = isLastRead(location, c, pc + c.g[pc].dest, pc)
       if variantB < 0: return -1
-      elif variantA == high(int):
-        variantA = variantB
-      pc = variantA
+      elif variantB == high(int):
+        variantB = variantA
+      pc = variantB
     of InstrKind.join:
       let dest = pc + c.g[pc].dest
       if dest == comesFrom: return pc + 1
