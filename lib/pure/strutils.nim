@@ -1000,6 +1000,75 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
+proc fromBin*[T: SomeInteger](s: string): T =
+  ## Parses a binary integer value from a string `s`.
+  ##
+  ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: `0b`, `0B`. Underscores within
+  ## `s` are ignored.
+  ##
+  ## Does not check for overflow. If the value represented by `s`
+  ## is too big to fit into a return type, only the value of the rightmost
+  ## binary digits of `s` is returned without producing an error.
+  runnableExamples:
+    let s = "0b_0100_1000_1000_1000_1110_1110_1001_1001"
+    doAssert fromBin[int](s) == 1216933529
+    doAssert fromBin[int8](s) == 0b1001_1001'i8
+    doAssert fromBin[int8](s) == -103'i8
+    doAssert fromBin[uint8](s) == 153
+    doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
+    doAssert s.fromBin[:uint64] == 1216933529'u64
+
+  let p = parseutils.parseBin(s, result)
+  if p != s.len or p == 0:
+    raise newException(ValueError, "invalid binary integer: " & s)
+
+proc fromOct*[T: SomeInteger](s: string): T =
+  ## Parses an octal integer value from a string `s`.
+  ##
+  ## If `s` is not a valid octal integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: `0o`, `0O`. Underscores within
+  ## `s` are ignored.
+  ##
+  ## Does not check for overflow. If the value represented by `s`
+  ## is too big to fit into a return type, only the value of the rightmost
+  ## octal digits of `s` is returned without producing an error.
+  runnableExamples:
+    let s = "0o_123_456_777"
+    doAssert fromOct[int](s) == 21913087
+    doAssert fromOct[int8](s) == 0o377'i8
+    doAssert fromOct[int8](s) == -1'i8
+    doAssert fromOct[uint8](s) == 255'u8
+    doAssert s.fromOct[:int16] == 24063'i16
+    doAssert s.fromOct[:uint64] == 21913087'u64
+
+  let p = parseutils.parseOct(s, result)
+  if p != s.len or p == 0:
+    raise newException(ValueError, "invalid oct integer: " & s)
+
+proc fromHex*[T: SomeInteger](s: string): T =
+  ## Parses a hex integer value from a string `s`.
+  ##
+  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: `0x`, `0X`, `#`. Underscores within
+  ## `s` are ignored.
+  ##
+  ## Does not check for overflow. If the value represented by `s`
+  ## is too big to fit into a return type, only the value of the rightmost
+  ## hex digits of `s` is returned without producing an error.
+  runnableExamples:
+    let s = "0x_1235_8df6"
+    doAssert fromHex[int](s) == 305499638
+    doAssert fromHex[int8](s) == 0xf6'i8
+    doAssert fromHex[int8](s) == -10'i8
+    doAssert fromHex[uint8](s) == 246'u8
+    doAssert s.fromHex[:int16] == -29194'i16
+    doAssert s.fromHex[:uint64] == 305499638'u64
+
+  let p = parseutils.parseHex(s, result)
+  if p != s.len or p == 0:
+    raise newException(ValueError, "invalid hex integer: " & s)
+
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation.
