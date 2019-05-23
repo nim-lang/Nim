@@ -45,6 +45,7 @@
 - A bug allowed `macro foo(): int = 123` to compile even though a
   macros has to return a `NimNode`. This has been fixed.
 
+- With the exception of `uint` and `uint64`, conversion to unsigned types are now range checked during runtime.
 
 #### Breaking changes in the standard library
 
