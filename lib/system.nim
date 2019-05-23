@@ -3340,7 +3340,6 @@ template newException*(exceptn: typedesc, message: string;
   else:
     var e: ref exceptn
   new(e)
-  e.name = $exceptn
   e.msg = message
   e.parent = parentException
   e
