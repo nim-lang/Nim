@@ -1063,8 +1063,7 @@ template instantiateForRegion(allocator: untyped) =
       result = realloc(p, newSize)
 
   when hasThreadSupport:
-
-    template sharedMemStatsShared(v: int) {.immediate.} =
+    template sharedMemStatsShared(v: int) =
       acquireSys(heapLock)
       result = v
       releaseSys(heapLock)

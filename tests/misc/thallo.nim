@@ -28,7 +28,7 @@ macro macrotest(n: varargs[untyped]): untyped =
     result.add(newCall("write", n[1], n[i]))
   result.add(newCall("writeLine", n[1], newStrLitNode("")))
 
-macro debug(n: untyped): untyped {.immediate.} =
+macro debug(n: untyped): untyped =
   let n = callsite()
   result = newNimNode(nnkStmtList, n)
   for i in 1..n.len-1:
