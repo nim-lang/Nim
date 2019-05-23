@@ -2599,7 +2599,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skType:
         # XXX think about this more (``set`` procs)
         let ambig = contains(c.ambiguousSymbols, s.id)
-        if not ambig and n.len == 2:
+        if not (n[0].kind in {nkClosedSymChoice, nkOpenSymChoice, nkIdent} and ambig) and n.len == 2:
           result = semConv(c, n)
         elif ambig and n.len == 1:
           errorUseQualifier(c, n.info, s)
