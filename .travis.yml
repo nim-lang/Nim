@@ -31,6 +31,7 @@ addons:
   homebrew:
     packages:
     - boehmgc
+    - make
     - sfml
 
 before_script:
@@ -39,7 +40,7 @@ before_script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then shell_session_update() { :; }; fi
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
-  - sh build.sh
+  - make -j 2 LD=$CC
   - cd ..
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
   - echo PATH:${PATH}
