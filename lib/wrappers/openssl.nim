@@ -245,6 +245,8 @@ when compileOption("dynlibOverride", "ssl"):
     proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+    proc TLS_method*(): PSSL_METHOD =
+      SSLv23_method()
   else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
