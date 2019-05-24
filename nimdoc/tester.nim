@@ -1,20 +1,36 @@
 # Small program that runs the test cases for 'nim doc'.
+# To run this, cd to the git repo root, and run "nim c -r nimdoc/tester.nim".
 
 import strutils, os
 
 var
   failures = 0
 
-proc test(dir: string; fixup = false) =
+const
+  baseDir = "nimdoc"
+
+type
+  NimSwitches = object
+    doc: seq[string]
+    buildIndex: seq[string]
+
+proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
+  let
+    nimDocSwitches = switches.doc.join(" ")
+    nimBuildIndexSwitches = switches.buildIndex.join(" ")
+
   putEnv("SOURCE_DATE_EPOCH", "100000")
-  if execShellCmd("nim doc --project --index:on -o:$1/htmldocs $1/testproject.nim" % dir) != 0:
-    quit("FAILURE: nim doc failed")
 
-  if execShellCmd("nim buildIndex -o:$1/htmldocs/theindex.html $1/htmldocs" % [dir]) != 0:
-    quit("FAILURE: nim buildIndex failed")
+  if nimDocSwitches != "":
+    if execShellCmd("nim doc $1" % [nimDocSwitches]) != 0:
+      quit("FAILURE: nim doc failed")
 
-  for expected in walkDirRec(dir / "expected/"):
-    let produced = expected.replace('\\', '/').replace("/expected/", "/htmldocs/")
+  if nimBuildIndexSwitches != "":
+    if execShellCmd("nim buildIndex $1" % [nimBuildIndexSwitches]) != 0:
+      quit("FAILURE: nim buildIndex failed")
+
+  for expected in walkDirRec(prjDir / "expected/"):
+    let produced = expected.replace('\\', '/').replace("/expected/", "/$1/" % [docsDir])
     if not fileExists(produced):
       echo "FAILURE: files not found: ", produced
       inc failures
@@ -26,8 +42,22 @@ proc test(dir: string; fixup = false) =
         copyFile(produced, expected)
     else:
       echo "SUCCESS: files identical: ", produced
-  if failures == 0:
-    removeDir(dir / "htmldocs")
 
-test("nimdoc/testproject", defined(fixup))
+  if failures == 0:
+    removeDir(prjDir / docsDir)
+
+# Test "nim doc --project .."
+let
+  test1PrjName = "testproject"
+  test1Dir = baseDir / test1PrjName
+  test1DocsDir = "htmldocs"
+  test1Switches = NimSwitches(doc: @["--project",
+                                     "--index:on",
+                                     "--out:$1/$2" % [test1Dir, test1DocsDir],
+                                     "$1/$2.nim" % [test1Dir, test1PrjName]],
+                              buildIndex: @["--out:$1/$2/theindex.html" % [test1Dir, test1DocsDir],
+                                            "$1/$2" % [test1Dir, test1DocsDir]])
+testNimDoc(test1Dir, test1DocsDir, test1Switches, defined(fixup))
+
+# Check for failures
 if failures > 0: quit($failures & " failures occurred.")
