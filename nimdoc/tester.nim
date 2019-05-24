@@ -53,7 +53,7 @@ let
   test1DocsDir = "htmldocs"
   test1Switches = NimSwitches(doc: @["--project",
                                      "--index:on",
-                                     "--out:$1/$2" % [test1Dir, test1DocsDir],
+                                     "--outdir:$1/$2" % [test1Dir, test1DocsDir],
                                      "$1/$2.nim" % [test1Dir, test1PrjName]],
                               buildIndex: @["--out:$1/$2/theindex.html" % [test1Dir, test1DocsDir],
                                             "$1/$2" % [test1Dir, test1DocsDir]])
