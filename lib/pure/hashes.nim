@@ -60,17 +60,22 @@ proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
-  result = h +% val
-  result = result +% result shl 10
-  result = result xor (result shr 6)
+  let h = cast[uint](h)
+  let val = cast[uint](val)
+  var res = h + val
+  res = res + res shl 10
+  res = res xor (res shr 6)
+  result = cast[Hash](res)
 
 proc `!$`*(h: Hash): Hash {.inline.} =
   ## Finishes the computation of the hash value.
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
-  result = h +% h shl 3
-  result = result xor (result shr 11)
-  result = result +% result shl 15
+  let h = cast[uint](h) # Hash is practically unsigend.
+  var res = h + h shl 3
+  res = res xor (res shr 11)
+  res = res + res shl 15
+  result = cast[Hash](res)
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
@@ -105,7 +110,7 @@ proc hash*(x: pointer): Hash {.inline.} =
       }
     """
   else:
-    result = (cast[Hash](x)) shr 3 # skip the alignment
+    result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
 
 when not defined(booting):
   proc hash*[T: proc](x: T): Hash {.inline.} =
@@ -146,7 +151,8 @@ proc hash*(x: float): Hash {.inline.} =
 
 template bytewiseHashing(result: Hash, x: typed, start, stop: int) =
   for i in start .. stop:
-    result = result !& hash(x[i])
+    let xxx = hash(x[i])
+    result = result !& xxx
   result = !$result
 
 template hashImpl(result: Hash, x: typed, start, stop: int) =

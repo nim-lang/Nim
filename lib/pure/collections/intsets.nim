@@ -23,7 +23,7 @@ import
   hashes, math
 
 type
-  BitScalar = int
+  BitScalar = uint
 
 const
   InitIntSetSize = 8         # must be a power of two!
@@ -102,8 +102,9 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
 proc bitincl(s: var IntSet, key: int) {.inline.} =
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
-  t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-      `shl`(1, u and IntMask)
+  doassert u >= 0
+  t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+      (BitScalar(1) shl (u and IntMask))
 
 proc exclImpl(s: var IntSet, key: int) =
   if s.elems <= s.a.len:
@@ -113,11 +114,12 @@ proc exclImpl(s: var IntSet, key: int) =
         dec s.elems
         return
   else:
-    var t = intSetGet(s, `shr`(key, TrunkShift))
+    var t = intSetGet(s, key shr TrunkShift)
     if t != nil:
       var u = key and TrunkMask
-      t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
-          not `shl`(1, u and IntMask)
+      doAssert u >= 0
+      t.bits[u shr IntShift] = t.bits[u shr IntShift] and
+          not(BitScalar(1) shl (u and IntMask))
 
 template dollarImpl(): untyped =
   result = "{"
@@ -137,7 +139,7 @@ iterator items*(s: IntSet): int {.inline.} =
     while r != nil:
       var i = 0
       while i <= high(r.bits):
-        var w = r.bits[i]
+        var w: uint = r.bits[i]
         # taking a copy of r.bits[i] here is correct, because
         # modifying operations are not allowed during traversation
         var j = 0
@@ -186,7 +188,7 @@ proc contains*(s: IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
+      result = (t.bits[u shr IntShift] and (BitScalar(1) shl (u and IntMask))) != 0
     else:
       result = false
 
@@ -268,10 +270,10 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
+      result = (t.bits[u shr IntShift] and BitScalar(1) shl (u and IntMask)) != 0
       if not result:
-        t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-            `shl`(1, u and IntMask)
+        t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+            (BitScalar(1) shl (u and IntMask))
     else:
       incl(s, key)
       result = false

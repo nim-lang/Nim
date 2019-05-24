@@ -1272,24 +1272,55 @@ else:
   proc `mod`*(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
 
 when defined(nimNewShiftOps):
-  proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect.}
-    ## Computes the `shift right` operation of `x` and `y`, filling
-    ## vacant bit positions with zeros.
-    ##
-    ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
-    ## is different than in *C*.
-    ##
-    ## See also:
-    ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
-    ##
-    ## .. code-block:: Nim
-    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
-    ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
-    ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
-  proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect.}
+
+  when defined(oldShiftRight) or not defined(nimAshr):
+    proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect.}
+    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect.}
+    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect.}
+    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect.}
+    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect.}
+  else:
+    # proc shrimpl(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
+    # proc shrimpl(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+    # proc shrimpl(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+    # proc shrimpl(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+    # proc shrimpl(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
+
+
+    # proc `shr`*(x: int, y: SomeInteger): int =
+    #   sysAssert(x >= 0)
+    #   shrimpl(x,y)
+    # proc `shr`*(x: int8, y: SomeInteger): int8 =
+    #   sysAssert(x >= 0)
+    #   shrimpl(x,y)
+    # proc `shr`*(x: int16, y: SomeInteger): int16 =
+    #   sysAssert(x >= 0)
+    #   shrimpl(x,y)
+    # proc `shr`*(x: int32, y: SomeInteger): int32 =
+    #   sysAssert(x >= 0)
+    #   shrimpl(x,y)
+    # proc `shr`*(x: int64, y: SomeInteger): int64 =
+    #   sysAssert(x >= 0)
+    #   shrimpl(x,y)
+
+    proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
+      ## Computes the `shift right` operation of `x` and `y`, filling
+      ## vacant bit positions with the sign bit.
+      ##
+      ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
+      ## is different than in *C*.
+      ##
+      ## See also:
+      ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
+      ##
+      ## .. code-block:: Nim
+      ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+      ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
+      ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
+    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
 
   proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
     ## Computes the `shift left` operation of `x` and `y`.
