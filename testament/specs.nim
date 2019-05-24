@@ -78,7 +78,7 @@ proc getCmd*(s: TSpec): string =
     result = s.cmd
 
 const
-  targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
+  targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
 
 when not declared(parseCfgBool):

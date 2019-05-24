@@ -1837,9 +1837,9 @@ proc writeHeader(m: BModule) =
 
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
-      if m.compileToCpp: ".cpp"
-      elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".m"
-      else: ".c"
+      if m.compileToCpp: ".nim.cpp"
+      elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".nim.m"
+      else: ".nim.c"
   result = changeFileExt(completeCFilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
 when false:
