@@ -106,7 +106,7 @@ proc writeCommandLineUsage*(conf: ConfigRef) =
   msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
 
 proc addPrefix(switch: string): string =
-  if len(switch) == 1: result = "-" & switch
+  if len(switch) <= 1: result = "-" & switch
   else: result = "--" & switch
 
 const
@@ -770,6 +770,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optDocInternal}, arg, pass, info)
   of "multimethods":
     processOnOffSwitchG(conf, {optMultiMethods}, arg, pass, info)
+  of "":
+    conf.projectName = "-"
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)
