@@ -348,5 +348,4 @@ else:
     let rep = re(pattern, reflags)
     for f in items(filenames):
       walker(rep, f, counter)
-  if not oneline:
-    stdout.write($counter & " matches\n")
+  stdout.write($counter & " matches\n")
