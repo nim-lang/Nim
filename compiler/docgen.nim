@@ -670,7 +670,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
 
-  let external = AbsoluteFile(d.destFile).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+  let external = AbsoluteFile(d.destFile).relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
 
   var attype: Rope
   if k in routineKinds and nameNode.kind == nkSym:
