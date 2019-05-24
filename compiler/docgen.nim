@@ -109,6 +109,8 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
             else: conf.projectPath
     createDir(d)
     result = d / changeFileExt(filename, ext)
+  elif not conf.outFile.isEmpty:
+    result = absOutFile(conf)
   else:
     result = getOutFile(conf, filename, ext)
 
