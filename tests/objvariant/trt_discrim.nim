@@ -5,18 +5,11 @@ template reject(x) =
   static: assert(not compiles(x))
 
 type
-  Kind = enum k1, k2, k3, k4, k5
+  Kind = enum k1 = 2, k2 = 33, k3 = 84, k4 = 278, k5 = 1000 # Holed enum work!
   KindObj = object
     case kind: Kind
     of k1, k2..k3: i32: int32
     of k4: f32: float32
-    else: str: string
-
-  HoledKind = enum hk1 = 0, hk2 = 2, hk3 = 3, hk4 = 4, hk5 = 5
-  HoledObj = object
-    case kind: HoledKind
-    of hk1, hk2..hk3: i32: int32
-    of hk4: f32: float32
     else: str: string
 
   IntObj = object
@@ -24,7 +17,7 @@ type
     of low(int32) .. -1: bad: string
     of 0: neutral: string
     of 1 .. high(int32): good: string
-    else: error: string # maybe a bug in semtypes coverage checking?
+    else: error: string # semtypes overflows for big ranges.
 
   OtherKind = enum ok1, ok2, ok3, ok4, ok5
   NestedKindObj = object
@@ -83,14 +76,6 @@ reject: # elif branches are ignored
   of k1, k2, k3: discard KindObj(kind: kind, i32: 1)
   elif kind == k4: discard
   else: discard KindObj(kind: kind, str: "3")
-
-let holedKind = hk5
-
-reject: # Only ordinals, no holed enums...
-  case holedKind
-  of hk1, hk2, hk3: discard HoledObj(kind: holedKind, i32: 1)
-  of hk4: discard HoledObj(kind: holedKind, f32: 2.0)
-  else: discard HoledObj(kind: holedKind, str: "3")
 
 let intKind = 29'i32
 

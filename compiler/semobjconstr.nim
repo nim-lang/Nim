@@ -87,6 +87,41 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 type
   TRanges = seq[Slice[BiggestInt]]
 
+proc `-`(xs, ys: TRanges): TRanges =
+  var yi = 0
+  for x in xs:
+    var overlapped = false
+    while yi < ys.len:
+      template y(offset = 0): untyped = ys[yi+offset]
+      # y covers all of x: emit nothing and skip to next x interval.
+      if y.a <= x.a and y.b >= x.b:
+        overlapped = true
+        break
+      if y.a in x or y.b in x:
+        # Emit on both sides of y with possibly duplicate/incorrect intervals
+        let
+          # Cap to the start of x or after the end of the previous y
+          prevA = if yi-1 >= 0: max(y(-1).b+1, x.a)
+                  else: x.a
+          # Cap to the end of x or before the start of the next y
+          nextB = if yi+1 < ys.len: min(x.b, y(1).a-1)
+                  else: x.b
+
+        template maybeAdd(value) =
+          let val = value
+          # Filter out invalid and duplicate interval. This simplifies things.
+          if val.a <= val.b and (result.len == 0 or result[^1] != val):
+            result.add(val)
+
+        if y.a != low(BiggestInt): maybeAdd(prevA .. y.a-1)
+        if y.b != high(BiggestInt): maybeAdd(y.b+1 .. nextB)
+        overlapped = true
+      # y may be useful to next x if y continues beyond x: skip to next x
+      if y.b >= x.b: break
+      inc(yi)
+    # No y segment touched x: emit all of x
+    if not overlapped: result.add(x.a .. x.b)
+
 proc addBranchVals(s: var TRanges, b: PNode) =
   if b.kind != nkElifBranch:
     for i in 0 .. b.len-2:
@@ -117,7 +152,15 @@ proc invertBranchVals(c: PContext, t: PType, s: TRanges): TRanges =
   if s[^1].b != last:
     result.add(s[^1].b+1 .. last)
 
-proc branchVals(c: PContext, caseNode: PNode, caseIdx: int): TRanges =
+proc enumHoles(t: PType): TRanges =
+  var prev = t.n.sons[0].sym.position
+  for i in 1 .. t.n.sons.high:
+    let cur = t.n.sons[i].sym.position
+    if cur != prev+1: result.add(BiggestInt(prev+1) .. BiggestInt(cur-1))
+    prev = cur
+
+proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
+                isStmtBranch: bool): TRanges =
   if caseNode[caseIdx].kind == nkOfBranch:
     result.addBranchVals(caseNode[caseIdx])
     result = mergeBranchVals(result)
@@ -125,53 +168,31 @@ proc branchVals(c: PContext, caseNode: PNode, caseIdx: int): TRanges =
     for i in 1 .. caseNode.len-2:
       result.addBranchVals(caseNode[i])
     result = mergeBranchVals(result)
-    result = invertBranchVals(c, caseNode.sons[0].typ, result)
-
-proc difference(xs, ys: TRanges): TRanges =
-  template maybeAdd(value): untyped =
-    let val = value
-    # Filter out invalid and duplicate interval, simplifies things considerably.
-    if val.a <= val.b and (result.len == 0 or result[^1] != val):
-      result.add(val)
-
-  var yi = 0
-  for x in xs:
-    var overlapped = false
-    while yi < ys.len:
-      template y(offset = 0): untyped = ys[yi+offset]
-      # y covers all of x: emit nothing and skip to next x interval.
-      if y.a <= x.a and y.b >= x.b:
-        overlapped = true
-        break
-      if y.a in x or y.b in x:
-        # Emit on both sides of y with possibly duplicate/incorrect intervals
-        let
-          # Cap to the start of x or after the end of the previous y
-          prevA = if yi-1 >= 0: max(y(-1).b+1, x.a)
-                  else: x.a
-          # Cap to the end of x or before the start of the next y
-          nextB = if yi+1 < ys.len: min(x.b, y(1).a-1)
-                  else: x.b
-        if y.a != low(BiggestInt): maybeAdd(prevA .. y.a-1)
-        if y.b != high(BiggestInt): maybeAdd(y.b+1 .. nextB)
-        overlapped = true
-      # y may be useful to next x if y continues beyond x: skip to next x
-      if y.b >= x.b: break
-      inc(yi)
-    # No y segment touched x: emit all of x
-    if not overlapped: result.add(x.a .. x.b)
+    let typ = caseNode.sons[0].typ
+    result = invertBranchVals(c, typ, result)
+    if isStmtBranch and typ.enumHasHoles:
+      result = result - enumHoles(typ)
 
 proc formatUnsafeBranchVals(c: PContext, t: PType, diffVals: TRanges): string =
-  template toStr(val): untyped =
-    if t.kind != tyEnum: $val
-    else: t.n.sons[val.int].sym.name.s
-
   var strs: seq[string]
-  for val in diffVals:
-    if val.a == val.b:
-      strs.add(toStr(val.a))
-    else:
-      strs.add(toStr(val.a) & " .. " & toStr(val.b))
+  if t.kind == tyEnum:
+    # Ugly because of holed enums...
+    var i = 0
+    for val in diffVals:
+      template sym: PSym = t.n.sons[i].sym
+      while sym.position < val.a: inc(i)
+      let strA = sym.name.s
+      if val.a == val.b:
+        strs.add(strA)
+      else:
+        while sym.position < val.b: inc(i)
+        strs.add(strA & " .. " & sym.name.s)
+  else:
+    for val in diffVals:
+      if val.a == val.b:
+        strs.add($val.a)
+      else:
+        strs.add($val.a & " .. " & $val.b)
   result = strs.join(", ")
 
 proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
@@ -299,7 +320,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         let (ctorCase, ctorIdx) = findUsefulCaseContext(c, discriminatorVal)
         if ctorCase == nil:
           badDiscriminatorError()
-        elif not isOrdinalType(discriminatorVal.sym.typ):
+        elif not isOrdinalType(discriminatorVal.sym.typ, true):
           localError(c.config, discriminatorVal.info,
             "branch initialization with a runtime discriminator only " &
             "supports ordinal types.")
@@ -309,9 +330,9 @@ proc semConstructFields(c: PContext, recNode: PNode,
             "`elif` branch.")
         else:
           var
-            ctorBranchVals = branchVals(c, ctorCase, ctorIdx)
-            recBranchVals = branchVals(c, recNode, selectedBranch)
-            branchValsDiff = difference(ctorBranchVals, recBranchVals)
+            ctorBranchVals = branchVals(c, ctorCase, ctorIdx, true)
+            recBranchVals = branchVals(c, recNode, selectedBranch, false)
+            branchValsDiff = ctorBranchVals - recBranchVals
           if branchValsDiff.len != 0:
             localError(c.config, discriminatorVal.info, ("possible values " &
               "{$2} are in conflict with discriminator values for " &
