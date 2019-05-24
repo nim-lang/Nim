@@ -85,7 +85,11 @@ when defineSsl:
       CVerifyNone, CVerifyPeer
 
     SslProtVersion* = enum
-      protSSLv2, protSSLv3, protTLSv1, protSSLv23
+      protSSLv2 {.deprecated.}
+      protSSLv3 {.deprecated.}
+      protTLSv1 {.deprecated.}
+      protSSLv23 {.deprecated.}
+      protTLS
 
     SslContext* = ref object
       context*: SslCtx
@@ -513,13 +517,13 @@ when defineSsl:
       if SSL_CTX_check_private_key(ctx) != 1:
         raiseSSLError("Verification of private key file failed.")
 
-  proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
+  proc newContext*(protVersion = protTLS, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = "ALL"): SSLContext =
     ## Creates an SSL context.
     ##
-    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
-    ## are available with the addition of ``protSSLv23`` which allows for
-    ## compatibility with all of them.
+    ## Protocol version specifies the protocol to use. ``protTLS`` will
+    ## negotiate the highest version mutually supported
+    ## by the client and the server
     ##
     ## There are currently only two options for verify mode;
     ## one is ``CVerifyNone`` and with it certificates will not be verified
@@ -532,12 +536,14 @@ when defineSsl:
     ## ``openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout mycert.pem -out mycert.pem``.
     var newCTX: SSL_CTX
     case protVersion
+    of protTLS:
+      newCTX = SSL_CTX_new(TLS_method())
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
     of protSSLv2:
-      raiseSslError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
+      raiseSslError("SSLv2 is no longer secure and has been deprecated, use protTLS")
     of protSSLv3:
-      raiseSslError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
+      raiseSslError("SSLv3 is no longer secure and has been deprecated, use protTLS")
     of protTLSv1:
       newCTX = SSL_CTX_new(TLSv1_method())
 
