@@ -277,7 +277,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
       a, b: Expression
 
   # watch out: 'eval' relies on dynamic binding
-  method eval(e: Expression): int =
+  method eval(e: Expression): int {.base.} =
     # override this base method
     quit "to override!"
 
@@ -300,7 +300,7 @@ In a multi-method all parameters that have an object type are used for the
 dispatching:
 
 .. code-block:: nim
-    :test: "nim c $1"
+    :test: "nim c --multiMethods:on $1"
 
   type
     Thing = ref object of RootObj
@@ -611,7 +611,7 @@ To pass a block of statements to a template, use 'untyped' for the last paramete
     :test: "nim c $1"
 
   template withFile(f: untyped, filename: string, mode: FileMode,
-                    body: untyped): typed =
+                    body: untyped) =
     let fn = filename
     var f: File
     if open(f, fn, mode):
