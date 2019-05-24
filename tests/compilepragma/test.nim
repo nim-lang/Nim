@@ -1,5 +1,6 @@
 discard """
   output: '''44'''
+  joinable: "false"
 """
 
 {.compile: "test.c".}
