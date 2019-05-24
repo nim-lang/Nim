@@ -261,15 +261,15 @@ proc getQuality(s: PSym): range[0..100] =
     if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
   return 100
 
-template wholeSymTab(cond, section: untyped) =
+template wholeSymTab(cond, section: untyped) {.dirty.} =
   var isLocal = true
   var scopeN = 0
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
     dec scopeN
     for item in scope.symbols:
-      let it {.inject.} = item
-      var pm {.inject.}: PrefixMatch
+      let it = item
+      var pm: PrefixMatch
       if cond:
         outputs.add(symToSuggest(c.config, it, isLocal = isLocal, section, info, getQuality(it),
                                  pm, c.inTypeContext > 0, scopeN))

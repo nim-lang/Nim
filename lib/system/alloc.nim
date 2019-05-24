@@ -984,7 +984,7 @@ when defined(nimTypeNames):
 
 # ---------------------- thread memory region -------------------------------
 
-template instantiateForRegion(allocator: untyped) =
+template instantiateForRegion(allocator: untyped) {.dirty.} =
   {.push stackTrace: off.}
 
   when defined(fulldebug):

@@ -119,6 +119,7 @@ type
     owner: PSym
     cursorInBody: bool # only for nimsuggest
     scopeN: int
+    isDotField: int
 
 template withBracketExpr(ctx, x, body: untyped) =
   body
@@ -326,6 +327,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
+      elif c.isDotField > 0:
+        result = n
       elif contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
       elif contains(c.toMixin, s.name.id):
@@ -529,7 +532,14 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         return symChoice(c.c, n, s, scForceOpen)
       else:
         return symChoice(c.c, n, s, scOpen)
-    result = semTemplBodySons(c, n)
+    if n.kind == nkDotExpr:
+      result = n
+      result.sons[0] = semTemplBody(c, n.sons[0])
+      inc c.isDotField
+      result.sons[1] = semTemplBody(c, n.sons[1])
+      dec c.isDotField
+    else:
+      result = semTemplBodySons(c, n)
   else:
     result = semTemplBodySons(c, n)
 
