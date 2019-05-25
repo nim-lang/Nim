@@ -1551,7 +1551,7 @@ A small example:
 
 .. code-block:: nim
 
-  var unknownKind = nkSub
+  let unknownKind = nkSub
 
   # invalid: unsafe initialization because the kind field is not statically known:
   var y = Node(kind: unknownKind, strVal: "y")
