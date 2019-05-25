@@ -28,11 +28,11 @@ addons:
     - libsdl1.2-dev
     - libgc-dev
     - libsfml-dev
-
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install boehmgc; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sfml; fi
+  homebrew:
+    packages:
+    - boehmgc
+    - make
+    - sfml
 
 before_script:
   - set -e
@@ -40,7 +40,7 @@ before_script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then shell_session_update() { :; }; fi
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
-  - sh build.sh
+  - make -j 2 LD=$CC
   - cd ..
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
   - echo PATH:${PATH}
