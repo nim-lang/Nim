@@ -128,3 +128,11 @@ reject:
     of ok1..ok3: discard NestedKindObj(kind: kind, otherKind: otherKind, i32: 3)
     else: discard NestedKindObj(kind: kind, otherKind: otherKind,
                                 nestedStr: "nested")
+
+var varkind = k4
+
+reject: # not immutable.
+  case varkind
+  of k1, k2, k3: discard KindObj(varkind: kind, i32: 1)
+  of k4: discard KindObj(varkind: kind, f32: 2.0)
+  else: discard KindObj(varkind: kind, str: "3")

@@ -1544,7 +1544,8 @@ As a special rule, the discriminator kind can also be bounded using a ``case``
 statement. If possible values of the discriminator variable in a
 ``case`` statement branch are a subset of discriminator values for the selected
 object branch, the initialization is considered valid. This analysis only works
-for discriminators of an ordinal type and disregards ``elif`` branches.
+for immutable discriminators of an ordinal type and disregards ``elif``
+branches.
 
 A small example:
 

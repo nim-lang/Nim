@@ -250,6 +250,10 @@ proc semConstructFields(c: PContext, recNode: PNode,
         let (ctorCase, ctorIdx) = findUsefulCaseContext(c, discriminatorVal)
         if ctorCase == nil:
           badDiscriminatorError()
+        elif discriminatorVal.sym.kind != skLet:
+          localError(c.config, discriminatorVal.info,
+            "runtime discriminator must be immutable if branch fields are " &
+            "initialized, a 'let' binding is required.")
         elif not isOrdinalType(discriminatorVal.sym.typ, true) or
             lengthOrd(c.config, discriminatorVal.sym.typ) > MaxSetElements:
           localError(c.config, discriminatorVal.info,
