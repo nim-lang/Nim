@@ -375,6 +375,10 @@ proc nameToCC*(name: string): TSystemCC =
       return i
   result = ccNone
 
+proc listCCnames(): seq[string] =
+  for i in succ(ccNone) .. high(TSystemCC):
+    result.add CC[i].name
+
 proc isVSCompatible*(conf: ConfigRef): bool =
   return conf.cCompiler == ccVcc or
           conf.cCompiler == ccClangCl or
@@ -408,7 +412,8 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
 proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.cCompiler = nameToCC(ccname)
   if conf.cCompiler == ccNone:
-    localError(conf, info, "unknown C compiler: '$1'" % ccname)
+    let ccList = listCCnames().join(", ")
+    localError(conf, info, "unknown C compiler: '$1'. Available options are: $2" % [ccname, ccList])
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.ccompilerpath = getConfigVar(conf, conf.cCompiler, ".path")
