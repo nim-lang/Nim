@@ -1712,8 +1712,9 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
           x.methods.add((col,s))
-    if not foundObj:
-      message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
+    message(c.config, n.info, warnDeprecated, "generic methods are deprecated")
+    #if not foundObj:
+    #  message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
   else:
     # why check for the body? bug #2400 has none. Checking for sfForward makes
     # no sense either.

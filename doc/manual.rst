@@ -3526,6 +3526,8 @@ the effects that a call to ``m`` might cause.
 
 **Note**: Compile-time execution is not (yet) supported for methods.
 
+**Note**: Starting from Nim 0.20, generic methods are deprecated.
+
 
 Inhibit dynamic method resolution via procCall
 -----------------------------------------------
