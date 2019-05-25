@@ -13,11 +13,10 @@ type
     else: str: string
 
   IntObj = object
-    case kind: int32
-    of low(int32) .. -1: bad: string
+    case kind: int16
+    of low(int16) .. -1: bad: string
     of 0: neutral: string
-    of 1 .. high(int32): good: string
-    else: error: string # semtypes overflows for big ranges.
+    of 1 .. high(int16): good: string
 
   OtherKind = enum ok1, ok2, ok3, ok4, ok5
   NestedKindObj = object
@@ -77,27 +76,24 @@ reject: # elif branches are ignored
   elif kind == k4: discard
   else: discard KindObj(kind: kind, str: "3")
 
-let intKind = 29'i32
+let intKind = 29'i16
 
 accept:
   case intKind
-  of low(int32) .. -1: discard IntObj(kind: intKind, bad: "bad")
+  of low(int16) .. -1: discard IntObj(kind: intKind, bad: "bad")
   of 0: discard IntObj(kind: intKind, neutral: "neutral")
-  of 1 .. high(int32): discard IntObj(kind: intKind, good: "good")
-  else: discard IntObj(kind: intKind, error: "error")
+  of 1 .. high(int16): discard IntObj(kind: intKind, good: "good")
 
 reject: # 0 leaks to else
   case intKind
-  of low(int32) .. -1: discard IntObj(kind: intKind, bad: "bad")
-  of 1 .. high(int32): discard IntObj(kind: intKind, good: "good")
-  else: discard IntObj(kind: intKind, error: "error")
+  of low(int16) .. -1: discard IntObj(kind: intKind, bad: "bad")
+  of 1 .. high(int16): discard IntObj(kind: intKind, good: "good")
 
 accept:
   case intKind
-  of low(int32) .. -1: discard IntObj(kind: intKind, bad: "bad")
+  of low(int16) .. -1: discard IntObj(kind: intKind, bad: "bad")
   of 0: discard IntObj(kind: intKind, neutral: "neutral")
-  of 1 .. 9, 10, 11 .. high(int32): discard IntObj(kind: intKind, good: "good")
-  else: discard IntObj(kind: intKind, error: "error")
+  of 10, 11 .. high(int16), 1 .. 9: discard IntObj(kind: intKind, good: "good")
 
 accept:
   case kind

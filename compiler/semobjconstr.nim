@@ -84,116 +84,46 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 
   return false
 
-type
-  TRanges = seq[Slice[BiggestInt]]
-
-proc `-`(xs, ys: TRanges): TRanges =
-  var yi = 0
-  for x in xs:
-    var overlapped = false
-    while yi < ys.len:
-      template y(offset = 0): untyped = ys[yi+offset]
-      # y covers all of x: emit nothing and skip to next x interval.
-      if y.a <= x.a and y.b >= x.b:
-        overlapped = true
-        break
-      if y.a in x or y.b in x:
-        # Emit on both sides of y with possibly duplicate/incorrect intervals
-        let
-          # Cap to the start of x or after the end of the previous y
-          prevA = if yi-1 >= 0: max(y(-1).b+1, x.a)
-                  else: x.a
-          # Cap to the end of x or before the start of the next y
-          nextB = if yi+1 < ys.len: min(x.b, y(1).a-1)
-                  else: x.b
-
-        template maybeAdd(value) =
-          let val = value
-          # Filter out invalid and duplicate interval. This simplifies things.
-          if val.a <= val.b and (result.len == 0 or result[^1] != val):
-            result.add(val)
-
-        if y.a != low(BiggestInt): maybeAdd(prevA .. y.a-1)
-        if y.b != high(BiggestInt): maybeAdd(y.b+1 .. nextB)
-        overlapped = true
-      # y may be useful to next x if y continues beyond x: skip to next x
-      if y.b >= x.b: break
-      inc(yi)
-    # No y segment touched x: emit all of x
-    if not overlapped: result.add(x.a .. x.b)
-
-proc addBranchVals(s: var TRanges, b: PNode) =
+template processBranchVals(b, op) =
   if b.kind != nkElifBranch:
     for i in 0 .. b.len-2:
       if b[i].kind == nkIntLit:
-        s.add(b[i].intVal .. b[i].intVal)
+        result.op(b[i].intVal.int)
       elif b[i].kind == nkRange:
-        s.add(b[i][0].intVal .. b[i][1].intVal)
+        for i in b[i][0].intVal .. b[i][1].intVal:
+          result.op(i.int)
 
-proc mergeBranchVals(s: var TRanges): TRanges =
-  if s.len == 0: return
-  sort(s, proc (x, y: Slice[BiggestInt]): int = cmp(x.a, y.a))
-  result.add(s[0])
-  for i in 1 ..< s.len:
-    if result[^1].b == s[i].a-1:
-      result[^1].b = s[i].b
-    else:
-      result.add(s[i])
-
-proc invertBranchVals(c: PContext, t: PType, s: TRanges): TRanges =
-  let
-    first = firstOrd(c.config, t)
-    last = lastOrd(c.config, t)
-  if s.len == 0: return @[first .. last]
-  if s[0].a != first:
-    result.add(first .. s[0].a-1)
-  for i in 0 ..< s.len-1:
-    result.add(s[i].b+1 .. s[i+1].a-1)
-  if s[^1].b != last:
-    result.add(s[^1].b+1 .. last)
-
-proc enumHoles(t: PType): TRanges =
-  var prev = t.n.sons[0].sym.position
-  for i in 1 .. t.n.sons.high:
-    let cur = t.n.sons[i].sym.position
-    if cur != prev+1: result.add(BiggestInt(prev+1) .. BiggestInt(cur-1))
-    prev = cur
+proc allPossibleValues(c: PContext, t: PType): IntSet =
+  result = initIntSet()
+  if t.kind == tyEnum:
+    for i in 1 .. t.n.sons.high:
+      result.incl(t.n.sons[i].sym.position)
+  else:
+    for i in firstOrd(c.config, t) .. lastOrd(c.config, t):
+      result.incl(i.int)
 
 proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
-                isStmtBranch: bool): TRanges =
+                isStmtBranch: bool): IntSet =
   if caseNode[caseIdx].kind == nkOfBranch:
-    result.addBranchVals(caseNode[caseIdx])
-    result = mergeBranchVals(result)
+    result = initIntSet()
+    processBranchVals(caseNode[caseIdx], incl)
   else:
+    result = allPossibleValues(c, caseNode.sons[0].typ)
     for i in 1 .. caseNode.len-2:
-      result.addBranchVals(caseNode[i])
-    result = mergeBranchVals(result)
-    let typ = caseNode.sons[0].typ
-    result = invertBranchVals(c, typ, result)
-    if isStmtBranch and typ.enumHasHoles:
-      result = result - enumHoles(typ)
+      processBranchVals(caseNode[i], excl)
 
-proc formatUnsafeBranchVals(c: PContext, t: PType, diffVals: TRanges): string =
-  var strs: seq[string]
-  if t.kind == tyEnum:
-    # Ugly because of holed enums...
-    var i = 0
-    for val in diffVals:
-      template sym: PSym = t.n.sons[i].sym
-      while sym.position < val.a: inc(i)
-      let strA = sym.name.s
-      if val.a == val.b:
-        strs.add(strA)
-      else:
-        while sym.position < val.b: inc(i)
-        strs.add(strA & " .. " & sym.name.s)
-  else:
-    for val in diffVals:
-      if val.a == val.b:
-        strs.add($val.a)
-      else:
-        strs.add($val.a & " .. " & $val.b)
-  result = strs.join(", ")
+proc formatUnsafeBranchVals(c: PContext, t: PType, diffVals: IntSet): string =
+  if diffVals.len <= 32:
+    var strs: seq[string]
+    if t.kind == tyEnum:
+      var i = 0
+      for val in diffVals:
+        while t.n.sons[i].sym.position < val: inc(i)
+        strs.add(t.n.sons[i].sym.name.s)
+    else:
+      for val in diffVals:
+        strs.add($val)
+    result = "{" & strs.join(", ") & "} "
 
 proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
   for i in countdown(c.p.caseContext.high, 0):
@@ -320,10 +250,11 @@ proc semConstructFields(c: PContext, recNode: PNode,
         let (ctorCase, ctorIdx) = findUsefulCaseContext(c, discriminatorVal)
         if ctorCase == nil:
           badDiscriminatorError()
-        elif not isOrdinalType(discriminatorVal.sym.typ, true):
+        elif not isOrdinalType(discriminatorVal.sym.typ, true) or
+            lengthOrd(c.config, discriminatorVal.sym.typ) > MaxSetElements:
           localError(c.config, discriminatorVal.info,
             "branch initialization with a runtime discriminator only " &
-            "supports ordinal types.")
+            "supports ordinal types with 2^16 elements or less.")
         elif ctorCase[ctorIdx].kind == nkElifBranch:
           localError(c.config, discriminatorVal.info, "branch initialization " &
             "with a runtime discriminator is not supported inside of an " &
@@ -335,7 +266,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
             branchValsDiff = ctorBranchVals - recBranchVals
           if branchValsDiff.len != 0:
             localError(c.config, discriminatorVal.info, ("possible values " &
-              "{$2} are in conflict with discriminator values for " &
+              "$2are in conflict with discriminator values for " &
               "selected object branch $1.") % [$selectedBranch,
               formatUnsafeBranchVals(c, recNode.sons[0].typ, branchValsDiff)])
       else:
