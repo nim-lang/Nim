@@ -152,7 +152,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     result = getStorageLoc(n.sons[0])
   else: result = OnUnknown
 
-proc canMove(p: BProc, n: PNode): bool =
+proc canMove(p: BProc, n: PNode; dest: TLoc): bool =
   # for now we're conservative here:
   if n.kind == nkBracket:
     # This needs to be kept consistent with 'const' seq code
@@ -165,6 +165,9 @@ proc canMove(p: BProc, n: PNode): bool =
     # Empty strings are codegen'd as NIM_NIL so it's just a pointer copy
     return true
   result = n.kind in nkCallKinds
+  #if not result and dest.k == locTemp:
+  #  return true
+
   #if result:
   #  echo n.info, " optimized ", n
   #  result = false
@@ -271,7 +274,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tySequence:
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
@@ -280,7 +283,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyString:
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
     else:
       if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
