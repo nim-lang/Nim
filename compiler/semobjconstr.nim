@@ -96,8 +96,8 @@ template processBranchVals(b, op) =
 proc allPossibleValues(c: PContext, t: PType): IntSet =
   result = initIntSet()
   if t.kind == tyEnum:
-    for i in 1 .. t.n.sons.high:
-      result.incl(t.n.sons[i].sym.position)
+    for field in t.n.sons:
+      result.incl(field.sym.position)
   else:
     for i in firstOrd(c.config, t) .. lastOrd(c.config, t):
       result.incl(i.int)
