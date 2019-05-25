@@ -46,13 +46,13 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
   if failures == 0 and ((prjDir / docsDir) != prjDir):
     removeDir(prjDir / docsDir)
 
-# Test "nim doc --project --outdir:.. --index:on .."
+# Test "nim doc --project --out:.. --index:on .."
 let
   test1PrjName = "testproject"
   test1Dir = baseDir / test1PrjName
   test1DocsDir = "htmldocs"
   test1Switches = NimSwitches(doc: @["--project",
-                                     "--outdir:$1/$2" % [test1Dir, test1DocsDir],
+                                     "--out:$1/$2" % [test1Dir, test1DocsDir],
                                      "--index:on",
                                      "$1/$2.nim" % [test1Dir, test1PrjName]],
                               buildIndex: @["--out:$1/$2/theindex.html" % [test1Dir, test1DocsDir],
