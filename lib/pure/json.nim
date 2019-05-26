@@ -188,48 +188,35 @@ type
 
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
-  new(result)
-  result.kind = JString
-  result.str = s
+  result = JsonNode(kind: JString, str: s)
 
 proc newJStringMove(s: string): JsonNode =
-  new(result)
-  result.kind = JString
+  result = JsonNode(kind: JString)
   shallowCopy(result.str, s)
 
 proc newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = n
+  result = JsonNode(kind: JInt, num: n)
 
 proc newJFloat*(n: float): JsonNode =
   ## Creates a new `JFloat JsonNode`.
-  new(result)
-  result.kind = JFloat
-  result.fnum  = n
+  result = JsonNode(kind: JFloat, fnum: n)
 
 proc newJBool*(b: bool): JsonNode =
   ## Creates a new `JBool JsonNode`.
-  new(result)
-  result.kind = JBool
-  result.bval = b
+  result = JsonNode(kind: JBool, bval: b)
 
 proc newJNull*(): JsonNode =
   ## Creates a new `JNull JsonNode`.
-  new(result)
+  result = JsonNode(kind: JNull)
 
 proc newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
-  new(result)
-  result.kind = JObject
-  result.fields = initOrderedTable[string, JsonNode](4)
+  result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](4))
 
 proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
-  new(result)
-  result.kind = JArray
-  result.elems = @[]
+  result = JsonNode(kind: JArray, elems: @[])
 
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
@@ -309,45 +296,31 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
 
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
-  new(result)
-  result.kind = JString
-  result.str = s
+  result = JsonNode(kind: JString, str: s)
 
 proc `%`*(n: uint): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = BiggestInt(n)
+  result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: int): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = n
+  result = JsonNode(kind: JInt, num: n)
 
 proc `%`*(n: BiggestUInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = BiggestInt(n)
+  result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = n
+  result = JsonNode(kind: JInt, num: n)
 
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
-  new(result)
-  result.kind = JFloat
-  result.fnum  = n
+  result = JsonNode(kind: JFloat, fnum: n)
 
 proc `%`*(b: bool): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JBool JsonNode`.
-  new(result)
-  result.kind = JBool
-  result.bval = b
+  result = JsonNode(kind: JBool, bval: b)
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`

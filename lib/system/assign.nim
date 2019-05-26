@@ -232,5 +232,9 @@ proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
                             L: int) {.compilerProc.} =
   var oldBranch = selectBranch(oldDiscVal, L, a)
   var newBranch = selectBranch(newDiscVal, L, a)
-  if newBranch != oldBranch and oldDiscVal != 0:
-    sysFatal(FieldError, "assignment to discriminant changes object branch")
+  when defined(nimOldCaseObjects):
+    if newBranch != oldBranch and oldDiscVal != 0:
+      sysFatal(FieldError, "assignment to discriminant changes object branch")
+  else:
+    if newBranch != oldBranch:
+      sysFatal(FieldError, "assignment to discriminant changes object branch")

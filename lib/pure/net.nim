@@ -117,21 +117,17 @@ const
 type
   SocketImpl* = object ## socket type
     fd: SocketHandle
-    case isBuffered: bool # determines whether this socket is buffered.
-    of true:
-      buffer: array[0..BufferSize, char]
-      currPos: int # current index in buffer
-      bufLen: int # current length of buffer
-    of false: nil
+    isBuffered: bool # determines whether this socket is buffered.
+    buffer: array[0..BufferSize, char]
+    currPos: int # current index in buffer
+    bufLen: int # current length of buffer
     when defineSsl:
-      case isSsl: bool
-      of true:
-        sslHandle: SSLPtr
-        sslContext: SSLContext
-        sslNoHandshake: bool # True if needs handshake.
-        sslHasPeekChar: bool
-        sslPeekChar: char
-      of false: nil
+      isSsl: bool
+      sslHandle: SSLPtr
+      sslContext: SSLContext
+      sslNoHandshake: bool # True if needs handshake.
+      sslHasPeekChar: bool
+      sslPeekChar: char
     lastError: OSErrorCode ## stores the last error on this socket
     domain: Domain
     sockType: SockType
@@ -235,7 +231,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
     currentByte:uint16 = 0
     separatorValid = false
 
-  result.family = IpAddressFamily.IPv4
+  result = IpAddress(family: IpAddressFamily.IPv4)
 
   for i in 0 .. high(addressStr):
     if addressStr[i] in strutils.Digits: # Character is a number
@@ -264,7 +260,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
 proc parseIPv6Address(addressStr: string): IpAddress =
   ## Parses IPv6 adresses
   ## Raises ValueError on errors
-  result.family = IpAddressFamily.IPv6
+  result = IpAddress(family: IpAddressFamily.IPv6)
   if addressStr.len < 2:
     raise newException(ValueError, "Invalid IP Address")
 
