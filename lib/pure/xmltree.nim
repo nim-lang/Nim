@@ -70,8 +70,7 @@ const
 
 proc newXmlNode(kind: XmlNodeKind): XmlNode =
   ## Creates a new ``XmlNode``.
-  new(result)
-  result.k = kind
+  result = XmlNode(k: kind)
 
 proc newElement*(tag: string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnElement`` with the given `tag`.

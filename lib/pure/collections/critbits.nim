@@ -57,9 +57,7 @@ proc hasKey*[T](c: CritBitTree[T], key: string): bool {.inline.} =
 
 proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
   if c.root == nil:
-    new c.root
-    c.root.isleaf = true
-    c.root.key = key
+    c.root = Node[T](isleaf: true, key: key)
     result = c.root
   else:
     var it = c.root
@@ -89,9 +87,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
 
     var inner: Node[T]
     new inner
-    new result
-    result.isLeaf = true
-    result.key = key
+    result = Node[T](isLeaf: true, key: key)
     inner.otherBits = chr(newOtherBits)
     inner.byte = newByte
     inner.child[1 - dir] = result

@@ -115,6 +115,9 @@
   ints and floats to string have been deprecated.
   Use `string.addInt(int)` and `string.addFloat(float)` instead.
 
+- ``case object`` branch transitions via ``system.reset`` are deprecated.
+  Compile your code with ``-d:nimOldCaseObjects`` for a transition period.
+
 
 #### Breaking changes in the compiler
 

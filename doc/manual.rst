@@ -1538,10 +1538,23 @@ the ``case`` statement: The branches in a ``case`` section may be indented too.
 
 In the example the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
-new value must not lead to a change of the active object branch. For an object
-branch switch ``system.reset`` has to be used. Also, when the fields of a
-particular branch are specified during object construction, the corresponding
-discriminator value must be specified as a constant expression.
+new value must not lead to a change of the active object branch. Also, when the
+fields of a particular branch are specified during object construction, the
+corresponding discriminator value must be specified as a constant expression.
+
+Instead of changing the active object branch, replace the old object in memory
+with a new one completely:
+
+.. code-block:: nim
+
+  var x = Node(kind: nkAdd, leftOp: Node(kind: nkInt, intVal: 4),
+                            rightOp: Node(kind: nkInt, intVal: 2))
+  # change the node's contents:
+  x[] = NodeObj(kind: nkString, strVal: "abc")
+
+
+Starting with version 0.20 ``system.reset`` cannot be used anymore to support
+object branch changes as this never was completely memory safe.
 
 As a special rule, the discriminator kind can also be bounded using a ``case``
 statement. If possible values of the discriminator variable in a
