@@ -1543,6 +1543,29 @@ branch switch ``system.reset`` has to be used. Also, when the fields of a
 particular branch are specified during object construction, the corresponding
 discriminator value must be specified as a constant expression.
 
+As a special rule, the discriminator kind can also be bounded using a ``case``
+statement. If possible values of the discriminator variable in a
+``case`` statement branch are a subset of discriminator values for the selected
+object branch, the initialization is considered valid. This analysis only works
+for immutable discriminators of an ordinal type and disregards ``elif``
+branches.
+
+A small example:
+
+.. code-block:: nim
+
+  let unknownKind = nkSub
+
+  # invalid: unsafe initialization because the kind field is not statically known:
+  var y = Node(kind: unknownKind, strVal: "y")
+
+  var z = Node()
+  case unknownKind
+  of nkAdd, nkSub:
+    # valid: possible values of this branch are a subset of nkAdd/nkSub object branch:
+    z = Node(kind: unknownKind, leftOp: Node(), rightOp: Node())
+  else:
+    echo "ignoring: ", unknownKind
 
 Set type
 --------
