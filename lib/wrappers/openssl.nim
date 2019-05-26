@@ -232,11 +232,48 @@ const
   BIO_C_DO_STATE_MACHINE = 101
   BIO_C_GET_SSL = 110
 
+  SSL3_VERSION* = 0x0300
+  TLS1_VERSION* = 0x0301
+  TLS1_1_VERSION* = 0x0302
+  TLS1_2_VERSION* = 0x0303
+  TLS1_3_VERSION* = 0x0304
+
 proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 
 # TLS_method(), TLS_server_method(), TLS_client_method() are introduced in 1.1.0
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
+
+proc SSL_CTX_set_options(ssl: SslCtx, opts: uint64): culong {.
+  cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_clear_options(ssl: SslCtx, opts: uint64): culong {.
+  cdecl, dynlib: DLLSSLName, importc.}
+template SSL_CTX_set_min_proto_version_backport(ssl: SslCtx, version: int) =
+  # SSL_CTX_set_min_proto_version was introduced in OpenSSL 1.1,
+  # this is a backport for OpenSSL 1.0
+  const
+    ssl3 = SSL_OP_NO_SSLv2
+    tls1 = ssl3 or SSL_OP_NO_SSLv3
+    tls11 = tls1 or SSL_OP_NO_TLSv1
+    tls12 = tls11 or SSL_OP_NO_TLSv1_1
+  var opts = 0'u64
+  case version
+    of SSL3_VERSION:
+      opts = ssl3
+    of TLS1_VERSION:
+      opts = tls1
+    of TLS1_1_VERSION:
+      opts = tls11
+    of TLS1_2_VERSION:
+      opts = tls12
+    of 0:  # clear OS (or previous) config
+      discard SSL_CTX_clear_options(ssl, tls12)
+      opts = ssl3
+    else:
+      return 0
+  # Check the opt was applied, return failure (0) if not, 1 otherwise
+  # same as SSL_CTX_set_min_proto
+  return cint((SSL_CTX_set_options(ssl, opts).uint64 and opts) == opts)
 
 when compileOption("dynlibOverride", "ssl"):
   # Static linking
@@ -247,6 +284,8 @@ when compileOption("dynlibOverride", "ssl"):
     proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
     proc TLS_method*(): PSSL_METHOD =
       SSLv23_method()
+    proc SSL_CTX_set_min_proto_version*(ssl: SslCtx, version: int): cint =
+      SSL_CTX_set_min_proto_version_backport(ssl, version)
   else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
@@ -268,6 +307,9 @@ when compileOption("dynlibOverride", "ssl"):
       # This proc prevents breaking existing code calling SslLoadErrorStrings
       # Static linking against OpenSSL < 1.1.0 is not supported
       discard
+
+    proc SSL_CTX_set_min_proto_version*(ssl: SslCtx, version: int): cint = {.
+      cdecl, dynlib: DLLSSLName, importc.}
 
   template OpenSSL_add_all_algorithms*() = discard
 
@@ -348,6 +390,13 @@ else:
     result =
       if theProc.isNil: 0.culong
       else: theProc()
+
+  proc SSL_CTX_set_min_proto_version*(ssl: SslCtx, version: int): cint =
+    let theProc = cast[proc(ssl: SslCtx, version: cint): cint {.cdecl.}](sslSym("SSL_CTX_set_min_proto_version"))
+    if theProc.isNil:
+      SSL_CTX_set_min_proto_version_backport(ssl, version)
+    else:
+      return theProc(ssl, version.cint)
 
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
@@ -736,3 +785,43 @@ proc md5_Str*(str: string): string =
 
   discard md5_final(addr res, ctx)
   result = hexStr(addr res)
+
+when isMainModule:
+  proc SSL_CTX_get_options(ssl: SslCtx): culong {.cdecl, dynlib: DLLSSLName, importc.}
+  proc set_min_proto_backport(ssl: SslCtx, version: int): cint =
+    SSL_CTX_set_min_proto_version_backport(ssl, version)
+
+  block:
+    var newCTX = SSL_CTX_new(TLS_method())
+    doAssert set_min_proto_backport(newCTX, 0) == 1  # clear OS config
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv2) != 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv3) == 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1) == 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1_1) == 0)
+  block:
+    var newCTX = SSL_CTX_new(TLS_method())
+    doAssert set_min_proto_backport(newCTX, 0) == 1
+    doAssert set_min_proto_backport(newCTX, SSL3_VERSION) == 1
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv2) != 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv3) == 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1) == 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1_1) == 0)
+  block:
+    var newCTX = SSL_CTX_new(TLS_method())
+    doAssert set_min_proto_backport(newCTX, 0) == 1
+    doAssert set_min_proto_backport(newCTX, TLS1_VERSION) == 1
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv2) != 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv3) != 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1) == 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1_1) == 0)
+  block:
+    var newCTX = SSL_CTX_new(TLS_method())
+    doAssert set_min_proto_backport(newCTX, 0) == 1
+    doAssert set_min_proto_backport(newCTX, TLS1_1_VERSION) == 1
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv2) != 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_SSLv3) != 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1) != 0)
+    doAssert((SSL_CTX_get_options(newCTX) and SSL_OP_NO_TLSv1_1) == 0)
+  block:
+    var newCTX = SSL_CTX_new(TLS_method())
+    doAssert set_min_proto_backport(newCTX, TLS1_3_VERSION) == 0

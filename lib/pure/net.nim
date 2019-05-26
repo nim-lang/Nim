@@ -86,10 +86,11 @@ when defineSsl:
 
     SslProtVersion* = enum
       protSSLv2 {.deprecated.}
-      protSSLv3 {.deprecated.}
-      protTLSv1 {.deprecated.}
       protSSLv23 {.deprecated.}
-      protTLS
+      protSSLv3 {.deprecated.}
+      protTLSv1
+      protTLSv11
+      protTLSv12
 
     SslContext* = ref object
       context*: SslCtx
@@ -517,13 +518,13 @@ when defineSsl:
       if SSL_CTX_check_private_key(ctx) != 1:
         raiseSSLError("Verification of private key file failed.")
 
-  proc newContext*(protVersion = protTLS, verifyMode = CVerifyPeer,
+  proc newContext*(protVersion = protTLSv1, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = "ALL"): SSLContext =
     ## Creates an SSL context.
     ##
-    ## Protocol version specifies the protocol to use. ``protTLS`` will
-    ## negotiate the highest version mutually supported
-    ## by the client and the server
+    ## Protocol version specifies the __minimum__ supported protocol.
+    ## The highest version mutually supported
+    ## by the client and the server will be negotiated.
     ##
     ## There are currently only two options for verify mode;
     ## one is ``CVerifyNone`` and with it certificates will not be verified
@@ -534,18 +535,27 @@ when defineSsl:
     ## path, a server socket will most likely not work without these.
     ## Certificates can be generated using the following command:
     ## ``openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout mycert.pem -out mycert.pem``.
+    template newCtxImpl(result: var SSL_CTX, prot: int) =
+      result = SSL_CTX_new(TLS_method())
+      if SSL_CTX_set_min_proto_version(result, 0) != 1  # clear OS config
+        raiseSSLError("Can't clear SSL protocol version")
+      if SSL_CTX_set_min_proto_version(result, prot) != 1:
+        raiseSSLError("Can't set minimum SSL protocol version")
+
     var newCTX: SSL_CTX
     case protVersion
-    of protTLS:
-      newCTX = SSL_CTX_new(TLS_method())
+    of protTLSv1:
+      newCtxImpl(newCTX, TLS1_VERSION)
+    of protTLSv11:
+      newCtxImpl(newCTX, TLS1_1_VERSION)
+    of protTLSv12:
+      newCtxImpl(newCTX, TLS1_2_VERSION)
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
     of protSSLv2:
-      raiseSslError("SSLv2 is no longer secure and has been deprecated, use protTLS")
+      raiseSslError("SSLv2 is no longer secure and has been deprecated, use protTLSv1")
     of protSSLv3:
-      raiseSslError("SSLv3 is no longer secure and has been deprecated, use protTLS")
-    of protTLSv1:
-      newCTX = SSL_CTX_new(TLSv1_method())
+      raiseSslError("SSLv3 is no longer secure and has been deprecated, use protTLSv1")
 
     if newCTX.SSLCTXSetCipherList(cipherList) != 1:
       raiseSSLError()
