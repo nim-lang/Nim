@@ -237,4 +237,7 @@ proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
       sysFatal(FieldError, "assignment to discriminant changes object branch")
   else:
     if newBranch != oldBranch:
-      sysFatal(FieldError, "assignment to discriminant changes object branch")
+      if oldDiscVal != 0:
+        sysFatal(FieldError, "assignment to discriminant changes object branch")
+      else:
+        sysFatal(FieldError, "assignment to discriminant changes object branch; compile with -d:nimOldCaseObjects for a transition period")
