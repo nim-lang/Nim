@@ -1273,36 +1273,7 @@ else:
 
 when defined(nimNewShiftOps):
 
-  when defined(oldShiftRight) or not defined(nimAshr):
-    proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect.}
-    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect.}
-    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect.}
-    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect.}
-    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect.}
-  else:
-    # proc shrimpl(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
-    # proc shrimpl(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
-    # proc shrimpl(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
-    # proc shrimpl(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
-    # proc shrimpl(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
-
-
-    # proc `shr`*(x: int, y: SomeInteger): int =
-    #   sysAssert(x >= 0)
-    #   shrimpl(x,y)
-    # proc `shr`*(x: int8, y: SomeInteger): int8 =
-    #   sysAssert(x >= 0)
-    #   shrimpl(x,y)
-    # proc `shr`*(x: int16, y: SomeInteger): int16 =
-    #   sysAssert(x >= 0)
-    #   shrimpl(x,y)
-    # proc `shr`*(x: int32, y: SomeInteger): int32 =
-    #   sysAssert(x >= 0)
-    #   shrimpl(x,y)
-    # proc `shr`*(x: int64, y: SomeInteger): int64 =
-    #   sysAssert(x >= 0)
-    #   shrimpl(x,y)
-
+  when defined(arithmeticShiftRight):
     proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
       ## Computes the `shift right` operation of `x` and `y`, filling
       ## vacant bit positions with the sign bit.
@@ -1321,6 +1292,14 @@ when defined(nimNewShiftOps):
     proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
     proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
     proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
+  else:
+    const shrDepMessage = "`shr` will become sign preserving in the future. Compile with `-d:arithmeticShiftRight` to enable arithmetic right shift now and therefore also disable this message."
+    proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+
 
   proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
     ## Computes the `shift left` operation of `x` and `y`.

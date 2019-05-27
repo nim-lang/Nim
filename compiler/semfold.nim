@@ -248,13 +248,10 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
       result = doAndFit(newIntNodeT(`shl`(getInt(a), getInt(b)), n, g))
     else: internalError(g.config, n.info, "constant folding for shl")
   of mShrI:
-    case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result = newIntNodeT(int8(getInt(a)) shr int8(getInt(b)), n, g)
-    of tyInt16: result = newIntNodeT(int16(getInt(a)) shr int16(getInt(b)), n, g)
-    of tyInt32: result = newIntNodeT(int32(getInt(a)) shr int32(getInt(b)), n, g)
-    of tyInt64, tyInt, tyUInt..tyUInt64:
-      result = newIntNodeT(`shr`(getInt(a), getInt(b)), n, g)
-    else: internalError(g.config, n.info, "constant folding for shr")
+    let a = cast[uint64](getInt(a))
+    let b = cast[uint64](getInt(b))
+    let c = cast[BiggestInt](a shr b)
+    result = newIntNodeT(c, n, g)
   of mAshrI:
     case skipTypes(n.typ, abstractRange).kind
     of tyInt8: result = newIntNodeT(ashr(int8(getInt(a)), int8(getInt(b))), n, g)
