@@ -71,7 +71,7 @@ proc `!$`*(h: Hash): Hash {.inline.} =
   ## Finishes the computation of the hash value.
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
-  let h = cast[uint](h) # Hash is practically unsigend.
+  let h = cast[uint](h) # Hash is practically unsigned.
   var res = h + h shl 3
   res = res xor (res shr 11)
   res = res + res shl 15
