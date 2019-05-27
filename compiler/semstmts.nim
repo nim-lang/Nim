@@ -874,6 +874,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   checkMinSonsLen(n, 2, c.config)
   openScope(c)
+  pushCaseContext(c, n)
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
   var covered: BiggestInt = 0
@@ -897,6 +898,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     localError(c.config, n.sons[0].info, errSelectorMustBeOfCertainTypes)
     return
   for i in 1 ..< sonsLen(n):
+    setCaseContextIdx(c, i)
     var x = n.sons[i]
     when defined(nimsuggest):
       if c.config.ideCmd == ideSug and exactEquals(c.config.m.trackPos, x.info) and caseTyp.kind == tyEnum:
@@ -934,6 +936,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
                  formatMissingEnums(n))
     else:
       localError(c.config, n.info, "not all cases are covered")
+  popCaseContext(c)
   closeScope(c)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):

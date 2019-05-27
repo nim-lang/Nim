@@ -40,6 +40,7 @@ type
     wasForwarded*: bool       # whether the current proc has a separate header
     mappingExists*: bool
     mapping*: TIdTable
+    caseContext*: seq[tuple[n: PNode, idx: int]]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -416,3 +417,12 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
+
+proc pushCaseContext*(c: PContext, caseNode: PNode) =
+  add(c.p.caseContext, (caseNode, 0))
+
+proc popCaseContext*(c: PContext) =
+  discard pop(c.p.caseContext)
+
+proc setCaseContextIdx*(c: PContext, idx: int) =
+  c.p.caseContext[^1].idx = idx
