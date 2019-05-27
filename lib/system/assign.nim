@@ -224,14 +224,14 @@ proc selectBranch(discVal, L: int,
                   a: ptr array[0x7fff, ptr TNimNode]): ptr TNimNode =
   result = a[L] # a[L] contains the ``else`` part (but may be nil)
   if discVal <% L:
-    var x = a[discVal]
+    let x = a[discVal]
     if x != nil: result = x
 
 proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
                             a: ptr array[0x7fff, ptr TNimNode],
                             L: int) {.compilerProc.} =
-  var oldBranch = selectBranch(oldDiscVal, L, a)
-  var newBranch = selectBranch(newDiscVal, L, a)
+  let oldBranch = selectBranch(oldDiscVal, L, a)
+  let newBranch = selectBranch(newDiscVal, L, a)
   when defined(nimOldCaseObjects):
     if newBranch != oldBranch and oldDiscVal != 0:
       sysFatal(FieldError, "assignment to discriminant changes object branch")
