@@ -151,8 +151,7 @@ proc hash*(x: float): Hash {.inline.} =
 
 template bytewiseHashing(result: Hash, x: typed, start, stop: int) =
   for i in start .. stop:
-    let xxx = hash(x[i])
-    result = result !& xxx
+    result = result !& hash(x[i])
   result = !$result
 
 template hashImpl(result: Hash, x: typed, start, stop: int) =
