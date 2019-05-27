@@ -1111,11 +1111,11 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     exprColonExpr.add(createConstructor(typeNode, indexedJsonNode))
   of nnkRecCase:
     # A "case" field that introduces a variant.
-    let exprColonExpr = newNimNode(nnkExprColonExpr)
-    result.add(exprColonExpr)
+    let exprEqExpr = newNimNode(nnkExprEqExpr)
+    result.add(exprEqExpr)
 
     # Add the "case" field name (usually "kind").
-    exprColonExpr.add(toIdentNode(field[0]))
+    exprEqExpr.add(toIdentNode(field[0]))
 
     # -> jsonNode["`field[0]`"]
     let kindJsonNode = createJsonIndexer(jsonNode, $field[0])
@@ -1125,7 +1125,7 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     let getEnumSym = bindSym("getEnum")
     let astStrLit = toStrLit(kindJsonNode)
     let getEnumCall = newCall(getEnumSym, kindJsonNode, astStrLit, kindType)
-    exprColonExpr.add(getEnumCall)
+    exprEqExpr.add(getEnumCall)
 
     # Iterate through each `of` branch.
     for i in 1 ..< field.len:
@@ -1475,20 +1475,18 @@ proc postProcess(node: NimNode): NimNode =
   # TODO: Placing `node[0]` inside quote is buggy
   var resType = toIdentNode(node[0])
 
-  result.add(
-    quote do:
-      var `resIdent` = `resType`();
-  )
+  var objConstr = newTree(nnkObjConstr, resType)
+  result.add newVarStmt(resIdent, objConstr)
 
   # Process each ExprColonExpr.
   for i in 1..<len(node):
-    result.add postProcessExprColonExpr(node[i], resIdent)
+    if node[i].kind == nnkExprEqExpr:
+      objConstr.add newTree(nnkExprColonExpr, node[i][0], node[i][1])
+    else:
+      result.add postProcessExprColonExpr(node[i], resIdent)
 
   # Return the `res` variable.
-  result.add(
-    quote do:
-      `resIdent`
-  )
+  result.add(resIdent)
 
 
 macro to*(node: JsonNode, T: typedesc): untyped =
@@ -1539,7 +1537,6 @@ macro to*(node: JsonNode, T: typedesc): untyped =
     let `temp` = `node`
 
   let constructor = createConstructor(typeNode[1], temp)
-  # TODO: Rename postProcessValue and move it (?)
   result.add(postProcessValue(constructor))
 
   # echo(treeRepr(result))
