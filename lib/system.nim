@@ -1273,7 +1273,7 @@ else:
 
 when defined(nimNewShiftOps):
 
-  when defined(arithmeticShiftRight):
+  when defined(arithmeticShiftRight) or true:
     proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
       ## Computes the `shift right` operation of `x` and `y`, filling
       ## vacant bit positions with the sign bit.
