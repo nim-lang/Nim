@@ -95,7 +95,8 @@ template processBranchVals(b, op) =
 
 proc allPossibleValues(c: PContext, t: PType): IntSet =
   result = initIntSet()
-  if t.kind == tyEnum:
+  if t.enumHasHoles:
+    let t = t.skipTypes(abstractRange)
     for field in t.n.sons:
       result.incl(field.sym.position)
   else:
@@ -112,10 +113,11 @@ proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
     for i in 1 .. caseNode.len-2:
       processBranchVals(caseNode[i], excl)
 
-proc formatUnsafeBranchVals(c: PContext, t: PType, diffVals: IntSet): string =
+proc formatUnsafeBranchVals(t: PType, diffVals: IntSet): string =
   if diffVals.len <= 32:
     var strs: seq[string]
-    if t.kind == tyEnum:
+    let t = t.skipTypes(abstractRange)
+    if t.kind in {tyEnum, tyBool}:
       var i = 0
       for val in diffVals:
         while t.n.sons[i].sym.position < val: inc(i)
@@ -272,7 +274,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
             localError(c.config, discriminatorVal.info, ("possible values " &
               "$2are in conflict with discriminator values for " &
               "selected object branch $1.") % [$selectedBranch,
-              formatUnsafeBranchVals(c, recNode.sons[0].typ, branchValsDiff)])
+              formatUnsafeBranchVals(recNode.sons[0].typ, branchValsDiff)])
       else:
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
