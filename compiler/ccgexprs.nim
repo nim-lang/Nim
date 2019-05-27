@@ -1967,11 +1967,12 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
     putIntoDest(p, d, n, "(($1) ($2))" %
         [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
   else:
+    let mm = if dest.kind in {tyUInt32, tyUInt64, tyUInt}: "chckRangeU" else: magic
     initLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, lodeTyp dest, ropecg(p.module, "(($1)#$5($2, $3, $4))", [
         getTypeDesc(p.module, dest), rdCharLoc(a),
         genLiteral(p, n.sons[1], dest), genLiteral(p, n.sons[2], dest),
-        magic]), a.storage)
+        mm]), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
