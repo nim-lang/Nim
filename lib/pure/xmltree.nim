@@ -136,19 +136,21 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
   ## See also:
   ## * `newElement proc <#newElement,string>`_
   ## * [<> macro](#<>.m,untyped)
-  runnableExamples:
-    from strutils import unindent
-    var g = newElement("myTag")
-    g.add newText("some text")
-    g.add newComment("this is comment")
-    var h = newElement("secondTag")
-    h.add newEntity("some entity")
-    let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
-    let k = newXmlTree("treeTag", [g, h], att)
-    assert ($k).unindent == """<treeTag key2="second value" key1="first value">
-        <myTag>some text<!-- this is comment --></myTag>
-        <secondTag>&some entity;</secondTag>
-      </treeTag>""".unindent
+  ##
+  ## .. code-block::
+  ##   var g = newElement("myTag")
+  ##   g.add newText("some text")
+  ##   g.add newComment("this is comment")
+  ##   var h = newElement("secondTag")
+  ##   h.add newEntity("some entity")
+  ##   let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
+  ##   let k = newXmlTree("treeTag", [g, h], att)
+  ##
+  ##   echo k
+  ##   ## <treeTag key2="second value" key1="first value">
+  ##   ##   <myTag>some text<!-- this is comment --></myTag>
+  ##   ##   <secondTag>&some entity;</secondTag>
+  ##   ## </treeTag>
 
   result = newXmlNode(xnElement)
   result.fTag = tag
@@ -361,26 +363,27 @@ proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
 
 proc clear*(n: var XmlNode) =
   ## Recursively clear all children of an XmlNode.
-  runnableExamples:
-    from strutils import unindent
-
-    var g = newElement("myTag")
-    g.add newText("some text")
-    g.add newComment("this is comment")
-
-    var h = newElement("secondTag")
-    h.add newEntity("some entity")
-
-    let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
-    var k = newXmlTree("treeTag", [g, h], att)
-
-    assert ($k).unindent ==
-      """<treeTag key2="second value" key1="first value">
-         <myTag>some text<!-- this is comment --></myTag>
-         <secondTag>&some entity;</secondTag>
-         </treeTag>""".unindent
-    clear(k)
-    assert $k == """<treeTag key2="second value" key1="first value" />"""
+  ##
+  ## .. code-block::
+  ##   var g = newElement("myTag")
+  ##   g.add newText("some text")
+  ##   g.add newComment("this is comment")
+  ##
+  ##   var h = newElement("secondTag")
+  ##   h.add newEntity("some entity")
+  ##
+  ##   let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
+  ##   var k = newXmlTree("treeTag", [g, h], att)
+  ##
+  ##   echo k
+  ##   ## <treeTag key2="second value" key1="first value">
+  ##   ##   <myTag>some text<!-- this is comment --></myTag>
+  ##   ##   <secondTag>&some entity;</secondTag>
+  ##   ## </treeTag>
+  ##
+  ##   clear(k)
+  ##   echo k
+  ##   ## <treeTag key2="second value" key1="first value" />
 
   for i in 0 ..< n.len:
     clear(n[i])
@@ -420,11 +423,14 @@ iterator mitems*(n: var XmlNode): var XmlNode {.inline.} =
 
 proc toXmlAttributes*(keyValuePairs: varargs[tuple[key, val: string]]): XmlAttributes =
   ## Converts `{key: value}` pairs into `XmlAttributes`.
-  runnableExamples:
-    let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
-    var j = newElement("myTag")
-    j.attrs = att
-    assert $j == """<myTag key2="second value" key1="first value" />"""
+  ##
+  ## .. code-block::
+  ##   let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
+  ##   var j = newElement("myTag")
+  ##   j.attrs = att
+  ##
+  ##   echo j
+  ##   ## <myTag key2="second value" key1="first value" />
 
   newStringTable(keyValuePairs)
 
