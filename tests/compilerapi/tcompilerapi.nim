@@ -5,6 +5,7 @@ my secret
 11
 12
 '''
+  joinable: "false"
 """
 
 ## Example program that demonstrates how to use the
