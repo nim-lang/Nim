@@ -36,9 +36,7 @@ addons:
 
 before_script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
-  - cd csources
-  - make -j 2 LD=$CC
-  - cd ..
+  - make -C csources -j 2 LD=$CC
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
   - echo PATH:${PATH}
 
