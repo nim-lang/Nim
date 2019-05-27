@@ -35,7 +35,6 @@ addons:
     - sfml
 
 before_script:
-  - set -e
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then unset -f cd; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then shell_session_update() { :; }; fi
   - git clone --depth 1 https://github.com/nim-lang/csources.git
@@ -44,15 +43,12 @@ before_script:
   - cd ..
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
   - echo PATH:${PATH}
-  - set +e   # prevents breaking after_failure
 
 script:
-  - set -e
   - echo "travis_fold:start:nim_c_koch"
   - nim c koch
   - echo "travis_fold:end:nim_c_koch"
   - ./koch runCI
-  - set +e
 
 before_deploy:
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
