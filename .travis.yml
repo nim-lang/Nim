@@ -38,7 +38,6 @@ before_script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - make -C csources -j 2 LD=$CC
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
-  - echo PATH:${PATH}
 
 script:
   - echo "travis_fold:start:nim_c_koch"
