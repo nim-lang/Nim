@@ -102,7 +102,6 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
 proc bitincl(s: var IntSet, key: int) {.inline.} =
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
-  doassert u >= 0
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
       (BitScalar(1) shl (u and IntMask))
 
@@ -117,7 +116,6 @@ proc exclImpl(s: var IntSet, key: int) =
     var t = intSetGet(s, key shr TrunkShift)
     if t != nil:
       var u = key and TrunkMask
-      doAssert u >= 0
       t.bits[u shr IntShift] = t.bits[u shr IntShift] and
           not(BitScalar(1) shl (u and IntMask))
 
