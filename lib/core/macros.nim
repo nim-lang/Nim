@@ -1596,12 +1596,17 @@ proc getProjectPath*(): string = discard
 
 when defined(nimMacrosSizealignof):
   proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.sizeof``, but it works on
-    ## ``NimNode`` for use in macro context.
+    ## Returns the same result as ``system.sizeof`` if the size is
+    ## known by the Nim compiler. Returns a negative value if the Nim
+    ## compiler does not know the size.
   proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.alignof``, but it works on
-    ## ``NimNode`` for use in macro context.
+    ## Returns the same result as ``system.alignof`` if the alignment
+    ## is known by the Nim compiler. It works on ``NimNode`` for use
+    ## in macro context. Returns a negative value if the Nim compiler
+    ## does not know the alignment.
   proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.offsetof``, but it expects
-    ## a resolved symbol node from a field of a type. Therefore it
-    ## only requires one argument instead of two.
+    ## Returns the same result as ``system.offsetof`` if the offset is
+    ## known by the Nim compiler. It expects a resolved symbol node
+    ## from a field of a type. Therefore it only requires one argument
+    ## instead of two. Returns a negative value if the Nim compiler
+    ## does not know the offset.
