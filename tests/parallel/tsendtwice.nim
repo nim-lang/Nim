@@ -1,7 +1,7 @@
 discard """
   output: '''ob @[]
 ob3 @[]
-obj2 @[]
+ob2 @[]
 3
 ob @[]
 ob3 @[]

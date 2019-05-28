@@ -2,6 +2,7 @@ discard """
   nimout: '''0
 0
 0
+'''
 """
 
 import tables
