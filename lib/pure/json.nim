@@ -1472,8 +1472,7 @@ proc postProcess(node: NimNode): NimNode =
   # Create the type.
   # -> var res = Object()
   var resIdent = genSym(nskVar, "res")
-  # TODO: Placing `node[0]` inside quote is buggy
-  var resType = toIdentNode(node[0])
+  var resType = node[0]
 
   var objConstr = newTree(nnkObjConstr, resType)
   result.add newVarStmt(resIdent, objConstr)
