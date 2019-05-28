@@ -1,18 +1,17 @@
 discard """
-  disabled: yes
   outputsub: "channel is empty"
 """
 
 # bug #1816
 
-from random import random
+from random import rand
 from os import sleep
 
 type PComm = ptr Channel[int]
 
 proc doAction(outC: PComm) {.thread.} =
-  for i in 0.. <5:
-    sleep(random(100))
+  for i in 0 ..< 5:
+    sleep(rand(100))
     send(outC[], i)
 
 var
