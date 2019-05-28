@@ -1664,6 +1664,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
               return isGeneric
             result = typeRel(c, f.base, aa)
             if result > isGeneric: result = isGeneric
+        elif c.isNoCall:
+          if doBind:
+            let concrete = concreteType(c, a, f)
+            if concrete == nil: return isNone
+            put(c, f, concrete)
+          result = isGeneric
         else:
           result = isNone
       else:

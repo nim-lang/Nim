@@ -108,7 +108,7 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym {.proc
   #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:
   graph.config.notes =
-    if s.owner.id == graph.config.mainPackageId: graph.config.mainPackageNotes
+    if s.owner.id == graph.config.mainPackageId or isDefined(graph.config, "booting"): graph.config.mainPackageNotes
     else: graph.config.foreignPackageNotes
 
 proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
