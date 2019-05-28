@@ -1220,6 +1220,21 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
         [rdLoc(a), rdLoc(tmp), discriminatorTableName(p.module, t, field),
          intLiteral(L+1)])
 
+proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
+  const ObjDiscMappingProcSlot = -5
+  var theProc: PSym = nil
+  for idx, p in items(t.methods):
+    if idx == ObjDiscMappingProcSlot:
+      theProc = p
+      break
+  if theProc == nil:
+    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph)
+    t.methods.add((ObjDiscMappingProcSlot, theProc))
+  var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
+  call.add newSymNode(theProc)
+  call.add e
+  expr(p, call, d)
+
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   var a, tmp: TLoc
   var dotExpr = e.sons[0]
@@ -1227,7 +1242,17 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   initLocExpr(p, e.sons[0], a)
   getTemp(p, a.t, tmp)
   expr(p, e.sons[1], tmp)
-  genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, dotExpr.sons[1].sym)
+  let field = dotExpr.sons[1].sym
+  if optNimV2 in p.config.globalOptions:
+    let t = dotExpr[0].typ.skipTypes(abstractInst)
+    var oldVal, newVal: TLoc
+    genCaseObjDiscMapping(p, e[0], t, field, oldVal)
+    genCaseObjDiscMapping(p, e[1], t, field, newVal)
+    lineCg(p, cpsStmts,
+          "#nimFieldDiscriminantCheckV2($1, $2);$n",
+          [rdLoc(oldVal), rdLoc(newVal)])
+  else:
+    genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, field)
   genAssignment(p, a, tmp, {})
 
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =

@@ -114,3 +114,8 @@ when not defined(nimV2):
       if x == nil: return false
       x = x.base
     return true
+
+when defined(nimV2):
+  proc nimFieldDiscriminantCheckV2(oldDiscVal, newDiscVal: uint8) {.compilerProc.} =
+    if oldDiscVal != newDiscVal:
+      sysFatal(FieldError, "assignment to discriminant changes object branch")
