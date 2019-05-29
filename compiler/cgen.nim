@@ -357,6 +357,16 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     var r = if takeAddr: addrLoc(p.config, a) else: rdLoc(a)
     linefmt(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t, a.lode.info)])
 
+  if isException(t):
+    var r = rdLoc(a)
+    if not takeAddr: r = "(*$1)" % [r]
+    var s = skipTypes(t, abstractInst)
+    if not p.module.compileToCpp:
+      while s.kind == tyObject and s.sons[0] != nil and s.sym.magic != mException:
+        add(r, ".Sup")
+        s = skipTypes(s.sons[0], skipPtrs)
+    linefmt(p, section, "$1.name = $2;$n", [r, makeCString(t.skipTypes(abstractInst).sym.name.s)])
+
 type
   TAssignmentFlag = enum
     needToCopy
@@ -1827,9 +1837,9 @@ proc writeHeader(m: BModule) =
 
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
-      if m.compileToCpp: ".cpp"
-      elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".m"
-      else: ".c"
+      if m.compileToCpp: ".nim.cpp"
+      elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".nim.m"
+      else: ".nim.c"
   result = changeFileExt(completeCFilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
 when false:

@@ -62,6 +62,11 @@ proc main =
 
   w.draw()
 
+  # bug #11257
+  var a: owned proc()
+  if a != nil:
+    a()
+
 main()
 
 let (a, d) = allocCounters()

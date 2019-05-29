@@ -579,10 +579,12 @@ proc patchBody(c: PContext; n: PNode; info: TLineInfo) =
 
 template inst(field, t) =
   if field.ast != nil and field.ast[genericParamsPos].kind != nkEmpty:
-    assert t.typeInst != nil
-    field = c.instTypeBoundOp(c, field, t.typeInst, info, attachedAsgn, 1)
-    if field.ast != nil:
-      patchBody(c, field.ast, info)
+    if t.typeInst != nil:
+      field = c.instTypeBoundOp(c, field, t.typeInst, info, attachedAsgn, 1)
+      if field.ast != nil:
+        patchBody(c, field.ast, info)
+    else:
+      localError(c.graph.config, info, "unresolved generic parameter")
 
 proc isTrival(s: PSym): bool {.inline.} = s == nil or s.ast[bodyPos].len == 0
 

@@ -266,8 +266,6 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
 
 proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## Resets an object `obj` to its initial (binary zero) value.
-  ##
-  ## This needs to be called before any possible `object branch transition`:idx:.
 
 proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify

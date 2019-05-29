@@ -109,6 +109,8 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
             else: conf.projectPath
     createDir(d)
     result = d / changeFileExt(filename, ext)
+  elif not conf.outFile.isEmpty:
+    result = absOutFile(conf)
   else:
     result = getOutFile(conf, filename, ext)
 
@@ -668,7 +670,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
 
-  let external = AbsoluteFile(d.filename).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+  let external = d.destFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
 
   var attype: Rope
   if k in routineKinds and nameNode.kind == nkSym:

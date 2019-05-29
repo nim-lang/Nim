@@ -56,7 +56,7 @@ proc methodCall*(n: PNode; conf: ConfigRef): PNode =
 type
   MethodResult = enum No, Invalid, Yes
 
-proc sameMethodBucket(a, b: PSym): MethodResult =
+proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   if a.name.id != b.name.id: return
   if sonsLen(a.typ) != sonsLen(b.typ):
     return
@@ -75,7 +75,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
     if sameType(a.typ.sons[i], b.typ.sons[i]):
       if aa.kind == tyObject and result != Invalid:
         result = Yes
-    elif aa.kind == tyObject and bb.kind == tyObject:
+    elif aa.kind == tyObject and bb.kind == tyObject and (i == 1 or multiMethods):
       let diff = inheritanceDiff(bb, aa)
       if diff < 0:
         if result != Invalid:
@@ -162,7 +162,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
   var witness: PSym
   for i in 0 ..< L:
     let disp = g.methods[i].dispatcher
-    case sameMethodBucket(disp, s)
+    case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
     of Yes:
       add(g.methods[i].methods, s)
       attachDispatcher(s, disp.ast[dispatcherPos])

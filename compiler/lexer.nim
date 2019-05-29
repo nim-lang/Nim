@@ -538,9 +538,9 @@ proc getNumber(L: var TLexer, result: var TToken) =
       of tkInt16Lit: result.iNumber = BiggestInt(int16(toU16(int(xi))))
       of tkInt32Lit: result.iNumber = BiggestInt(int32(toU32(int64(xi))))
       of tkUIntLit, tkUInt64Lit: result.iNumber = xi
-      of tkUInt8Lit: result.iNumber = BiggestInt(uint8(toU8(int(xi))))
-      of tkUInt16Lit: result.iNumber = BiggestInt(uint16(toU16(int(xi))))
-      of tkUInt32Lit: result.iNumber = BiggestInt(uint32(toU32(int64(xi))))
+      of tkUInt8Lit: result.iNumber = BiggestInt(cast[uint8](toU8(int(xi))))
+      of tkUInt16Lit: result.iNumber = BiggestInt(cast[uint16](toU16(int(xi))))
+      of tkUInt32Lit: result.iNumber = BiggestInt(cast[uint32](toU32(int64(xi))))
       of tkFloat32Lit:
         result.fNumber = (cast[PFloat32](addr(xi)))[]
         # note: this code is endian neutral!

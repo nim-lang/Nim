@@ -152,7 +152,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     result = getStorageLoc(n.sons[0])
   else: result = OnUnknown
 
-proc canMove(p: BProc, n: PNode): bool =
+proc canMove(p: BProc, n: PNode; dest: TLoc): bool =
   # for now we're conservative here:
   if n.kind == nkBracket:
     # This needs to be kept consistent with 'const' seq code
@@ -165,6 +165,9 @@ proc canMove(p: BProc, n: PNode): bool =
     # Empty strings are codegen'd as NIM_NIL so it's just a pointer copy
     return true
   result = n.kind in nkCallKinds
+  #if not result and dest.k == locTemp:
+  #  return true
+
   #if result:
   #  echo n.info, " optimized ", n
   #  result = false
@@ -271,7 +274,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tySequence:
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
@@ -280,7 +283,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyString:
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
     else:
       if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
@@ -1959,18 +1962,17 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
 proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   var a: TLoc
   var dest = skipTypes(n.typ, abstractVar)
-  # range checks for unsigned turned out to be buggy and annoying:
-  if optRangeCheck notin p.options or dest.skipTypes({tyRange}).kind in
-                                             {tyUInt..tyUInt64}:
+  if optRangeCheck notin p.options:
     initLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, n, "(($1) ($2))" %
         [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
   else:
+    let mm = if dest.kind in {tyUInt32, tyUInt64, tyUInt}: "chckRangeU" else: magic
     initLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, lodeTyp dest, ropecg(p.module, "(($1)#$5($2, $3, $4))", [
         getTypeDesc(p.module, dest), rdCharLoc(a),
         genLiteral(p, n.sons[1], dest), genLiteral(p, n.sons[2], dest),
-        magic]), a.storage)
+        mm]), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})

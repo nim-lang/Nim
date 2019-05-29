@@ -874,6 +874,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   checkMinSonsLen(n, 2, c.config)
   openScope(c)
+  pushCaseContext(c, n)
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
   var covered: BiggestInt = 0
@@ -897,6 +898,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     localError(c.config, n.sons[0].info, errSelectorMustBeOfCertainTypes)
     return
   for i in 1 ..< sonsLen(n):
+    setCaseContextIdx(c, i)
     var x = n.sons[i]
     when defined(nimsuggest):
       if c.config.ideCmd == ideSug and exactEquals(c.config.m.trackPos, x.info) and caseTyp.kind == tyEnum:
@@ -934,6 +936,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
                  formatMissingEnums(n))
     else:
       localError(c.config, n.info, "not all cases are covered")
+  popCaseContext(c)
   closeScope(c)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
@@ -1712,8 +1715,9 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
           x.methods.add((col,s))
-    if not foundObj:
-      message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
+    message(c.config, n.info, warnDeprecated, "generic methods are deprecated")
+    #if not foundObj:
+    #  message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
   else:
     # why check for the body? bug #2400 has none. Checking for sfForward makes
     # no sense either.
@@ -1879,14 +1883,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
         c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
-        if s.kind == skMethod: semMethodPrototype(c, s, n)
-
         if lfDynamicLib notin s.loc.flags:
           # no semantic checking for importc:
           s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
           trackProc(c, s, s.ast[bodyPos])
+        if s.kind == skMethod: semMethodPrototype(c, s, n)
       else:
         if (s.typ.sons[0] != nil and kind != skIterator) or kind == skMacro:
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))

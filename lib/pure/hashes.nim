@@ -351,7 +351,7 @@ when isMainModule:
   block smallSize: # no multibyte hashing
     let
       xx = @['H','e','l','l','o']
-      ii = @[72, 101, 108, 108, 111]
+      ii = @[72'i8, 101, 108, 108, 111]
       ss = "Hello"
     doAssert hash(xx) == hash(ii)
     doAssert hash(xx) == hash(ss)

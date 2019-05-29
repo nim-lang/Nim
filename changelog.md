@@ -33,6 +33,7 @@
   tree from the symbol declaration instead of just the initializer portion.
 
 - To use multi-methods, explicit `--multimethods:on` is now needed.
+- Generic methods are now deprecated; they never worked well.
 
 - Compile time checks for integer and float conversions are now stricter.
   For example, `const x = uint32(-1)` now gives a compile time error instead
@@ -47,6 +48,10 @@
 
 - `shr` is now sign preserving. Use `-d:oldShiftRight` to enable old
   behavior globally.
+
+- With the exception of `uint` and `uint64`, conversion to unsigned types
+  are now range checked during runtime.
+
 
 #### Breaking changes in the standard library
 
@@ -113,6 +118,9 @@
 - procs `string.add(int)` and `string.add(float)` which implicitly convert
   ints and floats to string have been deprecated.
   Use `string.addInt(int)` and `string.addFloat(float)` instead.
+
+- ``case object`` branch transitions via ``system.reset`` are deprecated.
+  Compile your code with ``-d:nimOldCaseObjects`` for a transition period.
 
 
 #### Breaking changes in the compiler

@@ -138,12 +138,12 @@ compiler vcc:
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c $options $include /Fo$objfile $file",
+    compileTmpl: "/c$vccplatform$options $include /Fo$objfile $file",
     buildGui: " /link /SUBSYSTEM:WINDOWS ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$options $builddll /Fe$exefile $objfiles $buildgui",
+    linkTmpl: "$options $builddll$vccplatform /Fe$exefile $objfiles $buildgui",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
@@ -375,6 +375,10 @@ proc nameToCC*(name: string): TSystemCC =
       return i
   result = ccNone
 
+proc listCCnames(): seq[string] =
+  for i in succ(ccNone) .. high(TSystemCC):
+    result.add CC[i].name
+
 proc isVSCompatible*(conf: ConfigRef): bool =
   return conf.cCompiler == ccVcc or
           conf.cCompiler == ccClangCl or
@@ -408,7 +412,8 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
 proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.cCompiler = nameToCC(ccname)
   if conf.cCompiler == ccNone:
-    localError(conf, info, "unknown C compiler: '$1'" % ccname)
+    let ccList = listCCnames().join(", ")
+    localError(conf, info, "unknown C compiler: '$1'. Available options are: $2" % [ccname, ccList])
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.ccompilerpath = getConfigVar(conf, conf.cCompiler, ".path")
@@ -528,6 +533,19 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
 proc getCompileOptions(conf: ConfigRef): string =
   result = cFileSpecificOptions(conf, "__dummy__")
 
+proc vccplatform(conf: ConfigRef): string =
+  # VCC specific but preferable over the config hacks people
+  # had to do before, see #11306
+  case conf.target.targetCPU
+  of cpuI386:
+    result = " --platform:x86"
+  of cpuArm:
+    result = " --platform:arm"
+  of cpuAmd64:
+    result = " --platform:amd64"
+  else:
+    result = ""
+
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
   for linkedLib in items(conf.cLinkedLibs):
@@ -611,7 +629,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
     "file", cfsh, "objfile", objfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
-    "lib", quoteShell(conf.libpath)])
+    "lib", quoteShell(conf.libpath),
+    "vccplatform", vccplatform(conf)])
 
 proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
   result = secureHash(
@@ -716,7 +735,8 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),
-        "lib", quoteShell(conf.libpath)])
+        "lib", quoteShell(conf.libpath),
+        "vccplatform", vccplatform(conf)])
     # On windows the debug information for binaries is emitted in a separate .pdb
     # file and the binaries (.dll and .exe) contain a full path to that .pdb file.
     # This is a problem for hot code reloading because even when we copy the .dll

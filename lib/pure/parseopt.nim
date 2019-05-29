@@ -274,8 +274,9 @@ when declared(os.paramCount):
 proc handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
   p.kind = cmdShortOption
-  add(p.key.string, cmd[i])
-  inc(i)
+  if i < cmd.len:
+    add(p.key.string, cmd[i])
+    inc(i)
   p.inShortState = true
   while i < cmd.len and cmd[i] in {'\t', ' '}:
     inc(i)
@@ -446,7 +447,7 @@ when declared(initOptParser):
              tuple[kind: CmdLineKind, key, val: TaintedString] =
     ## Convenience iterator for iterating over command line arguments.
     ##
-    ## This creates a new `OptParser<#OptParser>`_. If no command line 
+    ## This creates a new `OptParser<#OptParser>`_. If no command line
     ## arguments are provided, the real command line as provided by the
     ## ``os`` module is retrieved instead.
     ##

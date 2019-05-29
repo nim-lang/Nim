@@ -59,7 +59,7 @@ pkg "nimx", "nim c --threads:on test/main.nim", true
 pkg "norm", "nim c -o:normm src/norm.nim"
 pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
-pkg "parsetoml"
+#pkg "parsetoml"
 pkg "patty"
 pkg "plotly", "nim c examples/all.nim", true
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
