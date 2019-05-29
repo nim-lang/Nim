@@ -27,7 +27,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
   wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos,
-  pathutils
+  pathutils, strtabs
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -774,6 +774,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optDocInternal}, arg, pass, info)
   of "multimethods":
     processOnOffSwitchG(conf, {optMultiMethods}, arg, pass, info)
+  of "expandmacro":
+    expectArg(conf, switch, arg, pass, info)
+    conf.macrosToExpand[arg] = "T"
   of "":
     conf.projectName = "-"
   else:

@@ -44,7 +44,7 @@ type
     hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
-    hintGlobalVar,
+    hintGlobalVar, hintExpandMacro,
     hintUser, hintUserRaw,
     hintExtendedContext
 
@@ -117,6 +117,7 @@ const
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
+    hintExpandMacro: "expanded macro: $1",
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
@@ -141,7 +142,7 @@ const
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
+    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
     "User", "UserRaw", "ExtendedContext",
   ]
 

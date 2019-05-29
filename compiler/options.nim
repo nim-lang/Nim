@@ -180,6 +180,7 @@ type
     linesCompiled*: int  # all lines that have been compiled
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
+    macrosToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -308,6 +309,7 @@ proc newConfigRef*(): ConfigRef =
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
+    macrosToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initSet[string](),

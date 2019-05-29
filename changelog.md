@@ -271,6 +271,9 @@ proc enumToString*(enums: openArray[enum]): string =
 - The `--hotCodeReloading` has been implemented for the native targets.
   The compiler also provides a new more flexible API for handling the
   hot code reloading events in the code.
+- The compiler nows supports a ``--expandMacro:macroNameHere`` switch
+  for easy introspection into what a macro expands into.
+
 
 
 ### Bugfixes

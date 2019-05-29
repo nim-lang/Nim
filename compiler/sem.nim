@@ -16,7 +16,7 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, pluginsupport, plugins/active, rod, lineinfos
+  lowerings, pluginsupport, plugins/active, rod, lineinfos, strtabs
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
@@ -467,6 +467,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.graph, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
+  if c.config.macrosToExpand.hasKey(sym.name.s):
+    message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
 

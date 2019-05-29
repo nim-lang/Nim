@@ -103,6 +103,7 @@ Advanced options:
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used
+  --expandMacro:MACRO       dump every generated AST from MACRO
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
