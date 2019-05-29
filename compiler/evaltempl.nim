@@ -104,7 +104,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
     # their bodies. We could try to fix this, but it may be
     # wiser to just deprecate immediate templates and macros
     # now that we have working untyped parameters.
-    genericParams = if sfImmediate in s.flags or fromHlo: 0
+    genericParams = if fromHlo: 0
                     else: s.ast[genericParamsPos].len
     expectedRegularParams = s.typ.len-1
     givenRegularParams = totalParams - genericParams

@@ -2586,16 +2586,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       #if c.config.cmd == cmdPretty and n.sons[0].kind == nkDotExpr:
       #  pretty.checkUse(n.sons[0].sons[1].info, s)
       case s.kind
-      of skMacro:
-        if sfImmediate notin s.flags:
-          result = semDirectOp(c, n, flags)
-        else:
-          result = semMacroExpr(c, n, n, s, flags)
-      of skTemplate:
-        if sfImmediate notin s.flags:
-          result = semDirectOp(c, n, flags)
-        else:
-          result = semTemplateExpr(c, n, s, flags)
+      of skMacro, skTemplate:
+        result = semDirectOp(c, n, flags)
       of skType:
         # XXX think about this more (``set`` procs)
         let ambig = contains(c.ambiguousSymbols, s.id)
