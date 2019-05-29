@@ -2,6 +2,7 @@ discard """
   output: '''calling!stuff
 calling!stuff
 '''
+  joinable: false
 """
 
 # issue #7792
