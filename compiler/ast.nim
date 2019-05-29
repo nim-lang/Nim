@@ -1753,20 +1753,6 @@ proc toObject*(typ: PType): PType =
   if t.kind == tyRef: t.lastSon
   else: typ
 
-proc isException*(t: PType): bool =
-  # check if `y` is object type and it inherits from Exception
-  assert(t != nil)
-
-  if t.kind notin {tyObject, tyGenericInst}:
-    return false
-
-  var base = t
-  while base != nil and base.kind in {tyRef, tyObject, tyGenericInst}:
-    if base.sym != nil and base.sym.magic == mException:
-      return true
-    base = base.lastSon
-  return false
-
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil
 

@@ -1559,3 +1559,14 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
 proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
   isTupleRecursive(t, cycleDetector)
+
+proc isException*(t: PType): bool =
+  # check if `y` is object type and it inherits from Exception
+  assert(t != nil)
+
+  var t = t.skipTypes(abstractInst)
+  while t.kind == tyObject:
+    if t.sym != nil and t.sym.magic == mException: return true
+    if t.sons[0] == nil: break
+    t = skipTypes(t.sons[0], abstractPtrs)
+  return false
