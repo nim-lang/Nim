@@ -9,7 +9,7 @@ proc `@`[IDX, T](a: array[IDX, T]): seq[T]
 
 expression: @[int]
 '''
-disabled: 32bit
+disabled: "32bit"
 """
 
 # bug #7331
