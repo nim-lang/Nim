@@ -1271,7 +1271,7 @@ else:
 
 when defined(nimNewShiftOps):
 
-  when defined(oldShiftRight) or not defined(nimAshr):
+  when defined(nimOldShiftRight) or not defined(nimAshr):
     const shrDepMessage = "`shr` will become sign preserving."
     proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
     proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}

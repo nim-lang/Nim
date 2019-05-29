@@ -46,7 +46,7 @@
 - A bug allowed `macro foo(): int = 123` to compile even though a
   macros has to return a `NimNode`. This has been fixed.
 
-- `shr` is now sign preserving. Use `-d:oldShiftRight` to enable old
+- `shr` is now sign preserving. Use `-d:nimOldShiftRight` to enable old
   behavior globally.
 
 - With the exception of `uint` and `uint64`, conversion to unsigned types
