@@ -146,16 +146,19 @@ proc callCompiler(cmdTemplate, filename, options: string,
   var tmpl = ""
   var x = newStringOfCap(120)
   result.nimout = ""
-  while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
-    if x =~ pegOfInterest:
-      # `err` should contain the last error/warning message
-      err = x
-    elif x =~ pegLineTemplate and err == "":
-      # `tmpl` contains the last template expansion before the error
-      tmpl = x
-    elif x =~ pegSuccess:
-      suc = x
+  while true:
+    if outp.readLine(x.TaintedString):
+      result.nimout.add(x & "\n")
+      if x =~ pegOfInterest:
+        # `err` should contain the last error/warning message
+        err = x
+      elif x =~ pegLineTemplate and err == "":
+        # `tmpl` contains the last template expansion before the error
+        tmpl = x
+      elif x =~ pegSuccess:
+        suc = x
+    elif not running(p):
+      break
   close(p)
   result.msg = ""
   result.file = ""
@@ -193,8 +196,11 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   result.file = ""
   result.output = ""
   result.line = -1
-  while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
+  while true:
+    if outp.readLine(x.TaintedString):
+      result.nimout.add(x & "\n")
+    elif not running(p):
+      break
   close(p)
   if p.peekExitCode == 0:
     result.err = reSuccess
