@@ -1643,13 +1643,14 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     add(result, n[1])
     return semExprNoType(c, result)
   of nkPar, nkTupleConstr:
+    a = semExprWithType(c, a, {efLValue})
     if a.len >= 2:
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
+      var rhs = semExprWithType(c, n.sons[1])
+      n.sons[1] = fitNode(c, a.typ, rhs, rhs.info)
       return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.p.owner), {})
-    else:
-      a = semExprWithType(c, a, {efLValue})
   else:
     a = semExprWithType(c, a, {efLValue})
   n.sons[0] = a

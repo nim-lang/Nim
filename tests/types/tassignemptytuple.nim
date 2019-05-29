@@ -1,7 +1,7 @@
 discard """
-  errormsg: "cannot infer the type of the tuple"
-  file: "tassignemptytuple.nim"
-  line: 11
+  output: '''@[]
+(a: @[], b: {})
+'''
 """
 
 var
@@ -9,3 +9,5 @@ var
   bar: tuple[a: seq[int], b: set[char]]
 
 (foo, bar) = (@[], (@[], {}))
+echo foo
+echo bar
