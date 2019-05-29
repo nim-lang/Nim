@@ -1654,7 +1654,7 @@ when defined(nimV2) and not defined(nimscript):
 
 else:
   template owned*(t: typeDesc): typedesc = t
-  template unown*(x: typed): typed = x
+  template unown*(x: typed): untyped = x
 
   proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
