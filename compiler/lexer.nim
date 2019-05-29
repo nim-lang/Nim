@@ -647,34 +647,35 @@ proc handleDecChars(L: var TLexer, xi: var int) =
     inc(L.bufpos)
 
 proc addUnicodeCodePoint(s: var string, i: int) =
+  let i = cast[uint](i)
   # inlined toUTF-8 to avoid unicode and strutils dependencies.
   let pos = s.len
-  if i <=% 127:
+  if i <= 127:
     s.setLen(pos+1)
     s[pos+0] = chr(i)
-  elif i <=% 0x07FF:
+  elif i <= 0x07FF:
     s.setLen(pos+2)
     s[pos+0] = chr((i shr 6) or 0b110_00000)
     s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
-  elif i <=% 0xFFFF:
+  elif i <= 0xFFFF:
     s.setLen(pos+3)
     s[pos+0] = chr(i shr 12 or 0b1110_0000)
     s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
-  elif i <=% 0x001FFFFF:
+  elif i <= 0x001FFFFF:
     s.setLen(pos+4)
     s[pos+0] = chr(i shr 18 or 0b1111_0000)
     s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
     s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
-  elif i <=% 0x03FFFFFF:
+  elif i <= 0x03FFFFFF:
     s.setLen(pos+5)
     s[pos+0] = chr(i shr 24 or 0b111110_00)
     s[pos+1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
     s[pos+2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
     s[pos+3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     s[pos+4] = chr(i and ones(6) or 0b10_0000_00)
-  elif i <=% 0x7FFFFFFF:
+  elif i <= 0x7FFFFFFF:
     s.setLen(pos+6)
     s[pos+0] = chr(i shr 30 or 0b1111110_0)
     s[pos+1] = chr(i shr 24 and ones(6) or 0b10_0000_00)

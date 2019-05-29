@@ -421,12 +421,15 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       else:
         let srcDist = (sizeof(src.intVal) - srctyp.size) * 8
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
+
+        var value = cast[BiggestUInt](src.intVal)
         when system.cpuEndian == bigEndian:
-          dest.intVal = (src.intVal shr srcDist) shl srcDist
-          dest.intVal = (dest.intVal shr destDist) shl destDist
+          value = (value shr srcDist) shl srcDist
+          value = (value shr destDist) shl destDist
         else:
-          dest.intVal = (src.intVal shl srcDist) shr srcDist
-          dest.intVal = (dest.intVal shl destDist) shr destDist
+          value = (value shl srcDist) shr srcDist
+          value = (value shl destDist) shr destDist
+        dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
         myreset(dest); dest.kind = rkFloat
@@ -818,7 +821,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].floatVal = regs[rb].floatVal / regs[rc].floatVal
     of opcShrInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal shr regs[rc].intVal
+      let b = cast[uint64](regs[rb].intVal)
+      let c = cast[uint64](regs[rc].intVal)
+      let a = cast[int64](b shr c)
+      regs[ra].intVal = a
     of opcShlInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shl regs[rc].intVal

@@ -30,15 +30,15 @@ proc eqStrings(a, b: string): bool {.inline, compilerProc.} =
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of string case statements
-  var h = 0
+  var h : uint = 0
   for i in 0..len(s)-1:
-    h = h +% ord(s[i])
-    h = h +% h shl 10
+    h = h + uint(s[i])
+    h = h + h shl 10
     h = h xor (h shr 6)
-  h = h +% h shl 3
+  h = h + h shl 3
   h = h xor (h shr 11)
-  h = h +% h shl 15
-  result = h
+  h = h + h shl 15
+  result = cast[int](h)
 
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
