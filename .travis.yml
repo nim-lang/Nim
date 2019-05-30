@@ -8,13 +8,35 @@ matrix:
 
   include:
     - os: linux
-      env: NIM_COMPILE_TO_CPP=false
+      env:
+        - NIM_COMPILE_TO_CPP=false
+        - CPU=amd64
+
+    - os: linux
+      env:
+        - NIM_COMPILE_TO_CPP=false
+        - CPU=i386
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - g++-multilib
+            - libcurl4-openssl-dev:i386
+            - libgc-dev:i386
+            - libglib2.0-dev:i386
+            - libpulse-dev:i386
+            - libsdl1.2-dev:i386
+            - libsfml-dev:i386
 
     - os: osx
-      env: NIM_COMPILE_TO_CPP=false
+      env:
+        - NIM_COMPILE_TO_CPP=false
+        - CPU=amd64
 
     - os: osx
-      env: NIM_COMPILE_TO_CPP=true
+      env:
+        - NIM_COMPILE_TO_CPP=true
+        - CPU=amd64
 
 # To allow failures for a failing configuration, use something like:
 #  allow_failures:
@@ -23,6 +45,7 @@ matrix:
 
 addons:
   apt:
+    # update the list above if more deps are introduced
     packages:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
@@ -34,25 +57,22 @@ addons:
     - make
     - sfml
 
+install:
+  - if [[ $CPU = i386 ]]; then echo -e "#!/bin/bash\n$(which gcc) -m32 \"\$@\"" > bin/gcc; fi
+  - if [[ $CPU = i386 ]]; then chmod 755 bin/gcc; fi
+  - if [[ $CPU = i386 ]]; then echo -e "#!/bin/bash\n$(which g++) -m32 \"\$@\"" > bin/g++; fi
+  - if [[ $CPU = i386 ]]; then chmod 755 bin/g++; fi
+
 before_script:
-  - set -e
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then unset -f cd; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then shell_session_update() { :; }; fi
   - git clone --depth 1 https://github.com/nim-lang/csources.git
-  - cd csources
-  - make -j 2 LD=$CC
-  - cd ..
-  - export PATH=$(pwd)/bin${PATH:+:$PATH}
-  - echo PATH:${PATH}
-  - set +e   # prevents breaking after_failure
+  - export PATH="$PWD/bin${PATH:+:$PATH}"
+  - make -C csources -j 2 LD=$CC ucpu=$CPU
 
 script:
-  - set -e
   - echo "travis_fold:start:nim_c_koch"
   - nim c koch
   - echo "travis_fold:end:nim_c_koch"
   - ./koch runCI
-  - set +e
 
 before_deploy:
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
