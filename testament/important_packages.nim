@@ -55,7 +55,7 @@ pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
-pkg "nimterop", "", true
+pkg "nimterop", "nim c nimterop/toast.nim", true
 pkg "nimx", "nim c --threads:on test/main.nim", true
 pkg "norm", "nim c -o:normm src/norm.nim"
 pkg "npeg"
