@@ -554,7 +554,7 @@ proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## to ``value``. If any of the keys are missing, they are added.
   var node = node
   for i in 0..(keys.len-2):
-    if not node.hasKey(keys[i]):
+    if not node.hasKey(keys[i]) or node[keys[i]].kind != JObject:
       node[keys[i]] = newJObject()
     node = node[keys[i]]
   node[keys[keys.len-1]] = value
@@ -1570,6 +1570,24 @@ when false:
 
 when isMainModule:
   # Note: Macro tests are in tests/stdlib/tjsonmacro.nim
+  var cost = newJObject()
+  var rows = [["AWS","compute","cost"],
+              ["Alibaba","compute","monthly"],
+              ["Alibaba","network","monthly"],
+              ["Tencent","compute","monthly"],
+              ["AWS","network","cost"],
+              ["Tencent","network","monthly"]]
+
+  for row in rows:
+    cost{row[0..2]} = %(cost{row[0..2]}.getInt + 1)
+  echo cost
+  cost{"AWS", "yearly"} = %""
+  cost{"AWS","compute","cost","monthly"} = %1
+  cost{"AWS","compute","cost","yearly"} = %1
+  echo cost
+  cost{"AWS","compute","cost"} = %1
+  cost{"IBM"} = %""
+  echo cost
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
