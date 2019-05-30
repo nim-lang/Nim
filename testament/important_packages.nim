@@ -49,17 +49,18 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
 # pkg "nimlsp", "", true
-# pkg "nimly", "nim c -r tests/test_nimly", true
+pkg "nimly", "nim c -r tests/test_nimly", true
 pkg "nimongo", "nimble test_ci", true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
+pkg "nimterop", "", true
 pkg "nimx", "nim c --threads:on test/main.nim", true
 pkg "norm", "nim c -o:normm src/norm.nim"
 pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
-#pkg "parsetoml"
+# pkg "parsetoml"
 pkg "patty"
 pkg "plotly", "nim c examples/all.nim", true
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
@@ -74,5 +75,6 @@ pkg "tiny_sqlite"
 pkg "unicodedb"
 pkg "unicodeplus", "", true
 pkg "unpack"
+pkg "with"
 pkg "yaml"
 pkg "zero_functional", "nim c -r test.nim"
