@@ -1263,7 +1263,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
-  result = ""
+  result = "".TaintedString
   readLine(socket, result, timeout, flags, maxLength)
 
 proc recvFrom*(socket: Socket, data: var string, length: int,
