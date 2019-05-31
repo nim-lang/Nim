@@ -1948,8 +1948,7 @@ when defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode", deprecated.}: int
   programResult = 0
 elif hostOS != "standalone":
-  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated.}: int
-    ## deprecated, prefer ``quit``
+  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated: "prefer 'quit'".}: int
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
@@ -2487,14 +2486,11 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
 
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
-  ## Deprecated.
+  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
 proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
-  ## Deprecated.
+  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
 proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
-  ## Deprecated.
+  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
   ##
   ## Retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
@@ -4221,8 +4217,6 @@ proc addQuoted*[T](s: var string, x: T) =
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
-    ## **Deprecated**
-    ##
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``.
     when defined(nimNoNilSeqs):
@@ -4232,8 +4226,6 @@ when hasAlloc:
       else: x.add(y)
 
   proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
-    ## **Deprecated**
-    ##
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``.
     when defined(nimNoNilSeqs):
       x.add(y)
@@ -4242,8 +4234,6 @@ when hasAlloc:
       x.add(y)
 
   proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
-    ## **Deprecated**
-    ##
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``.
     when defined(nimNoNilSeqs):

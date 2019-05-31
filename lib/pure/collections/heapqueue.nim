@@ -176,12 +176,12 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     result.addQuoted(x)
   result.add("]")
 
-proc newHeapQueue*[T](): HeapQueue[T] {.deprecated.} =
-  ## **Deprecated since v0.20.0:** use ``initHeapQueue`` instead.
+proc newHeapQueue*[T](): HeapQueue[T] {.deprecated:
+  "Deprecated since v0.20.0: use 'initHeapQueue' instead.".} =
   initHeapQueue[T]()
 
-proc newHeapQueue*[T](heap: var HeapQueue[T]) {.deprecated.} =
-  ## **Deprecated since v0.20.0:** use ``clear`` instead.
+proc newHeapQueue*[T](heap: var HeapQueue[T]) {.deprecated:
+  "Deprecated since v0.20.0: use 'clear' instead.".} =
   heap.clear()
 
 when isMainModule:

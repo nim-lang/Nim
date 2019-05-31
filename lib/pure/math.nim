@@ -188,8 +188,8 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 1)
   result += 1 + ord(x<=0)
 
-proc countBits32*(n: int32): int {.noSideEffect, deprecated: "use bitops.countSetBits instead".} =
-  ## **Deprecated since version v0.20.0**: Use ``bitops.countSetBits`` instead.
+proc countBits32*(n: int32): int {.noSideEffect, deprecated:
+  "Deprecated since v0.20.0; use 'bitops.countSetBits' instead".} =
   runnableExamples:
     doAssert countBits32(7) == 3
     doAssert countBits32(8) == 1
@@ -594,11 +594,10 @@ when not defined(JS): # C
       ##  echo gamma(11.0) # 3628800.0
       ##  echo gamma(-1.0) # nan
     proc tgamma*(x: float32): float32
-      {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgammaf", header: "<math.h>".}
     proc tgamma*(x: float64): float64
-      {.deprecated: "use gamma instead", importc: "tgamma", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgamma", header: "<math.h>".}
       ## The gamma function
-      ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
       ## Computes the natural log of the gamma function for ``x``.
@@ -729,11 +728,8 @@ when not defined(JS): # C
       ##  echo trunc(PI) # 3.0
       ##  echo trunc(-1.85) # -1.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
-    ## **Deprecated since version 0.19.0**: Use the `mod proc
-    ## <#mod,float64,float64>`_ instead.
-    ##
+  proc fmod*(x, y: float32): float32 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of ``x`` divided by ``y``.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
@@ -772,9 +768,7 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use format instead".} =
-  ## **Deprecated:** use `strformat module <strformat.html>`_
-  ##
+proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use strformat module instead".} =
   ## Decimal rounding on a binary floating point number.
   ##
   ## This function is NOT reliable. Floating point numbers cannot hold
