@@ -10,12 +10,14 @@
 # Nim support for C/C++'s `wide strings`:idx:. This is part of the system
 # module! Do not import it directly!
 
-when not declared(ThisIsSystem):
-  {.error: "You must not import this module explicitly".}
+#when not declared(ThisIsSystem):
+#  {.error: "You must not import this module explicitly".}
 
 type
   Utf16Char* = distinct int16
   WideCString* = ref UncheckedArray[Utf16Char]
+
+proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
@@ -46,7 +48,7 @@ template fastRuneAt(s: cstring, i, L: int, result: untyped, doInc = true) =
   ## `i` is incremented by the number of bytes that have been processed.
   bind ones
 
-  if ord(s[i]) <=% 127:
+  if ord(s[i]) <= 127:
     result = ord(s[i])
     when doInc: inc(i)
   elif ord(s[i]) shr 5 == 0b110:
@@ -98,20 +100,21 @@ proc newWideCString*(source: cstring, L: int): WideCString =
   #result = cast[wideCString](alloc(L * 4 + 2))
   var d = 0
   for ch in runes(source, L):
-    if ch <=% UNI_MAX_BMP:
-      if ch >=% UNI_SUR_HIGH_START and ch <=% UNI_SUR_LOW_END:
+
+    if ch <= UNI_MAX_BMP:
+      if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_LOW_END:
         result[d] = UNI_REPLACEMENT_CHAR
       else:
-        result[d] = Utf16Char(toU16(ch))
-    elif ch >% UNI_MAX_UTF16:
+        result[d] = cast[Utf16Char](uint16(ch))
+    elif ch > UNI_MAX_UTF16:
       result[d] = UNI_REPLACEMENT_CHAR
     else:
-      let ch = ch -% halfBase
-      result[d] = Utf16Char(toU16((ch shr halfShift) +% UNI_SUR_HIGH_START))
+      let ch = ch - halfBase
+      result[d] = cast[Utf16Char](uint16((ch shr halfShift) + UNI_SUR_HIGH_START))
       inc d
-      result[d] = Utf16Char(toU16((ch and halfMask) +% UNI_SUR_LOW_START))
+      result[d] = cast[Utf16Char](uint16((ch and halfMask) + UNI_SUR_LOW_START))
     inc d
-  result[d] = Utf16Char(0'i16)
+  result[d] = Utf16Char(0)
 
 proc newWideCString*(s: cstring): WideCString =
   if s.isNil: return nil
@@ -126,11 +129,11 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
 
   var i = 0
   while w[i].int16 != 0'i16:
-    var ch = int(cast[uint16](w[i]))
+    var ch = ord(w[i])
     inc i
     if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
       # If the 16 bits following the high surrogate are in the source buffer...
-      let ch2 = int(cast[uint16](w[i]))
+      let ch2 = ord(w[i])
 
       # If it's a low surrogate, convert to UTF32:
       if ch2 >= UNI_SUR_LOW_START and ch2 <= UNI_SUR_LOW_END:

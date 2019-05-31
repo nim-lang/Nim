@@ -186,7 +186,7 @@ proc extractAll*(z: var ZipArchive, dest: string) =
       createDir(dest / file[0..file.rfind("/")])
     extractFile(z, file, dest / file)
 
-when not defined(testing) and isMainModule:
+when not defined(testing) and true:
   var zip: ZipArchive
   if not zip.open("nim-0.11.0.zip"):
     raise newException(IOError, "opening zip failed")

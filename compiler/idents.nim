@@ -87,7 +87,7 @@ proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIden
   new(result)
   result.h = h
   result.s = newString(length)
-  for i in countup(0, length - 1): result.s[i] = identifier[i]
+  for i in 0 ..< length: result.s[i] = identifier[i]
   result.next = ic.buckets[idx]
   ic.buckets[idx] = result
   if id == 0:
@@ -110,7 +110,7 @@ proc newIdentCache*(): IdentCache =
   result.idDelegator = result.getIdent":delegator"
   result.emptyIdent = result.getIdent("")
   # initialize the keywords:
-  for s in countup(succ(low(specialWords)), high(specialWords)):
+  for s in succ(low(specialWords)) .. high(specialWords):
     result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
 
 proc whichKeyword*(id: PIdent): TSpecialWord =

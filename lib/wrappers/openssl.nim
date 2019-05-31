@@ -26,7 +26,31 @@
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
-when useWinVersion:
+# To force openSSL version use -d:sslVersion=1.0.0
+# See: #10281, #10230
+# General issue:
+# Other dynamic libraries (like libpg) load diffetent openSSL version then what nim loads.
+# Having two different openSSL loaded version causes a crash.
+# Use this compile time define to force the openSSL version that your other dynamic libraries want.
+const sslVersion {.strdefine.}: string = ""
+when sslVersion != "":
+  when defined(macosx):
+    const
+      DLLSSLName* = "libssl." & sslVersion & ".dylib"
+      DLLUtilName* = "libcrypto." & sslVersion & ".dylib"
+    from posix import SocketHandle
+  elif defined(windows):
+    const
+      DLLSSLName* = "libssl-" & sslVersion & ".dll"
+      DLLUtilName* =  "libcrypto-" & sslVersion & ".dll"
+    from winlean import SocketHandle
+  else:
+    const
+      DLLSSLName* = "libssl.so." & sslVersion
+      DLLUtilName* = "libcrypto.so." & sslVersion
+    from posix import SocketHandle
+
+elif useWinVersion:
   when not defined(nimOldDlls) and defined(cpu64):
     const
       DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
@@ -38,7 +62,10 @@ when useWinVersion:
 
   from winlean import SocketHandle
 else:
-  const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+  when defined(osx):
+    const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+  else:
+    const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.46|.45|.44|.43|.41|.39|.38|.10|)"
 
   when defined(macosx):
     const
@@ -82,8 +109,6 @@ type
   des_key_schedule* = array[1..16, des_ks_struct]
 
   pem_password_cb* = proc(buf: cstring, size, rwflag: cint, userdata: pointer): cint {.cdecl.}
-
-{.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
 
 const
   SSL_SENT_SHUTDOWN* = 1
@@ -399,14 +424,14 @@ when not useWinVersion and not defined(macosx) and not defined(android) and not 
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
-  proc allocWrapper(size: int): pointer {.cdecl.} = alloc(size)
+  proc allocWrapper(size: int): pointer {.cdecl.} = allocShared(size)
   proc reallocWrapper(p: pointer; newsize: int): pointer {.cdecl.} =
     if p == nil:
-      if newSize > 0: result = alloc(newsize)
-    elif newsize == 0: dealloc(p)
-    else: result = realloc(p, newsize)
+      if newSize > 0: result = allocShared(newsize)
+    elif newsize == 0: deallocShared(p)
+    else: result = reallocShared(p, newsize)
   proc deallocWrapper(p: pointer) {.cdecl.} =
-    if p != nil: dealloc(p)
+    if p != nil: deallocShared(p)
 
 proc CRYPTO_malloc_init*() =
   when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):

@@ -1,7 +1,10 @@
 discard """
-  file: "tnotuniquename/mnotuniquename.nim"
-  errormsg: "module names need to be unique per Nimble package"
+  output: '''nested
+flat'''
 """
 
 import mnotuniquename
-import tnotuniquename/mnotuniquename as nun
+import tnotuniquename_dir/mnotuniquename as nun
+
+nested()
+flat()

@@ -48,25 +48,25 @@ proc bitSetInit(b: var TBitSet, length: int) =
   newSeq(b, length)
 
 proc bitSetUnion(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] or y[i]
+  for i in 0 .. high(x): x[i] = x[i] or y[i]
 
 proc bitSetDiff(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] and not y[i]
+  for i in 0 .. high(x): x[i] = x[i] and not y[i]
 
 proc bitSetSymDiff(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] xor y[i]
+  for i in 0 .. high(x): x[i] = x[i] xor y[i]
 
 proc bitSetIntersect(x: var TBitSet, y: TBitSet) =
-  for i in countup(0, high(x)): x[i] = x[i] and y[i]
+  for i in 0 .. high(x): x[i] = x[i] and y[i]
 
 proc bitSetEquals(x, y: TBitSet): bool =
-  for i in countup(0, high(x)):
+  for i in 0 .. high(x):
     if x[i] != y[i]:
       return false
   result = true
 
 proc bitSetContains(x, y: TBitSet): bool =
-  for i in countup(0, high(x)):
+  for i in 0 .. high(x):
     if (x[i] and not y[i]) != int8(0):
       return false
   result = true
@@ -75,20 +75,20 @@ proc bitSetContains(x, y: TBitSet): bool =
 const populationCount: array[low(int8)..high(int8), int8] = block:
     var arr: array[low(int8)..high(int8), int8]
 
-    proc countSetBits(x: int8): int8 =
+    proc countSetBits(x: uint8): uint8 =
       return
-        ( x and 0b00000001'i8) +
-        ((x and 0b00000010'i8) shr 1) +
-        ((x and 0b00000100'i8) shr 2) +
-        ((x and 0b00001000'i8) shr 3) +
-        ((x and 0b00010000'i8) shr 4) +
-        ((x and 0b00100000'i8) shr 5) +
-        ((x and 0b01000000'i8) shr 6) +
-        ((x and 0b10000000'i8) shr 7)
-        
+        ( x and 0b00000001'u8) +
+        ((x and 0b00000010'u8) shr 1) +
+        ((x and 0b00000100'u8) shr 2) +
+        ((x and 0b00001000'u8) shr 3) +
+        ((x and 0b00010000'u8) shr 4) +
+        ((x and 0b00100000'u8) shr 5) +
+        ((x and 0b01000000'u8) shr 6) +
+        ((x and 0b10000000'u8) shr 7)
+
 
     for it in low(int8)..high(int8):
-      arr[it] = countSetBits(it)
+      arr[it] = cast[int8](countSetBits(cast[uint8](it)))
 
     arr
 

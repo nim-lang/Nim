@@ -1,6 +1,6 @@
 discard """
-  line: 11
   errormsg: "'horrible' is not GC-safe"
+  line: 11
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
@@ -16,5 +16,3 @@ proc horrible() {.thread.} =
 
 createThread[void](t, horrible)
 joinThread(t)
-
-

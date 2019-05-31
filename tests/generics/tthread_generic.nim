@@ -1,5 +1,6 @@
 discard """
   cmd: "nim $target --hints:on --threads:on $options $file"
+  action: compile
 """
 
 type
@@ -25,7 +26,7 @@ proc `@||->`*[T](fn: proc(): T {.thread.},
 proc `||->`*[T](fn: proc(): T{.thread.}, callback: proc(val: T){.thread.}) =
   discard fn @||-> callback
 
-when isMainModule:
+when true:
   import os
   proc testFunc(): int {.thread.} =
     return 1
@@ -36,4 +37,3 @@ when isMainModule:
   echo("test")
   joinThread(thr)
   os.sleep(3000)
-

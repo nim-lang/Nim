@@ -34,10 +34,10 @@ proc encodeConfig(g: ModuleGraph): string =
 
   depConfigFields(serialize)
 
-proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
+proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile;
                     cycleCheck: var IntSet): bool =
   let root = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
-    fullpath)
+    fullpath.string)
   if root[0].len == 0: return true
   if root[1] != hashFileCached(g.config, fileIdx, fullpath):
     return true
@@ -47,30 +47,33 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
   # check dependencies (recursively):
   for row in db.fastRows(sql"select fullpath from filenames where id in (select dependency from deps where module = ?)",
                          root[0]):
-    let dep = row[0]
+    let dep = AbsoluteFile row[0]
     if needsRecompile(g, g.config.fileInfoIdx(dep), dep, cycleCheck):
       return true
   return false
 
-proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
-  if g.config.symbolFiles in {disabledSf, writeOnlySf} or
-     g.incr.configChanged:
-    return getID()
+proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
+  ## Analyse the known dependency graph.
+  if g.config.symbolFiles == disabledSf: return getID()
+  when false:
+    if g.config.symbolFiles in {disabledSf, writeOnlySf} or
+      g.incr.configChanged:
+      return getID()
   let module = g.incr.db.getRow(
-    sql"select id, fullHash, nimid from modules where fullpath = ?", fullpath)
+    sql"select id, fullHash, nimid from modules where fullpath = ?", string fullpath)
   let currentFullhash = hashFileCached(g.config, fileIdx, fullpath)
   if module[0].len == 0:
     result = getID()
     db.exec(sql"insert into modules(fullpath, interfHash, fullHash, nimid) values (?, ?, ?, ?)",
-      fullpath, "", currentFullhash, result)
+      string fullpath, "", currentFullhash, result)
   else:
     result = parseInt(module[2])
     if currentFullhash == module[1]:
       # not changed, so use the cached AST:
       doAssert(result != 0)
       var cycleCheck = initIntSet()
-      if not needsRecompile(g, fileIdx, fullpath, cycleCheck):
-        echo "cached successfully! ", fullpath
+      if not needsRecompile(g, fileIdx, fullpath, cycleCheck) and not g.incr.configChanged:
+        echo "cached successfully! ", string fullpath
         return -result
     db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
     db.exec(sql"delete from deps where module = ?", module[0])
@@ -79,8 +82,12 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
     db.exec(sql"delete from toplevelstmts where module = ?", module[0])
     db.exec(sql"delete from statics where module = ?", module[0])
 
+proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) =
+  let id = getModuleId(g, fileIdx, fullpath)
+  result = (g.incr.r.syms.getOrDefault(abs id), id)
+
 proc pushType(w: var Writer, t: PType) =
-  if not containsOrIncl(w.tmarks, t.id):
+  if not containsOrIncl(w.tmarks, t.uniqueId):
     w.tstack.add(t)
 
 proc pushSym(w: var Writer, s: PSym) =
@@ -106,7 +113,8 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     result.add(',')
     encodeVInt(int n.info.line, result)
     result.add(',')
-    encodeVInt(toDbFileId(g.incr, g.config, n.info.fileIndex), result)
+    #encodeVInt(toDbFileId(g.incr, g.config, n.info.fileIndex), result)
+    encodeVInt(n.info.fileIndex.int, result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -123,7 +131,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     encodeVInt(cast[int32](f), result)
   if n.typ != nil:
     result.add('^')
-    encodeVInt(n.typ.id, result)
+    encodeVInt(n.typ.uniqueId, result)
     pushType(w, n.typ)
   case n.kind
   of nkCharLit..nkUInt64Lit:
@@ -146,7 +154,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       encodeNode(g, n.info, n.sons[i], result)
   add(result, ')')
 
@@ -184,7 +192,10 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
   add(result, '[')
   encodeVInt(ord(t.kind), result)
   add(result, '+')
-  encodeVInt(t.id, result)
+  encodeVInt(t.uniqueId, result)
+  if t.id != t.uniqueId:
+    add(result, '+')
+    encodeVInt(t.id, result)
   if t.n != nil:
     encodeNode(g, unknownLineInfo(), t.n, result)
   if t.flags != {}:
@@ -233,12 +244,16 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     encodeVInt(s.id, result)
     pushSym(w, s)
   encodeLoc(g, t.loc, result)
-  for i in countup(0, sonsLen(t) - 1):
+  if t.typeInst != nil:
+    add(result, '\21')
+    encodeVInt(t.typeInst.uniqueId, result)
+    pushType(w, t.typeInst)
+  for i in 0 ..< sonsLen(t):
     if t.sons[i] == nil:
       add(result, "^()")
     else:
       add(result, '^')
-      encodeVInt(t.sons[i].id, result)
+      encodeVInt(t.sons[i].uniqueId, result)
       pushType(w, t.sons[i])
 
 proc encodeLib(g: ModuleGraph, lib: PLib, info: TLineInfo, result: var string) =
@@ -257,7 +272,7 @@ proc encodeInstantiations(g: ModuleGraph; s: seq[PInstantiation];
     pushSym(w, t.sym)
     for tt in t.concreteTypes:
       result.add('\17')
-      encodeVInt(tt.id, result)
+      encodeVInt(tt.uniqueId, result)
       pushType(w, tt)
     result.add('\20')
     encodeVInt(t.compilesId, result)
@@ -275,14 +290,15 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
   encodeStr(s.name.s, result)
   if s.typ != nil:
     result.add('^')
-    encodeVInt(s.typ.id, result)
+    encodeVInt(s.typ.uniqueId, result)
     pushType(w, s.typ)
   result.add('?')
   if s.info.col != -1'i16: encodeVInt(s.info.col, result)
   result.add(',')
   encodeVInt(int s.info.line, result)
   result.add(',')
-  encodeVInt(toDbFileId(g.incr, g.config, s.info.fileIndex), result)
+  #encodeVInt(toDbFileId(g.incr, g.config, s.info.fileIndex), result)
+  encodeVInt(s.info.fileIndex.int, result)
   if s.owner != nil:
     result.add('*')
     encodeVInt(s.owner.id, result)
@@ -310,7 +326,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
   of skType, skGenericParam:
     for t in s.typeInstCache:
       result.add('\14')
-      encodeVInt(t.id, result)
+      encodeVInt(t.uniqueId, result)
       pushType(w, t)
   of routineKinds:
     encodeInstantiations(g, s.procInstCache, result)
@@ -318,6 +334,9 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
       result.add('\16')
       encodeVInt(s.gcUnsafetyReason.id, result)
       pushSym(w, s.gcUnsafetyReason)
+    if s.transformedBody != nil:
+      result.add('\24')
+      encodeNode(g, s.info, s.transformedBody, result)
   of skModule, skPackage:
     encodeInstantiations(g, s.usedGenerics, result)
     # we don't serialize:
@@ -358,18 +377,12 @@ proc storeType(g: ModuleGraph; t: PType) =
   let m = if t.owner != nil: getModule(t.owner) else: nil
   let mid = if m == nil: 0 else: abs(m.id)
   db.exec(sql"insert into types(nimid, module, data) values (?, ?, ?)",
-    t.id, mid, buf)
+    t.uniqueId, mid, buf)
 
-proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
-  if g.config.symbolFiles == disabledSf: return
-  var buf = newStringOfCap(160)
-  encodeNode(g, module.info, n, buf)
-  db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
-    abs(module.id), module.offset, buf)
-  inc module.offset
+proc transitiveClosure(g: ModuleGraph) =
   var i = 0
   while true:
-    if i > 10_000:
+    if i > 100_000:
       doAssert false, "loop never ends!"
     if w.sstack.len > 0:
       let s = w.sstack.pop()
@@ -380,13 +393,29 @@ proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
       let t = w.tstack.pop()
       storeType(g, t)
       when false:
-        echo "popped type ", typeToString(t), " ", t.id
+        echo "popped type ", typeToString(t), " ", t.uniqueId
     else:
       break
     inc i
 
+proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
+  if g.config.symbolFiles == disabledSf: return
+  var buf = newStringOfCap(160)
+  encodeNode(g, module.info, n, buf)
+  db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
+    abs(module.id), module.offset, buf)
+  inc module.offset
+  transitiveClosure(g)
+
 proc recordStmt*(g: ModuleGraph; module: PSym; n: PNode) =
   storeNode(g, module, n)
+
+proc storeFilename(g: ModuleGraph; fullpath: AbsoluteFile; fileIdx: FileIndex) =
+  let id = db.getValue(sql"select id from filenames where fullpath = ?", fullpath.string)
+  if id.len == 0:
+    let fullhash = hashFileCached(g.config, fileIdx, fullpath)
+    db.exec(sql"insert into filenames(nimid, fullpath, fullhash) values (?, ?, ?)",
+        int(fileIdx), fullpath.string, fullhash)
 
 proc storeRemaining*(g: ModuleGraph; module: PSym) =
   if g.config.symbolFiles == disabledSf: return
@@ -397,6 +426,13 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
     else:
       stillForwarded.add s
   swap w.forwardedSyms, stillForwarded
+  transitiveClosure(g)
+  var nimid = 0
+  for x in items(g.config.m.fileInfos):
+    # don't store the "command line" entry:
+    if nimid != 0:
+      storeFilename(g, x.fullPath, FileIndex(nimid))
+    inc nimid
 
 # ---------------- decoder -----------------------------------
 
@@ -423,9 +459,11 @@ proc decodeLineInfo(g; b; info: var TLineInfo) =
       else: info.line = uint16(decodeVInt(b.s, b.pos))
       if b.s[b.pos] == ',':
         inc(b.pos)
-        info.fileIndex = fromDbFileId(g.incr, g.config, decodeVInt(b.s, b.pos))
+        #info.fileIndex = fromDbFileId(g.incr, g.config, decodeVInt(b.s, b.pos))
+        info.fileIndex = FileIndex decodeVInt(b.s, b.pos)
 
 proc skipNode(b) =
+  # ')' itself cannot be part of a string literal so that this is correct.
   assert b.s[b.pos] == '('
   var par = 0
   var pos = b.pos+1
@@ -560,13 +598,18 @@ proc loadType(g; id: int; info: TLineInfo): PType =
   result.kind = TTypeKind(decodeVInt(b.s, b.pos))
   if b.s[b.pos] == '+':
     inc(b.pos)
-    result.id = decodeVInt(b.s, b.pos)
-    setId(result.id)
+    result.uniqueId = decodeVInt(b.s, b.pos)
+    setId(result.uniqueId)
     #if debugIds: registerID(result)
   else:
     internalError(g.config, info, "decodeType: no id")
+  if b.s[b.pos] == '+':
+    inc(b.pos)
+    result.id = decodeVInt(b.s, b.pos)
+  else:
+    result.id = result.uniqueId
   # here this also avoids endless recursion for recursive type
-  g.incr.r.types.add(result.id, result)
+  g.incr.r.types.add(result.uniqueId, result)
   if b.s[b.pos] == '(': result.n = decodeNode(g, b, unknownLineInfo())
   if b.s[b.pos] == '$':
     inc(b.pos)
@@ -615,8 +658,12 @@ proc loadType(g; id: int; info: TLineInfo): PType =
     doAssert b.s[b.pos] == '\20'
     inc(b.pos)
     let y = loadSym(g, decodeVInt(b.s, b.pos), info)
-    result.methods.safeAdd((x, y))
+    result.methods.add((x, y))
   decodeLoc(g, b, result.loc, info)
+  if b.s[b.pos] == '\21':
+    inc(b.pos)
+    let d = decodeVInt(b.s, b.pos)
+    result.typeInst = loadType(g, d, info)
   while b.s[b.pos] == '^':
     inc(b.pos)
     if b.s[b.pos] == '(':
@@ -655,7 +702,7 @@ proc decodeInstantiations(g; b; info: TLineInfo;
     if b.s[b.pos] == '\20':
       inc(b.pos)
       ii.compilesId = decodeVInt(b.s, b.pos)
-    s.safeAdd ii
+    s.add ii
 
 proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
   if b.s[b.pos] == '{':
@@ -716,12 +763,15 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
   of skType, skGenericParam:
     while b.s[b.pos] == '\14':
       inc(b.pos)
-      result.typeInstCache.safeAdd loadType(g, decodeVInt(b.s, b.pos), result.info)
+      result.typeInstCache.add loadType(g, decodeVInt(b.s, b.pos), result.info)
   of routineKinds:
     decodeInstantiations(g, b, result.info, result.procInstCache)
     if b.s[b.pos] == '\16':
       inc(b.pos)
       result.gcUnsafetyReason = loadSym(g, decodeVInt(b.s, b.pos), result.info)
+    if b.s[b.pos] == '\24':
+      inc b.pos
+      result.transformedBody = decodeNode(g, b, result.info)
   of skModule, skPackage:
     decodeInstantiations(g, b, result.info, result.usedGenerics)
   of skLet, skVar, skField, skForVar:
@@ -749,6 +799,9 @@ proc loadSym(g; id: int; info: TLineInfo): PSym =
   result = loadSymFromBlob(g, b, info)
   doAssert id == result.id, "symbol ID is not consistent!"
 
+proc registerModule*(g; module: PSym) =
+  g.incr.r.syms.add(abs module.id, module)
+
 proc loadModuleSymTab(g; module: PSym) =
   ## goal: fill  module.tab
   g.incr.r.syms.add(module.id, module)
@@ -762,7 +815,8 @@ proc loadModuleSymTab(g; module: PSym) =
       b.s.add '\0'
       s = loadSymFromBlob(g, b, module.info)
     assert s != nil
-    strTableAdd(module.tab, s)
+    if s.kind != skField:
+      strTableAdd(module.tab, s)
   if sfSystemModule in module.flags:
     g.systemModule = module
 
@@ -792,7 +846,9 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       of "error": localError(g.config, n.info, errUser, n[1].strVal)
       of "compile":
         internalAssert g.config, n.len == 3 and n[2].kind == nkStrLit
-        var cf = Cfile(cname: n[1].strVal, obj: n[2].strVal,
+        let cname = AbsoluteFile n[1].strVal,
+        var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                       obj: AbsoluteFile n[2].strVal,
                        flags: {CfileFlag.External})
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":
@@ -840,8 +896,9 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
         internalAssert g.config, false
   of nkImportStmt:
     for x in n:
-      internalAssert g.config, x.kind == nkStrLit
-      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, n[0].strVal))
+      internalAssert g.config, x.kind == nkSym
+      let modpath = AbsoluteFile toFullPath(g.config, x.sym.info)
+      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, modpath))
       internalAssert g.config, imported.id < 0
   of nkStmtList, nkStmtListExpr:
     for x in n: replay(g, module, x)
@@ -852,32 +909,38 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
   result = newNodeI(nkStmtList, module.info)
   for row in db.rows(sql"select data from toplevelstmts where module = ? order by position asc",
                         abs module.id):
-
     var b = BlobReader(pos: 0)
     # ensure we can read without index checks:
     b.s = row[0] & '\0'
     result.add decodeNode(g, b, module.info)
-
   db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
   replay(g, module, result)
 
 proc setupModuleCache*(g: ModuleGraph) =
   if g.config.symbolFiles == disabledSf: return
   g.recordStmt = recordStmt
-  let dbfile = getNimcacheDir(g.config) / "rodfiles.db"
+  let dbfile = getNimcacheDir(g.config) / RelativeFile"rodfiles.db"
   if g.config.symbolFiles == writeOnlySf:
     removeFile(dbfile)
+  createDir getNimcacheDir(g.config)
+  let ec = encodeConfig(g)
   if not fileExists(dbfile):
-    db = open(connection=dbfile, user="nim", password="",
+    db = open(connection=string dbfile, user="nim", password="",
               database="nim")
     createDb(db)
-    db.exec(sql"insert into config(config) values (?)", encodeConfig(g))
+    db.exec(sql"insert into config(config) values (?)", ec)
   else:
-    db = open(connection=dbfile, user="nim", password="",
+    db = open(connection=string dbfile, user="nim", password="",
               database="nim")
     let oldConfig = db.getValue(sql"select config from config")
-    g.incr.configChanged = oldConfig != encodeConfig(g)
+    g.incr.configChanged = oldConfig != ec
+    # ensure the filename IDs stay consistent:
+    for row in db.rows(sql"select fullpath, nimid from filenames order by nimid"):
+      let id = fileInfoIdx(g.config, AbsoluteFile row[0])
+      doAssert id.int == parseInt(row[1])
+    db.exec(sql"update config set config = ?", ec)
   db.exec(sql"pragma journal_mode=off")
+  # This MUST be turned off, otherwise it's way too slow even for testing purposes:
   db.exec(sql"pragma SYNCHRONOUS=off")
   db.exec(sql"pragma LOCKING_MODE=exclusive")
   let lastId = db.getValue(sql"select max(idgen) from controlblock")

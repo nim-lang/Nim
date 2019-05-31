@@ -1,7 +1,7 @@
 discard """
-  tfile: "tenummix.nim"
-  tline: 11
   errormsg: "type mismatch"
+  file: "tenummix.nim"
+  line: 11
 """
 
 type

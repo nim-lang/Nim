@@ -1,6 +1,6 @@
 discard """
-  line: 9
   errormsg: "'repr' doesn't support 'void' type"
+  line: 9
 """
 
 # bug #2879

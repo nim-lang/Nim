@@ -1,5 +1,4 @@
 discard """
-  file: "tsubrange.nim"
   outputsub: "value out of range: 50 [RangeError]"
   exitcode: "1"
 """

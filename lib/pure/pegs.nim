@@ -90,19 +90,19 @@ proc kind*(p: Peg): PegKind = p.kind
   ## Returns the *PegKind* of a given *Peg* object.
 
 proc term*(p: Peg): string = p.term
-  ## Returns the *string* representation of a given *Peg* variant object 
+  ## Returns the *string* representation of a given *Peg* variant object
   ## where present.
 
 proc ch*(p: Peg): char = p.ch
-  ## Returns the *char* representation of a given *Peg* variant object 
+  ## Returns the *char* representation of a given *Peg* variant object
   ## where present.
 
 proc charChoice*(p: Peg): ref set[char] = p.charChoice
-  ## Returns the *charChoice* field of a given *Peg* variant object 
+  ## Returns the *charChoice* field of a given *Peg* variant object
   ## where present.
 
 proc nt*(p: Peg): NonTerminal = p.nt
-  ## Returns the *NonTerminal* object of a given *Peg* variant object 
+  ## Returns the *NonTerminal* object of a given *Peg* variant object
   ## where present.
 
 proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
@@ -137,39 +137,34 @@ proc flags*(nt: NonTerminal): set[NonTerminalFlag] = nt.flags
 
 proc rule*(nt: NonTerminal): Peg = nt.rule
   ## Gets the *Peg* object representing the rule definition of the parent *Peg*
-  ## object variant of a given *NonTerminal*. 
+  ## object variant of a given *NonTerminal*.
 
 proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
   if t.len != 1:
-    result.kind = pkTerminal
-    result.term = t
+    result = Peg(kind: pkTerminal, term: t)
   else:
-    result.kind = pkChar
-    result.ch = t[0]
+    result = Peg(kind: pkChar, ch: t[0])
 
 proc termIgnoreCase*(t: string): Peg {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a terminal string; ignore case for matching
-  result.kind = pkTerminalIgnoreCase
-  result.term = t
+  result = Peg(kind: pkTerminalIgnoreCase, term: t)
 
 proc termIgnoreStyle*(t: string): Peg {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a terminal string; ignore style for matching
-  result.kind = pkTerminalIgnoreStyle
-  result.term = t
+  result = Peg(kind: pkTerminalIgnoreStyle, term: t)
 
 proc term*(t: char): Peg {.nosideEffect, rtl, extern: "npegs$1Char".} =
   ## constructs a PEG from a terminal char
   assert t != '\0'
-  result.kind = pkChar
-  result.ch = t
+  result = Peg(kind: pkChar, ch: t)
 
 proc charSet*(s: set[char]): Peg {.nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
   assert '\0' notin s
-  result.kind = pkCharChoice
+  result = Peg(kind: pkCharChoice)
   new(result.charChoice)
   result.charChoice[] = s
 
@@ -189,8 +184,7 @@ proc addChoice(dest: var Peg, elem: Peg) =
   else: add(dest, elem)
 
 template multipleOp(k: PegKind, localOpt: untyped) =
-  result.kind = k
-  result.sons = @[]
+  result = Peg(kind: k, sons: @[])
   for x in items(a):
     if x.kind == k:
       for y in items(x.sons):
@@ -230,8 +224,7 @@ proc `?`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsOptional".} =
     # a? ?  --> a?
     result = a
   else:
-    result.kind = pkOption
-    result.sons = @[a]
+    result = Peg(kind: pkOption, sons: @[a])
 
 proc `*`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsGreedyRep".} =
   ## constructs a "greedy repetition" for the PEG `a`
@@ -240,27 +233,22 @@ proc `*`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsGreedyRep".} =
     assert false
     # produces endless loop!
   of pkChar:
-    result.kind = pkGreedyRepChar
-    result.ch = a.ch
+    result = Peg(kind: pkGreedyRepChar, ch: a.ch)
   of pkCharChoice:
-    result.kind = pkGreedyRepSet
-    result.charChoice = a.charChoice # copying a reference suffices!
+    result = Peg(kind: pkGreedyRepSet, charChoice: a.charChoice)
   of pkAny, pkAnyRune:
-    result.kind = pkGreedyAny
+    result = Peg(kind: pkGreedyAny)
   else:
-    result.kind = pkGreedyRep
-    result.sons = @[a]
+    result = Peg(kind: pkGreedyRep, sons: @[a])
 
 proc `!*`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsSearch".} =
   ## constructs a "search" for the PEG `a`
-  result.kind = pkSearch
-  result.sons = @[a]
+  result = Peg(kind: pkSearch, sons: @[a])
 
 proc `!*\`*(a: Peg): Peg {.noSideEffect, rtl,
                              extern: "npgegsCapturedSearch".} =
   ## constructs a "captured search" for the PEG `a`
-  result.kind = pkCapturedSearch
-  result.sons = @[a]
+  result = Peg(kind: pkCapturedSearch, sons: @[a])
 
 proc `+`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsGreedyPosRep".} =
   ## constructs a "greedy positive repetition" with the PEG `a`
@@ -268,50 +256,48 @@ proc `+`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsGreedyPosRep".} =
 
 proc `&`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsAndPredicate".} =
   ## constructs an "and predicate" with the PEG `a`
-  result.kind = pkAndPredicate
-  result.sons = @[a]
+  result = Peg(kind: pkAndPredicate, sons: @[a])
 
 proc `!`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsNotPredicate".} =
   ## constructs a "not predicate" with the PEG `a`
-  result.kind = pkNotPredicate
-  result.sons = @[a]
+  result = Peg(kind: pkNotPredicate, sons: @[a])
 
 proc any*: Peg {.inline.} =
   ## constructs the PEG `any character`:idx: (``.``)
-  result.kind = pkAny
+  result = Peg(kind: pkAny)
 
 proc anyRune*: Peg {.inline.} =
   ## constructs the PEG `any rune`:idx: (``_``)
-  result.kind = pkAnyRune
+  result = Peg(kind: pkAnyRune)
 
 proc newLine*: Peg {.inline.} =
   ## constructs the PEG `newline`:idx: (``\n``)
-  result.kind = pkNewLine
+  result = Peg(kind: pkNewLine)
 
 proc unicodeLetter*: Peg {.inline.} =
   ## constructs the PEG ``\letter`` which matches any Unicode letter.
-  result.kind = pkLetter
+  result = Peg(kind: pkLetter)
 
 proc unicodeLower*: Peg {.inline.} =
   ## constructs the PEG ``\lower`` which matches any Unicode lowercase letter.
-  result.kind = pkLower
+  result = Peg(kind: pkLower)
 
 proc unicodeUpper*: Peg {.inline.} =
   ## constructs the PEG ``\upper`` which matches any Unicode uppercase letter.
-  result.kind = pkUpper
+  result = Peg(kind: pkUpper)
 
 proc unicodeTitle*: Peg {.inline.} =
   ## constructs the PEG ``\title`` which matches any Unicode title letter.
-  result.kind = pkTitle
+  result = Peg(kind: pkTitle)
 
 proc unicodeWhitespace*: Peg {.inline.} =
   ## constructs the PEG ``\white`` which matches any Unicode
   ## whitespace character.
-  result.kind = pkWhitespace
+  result = Peg(kind: pkWhitespace)
 
 proc startAnchor*: Peg {.inline.} =
   ## constructs the PEG ``^`` which matches the start of the input.
-  result.kind = pkStartAnchor
+  result = Peg(kind: pkStartAnchor)
 
 proc endAnchor*: Peg {.inline.} =
   ## constructs the PEG ``$`` which matches the end of the input.
@@ -319,29 +305,25 @@ proc endAnchor*: Peg {.inline.} =
 
 proc capture*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
-  result.kind = pkCapture
-  result.sons = @[a]
+  result = Peg(kind: pkCapture, sons: @[a])
 
 proc backref*(index: range[1..MaxSubpatterns]): Peg {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1.
-  result.kind = pkBackRef
-  result.index = index-1
+  result = Peg(kind: pkBackRef, index: index-1)
 
 proc backrefIgnoreCase*(index: range[1..MaxSubpatterns]): Peg {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1. Ignores case for matching.
-  result.kind = pkBackRefIgnoreCase
-  result.index = index-1
+  result = Peg(kind: pkBackRefIgnoreCase, index: index-1)
 
 proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns]): Peg {.
   nosideEffect, rtl, extern: "npegs$1".}=
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1. Ignores style for matching.
-  result.kind = pkBackRefIgnoreStyle
-  result.index = index-1
+  result = Peg(kind: pkBackRefIgnoreStyle, index: index-1)
 
 proc spaceCost(n: Peg): int =
   case n.kind
@@ -366,16 +348,12 @@ proc nonterminal*(n: NonTerminal): Peg {.
     when false: echo "inlining symbol: ", n.name
     result = n.rule # inlining of rule enables better optimizations
   else:
-    result.kind = pkNonTerminal
-    result.nt = n
+    result = Peg(kind: pkNonTerminal, nt: n)
 
 proc newNonTerminal*(name: string, line, column: int): NonTerminal {.
   nosideEffect, rtl, extern: "npegs$1".} =
   ## constructs a nonterminal symbol
-  new(result)
-  result.name = name
-  result.line = line
-  result.col = column
+  result = NonTerminal(name: name, line: line, col: column)
 
 template letters*: Peg =
   ## expands to ``charset({'A'..'Z', 'a'..'z'})``
@@ -553,8 +531,6 @@ type
     ml: int
     origStart: int
 
-{.deprecated: [TCaptures: Captures].}
-
 proc bounds*(c: Captures,
              i: range[0..MaxSubpatterns-1]): tuple[first, last: int] =
   ## returns the bounds ``[first..last]`` of the `i`'th capture.
@@ -574,7 +550,7 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-template matchOrParse(mopProc: untyped): typed =
+template matchOrParse(mopProc: untyped) =
   # Used to make the main matcher proc *rawMatch* as well as event parser
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
@@ -587,8 +563,14 @@ template matchOrParse(mopProc: untyped): typed =
       if p.index >= c.ml: return -1
       var (a, b) = c.matches[p.index]
       var n: Peg
-      n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
-      n.term = s.substr(a, b)
+      case p.kind
+      of pkBackRef:
+        n = Peg(kind: pkTerminal, term: s.substr(a, b))
+      of pkBackRefIgnoreStyle:
+        n = Peg(kind: pkTerminalIgnoreStyle, term: s.substr(a, b))
+      of pkBackRefIgnoreCase:
+        n = Peg(kind: pkTerminalIgnoreCase, term: s.substr(a, b))
+      else: assert(false, "impossible case")
       mopProc(s, n, start, c)
 
     case p.kind
@@ -885,7 +867,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
 macro mkHandlerTplts(handlers: untyped): untyped =
   # Transforms the handler spec in *handlers* into handler templates.
   # The AST structure of *handlers[0]*:
-  # 
+  #
   # .. code-block::
   # StmtList
   #   Call
@@ -1009,7 +991,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ##            echo opStack
   ##
   ##  let pLen = parseArithExpr(txt)
-  ## 
+  ##
   ## The *handlers* parameter consists of code blocks for *PegKinds*,
   ## which define the grammar elements of interest. Each block can contain
   ## handler code to be executed when the parser enters and leaves text
@@ -1342,7 +1324,7 @@ when not defined(js):
                       subs: varargs[tuple[pattern: Peg, repl: string]]) {.
                       rtl, extern: "npegs$1".} =
     ## reads in the file `infile`, performs a parallel replacement (calls
-    ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+    ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
     ## error occurs. This is supposed to be used for quick scripting.
     ##
     ## **Note**: this proc does not exist while using the JS backend.
@@ -1547,20 +1529,17 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
 
 proc skip(c: var PegLexer) =
   var pos = c.bufpos
-  var buf = c.buf
   while pos < c.buf.len:
-    case buf[pos]
+    case c.buf[pos]
     of ' ', '\t':
       inc(pos)
     of '#':
       while (pos < c.buf.len) and
-             not (buf[pos] in {'\c', '\L', '\0'}): inc(pos)
+             not (c.buf[pos] in {'\c', '\L', '\0'}): inc(pos)
     of '\c':
       pos = handleCR(c, pos)
-      buf = c.buf
     of '\L':
       pos = handleLF(c, pos)
-      buf = c.buf
     else:
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
@@ -1568,10 +1547,9 @@ proc skip(c: var PegLexer) =
 proc getString(c: var PegLexer, tok: var Token) =
   tok.kind = tkStringLit
   var pos = c.bufpos + 1
-  var buf = c.buf
-  var quote = buf[pos-1]
+  var quote = c.buf[pos-1]
   while pos < c.buf.len:
-    case buf[pos]
+    case c.buf[pos]
     of '\\':
       c.bufpos = pos
       getEscapedChar(c, tok)
@@ -1579,22 +1557,21 @@ proc getString(c: var PegLexer, tok: var Token) =
     of '\c', '\L', '\0':
       tok.kind = tkInvalid
       break
-    elif buf[pos] == quote:
+    elif c.buf[pos] == quote:
       inc(pos)
       break
     else:
-      add(tok.literal, buf[pos])
+      add(tok.literal, c.buf[pos])
       inc(pos)
   c.bufpos = pos
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  var buf = c.buf
-  if buf[pos] in {'0'..'9'}:
+  if c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
-    while pos < c.buf.len and buf[pos] in {'0'..'9'}:
-      tok.index = tok.index * 10 + ord(buf[pos]) - ord('0')
+    while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
+      tok.index = tok.index * 10 + ord(c.buf[pos]) - ord('0')
       inc(pos)
   else:
     tok.kind = tkDollar
@@ -1604,14 +1581,13 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
   tok.kind = tkCharSet
   tok.charset = {}
   var pos = c.bufpos + 1
-  var buf = c.buf
   var caret = false
-  if buf[pos] == '^':
+  if c.buf[pos] == '^':
     inc(pos)
     caret = true
   while pos < c.buf.len:
     var ch: char
-    case buf[pos]
+    case c.buf[pos]
     of ']':
       if pos < c.buf.len: inc(pos)
       break
@@ -1624,11 +1600,11 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
       tok.kind = tkInvalid
       break
     else:
-      ch = buf[pos]
+      ch = c.buf[pos]
       inc(pos)
     incl(tok.charset, ch)
-    if buf[pos] == '-':
-      if pos+1 < c.buf.len and buf[pos+1] == ']':
+    if c.buf[pos] == '-':
+      if pos+1 < c.buf.len and c.buf[pos+1] == ']':
         incl(tok.charset, '-')
         inc(pos)
       else:
@@ -1637,7 +1613,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
         else:
           break
         var ch2: char
-        case buf[pos]
+        case c.buf[pos]
         of '\\':
           c.bufpos = pos
           getEscapedChar(c, tok)
@@ -1648,7 +1624,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
           break
         else:
           if pos+1 < c.buf.len:
-            ch2 = buf[pos]
+            ch2 = c.buf[pos]
             inc(pos)
           else:
             break
@@ -1659,11 +1635,10 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
 
 proc getSymbol(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos
-  var buf = c.buf
   while pos < c.buf.len:
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if pos < buf.len and buf[pos] notin strutils.IdentChars: break
+    if pos < c.buf.len and c.buf[pos] notin strutils.IdentChars: break
   c.bufpos = pos
   tok.kind = tkIdentifier
 

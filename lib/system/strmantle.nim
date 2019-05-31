@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Compilerprocs for strings that do not depend on the string implementation.
+# Compilerprocs for strings that do not depend on the string implementation.
 
 proc cmpStrings(a, b: string): int {.inline, compilerProc.} =
   let alen = a.len
@@ -30,17 +30,24 @@ proc eqStrings(a, b: string): bool {.inline, compilerProc.} =
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of string case statements
-  var h = 0
+  var h : uint = 0
   for i in 0..len(s)-1:
-    h = h +% ord(s[i])
-    h = h +% h shl 10
+    h = h + uint(s[i])
+    h = h + h shl 10
     h = h xor (h shr 6)
-  h = h +% h shl 3
+  h = h + h shl 3
   h = h xor (h shr 11)
-  h = h +% h shl 15
-  result = h
+  h = h + h shl 15
+  result = cast[int](h)
 
-proc add*(result: var string; x: int64) =
+proc addInt*(result: var string; x: int64) =
+  ## Converts integer to its string representation and appends it to `result`.
+  ##
+  ## .. code-block:: Nim
+  ##   var
+  ##     a = "123"
+  ##     b = 45
+  ##   a.addInt(b) # a <- "12345"
   let base = result.len
   setLen(result, base + sizeof(x)*4)
   var i = 0
@@ -59,11 +66,22 @@ proc add*(result: var string; x: int64) =
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
 
+proc add*(result: var string; x: int64) {.deprecated:
+  "Deprecated since v0.20, use 'addInt'".} =
+  addInt(result, x)
+
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
-  result.add x
+  result.addInt x
 
-proc add*(result: var string; x: float) =
+proc addFloat*(result: var string; x: float) =
+  ## Converts float to its string representation and appends it to `result`.
+  ##
+  ## .. code-block:: Nim
+  ##   var
+  ##     a = "123"
+  ##     b = 45.67
+  ##   a.addFloat(b) # a <- "12345.67"
   when nimvm:
     result.add $x
   else:
@@ -99,9 +117,13 @@ proc add*(result: var string; x: float) =
         result.add buf[i]
         inc i
 
+proc add*(result: var string; x: float) {.deprecated:
+  "Deprecated since v0.20, use 'addFloat'".} =
+  addFloat(result, x)
+
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
-  result.add f
+  result.addFloat f
 
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
@@ -133,58 +155,58 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     has_sign = false
 
   # Sign?
-  if s[i] == '+' or s[i] == '-':
+  if i < s.len and (s[i] == '+' or s[i] == '-'):
     has_sign = true
     if s[i] == '-':
       sign = -1.0
     inc(i)
 
   # NaN?
-  if s[i] == 'N' or s[i] == 'n':
+  if i+2 < s.len and (s[i] == 'N' or s[i] == 'n'):
     if s[i+1] == 'A' or s[i+1] == 'a':
       if s[i+2] == 'N' or s[i+2] == 'n':
-        if s[i+3] notin IdentChars:
+        if i+3 >= s.len or s[i+3] notin IdentChars:
           number = NaN
           return i+3 - start
     return 0
 
   # Inf?
-  if s[i] == 'I' or s[i] == 'i':
+  if i+2 < s.len and (s[i] == 'I' or s[i] == 'i'):
     if s[i+1] == 'N' or s[i+1] == 'n':
       if s[i+2] == 'F' or s[i+2] == 'f':
-        if s[i+3] notin IdentChars:
+        if i+3 >= s.len or s[i+3] notin IdentChars:
           number = Inf*sign
           return i+3 - start
     return 0
 
-  if s[i] in {'0'..'9'}:
+  if i < s.len and s[i] in {'0'..'9'}:
     first_digit = (s[i].ord - '0'.ord)
   # Integer part?
-  while s[i] in {'0'..'9'}:
+  while i < s.len and s[i] in {'0'..'9'}:
     inc(kdigits)
     integer = integer * 10'u64 + (s[i].ord - '0'.ord).uint64
     inc(i)
-    while s[i] == '_': inc(i)
+    while i < s.len and s[i] == '_': inc(i)
 
   # Fractional part?
-  if s[i] == '.':
+  if i < s.len and s[i] == '.':
     inc(i)
     # if no integer part, Skip leading zeros
     if kdigits <= 0:
-      while s[i] == '0':
+      while i < s.len and s[i] == '0':
         inc(frac_exponent)
         inc(i)
-        while s[i] == '_': inc(i)
+        while i < s.len and s[i] == '_': inc(i)
 
-    if first_digit == -1 and s[i] in {'0'..'9'}:
+    if first_digit == -1 and i < s.len and s[i] in {'0'..'9'}:
       first_digit = (s[i].ord - '0'.ord)
     # get fractional part
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       inc(fdigits)
       inc(frac_exponent)
       integer = integer * 10'u64 + (s[i].ord - '0'.ord).uint64
       inc(i)
-      while s[i] == '_': inc(i)
+      while i < s.len and s[i] == '_': inc(i)
 
   # if has no digits: return error
   if kdigits + fdigits <= 0 and
@@ -192,7 +214,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
      (i == start + 1 and has_sign)): # or only '+' or '-
     return 0
 
-  if s[i] in {'e', 'E'}:
+  if i+1 < s.len and s[i] in {'e', 'E'}:
     inc(i)
     if s[i] == '+' or s[i] == '-':
       if s[i] == '-':
@@ -201,10 +223,10 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       inc(i)
     if s[i] notin {'0'..'9'}:
       return 0
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       exponent = exponent * 10 + (ord(s[i]) - ord('0'))
       inc(i)
-      while s[i] == '_': inc(i) # underscores are allowed and ignored
+      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
 
   var real_exponent = exp_sign*exponent - frac_exponent
   let exp_negative = real_exponent < 0
@@ -245,12 +267,12 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   result = i - start
   i = start
   # re-parse without error checking, any error should be handled by the code above.
-  if s[i] == '.': i.inc
-  while s[i] in {'0'..'9','+','-'}:
+  if i < s.len and s[i] == '.': i.inc
+  while i < s.len and s[i] in {'0'..'9','+','-'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)
     inc(i)
-    while s[i] in {'.', '_'}: # skip underscore and decimal point
+    while i < s.len and s[i] in {'.', '_'}: # skip underscore and decimal point
       inc(i)
 
   # insert exponent
@@ -270,7 +292,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
-  result.add x
+  result.addInt x
 
 proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"
@@ -279,7 +301,9 @@ proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc `$`(x: uint64): string =
+proc `$`*(x: uint64): string {.noSideEffect.} =
+  ## The stringify operator for an unsigned integer argument. Returns `x`
+  ## converted to a decimal string.
   if x == 0:
     result = "0"
   else:

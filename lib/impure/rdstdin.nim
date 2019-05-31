@@ -73,6 +73,15 @@ when defined(Windows):
          discard readConsoleInputW(hStdin, irInputRecord, 1, dwEventsRead)
          return result
 
+elif defined(genode):
+  proc readLineFromStdin*(prompt: string): TaintedString {.
+                          tags: [ReadIOEffect, WriteIOEffect].} =
+    stdin.readLine()
+
+  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+                          tags: [ReadIOEffect, WriteIOEffect].} =
+    stdin.readLine(line)
+
 else:
   import linenoise, termios
 

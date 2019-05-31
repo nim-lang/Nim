@@ -117,21 +117,17 @@ const
 type
   SocketImpl* = object ## socket type
     fd: SocketHandle
-    case isBuffered: bool # determines whether this socket is buffered.
-    of true:
-      buffer: array[0..BufferSize, char]
-      currPos: int # current index in buffer
-      bufLen: int # current length of buffer
-    of false: nil
+    isBuffered: bool # determines whether this socket is buffered.
+    buffer: array[0..BufferSize, char]
+    currPos: int # current index in buffer
+    bufLen: int # current length of buffer
     when defineSsl:
-      case isSsl: bool
-      of true:
-        sslHandle: SSLPtr
-        sslContext: SSLContext
-        sslNoHandshake: bool # True if needs handshake.
-        sslHasPeekChar: bool
-        sslPeekChar: char
-      of false: nil
+      isSsl: bool
+      sslHandle: SSLPtr
+      sslContext: SSLContext
+      sslNoHandshake: bool # True if needs handshake.
+      sslHasPeekChar: bool
+      sslPeekChar: char
     lastError: OSErrorCode ## stores the last error on this socket
     domain: Domain
     sockType: SockType
@@ -210,7 +206,7 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
 proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
   ## Creates a new socket.
   ##
-  ## If an error occurs EOS will be raised.
+  ## If an error occurs OSError will be raised.
   let fd = createNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
@@ -221,7 +217,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
                 protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket.
   ##
-  ## If an error occurs EOS will be raised.
+  ## If an error occurs OSError will be raised.
   let fd = createNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
@@ -229,13 +225,13 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
 
 proc parseIPv4Address(addressStr: string): IpAddress =
   ## Parses IPv4 adresses
-  ## Raises EInvalidValue on errors
+  ## Raises ValueError on errors
   var
     byteCount = 0
     currentByte:uint16 = 0
-    seperatorValid = false
+    separatorValid = false
 
-  result.family = IpAddressFamily.IPv4
+  result = IpAddress(family: IpAddressFamily.IPv4)
 
   for i in 0 .. high(addressStr):
     if addressStr[i] in strutils.Digits: # Character is a number
@@ -244,27 +240,27 @@ proc parseIPv4Address(addressStr: string): IpAddress =
       if currentByte > 255'u16:
         raise newException(ValueError,
           "Invalid IP Address. Value is out of range")
-      seperatorValid = true
+      separatorValid = true
     elif addressStr[i] == '.': # IPv4 address separator
-      if not seperatorValid or byteCount >= 3:
+      if not separatorValid or byteCount >= 3:
         raise newException(ValueError,
           "Invalid IP Address. The address consists of too many groups")
       result.address_v4[byteCount] = cast[uint8](currentByte)
       currentByte = 0
       byteCount.inc
-      seperatorValid = false
+      separatorValid = false
     else:
       raise newException(ValueError,
         "Invalid IP Address. Address contains an invalid character")
 
-  if byteCount != 3 or not seperatorValid:
+  if byteCount != 3 or not separatorValid:
     raise newException(ValueError, "Invalid IP Address")
   result.address_v4[byteCount] = cast[uint8](currentByte)
 
 proc parseIPv6Address(addressStr: string): IpAddress =
   ## Parses IPv6 adresses
-  ## Raises EInvalidValue on errors
-  result.family = IpAddressFamily.IPv6
+  ## Raises ValueError on errors
+  result = IpAddress(family: IpAddressFamily.IPv6)
   if addressStr.len < 2:
     raise newException(ValueError, "Invalid IP Address")
 
@@ -272,7 +268,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
     groupCount = 0
     currentGroupStart = 0
     currentShort:uint32 = 0
-    seperatorValid = true
+    separatorValid = true
     dualColonGroup = -1
     lastWasColon = false
     v4StartPos = -1
@@ -280,15 +276,15 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 
   for i,c in addressStr:
     if c == ':':
-      if not seperatorValid:
+      if not separatorValid:
         raise newException(ValueError,
-          "Invalid IP Address. Address contains an invalid seperator")
+          "Invalid IP Address. Address contains an invalid separator")
       if lastWasColon:
         if dualColonGroup != -1:
           raise newException(ValueError,
-            "Invalid IP Address. Address contains more than one \"::\" seperator")
+            "Invalid IP Address. Address contains more than one \"::\" separator")
         dualColonGroup = groupCount
-        seperatorValid = false
+        separatorValid = false
       elif i != 0 and i != high(addressStr):
         if groupCount >= 8:
           raise newException(ValueError,
@@ -297,7 +293,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
         result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
         currentShort = 0
         groupCount.inc()
-        if dualColonGroup != -1: seperatorValid = false
+        if dualColonGroup != -1: separatorValid = false
       elif i == 0: # only valid if address starts with ::
         if addressStr[1] != ':':
           raise newException(ValueError,
@@ -309,11 +305,11 @@ proc parseIPv6Address(addressStr: string): IpAddress =
       lastWasColon = true
       currentGroupStart = i + 1
     elif c == '.': # Switch to parse IPv4 mode
-      if i < 3 or not seperatorValid or groupCount >= 7:
+      if i < 3 or not separatorValid or groupCount >= 7:
         raise newException(ValueError, "Invalid IP Address")
       v4StartPos = currentGroupStart
       currentShort = 0
-      seperatorValid = false
+      separatorValid = false
       break
     elif c in strutils.HexDigits:
       if c in strutils.Digits: # Normal digit
@@ -326,14 +322,14 @@ proc parseIPv6Address(addressStr: string): IpAddress =
         raise newException(ValueError,
           "Invalid IP Address. Value is out of range")
       lastWasColon = false
-      seperatorValid = true
+      separatorValid = true
     else:
       raise newException(ValueError,
         "Invalid IP Address. Address contains an invalid character")
 
 
   if v4StartPos == -1: # Don't parse v4. Copy the remaining v6 stuff
-    if seperatorValid: # Copy remaining data
+    if separatorValid: # Copy remaining data
       if groupCount >= 8:
         raise newException(ValueError,
           "Invalid IP Address. The address consists of too many groups")
@@ -347,19 +343,19 @@ proc parseIPv6Address(addressStr: string): IpAddress =
         if currentShort > 255'u32:
           raise newException(ValueError,
             "Invalid IP Address. Value is out of range")
-        seperatorValid = true
+        separatorValid = true
       elif c == '.': # IPv4 address separator
-        if not seperatorValid or byteCount >= 3:
+        if not separatorValid or byteCount >= 3:
           raise newException(ValueError, "Invalid IP Address")
         result.address_v6[groupCount*2 + byteCount] = cast[uint8](currentShort)
         currentShort = 0
         byteCount.inc()
-        seperatorValid = false
+        separatorValid = false
       else: # Invalid character
         raise newException(ValueError,
           "Invalid IP Address. Address contains an invalid character")
 
-    if byteCount != 3 or not seperatorValid:
+    if byteCount != 3 or not separatorValid:
       raise newException(ValueError, "Invalid IP Address")
     result.address_v6[groupCount*2 + byteCount] = cast[uint8](currentShort)
     groupCount += 2
@@ -384,7 +380,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
-  ## Raises EInvalidValue on error
+  ## Raises ValueError on error
   if addressStr.len == 0:
     raise newException(ValueError, "IP Address string is empty")
   if addressStr.contains(':'):
@@ -746,7 +742,7 @@ proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
   ##
-  ## Raises an EOS error upon failure.
+  ## Raises an OSError error upon failure.
   if nativesockets.listen(socket.fd, backlog) < 0'i32:
     raiseOSError(osLastError())
 
@@ -755,21 +751,20 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   ## Binds ``address``:``port`` to the socket.
   ##
   ## If ``address`` is "" then ADDR_ANY will be bound.
+  var realaddr = address
+  if realaddr == "":
+    case socket.domain
+    of AF_INET6: realaddr = "::"
+    of AF_INET:  realaddr = "0.0.0.0"
+    else:
+      raise newException(ValueError,
+        "Unknown socket address family and no address specified to bindAddr")
 
-  if address == "":
-    var name: Sockaddr_in
-    name.sin_family = toInt(AF_INET).uint16
-    name.sin_port = htons(port.uint16)
-    name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
-                  sizeof(name).SockLen) < 0'i32:
-      raiseOSError(osLastError())
-  else:
-    var aiList = getAddrInfo(address, port, socket.domain)
-    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-      freeAddrInfo(aiList)
-      raiseOSError(osLastError())
+  var aiList = getAddrInfo(realaddr, port, socket.domain)
+  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
     freeAddrInfo(aiList)
+    raiseOSError(osLastError())
+  freeAddrInfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var Socket, address: var string,
                  flags = {SocketFlag.SafeDisconn}) {.
@@ -777,7 +772,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets ``client`` to the client socket and ``address`` to the address
   ## of the connecting client.
-  ## This function will raise EOS if an error occurs.
+  ## This function will raise OSError if an error occurs.
   ##
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
@@ -947,13 +942,6 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-when defined(posix) and not defined(nimdoc):
-  proc makeUnixAddr(path: string): Sockaddr_un =
-    result.sun_family = AF_UNIX.uint16
-    if path.len >= Sockaddr_un_path_length:
-      raise newException(ValueError, "socket path too long")
-    copyMem(addr result.sun_path, path.cstring, path.len + 1)
-
 when defined(posix) or defined(nimdoc):
   proc connectUnix*(socket: Socket, path: string) =
     ## Connects to Unix socket on `path`.
@@ -974,44 +962,11 @@ when defined(posix) or defined(nimdoc):
         raiseOSError(osLastError())
 
 when defined(ssl):
-  proc handshake*(socket: Socket): bool
-    {.tags: [ReadIOEffect, WriteIOEffect], deprecated.} =
-    ## This proc needs to be called on a socket after it connects. This is
-    ## only applicable when using ``connectAsync``.
-    ## This proc performs the SSL handshake.
-    ##
-    ## Returns ``False`` whenever the socket is not yet ready for a handshake,
-    ## ``True`` whenever handshake completed successfully.
-    ##
-    ## A ESSL error is raised on any other errors.
-    ##
-    ## **Note:** This procedure is deprecated since version 0.14.0.
-    result = true
-    if socket.isSSL:
-      var ret = SSLConnect(socket.sslHandle)
-      if ret <= 0:
-        var errret = SSLGetError(socket.sslHandle, ret)
-        case errret
-        of SSL_ERROR_ZERO_RETURN:
-          raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
-        of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT,
-          SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE:
-          return false
-        of SSL_ERROR_WANT_X509_LOOKUP:
-          raiseSSLError("Function for x509 lookup has been called.")
-        of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-          raiseSSLError()
-        else:
-          raiseSSLError("Unknown Error")
-      socket.sslNoHandshake = false
-    else:
-      raiseSSLError("Socket is not an SSL socket.")
-
   proc gotHandshake*(socket: Socket): bool =
     ## Determines whether a handshake has occurred between a client (``socket``)
     ## and the server that ``socket`` is connected to.
     ##
-    ## Throws ESSL if ``socket`` is not an SSL socket.
+    ## Throws SslError if ``socket`` is not an SSL socket.
     if socket.isSSL:
       return not socket.sslNoHandshake
     else:
@@ -1033,7 +988,7 @@ proc select(readfd: Socket, timeout = 500): int =
     return 1
 
   var fds = @[readfd.fd]
-  result = select(fds, timeout)
+  result = selectRead(fds, timeout)
 
 proc isClosed(socket: Socket): bool =
   socket.fd == osInvalidSocket
@@ -1124,7 +1079,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
   ## For buffered sockets it can be as big as ``BufferSize``.
   ##
   ## If this function does not determine that there is data on the socket
-  ## within ``timeout`` ms, an ETimeout error will be raised.
+  ## within ``timeout`` ms, a TimeoutError error will be raised.
   result = 1
   if size <= 0: assert false
   if timeout == -1: return size
@@ -1179,7 +1134,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ## lower than 0 is never returned.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified an TimeoutError exception will be raised.
+  ## within the time specified a TimeoutError exception will be raised.
   ##
   ## **Note**: ``data`` must be initialised.
   ##
@@ -1203,10 +1158,10 @@ proc recv*(socket: Socket, size: int, timeout = -1,
   ##
   ## When ``""`` is returned the socket's connection has been closed.
   ##
-  ## This function will throw an EOS exception when an error occurs.
+  ## This function will throw an OSError exception when an error occurs.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified an ETimeout exception will be raised.
+  ## within the time specified a TimeoutError exception will be raised.
   ##
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
@@ -1244,10 +1199,10 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
   ##
   ## If the socket is disconnected, ``line`` will be set to ``""``.
   ##
-  ## An EOS exception will be raised in the case of a socket error.
+  ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
-  ## the specified time an ETimeout exception will be raised.
+  ## the specified time a TimeoutError exception will be raised.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
@@ -1299,10 +1254,10 @@ proc recvLine*(socket: Socket, timeout = -1,
   ##
   ## If the socket is disconnected, the result will be set to ``""``.
   ##
-  ## An EOS exception will be raised in the case of a socket error.
+  ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
-  ## the specified time an ETimeout exception will be raised.
+  ## the specified time a TimeoutError exception will be raised.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
@@ -1317,7 +1272,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## Receives data from ``socket``. This function should normally be used with
   ## connection-less sockets (UDP sockets).
   ##
-  ## If an error occurs an EOS exception will be raised. Otherwise the return
+  ## If an error occurs an OSError exception will be raised. Otherwise the return
   ## value will be the length of data received.
   ##
   ## **Warning:** This function does not yet have a buffered implementation,
@@ -1335,7 +1290,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
 
   if result != -1:
     data.setLen(result)
-    address = $inet_ntoa(sockAddress.sin_addr)
+    address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
     port = ntohs(sockAddress.sin_port).Port
   else:
     raiseOSError(osLastError())
@@ -1344,7 +1299,7 @@ proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.
   ##
   ## An optional timeout can be specified in milliseconds, if skipping the
-  ## bytes takes longer than specified an ETimeout exception will be raised.
+  ## bytes takes longer than specified a TimeoutError exception will be raised.
   ##
   ## Returns the number of skipped bytes.
   var waited = 0.0
@@ -1390,7 +1345,7 @@ template `&=`*(socket: Socket; data: typed) =
   send(socket, data)
 
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
-  ## Safe alternative to ``send``. Does not raise an EOS when an error occurs,
+  ## Safe alternative to ``send``. Does not raise an OSError when an error occurs,
   ## and instead returns ``false`` on failure.
   result = send(socket, cstring(data), data.len) == data.len
 
@@ -1701,7 +1656,25 @@ proc connect*(socket: Socket, address: string, port = Port(0),
     when defineSsl and not defined(nimdoc):
       if socket.isSSL:
         socket.fd.setBlocking(true)
-        {.warning[Deprecated]: off.}
-        doAssert socket.handshake()
-        {.warning[Deprecated]: on.}
+        doAssert socket.gotHandshake()
   socket.fd.setBlocking(true)
+
+proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
+  ## Finds the local IP address, usually assigned to eth0 on LAN or wlan0 on WiFi,
+  ## used to reach an external address. Useful to run local services.
+  ##
+  ## No traffic is sent.
+  ##
+  ## Supports IPv4 and v6.
+  ## Raises OSError if external networking is not set up.
+  ##
+  ## .. code-block:: Nim
+  ##   echo $getPrimaryIPAddr()  # "192.168.1.2"
+
+  let socket =
+    if dest.family == IpAddressFamily.IPv4:
+      newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    else:
+      newSocket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
+  socket.connect($dest, 80.Port)
+  socket.getLocalAddr()[0].parseIpAddress()

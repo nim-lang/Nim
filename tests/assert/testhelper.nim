@@ -1,5 +1,5 @@
 from strutils import endsWith, split
-from ospaths import isAbsolute
+from os import isAbsolute
 
 proc checkMsg*(msg, expectedEnd, name: string)=
   let filePrefix = msg.split(' ', maxSplit = 1)[0]

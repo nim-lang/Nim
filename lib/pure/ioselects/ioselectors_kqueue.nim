@@ -44,8 +44,8 @@ elif defined(netbsd) or defined(openbsd):
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
-      kqFD : cint
-      maxFD : int
+      kqFD: cint
+      maxFD: int
       changes: ptr SharedArray[KEvent]
       fds: ptr SharedArray[SelectorKey[T]]
       count: int
@@ -57,8 +57,8 @@ when hasThreadSupport:
 else:
   type
     SelectorImpl[T] = object
-      kqFD : cint
-      maxFD : int
+      kqFD: cint
+      maxFD: int
       changes: seq[KEvent]
       fds: seq[SelectorKey[T]]
       count: int
@@ -447,6 +447,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
     ptv = addr tv
     maxres = MAX_KQUEUE_EVENTS
 
+  verifySelectParams(timeout)
+
   if timeout != -1:
     if timeout >= 1000:
       tv.tv_sec = posix.Time(timeout div 1_000)
@@ -500,7 +502,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
       if (kevent.flags and EV_ERROR) != 0:
         rkey.events = {Event.Error}
-        rkey.errorCode = kevent.data.OSErrorCode
+        rkey.errorCode = OSErrorCode(kevent.data)
 
       case kevent.filter:
       of EVFILT_READ:
@@ -576,7 +578,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
           # This assumes we are dealing with sockets.
           # TODO: For future-proofing it might be a good idea to give the
           #       user access to the raw `kevent`.
-          rkey.errorCode = ECONNRESET.OSErrorCode
+          rkey.errorCode = OSErrorCode(ECONNRESET)
         rkey.events.incl(Event.Error)
 
       results[k] = rkey

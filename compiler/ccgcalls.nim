@@ -20,6 +20,7 @@ proc hasNoInit(call: PNode): bool {.inline.} =
 
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                callee, params: Rope) =
+  genLineDir(p, ri)
   var pl = callee & ~"(" & params
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
@@ -45,13 +46,23 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
       add(pl, ~")")
-      if p.module.compileToCpp and lfSingleUse in d.flags:
-        # do not generate spurious temporaries for C++! For C we're better off
-        # with them to prevent undefined behaviour and because the codegen
-        # is free to emit expressions multiple times!
-        d.k = locCall
-        d.r = pl
-        excl d.flags, lfSingleUse
+      if p.module.compileToCpp:
+        if lfSingleUse in d.flags:
+          # do not generate spurious temporaries for C++! For C we're better off
+          # with them to prevent undefined behaviour and because the codegen
+          # is free to emit expressions multiple times!
+          d.k = locCall
+          d.r = pl
+          excl d.flags, lfSingleUse
+        else:
+          if d.k == locNone and p.splitDecls == 0:
+            getTempCpp(p, typ.sons[0], d, pl)
+          else:
+            if d.k == locNone: getTemp(p, typ.sons[0], d)
+            var list: TLoc
+            initLoc(list, locCall, d.lode, OnUnknown)
+            list.r = pl
+            genAssignment(p, d, list, {}) # no need for deep copying
       else:
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         assert(d.t != nil)        # generate an assignment to d:
@@ -62,26 +73,6 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
   else:
     add(pl, ~");$n")
     line(p, cpsStmts, pl)
-
-proc isInCurrentFrame(p: BProc, n: PNode): bool =
-  # checks if `n` is an expression that refers to the current frame;
-  # this does not work reliably because of forwarding + inlining can break it
-  case n.kind
-  of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet} and p.prc != nil:
-      result = p.prc.id == n.sym.owner.id
-  of nkDotExpr, nkBracketExpr:
-    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyLent,tyPtr,tyRef}:
-      result = isInCurrentFrame(p, n.sons[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = isInCurrentFrame(p, n.sons[1])
-  of nkHiddenDeref, nkDerefExpr:
-    # what about: var x = addr(y); callAsOpenArray(x[])?
-    # *shrug* ``addr`` is unsafe anyway.
-    result = false
-  of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = isInCurrentFrame(p, n.sons[0])
-  else: discard
 
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
@@ -106,7 +97,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
         result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
       else:
         result = "($1)+(($2)-($4)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first)]
-    of tyOpenArray, tyVarargs:
+    of tyOpenArray, tyVarargs, tyUncheckedArray:
       result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
@@ -155,7 +146,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
     result = openArrayLoc(p, n)
-  elif ccgIntroducedPtr(p.config, param):
+  elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     result = addrLoc(p.config, a)
   elif p.module.compileToCpp and param.typ.kind == tyVar and
@@ -193,19 +184,27 @@ template genParamLoop(params) {.dirty.} =
     if params != nil: add(params, ~", ")
     add(params, genArgNoParam(p, ri.sons[i]))
 
+proc addActualPrefixForHCR(res: var Rope, module: PSym, sym: PSym) =
+  if sym.flags * {sfImportc, sfNonReloadable} == {} and
+      (sym.typ.callConv == ccInline or sym.owner.id == module.id):
+    res = res & "_actual".rope
+
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   # this is a hotspot in the compiler
   initLocExpr(p, ri.sons[0], op)
   var params: Rope
   # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri.sons[0].typ, abstractInst)
+  var typ = skipTypes(ri.sons[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
   assert(sonsLen(typ) == sonsLen(typ.n))
   var length = sonsLen(ri)
-  for i in countup(1, length - 1):
+  for i in 1 ..< length:
     genParamLoop(params)
-  fixupCall(p, le, ri, d, op.r, params)
+  var callee = rdLoc(op)
+  if p.hcrOn and ri.sons[0].kind == nkSym:
+    callee.addActualPrefixForHCR(p.module.module, ri.sons[0].sym)
+  fixupCall(p, le, ri, d, callee, params)
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
@@ -224,15 +223,17 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
-  for i in countup(1, length - 1):
+  for i in 1 ..< length:
     assert(sonsLen(typ) == sonsLen(typ.n))
     genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
-    lineF(p, cpsStmts, callPattern & ";$n", [op.r, pl, pl.addComma, rawProc])
+    if tfIterator in typ.flags:
+      lineF(p, cpsStmts, PatIter & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
+    else:
+      lineF(p, cpsStmts, PatProc & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
   let rawProc = getRawProcType(p, typ)
-  let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
     if isInvalidReturnType(p.config, typ.sons[0]):
       if sonsLen(ri) > 1: add(pl, ~", ")
@@ -257,7 +258,11 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, d.lode, OnUnknown)
-      list.r = callPattern % [op.r, pl, pl.addComma, rawProc]
+      if tfIterator in typ.flags:
+        list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
+      else:
+        list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     genCallPattern()
@@ -465,7 +470,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
       add(pl, genThisArg(p, ri, 1, typ))
     add(pl, op.r)
     var params: Rope
-    for i in countup(2, length - 1):
+    for i in 2 ..< length:
       if params != nil: params.add(~", ")
       assert(sonsLen(typ) == sonsLen(typ.n))
       add(params, genOtherArg(p, ri, i, typ))
@@ -501,7 +506,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     if length > 2:
       add(pl, ~": ")
       add(pl, genArg(p, ri.sons[2], typ.n.sons[2].sym, ri))
-  for i in countup(start, length-1):
+  for i in start ..< length:
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
       internalError(p.config, ri.info, "varargs for objective C method?")
@@ -542,7 +547,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
+  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
@@ -553,7 +558,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   postStmtActions(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
+  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)

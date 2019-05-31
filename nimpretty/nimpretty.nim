@@ -12,7 +12,8 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer, options, pathutils]
+import ../compiler / [idents, msgs, ast, syntaxes, renderer, options,
+  pathutils, layouter]
 
 import parseopt, strutils, os
 
@@ -24,10 +25,11 @@ const
 Usage:
   nimpretty [options] file.nim
 Options:
-  --backup:on|off     create a backup file before overwritting (default: ON)
-  --output:file       set the output file (default: overwrite the .nim file)
-  --version           show the version
-  --help              show this help
+  --output:file         set the output file (default: overwrite the input file)
+  --indent:N[=0]        set the number of spaces that is used for indentation
+                        --indent:0 means autodetection (default behaviour)
+  --version             show the version
+  --help                show this help
 """
 
 proc writeHelp() =
@@ -40,19 +42,32 @@ proc writeVersion() =
   stdout.flushFile()
   quit(0)
 
-proc prettyPrint(infile, outfile: string) =
+type
+  PrettyOptions = object
+    indWidth: int
+
+proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
-  conf.outFile = AbsoluteFile outfile
+  conf.outFile = RelativeFile outfile
   when defined(nimpretty2):
-    discard parseFile(fileIdx, newIdentCache(), conf)
+    var p: TParsers
+    p.parser.em.indWidth = opt.indWidth
+    if setupParsers(p, fileIdx, newIdentCache(), conf):
+      discard parseAll(p)
+      closeParsers(p)
   else:
     let tree = parseFile(fileIdx, newIdentCache(), conf)
     renderModule(tree, infile, outfile, {}, fileIdx, conf)
 
 proc main =
   var infile, outfile: string
-  var backup = true
+  var backup = false
+    # when `on`, create a backup file of input in case
+    # `prettyPrint` could over-write it (note that the backup may happen even
+    # if input is not actually over-written, when nimpretty is a noop).
+    # --backup was un-documented (rely on git instead).
+  var opt: PrettyOptions
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -63,13 +78,19 @@ proc main =
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)
       of "output", "o": outfile = val
+      of "indent": opt.indWidth = parseInt(val)
       else: writeHelp()
     of cmdEnd: assert(false) # cannot happen
   if infile.len == 0:
     quit "[Error] no input file."
+  if outfile.len == 0:
+    outfile = infile
+  if not existsFile(outfile) or not sameFile(infile, outfile):
+    backup = false # no backup needed since won't be over-written
   if backup:
-    os.copyFile(source=infile, dest=changeFileExt(infile, ".nim.backup"))
-  if outfile.len == 0: outfile = infile
-  prettyPrint(infile, outfile)
+    let infileBackup = infile & ".backup" # works with .nim or .nims
+    echo "writing backup " & infile & " > " & infileBackup
+    os.copyFile(source = infile, dest = infileBackup)
+  prettyPrint(infile, outfile, opt)
 
 main()

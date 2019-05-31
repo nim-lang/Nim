@@ -22,6 +22,8 @@
 ## other lower level methods to finally build complete documents. This requires
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
+##
+## **Note:** Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
@@ -424,11 +426,15 @@ proc sortIndex(a: var openArray[IndexEntry]) =
     if h == 1: break
 
 proc escapeLink(s: string): string =
+  ## This proc is mostly copied from uri/encodeUrl except that
+  ## these chars are also left unencoded: '#', '/'.
   result = newStringOfCap(s.len + s.len shr 2)
   for c in items(s):
     case c
-    of 'a'..'z', '_', 'A'..'Z', '0'..'9', '.', '#', ',', '/':
-      result.add c
+    of 'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~': # same as that in uri/encodeUrl
+      add(result, c)
+    of '#', '/': # example.com/foo/#bar (don't escape the '/' and '#' in such links)
+      add(result, c)
     else:
       add(result, "%")
       add(result, toHex(ord(c), 2))
@@ -444,7 +450,7 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
     var j = i
     while j < symbols.len and keyword == symbols[j].keyword:
       let
-        url = symbols[j].link #.escapeLink
+        url = symbols[j].link.escapeLink
         text = if symbols[j].linkTitle.len > 0: symbols[j].linkTitle else: url
         desc = if symbols[j].linkDesc.len > 0: symbols[j].linkDesc else: ""
       if desc.len > 0:
@@ -1130,11 +1136,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnTripleEmphasis:
     renderAux(d, n, "<strong><em>$1</em></strong>",
                     "\\textbf{emph{$1}}", result)
-  of rnInterpretedText:
-    renderAux(d, n, "<cite>$1</cite>", "\\emph{$1}", result)
   of rnIdx:
     renderIndexTerm(d, n, result)
-  of rnInlineLiteral:
+  of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
       "\\texttt{$1}", result)

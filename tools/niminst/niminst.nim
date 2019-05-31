@@ -126,13 +126,13 @@ proc skipRoot(f: string): string =
     inc i
   if result.len == 0: result = f
 
-include "inno.tmpl"
-include "nsis.tmpl"
-include "buildsh.tmpl"
-include "makefile.tmpl"
-include "buildbat.tmpl"
-include "install.tmpl"
-include "deinstall.tmpl"
+include "inno.nimf"
+include "nsis.nimf"
+include "buildsh.nimf"
+include "makefile.nimf"
+include "buildbat.nimf"
+include "install.nimf"
+include "deinstall.nimf"
 
 # ------------------------- configuration file -------------------------------
 
@@ -684,7 +684,7 @@ RunProgram="tools\downloader.exe"
           if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
             echo("External program failed (7z)")
       else:
-        if execShellCmd("gtar cf $1.tar $1 --exclude=.DS_Store" %
+        if execShellCmd("gtar cf $1.tar --exclude=.DS_Store $1" %
                         proj) != 0:
           # try old 'tar' without --exclude feature:
           if execShellCmd("tar cf $1.tar $1" % proj) != 0:

@@ -213,19 +213,18 @@ when defined(windows):
         maxCharSize: int32
         defaultChar: array[0..1, char]
         leadByte: array[0..12-1, char]
-    {.deprecated: [TCpInfo: CpInfo].}
 
     proc getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
 
-  proc nameToCodePage(name: string): CodePage =
+  proc nameToCodePage*(name: string): CodePage =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1
     for no, na in items(winEncodings):
       if no == nameAsInt or eqEncodingNames(na, name): return CodePage(no)
     result = CodePage(-1)
 
-  proc codePageToName(c: CodePage): string =
+  proc codePageToName*(c: CodePage): string =
     for no, na in items(winEncodings):
       if no == int(c):
         return if na.len != 0: na else: $no
@@ -302,7 +301,7 @@ proc getCurrentEncoding*(): string =
 
 proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
-  ## Raises `EIO` if it cannot fulfill the request.
+  ## Raises `IOError` if it cannot fulfill the request.
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
     if result == nil:

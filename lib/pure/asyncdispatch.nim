@@ -7,22 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-include "system/inclrtl"
-
-import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
-import options, math
-import asyncfutures except callSoon
-
-import nativesockets, net, deques
-
-export Port, SocketFlag
-export asyncfutures, asyncstreams
-
-#{.injectStmt: newGcInvariant().}
-
-## AsyncDispatch
-## *************
-##
 ## This module implements asynchronous IO. This includes a dispatcher,
 ## a ``Future`` type implementation, and an ``async`` macro which allows
 ## asynchronous code to be written in a synchronous style with the ``await``
@@ -81,7 +65,7 @@ export asyncfutures, asyncstreams
 ## error), if there is no error however it returns the value of the future.
 ##
 ## Asynchronous procedures
-## -----------------------
+## =======================
 ##
 ## Asynchronous procedures remove the pain of working with callbacks. They do
 ## this by allowing you to write asynchronous code the same way as you would
@@ -115,7 +99,7 @@ export asyncfutures, asyncstreams
 ## exceptions in async procs.
 ##
 ## Handling Exceptions
-## ~~~~~~~~~~~~~~~~~~~
+## -------------------
 ##
 ## The most reliable way to handle exceptions is to use ``yield`` on a future
 ## then check the future's ``failed`` property. For example:
@@ -141,30 +125,67 @@ export asyncfutures, asyncstreams
 ##
 ##
 ## Discarding futures
-## ------------------
+## ==================
 ##
 ## Futures should **never** be discarded. This is because they may contain
 ## errors. If you do not care for the result of a Future then you should
-## use the ``asyncCheck`` procedure instead of the ``discard`` keyword.
+## use the ``asyncCheck`` procedure instead of the ``discard`` keyword. Note
+## however that this does not wait for completion, and you should use
+## ``waitFor`` for that purpose.
 ##
 ## Examples
-## --------
+## ========
 ##
 ## For examples take a look at the documentation for the modules implementing
 ## asynchronous IO. A good place to start is the
 ## `asyncnet module <asyncnet.html>`_.
 ##
+## Investigating pending futures
+## =============================
+##
+## It's possible to get into a situation where an async proc, or more accurately
+## a ``Future[T]`` gets stuck and
+## never completes. This can happen for various reasons and can cause serious
+## memory leaks. When this occurs it's hard to identify the procedure that is
+## stuck.
+##
+## Thankfully there is a mechanism which tracks the count of each pending future.
+## All you need to do to enable it is compile with ``-d:futureLogging`` and
+## use the ``getFuturesInProgress`` procedure to get the list of pending futures
+## together with the stack traces to the moment of their creation.
+##
+## You may also find it useful to use this
+## `prometheus package <https://github.com/dom96/prometheus>`_ which will log
+## the pending futures into prometheus, allowing you to analyse them via a nice
+## graph.
+##
+##
+##
 ## Limitations/Bugs
-## ----------------
+## ================
 ##
 ## * The effect system (``raises: []``) does not work with async procedures.
+
+include "system/inclrtl"
+
+import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
+import options, math
+import asyncfutures except callSoon
+
+import nativesockets, net, deques
+
+export Port, SocketFlag
+export asyncfutures except callSoon
+export asyncstreams
+
+#{.injectStmt: newGcInvariant().}
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
 type
   PDispatcherBase = ref object of RootRef
     timers*: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
-    callbacks*: Deque[proc ()]
+    callbacks*: Deque[proc () {.gcsafe.}]
 
 proc processTimers(
   p: PDispatcherBase, didSomeWork: var bool
@@ -190,14 +211,15 @@ proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
     didSomeWork = true
 
 proc adjustTimeout(pollTimeout: int, nextTimer: Option[int]): int {.inline.} =
-  if nextTimer.isNone():
+  if nextTimer.isNone() or pollTimeout == -1:
     return pollTimeout
 
-  result = nextTimer.get()
-  if pollTimeout == -1: return
+  result = max(nextTimer.get(), 0)
   result = min(pollTimeout, result)
 
-proc callSoon(cbproc: proc ()) {.gcsafe.}
+proc callSoon*(cbproc: proc () {.gcsafe.}) {.gcsafe.}
+  ## Schedule `cbproc` to be called as soon as possible.
+  ## The callback is called when control returns to the event loop.
 
 proc initCallSoonProc =
   if asyncfutures.getCallSoonProc().isNil:
@@ -241,8 +263,6 @@ when defined(windows) or defined(nimdoc):
     AsyncEvent* = ptr AsyncEventImpl
 
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
-  {.deprecated: [TCompletionKey: CompletionKey, TAsyncFD: AsyncFD,
-                TCustomOverlapped: CustomOverlapped, TCompletionData: CompletionData].}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
@@ -1077,7 +1097,6 @@ else:
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
-  {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
@@ -1513,8 +1532,217 @@ proc poll*(timeout = 500) =
   ## `epoll`:idx: or `kqueue`:idx: primitive only once.
   discard runOnce(timeout)
 
-# Common procedures between current and upcoming asyncdispatch
-include includes/asynccommon
+template createAsyncNativeSocketImpl(domain, sockType, protocol) =
+  let handle = newNativeSocket(domain, sockType, protocol)
+  if handle == osInvalidSocket:
+    return osInvalidSocket.AsyncFD
+  handle.setBlocking(false)
+  when defined(macosx) and not defined(nimdoc):
+    handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+  result = handle.AsyncFD
+  register(result)
+
+proc createAsyncNativeSocket*(domain: cint, sockType: cint,
+                           protocol: cint): AsyncFD =
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
+
+proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
+                           sockType: SockType = SOCK_STREAM,
+                           protocol: Protocol = IPPROTO_TCP): AsyncFD =
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
+
+proc newAsyncNativeSocket*(domain: cint, sockType: cint,
+                           protocol: cint): AsyncFD {.deprecated: "use createAsyncNativeSocket instead".} =
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
+
+proc newAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
+                           sockType: SockType = SOCK_STREAM,
+                           protocol: Protocol = IPPROTO_TCP): AsyncFD
+                           {.deprecated: "use createAsyncNativeSocket instead".} =
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
+
+when defined(windows) or defined(nimdoc):
+  proc bindToDomain(handle: SocketHandle, domain: Domain) =
+    # Extracted into a separate proc, because connect() on Windows requires
+    # the socket to be initially bound.
+    template doBind(saddr) =
+      if bindAddr(handle, cast[ptr SockAddr](addr(saddr)),
+                  sizeof(saddr).SockLen) < 0'i32:
+        raiseOSError(osLastError())
+
+    if domain == Domain.AF_INET6:
+      var saddr: Sockaddr_in6
+      saddr.sin6_family = uint16(toInt(domain))
+      doBind(saddr)
+    else:
+      var saddr: Sockaddr_in
+      saddr.sin_family = uint16(toInt(domain))
+      doBind(saddr)
+
+  proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): Future[void] =
+    let retFuture = newFuture[void]("doConnect")
+    result = retFuture
+
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
+    ol.data = CompletionData(fd: socket, cb:
+      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+        if not retFuture.finished:
+          if errcode == OSErrorCode(-1):
+            retFuture.complete()
+          else:
+            retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+    )
+
+    let ret = connectEx(socket.SocketHandle, addrInfo.ai_addr,
+                        cint(addrInfo.ai_addrlen), nil, 0, nil,
+                        cast[POVERLAPPED](ol))
+    if ret:
+      # Request to connect completed immediately.
+      retFuture.complete()
+      # We don't deallocate ``ol`` here because even though this completed
+      # immediately poll will still be notified about its completion and it
+      # will free ``ol``.
+    else:
+      let lastError = osLastError()
+      if lastError.int32 != ERROR_IO_PENDING:
+        # With ERROR_IO_PENDING ``ol`` will be deallocated in ``poll``,
+        # and the future will be completed/failed there, too.
+        GC_unref(ol)
+        retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+else:
+  proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): Future[void] =
+    let retFuture = newFuture[void]("doConnect")
+    result = retFuture
+
+    proc cb(fd: AsyncFD): bool =
+      let ret = SocketHandle(fd).getSockOptInt(
+        cint(SOL_SOCKET), cint(SO_ERROR))
+      if ret == 0:
+        # We have connected.
+        retFuture.complete()
+        return true
+      elif ret == EINTR:
+        # interrupted, keep waiting
+        return false
+      else:
+        retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+        return true
+
+    let ret = connect(socket.SocketHandle,
+                      addrInfo.ai_addr,
+                      addrInfo.ai_addrlen.Socklen)
+    if ret == 0:
+      # Request to connect completed immediately.
+      retFuture.complete()
+    else:
+      let lastError = osLastError()
+      if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
+        addWrite(socket, cb)
+      else:
+        retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+
+template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
+                           protocol: Protocol = IPPROTO_RAW) =
+  ## Iterates through the AddrInfo linked list asynchronously
+  ## until the connection can be established.
+  const shouldCreateFd = not declared(fd)
+
+  when shouldCreateFd:
+    let sockType = protocol.toSockType()
+
+    var fdPerDomain: array[low(Domain).ord..high(Domain).ord, AsyncFD]
+    for i in low(fdPerDomain)..high(fdPerDomain):
+      fdPerDomain[i] = osInvalidSocket.AsyncFD
+    template closeUnusedFds(domainToKeep = -1) {.dirty.} =
+      for i, fd in fdPerDomain:
+        if fd != osInvalidSocket.AsyncFD and i != domainToKeep:
+          fd.closeSocket()
+
+  var lastException: ref Exception
+  var curAddrInfo = addrInfo
+  var domain: Domain
+  when shouldCreateFd:
+    var curFd: AsyncFD
+  else:
+    var curFd = fd
+  proc tryNextAddrInfo(fut: Future[void]) {.gcsafe.} =
+    if fut == nil or fut.failed:
+      if fut != nil:
+        lastException = fut.readError()
+
+      while curAddrInfo != nil:
+        let domainOpt = curAddrInfo.ai_family.toKnownDomain()
+        if domainOpt.isSome:
+          domain = domainOpt.unsafeGet()
+          break
+        curAddrInfo = curAddrInfo.ai_next
+
+      if curAddrInfo == nil:
+        freeAddrInfo(addrInfo)
+        when shouldCreateFd:
+          closeUnusedFds()
+        if lastException != nil:
+          retFuture.fail(lastException)
+        else:
+          retFuture.fail(newException(
+            IOError, "Couldn't resolve address: " & address))
+        return
+
+      when shouldCreateFd:
+        curFd = fdPerDomain[ord(domain)]
+        if curFd == osInvalidSocket.AsyncFD:
+          try:
+            curFd = createAsyncNativeSocket(domain, sockType, protocol)
+          except:
+            freeAddrInfo(addrInfo)
+            closeUnusedFds()
+            raise getCurrentException()
+          when defined(windows):
+            curFd.SocketHandle.bindToDomain(domain)
+          fdPerDomain[ord(domain)] = curFd
+
+      doConnect(curFd, curAddrInfo).callback = tryNextAddrInfo
+      curAddrInfo = curAddrInfo.ai_next
+    else:
+      freeAddrInfo(addrInfo)
+      when shouldCreateFd:
+        closeUnusedFds(ord(domain))
+        retFuture.complete(curFd)
+      else:
+        retFuture.complete()
+
+  tryNextAddrInfo(nil)
+
+proc dial*(address: string, port: Port,
+           protocol: Protocol = IPPROTO_TCP): Future[AsyncFD] =
+  ## Establishes connection to the specified ``address``:``port`` pair via the
+  ## specified protocol. The procedure iterates through possible
+  ## resolutions of the ``address`` until it succeeds, meaning that it
+  ## seamlessly works with both IPv4 and IPv6.
+  ## Returns the async file descriptor, registered in the dispatcher of
+  ## the current thread, ready to send or receive data.
+  let retFuture = newFuture[AsyncFD]("dial")
+  result = retFuture
+  let sockType = protocol.toSockType()
+
+  let aiList = getAddrInfo(address, port, Domain.AF_UNSPEC, sockType, protocol)
+  asyncAddrInfoLoop(aiList, noFD, protocol)
+
+proc connect*(socket: AsyncFD, address: string, port: Port,
+              domain = Domain.AF_INET): Future[void] =
+  let retFuture = newFuture[void]("connect")
+  result = retFuture
+
+  when defined(windows):
+    verifyPresence(socket)
+  else:
+    assert getSockDomain(socket.SocketHandle) == domain
+
+  let aiList = getAddrInfo(address, port, domain)
+  when defined(windows):
+    socket.SocketHandle.bindToDomain(domain)
+  asyncAddrInfoLoop(aiList, socket)
 
 proc sleepAsync*(ms: int | float): Future[void] =
   ## Suspends the execution of the current async procedure for the next
@@ -1597,50 +1825,7 @@ proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
     else:
       break
 
-proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
-  ## Reads a line of data from ``socket``. Returned future will complete once
-  ## a full line is read or an error occurs.
-  ##
-  ## If a full line is read ``\r\L`` is not
-  ## added to ``line``, however if solely ``\r\L`` is read then ``line``
-  ## will be set to it.
-  ##
-  ## If the socket is disconnected, ``line`` will be set to ``""``.
-  ##
-  ## If the socket is disconnected in the middle of a line (before ``\r\L``
-  ## is read) then line will be set to ``""``.
-  ## The partial line **will be lost**.
-  ##
-  ## **Warning**: This assumes that lines are delimited by ``\r\L``.
-  ##
-  ## **Note**: This procedure is mostly used for testing. You likely want to
-  ## use ``asyncnet.recvLine`` instead.
-  ##
-  ## **Deprecated since version 0.15.0**: Use ``asyncnet.recvLine()`` instead.
-
-  template addNLIfEmpty(): typed =
-    if result.len == 0:
-      result.add("\c\L")
-
-  result = ""
-  var c = ""
-  while true:
-    c = await recv(socket, 1)
-    if c.len == 0:
-      return ""
-    if c == "\r":
-      c = await recv(socket, 1)
-      assert c == "\l"
-      addNLIfEmpty()
-      return
-    elif c == "\L":
-      addNLIfEmpty()
-      return
-    add(result, c)
-
-proc callSoon(cbproc: proc ()) =
-  ## Schedule `cbproc` to be called as soon as possible.
-  ## The callback is called when control returns to the event loop.
+proc callSoon(cbproc: proc () {.gcsafe.}) =
   getGlobalDispatcher().callbacks.addLast(cbproc)
 
 proc runForever*() =

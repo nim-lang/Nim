@@ -65,7 +65,7 @@ proc finalizeRegEx(x: Regex) =
   # Fortunately the implementation is unlikely to change.
   pcre.free_substring(cast[cstring](x.h))
   if not isNil(x.e):
-    pcre.free_substring(cast[cstring](x.e))
+    pcre.free_study(x.e)
 
 proc re*(s: string, flags = {reStudy}): Regex =
   ## Constructor of regular expressions.
@@ -364,7 +364,8 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of ``s`` that match ``pattern``.
   ## If it does not match, @[] is returned.
-  accumulateResult(findAll(s, pattern, start))
+  result = @[]
+  for x in findAll(s, pattern, start): result.add x
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -408,7 +409,7 @@ proc startsWith*(s: string, prefix: Regex): bool {.inline.} =
   result = matchLen(s, prefix) >= 0
 
 proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
-  ## returns true if `s` ends with the pattern `prefix`
+  ## returns true if `s` ends with the pattern `suffix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
@@ -428,11 +429,12 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ##   "; "
   result = ""
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, prev)
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
     add(result, by)
+    if match.last + 1 == prev: break
     prev = match.last + 1
   add(result, substr(s, prev))
 
@@ -449,15 +451,16 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ##
   ## .. code-block:: nim
   ##
-  ## "var1<-keykey; val2<-key2key2"
+  ## "var1<-keykey; var2<-key2key2"
   result = ""
   var caps: array[MaxSubpatterns, string]
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
+    if match.last + 1 == prev: break
     prev = match.last + 1
   add(result, substr(s, prev))
 
@@ -543,7 +546,8 @@ proc split*(s: string, sep: Regex, maxsplit = -1): seq[string] {.inline.} =
   ## Splits the string ``s`` into a seq of substrings.
   ##
   ## The portion matched by ``sep`` is not returned.
-  accumulateResult(split(s, sep))
+  result = @[]
+  for x in split(s, sep, maxsplit): result.add x
 
 proc escapeRe*(s: string): string =
   ## escapes ``s`` so that it is matched verbatim when used as a regular
@@ -557,31 +561,6 @@ proc escapeRe*(s: string): string =
       result.add("\\x")
       result.add(toHex(ord(c), 2))
 
-const ## common regular expressions
-  reIdentifier* {.deprecated.} = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"
-    ## describes an identifier
-  reNatural* {.deprecated.} = r"\b\d+\b"
-    ## describes a natural number
-  reInteger* {.deprecated.} = r"\b[-+]?\d+\b"
-    ## describes an integer
-  reHex* {.deprecated.} = r"\b0[xX][0-9a-fA-F]+\b"
-    ## describes a hexadecimal number
-  reBinary* {.deprecated.} = r"\b0[bB][01]+\b"
-    ## describes a binary number (example: 0b11101)
-  reOctal* {.deprecated.} = r"\b0[oO][0-7]+\b"
-    ## describes an octal number (example: 0o777)
-  reFloat* {.deprecated.} = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
-    ## describes a floating point number
-  reEmail* {.deprecated.} = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\. &" &
-                            r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@" &
-                            r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+" &
-                            r"(?:[a-zA-Z]{2}|com|org|net|gov|mil|biz|" &
-                            r"info|mobi|name|aero|jobs|museum)\b"
-    ## describes a common email address
-  reURL* {.deprecated.} = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms-help)" &
-                          r":((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
-    ## describes an URL
-
 when isMainModule:
   doAssert match("(a b c)", rex"\( .* \)")
   doAssert match("WHiLe", re("while", {reIgnoreCase}))
@@ -591,7 +570,7 @@ when isMainModule:
   doAssert "ABC".match(rex"\d+ | \w+")
 
   {.push warnings:off.}
-  doAssert matchLen("key", re(reIdentifier)) == 3
+  doAssert matchLen("key", re"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b") == 3
   {.pop.}
 
   var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+"
@@ -632,6 +611,11 @@ when isMainModule:
   doAssert(accum == @["", "this", "is", "an", "example", ""])
 
   accum = @[]
+  for word in split("00232this02939is39an22example111", re"\d+", maxsplit=2):
+    accum.add(word)
+  doAssert(accum == @["", "this", "is39an22example111"])
+
+  accum = @[]
   for word in split("AAA :   : BBB", re"\s*:\s*"):
     accum.add(word)
   doAssert(accum == @["AAA", "", "BBB"])
@@ -643,6 +627,8 @@ when isMainModule:
   doAssert(split(";a;b;c", re";") == @["", "a", "b", "c"])
   doAssert(split(";a;b;c;", re";") == @["", "a", "b", "c", ""])
   doAssert(split("a;b;c;", re";") == @["a", "b", "c", ""])
+  doAssert(split("00232this02939is39an22example111", re"\d+", maxsplit=2) == @["", "this", "is39an22example111"])
+
 
   for x in findAll("abcdef", re"^{.}", 3):
     doAssert x == "d"
@@ -673,4 +659,10 @@ when isMainModule:
     for x in cs.findAll(re"[a-z]", start=3, bufSize=15):
       accum.add($x)
     doAssert(accum == @["a","b","c"])
+
+  block:
+    # bug #9306
+    doAssert replace("bar", re"^", "foo") == "foobar"
+    doAssert replace("foo", re"", "-") == "-foo"
+    doAssert replace("foo", re"$", "bar") == "foobar"
 

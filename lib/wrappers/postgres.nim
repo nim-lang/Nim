@@ -152,11 +152,9 @@ type
     length*: int32
     isint*: int32
     p*: pointer
-{.deprecated: [TSockAddr: SockAddr, TPGresAttDesc: PgresAttDesc,
-      TPGresAttValue: PgresAttValue, TExecStatusType: ExecStatusType,
-      TPGlobjfuncs: Pglobjfuncs, TConnStatusType: ConnStatusType, TPGconn: Pgconn,
-      TPGresult: PGresult].}
 
+proc pqinitOpenSSL*(do_ssl: int32, do_crypto: int32) {.cdecl, dynlib: dllName,
+    importc: "PQinitOpenSSL".}
 proc pqconnectStart*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName,
     importc: "PQconnectStart".}
 proc pqconnectPoll*(conn: PPGconn): PostgresPollingStatusType{.cdecl,

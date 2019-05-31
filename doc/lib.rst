@@ -18,9 +18,9 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
-The `bottom <#nimble>`_ of this page includes a list of 3rd party packages
-created by the Nim community. These packages are a useful addition to the
-modules in the standard library.
+In addition to the modules in the standard library, third-party packages
+created by the Nim community can be used via `Nimble <#nimble>`_, Nim's
+package manager.
 
 
 Pure libraries
@@ -59,7 +59,7 @@ Core
   This module defines compile-time reflection procs for working with types.
 
 * `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual.html#spawn>`_.
+  Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
 
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
@@ -67,6 +67,8 @@ Core
 * `lenientops <lenientops.html>`_
   Provides binary operators for mixed integer/float expressions for convenience.
 
+* `bitops <bitops.html>`_
+  Provides a series of low level methods for bit manipulation.
 
 
 Collections and algorithms
@@ -74,26 +76,38 @@ Collections and algorithms
 
 * `algorithm <algorithm.html>`_
   Implements some common generic algorithms like sort or binary search.
+
 * `tables <tables.html>`_
   Nim hash table support. Contains tables, ordered tables and count tables.
+
 * `sets <sets.html>`_
   Nim hash and bit set support.
+
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
   circular lists ("rings").
+
 * `deques <deques.html>`_
   Implementation of a double-ended queue.
   The underlying implementation uses a ``seq``.
+
+* `heapqueue <heapqueue.html>`_
+  Implementation of a heap data structure that can be used as a priority queue.
+
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
+
 * `critbits <critbits.html>`_
   This module implements a *crit bit tree* which is an efficient
   container for a sorted set of strings, or for a sorted mapping of strings.
+
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
+
 * `sharedtables <sharedtables.html>`_
   Nim shared hash table support. Contains shared tables.
+
 * `sharedlist <sharedlist.html>`_
   Nim shared linked list support. Contains shared singly linked list.
 
@@ -107,8 +121,8 @@ String handling
   substrings, replacing substrings.
 
 * `strformat <strformat.html>`_
-  Macro based standard string interpolation / formatting. Inpired by
-  Python's ```f``-strings.
+  Macro based standard string interpolation / formatting. Inspired by
+  Python's ``f``-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -123,11 +137,17 @@ String handling
 * `strtabs <strtabs.html>`_
   The ``strtabs`` module implements an efficient hash table that is a mapping
   from strings to strings. Supports a case-sensitive, case-insensitive and
-  style-insensitive mode. An efficient string substitution operator ``%``
-  for the string table is also provided.
+  style-insensitive modes.
 
 * `unicode <unicode.html>`_
   This module provides support to handle the Unicode UTF-8 encoding.
+
+* `unidecode <unidecode.html>`_
+  It provides a single proc that does Unicode to ASCII transliterations.
+  Based on Python's Unidecode module.
+
+* `punycode <punycode.html>`_
+  Implements a representation of Unicode with the limited ASCII character subset.
 
 * `encodings <encodings.html>`_
   Converts between different character encodings. On UNIX, this uses
@@ -141,11 +161,16 @@ String handling
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
 
-* `matchers <matchers.html>`_
-  This module contains various string matchers for email addresses, etc.
+* `std/editdistance <editdistance.html>`_
+  This module contains an algorithm to compute the edit distance between two
+  Unicode strings.
 
-* `subexes <subexes.html>`_
-  This module implements advanced string substitution operations.
+* `std/wordwrap <wordwrap.html>`_
+  This module contains an algorithm to wordwrap a Unicode string.
+
+* `experimental/diff <diff.html>`_
+  This module contains an algorithm to compute the famous "diff"
+  of two texts by line.
 
 
 Generic Operating System Services
@@ -184,20 +209,23 @@ Generic Operating System Services
   This module provides support for memory mapped files (Posix's ``mmap``)
   on the different operating systems.
 
-* `fsmonitor <fsmonitor.html>`_
-  This module implements the ability to monitor a directory/file for changes
-  using Posix's inotify API.
-
-  **Warning:** This module will likely be moved out to a Nimble package soon.
-
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
 
+* `asyncstreams <asyncstreams.html>`_
+  This module provides `FutureStream` - a future that acts as a queue.
+
 * `distros <distros.html>`_
-  This module implements the basics for OS distribution ("distro") detection and the OS's native package manager.
-  Its primary purpose is to produce output for Nimble packages, but it also contains the widely used **Distribution** enum
+  This module implements the basics for OS distribution ("distro") detection
+  and the OS's native package manager.
+  Its primary purpose is to produce output for Nimble packages,
+  but it also contains the widely used **Distribution** enum
   that is useful for writing platform specific code.
+
+* `volatile <volatile.html>`_
+  This module contains code for generating volatile loads and stores,
+  which are useful in embedded and systems programming.
 
 
 Math libraries
@@ -231,15 +259,9 @@ Internet Protocols and Support
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applications.
 
-* `scgi <scgi.html>`_
-  This module implements helpers for SCGI applications.
-
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.
-
-* `httpserver <httpserver.html>`_
-  This module implements a simple HTTP server.
 
 * `httpclient <httpclient.html>`_
   This module implements a simple HTTP client which supports both synchronous
@@ -273,8 +295,8 @@ Internet Protocols and Support
   module.
 
 * `net <net.html>`_
-  This module implements a high-level sockets API. It will replace the
-  ``sockets`` module in the future.
+  This module implements a high-level sockets API. It replaces the
+  ``sockets`` module.
 
 * `nativesockets <nativesockets.html>`_
   This module implements a low-level sockets API.
@@ -283,16 +305,12 @@ Internet Protocols and Support
   This module implements a selector API with backends specific to each OS.
   Currently epoll on Linux and select on other operating systems.
 
+
 Parsers
 -------
 
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser.
-
-* `parseopt2 <parseopt2.html>`_
-  The ``parseopt2`` module implements a command line option parser. This
-  supports long and short command options with optional values and command line
-  arguments.
 
 * `parsecfg <parsecfg.html>`_
   The ``parsecfg`` module implements a high performance configuration file
@@ -320,35 +338,29 @@ Parsers
   This is a low level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
 
-* `highlite <highlite.html>`_
+* `packages/docutils/highlite <highlite.html>`_
   Source highlighter for programming or markup languages.  Currently
   only few languages are supported, other languages may be added.
   The interface supports one language nested in another.
 
-* `rst <rst.html>`_
+* `packages/docutils/rst <rst.html>`_
   This module implements a reStructuredText parser. A large subset
   is implemented. Some features of the markdown wiki syntax are
   also supported.
 
-* `rstast <rstast.html>`_
+* `packages/docutils/rstast <rstast.html>`_
   This module implements an AST for the reStructuredText parser.
 
-* `rstgen <rstgen.html>`_
+* `packages/docutils/rstgen <rstgen.html>`_
   This module implements a generator of HTML/Latex from reStructuredText.
 
-* `sexp <sexp.html>`_
+* `packages/docutils/sexp <sexp.html>`_
   High performance sexp parser and generator, mainly for communication
   with emacs.
 
 
 XML Processing
 --------------
-
-* `xmldom <xmldom.html>`_
-  This module implements the XML DOM Level 2.
-
-* `xmldomparser <xmldomparser.html>`_
-  This module parses an XML Document into a XML DOM Document representation.
 
 * `xmltree <xmltree.html>`_
   A simple XML tree. More efficient and simpler than the DOM. It also
@@ -378,7 +390,7 @@ Cryptography and Hashing
 * `base64 <base64.html>`_
   This module implements a base64 encoder and decoder.
 
-* `sha1 <sha1.html>`_
+* `std/sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
 
 
@@ -392,10 +404,6 @@ Multimedia support
 
 Miscellaneous
 -------------
-
-* `events <events.html>`_
-  This module implements an event system that is not dependent on external
-  graphical toolkits.
 
 * `oids <oids.html>`_
   An OID is a global ID that consists of a timestamp,
@@ -423,6 +431,7 @@ Miscellaneous
 
 * `segfaults <segfaults.html>`_
   Turns access violations or segfaults into a ``NilAccessError`` exception.
+
 
 Modules for JS backend
 ----------------------
@@ -452,7 +461,6 @@ Regular expressions
   expressions. The current implementation uses PCRE.
 
 
-
 Database support
 ----------------
 
@@ -469,19 +477,12 @@ Database support
   for other databases too.
 
 
-Other
------
-
-* `ssl <ssl.html>`_
-  This module provides an easy to use sockets-style
-  Nim interface to the OpenSSL library.
-
-
 Wrappers
 ========
 
 The generated HTML for some of these wrappers is so huge that it is
 not contained in the distribution. You can then find them on the website.
+
 
 Windows specific
 ----------------
@@ -538,4 +539,5 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_ or the `packages repos <https://github.com/nim-lang/packages>`_ on GitHub.
+To see a list of Nimble's packages, check out `<https://nimble.directory/>`_
+or the `packages repo <https://github.com/nim-lang/packages>`_ on GitHub.

@@ -1,5 +1,5 @@
 discard """
-  output: "done"
+  output: "done tsortdev"
 """
 
 import algorithm, strutils
@@ -55,5 +55,4 @@ proc main() =
 for i in 0..1_000:
   main()
 
-echo "done"
-
+echo "done tsortdev"

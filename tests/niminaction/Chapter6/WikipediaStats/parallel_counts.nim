@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 import os, parseutils, threadpool, strutils
 
 type
@@ -66,7 +70,7 @@ proc readPageCounts(filename: string, chunkSize = 1_000_000) =
 
   echo("Most popular is: ", mostPopular)
 
-when isMainModule:
+when true:
   const file = "pagecounts-20160101-050000"
   let filename = getCurrentDir() / file
   readPageCounts(filename)

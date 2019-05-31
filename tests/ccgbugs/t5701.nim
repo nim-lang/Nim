@@ -1,7 +1,8 @@
 discard """
-  output: '''(Field0: 1, Field1: 1)
-(Field0: 2, Field1: 2)
-(Field0: 3, Field1: 3)
+  output: '''(1, 1)
+(2, 2)
+(3, 3)
+@[1, 2, 3, 4]
 '''
 """
 
@@ -15,3 +16,12 @@ proc foo(args: varargs[int]) =
     discard
 
 foo(1,2,3)
+
+# 10999
+
+proc varargsToSeq(vals: varargs[int32]): seq[int32] =
+  result = newSeqOfCap[int32](vals.len)
+  for v in vals:
+    result.add v
+
+echo varargsToSeq(1, 2, 3, 4)

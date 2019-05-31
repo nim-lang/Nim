@@ -17,6 +17,7 @@ when not defined(windows) and (defined(useGnuReadline) or defined(useLinenoise))
   import rdstdin
 
 type
+  TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
   TLLStreamKind* = enum       # enum of different stream implementations
     llsNone,                  # null stream: reading and writing has no effect
     llsString,                # stream encapsulates a string
@@ -28,6 +29,7 @@ type
     s*: string
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
+    repl*: TLLRepl            # gives stdin control to clients
 
   PLLStream* = ref TLLStream
 
@@ -50,11 +52,13 @@ proc llStreamOpen*(): PLLStream =
   new(result)
   result.kind = llsNone
 
-proc llStreamOpenStdIn*(): PLLStream =
+proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int
+proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin): PLLStream =
   new(result)
   result.kind = llsStdIn
   result.s = ""
   result.lineOffset = -1
+  result.repl = r
 
 proc llStreamClose*(s: PLLStream) =
   case s.kind
@@ -66,10 +70,10 @@ proc llStreamClose*(s: PLLStream) =
 when not declared(readLineFromStdin):
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
-    stdout.write(prompt)
+    stderr.write(prompt)
     result = readLine(stdin, line)
     if not result:
-      stdout.write("\n")
+      stderr.write("\n")
       quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
@@ -127,7 +131,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsFile:
     result = readBuffer(s.f, buf, bufLen)
   of llsStdIn:
-    result = llReadFromStdin(s, buf, bufLen)
+    result = s.repl(s, buf, bufLen)
 
 proc llStreamReadLine*(s: PLLStream, line: var string): bool =
   setLen(line, 0)

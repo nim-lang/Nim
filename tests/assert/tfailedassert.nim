@@ -9,12 +9,13 @@ test6:ok
 test7:ok
 -1
 tfailedassert.nim
-test7:ok
+test8:ok
+test9:ok
+test10:ok
+test11:ok
 '''
 """
-
 import testhelper
-
 type
   TLineInfo = tuple[filename: string, line: int, column: int]
   TMyError = object of Exception
@@ -22,7 +23,6 @@ type
   EMyError = ref TMyError
 
 echo("")
-
 
 # NOTE: when entering newlines, adjust `expectedEnd` ouptuts
 
@@ -60,37 +60,68 @@ proc fooStatic() =
   static: doAssert(true)
 fooStatic()
 
-# module-wide policy to change the failed assert
-# exception type in order to include a lineinfo
-onFailedAssert(msg):
-  var e = new(TMyError)
-  e.msg = msg
-  e.lineinfo = instantiationInfo(-2)
-  raise e
-
-proc foo =
-  assert(false, "assertion from foo")
 
 
-proc bar: int =
-  # local overrides that are active only in this proc
+
+
+block:
+  # scope-wide policy to change the failed assert
+  # exception type in order to include a lineinfo
   onFailedAssert(msg):
-    checkMsg(msg, "tfailedassert.nim(80, 9) `false` first assertion from bar", "test6")
+    var e = new(TMyError)
+    e.msg = msg
+    e.lineinfo = instantiationInfo(-2)
+    raise e
 
-  assert(false, "first assertion from bar")
+  proc foo =
+    assert(false, "assertion from foo")
 
-  onFailedAssert(msg):
-    checkMsg(msg, "tfailedassert.nim(86, 9) `false` second assertion from bar", "test7")
-    return -1
 
-  assert(false, "second assertion from bar")
-  return 10
+  proc bar: int =
+    # local overrides that are active only in this proc
+    onFailedAssert(msg):
+      checkMsg(msg, "tfailedassert.nim(85, 11) `false` first assertion from bar", "test6")
 
-echo(bar())
+    assert(false, "first assertion from bar")
 
-try:
-  foo()
-except:
-  let e = EMyError(getCurrentException())
-  echo e.lineinfo.filename
-  checkMsg(e.msg, "tfailedassert.nim(72, 9) `false` assertion from foo", "test7")
+    onFailedAssert(msg):
+      checkMsg(msg, "tfailedassert.nim(91, 11) `false` second assertion from bar", "test7")
+      return -1
+
+    assert(false, "second assertion from bar")
+    return 10
+
+  echo(bar())
+
+  try:
+    foo()
+  except:
+    let e = EMyError(getCurrentException())
+    echo e.lineinfo.filename
+    checkMsg(e.msg, "tfailedassert.nim(77, 11) `false` assertion from foo", "test8")
+
+block: ## checks for issue https://github.com/nim-lang/Nim/issues/8518
+  template fun(a: string): string =
+      const pattern = a & a
+      pattern
+
+  try:
+    doAssert fun("foo1") == fun("foo2"), "mymsg"
+  except AssertionError as e:
+    # used to expand out the template instantiaiton, sometimes filling hundreds of lines
+    checkMsg(e.msg, """tfailedassert.nim(109, 14) `fun("foo1") == fun("foo2")` mymsg""", "test9")
+
+block: ## checks for issue https://github.com/nim-lang/Nim/issues/9301
+  try:
+    doAssert 1 + 1 == 3
+  except AssertionError as e:
+    # used to const fold as false
+    checkMsg(e.msg, "tfailedassert.nim(116, 14) `1 + 1 == 3` ", "test10")
+
+block: ## checks AST isnt' transformed as it used to
+  let a = 1
+  try:
+    doAssert a > 1
+  except AssertionError as e:
+    # used to rewrite as `1 < a`
+    checkMsg(e.msg, "tfailedassert.nim(124, 14) `a > 1` ", "test11")

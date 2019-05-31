@@ -1,5 +1,4 @@
 ﻿discard """
-  file: "tbitops.nim"
   output: "OK"
 """
 import bitops

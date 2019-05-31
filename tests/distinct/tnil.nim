@@ -1,6 +1,6 @@
 discard """
-  file: "tnil.nim"
-  output: '''1
+output: '''
+1
 0
 0
 '''

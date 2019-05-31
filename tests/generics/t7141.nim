@@ -1,7 +1,6 @@
 discard """
-  action: "reject"
-  line: 7
   errormsg: "cannot instantiate: \'T\'"
+  line: 6
 """
 
 proc foo[T](x: T) =

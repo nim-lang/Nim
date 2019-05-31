@@ -172,8 +172,9 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   doAssert(pkey.ident != InvalidIdent,
            "Descriptor [" & $fdi & "] is not registered in the queue!")
   pkey.ident = InvalidIdent
-  pkey.events = {}
-  s.pollRemove(fdi.cint)
+  if pkey.events != {}:
+    pkey.events = {}
+    s.pollRemove(fdi.cint)
 
 proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
@@ -212,6 +213,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   var maxres = MAX_POLL_EVENTS
   if maxres > len(results):
     maxres = len(results)
+
+  verifySelectParams(timeout)
 
   s.withPollLock():
     let count = posix.poll(addr(s.pollfds[0]), Tnfds(s.pollcnt), timeout)

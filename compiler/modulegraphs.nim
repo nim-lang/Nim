@@ -26,13 +26,16 @@
 ##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental, btrees
+  incremental, btrees, md5
 
 type
+  SigHash* = distinct Md5Digest
+
   ModuleGraph* = ref object
     modules*: seq[PSym]  ## indexed by int32 fileIdx
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
+    importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
@@ -47,7 +50,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]] # needs serialization!
+    methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
@@ -56,14 +59,105 @@ type
     opContains*, opNot*: PSym
     emptyNode*: PNode
     incr*: IncrementalCtx
+    canonTypes*: Table[SigHash, PType]
+    symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
     recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
     cacheSeqs*: Table[string, PNode] # state that is shared to suppor the 'macrocache' API
     cacheCounters*: Table[string, BiggestInt]
     cacheTables*: Table[string, BTree[string, PNode]]
+    passes*: seq[TPass]
+    onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+    onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+    onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+    globalDestructors*: seq[PNode]
+
+  TPassContext* = object of RootObj # the pass's context
+  PPassContext* = ref TPassContext
+
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym): PPassContext {.nimcall.}
+  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
+  TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
+
+  TPass* = tuple[open: TPassOpen,
+                 process: TPassProcess,
+                 close: TPassClose,
+                 isFrontend: bool]
+
+
+const
+  cb64 = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
+    "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
+    "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9a",
+    "9b", "9c"]
+
+proc toBase64a(s: cstring, len: int): string =
+  ## encodes `s` into base64 representation.
+  result = newStringOfCap(((len + 2) div 3) * 4)
+  result.add '_'
+  var i = 0
+  while i < len - 2:
+    let a = ord(s[i])
+    let b = ord(s[i+1])
+    let c = ord(s[i+2])
+    result.add cb64[a shr 2]
+    result.add cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
+    result.add cb64[((b and 0x0F) shl 2) or ((c and 0xC0) shr 6)]
+    result.add cb64[c and 0x3F]
+    inc(i, 3)
+  if i < len-1:
+    let a = ord(s[i])
+    let b = ord(s[i+1])
+    result.add cb64[a shr 2]
+    result.add cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
+    result.add cb64[((b and 0x0F) shl 2)]
+  elif i < len:
+    let a = ord(s[i])
+    result.add cb64[a shr 2]
+    result.add cb64[(a and 3) shl 4]
+
+proc `$`*(u: SigHash): string =
+  toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
+
+proc `==`*(a, b: SigHash): bool =
+  result = equalMem(unsafeAddr a, unsafeAddr b, sizeof(a))
+
+proc hash*(u: SigHash): Hash =
+  result = 0
+  for x in 0..3:
+    result = (result shl 8) or u.MD5Digest[x].int
 
 proc hash*(x: FileIndex): Hash {.borrow.}
+
+when defined(nimfind):
+  template onUse*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onUsage != nil: c.c.graph.onUsage(c.c.graph, s, info)
+    else:
+      if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
+
+  template onDef*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onDefinition != nil: c.c.graph.onDefinition(c.c.graph, s, info)
+    else:
+      if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
+
+  template onDefResolveForward*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onDefinitionResolveForward != nil:
+        c.c.graph.onDefinitionResolveForward(c.c.graph, s, info)
+    else:
+      if c.graph.onDefinitionResolveForward != nil:
+        c.graph.onDefinitionResolveForward(c.graph, s, info)
+
+else:
+  template onUse*(info: TLineInfo; s: PSym) = discard
+  template onDef*(info: TLineInfo; s: PSym) = discard
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
@@ -76,6 +170,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
+  result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.modules = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
@@ -94,6 +189,8 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
   result.cacheTables = initTable[string, BTree[string, PNode]]()
+  result.canonTypes = initTable[SigHash, PType]()
+  result.symBodyHashes = initTable[int, SigHash]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)

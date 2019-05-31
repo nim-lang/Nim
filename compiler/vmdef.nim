@@ -17,7 +17,7 @@ const
   byteExcess* = 128 # we use excess-K for immediates
   wordExcess* = 32768
 
-  MaxLoopIterations* = 3_000_000 # max iterations of all loops
+  MaxLoopIterations* = 10_000_000 # max iterations of all loops
 
 
 type
@@ -35,6 +35,10 @@ type
     opcAsgnStr,
     opcAsgnFloat,
     opcAsgnRef,
+    opcAsgnIntFromFloat32,    # int and float must be of the same byte size
+    opcAsgnIntFromFloat64,    # int and float must be of the same byte size
+    opcAsgnFloat32FromInt,    # int and float must be of the same byte size
+    opcAsgnFloat64FromInt,    # int and float must be of the same byte size
     opcAsgnComplex,
     opcNodeToReg,
 
@@ -69,8 +73,9 @@ type
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,
-    opcQuit, opcReset,
+    opcQuit,
     opcNarrowS, opcNarrowU,
+    opcSignExtend,
 
     opcAddStrCh,
     opcAddStrStr,
@@ -87,6 +92,8 @@ type
     opcNIdent,
     opcNGetType,
     opcNStrVal,
+    opcNSigHash,
+    opcNGetSize,
 
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
@@ -107,6 +114,7 @@ type
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,
+    opcGetImplTransf
 
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
@@ -142,7 +150,8 @@ type
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
     opcToNarrowInt,
-    opcSymOwner
+    opcSymOwner,
+    opcSymIsInstantiationOf
 
   TBlock* = object
     label*: PSym
@@ -159,7 +168,6 @@ type
 
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
-    allowFFI,                 ## allow the FFI
     allowInfiniteLoops        ## allow endless loops
   TSandboxFlags* = set[TSandboxFlag]
 
@@ -191,7 +199,7 @@ type
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx
-  TCtx* = object of passes.TPassContext # code gen context
+  TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation

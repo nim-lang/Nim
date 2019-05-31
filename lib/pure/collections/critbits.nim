@@ -15,7 +15,7 @@
 include "system/inclrtl"
 
 type
-  NodeObj[T] = object {.acyclic.}
+  NodeObj[T] {.acyclic.} = object
     byte: int ## byte index of the difference
     otherbits: char
     case isLeaf: bool
@@ -32,8 +32,6 @@ type
                            ## strings if ``T`` is void.
     root: Node[T]
     count: int
-
-{.deprecated: [TCritBitTree: CritBitTree].}
 
 proc len*[T](c: CritBitTree[T]): int =
   ## returns the number of elements in `c` in O(1).
@@ -59,9 +57,7 @@ proc hasKey*[T](c: CritBitTree[T], key: string): bool {.inline.} =
 
 proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
   if c.root == nil:
-    new c.root
-    c.root.isleaf = true
-    c.root.key = key
+    c.root = Node[T](isleaf: true, key: key)
     result = c.root
   else:
     var it = c.root
@@ -91,9 +87,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
 
     var inner: Node[T]
     new inner
-    new result
-    result.isLeaf = true
-    result.key = key
+    result = Node[T](isLeaf: true, key: key)
     inner.otherBits = chr(newOtherBits)
     inner.byte = newByte
     inner.child[1 - dir] = result
@@ -144,7 +138,7 @@ proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
   ## Returns true iff `c` does not contain the given `key`. If the key
   ## does exist, c.excl(key) is performed.
   let oldCount = c.count
-  var n = exclImpl(c, key)
+  discard exclImpl(c, key)
   result = c.count == oldCount
 
 proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
@@ -160,7 +154,7 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   ## returns true iff `c` contains the given `key`. If the key does not exist
   ## it is inserted into `c`.
   let oldCount = c.count
-  var n = rawInsert(c, key)
+  discard rawInsert(c, key)
   result = c.count == oldCount
 
 proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
@@ -202,12 +196,6 @@ proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
   deprecatedGet.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  get(c, key)
-
-proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} =
-  ## retrieves the value at ``c[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  ## Use ```[]``` instead.
   get(c, key)
 
 iterator leaves[T](n: Node[T]): Node[T] =
@@ -261,7 +249,7 @@ proc allprefixedAux[T](c: CritBitTree[T], key: string; longestMatch: bool): Node
       if q.byte < key.len: top = p
     if not longestMatch:
       for i in 0 ..< key.len:
-        if p.key[i] != key[i]: return
+        if i >= p.key.len or p.key[i] != key[i]: return
     result = top
 
 iterator itemsWithPrefix*[T](c: CritBitTree[T], prefix: string;
@@ -392,3 +380,8 @@ when isMainModule:
   assert cf.len == 3
   cf.excl("c")
   assert cf.len == 2
+
+  var cb: CritBitTree[string]
+  cb.incl("help", "help")
+  for k in cb.keysWithPrefix("helpp"):
+    doAssert false, "there is no prefix helpp"

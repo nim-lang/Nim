@@ -22,14 +22,14 @@ proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
   result = arNo
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       result = isPartOfAux(n.sons[i], b, marker)
       if result == arYes: return
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
     result = isPartOfAux(n.sons[0], b, marker)
     if result == arYes: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in 1 ..< sonsLen(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = isPartOfAux(lastSon(n.sons[i]), b, marker)
@@ -52,7 +52,7 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = isPartOfAux(lastSon(a), b, marker)
   of tyArray, tySet, tyTuple:
-    for i in countup(0, sonsLen(a) - 1):
+    for i in 0 ..< sonsLen(a):
       result = isPartOfAux(a.sons[i], b, marker)
       if result == arYes: return
   else: discard
@@ -181,8 +181,15 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
       else: discard
     of nkObjConstr:
       result = arNo
-      for i in 1..<b.len:
+      for i in 1 ..< b.len:
         let res = isPartOf(a, b[i][1])
+        if res != arNo:
+          result = res
+          if res == arYes: break
+    of nkCall:
+      result = arNo
+      for i in 1 ..< b.len:
+        let res = isPartOf(a, b[i])
         if res != arNo:
           result = res
           if res == arYes: break

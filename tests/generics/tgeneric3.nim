@@ -1,3 +1,13 @@
+discard """
+output: '''
+312
+1000000
+1000000
+500000
+0
+'''
+"""
+
 import strutils
 
 type
@@ -420,55 +430,50 @@ iterator keys* [T,D] (n: PNode[T,D]): T =
         i = Path[level].Xi
         inc(i)
 
+proc test() =
+  var oldvalue: int
+  var root = internalPut[int, int](nil, 312, 312, oldvalue)
+  var someOtherRoot = internalPut[string, int](nil, "312", 312, oldvalue)
+  var it1 = internalFind(root, 312)
+  echo it1.value
 
-when isMainModule:
+  for i in 1..1_000_000:
+    root = internalPut(root, i, i, oldvalue)
 
-  proc test() =
-    var oldvalue: int
-    var root = internalPut[int, int](nil, 312, 312, oldvalue)
-    var someOtherRoot = internalPut[string, int](nil, "312", 312, oldvalue)
-    var it1 = internalFind(root, 312)
-    echo it1.value
-
-    for i in 1..1_000_000:
-      root = internalPut(root, i, i, oldvalue)
-
-    var cnt = 0
-    oldvalue = -1
-    when true : # code compiles, when this or the other when is switched to false
-      for k in root.keys :
-        if k <= oldvalue :
-          echo k
-        oldvalue = k
-        inc(cnt)
-      echo cnt
+  var cnt = 0
+  oldvalue = -1
+  when true : # code compiles, when this or the other when is switched to false
+    for k in root.keys :
+      if k <= oldvalue :
+        echo k
+      oldvalue = k
+      inc(cnt)
+    echo cnt
+  when true :
+    cnt = 0
+    VisitAll(root, proc(key, val: int) = inc(cnt))
+    echo cnt
     when true :
-      cnt = 0
-      VisitAll(root, proc(key, val: int) = inc(cnt))
-      echo cnt
-      when true :
-        root = VisitAll(root, proc(key: int, value: var int): bool =
-          return key mod 2 == 0 )
-      cnt = 0
-      oldvalue = -1
-      VisitAll(root, proc(key: int, value: int) {.closure.} =
-        if key <= oldvalue :
-          echo key
-        oldvalue = key
-        inc(cnt) )
-      echo cnt
       root = VisitAll(root, proc(key: int, value: var int): bool =
-        return key mod 2 != 0 )
-      cnt = 0
-      oldvalue = -1
-      VisitAll(root, proc(key: int, value: int) {.closure.} =
-        if key <= oldvalue :
-          echo "error ", key
-        oldvalue = key
-        inc(cnt) )
-      echo cnt
-      #traceTree(root)
+        return key mod 2 == 0 )
+    cnt = 0
+    oldvalue = -1
+    VisitAll(root, proc(key: int, value: int) {.closure.} =
+      if key <= oldvalue :
+        echo key
+      oldvalue = key
+      inc(cnt) )
+    echo cnt
+    root = VisitAll(root, proc(key: int, value: var int): bool =
+      return key mod 2 != 0 )
+    cnt = 0
+    oldvalue = -1
+    VisitAll(root, proc(key: int, value: int) {.closure.} =
+      if key <= oldvalue :
+        echo "error ", key
+      oldvalue = key
+      inc(cnt) )
+    echo cnt
+    #traceTree(root)
 
-
-
-  test()
+test()

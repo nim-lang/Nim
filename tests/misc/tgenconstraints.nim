@@ -1,8 +1,8 @@
 discard """
+  errormsg: "cannot instantiate T2"
   file: "tgenconstraints.nim"
   line: 25
   disabled: true
-  errormsg: "cannot instantiate T2"
 """
 
 type
@@ -29,4 +29,3 @@ proc bar(x: int|TNumber): T1[type(x)] {.discardable.} =
 bar "test"
 bar 100
 bar 1.1
-

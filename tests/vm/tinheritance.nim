@@ -1,5 +1,5 @@
 discard """
-  msg: '''Hello fred , managed by sally
+  nimout: '''Hello fred , managed by sally
 Hello sally , managed by bob'''
 """
 # bug #3973
@@ -27,3 +27,54 @@ proc test() =
 
 static:
   test()
+
+#----------------------------------------------
+# Bugs #9701 and #9702
+type
+  MyKind = enum
+    kA, kB, kC
+
+  Base = ref object of RootObj
+    x: string
+
+  A = ref object of Base
+    a: string
+
+  B = ref object of Base
+    b: string
+
+  C = ref object of B
+    c: string
+
+template check_templ(n: Base, k: MyKind) =
+  if k == kA: doAssert(n of A) else: doAssert(not (n of A))
+  if k in {kB, kC}: doAssert(n of B) else: doAssert(not (n of B))
+  if k == kC: doAssert(n of C) else: doAssert(not (n of C))
+  doAssert(n of Base) 
+
+proc check_proc(n: Base, k: MyKind) =
+  if k == kA: doAssert(n of A) else: doAssert(not (n of A))
+  if k in {kB, kC}: doAssert(n of B) else: doAssert(not (n of B))
+  if k == kC: doAssert(n of C) else: doAssert(not (n of C))
+  doAssert(n of Base) 
+
+static:
+  let aa = new(A)
+  check_templ(aa, kA)
+  check_proc(aa, kA)
+  let bb = new(B)
+  check_templ(bb, kB)
+  check_proc(bb, kB)
+  let cc = new(C)
+  check_templ(cc, kC)
+  check_proc(cc, kC)
+    
+let aa = new(A)
+check_templ(aa, kA)
+check_proc(aa, kA)
+let bb = new(B)
+check_templ(bb, kB)
+check_proc(bb, kB)
+let cc = new(C)
+check_templ(cc, kC)
+check_proc(cc, kC)

@@ -1,5 +1,6 @@
 discard """
-  output: '''(10, (20, ))'''
+  output: '''(10, (20, ))
+42'''
 """
 
 import strutils, sequtils
@@ -22,5 +23,17 @@ proc dosomething(): seq[TThing] =
 
   result = @[TThing(data: 10, children: result)]
 
-when isMainModule:
-  echo($dosomething()[0])
+echo($dosomething()[0])
+
+
+# bug #9844
+
+proc f(v: int): int = v
+
+type X = object
+  v: int
+
+var x = X(v: 42)
+
+x = X(v: f(x.v))
+echo x.v

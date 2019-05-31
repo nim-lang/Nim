@@ -9,37 +9,48 @@
 
 ## This module implements a base64 encoder and decoder.
 ##
+## Base64 is an encoding and decoding technique used to convert binary
+## data to an ASCII string format.
+## Each Base64 digit represents exactly 6 bits of data. Three 8-bit
+## bytes (i.e., a total of 24 bits) can therefore be represented by
+## four 6-bit Base64 digits.
+##
+## Basic usage
+## ===========
+##
 ## Encoding data
 ## -------------
 ##
-## In order to encode some text simply call the ``encode`` procedure:
-##
-##   .. code-block::nim
-##      import base64
-##      let encoded = encode("Hello World")
-##      echo(encoded) # SGVsbG8gV29ybGQ=
+## .. code-block::nim
+##    import base64
+##    let encoded = encode("Hello World")
+##    assert encoded == "SGVsbG8gV29ybGQ="
 ##
 ## Apart from strings you can also encode lists of integers or characters:
 ##
-##   .. code-block::nim
-##      import base64
-##      let encodedInts = encode([1,2,3])
-##      echo(encodedInts) # AQID
-##      let encodedChars = encode(['h','e','y'])
-##      echo(encodedChars) # aGV5
+## .. code-block::nim
+##    import base64
+##    let encodedInts = encode([1,2,3])
+##    assert encodedInts == "AQID"
+##    let encodedChars = encode(['h','e','y'])
+##    assert encodedChars == "aGV5"
 ##
-## The ``encode`` procedure takes an ``openarray`` so both arrays and sequences
-## can be passed as parameters.
 ##
 ## Decoding data
 ## -------------
 ##
-## To decode a base64 encoded data string simply call the ``decode``
-## procedure:
+## .. code-block::nim
+##    import base64
+##    let decoded = decode("SGVsbG8gV29ybGQ=")
+##    assert decoded == "Hello World"
 ##
-##   .. code-block::nim
-##      import base64
-##      echo(decode("SGVsbG8gV29ybGQ=")) # Hello World
+##
+## See also
+## ========
+##
+## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
+## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
+## * `sha1 module<sha1.html>`_ implements a sha1 encoder and decoder
 
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -100,18 +111,33 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
     discard
 
 proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
+  ## Encodes ``s`` into base64 representation. After ``lineLen`` characters, a
+  ## ``newline`` is added.
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
   ## or characters.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,string,int,string>`_ for encoding a string
+  ## * `decode proc<#decode,string>`_ for decoding a string
+  runnableExamples:
+    assert encode(['n', 'i', 'm']) == "bmlt"
+    assert encode(@['n', 'i', 'm']) == "bmlt"
+    assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
   encodeInternal(s, lineLen, newLine)
 
 proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
+  ## Encodes ``s`` into base64 representation. After ``lineLen`` characters, a
+  ## ``newline`` is added.
   ##
   ## This procedure encodes a string.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,openArray[T],int,string>`_ for encoding an openarray
+  ## * `decode proc<#decode,string>`_ for decoding a string
+  runnableExamples:
+    assert encode("Hello World") == "SGVsbG8gV29ybGQ="
+    assert encode("Hello World", 3, "\n") == "SGVs\nbG8g\nV29ybGQ="
   encodeInternal(s, lineLen, newLine)
 
 proc decodeByte(b: char): int {.inline.} =
@@ -123,8 +149,15 @@ proc decodeByte(b: char): int {.inline.} =
   else: result = 63
 
 proc decode*(s: string): string =
-  ## decodes a string in base64 representation back into its original form.
-  ## Whitespace is skipped.
+  ## Decodes string ``s`` in base64 representation back into its original form.
+  ## The initial whitespace is skipped.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,openArray[T],int,string>`_ for encoding an openarray
+  ## * `encode proc<#encode,string,int,string>`_ for encoding a string
+  runnableExamples:
+    assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
+    assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"
   const Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
   var total = ((len(s) + 3) div 4) * 3
   # total is an upper bound, as we will skip arbitrary whitespace:

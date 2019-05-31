@@ -1,3 +1,7 @@
+discard """
+outputsub: "SUCCESS"
+"""
+
 import os, osproc
 
 when defined(Windows):

@@ -45,7 +45,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not exprStructuralEquivalent(a.sons[i], b.sons[i],
                                           strictSymEquality): return
         result = true
@@ -69,7 +69,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
@@ -92,8 +92,7 @@ proc isCaseObj*(n: PNode): bool =
 
 proc isDeepConstExpr*(n: PNode): bool =
   case n.kind
-  of nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-      nkFloatLit..nkFloat64Lit, nkNilLit:
+  of nkCharLit..nkNilLit:
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])
@@ -102,7 +101,7 @@ proc isDeepConstExpr*(n: PNode): bool =
       if not isDeepConstExpr(n.sons[i]): return false
     if n.typ.isNil: result = true
     else:
-      let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
+      let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
       if t.kind in {tyRef, tyPtr}: return false
       if t.kind != tyObject or not isCaseObj(t.n):
         result = true
@@ -126,6 +125,16 @@ proc findPragma*(n: PNode, which: TSpecialWord): PNode =
     for son in n:
       if whichPragma(son) == which:
         return son
+
+proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  for i in 0 ..< sonsLen(n):
+    var it = n.sons[i]
+    if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
+      result = it.sons[1]
+      if result.kind notin {nkCurly, nkBracket}:
+        result = newNodeI(nkCurly, result.info)
+        result.add(it.sons[1])
+      return
 
 proc unnestStmts(n, result: PNode) =
   if n.kind == nkStmtList:

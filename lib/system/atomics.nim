@@ -40,7 +40,6 @@ when someGcc and hasThreadSupport:
   type
     AtomType* = SomeNumber|pointer|ptr|char|bool
       ## Type Class representing valid types for use with atomic procs
-  {.deprecated: [TAtomType: AtomType].}
 
   proc atomicLoadN*[T: AtomType](p: ptr T, mem: AtomMemModel): T {.
     importc: "__atomic_load_n", nodecl.}
@@ -172,7 +171,7 @@ elif defined(vcc) and hasThreadSupport:
         header: "<intrin.h>".}
     else:
       proc addAndFetch*(p: ptr int, val: int): int {.
-        importcpp: "_InterlockedExchangeAdd(reinterpret_cast<LONG volatile *>(#), static_cast<LONG>(#))",
+        importcpp: "_InterlockedExchangeAdd(reinterpret_cast<long volatile *>(#), static_cast<long>(#))",
         header: "<intrin.h>".}
   else:
     when sizeof(int) == 8:
@@ -286,6 +285,9 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
     {.importc: "__tcc_cas", nodecl.}
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     tcc_cas(cast[ptr int](p), cast[int](oldValue), cast[int](newValue))
+elif declared(atomicCompareExchangeN):
+  proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
+    atomicCompareExchangeN(p, oldValue.unsafeAddr, newValue, false, ATOMIC_SEQ_CST, ATOMIC_SEQ_CST)
 else:
   # this is valid for GCC and Intel C++
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool

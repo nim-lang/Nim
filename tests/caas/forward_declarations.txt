@@ -1,9 +1,0 @@
-forward_declarations.nim
-
-> idetools --track:$TESTNIM,9,5 --def $SILENT
-skProc
-proc \(string\)
-
-> idetools --track:$TESTNIM,5,9 --def $SILENT
-skProc
-proc \(string\)

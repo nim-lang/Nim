@@ -1,9 +1,10 @@
 discard """
-  file: "tfloat5.nim"
-  output: '''0 : 0.0
+output: '''
 0 : 0.0
 0 : 0.0
-0 : 0.0'''
+0 : 0.0
+0 : 0.0
+'''
 """
 
 import parseutils

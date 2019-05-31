@@ -1,5 +1,6 @@
 discard """
-  disabled: "windows"
+action: compile
+disabled: "windows"
 """
 
 import sfml, os

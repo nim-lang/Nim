@@ -4,9 +4,9 @@ destroy
 destroy
 5
 123
-destroy Foo: 5
-destroy Foo: 123'''
-  cmd: '''nim c --newruntime $file'''
+destroy Foo: 123
+destroy Foo: 5'''
+joinable: false
 """
 
 # bug #2821
@@ -19,9 +19,12 @@ proc `=`(lhs: var T, rhs: T) =
 proc `=destroy`(v: var T) =
     echo "destroy"
 
+proc use(x: T) = discard
+
 proc usedToBeBlock =
     var v1 : T
     var v2 : T = v1
+    use v1
 
 usedToBeBlock()
 

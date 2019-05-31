@@ -181,7 +181,7 @@ type
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuMipsel,
     cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430, cpuSparc64,
-    cpuMips64, cpuMips64el, cpuRiscV64
+    cpuMips64, cpuMips64el, cpuRiscV64, cpuWasm32
 
 type
   TEndian* = enum
@@ -213,7 +213,8 @@ const
     (name: "sparc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64el", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
-    (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64)]
+    (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
+    (name: "wasm32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32)]
 
 type
   Target* = object
@@ -230,25 +231,32 @@ proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
   #echo "new Target: OS: ", o, " CPU: ", c
   t.targetCPU = c
   t.targetOS = o
-  # assume no cross-compiling
-  t.hostCPU = c
-  t.hostOS = o
   t.intSize = CPU[c].intSize div 8
   t.floatSize = CPU[c].floatSize div 8
   t.ptrSize = CPU[c].bit div 8
   t.tnl = OS[o].newLine
 
 proc nameToOS*(name: string): TSystemOS =
-  for i in countup(succ(osNone), high(TSystemOS)):
+  for i in succ(osNone) .. high(TSystemOS):
     if cmpIgnoreStyle(name, OS[i].name) == 0:
       return i
   result = osNone
 
+proc listOSnames*(): seq[string] =
+  for i in succ(osNone) .. high(TSystemOS):
+    result.add OS[i].name
+
 proc nameToCPU*(name: string): TSystemCPU =
-  for i in countup(succ(cpuNone), high(TSystemCPU)):
+  for i in succ(cpuNone) .. high(TSystemCPU):
     if cmpIgnoreStyle(name, CPU[i].name) == 0:
       return i
   result = cpuNone
 
+proc listCPUnames*(): seq[string] =
+  for i in succ(cpuNone) .. high(TSystemCPU):
+    result.add CPU[i].name
+
 proc setTargetFromSystem*(t: var Target) =
-  t.setTarget(nameToOS(system.hostOS), nameToCPU(system.hostCPU))
+  t.hostOS = nameToOS(system.hostOS)
+  t.hostCPU = nameToCPU(system.hostCPU)
+  t.setTarget(t.hostOS, t.hostCPU)

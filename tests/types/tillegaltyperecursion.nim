@@ -5,7 +5,7 @@ discard """
 """
 
 import events
-import sockets
+import net
 import strutils
 import os
 
@@ -59,7 +59,7 @@ proc Connect*(irc: var TIRC, nick: string, host: string, port: int = 6667) =
 
 
 
-when isMainModule:
+when true:
     var irc = initIRC()
     irc.Connect("AmryBot[Nim]","irc.freenode.net",6667)
     irc.sendRaw("JOIN #nim")

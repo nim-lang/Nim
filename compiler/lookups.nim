@@ -89,7 +89,7 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       prettybase.replaceDeprecated(conf, n.info, s, result)
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-              s.name.s)
+              s.name.s & " is deprecated")
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   result = strTableGet(c.currentScope.symbols, s)
@@ -150,7 +150,7 @@ type
 
 proc getSymRepr*(conf: ConfigRef; s: PSym): string =
   case s.kind
-  of skProc, skFunc, skMethod, skConverter, skIterator:
+  of routineKinds, skType:
     result = getProcHeader(conf, s)
   else:
     result = s.name.s
@@ -168,13 +168,13 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         localError(c.config, s.info, "implementation of '$1' expected" %
             getSymRepr(c.config, s))
       inc missingImpls
-    elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options:
-      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
+    elif {sfUsed, sfExported} * s.flags == {}:
+      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:
         # XXX: implicit type params are currently skTypes
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
-          message(c.config, s.info, hintXDeclaredButNotUsed, getSymRepr(c.config, s))
+          message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
     s = nextIter(it, scope.symbols)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
@@ -190,7 +190,7 @@ proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
     wrongRedefinition(c, info, sym.name.s, conflict.info)
 
 proc addDecl*(c: PContext, sym: PSym) =
-  let conflict = c.currentScope.addUniqueSym(sym)
+  let conflict = strTableInclReportConflict(c.currentScope.symbols, sym, true)
   if conflict != nil:
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
@@ -255,9 +255,10 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
   while candidate != nil:
-    if i == 0: err.add " --use "
-    else: err.add " or "
-    err.add candidate.owner.name.s & "." & candidate.name.s
+    if i == 0: err.add " -- use one of the following:\n"
+    else: err.add "\n"
+    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+    err.add ": " & typeToString(candidate.typ)
     candidate = nextIdentIter(ti, c.importTable.symbols)
     inc i
   localError(c.config, info, errGenerated, err)

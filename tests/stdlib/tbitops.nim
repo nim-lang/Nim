@@ -1,9 +1,8 @@
 discard """
-  file: "tbitops.nim"
+  nimout: "OK"
   output: "OK"
 """
 import bitops
-
 
 proc main() =
   const U8 = 0b0011_0010'u8
@@ -80,25 +79,6 @@ proc main() =
   doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
   doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
 
-  static :
-    # test bitopts at compile time with vm
-    doAssert( U8.fastLog2 == 5)
-    doAssert( I8.fastLog2 == 5)
-    doAssert( U8.countLeadingZeroBits == 2)
-    doAssert( I8.countLeadingZeroBits == 2)
-    doAssert( U8.countTrailingZeroBits == 1)
-    doAssert( I8.countTrailingZeroBits == 1)
-    doAssert( U8.firstSetBit == 2)
-    doAssert( I8.firstSetBit == 2)
-    doAssert( U8.parityBits == 1)
-    doAssert( I8.parityBits == 1)
-    doAssert( U8.countSetBits == 3)
-    doAssert( I8.countSetBits == 3)
-    doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
-    doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
-
-
-
   template test_undefined_impl(ffunc: untyped; expected: int; is_static: bool) =
     doAssert( ffunc(0'u8) == expected)
     doAssert( ffunc(0'i8) == expected)
@@ -143,26 +123,109 @@ proc main() =
     doAssert( U64A.rotateLeftBits(64) == U64A)
     doAssert( U64A.rotateRightBits(64) == U64A)
 
-    static:    # check for undefined behavior with rotate by zero.
-      doAssert( U8.rotateLeftBits(0) == U8)
-      doAssert( U8.rotateRightBits(0) == U8)
-      doAssert( U16.rotateLeftBits(0) == U16)
-      doAssert( U16.rotateRightBits(0) == U16)
-      doAssert( U32.rotateLeftBits(0) == U32)
-      doAssert( U32.rotateRightBits(0) == U32)
-      doAssert( U64A.rotateLeftBits(0) == U64A)
-      doAssert( U64A.rotateRightBits(0) == U64A)
+  block:
+    # mask operations
+    var v: uint8
+    v.setMask(0b1100_0000)
+    v.setMask(0b0000_1100)
+    doAssert(v == 0b1100_1100)
+    v.flipMask(0b0101_0101)
+    doAssert(v == 0b1001_1001)
+    v.clearMask(0b1000_1000)
+    doAssert(v == 0b0001_0001)
+    v.clearMask(0b0001_0001)
+    doAssert(v == 0b0000_0000)
+  block:
+    # single bit operations
+    var v: uint8
+    v.setBit(0)
+    doAssert v == 0x0000_0001
+    v.setBit(1)
+    doAssert v == 0b0000_0011
+    v.flipBit(7)
+    doAssert v == 0b1000_0011
+    v.clearBit(0)
+    doAssert v == 0b1000_0010
+    v.flipBit(1)
+    doAssert v == 0b1000_0000
+    doAssert v.testbit(7)
+    doAssert not v.testbit(6)
+  block:
+    # multi bit operations
+    var v: uint8
+    v.setBits(0, 1, 7)
+    doAssert v == 0b1000_0011
+    v.flipBits(2, 3)
+    doAssert v == 0b1000_1111
+    v.clearBits(7, 0, 1)
+    doAssert v == 0b0000_1100
+  block:
+    # signed
+    var v: int8
+    v.setBit(7)
+    doAssert v == -128
+  block:
+    var v: uint64
+    v.setBit(63)
+    doAssert v == 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000'u64
 
-      # check for undefined behavior with rotate by integer width.
-      doAssert( U8.rotateLeftBits(8) == U8)
-      doAssert( U8.rotateRightBits(8) == U8)
-      doAssert( U16.rotateLeftBits(16) == U16)
-      doAssert( U16.rotateRightBits(16) == U16)
-      doAssert( U32.rotateLeftBits(32) == U32)
-      doAssert( U32.rotateRightBits(32) == U32)
-      doAssert( U64A.rotateLeftBits(64) == U64A)
-      doAssert( U64A.rotateRightBits(64) == U64A)
+  block:
+    proc testReverseBitsInvo(x: SomeUnsignedInt) =
+      doAssert(reverseBits(reverseBits(x)) == x)
+      
+    proc testReverseBitsPerType(x, reversed: uint64) =
+      doAssert reverseBits(x) == reversed
+      doAssert reverseBits(uint32(x)) == uint32(reversed shr 32)
+      doAssert reverseBits(uint32(x shr 16)) == uint32(reversed shr 16)
+      doAssert reverseBits(uint16(x)) == uint16(reversed shr 48)
+      doAssert reverseBits(uint8(x)) == uint8(reversed shr 56)
+
+      testReverseBitsInvo(x)
+      testReverseBitsInvo(uint32(x))
+      testReverseBitsInvo(uint16(x))
+      testReverseBitsInvo(uint8(x))
+
+    proc testReverseBitsRefl(x, reversed: uint64) =
+      testReverseBitsPerType(x, reversed)
+      testReverseBitsPerType(reversed, x)
+
+    proc testReverseBitsShift(d, b: uint64) =
+      var
+        x = d
+        y = b
+
+      for i in 1..64:
+        testReverseBitsRefl(x, y)
+        x = x shl 1
+        y = y shr 1
+
+    proc testReverseBits(d, b: uint64) =
+      testReverseBitsShift(d, b)
+
+    testReverseBits(0x0u64, 0x0u64)
+    testReverseBits(0xffffffffffffffffu64, 0xffffffffffffffffu64)
+    testReverseBits(0x0123456789abcdefu64, 0xf7b3d591e6a2c480u64)
+    testReverseBits(0x5555555555555555u64, 0xaaaaaaaaaaaaaaaau64)
+    testReverseBits(0x5555555500000001u64, 0x80000000aaaaaaaau64)
+    testReverseBits(0x55555555aaaaaaaau64, 0x55555555aaaaaaaau64)
+    testReverseBits(0xf0f0f0f00f0f0f0fu64, 0xf0f0f0f00f0f0f0fu64)
+    testReverseBits(0x181881810ff00916u64, 0x68900ff081811818u64)
 
   echo "OK"
 
+block: # not ready for vm because exception is compile error
+  try:
+    var v: uint32
+    var i = 32
+    v.setBit(i)
+    doAssert false
+  except RangeError:
+    discard
+  except:
+    doAssert false
+
+
 main()
+static:
+  # test everything on vm as well
+  main()

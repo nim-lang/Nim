@@ -14,11 +14,11 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   template rec(n) = addObjFieldsToLocalScope(c, n)
   case n.kind
   of nkRecList:
-    for i in countup(0, len(n)-1):
+    for i in 0 ..< len(n):
       rec n[i]
   of nkRecCase:
     if n.len > 0: rec n.sons[0]
-    for i in countup(1, len(n)-1):
+    for i in 1 ..< len(n):
       if n[i].kind in {nkOfBranch, nkElse}: rec lastSon(n[i])
   of nkSym:
     let f = n.sym
@@ -116,9 +116,9 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
     var x = PSym(idTableGet(symMap, s))
     if x != nil:
       n.sym = x
-    elif s.owner.kind == skPackage:
+    elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s, false)
+      x = copySym(s)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
@@ -146,14 +146,13 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
-    b = hloBody(c, b)
-    n.sons[bodyPos] = transformBody(c.graph, c.module, b, result)
-    #echo "code instantiated ", result.name.s
+    result.ast[bodyPos] = hloBody(c, b)
+    trackProc(c, result, result.ast[bodyPos])
     excl(result.flags, sfForward)
     dec c.inGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
-  for i in countup(0, c.generics.len - 1):
+  for i in 0 ..< c.generics.len:
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
       pushProcCon(c, oldPrc)
@@ -307,7 +306,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)
+  cl.isReturnType = true
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
+  cl.isReturnType = false
   result.n.sons[0] = originalParams[0].copyTree
   if result.sons[0] != nil:
     propagateToOwner(result, result.sons[0])
@@ -338,7 +339,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn, false)
+  result = copySym(fn)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
@@ -348,7 +349,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let gp = n.sons[genericParamsPos]
   internalAssert c.config, gp.kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
-  pushInfoContext(c.config, info)
+  pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
   entry.sym = result
   # we need to compare both the generic types and the concrete types:
@@ -377,7 +378,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     #if c.compilesContextId == 0:
     rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
-    fn.procInstCache.safeAdd(entry)
+    fn.procInstCache.add(entry)
     c.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)

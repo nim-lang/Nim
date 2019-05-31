@@ -16,4 +16,4 @@ for i in 1..3:
 waitFor(all(futs))
 f.close()
 echo readFile(F)
-
+removeFile(F)

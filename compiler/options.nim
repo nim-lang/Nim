@@ -18,8 +18,8 @@ const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   useWriteTracking* = false
-  hasFFI* = defined(useFFI)
-  copyrightYear* = "2018"
+  hasFFI* = defined(nimHasLibFFI)
+  copyrightYear* = "2019"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -36,16 +36,16 @@ type                          # please make sure we have under 32 options
     optProfiler,              # profiler turned on
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
-    optPatterns,              # en/disable pattern matching
+    optTrMacros,              # en/disable pattern matching
     optMemTracker,
-    optHotCodeReloading,
     optLaxStrings,
-    optNilSeqs
+    optNilSeqs,
+    optOldAst
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optDeadCodeElimUnused,    # deprecated, always on
+    optWasNimscript,
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -54,7 +54,8 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
-    optCheckNep1,             # check that the names adhere to NEP-1
+    optStyleHint,             # check that the names adhere to NEP-1
+    optStyleError,            # enforce that the names adhere to NEP-1
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
     optSkipUserConfigFile,    # skip the users's cfg/nims config file
@@ -73,11 +74,16 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
+    optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
+    optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths
+    optListFullPaths          # use full paths in toMsgFilename, toFilename
     optNoNimblePath
+    optHotCodeReloading
     optDynlibOverrideAll
+    optNimV2
+    optMultiMethods
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -104,8 +110,10 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcDestructors,
-    gcRefc, gcV2
+    gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcRefc, gcV2, gcGo
+    # gcRefc and the GCs that follow it use a write barrier,
+    # as far as usesWriteBarrier() is concerned
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
@@ -122,19 +130,24 @@ type
     forLoopMacros,
     caseStmtMacros,
     codeReordering,
+    compiletimeFFI,
+      ## This requires building nim with `-d:nimHasLibFFI`
+      ## which itself requires `nimble install libffi`, see #10150
+      ## Note: this feature can't be localized with {.push.}
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time
     External   ## file was introduced via .compile pragma
 
   Cfile* = object
+    nimname*: string
     cname*, obj*: AbsoluteFile
     flags*: set[CFileFlag]
   CfileList* = seq[Cfile]
@@ -167,6 +180,7 @@ type
     linesCompiled*: int  # all lines that have been compiled
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
+    macrosToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -184,7 +198,6 @@ type
     features*: set[Feature]
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
-    helpWritten*: bool
     ideCmd*: IdeCmd
     oldNewlines*: bool
     cCompiler*: TSystemCC
@@ -205,7 +218,8 @@ type
     packageCache*: StringTableRef
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
-    outFile*: AbsoluteFile
+    outFile*: RelativeFile
+    outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*: StringTableRef
     projectName*: string # holds a name like 'nim'
@@ -238,10 +252,12 @@ type
     suggestVersion*: int
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
-    writelnHook*: proc (output: string) {.closure.}
+    writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
-                                severity: Severity) {.closure.}
+                                severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+
+proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
 template depConfigFields*(fn) {.dirty.} =
   fn(target)
@@ -259,7 +275,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns,
     optHints, optStackTrace, optLineTrace,
-    optPatterns, optNilCheck, optMoveCheck}
+    optTrMacros, optNilCheck, optMoveCheck}
   DefaultGlobalOptions* = {optThreadAnalysis}
 
 proc getSrcTimestamp(): DateTime =
@@ -293,6 +309,7 @@ proc newConfigRef*(): ConfigRef =
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
+    macrosToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initSet[string](),
@@ -304,7 +321,9 @@ proc newConfigRef*(): ConfigRef =
     packageCache: newPackageCache(),
     searchPaths: @[],
     lazyPaths: @[],
-    outFile: AbsoluteFile"", prefixDir: AbsoluteDir"",
+    outFile: RelativeFile"",
+    outDir: AbsoluteDir"",
+    prefixDir: AbsoluteDir"",
     libpath: AbsoluteDir"", nimcacheDir: AbsoluteDir"",
     dllOverrides: newStringTable(modeCaseInsensitive),
     moduleOverrides: newStringTable(modeStyleInsensitive),
@@ -354,7 +373,7 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
-    result = conf.symbols[symbol] != "false"
+    result = true
   elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
     result = true
   elif cmpIgnoreStyle(symbol, platform.OS[conf.target.targetOS].name) == 0:
@@ -398,7 +417,8 @@ proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc,
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
-  conf.symbolFiles in {v2Sf, writeOnlySf}
+  false
+#  conf.symbolFiles in {v2Sf, writeOnlySf}
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions
@@ -419,9 +439,6 @@ const
 
 const oKeepVariableNames* = true
 
-template compilingLib*(conf: ConfigRef): bool =
-  gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}
-
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
   ## which will work on the main project file unless
@@ -441,8 +458,15 @@ proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): AbsoluteFile =
-  if not conf.outFile.isEmpty: result = conf.outFile
-  else: result = conf.projectPath / changeFileExt(filename, ext)
+  conf.outDir / changeFileExt(filename, ext)
+
+proc absOutFile*(conf: ConfigRef): AbsoluteFile =
+  conf.outDir / conf.outFile
+
+proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
+  ## Create the output directory and returns a full path to the output file
+  createDir conf.outDir
+  return conf.outDir / conf.outFile
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
@@ -477,16 +501,7 @@ proc setDefaultLibpath*(conf: ConfigRef) =
       conf.libpath = AbsoluteDir parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
-  # case corrections, so we have to use this convoluted way of retrieving
-  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
-  # of 'import uri'):
-  when defined(windows):
-    result = AbsoluteFile path.string.expandFilename
-    for x in walkFiles(result.string):
-      return AbsoluteFile x
-  else:
-    result = AbsoluteFile path.string.expandFilename
+  result = AbsoluteFile path.string.expandFilename
 
 proc shortenDir*(conf: ConfigRef; dir: string): string {.
     deprecated: "use 'relativeTo' instead".} =

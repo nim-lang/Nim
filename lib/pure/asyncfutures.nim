@@ -15,7 +15,7 @@ type
     error*: ref Exception ## Stored exception
     errorStackTrace*: string
     when not defined(release):
-      stackTrace: string ## For debugging purposes only.
+      stackTrace: seq[StackTraceEntry] ## For debugging purposes only.
       id: int
       fromProc: string
 
@@ -29,6 +29,44 @@ type
 
 when not defined(release):
   var currentID = 0
+
+const isFutureLoggingEnabled* = defined(futureLogging)
+when isFutureLoggingEnabled:
+  import hashes
+  type
+    FutureInfo* = object
+      stackTrace*: seq[StackTraceEntry]
+      fromProc*: string
+
+  var futuresInProgress {.threadvar.}: Table[FutureInfo, int]
+
+  proc getFuturesInProgress*(): var Table[FutureInfo, int] =
+    return futuresInProgress
+
+  proc hash(s: StackTraceEntry): Hash =
+    result = hash(s.procname) !& hash(s.line) !&
+      hash(s.filename)
+    result = !$result
+
+  proc hash(fi: FutureInfo): Hash =
+    result = hash(fi.stackTrace) !& hash(fi.fromProc)
+    result = !$result
+
+  proc getFutureInfo(fut: FutureBase): FutureInfo =
+    let info = FutureInfo(
+      stackTrace: fut.stackTrace,
+      fromProc: fut.fromProc
+    )
+    return info
+
+  proc logFutureStart(fut: FutureBase) =
+    let info = getFutureInfo(fut)
+    if info notin getFuturesInProgress():
+      getFuturesInProgress()[info] = 0
+    getFuturesInProgress()[info].inc()
+
+  proc logFutureFinish(fut: FutureBase) =
+    getFuturesInProgress()[getFutureInfo(fut)].dec()
 
 var callSoonProc {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
 
@@ -56,7 +94,7 @@ template setupFutureBase(fromProc: string) =
   new(result)
   result.finished = false
   when not defined(release):
-    result.stackTrace = getStackTrace()
+    result.stackTrace = getStackTraceEntries()
     result.id = currentID
     result.fromProc = fromProc
     currentID.inc()
@@ -67,6 +105,7 @@ proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
   ## that this future belongs to, is a good habit as it helps with debugging.
   setupFutureBase(fromProc)
+  when isFutureLoggingEnabled: logFutureStart(result)
 
 proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
   ## Create a new ``FutureVar``. This Future type is ideally suited for
@@ -75,6 +114,7 @@ proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
   ## that this future belongs to, is a good habit as it helps with debugging.
   result = FutureVar[T](newFuture[T](fromProc))
+  when isFutureLoggingEnabled: logFutureStart(Future[T](result))
 
 proc clean*[T](future: FutureVar[T]) =
   ## Resets the ``finished`` status of ``future``.
@@ -92,7 +132,7 @@ proc checkFinished[T](future: Future[T]) =
       msg.add("\n  Future ID: " & $future.id)
       msg.add("\n  Created in proc: " & future.fromProc)
       msg.add("\n  Stack trace to moment of creation:")
-      msg.add("\n" & indent(future.stackTrace.strip(), 4))
+      msg.add("\n" & indent(($future.stackTrace).strip(), 4))
       when T is string:
         msg.add("\n  Contents (string): ")
         msg.add("\n" & indent(future.value.repr, 4))
@@ -123,11 +163,17 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
     callbacks.function = function
     assert callbacks.next == nil
   else:
-    let newNext = new(ref CallbackList)
-    newNext.function = callbacks.function
-    newNext.next = callbacks.next
-    callbacks.next = newNext
-    callbacks.function = function
+    let newCallback = new(ref CallbackList)
+    newCallback.function = function
+    newCallback.next = nil
+
+    if callbacks.next == nil:
+      callbacks.next = newCallback
+    else:
+      var last = callbacks.next
+      while last.next != nil:
+        last = last.next
+      last.next = newCallback
 
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
@@ -137,6 +183,7 @@ proc complete*[T](future: Future[T], val: T) =
   future.value = val
   future.finished = true
   future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*(future: Future[void]) =
   ## Completes a void ``future``.
@@ -145,6 +192,7 @@ proc complete*(future: Future[void]) =
   assert(future.error == nil)
   future.finished = true
   future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*[T](future: FutureVar[T]) =
   ## Completes a ``FutureVar``.
@@ -153,6 +201,7 @@ proc complete*[T](future: FutureVar[T]) =
   assert(fut.error == nil)
   fut.finished = true
   fut.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(Future[T](future))
 
 proc complete*[T](future: FutureVar[T], val: T) =
   ## Completes a ``FutureVar`` with value ``val``.
@@ -164,6 +213,7 @@ proc complete*[T](future: FutureVar[T], val: T) =
   fut.finished = true
   fut.value = val
   fut.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
@@ -174,6 +224,7 @@ proc fail*[T](future: Future[T], error: ref Exception) =
   future.errorStackTrace =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
@@ -339,7 +390,8 @@ proc asyncCheck*[T](future: Future[T]) =
   ## Sets a callback on ``future`` which raises an exception if the future
   ## finished with an error.
   ##
-  ## This should be used instead of ``discard`` to discard void futures.
+  ## This should be used instead of ``discard`` to discard void futures,
+  ## or use ``waitFor`` if you need to wait for the future's completion.
   assert(not future.isNil, "Future is nil")
   future.callback =
     proc () =
@@ -368,8 +420,9 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`or`")
   proc cb[X](fut: Future[X]) =
-    if fut.failed: retFuture.fail(fut.error)
-    if not retFuture.finished: retFuture.complete()
+    if not retFuture.finished:
+      if fut.failed: retFuture.fail(fut.error)
+      else: retFuture.complete()
   fut1.callback = cb[T]
   fut2.callback = cb[Y]
   return retFuture

@@ -1,7 +1,7 @@
 discard """
+  errormsg: "Use a named tuple instead of: (string, float)"
   file: "tjsonmacro_reject.nim"
   line: 11
-  errormsg: "Use a named tuple instead of: (string, float)"
 """
 
 import json

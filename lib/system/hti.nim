@@ -17,8 +17,8 @@ type
     tyEmpty,
     tyArrayConstr,
     tyNil,
-    tyExpr,
-    tyStmt,
+    tyUntyped,
+    tyTyped,
     tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
@@ -56,9 +56,9 @@ type
     tyUInt16,
     tyUInt32,
     tyUInt64,
-    tyOptAsRef, tyUnused1, tyUnused2,
+    tyOwned, tyUnused1, tyUnused2,
     tyVarargsHidden,
-    tyUnusedHidden,
+    tyUncheckedArray,
     tyProxyHidden,
     tyBuiltInTypeClassHidden,
     tyUserTypeClassHidden,
@@ -103,6 +103,10 @@ type
   PNimType = ptr TNimType
 
 when defined(nimTypeNames):
-  var nimTypeRoot {.compilerProc.}: PNimType
+  # Declare this variable only once in system.nim
+  when declared(ThisIsSystem):
+    var nimTypeRoot {.compilerProc.}: PNimType
+  else:
+    var nimTypeRoot {.importc.}: PNimType
 
 # node.len may be the ``first`` element of a set

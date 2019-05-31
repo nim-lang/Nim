@@ -62,8 +62,6 @@ SmallLshouldNotBeUsed            The letter 'l' should not be used as an
                                  identifier.
 EachIdentIsTuple                 The code contains a confusing ``var``
                                  declaration.
-ShadowIdent                      A local variable shadows another local
-                                 variable of an outer scope.
 User                             Some user defined warning.
 ==========================       ============================================
 
@@ -136,7 +134,7 @@ source code with the `when statement <manual.html#when-statement>`_ and
 `defined proc <system.html#defined>`_. The typical use of this switch is to
 enable builds in release mode (``-d:release``) where certain safety checks are
 omitted for better performance. Another common use is the ``-d:ssl`` switch to
-activate `SSL sockets <sockets.html>`_.
+activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
 which may be used in conjunction with the `compile time define
@@ -157,8 +155,8 @@ passed as a command line argument to the compiler.
 The ``nim`` executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
-1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``%NIM%/config/nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
-2) ``$HOME/.config/nim.cfg`` (POSIX) or  ``%APPDATA%/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
+1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``<Nim's installation director>\config\nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
+2) If environment variable ``XDG_CONFIG_HOME`` is defined, ``$XDG_CONFIG_HOME/nim/nim.cfg`` or ``~/.config/nim/nim.cfg`` (POSIX) or ``%APPDATA%/nim/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
 5) A project can also have a project specific configuration file named ``$project.nim.cfg`` that resides in the same directory as ``$project.nim``. This file can be skipped with the ``--skipProjCfg`` command line option.
@@ -261,6 +259,21 @@ configuration file should contain something like::
   arm.linux.gcc.exe = "arm-linux-gcc"
   arm.linux.gcc.linkerexe = "arm-linux-gcc"
 
+Cross compilation for Windows
+=============================
+
+To cross compile for Windows from Linux or OSX using the MinGW-w64 toolchain::
+
+  nim c -d:mingw myproject.nim
+
+Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the cpu arch.
+
+The MinGW-w64 toolchain can be installed as follows::
+
+  Ubuntu: apt install mingw-w64
+  CentOS: yum install mingw32-gcc | mingw64-gcc - requires EPEL
+  OSX: brew install mingw-w64
+
 Cross compilation for Nintendo Switch
 =====================================
 
@@ -289,8 +302,7 @@ For example, with the above mentioned config::
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
 an nro file with the ``elf2nro`` tool in the DevkitPro release. Examples can be found at
-`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_ or you can use
-`the switch builder tool <https://github.com/jyapayne/switch-builder.git>`_.
+`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_.
 
 There are a few things that don't work because the DevkitPro libraries don't support them.
 They are:
@@ -333,18 +345,20 @@ complete list.
 Define                   Effect
 ======================   =========================================================
 ``release``              Turns off runtime checks and turns on the optimizer.
-``useWinAnsi``           Modules like ``os`` and ``osproc`` use the Ansi versions
-                         of the Windows API. The default build uses the Unicode
-                         version.
+                         More aggressive optimizations are possible, eg:
+                         ``--passC:-ffast-math`` (but see issue #10305)
+                         ``--stacktrace:off``
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
-                         own memory manager, ableit prefixing each allocation with
+                         own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with ``gc:none``.
+                         This only works with ``gc:none`` and
+                         with ``--newruntime``.
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
                          systems. See the documentation of the `gc <gc.html>`_
                          for further information.
+``logGC``                Enable GC logging to stdout.
 ``nodejs``               The JS target is actually ``node.js``.
 ``ssl``                  Enables OpenSSL support for the sockets module.
 ``memProfiler``          Enables memory profiling for the native GC.
@@ -396,56 +410,94 @@ the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
 
-Debugger option
----------------
-The ``debugger`` option enables or disables the *Embedded Nim Debugger*.
-See the documentation of endb_ for further information.
-
 Hot code reloading
 ------------------
-**Note:** At the moment hot code reloading is supported only in
-JavaScript projects.
 
-The `hotCodeReloading`:idx: option enables special compilation mode where changes in
-the code can be applied automatically to a running program. The code reloading
-happens at the granularity of an individual module. When a module is reloaded,
-Nim will preserve the state of all global variables which are initialized with
-a standard variable declaration in the code. All other top level code will be
-executed repeatedly on each reload. If you want to prevent this behavior, you
-can guard a block of code with the ``once`` construct:
-
-.. code-block:: Nim
-  var settings = initTable[string, string]()
-
-  once:
-    myInit()
-
-    for k, v in loadSettings():
-      settings[k] = v
-
-If you want to reset the state of a global variable on each reload, just
-re-assign a value anywhere within the top-level code:
+The `hotCodeReloading`:idx: option enables special compilation mode where
+changes in the code can be applied automatically to a running program.
+The code reloading happens at the granularity of an individual module.
+When a module is reloaded, any newly added global variables will be
+initialized, but all other top-level code appearing in the module won't
+be re-executed and the state of all existing global variables will be
+preserved. One can use the special event handlers ``beforeCodeReload`` and
+``afterCodeReload`` to reset the state of a particular variable or to force
+the execution of certain statements:
 
 .. code-block:: Nim
-  var lastReload: Time
+  var
+   settings = initTable[string, string]()
+   lastReload: Time
 
-  lastReload = now()
-  resetProgramState()
+  for k, v in loadSettings():
+    settings[k] = v
 
-**Known limitations:** In the JavaScript target, global variables using the
-``codegenDecl`` pragma will be re-initialized on each reload. Please guard the
-initialization with a `once` block to work-around this.
+  initProgram()
+
+  afterCodeReload:
+    lastReload = now()
+    resetProgramState()
+
+On each code reload, Nim will first execute all `beforeCodeReload`:idx:
+handlers registered in the previous version of the program and then all
+`afterCodeReload`:idx handlers appearing in the newly loaded code. Please note
+that any handlers appearing in modules that weren't reloaded will also be
+executed. To prevent this behavior, one can guard the code with the
+`hasModuleChanged()`:idx: API:
+
+.. code-block:: Nim
+  import mydb
+
+  var myCache = initTable[Key, Value]()
+
+  afterCodeReload:
+    if hasModuleChanged(mydb):
+      resetCache(myCache)
+
+The hot code reloading is based on dynamic library hot swapping in the native
+targets and direct manipulation of the global namespace in the JavaScript
+target. The Nim compiler does not specify the mechanism for detecting the
+conditions when the code must be reloaded. Instead, the program code is
+expected to call `performCodeReload()`:idx every time it wishes to reload
+its code.
+
+It's expected that most projects will implement the reloading with a suitable
+build-system triggered IPC notification mechanism, but a polling solution is
+also possible through the provided `hasAnyModuleChanged()`:idx API.
+
+In order to access ``beforeCodeReload``, ``afterCodeReload``, ``hasModuleChanged``
+or ``hasAnyModuleChanged`` one must import the `hotcodereloading`:idx module.
+
+**Usage in Native projects:**
+
+Native projects using the hot code reloading option will be implicitly
+compiled with the `-d:useNimRtl` option and they will depend on both
+the ``nimrtl`` library and the ``nimhcr`` library which implements the
+hot code reloading run-time.
+
+All modules of the project will be compiled to separate dynamic link
+libraries placed in the ``nimcache`` directory. Please note that during
+the execution of the program, the hot code reloading run-time will load
+only copies of these libraries in order to not interfere with any newly
+issued build commands.
+
+The main module of the program is considered non-reloadable. Please note
+that procs from reloadable modules should not appear in the call stack of
+program while ``performCodeReload`` is being called. Thus, the main module
+is a suitable place for implementing a program loop capable of calling
+``performCodeReload``.
+
+Please note that reloading won't be possible when any of the type definitions
+in the program has been changed. When closure iterators are used (directly or
+through async code), the reloaded refinitions will affect only newly created
+instances. Existing iterator instancess will execute their original code to
+completion.
 
 **Usage in JavaScript projects:**
 
-Once your code is compiled for hot reloading, you can use a framework such
-as `LiveReload <http://livereload.com/>` or `BrowserSync <https://browsersync.io/>`
-to implement the actual reloading behavior in your project.
-
-Breakpoint pragma
------------------
-The *breakpoint* pragma was specially added for the sake of debugging with
-ENDB. See the documentation of `endb <endb.html>`_ for further information.
+Once your code is compiled for hot reloading, the ``nim-livereload`` NPM
+package provides a convenient solution for implementing the actual reloading
+in the browser using a framework such as [LiveReload](http://livereload.com/)
+or [BrowserSync](https://browsersync.io/).
 
 
 DynlibOverride
@@ -459,6 +511,14 @@ against. For instance, to link statically against Lua this command might work
 on Linux::
 
   nim c --dynlibOverride:lua --passL:liblua.lib program.nim
+
+
+Cursor pragma
+=============
+
+The ``.cursor`` pragma is a temporary tool for optimization purposes
+and this property will be computed by Nim's optimizer eventually. Thus it
+remains undocumented.
 
 
 Backend language options
@@ -541,13 +601,6 @@ mechanisms. However, the standard library offers some rudimentary support
 for signal handling, in particular, segmentation faults are turned into
 fatal errors that produce a stack trace. This can be disabled with the
 ``-d:noSignalHandler`` switch.
-
-
-Debugging with Nim
-==================
-
-Nim comes with its own *Embedded Nim Debugger*. See
-the documentation of endb_ for further information.
 
 
 Optimizing for Nim

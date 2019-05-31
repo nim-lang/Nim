@@ -48,9 +48,10 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   if self.suggestMode:
     conf.command = "nimsuggest"
 
-  proc runNimScriptIfExists(path: AbsoluteFile)=
-    if fileExists(path):
-      runNimScript(cache, path, freshDefines = false, conf)
+  template runNimScriptIfExists(path: AbsoluteFile) =
+    let p = path # eval once
+    if fileExists(p):
+      runNimScript(cache, p, freshDefines = false, conf)
 
   # Caution: make sure this stays in sync with `loadConfigs`
   if optSkipSystemConfigFile notin conf.globalOptions:

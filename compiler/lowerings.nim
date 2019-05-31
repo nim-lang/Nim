@@ -21,12 +21,20 @@ proc newDeref*(n: PNode): PNode {.inline.} =
   addSon(result, n)
 
 proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
-  result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
-                     abstractInst).sons[i])
-  addSon(result, copyTree(tup))
-  var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
-  lit.intVal = i
-  addSon(result, lit)
+  if tup.kind == nkHiddenAddr:
+    result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}))
+    result.addSon(newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}).sons[i]))
+    addSon(result[0], tup[0])
+    var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
+    lit.intVal = i
+    addSon(result[0], lit)
+  else:
+    result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
+                       abstractInst).sons[i])
+    addSon(result, copyTree(tup))
+    var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
+    lit.intVal = i
+    addSon(result, lit)
 
 proc addVar*(father, v: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -64,6 +72,22 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
     result.add newAsgnStmt(n.sons[i], newTupleAccess(g, tempAsNode, i))
 
+proc evalOnce*(g: ModuleGraph; value: PNode; owner: PSym): PNode =
+  ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
+  ## freely, multiple times. This is frequently required and such a builtin would also be
+  ## handy to have in macros.nim. The value that can be reused is 'result.lastSon'!
+  result = newNodeIT(nkStmtListExpr, value.info, value.typ)
+  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
+  temp.typ = skipTypes(value.typ, abstractInst)
+  incl(temp.flags, sfFromGeneric)
+
+  var v = newNodeI(nkLetSection, value.info)
+  let tempAsNode = newSymNode(temp)
+  v.addVar(tempAsNode)
+  result.add(v)
+  result.add newAsgnStmt(tempAsNode, value)
+  result.add tempAsNode
+
 proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   result = newNodeI(nkBracketExpr, tup.info)
   addSon(result, copyTree(tup))
@@ -72,13 +96,13 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   addSon(result, lit)
 
 proc newTryFinally*(body, final: PNode): PNode =
-  result = newTree(nkTryStmt, body, newTree(nkFinally, final))
+  result = newTree(nkHiddenTryStmt, body, newTree(nkFinally, final))
 
 proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skLet, getIdent(g.cache, "_"), owner, value.info, owner.options)
+  var temp = newSym(skTemp, getIdent(g.cache, "_"), owner, value.info, owner.options)
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
@@ -155,14 +179,14 @@ proc lookupInRecord(n: PNode, id: int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       result = lookupInRecord(n.sons[i], id)
       if result != nil: return
   of nkRecCase:
     if n.sons[0].kind != nkSym: return
     result = lookupInRecord(n.sons[0], id)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in 1 ..< sonsLen(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n.sons[i]), id)
@@ -180,7 +204,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   field.id = -s.id
   let t = skipIntLit(s.typ)
   field.typ = t
-  assert t.kind != tyStmt
+  assert t.kind != tyTyped
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
@@ -192,7 +216,7 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable
     field.id = -s.id
     let t = skipIntLit(s.typ)
     field.typ = t
-    assert t.kind != tyStmt
+    assert t.kind != tyTyped
     field.position = sonsLen(obj.n)
     addSon(obj.n, newSymNode(field))
     result = field
@@ -276,20 +300,21 @@ proc genAddrOf*(n: PNode): PNode =
   result.typ = newType(tyPtr, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
-proc genDeref*(n: PNode): PNode =
-  result = newNodeIT(nkHiddenDeref, n.info,
+proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
+  result = newNodeIT(k, n.info,
                      n.typ.skipTypes(abstractInst).sons[0])
   result.add n
 
-proc callCodegenProc*(g: ModuleGraph; name: string, arg1: PNode;
-                      arg2, arg3, optionalArgs: PNode = nil): PNode =
-  result = newNodeI(nkCall, arg1.info)
+proc callCodegenProc*(g: ModuleGraph; name: string;
+                      info: TLineInfo = unknownLineInfo();
+                      arg1, arg2, arg3, optionalArgs: PNode = nil): PNode =
+  result = newNodeI(nkCall, info)
   let sym = magicsys.getCompilerProc(g, name)
   if sym == nil:
-    localError(g.config, arg1.info, "system module needs: " & name)
+    localError(g.config, info, "system module needs: " & name)
   else:
     result.add newSymNode(sym)
-    result.add arg1
+    if arg1 != nil: result.add arg1
     if arg2 != nil: result.add arg2
     if arg3 != nil: result.add arg3
     if optionalArgs != nil:
@@ -404,13 +429,16 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
                        spawnKind: TSpawnResult): PSym =
   var body = newNodeI(nkStmtList, f.info)
+  body.flags.incl nfTransf # do not transform further
+
   var threadLocalBarrier: PSym
   if barrier != nil:
     var varSection2 = newNodeI(nkVarSection, barrier.info)
     threadLocalBarrier = addLocalVar(g, varSection2, nil, argsParam.owner,
                                      barrier.typ, barrier)
     body.add varSection2
-    body.add callCodegenProc(g, "barrierEnter", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc(g, "barrierEnter", threadLocalBarrier.info,
+      threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(g, varSection, nil, argsParam.owner, fv.typ, fv)
@@ -425,7 +453,8 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       "owner", fv.info, g.cache), threadParam.newSymNode)
 
-  body.add callCodegenProc(g, "nimArgsPassingDone", threadParam.newSymNode)
+  body.add callCodegenProc(g, "nimArgsPassingDone", threadParam.info,
+    threadParam.newSymNode)
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
@@ -444,11 +473,13 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:
-      body.add callCodegenProc(g, "nimFlowVarSignal", threadLocalProm.newSymNode)
+      body.add callCodegenProc(g, "nimFlowVarSignal", threadLocalProm.info,
+        threadLocalProm.newSymNode)
   else:
     body.add call
   if barrier != nil:
-    body.add callCodegenProc(g, "barrierLeave", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc(g, "barrierLeave", threadLocalBarrier.info,
+      threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
   params.add newNodeI(nkEmpty, f.info)
@@ -533,6 +564,15 @@ proc genHigh*(g: ModuleGraph; n: PNode): PNode =
     result = newNodeI(nkCall, n.info, 2)
     result.typ = getSysType(g, n.info, tyInt)
     result.sons[0] = newSymNode(getSysMagic(g, n.info, "high", mHigh))
+    result.sons[1] = n
+
+proc genLen*(g: ModuleGraph; n: PNode): PNode =
+  if skipTypes(n.typ, abstractVar).kind == tyArray:
+    result = newIntLit(g, n.info, lastOrd(g.config, skipTypes(n.typ, abstractVar)) + 1)
+  else:
+    result = newNodeI(nkCall, n.info, 2)
+    result.typ = getSysType(g, n.info, tyInt)
+    result.sons[0] = newSymNode(getSysMagic(g, n.info, "len", mLengthSeq))
     result.sons[1] = n
 
 proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchObj: PSym;
@@ -710,7 +750,8 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[^1]))
     if barrier == nil:
-      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField)
+      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField.info,
+        fvField)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent(g.cache, "fv"), owner, n.info, g.config.options)
@@ -723,7 +764,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   let wrapper = createWrapperProc(g, fn, threadParam, argsParam,
                                   varSection, varInit, call,
                                   barrierAsExpr, fvAsExpr, spawnKind)
-  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapper.newSymNode,
-                             genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
+  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapper.info,
+    wrapper.newSymNode, genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
 
   if spawnKind == srFlowVar: result.add fvField

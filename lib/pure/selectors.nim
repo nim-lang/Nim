@@ -239,6 +239,9 @@ else:
     proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
       result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) * nsize))
 
+    proc reallocSharedArray[T](sa: ptr SharedArray[T], nsize: int): ptr SharedArray[T] =
+      result = cast[ptr SharedArray[T]](reallocShared(sa, sizeof(T) * nsize))
+
     proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
   type
@@ -310,6 +313,11 @@ else:
     key.ident = InvalidIdent
     key.events = {}
     key.data = empty
+
+  proc verifySelectParams(timeout: int) =
+    # Timeout of -1 means: wait forever
+    # Anything higher is the time to wait in miliseconds.
+    doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)
 
   when defined(linux):
     include ioselects/ioselectors_epoll

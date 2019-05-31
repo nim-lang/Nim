@@ -33,7 +33,7 @@ type
     warnFieldXNotSupported, warnCommentXIgnored,
     warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
-    warnEachIdentIsTuple, warnShadowIdent,
+    warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnUser,
@@ -41,10 +41,10 @@ type
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
-    hintConditionAlwaysTrue, hintName, hintPattern,
+    hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
-    hintGlobalVar,
+    hintGlobalVar, hintExpandMacro,
     hintUser, hintUserRaw,
     hintExtendedContext
 
@@ -65,7 +65,7 @@ const
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
     warnXIsNeverRead: "'$1' is never read",
     warnXmightNotBeenInit: "'$1' might not have been initialized",
-    warnDeprecated: "$1 is deprecated",
+    warnDeprecated: "$1",
     warnConfigDeprecated: "config file '$1' is deprecated",
     warnSmallLshouldNotBeUsed: "'l' should not be used as an identifier; may look like '1' (one)",
     warnUnknownMagic: "unknown magic '$1' might crash the compiler",
@@ -79,7 +79,6 @@ const
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
     warnEachIdentIsTuple: "each identifier is a tuple",
-    warnShadowIdent: "shadowed identifier: '$1'",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
@@ -107,6 +106,7 @@ const
     hintConf: "used config file '$1'",
     hintPath: "added path: '$1'",
     hintConditionAlwaysTrue: "condition is always true: '$1'",
+    hintConditionAlwaysFalse: "condition is always false: '$1'",
     hintName: "name should be: '$1'",
     hintPattern: "$1",
     hintExecuting: "$1",
@@ -117,6 +117,7 @@ const
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
+    hintExpandMacro: "expanded macro: $1",
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
@@ -131,7 +132,7 @@ const
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
+    "UnsafeCode", "EachIdentIsTuple",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "User"]
@@ -140,8 +141,8 @@ const
     "Success", "SuccessX", "CC", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
+    "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
+    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
     "User", "UserRaw", "ExtendedContext",
   ]
 
@@ -166,11 +167,11 @@ type
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
-  result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
+  result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
-    hintProcessing, hintPattern, hintExecuting, hintLinking}
+    hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const
   NotesVerbosity* = computeNotesVerbosity()
@@ -223,7 +224,7 @@ type
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 
-proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
+proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)
 
 const
@@ -248,7 +249,7 @@ type
                             ## some close token.
 
     errorOutputs*: TErrorOutputs
-    msgContext*: seq[TLineInfo]
+    msgContext*: seq[tuple[info: TLineInfo, detail: string]]
     lastError*: TLineInfo
     filenameToIndexTbl*: Table[string, FileIndex]
     fileInfos*: seq[TFileInfo]

@@ -8,7 +8,7 @@ discard """
 90.0
 120.0
 8 8'''
-  cmd: '''nim c --newruntime $file'''
+joinable: false
 """
 
 import typetraits
@@ -22,6 +22,7 @@ var
 
 proc `=destroy`*[T](x: var opt[T]) =
   if x.data != nil:
+    mixin `=destroy`
     when not supportsCopyMem(T):
       `=destroy`(x.data[])
     dealloc(x.data)
@@ -90,6 +91,8 @@ proc write(t: opt[Tree]) =
     write stdout, it.data, "\n"
     write(it.ri)
 
+proc use(t: opt[Tree]) = discard
+
 proc main =
   var t: opt[Tree]
   insert t, 60.0
@@ -99,6 +102,7 @@ proc main =
   write t
   let copy = t
   write copy
+  use t
 
 main()
 echo allocCount, " ", deallocCount

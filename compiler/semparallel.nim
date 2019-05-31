@@ -352,7 +352,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
       c.addSlice(n, n[0], n[1], n[1])
     analyseSons(c, n)
-  of nkReturnStmt, nkRaiseStmt, nkTryStmt:
+  of nkReturnStmt, nkRaiseStmt, nkTryStmt, nkHiddenTryStmt:
     localError(c.graph.config, n.info, "invalid control flow for 'parallel'")
     # 'break' that leaves the 'parallel' section is not valid either
     # or maybe we should generate a 'try' XXX
@@ -493,6 +493,6 @@ proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
-  result.add callCodegenProc(g, "openBarrier", barrier)
+  result.add callCodegenProc(g, "openBarrier", barrier.info, barrier)
   result.add transformSpawn(g, owner, body, barrier)
-  result.add callCodegenProc(g, "closeBarrier", barrier)
+  result.add callCodegenProc(g, "closeBarrier", barrier.info, barrier)

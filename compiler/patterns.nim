@@ -48,7 +48,7 @@ proc canonKind(n: PNode): TNodeKind =
 proc sameKinds(a, b: PNode): bool {.inline.} =
   result = a.kind == b.kind or a.canonKind == b.canonKind
 
-proc sameTrees(a, b: PNode): bool =
+proc sameTrees*(a, b: PNode): bool =
   if sameKinds(a, b):
     case a.kind
     of nkSym: result = a.sym == b.sym
@@ -60,7 +60,7 @@ proc sameTrees(a, b: PNode): bool =
     of nkType: result = sameTypeOrNil(a.typ, b.typ)
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTrees(a.sons[i], b.sons[i]): return
         result = true
 
@@ -78,7 +78,7 @@ proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
     result = matchNodeKinds(p.constraint, n)
     if not result: return
   if isNil(n.typ):
-    result = p.typ.kind in {tyVoid, tyStmt}
+    result = p.typ.kind in {tyVoid, tyTyped}
   else:
     result = sigmatch.argtypeMatches(c.c, p.typ, n.typ, fromHlo = true)
 
@@ -182,7 +182,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
       if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
         var arglist: PNode
         if plen <= sonsLen(n):
-          for i in countup(0, plen - 2):
+          for i in 0 .. plen - 2:
             if not matches(c, p.sons[i], n.sons[i]): return
           if plen == sonsLen(n) and lastSon(n).kind == nkHiddenStdConv and
               lastSon(n).sons[1].kind == nkBracket:
@@ -194,16 +194,16 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
             arglist = newNodeI(nkArgList, n.info, sonsLen(n) - plen + 1)
             # f(1, 2, 3)
             # p(X)
-            for i in countup(0, sonsLen(n) - plen):
+            for i in 0 .. sonsLen(n) - plen:
               arglist.sons[i] = n.sons[i + plen - 1]
           return bindOrCheck(c, v.sym, arglist)
         elif plen-1 == sonsLen(n):
-          for i in countup(0, plen - 2):
+          for i in 0 .. plen - 2:
             if not matches(c, p.sons[i], n.sons[i]): return
           arglist = newNodeI(nkArgList, n.info)
           return bindOrCheck(c, v.sym, arglist)
       if plen == sonsLen(n):
-        for i in countup(0, sonsLen(p) - 1):
+        for i in 0 ..< sonsLen(p):
           if not matches(c, p.sons[i], n.sons[i]): return
         result = true
 
@@ -241,7 +241,7 @@ proc aliasAnalysisRequested(params: PNode): bool =
       if whichAlias(param) != aqNone: return true
 
 proc addToArgList(result, n: PNode) =
-  if n.typ != nil and n.typ.kind != tyStmt:
+  if n.typ != nil and n.typ.kind != tyTyped:
     if n.kind != nkArgList: result.add(n)
     else:
       for i in 0 ..< n.len: result.add(n.sons[i])

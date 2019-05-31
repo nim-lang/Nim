@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+import system/indexerrors
+
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
@@ -46,7 +48,7 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result[0] = x
 
 proc isNimException(): bool {.asmNoStackFrame.} =
-  asm "return `lastJSError`.m_type;"
+  asm "return `lastJSError` && `lastJSError`.m_type;"
 
 proc getCurrentException*(): ref Exception {.compilerRtl, benign.} =
   if isNimException(): result = cast[ref Exception](lastJSError)
@@ -157,8 +159,8 @@ proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
 proc raiseRangeError() {.compilerproc, noreturn.} =
   raise newException(RangeError, "value out of range")
 
-proc raiseIndexError() {.compilerproc, noreturn.} =
-  raise newException(IndexError, "index out of bounds")
+proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
+  raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(FieldError, f & " is not accessible")
@@ -228,6 +230,7 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
+  if (`s` === null) return "";
   var len = `s`.length;
   var asciiPart = new Array(len);
   var fcc = String.fromCharCode;
@@ -330,6 +333,8 @@ proc cmp(x, y: string): int =
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   asm """
     if (`a` == `b`) return true;
+    if (`a` === null && `b`.length == 0) return true;
+    if (`b` === null && `a`.length == 0) return true;
     if ((!`a`) || (!`b`)) return false;
     var alen = `a`.length;
     if (alen != `b`.length) return false;
@@ -516,8 +521,11 @@ proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
     """
   of nkList:
-    for i in 0..n.len-1:
-      nimCopyAux(dest, src, n.sons[i])
+    asm """
+    for (var i = 0; i < `n`.sons.length; i++) {
+      nimCopyAux(`dest`, `src`, `n`.sons[i]);
+    }
+    """
   of nkCase:
     asm """
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
@@ -620,7 +628,7 @@ proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
 
 proc chckIndx(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i
-  else: raiseIndexError()
+  else: raiseIndexError(i, a, b)
 
 proc chckRange(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i

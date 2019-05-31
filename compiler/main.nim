@@ -15,11 +15,14 @@ when not defined(nimcore):
 import
   llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
   os, condsyms, times,
-  wordrecg, sem, semdata, idents, passes, docgen, extccomp,
-  cgen, jsgen, json, nversion,
+  wordrecg, sem, semdata, idents, passes, extccomp,
+  cgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  docgen2, parser, modules, ccgutils, sigmatch, ropes,
+  parser, modules, ccgutils, sigmatch, ropes,
   modulegraphs, tables, rod, lineinfos, pathutils
+
+when not defined(leanCompiler):
+  import jsgen, docgen, docgen2
 
 from magicsys import resetSysTypes
 
@@ -30,8 +33,9 @@ proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
 
-proc writeDepsFile(g: ModuleGraph; project: AbsoluteFile) =
-  let f = open(changeFileExt(project, "deps").string, fmWrite)
+proc writeDepsFile(g: ModuleGraph) =
+  let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
+  let f = open(fname.string, fmWrite)
   for m in g.modules:
     if m != nil:
       f.writeLine(toFullPath(g.config, m.position.FileIndex))
@@ -45,7 +49,7 @@ proc commandGenDepend(graph: ModuleGraph) =
   registerPass(graph, gendependPass)
   compileProject(graph)
   let project = graph.config.projectFull
-  writeDepsFile(graph, project)
+  writeDepsFile(graph)
   generateDot(graph, project)
   execExternalProgram(graph.config, "dot -Tpng -o" &
       changeFileExt(project, "png").string &
@@ -57,46 +61,72 @@ proc commandCheck(graph: ModuleGraph) =
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
 
-proc commandDoc2(graph: ModuleGraph; json: bool) =
-  graph.config.errorMax = high(int)  # do not stop after first error
-  semanticPasses(graph)
-  if json: registerPass(graph, docgen2JsonPass)
-  else: registerPass(graph, docgen2Pass)
-  compileProject(graph)
-  finishDoc2Pass(graph.config.projectName)
+when not defined(leanCompiler):
+  proc commandDoc2(graph: ModuleGraph; json: bool) =
+    handleDocOutputOptions graph.config
+    graph.config.errorMax = high(int)  # do not stop after first error
+    semanticPasses(graph)
+    if json: registerPass(graph, docgen2JsonPass)
+    else: registerPass(graph, docgen2Pass)
+    compileProject(graph)
+    finishDoc2Pass(graph.config.projectName)
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
+
+  if conf.outDir.isEmpty:
+    conf.outDir = conf.projectPath
+  if conf.outFile.isEmpty:
+    let targetName = if optGenDynLib in conf.globalOptions:
+      platform.OS[conf.target.targetOS].dllFrmt % conf.projectName
+    else:
+      conf.projectName & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
+
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
 
   compileProject(graph)
+  if graph.config.errorCounter > 0:
+    return # issue #9933
   cgenWriteModules(graph.backend, conf)
   if conf.cmd != cmdRun:
-    let proj = changeFileExt(conf.projectFull, "")
-    extccomp.callCCompiler(conf, proj)
-    extccomp.writeJsonBuildInstructions(conf, proj)
+    extccomp.callCCompiler(conf)
+    # for now we do not support writing out a .json file with the build instructions when HCR is on
+    if not conf.hcrOn:
+      extccomp.writeJsonBuildInstructions(conf)
     if optGenScript in graph.config.globalOptions:
-      writeDepsFile(graph, toGeneratedFile(conf, proj, ""))
+      writeDepsFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
   let proj = changeFileExt(graph.config.projectFull, "")
   extccomp.runJsonBuildInstructions(graph.config, proj)
 
-proc commandCompileToJS(graph: ModuleGraph) =
-  #incl(gGlobalOptions, optSafeCode)
-  setTarget(graph.config.target, osJS, cpuJS)
-  #initDefines()
-  defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
-  defineSymbol(graph.config.symbols, "js")
-  semanticPasses(graph)
-  registerPass(graph, JSgenPass)
-  compileProject(graph)
+when not defined(leanCompiler):
+  proc commandCompileToJS(graph: ModuleGraph) =
+    let conf = graph.config
+
+    if conf.outDir.isEmpty:
+      conf.outDir = conf.projectPath
+    if conf.outFile.isEmpty:
+      conf.outFile = RelativeFile(conf.projectName & ".js")
+
+    #incl(gGlobalOptions, optSafeCode)
+    setTarget(graph.config.target, osJS, cpuJS)
+    #initDefines()
+    defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
+    defineSymbol(graph.config.symbols, "js")
+    semanticPasses(graph)
+    registerPass(graph, JSgenPass)
+    compileProject(graph)
+    if optGenScript in graph.config.globalOptions:
+      writeDepsFile(graph)
 
 proc interactivePasses(graph: ModuleGraph) =
   initDefines(graph.config.symbols)
   defineSymbol(graph.config.symbols, "nimscript")
+  # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
   registerPass(graph, verbosePass)
   registerPass(graph, semPass)
@@ -160,6 +190,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
@@ -177,49 +208,82 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   of "js", "compiletojs":
-    conf.cmd = cmdCompileToJS
-    commandCompileToJS(graph)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with JS code generator"
+    else:
+      conf.cmd = cmdCompileToJS
+      if conf.hcrOn:
+        # XXX: At the moment, system.nim cannot be compiled in JS mode
+        # with "-d:useNimRtl". The HCR option has been processed earlier
+        # and it has added this define implictly, so we must undo that here.
+        # A better solution might be to fix system.nim
+        undefSymbol(conf.symbols, "useNimRtl")
+      commandCompileToJS(graph)
   of "doc0":
-    wantMainModule(conf)
-    conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache, conf)
-    commandDoc(cache, conf)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      wantMainModule(conf)
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      commandDoc(cache, conf)
   of "doc2", "doc":
-    conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache, conf)
-    defineSymbol(conf.symbols, "nimdoc")
-    commandDoc2(graph, false)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandDoc2(graph, false)
   of "rst2html":
-    conf.cmd = cmdRst2html
-    loadConfigs(DocConfig, cache, conf)
-    commandRst2Html(cache, conf)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdRst2html
+      loadConfigs(DocConfig, cache, conf)
+      commandRst2Html(cache, conf)
   of "rst2tex":
-    conf.cmd = cmdRst2tex
-    loadConfigs(DocTexConfig, cache, conf)
-    commandRst2TeX(cache, conf)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdRst2tex
+      loadConfigs(DocTexConfig, cache, conf)
+      commandRst2TeX(cache, conf)
   of "jsondoc0":
-    wantMainModule(conf)
-    conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache, conf)
-    wantMainModule(conf)
-    defineSymbol(conf.symbols, "nimdoc")
-    commandJson(cache, conf)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      wantMainModule(conf)
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      wantMainModule(conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandJson(cache, conf)
   of "jsondoc2", "jsondoc":
-    conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache, conf)
-    wantMainModule(conf)
-    defineSymbol(conf.symbols, "nimdoc")
-    commandDoc2(graph, true)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      wantMainModule(conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandDoc2(graph, true)
   of "ctags":
-    wantMainModule(conf)
-    conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache, conf)
-    defineSymbol(conf.symbols, "nimdoc")
-    commandTags(cache, conf)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      wantMainModule(conf)
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandTags(cache, conf)
   of "buildindex":
-    conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache, conf)
-    commandBuildIndex(cache, conf)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      commandBuildIndex(cache, conf)
   of "gendepend":
     conf.cmd = cmdGenDepend
     commandGenDepend(graph)
@@ -234,11 +298,25 @@ proc mainCommand*(graph: ModuleGraph) =
       var libpaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
 
-      var dumpdata = % [
+      var hints = newJObject() # consider factoring with `listHints`
+      for a in hintMin..hintMax:
+        let key = lineinfos.HintsToStr[ord(a) - ord(hintMin)]
+        hints[key] = %(a in conf.notes)
+      var warnings = newJObject()
+      for a in warnMin..warnMax:
+        let key = lineinfos.WarningsToStr[ord(a) - ord(warnMin)]
+        warnings[key] = %(a in conf.notes)
+
+      var dumpdata = %[
         (key: "version", val: %VersionAsString),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
-        (key: "lib_paths", val: libpaths)
+        (key: "lib_paths", val: %libpaths),
+        (key: "outdir", val: %conf.outDir.string),
+        (key: "out", val: %conf.outFile.string),
+        (key: "nimcache", val: %getNimcacheDir(conf).string),
+        (key: "hints", val: hints),
+        (key: "warnings", val: warnings),
       ]
 
       msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
@@ -265,6 +343,7 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of "e":
+    incl conf.globalOptions, optWasNimscript
     commandEval(graph, mainCommandArg(conf))
   of "nop", "help":
     # prevent the "success" message:
