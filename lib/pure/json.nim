@@ -1557,14 +1557,16 @@ when isMainModule:
 
   for row in rows:
     cost{row[0..2]} = %(cost{row[0..2]}.getInt + 1)
-  echo cost
+  doAssert($cost == """{"AWS":{"compute":{"cost":1},"network":{"cost":1}},"Alibaba":{"compute":{"monthly":1},"network":{"monthly":1}},"Tencent":{"compute":{"monthly":1},"network":{"monthly":1}}}""")
   cost{"AWS", "yearly"} = %""
   cost{"AWS","compute","cost","monthly"} = %1
   cost{"AWS","compute","cost","yearly"} = %1
-  echo cost
+  doAssert($cost == """{"AWS":{"compute":{"cost":{"monthly":1,"yearly":1}},"network":{"cost":1},"yearly":""},"Alibaba":{"compute":{"monthly":1},"network":{"monthly":1}},"Tencent":{"compute":{"monthly":1},"network":{"monthly":1}}}""")
+
   cost{"AWS","compute","cost"} = %1
   cost{"IBM"} = %""
-  echo cost
+  doAssert($cost == """{"AWS":{"compute":{"cost":1},"network":{"cost":1},"yearly":""},"Alibaba":{"compute":{"monthly":1},"network":{"monthly":1}},"Tencent":{"compute":{"monthly":1},"network":{"monthly":1}},"IBM":""}""")
+
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
