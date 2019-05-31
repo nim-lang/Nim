@@ -1948,7 +1948,8 @@ when defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode", deprecated.}: int
   programResult = 0
 elif hostOS != "standalone":
-  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated: "prefer 'quit'".}: int
+  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated.}: int
+    ## deprecated, prefer ``quit``
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
