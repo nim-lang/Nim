@@ -250,7 +250,7 @@ when defined(nimSymKind):
     "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## converts a Nim identifier to a string
 
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated
+  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
     "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## converts a Nim symbol to a string
 
