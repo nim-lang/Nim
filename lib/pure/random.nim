@@ -364,7 +364,7 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   result = rand(state, x)
 
 proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0"; use 'sample' instead".} =
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(r, a.low..a.high)]
 
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
@@ -397,7 +397,7 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
     result = cast[T](state.next)
 
 proc rand*[T](a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0"; use 'sample' instead".} =
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =
