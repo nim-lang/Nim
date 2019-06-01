@@ -158,6 +158,8 @@ case $ucpu in
     mycpu="powerpc64" ;;
   *power*|*ppc* )
     mycpu="powerpc" ;;
+  *m68k*)
+    mycpu="m68k" ;;
   *mips* )
     mycpu="$("$CC" -dumpmachine | sed 's/-.*//')"
     case $mycpu in
