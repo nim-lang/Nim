@@ -3908,9 +3908,18 @@ follows a ``(`` it has to be written as a one liner:
 Except clauses
 --------------
 
-Within an ``except`` clause, it is possible to use
-``getCurrentException`` to retrieve the exception that has been
-raised:
+Within an ``except`` clause it is possible to access the current exception
+using the following syntax:
+
+.. code-block:: nim
+  try:
+    # ...
+  except IOError as e:
+    # Now use "e"
+    echo "I/O error: " & e.msg
+
+Alternatively, it is possible to use ``getCurrentException`` to retrieve the
+exception that has been raised:
 
 .. code-block:: nim
   try:
@@ -3937,8 +3946,8 @@ error message from ``e``, and for such situations it is enough to use
 .. code-block:: nim
   try:
     # ...
-  except IOError:
-    echo "I/O error: " & getCurrentExceptionMsg()
+  except:
+    echo getCurrentExceptionMsg()
 
 
 Defer statement
