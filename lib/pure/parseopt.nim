@@ -348,7 +348,8 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
         if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and p.allowWhitespaceAfterColon:
           inc p.idx
           i = 0
-        p.val = TaintedString p.cmds[p.idx].substr(i)
+        if p.idx < p.cmds.len:
+          p.val = TaintedString p.cmds[p.idx].substr(i)
       elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
         p.val = TaintedString p.cmds[p.idx+1]
         inc p.idx
