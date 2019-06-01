@@ -140,8 +140,12 @@ case $ucpu in
     mycpu="amd64" ;;
   *sparc*|*sun* )
     mycpu="sparc"
-    if [ "$(isainfo -b)" = "64" ]; then
-      mycpu="sparc64"
+    if [ "$myos" = "linux" ] ; then
+      if [ "$(getconf LONG_BIT)" = "64" ]; then
+        mycpu="sparc64"
+      elif [ "$(isainfo -b)" = "64" ]; then
+        mycpu="sparc64"
+      fi
     fi
     ;;
   *ppc64le* )
