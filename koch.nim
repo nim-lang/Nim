@@ -286,7 +286,7 @@ proc boot(args: string) =
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
   let useCpp = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
-  let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
+  let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
   let nimStart = findStartNim()

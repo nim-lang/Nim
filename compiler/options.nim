@@ -541,7 +541,7 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
              conf.projectPath / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               (if isDefined(conf, "release"): "_r" else: "_d"))
+               (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
