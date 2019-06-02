@@ -276,7 +276,8 @@ const
     optBoundsCheck, optOverflowCheck, optAssert, optWarns,
     optHints, optStackTrace, optLineTrace,
     optTrMacros, optNilCheck, optMoveCheck}
-  DefaultGlobalOptions* = {optThreadAnalysis}
+  DefaultGlobalOptions* = {optThreadAnalysis,
+    optExcessiveStackTrace, optListFullPaths}
 
 proc getSrcTimestamp(): DateTime =
   try:
@@ -312,7 +313,7 @@ proc newConfigRef*(): ConfigRef =
     macrosToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
-    cppDefines: initSet[string](),
+    cppDefines: initHashSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],

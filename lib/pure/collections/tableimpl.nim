@@ -149,7 +149,7 @@ template dollarImpl(): untyped {.dirty.} =
       result.addQuoted(val)
     result.add("}")
 
-template equalsImpl(s, t: typed): typed =
+template equalsImpl(s, t: typed) =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
     # to use the slow route here:

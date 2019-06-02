@@ -1252,7 +1252,7 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
       rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
-template forAllOrderedPairs(yieldStmt: untyped): typed {.dirty.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
