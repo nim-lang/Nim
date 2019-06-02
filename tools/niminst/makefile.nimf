@@ -15,8 +15,14 @@ ifeq ($(koch),yes)
   binDir = ../bin
 endif
 
+target := ?{"$(binDir)/" & toLowerAscii(c.name)}
+
 ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
-uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
+ifeq ($(OS),Windows_NT)
+  uos := windows
+else
+  uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
+endif
 
 ifeq ($(uos),linux)
   myos = linux
@@ -63,6 +69,10 @@ ifeq ($(uos),sun)
 endif
 ifeq ($(uos),haiku)
   myos = haiku
+endif
+ifeq ($(uos),windows)
+  myos = windows
+  target := $(target).exe
 endif
 ifndef myos
   $(error unknown operating system: $(uos))
@@ -169,7 +179,7 @@ ifeq ($(strip $(oFiles)),)
   $(error no C code generated for: [$(myos): $(mycpu)])
 endif
 
-?{"$(binDir)/" & toLowerAscii(c.name)}: $(oFiles)
+$(target): $(oFiles)
 	@mkdir -p $(binDir)
 	$(LD) -o $@ $^ $(LDFLAGS)
 	@echo "SUCCESS"
