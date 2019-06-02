@@ -308,6 +308,13 @@ assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
 
+# bug #11369
+
+var num: int64 = -1
+assert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+assert num.toOct(24) == "001777777777777777777777"
+
+
 # bug #8911
 when true:
   static:
