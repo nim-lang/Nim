@@ -1274,6 +1274,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   else:
     genLineDir(p, e)
     asgnFieldDiscriminant(p, e)
+    message(p.config, e.info, warnCaseTransition)
 
 proc genStmts(p: BProc, t: PNode) =
   var a: TLoc
