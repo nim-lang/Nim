@@ -1902,7 +1902,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         result = newDeref(result)
 
       inc(m.convMatches)
-      if m.genericConverter == false:
+      if not m.genericConverter:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
 
