@@ -2,8 +2,8 @@ version: '{build}'
 
 environment:
   MINGW_DIR: mingw64
-  MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
-  MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+  MINGW_URL: https://nim-lang.org/download/mingw64-6.3.0.7z
+  MINGW_ARCHIVE: mingw64-6.3.0.7z
   OPENBLAS_URL: https://sourceforge.net/projects/openblas/files/v0.3.5/OpenBLAS%200.3.5%20version.zip/download
   OPENBLAS_ARCHIVE: OpenBLAS-0.3.5.zip
   SQLITE_URL: http://www.sqlite.org/2017/sqlite-dll-win64-x64-3160200.zip
