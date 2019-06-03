@@ -3073,8 +3073,8 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   result = s[L]
   setLen(s, L)
 
-proc `==`*[T: tuple|object](x, y: T): bool =
-  ## Generic ``==`` operator for tuples that is lifted from the components.
+proc `==`*[T: tuple](x, y: T): bool =
+  ## Generic ``==`` operator for tuples that is lifted from the components
   ## of `x` and `y`.
   for a, b in fields(x, y):
     if a != b: return false
@@ -4461,3 +4461,54 @@ when not defined(nimnoio):
 
 when not defined(createNimHcr):
   include nimhcr
+
+
+import macros
+
+proc processNode(arg, a,b, result: NimNode): void {.compileTime.} =
+  case arg.kind
+  of nnkIdentDefs:
+    let field = arg[0]
+    result.add quote do:
+      if `a`.`field` != `b`.`field`:
+        return false
+  of nnkRecCase:
+    let kindField = arg[0][0]
+    processNode(arg[0], a,b, result)
+    let caseStmt = nnkCaseStmt.newTree(newDotExpr(a, kindField))
+    for i in 1 ..< arg.len:
+      let inputBranch = arg[i]
+      let outputBranch = newTree(inputBranch.kind)
+      let body = newStmtList()
+      if inputBranch.kind == nnkOfBranch:
+        outputBranch.add inputBranch[0]
+        processNode(inputBranch[1], a,b, body)
+      else:
+        inputBranch.expectKind nnkElse
+        processNode(inputBranch[0], a,b, body)
+      outputBranch.add body
+      caseStmt.add outputBranch
+    result.add caseStmt
+  of nnkRecList:
+    for child in arg:
+      child.expectKind {nnkIdentDefs, nnkRecCase}
+      processNode(child, a,b, result)
+  of nnkEmpty:
+    discard
+  else:
+    arg.expectKind {nnkIdentDefs, nnkRecCase, nnkRecList, nnkEmpty}
+
+macro genericCompareImpl(a,b: typed): untyped =
+  a.expectKind nnkSym
+  b.expectKind nnkSym
+  let typeImpl = getTypeImpl(a)
+  typeImpl.expectKind nnkObjectTy
+  result = newStmtList()
+  processNode(typeImpl[2], a, b, result)
+  result.add quote do:
+    return true
+
+proc `==`*[T: object](x, y: T): bool =
+  ## Generic ``==`` operator for objects that is lifted from the
+  ## components of `x` and `y`.
+  genericCompareImpl(x,y)

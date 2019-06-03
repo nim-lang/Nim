@@ -672,7 +672,7 @@ type
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf
+    mSymIsInstantiationOf, mNGetNodeId
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -1066,7 +1066,7 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 when defined(useNodeIds):
-  const nodeIdToDebug* = -1 # 299750 # 300761 #300863 # 300879
+  const nodeIdToDebug* = 2738351 # 299750 # 300761 #300863 # 300879
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =

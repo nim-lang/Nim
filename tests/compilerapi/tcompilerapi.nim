@@ -15,11 +15,17 @@ import "../../compiler" / [ast, vmdef, vm, nimeval, llstream]
 import std / [os]
 
 proc main() =
+  echo "hello"
+
   let std = findNimStdLibCompileTime()
+  echo "a"
   var intr = createInterpreter("myscript.nim",[std, parentDir(currentSourcePath)])
+  echo "b"
   intr.implementRoutine("*", "exposed", "addFloats", proc (a: VmArgs) =
     setResult(a, getFloat(a, 0) + getFloat(a, 1) + getFloat(a, 2))
   )
+
+  echo "foobar"
 
   intr.evalScript()
 

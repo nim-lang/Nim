@@ -1610,3 +1610,9 @@ when defined(nimMacrosSizealignof):
     ## from a field of a type. Therefore it only requires one argument
     ## instead of two. Returns a negative value if the Nim compiler
     ## does not know the offset.
+
+when defined(nimGetNodeId):
+  proc getNodeId*(arg: NimNode): int {.magic: "NGetNodeId", noSideEffect.} =
+    ## Returns the compiler internal node id if the compiler has been
+    ## compile with ``-d:useNodeIds``. Otherwise this function returns
+    ## ``-1``. This function is intended for compiler debugging.

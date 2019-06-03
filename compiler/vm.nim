@@ -1605,6 +1605,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNSetLineInfo:
       decodeB(rkNode)
       regs[ra].node.info = regs[rb].node.info
+    of opcNGetNodeId:
+      decodeB(rkInt)
+      when defined(useNodeIds):
+        regs[ra].intVal = regs[rb].node.id
+      else:
+        regs[ra].intVal = -1
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below

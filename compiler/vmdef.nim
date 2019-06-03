@@ -115,6 +115,7 @@ type
     opcStrToIdent,
     opcGetImpl,
     opcGetImplTransf
+    opcNGetNodeId
 
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
