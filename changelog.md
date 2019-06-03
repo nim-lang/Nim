@@ -122,6 +122,9 @@
 - ``case object`` branch transitions via ``system.reset`` are deprecated.
   Compile your code with ``-d:nimOldCaseObjects`` for a transition period.
 
+- base64 module: The default parameter `newLine` for the `encode` procs
+  was changed from `"\13\10"` to the empty string `""`.
+
 
 #### Breaking changes in the compiler
 

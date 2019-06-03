@@ -120,6 +120,12 @@ proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n.sons[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
+proc findPragma*(n: PNode, which: TSpecialWord): PNode =
+  if n.kind == nkPragma:
+    for son in n:
+      if whichPragma(son) == which:
+        return son
+
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
   for i in 0 ..< sonsLen(n):
     var it = n.sons[i]

@@ -206,17 +206,15 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-proc random*(max: int): int {.benign, deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand(int)<#rand,int>`_ instead.
+proc random*(max: int): int {.benign, deprecated:
+  "Deprecated since v0.18.0; use 'rand' istead".} =
   while true:
     let x = next(state)
     if x < randMax - (randMax mod ui(max)):
       return int(x mod uint64(max))
 
-proc random*(max: float): float {.benign, deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand(float)<#rand,float>`_ instead.
+proc random*(max: float): float {.benign, deprecated:
+  "Deprecated since v0.18.0; use 'rand' istead".} =
   let x = next(state)
   when defined(JS):
     result = (float(x) / float(high(uint32))) * max
@@ -224,14 +222,12 @@ proc random*(max: float): float {.benign, deprecated.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc random*[T](x: HSlice[T, T]): T {.deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand[T](HSlice[T, T])<#rand,HSlice[T,T]>`_ instead.
+proc random*[T](x: HSlice[T, T]): T {.deprecated:
+  "Deprecated since v0.18.0; use 'rand' instead".} =
   result = T(random(x.b - x.a)) + x.a
 
-proc random*[T](a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `sample[T](openArray[T])<#sample,openArray[T]>`_ instead.
+proc random*[T](a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.18.0; use 'sample' instead".} =
   result = a[random(a.low..a.len)]
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
@@ -367,9 +363,8 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
     doAssert rand(1..6) == 6
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.20.0:**
-  ## Use `sample[T](Rand, openArray[T])<#sample,Rand,openArray[T]>`_ instead.
+proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(r, a.low..a.high)]
 
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
@@ -401,9 +396,8 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   else:
     result = cast[T](state.next)
 
-proc rand*[T](a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.20.0:**
-  ## Use `sample[T](openArray[T])<#sample,openArray[T]>`_ instead.
+proc rand*[T](a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =

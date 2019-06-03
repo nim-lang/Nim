@@ -892,14 +892,14 @@ proc toBin*(x: BiggestInt, len: Positive): string {.noSideEffect,
     doAssert b.toBin(8) == "00000001"
     doAssert b.toBin(9) == "100000001"
   var
-    mask: BiggestInt = 1
-    shift: BiggestInt = 0
+    mask = BiggestUInt 1
+    shift = BiggestUInt 0
   assert(len > 0)
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = chr(int((x and mask) shr shift) + ord('0'))
-    shift = shift + 1
-    mask = mask shl 1
+    result[j] = chr(int((BiggestUInt(x) and mask) shr shift) + ord('0'))
+    inc shift
+    mask = mask shl BiggestUInt(1)
 
 proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
@@ -917,14 +917,14 @@ proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
     doAssert b.toOct(3) == "001"
     doAssert b.toOct(5) == "01001"
   var
-    mask: BiggestInt = 7
-    shift: BiggestInt = 0
+    mask = BiggestUInt 7
+    shift = BiggestUInt 0
   assert(len > 0)
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = chr(int((x and mask) shr shift) + ord('0'))
-    shift = shift + 3
-    mask = mask shl 3
+    result[j] = chr(int((BiggestUInt(x) and mask) shr shift) + ord('0'))
+    inc shift, 3
+    mask = mask shl BiggestUInt(3)
 
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =

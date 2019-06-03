@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
-  pathutils
+  pathutils, trees
 
 const
   exportSection = skField
@@ -25,7 +25,8 @@ const
 type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
-    modDesc: Rope           # module description
+    modDesc: Rope       # module description
+    modDeprecationMsg: Rope
     toc, section: TSections
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
@@ -610,6 +611,23 @@ proc docstringSummary(rstText: string): string =
     result.delete(pos, last)
     result.add("…")
 
+proc genDeprecationMsg(d: PDoc, n: PNode): Rope =
+  ## Given a nkPragma wDeprecated node output a well-formatted section
+  if n == nil: return
+
+  case n.safeLen:
+  of 0: # Deprecated w/o any message
+    result = ropeFormatNamedVars(d.conf,
+      getConfigVar(d.conf, "doc.deprecationmsg"), ["label", "message"],
+      [~"Deprecated", nil])
+  of 2: # Deprecated w/ a message
+    if n[1].kind in {nkStrLit..nkTripleStrLit}:
+      result = ropeFormatNamedVars(d.conf,
+        getConfigVar(d.conf, "doc.deprecationmsg"), ["label", "message"],
+        [~"Deprecated:", rope(xmltree.escape(n[1].strVal))])
+  else:
+    doAssert false
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(d, nameNode): return
   let
@@ -631,6 +649,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break
     plainName.add(literal)
 
+  var pragmaNode: PNode = nil
+  if n.isCallable and n.sons[pragmasPos].kind != nkEmpty:
+    pragmaNode = findPragma(n.sons[pragmasPos], wDeprecated)
+
   inc(d.id)
   let
     plainNameRope = rope(xmltree.escape(plainName.strip))
@@ -642,6 +664,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdRope = symbolOrId.rope
     symbolOrIdEncRope = encodeUrl(symbolOrId).rope
+    deprecationMsgRope = genDeprecationMsg(d, pragmaNode)
 
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
     renderDocComments, renderSyms}, symbolOrIdEncRope)
@@ -666,9 +689,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
 
   add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc", "deprecationMsg"],
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
-      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
+      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope,
+      deprecationMsgRope]))
 
   let external = d.destFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
 
@@ -821,6 +845,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
   case n.kind
+  of nkPragma:
+    let pragmaNode = findPragma(n, wDeprecated)
+    add(d.modDeprecationMsg, genDeprecationMsg(d, pragmaNode))
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
@@ -993,17 +1020,17 @@ proc genOutFile(d: PDoc): Rope =
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code])
+      rope(getClockStr()), code, d.modDeprecationMsg])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), ["title",
         "tableofcontents", "moduledesc", "date", "time",
-        "content", "author", "version", "analytics"],
+        "content", "author", "version", "analytics", "deprecationMsg"],
         [title.rope, toc, d.modDesc, rope(getDateStr()),
                      rope(getClockStr()), content, d.meta[metaAuthor].rope,
-                     d.meta[metaVersion].rope, d.analytics.rope])
+                     d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
   result = code
