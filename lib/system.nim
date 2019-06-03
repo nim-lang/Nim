@@ -3387,8 +3387,8 @@ else:
 
 
 when not defined(JS):
-  proc likelyProc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-  proc unlikelyProc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+  proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, nosideeffect.}
+  proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, nosideeffect.}
 
 template likely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be true.
