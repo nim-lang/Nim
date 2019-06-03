@@ -60,15 +60,15 @@ when defined(nimHasalignOf):
 
   proc setMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1
-    v = v or mask
+    v = bitor(v, mask)
 
   proc clearMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
-    v = v and not mask
+    v = bitand(v, bitnot(mask))
 
   proc flipMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped
-    v = v xor mask
+    v = bitxor(v, mask)
 
   proc setBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
     ## Returns ``v``, with the bit at position ``bit`` set to 1
@@ -106,7 +106,7 @@ when defined(nimHasalignOf):
   proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
     ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
     let mask = 1.T shl bit
-    return (v and mask) == mask
+    return bitand(v, mask) == mask
 
 # #### Pure Nim version ####
 
@@ -116,16 +116,16 @@ proc firstSetBit_nim(x: uint32): int {.inline, nosideeffect.} =
   const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15,
     25, 17, 4, 8, 31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9]
   var v = x.uint32
-  var k = not v + 1 # get two's complement # cast[uint32](-cast[int32](v))
-  result = 1 + lookup[uint32((v and k) * 0x077CB531'u32) shr 27].int
+  var k = bitnot(v) + 1 # get two's complement # cast[uint32](-cast[int32](v))
+  result = 1 + lookup[uint32(bitand(v, k) * 0x077CB531'u32) shr 27].int
 
 proc firstSetBit_nim(x: uint64): int {.inline, nosideeffect.} =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#ZerosOnRightMultLookup
   var v = uint64(x)
-  var k = uint32(v and 0xFFFFFFFF'u32)
+  var k = uint32(bitand(v, 0xFFFFFFFF'u32))
   if k == 0:
-    k = uint32(v shr 32'u32) and 0xFFFFFFFF'u32
+    k = bitand(uint32(v shr 32'u32), 0xFFFFFFFF'u32)
     result = 32
   result += firstSetBit_nim(k)
 
@@ -136,11 +136,11 @@ proc fastlog2_nim(x: uint32): int {.inline, nosideeffect.} =
   const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
     22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
   var v = x.uint32
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
+  v = bitor(v, v shr 1) # first round down to one less than a power of 2
+  v = bitor(v, v shr 2)
+  v = bitor(v, v shr 4)
+  v = bitor(v, v shr 8)
+  v = bitor(v, v shr 16)
   result = lookup[uint32(v * 0x07C4ACDD'u32) shr 27].int
 
 proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
@@ -152,12 +152,12 @@ proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
     57, 46, 52, 38, 26, 32, 41, 50, 36, 17, 19, 29, 10, 13, 21, 56, 45, 25, 31,
     35, 16, 9, 12, 44, 24, 15, 8, 23, 7, 6, 5, 63]
   var v = x.uint64
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
-  v = v or v shr 32
+  v = bitor(v, v shr 1) # first round down to one less than a power of 2
+  v = bitor(v, v shr 2)
+  v = bitor(v, v shr 4)
+  v = bitor(v, v shr 8)
+  v = bitor(v, v shr 16)
+  v = bitor(v, v shr 32)
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
 # sets.nim cannot import bitops, but bitops can use include
@@ -172,14 +172,14 @@ template parity_impl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
   var v = value
   when sizeof(T) == 8:
-    v = v xor (v shr 32)
+    v = bitxor(v, v shr 32)
   when sizeof(T) >= 4:
-    v = v xor (v shr 16)
+    v = bitxor(v, v shr 16)
   when sizeof(T) >= 2:
-    v = v xor (v shr 8)
-  v = v xor (v shr 4)
-  v = v and 0xf
-  ((0x6996'u shr v) and 1).int
+    v = bitxor(v, v shr 8)
+  v = bitxor(v, v shr 4)
+  v = bitand(v, 0xf)
+  bitand(0x6996'u shr v, 1).int
 
 
 when useGCC_builtins:
@@ -408,59 +408,59 @@ proc rotateLeftBits*(value: uint8;
   # result = (value shl amount) or (value shr (8 - amount))
   # taken from: https://en.wikipedia.org/wiki/Circular_shift#Implementing_circular_shifts
   let amount = amount and 7
-  result = (value shl amount) or (value shr ( (-amount) and 7))
+  result = bitor(value shl amount, value shr bitand(-amount, 7))
 
 proc rotateLeftBits*(value: uint16;
            amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 16-bits value.
   let amount = amount and 15
-  result = (value shl amount) or (value shr ( (-amount) and 15))
+  result = bitor(value shl amount, value shr bitand(-amount, 15))
 
 proc rotateLeftBits*(value: uint32;
            amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 32-bits value.
   let amount = amount and 31
-  result = (value shl amount) or (value shr ( (-amount) and 31))
+  result = bitor(value shl amount, value shr bitand(-amount, 31))
 
 proc rotateLeftBits*(value: uint64;
            amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 64-bits value.
   let amount = amount and 63
-  result = (value shl amount) or (value shr ( (-amount) and 63))
+  result = bitor(value shl amount, value shr bitand(-amount, 63))
 
 
 proc rotateRightBits*(value: uint8;
             amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 8-bits value.
   let amount = amount and 7
-  result = (value shr amount) or (value shl ( (-amount) and 7))
+  result = bitor(value shr amount, value shl bitand(-amount, 7))
 
 proc rotateRightBits*(value: uint16;
             amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 16-bits value.
   let amount = amount and 15
-  result = (value shr amount) or (value shl ( (-amount) and 15))
+  result = bitor(value shr amount, value shl bitand(-amount, 15))
 
 proc rotateRightBits*(value: uint32;
             amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 32-bits value.
   let amount = amount and 31
-  result = (value shr amount) or (value shl ( (-amount) and 31))
+  result = bitor(value shr amount, value shl bitand(-amount, 31))
 
 proc rotateRightBits*(value: uint64;
             amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 64-bits value.
   let amount = amount and 63
-  result = (value shr amount) or (value shl ( (-amount) and 63))
+  result = bitor(value shr amount, value shl bitand(-amount, 63))
 
 proc repeatBits[T: SomeUnsignedInt](x: SomeUnsignedInt; retType: type[T]): T {.
   noSideEffect.} =
   result = x
   var i = 1
   while i != (sizeof(T) div sizeof(x)):
-    result = (result shl (sizeof(x)*8*i)) or result
+    result = bitor(result shl (sizeof(x)*8*i), result)
     i *= 2
- 
+
 proc reverseBits*[T: SomeUnsignedInt](x: T): T {.noSideEffect.} =
   ## Return the bit reversal of x.
   runnableExamples:
@@ -472,28 +472,28 @@ proc reverseBits*[T: SomeUnsignedInt](x: T): T {.noSideEffect.} =
   template repeat(x: SomeUnsignedInt): T = repeatBits(x, T)
 
   result = x
-  result =
-    ((repeat(0x55u8) and result) shl 1) or
-    ((repeat(0xaau8) and result) shr 1)
-  result =
-    ((repeat(0x33u8) and result) shl 2) or
-    ((repeat(0xccu8) and result) shr 2)
+  result = bitor(
+    bitand(repeat(0x55u8), result) shl 1,
+    bitand(repeat(0xaau8), result) shr 1)
+  result = bitor(
+    bitand(repeat(0x33u8), result) shl 2,
+    bitand(repeat(0xccu8), result) shr 2)
   when sizeof(T) == 1:
-    result = (result shl 4) or (result shr 4)
+    result = bitor(result shl 4, result shr 4)
   when sizeof(T) >= 2:
-    result =
-      ((repeat(0x0fu8) and result) shl 4) or
-      ((repeat(0xf0u8) and result) shr 4)
+    result = bitor(
+      bitand(repeat(0x0fu8), result) shl 4,
+      bitand(repeat(0xf0u8), result) shr 4)
   when sizeof(T) == 2:
-    result = (result shl 8) or (result shr 8)
+    result = bitor(result shl 8, result shr 8)
   when sizeof(T) >= 4:
-    result =
-      ((repeat(0x00ffu16) and result) shl 8) or
-      ((repeat(0xff00u16) and result) shr 8)
+    result = bitor(
+      bitand(repeat(0x00ffu16), result) shl 8,
+      bitand(repeat(0xff00u16), result) shr 8)
   when sizeof(T) == 4:
-    result = (result shl 16) or (result shr 16)
+    result = bitor(result shl 16, result shr 16)
   when sizeof(T) == 8:
-    result =
-      ((repeat(0x0000ffffu32) and result) shl 16) or
-      ((repeat(0xffff0000u32) and result) shr 16)
-    result = (result shl 32) or (result shr 32)
+    result = bitor(
+      bitand(repeat(0x0000ffffu32), result) shl 16,
+      bitand(repeat(0xffff0000u32), result) shr 16)
+    result = bitor(result shl 32, result shr 32)

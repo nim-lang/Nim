@@ -17,17 +17,17 @@ type
 proc countBits32(n: uint32): int {.compilerproc.} =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = uint32(n)
-  v = v - ((v shr 1) and 0x55555555)
-  v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
-  result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).int
+  v = v - bitand(v shr 1, 0x55555555)
+  v = bitand(v, 0x33333333) + bitand(v shr 2, 0x33333333)
+  result = int((bitand(v + v shr 4, 0xF0F0F0F) * 0x1010101) shr 24)
 
 proc countBits64(n: uint64): int {.compilerproc.} =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = uint64(n)
-  v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
-  v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
-  v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
-  result = ((v * 0x0101010101010101'u64) shr 56'u64).int
+  v = v - bitand(v shr 1'u64, 0x5555555555555555'u64)
+  v = bitand(v, 0x3333333333333333'u64) + bitand(v shr 2'u64, 0x3333333333333333'u64)
+  v = bitand(v + (v shr 4'u64), 0x0F0F0F0F0F0F0F0F'u64)
+  result = int((v * 0x0101010101010101'u64) shr 56'u64)
 
 proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
   for i in 0..<len:
