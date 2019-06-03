@@ -546,7 +546,7 @@ else:
 when defined(linux) or defined(nimdoc):
   when defined(alpha) or defined(mips) or defined(mipsel) or
       defined(mips64) or defined(mips64el) or defined(parisc) or
-      defined(sparc) or defined(nimdoc):
+      defined(sparc) or defined(sparc64) or defined(nimdoc):
     const SO_REUSEPORT* = cint(0x0200)
       ## Multiple binding: load balancing on incoming TCP connections
       ## or UDP packets. (Requires Linux kernel > 3.9)

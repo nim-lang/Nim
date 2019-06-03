@@ -485,10 +485,10 @@ proc multiReplace*(s: string, subs: openArray[
   add(result, substr(s, i))
 
 proc parallelReplace*(s: string, subs: openArray[
-                      tuple[pattern: Regex, repl: string]]): string {.deprecated.} =
+  tuple[pattern: Regex, repl: string]]): string {.deprecated:
+  "Deprecated since v0.18.0: Use ``multiReplace`` instead.".} =
   ## Returns a modified copy of ``s`` with the substitutions in ``subs``
   ## applied in parallel.
-  ## **Deprecated since version 0.18.0**: Use ``multiReplace`` instead.
   result = multiReplace(s, subs)
 
 proc transformFile*(infile, outfile: string,

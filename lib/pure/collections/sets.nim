@@ -233,7 +233,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
 iterator items*[A](s: HashSet[A]): A =
   ## Iterates over elements of the set `s`.
   ##
-  ## If you need a sequence with the elelments you can use `sequtils.toSeq
+  ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
   ## .. code-block::
@@ -439,7 +439,7 @@ proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ##
   ## The same as `s1 - s2 <#-,HashSet[A],HashSet[A]>`_.
   ##
-  ## The difference of two sets is represented mathematically as *A \ B* and is
+  ## The difference of two sets is represented mathematically as *A ∖ B* and is
   ## the set of all objects that are members of `s1` and not members of `s2`.
   ##
   ## See also:
@@ -559,7 +559,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
   s.counter == t.counter and s <= t
 
 proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
-  ## Returns a new set after applying `op` pric on each of the elements of
+  ## Returns a new set after applying `op` proc on each of the elements of
   ##`data` set.
   ##
   ## You can use this proc to transform the elements from a set.
@@ -604,17 +604,13 @@ proc rightSize*(count: Natural): int {.inline.} =
 
 
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
-  ## Deprecated since v0.20, use `initHashSet <#initHashSet,int>`_.
+     "Deprecated since v0.20, use 'initHashSet'"} = initHashSet[A](initialSize)
 
 proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
-  ## Deprecated since v0.20, use `toHashSet <#toHashSet,openArray[A]>`_.
+     "Deprecated since v0.20, use 'toHashSet'"} = toHashSet[A](keys)
 
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
      "Deprecated since v0.20; sets are initialized by default"} =
-  ## **Deprecated since v0.20; sets are initialized by default**
-  ##
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
   ##
@@ -942,7 +938,6 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
 proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
      "Deprecated since v0.20; sets are initialized by default"} =
-  ## **Deprecated since v0.20; sets are initialized by default**
   ##
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).

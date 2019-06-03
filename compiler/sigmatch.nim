@@ -1480,6 +1480,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
       # simply no match for now:
       discard
+    elif x.kind == tyGenericInst and f.sons[0] == x.sons[0] and
+          sonsLen(x) - 1 == sonsLen(f):
+      for i in 1 ..< sonsLen(f):
+        if x.sons[i].kind == tyGenericParam:
+          internalError(c.c.graph.config, "wrong instantiated type!")
+        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype:
+          # Workaround for regression #4589
+          if f.sons[i].kind != tyTypeDesc: return
+      result = isGeneric
     elif x.kind == tyGenericInst and isGenericSubType(c, x, f, depth, f) and
           (sonsLen(x) - 1 == sonsLen(f)):
       # do not recurse here in order to not K bind twice for this code:
@@ -1491,15 +1500,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # var x: Banana[float64]
       # x.setColor()
       c.inheritancePenalty += depth
-      result = isGeneric
-    elif x.kind == tyGenericInst and f.sons[0] == x.sons[0] and
-          sonsLen(x) - 1 == sonsLen(f):
-      for i in 1 ..< sonsLen(f):
-        if x.sons[i].kind == tyGenericParam:
-          internalError(c.c.graph.config, "wrong instantiated type!")
-        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype:
-          # Workaround for regression #4589
-          if f.sons[i].kind != tyTypeDesc: return
       result = isGeneric
     else:
       let genericBody = f.sons[0]
@@ -1902,7 +1902,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         result = newDeref(result)
 
       inc(m.convMatches)
-      if m.genericConverter == false:
+      if not m.genericConverter:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
 
