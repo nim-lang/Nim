@@ -40,7 +40,6 @@ do
 done
 
 CC="${CC:-gcc}"
-LINKER="${LD:-gcc}"
 COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
 PS4=""
@@ -60,7 +59,7 @@ if [ ! -d $binDir ]; then
 fi
 
 #  add(result, "# override OS, CPU and OS Name with command-line arguments\n")
-if [ -n "$optos" ]; then 
+if [ -n "$optos" ]; then
   uos="$optos"
 fi
 if [ -n "$optcpu" ]; then
@@ -87,7 +86,6 @@ case $uos in
   *freebsd* )
     myos="freebsd"
     CC="clang"
-    LINKER="clang"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
   *openbsd* )
@@ -101,7 +99,6 @@ case $uos in
   *darwin* )
     myos="macosx"
     CC="clang"
-    LINKER="clang"
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     if [ "$HOSTTYPE" = "x86_64" ] ; then
       ucpu="amd64"
@@ -209,7 +206,7 @@ case $myos in
     $CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
-    $LINKER -o ?{"$binDir/" & toLowerAscii(c.name)} ?linkCmd $LINK_FLAGS
+    $CC -o ?{"$binDir/" & toLowerAscii(c.name)} ?linkCmd $LINK_FLAGS
     ;;
 #    end for
   *)

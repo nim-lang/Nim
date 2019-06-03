@@ -5,7 +5,6 @@
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
 CC ??= gcc
-LD ??= gcc
 CFLAGS += -Ic_code ?{c.ccompiler.flags}
 LDFLAGS += ?{c.linker.flags}
 binDir = ?{firstBinPath(c).toUnix}
@@ -35,7 +34,6 @@ endif
 ifeq ($(uos),freebsd)
   myos= freebsd
   CC = clang
-  LD = clang
   LDFLAGS += -lm
 endif
 ifeq ($(uos),openbsd)
@@ -49,7 +47,6 @@ endif
 ifeq ($(uos),darwin)
   myos = macosx
   CC = clang
-  LD = clang
   LDFLAGS += -ldl -lm
   ifeq ($(HOSTTYPE),x86_64)
     ucpu = amd64
@@ -181,7 +178,7 @@ endif
 
 $(target): $(oFiles)
 	@mkdir -p $(binDir)
-	$(LD) -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "SUCCESS"
 
 .PHONY: clean
