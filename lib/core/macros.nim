@@ -139,24 +139,24 @@ const
 
 {.push warnings: off.}
 
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
+proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
   ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.0**: Use ``ident`` or ``newIdentNode`` instead.
 
-proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
+proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
   ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.1**; Use ``ident`` or ``newIdentNode`` instead.
 
-proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated.}
+proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use '==' on 'NimNode' instead.".}
   ## compares two Nim identifiers
-  ## **Deprecated since version 0.18.1**; Use ``==`` on ``NimNode`` instead.
 
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
-proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
+proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use '==(NimNode, NimNode)' instead.".}
   ## compares two Nim symbols
-  ## **Deprecated since version 0.18.1**; Use ``==(NimNode, NimNode)`` instead.
 
 {.pop.}
 
@@ -231,11 +231,11 @@ proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 
 {.push warnings: off.}
 
-proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated.} =
-  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
+proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
-proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
+proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
@@ -246,13 +246,13 @@ when defined(nimSymKind):
     ## retrieve the implementation of `symbol`. `symbol` can be a
     ## routine or a const.
 
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated.}
+  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
+    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## converts a Nim identifier to a string
-    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
 
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated.}
+  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
+    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## converts a Nim symbol to a string
-    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
 
 else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
@@ -375,11 +375,11 @@ proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSide
 
 {.push warnings: off.}
 
-proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``genSym`` instead.
+proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'genSym' instead.".}
 
-proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``ident(string)`` instead.
+proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
 
 {.pop.}
 
@@ -483,10 +483,9 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
 
-proc callsite*(): NimNode {.magic: "NCallSite", benign,
-  deprecated: "use varargs[untyped] in the macro prototype instead".}
+proc callsite*(): NimNode {.magic: "NCallSite", benign, deprecated:
+  "Deprecated since v0.18.1; use varargs[untyped] in the macro prototype instead".}
   ## returns the AST of the invocation expression that invoked this macro.
-  ## **Deprecated since version 0.18.1**.
 
 proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nim code and wraps that
@@ -625,12 +624,10 @@ proc newCall*(theProc: NimNode,
 
 {.push warnings: off.}
 
-proc newCall*(theProc: NimIdent,
-              args: varargs[NimNode]): NimNode {.compileTime, deprecated.} =
+proc newCall*(theProc: NimIdent, args: varargs[NimNode]): NimNode {.compileTime, deprecated:
+  "Deprecated since v0.18.1; use 'newCall(string, ...)' or 'newCall(NimNode, ...)' instead".} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
-  ## **Deprecated since version 0.18.1**; Use ``newCall(string, ...)``,
-  ## or ``newCall(NimNode, ...)`` instead.
   result = newNimNode(nnkCall)
   result.add(newIdentNode(theProc))
   result.add(args)
@@ -796,8 +793,8 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
 
 {.push warnings: off.}
 
-proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated.} =
-  ## **Deprecated since version 0.18.1**; Use one of ``nestList(NimNode, ...)`` instead.
+proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated:
+  "Deprecated since v0.18.1; use one of 'nestList(NimNode, ...)' instead.".} =
   nestList(newIdentNode(theProc), x)
 
 {.pop.}

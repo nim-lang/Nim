@@ -201,21 +201,17 @@ proc createNativeSocket*(domain: cint, sockType: cint,
 proc newNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
                       protocol: Protocol = IPPROTO_TCP): SocketHandle
-                      {.deprecated.} =
+                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  ##
-  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
   createNativeSocket(domain, sockType, protocol)
 
 proc newNativeSocket*(domain: cint, sockType: cint,
                       protocol: cint): SocketHandle
-                      {.deprecated.} =
+                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
-  ##
-  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
   createNativeSocket(domain, sockType, protocol)
 
 proc close*(socket: SocketHandle) =

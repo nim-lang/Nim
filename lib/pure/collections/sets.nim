@@ -604,17 +604,13 @@ proc rightSize*(count: Natural): int {.inline.} =
 
 
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
-  ## Deprecated since v0.20, use `initHashSet <#initHashSet,int>`_.
+     "Deprecated since v0.20, use 'initHashSet'"} = initHashSet[A](initialSize)
 
 proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
-  ## Deprecated since v0.20, use `toHashSet <#toHashSet,openArray[A]>`_.
+     "Deprecated since v0.20, use 'toHashSet'"} = toHashSet[A](keys)
 
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
      "Deprecated since v0.20; sets are initialized by default"} =
-  ## **Deprecated since v0.20; sets are initialized by default**
-  ##
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
   ##
@@ -942,7 +938,6 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
 proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
      "Deprecated since v0.20; sets are initialized by default"} =
-  ## **Deprecated since v0.20; sets are initialized by default**
   ##
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
