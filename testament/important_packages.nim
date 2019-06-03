@@ -52,7 +52,7 @@ pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
 # pkg "nimly", "nim c -r tests/test_nimly", true
 pkg "nimongo", "nimble test_ci", true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery"
+# pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
 # pkg "nimterop", "nim c nimterop/toast.nim", true
