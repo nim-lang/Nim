@@ -1945,10 +1945,10 @@ const
     ## failure.
 
 when defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode", deprecated.}: int
+  var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
-  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated.}: int
+  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
 
 when defined(nimdoc):
