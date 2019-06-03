@@ -170,6 +170,8 @@ case $ucpu in
         exit 1
     esac
     ;;
+  *alpha* )
+    mycpu="alpha" ;;
   *arm*|*armv6l*|*armv71* )
     mycpu="arm" ;;
   *aarch64* )
