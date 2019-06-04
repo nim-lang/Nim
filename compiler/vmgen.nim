@@ -1484,7 +1484,10 @@ proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
-  if {sfCompileTime, sfGlobal} <= s.flags: return
+  if {sfCompileTime} <= s.flags: return
+  if {sfGlobal} <= s.flags:
+    localError(c.config, n.info,
+               "'global' variables not allowed at compile time; " & s.name.s)
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     cannotEval(c, n)
