@@ -165,7 +165,7 @@ proc buildNimble(latest: bool) =
   nimCompile(installDir / "src/nimble.nim", options = "--noNimblePath --nilseqs:on -d:release")
 
 proc bundleNimsuggest() =
-  nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim", options = "-d:release")
+  nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim", options = "-d:release -d:danger")
 
 proc buildVccTool() =
   nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim")
