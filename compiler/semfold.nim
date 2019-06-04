@@ -56,13 +56,13 @@ proc checkInRange(conf: ConfigRef; n: PNode, res: BiggestInt): bool =
 
 proc foldAdd(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   let res = a +% b
-  if ((res xor a) >= 0'i64 or (res xor b) >= 0'i64) and
+  if (bitxor(res, a) >= 0'i64 or bitxor(res, b) >= 0'i64) and
       checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, g)
 
 proc foldSub*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   let res = a -% b
-  if ((res xor a) >= 0'i64 or (res xor not b) >= 0'i64) and
+  if (bitxor(res, a) >= 0'i64 or bitxor(res, bitnot(b)) >= 0'i64) and
       checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, g)
 
@@ -188,7 +188,7 @@ proc fitLiteral(c: ConfigRef, n: PNode): PNode =
 
   let typ = n.typ.skipTypes(abstractRange)
   if typ.kind in tyUInt..tyUint32:
-    result.intVal = result.intVal and lastOrd(c, typ, fixedUnsigned=true)
+    result.intVal = bitand(result.intVal, lastOrd(c, typ, fixedUnsigned=true))
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   template doAndFit(op: untyped): untyped =
@@ -203,7 +203,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mUnaryMinusF64: result = newFloatNodeT(- getFloat(a), n, g)
   of mNot: result = newIntNodeT(1 - getInt(a), n, g)
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
-  of mBitnotI: result = doAndFit(newIntNodeT(not getInt(a), n, g))
+  of mBitnotI: result = doAndFit(newIntNodeT(bitnot(getInt(a)), n, g))
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
   of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
     if a.kind == nkNilLit:
@@ -221,10 +221,10 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mAbsI: result = foldAbs(getInt(a), n, g)
   of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64:
     # byte(-128) = 1...1..1000_0000'64 --> 0...0..1000_0000'64
-    result = newIntNodeT(getInt(a) and (`shl`(1, getSize(g.config, a.typ) * 8) - 1), n, g)
-  of mToU8: result = newIntNodeT(getInt(a) and 0x000000FF, n, g)
-  of mToU16: result = newIntNodeT(getInt(a) and 0x0000FFFF, n, g)
-  of mToU32: result = newIntNodeT(getInt(a) and 0x00000000FFFFFFFF'i64, n, g)
+    result = newIntNodeT(bitand(getInt(a), `shl`(1, getSize(g.config, a.typ) * 8) - 1), n, g)
+  of mToU8: result = newIntNodeT(bitand(getInt(a), 0x000000FF), n, g)
+  of mToU16: result = newIntNodeT(bitand(getInt(a), 0x0000FFFF), n, g)
+  of mToU32: result = newIntNodeT(bitand(getInt(a), 0x00000000FFFFFFFF'i64), n, g)
   of mUnaryLt: result = doAndFit(foldSub(getOrdValue(a), 1, n, g))
   of mSucc: result = doAndFit(foldAdd(getOrdValue(a), getInt(b), n, g))
   of mPred: result = doAndFit(foldSub(getOrdValue(a), getInt(b), n, g))
@@ -290,9 +290,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     result = newIntNodeT(ord(`<%`(getOrdValue(a), getOrdValue(b))), n, g)
   of mLeU, mLeU64:
     result = newIntNodeT(ord(`<=%`(getOrdValue(a), getOrdValue(b))), n, g)
-  of mBitandI, mAnd: result = doAndFit(newIntNodeT(a.getInt and b.getInt, n, g))
-  of mBitorI, mOr: result = doAndFit(newIntNodeT(getInt(a) or getInt(b), n, g))
-  of mBitxorI, mXor: result = doAndFit(newIntNodeT(a.getInt xor b.getInt, n, g))
+  of mBitandI, mAnd: result = doAndFit(newIntNodeT(bitand(a.getInt, b.getInt), n, g))
+  of mBitorI, mOr: result = doAndFit(newIntNodeT(bitor(getInt(a), getInt(b)), n, g))
+  of mBitxorI, mXor: result = doAndFit(newIntNodeT(bitxor(a.getInt, b.getInt), n, g))
   of mAddU: result = doAndFit(newIntNodeT(`+%`(getInt(a), getInt(b)), n, g))
   of mSubU: result = doAndFit(newIntNodeT(`-%`(getInt(a), getInt(b)), n, g))
   of mMulU: result = doAndFit(newIntNodeT(`*%`(getInt(a), getInt(b)), n, g))
@@ -440,12 +440,12 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
         if check: rangeCheck(n, val, g)
         let mask = (`shl`(1, getSize(g.config, dstTyp) * 8) - 1)
         let valSign = val < 0
-        val = abs(val) and mask
+        val = bitand(abs(val), mask)
         if valSign: val = -val
       else:
         # Unsigned type: Conversion
         let mask = (`shl`(1, getSize(g.config, dstTyp) * 8) - 1)
-        val = val and mask
+        val = bitand(val, mask)
 
       result = newIntNodeT(val, n, g)
     else:

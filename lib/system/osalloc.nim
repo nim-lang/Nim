@@ -8,7 +8,7 @@
 #
 
 proc roundup(x, v: int): int {.inline.} =
-  result = (x + (v-1)) and not (v-1)
+  result = (x + (v-1)) and bitnot(v-1)
   sysAssert(result >= x, "roundup: result < x")
   #return ((-x) and (v-1)) +% x
 
@@ -221,14 +221,14 @@ elif defined(posix):
   proc munmap(adr: pointer, len: csize): cint {.header: "<sys/mman.h>".}
 
   proc osAllocPages(size: int): pointer {.inline.} =
-    result = mmap(nil, size, PROT_READ or PROT_WRITE,
-                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+    result = mmap(nil, size, bitor(PROT_READ, PROT_WRITE),
+                             bitor(MAP_PRIVATE, MAP_ANONYMOUS), -1, 0)
     if result == nil or result == cast[pointer](-1):
       raiseOutOfMem()
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
-    result = mmap(nil, size, PROT_READ or PROT_WRITE,
-                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+    result = mmap(nil, size, bitor(PROT_READ, PROT_WRITE),
+                             bitor(MAP_PRIVATE, MAP_ANONYMOUS), -1, 0)
     if result == cast[pointer](-1): result = nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =

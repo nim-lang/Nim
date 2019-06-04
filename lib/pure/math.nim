@@ -178,14 +178,14 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
     doAssert nextPowerOfTwo(-16) == 1
   result = x - 1
   when defined(cpu64):
-    result = result or (result shr 32)
+    result = bitor(result, result shr 32)
   when sizeof(int) > 2:
-    result = result or (result shr 16)
+    result = bitor(result, (result shr 16))
   when sizeof(int) > 1:
-    result = result or (result shr 8)
-  result = result or (result shr 4)
-  result = result or (result shr 2)
-  result = result or (result shr 1)
+    result = bitor(result, result shr 8)
+  result = bitor(result, result shr 4)
+  result = bitor(result, result shr 2)
+  result = bitor(result, result shr 1)
   result += 1 + ord(x<=0)
 
 proc countBits32*(n: int32): int {.noSideEffect, deprecated:

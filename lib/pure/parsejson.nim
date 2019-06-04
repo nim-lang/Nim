@@ -165,9 +165,9 @@ proc errorMsgExpected*(my: JsonParser, e: string): string =
 proc handleHexChar(c: char, x: var int): bool =
   result = true # Success
   case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
+  of '0'..'9': x = bitor(x shl 4, ord(c) - ord('0'))
+  of 'a'..'f': x = bitor(x shl 4, ord(c) - ord('a') + 10)
+  of 'A'..'F': x = bitor(x shl 4, ord(c) - ord('A') + 10)
   else: result = false # error
 
 proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
@@ -237,7 +237,7 @@ proc parseString(my: var JsonParser): TokKind =
           inc(pos, 2)
           var s = parseEscapedUTF16(my.buf, pos)
           if (s and 0xfc00) == 0xdc00 and s > 0:
-            r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
+            r = 0x10000 + bitor((r - 0xd800) shl 10, s - 0xdc00)
           else:
             my.err = errInvalidToken
             break

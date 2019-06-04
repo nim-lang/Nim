@@ -74,7 +74,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-bin character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -103,7 +103,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     case s[i]
     of '_': discard
     of '0'..'1':
-      output = output shl 1 or T(ord(s[i]) - ord('0'))
+      output = bitor(output shl 1, T(ord(s[i]) - ord('0')))
       foundDigit = true
     else: break
     inc(i)
@@ -121,7 +121,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-oct character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -150,7 +150,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     case s[i]
     of '_': discard
     of '0'..'7':
-      output = output shl 3 or T(ord(s[i]) - ord('0'))
+      output = bitor(output shl 3, T(ord(s[i]) - ord('0')))
       foundDigit = true
     else: break
     inc(i)
@@ -168,7 +168,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-hex character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -199,13 +199,13 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     case s[i]
     of '_': discard
     of '0'..'9':
-      output = output shl 4 or T(ord(s[i]) - ord('0'))
+      output = bitor(output shl 4, T(ord(s[i]) - ord('0')))
       foundDigit = true
     of 'a'..'f':
-      output = output shl 4 or T(ord(s[i]) - ord('a') + 10)
+      output = bitor(output shl 4, T(ord(s[i]) - ord('a') + 10))
       foundDigit = true
     of 'A'..'F':
-      output = output shl 4 or T(ord(s[i]) - ord('A') + 10)
+      output = bitor(output shl 4, T(ord(s[i]) - ord('A') + 10))
       foundDigit = true
     else: break
     inc(i)

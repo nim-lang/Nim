@@ -2197,6 +2197,16 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     else:
       result = c.graph.emptyNode
   of mSizeOf: result = semSizeof(c, setMs(n, s))
+  # of mBitandI, mBitorI, mBitxorI, mBitnotI:
+  #   result = semDirectOp(c, n, flags)
+  #   if result.typ.kind != tyBool and n.kind in {nkInfix, nkPrefix}:
+  #     echo "bitop: ", result
+  #     echo "typ: ", result.typ
+  #   else:
+  #     echo "hä!? "
+  #     debug(result)
+  #     debug(result.typ)
+  #     quit()
   else:
     result = semDirectOp(c, n, flags)
 

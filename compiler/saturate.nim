@@ -12,7 +12,7 @@
 proc `|+|`*(a, b: BiggestInt): BiggestInt =
   ## saturated addition.
   result = a +% b
-  if (result xor a) >= 0'i64 or (result xor b) >= 0'i64:
+  if bitxor(result, a) >= 0'i64 or bitxor(result, b) >= 0'i64:
     return result
   if a < 0 or b < 0:
     result = low(result)
@@ -21,7 +21,7 @@ proc `|+|`*(a, b: BiggestInt): BiggestInt =
 
 proc `|-|`*(a, b: BiggestInt): BiggestInt =
   result = a -% b
-  if (result xor a) >= 0'i64 or (result xor not b) >= 0'i64:
+  if bitxor(result, a) >= 0'i64 or bitxor(result, bitnot(b)) >= 0'i64:
     return result
   if b > 0:
     result = low(result)

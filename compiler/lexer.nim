@@ -503,14 +503,14 @@ proc getNumber(L: var TLexer, result: var TToken) =
         result.base = base2
         while pos < endpos:
           if L.buf[pos] != '_':
-            xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
+            xi = bitor(`shl`(xi, 1), ord(L.buf[pos]) - ord('0'))
           inc(pos)
       # 'c', 'C' is deprecated
       of 'o', 'c', 'C':
         result.base = base8
         while pos < endpos:
           if L.buf[pos] != '_':
-            xi = `shl`(xi, 3) or (ord(L.buf[pos]) - ord('0'))
+            xi = bitor(`shl`(xi, 3), ord(L.buf[pos]) - ord('0'))
           inc(pos)
       of 'x', 'X':
         result.base = base16
@@ -519,13 +519,13 @@ proc getNumber(L: var TLexer, result: var TToken) =
           of '_':
             inc(pos)
           of '0'..'9':
-            xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('0'))
+            xi = bitor(`shl`(xi, 4), ord(L.buf[pos]) - ord('0'))
             inc(pos)
           of 'a'..'f':
-            xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('a') + 10)
+            xi = bitor(`shl`(xi, 4), ord(L.buf[pos]) - ord('a') + 10)
             inc(pos)
           of 'A'..'F':
-            xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('A') + 10)
+            xi = bitor(`shl`(xi, 4), ord(L.buf[pos]) - ord('A') + 10)
             inc(pos)
           else:
             break
@@ -624,13 +624,13 @@ proc handleHexChar(L: var TLexer, xi: var int; position: range[0..4]) =
 
   case L.buf[L.bufpos]
   of '0'..'9':
-    xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('0'))
+    xi = bitor(xi shl 4, ord(L.buf[L.bufpos]) - ord('0'))
     inc(L.bufpos)
   of 'a'..'f':
-    xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('a') + 10)
+    xi = bitor(xi shl 4, ord(L.buf[L.bufpos]) - ord('a') + 10)
     inc(L.bufpos)
   of 'A'..'F':
-    xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
+    xi = bitor(xi shl 4, ord(L.buf[L.bufpos]) - ord('A') + 10)
     inc(L.bufpos)
   of '"', '\'':
     if position <= 1: invalid()
@@ -655,34 +655,34 @@ proc addUnicodeCodePoint(s: var string, i: int) =
     s[pos+0] = chr(i)
   elif i <= 0x07FF:
     s.setLen(pos+2)
-    s[pos+0] = chr((i shr 6) or 0b110_00000)
-    s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
+    s[pos+0] = chr(bitor(i shr 6, 0b110_00000))
+    s[pos+1] = chr(bitor(bitand(i, ones(6)), 0b10_0000_00))
   elif i <= 0xFFFF:
     s.setLen(pos+3)
-    s[pos+0] = chr(i shr 12 or 0b1110_0000)
-    s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
+    s[pos+0] = chr(bitor(i shr 12, 0b1110_0000))
+    s[pos+1] = chr(bitand(i shr 6, ones(6)).bitor(0b10_0000_00))
+    s[pos+2] = chr(bitand(i, ones(6)).bitor(0b10_0000_00))
   elif i <= 0x001FFFFF:
     s.setLen(pos+4)
-    s[pos+0] = chr(i shr 18 or 0b1111_0000)
-    s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
+    s[pos+0] = chr(bitor(i shr 18, 0b1111_0000))
+    s[pos+1] = chr(bitand(i shr 12, ones(6)).bitor(0b10_0000_00))
+    s[pos+2] = chr(bitand(i shr 6, ones(6)).bitor(0b10_0000_00))
+    s[pos+3] = chr(bitand(i, ones(6)).bitor(0b10_0000_00))
   elif i <= 0x03FFFFFF:
     s.setLen(pos+5)
-    s[pos+0] = chr(i shr 24 or 0b111110_00)
-    s[pos+1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    s[pos+3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+4] = chr(i and ones(6) or 0b10_0000_00)
+    s[pos+0] = chr(bitor(i shr 24, 0b111110_00))
+    s[pos+1] = chr(bitand(i shr 18, ones(6)).bitor(0b10_0000_00))
+    s[pos+2] = chr(bitand(i shr 12, ones(6)).bitor(0b10_0000_00))
+    s[pos+3] = chr(bitand(i shr 6, ones(6)).bitor(0b10_0000_00))
+    s[pos+4] = chr(bitand(i, ones(6)).bitor(0b10_0000_00))
   elif i <= 0x7FFFFFFF:
     s.setLen(pos+6)
-    s[pos+0] = chr(i shr 30 or 0b1111110_0)
-    s[pos+1] = chr(i shr 24 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i shr 18 and ones(6) or 0b10_0000_00)
-    s[pos+3] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    s[pos+4] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+5] = chr(i and ones(6) or 0b10_0000_00)
+    s[pos+0] = chr(bitor(i shr 30, 0b1111110_0))
+    s[pos+1] = chr(bitand(i shr 24, ones(6)).bitor(0b10_0000_00))
+    s[pos+2] = chr(bitand(i shr 18, ones(6)).bitor(0b10_0000_00))
+    s[pos+3] = chr(bitand(i shr 12, ones(6)).bitor(0b10_0000_00))
+    s[pos+4] = chr(bitand(i shr 6, ones(6)).bitor(0b10_0000_00))
+    s[pos+5] = chr(bitand(i , ones(6)).bitor(0b10_0000_00))
 
 proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'

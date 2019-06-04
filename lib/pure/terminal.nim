@@ -208,11 +208,14 @@ else:
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
     discard fd.tcgetattr(addr mode)
-    mode.c_iflag = mode.c_iflag and not Cflag(BRKINT or ICRNL or INPCK or
-      ISTRIP or IXON)
-    mode.c_oflag = mode.c_oflag and not Cflag(OPOST)
-    mode.c_cflag = (mode.c_cflag and not Cflag(CSIZE or PARENB)) or CS8
-    mode.c_lflag = mode.c_lflag and not Cflag(ECHO or ICANON or IEXTEN or ISIG)
+    mode.c_iflag = bitand(
+      mode.c_iflag,
+      bitnot(Cflag(BRKINT.bitor(ICRNL).bitor(INPCK).bitor(ISTRIP).bitor(IXON))))
+    mode.c_oflag = bitand(mode.c_oflag, bitnot(Cflag(OPOST)))
+    mode.c_cflag = bitor(
+      bitand(mode.c_cflag, bitnot(Cflag(bitor(CSIZE, PARENB)))),
+      CS8)
+    mode.c_lflag = bitand(mode.c_lflag, bitnot(Cflag(ECHO.bitor(ICANON).bitor(IEXTEN).bitor(ISIG))))
     mode.c_cc[VMIN] = 1.cuchar
     mode.c_cc[VTIME] = 0.cuchar
     discard fd.tcsetattr(time, addr mode)
@@ -805,7 +808,7 @@ else:
     var cur, old: Termios
     discard fd.tcgetattr(cur.addr)
     old = cur
-    cur.c_lflag = cur.c_lflag and not Cflag(ECHO)
+    cur.c_lflag = bitand(cur.c_lflag, bitnot(Cflag(ECHO)))
     discard fd.tcsetattr(TCSADRAIN, cur.addr)
     stdout.write prompt
     result = stdin.readLine(password)

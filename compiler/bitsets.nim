@@ -41,23 +41,24 @@ proc bitSetIncl(x: var TBitSet, elem: BiggestInt) =
       toU8(int(1 shl (elem mod ElemSize)))
 
 proc bitSetExcl(x: var TBitSet, elem: BiggestInt) =
-  x[int(elem div ElemSize)] = x[int(elem div ElemSize)] and
-      not toU8(int(1 shl (elem mod ElemSize)))
+  x[int(elem div ElemSize)] = bitand(
+    x[int(elem div ElemSize)],
+    bitnot(toU8(int(1 shl (elem mod ElemSize))))
 
 proc bitSetInit(b: var TBitSet, length: int) =
   newSeq(b, length)
 
 proc bitSetUnion(x: var TBitSet, y: TBitSet) =
-  for i in 0 .. high(x): x[i] = x[i] or y[i]
+  for i in 0 .. high(x): x[i] = bitor(x[i], y[i])
 
 proc bitSetDiff(x: var TBitSet, y: TBitSet) =
-  for i in 0 .. high(x): x[i] = x[i] and not y[i]
+  for i in 0 .. high(x): x[i] = bitand(x[i], bitnot(y[i]))
 
 proc bitSetSymDiff(x: var TBitSet, y: TBitSet) =
-  for i in 0 .. high(x): x[i] = x[i] xor y[i]
+  for i in 0 .. high(x): x[i] = bitxor(x[i], y[i])
 
 proc bitSetIntersect(x: var TBitSet, y: TBitSet) =
-  for i in 0 .. high(x): x[i] = x[i] and y[i]
+  for i in 0 .. high(x): x[i] = bitand(x[i], y[i])
 
 proc bitSetEquals(x, y: TBitSet): bool =
   for i in 0 .. high(x):
@@ -67,7 +68,7 @@ proc bitSetEquals(x, y: TBitSet): bool =
 
 proc bitSetContains(x, y: TBitSet): bool =
   for i in 0 .. high(x):
-    if (x[i] and not y[i]) != int8(0):
+    if bitand(x[i], bitnot(y[i])) != int8(0):
       return false
   result = true
 
@@ -77,14 +78,14 @@ const populationCount: array[low(int8)..high(int8), int8] = block:
 
     proc countSetBits(x: uint8): uint8 =
       return
-        ( x and 0b00000001'u8) +
-        ((x and 0b00000010'u8) shr 1) +
-        ((x and 0b00000100'u8) shr 2) +
-        ((x and 0b00001000'u8) shr 3) +
-        ((x and 0b00010000'u8) shr 4) +
-        ((x and 0b00100000'u8) shr 5) +
-        ((x and 0b01000000'u8) shr 6) +
-        ((x and 0b10000000'u8) shr 7)
+         bitant(x, 0b00000001'u8) +
+        (bitand(x, 0b00000010'u8) shr 1) +
+        (bitand(x, 0b00000100'u8) shr 2) +
+        (bitand(x, 0b00001000'u8) shr 3) +
+        (bitand(x, 0b00010000'u8) shr 4) +
+        (bitand(x, 0b00100000'u8) shr 5) +
+        (bitand(x, 0b01000000'u8) shr 6) +
+        (bitand(x, 0b10000000'u8) shr 7)
 
 
     for it in low(int8)..high(int8):

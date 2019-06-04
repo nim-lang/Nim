@@ -68,7 +68,7 @@ proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = D
     let b = next(it, x)
     if (state shr 1 == 0) and isSlash(x, b):
       result.add dirSep
-      state = state or 1
+      state = bitor(state, 1)
     elif isDotDot(x, b):
       if (state shr 1) >= 1:
         var d = result.len

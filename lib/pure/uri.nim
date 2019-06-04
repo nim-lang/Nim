@@ -93,9 +93,9 @@ proc decodeUrl*(s: string, decodePlus=true): string =
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
   proc handleHexChar(c: char, x: var int) {.inline.} =
     case c
-    of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-    of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-    of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
+    of '0'..'9': x = bitor(x shl 4, ord(c) - ord('0'))
+    of 'a'..'f': x = bitor(x shl 4, ord(c) - ord('a') + 10)
+    of 'A'..'F': x = bitor(x shl 4, ord(c) - ord('A') + 10)
     else: assert(false)
 
   result = newString(s.len)

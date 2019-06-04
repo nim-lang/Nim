@@ -34,9 +34,9 @@ proc hashString(s: string): int {.compilerproc.} =
   for i in 0..len(s)-1:
     h = h + uint(s[i])
     h = h + h shl 10
-    h = h xor (h shr 6)
+    h = bitxor(h, h shr 6)
   h = h + h shl 3
-  h = h xor (h shr 11)
+  h = bitxor(h, h shr 11)
   h = h + h shl 15
   result = cast[int](h)
 

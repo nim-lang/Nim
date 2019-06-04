@@ -190,7 +190,7 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
     var step = len shr 1
     var cmpRes: int
     while step > 0:
-      let i = result or step
+      let i = bitor(result, step)
       cmpRes = cmp(a[i], key)
       if cmpRes == 0:
         return i

@@ -64,7 +64,7 @@ proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   let val = cast[uint](val)
   var res = h + val
   res = res + res shl 10
-  res = res xor (res shr 6)
+  res = bitxor(res, res shr 6)
   result = cast[Hash](res)
 
 proc `!$`*(h: Hash): Hash {.inline.} =
@@ -73,7 +73,7 @@ proc `!$`*(h: Hash): Hash {.inline.} =
   ## This is only needed if you need to implement a hash proc for a new datatype.
   let h = cast[uint](h) # Hash is practically unsigned.
   var res = h + h shl 3
-  res = res xor (res shr 11)
+  res = bitxor(res, res shr 11)
   res = res + res shl 15
   result = cast[Hash](res)
 
@@ -164,7 +164,7 @@ template hashImpl(result: Hash, x: typed, start, stop: int) =
     when nimvm:
       # we cannot cast in VM, so we do it manually
       for j in countdown(stepsize-1, 0):
-        n = (n shl (8*elementSize)) or ord(x[i+j])
+        n = bitor(n shl (8*elementSize), ord(x[i+j]))
     else:
       n = cast[ptr Hash](unsafeAddr x[i])[]
     result = result !& n

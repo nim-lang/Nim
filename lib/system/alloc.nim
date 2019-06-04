@@ -144,13 +144,13 @@ proc msbit(x: uint32): int {.inline.} =
   result = int(fsLookupTable[byte(x shr a)]) + a
 
 proc lsbit(x: uint32): int {.inline.} =
-  msbit(x and ((not x) + 1))
+  msbit(bitand(x, bitnot(x) + 1))
 
 proc setBit(nr: int; dest: var uint32) {.inline.} =
-  dest = dest or (1u32 shl (nr and 0x1f))
+  dest = dest.bitor(1u32 shl (nr and 0x1f))
 
 proc clearBit(nr: int; dest: var uint32) {.inline.} =
-  dest = dest and not (1u32 shl (nr and 0x1f))
+  dest = dest.bitand(bitnot(1u32 shl (nr and 0x1f)))
 
 proc mappingSearch(r, fl, sl: var int) {.inline.} =
   #let t = (1 shl (msbit(uint32 r) - MaxLog2Sli)) - 1
@@ -158,7 +158,7 @@ proc mappingSearch(r, fl, sl: var int) {.inline.} =
   # PageSize alignment:
   let t = roundup((1 shl (msbit(uint32 r) - MaxLog2Sli)), PageSize) - 1
   r = r + t
-  r = r and not t
+  r = r.bitand(bitnot(t))
   r = min(r, MaxBigChunkSize)
   fl = msbit(uint32 r)
   sl = (r shr (fl - MaxLog2Sli)) - MaxSli
@@ -177,13 +177,13 @@ proc mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
 template mat(): untyped = a.matrix[fl][sl]
 
 proc findSuitableBlock(a: MemRegion; fl, sl: var int): PBigChunk {.inline.} =
-  let tmp = a.slBitmap[fl] and (not 0u32 shl sl)
+  let tmp = bitand(a.slBitmap[fl], bitnot(0u32) shl sl)
   result = nil
   if tmp != 0:
     sl = lsbit(tmp)
     result = mat()
   else:
-    fl = lsbit(a.flBitmap and (not 0u32 shl (fl + 1)))
+    fl = lsbit(bitand(a.flBitmap, bitnot(0u32) shl (fl + 1)))
     if fl > 0:
       sl = lsbit(a.slBitmap[fl])
       result = mat()
@@ -332,21 +332,22 @@ proc contains(s: IntSet, key: int): bool =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
-    result = (t.bits[u shr IntShift] and (uint(1) shl (u and IntMask))) != 0
+    result = bitand(t.bits[u shr IntShift], uint(1) shl bitand(u, IntMask)) != 0
   else:
     result = false
 
 proc incl(a: var MemRegion, s: var IntSet, key: int) =
   var t = intSetPut(a, s, key shr TrunkShift)
   var u = key and TrunkMask
-  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (uint(1) shl (u and IntMask))
+  t.bits[u shr IntShift] = bitor(t.bits[u shr IntShift], uint(1) shl (u and IntMask))
 
 proc excl(s: var IntSet, key: int) =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
-    t.bits[u shr IntShift] = t.bits[u shr IntShift] and not
-        (uint(1) shl (u and IntMask))
+    t.bits[u shr IntShift] = bitand(
+      t.bits[u shr IntShift],
+      bitnot(uint(1) shl bitand(u, IntMask)))
 
 iterator elements(t: IntSet): int {.inline.} =
   # while traversing it is forbidden to change the set!
@@ -359,8 +360,8 @@ iterator elements(t: IntSet): int {.inline.} =
         # modifying operations are not allowed during traversation
         var j = 0
         while w != 0:         # test all remaining bits for zero
-          if (w and 1) != 0:  # the bit is set!
-            yield (r.key shl TrunkShift) or (i shl IntShift +% j)
+          if bitand(w, 1) != 0:  # the bit is set!
+            yield bitor(r.key shl TrunkShift, i shl IntShift +% j)
           inc(j)
           w = w shr 1
         inc(i)
@@ -407,7 +408,7 @@ proc pageIndex(p: pointer): int {.inline.} =
   result = cast[ByteAddress](p) shr PageShift
 
 proc pageAddr(p: pointer): PChunk {.inline.} =
-  result = cast[PChunk](cast[ByteAddress](p) and not PageMask)
+  result = cast[PChunk](bitand(cast[ByteAddress](p), bitnot(PageMask)))
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
 when false:
@@ -466,7 +467,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   var next = cast[PChunk](nxt)
   if pageIndex(next) in a.chunkStarts:
     #echo("Next already allocated!")
-    next.prevSize = size or (next.prevSize and 1)
+    next.prevSize = bitor(size, bitand(next.prevSize, 1))
   # set result.prevSize:
   var lastSize = if a.lastSize != 0: a.lastSize else: PageSize
   var prv = cast[ByteAddress](result) -% lastSize
@@ -474,9 +475,9 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   var prev = cast[PChunk](prv)
   if pageIndex(prev) in a.chunkStarts and prev.size == lastSize:
     #echo("Prev already allocated!")
-    result.prevSize = lastSize or (result.prevSize and 1)
+    result.prevSize = bitor(lastSize, bitand(result.prevSize, 1))
   else:
-    result.prevSize = 0 or (result.prevSize and 1) # unknown
+    result.prevSize = bitor(0, bitand(result.prevSize, 1)) # unknown
     # but do not overwrite 'used' field
   a.lastSize = size # for next request
   sysAssert((cast[int](result) and PageMask) == 0, "requestOschunks: unaligned chunk")
@@ -518,7 +519,7 @@ proc updatePrevSize(a: var MemRegion, c: PBigChunk,
   var ri = cast[PChunk](cast[ByteAddress](c) +% c.size)
   sysAssert((cast[ByteAddress](ri) and PageMask) == 0, "updatePrevSize")
   if isAccessible(a, ri):
-    ri.prevSize = prevSize or (ri.prevSize and 1)
+    ri.prevSize = bitor(prevSize, bitand(ri.prevSize, 1))
 
 proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   result = cast[PBigChunk](cast[ByteAddress](c) +% size)
@@ -545,7 +546,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
   var c = c
   sysAssert(c.size >= PageSize, "freeBigChunk")
   inc(a.freeMem, c.size)
-  c.prevSize = c.prevSize and not 1  # set 'used' to false
+  c.prevSize = bitand(c.prevSize, bitnot(1))  # set 'used' to false
   when coalescLeft:
     let prevSize = c.prevSize
     if prevSize != 0:

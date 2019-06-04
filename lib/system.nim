@@ -676,7 +676,7 @@ when not defined(JS) and not defined(gcDestructors):
 when not defined(JS) and not defined(nimscript):
   when not defined(gcDestructors):
     template space(s: PGenericSeq): int {.dirty.} =
-      s.reserved and not (seqShallowFlag or strlitFlag)
+      bitand(s.reserved, bitnot(bitor(seqShallowFlag, strlitFlag)))
   when not defined(nimV2):
     include "system/hti"
 

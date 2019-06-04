@@ -463,7 +463,7 @@ proc hash*(n: JsonNode): Hash =
 
 proc hash*(n: OrderedTable[string, JsonNode]): Hash =
   for key, val in n:
-    result = result xor (hash(key) !& hash(val))
+    result = bitxor(result, hash(key) !& hash(val))
   result = !$result
 
 proc len*(n: JsonNode): int =

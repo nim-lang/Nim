@@ -713,7 +713,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bVal = regs[rb].intVal
         cVal = regs[rc].intVal
         sum = bVal +% cVal
-      if (sum xor bVal) >= 0 or (sum xor cVal) >= 0:
+      if bitxor(sum, bVal) >= 0 or bitxor(sum, cVal) >= 0:
         regs[ra].intVal = sum
       else:
         stackTrace(c, tos, pc, errOverOrUnderflow)
@@ -725,7 +725,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bVal = regs[rb].intVal
         cVal = imm
         sum = bVal +% cVal
-      if (sum xor bVal) >= 0 or (sum xor cVal) >= 0:
+      if bitxor(sum, bVal) >= 0 or bitxor(sum, cVal) >= 0:
         regs[ra].intVal = sum
       else:
         stackTrace(c, tos, pc, errOverOrUnderflow)
@@ -735,7 +735,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bVal = regs[rb].intVal
         cVal = regs[rc].intVal
         diff = bVal -% cVal
-      if (diff xor bVal) >= 0 or (diff xor not cVal) >= 0:
+      if bitxor(diff, bVal) >= 0 or bitxor(diff, bitnot(cVal)) >= 0:
         regs[ra].intVal = diff
       else:
         stackTrace(c, tos, pc, errOverOrUnderflow)
@@ -745,7 +745,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bVal = regs[rb].intVal
         cVal = imm
         diff = bVal -% cVal
-      if (diff xor bVal) >= 0 or (diff xor not cVal) >= 0:
+      if bitxor(diff, bVal) >= 0 or bitxor(diff, bitnot(cVal)) >= 0:
         regs[ra].intVal = diff
       else:
         stackTrace(c, tos, pc, errOverOrUnderflow)
@@ -833,13 +833,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ashr(regs[rb].intVal, regs[rc].intVal)
     of opcBitandInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal and regs[rc].intVal
+      regs[ra].intVal = bitand(regs[rb].intVal, regs[rc].intVal)
     of opcBitorInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal or regs[rc].intVal
+      regs[ra].intVal = bitor(regs[rb].intVal, regs[rc].intVal)
     of opcBitxorInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal xor regs[rc].intVal
+      regs[ra].intVal = bitxor(regs[rb].intVal, regs[rc].intVal)
     of opcAddu:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal +% regs[rc].intVal
@@ -926,7 +926,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcBitnotInt:
       decodeB(rkInt)
       assert regs[rb].kind == rkInt
-      regs[ra].intVal = not regs[rb].intVal
+      regs[ra].intVal = bitnot(regs[rb].intVal)
     of opcEqStr:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].node.strVal == regs[rc].node.strVal)

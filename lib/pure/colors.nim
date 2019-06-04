@@ -32,7 +32,7 @@ template extract(a: Color, r, g, b: untyped) =
   var b = a.int and 0xff
 
 template rawRGB(r, g, b: int): Color =
-  Color(r shl 16 or g shl 8 or b)
+  Color(bitor(bitor(r shl 16, g shl 8), b))
 
 template colorOp(op): Color =
   extract(a, ar, ag, ab)

@@ -150,7 +150,7 @@ proc contains(s: CellSet, cell: PCell): bool =
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
     u = (u mod PageSize) div MemAlign
-    result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
+    result = bitand(t.bits[u shr IntShift], 1 shl bitand(u, IntMask)) != 0
   else:
     result = false
 
@@ -158,7 +158,7 @@ proc incl(s: var CellSet, cell: PCell) {.noinline.} =
   var u = cast[uint](cell)
   var t = cellSetPut(s, u shr PageShift)
   u = (u mod PageSize) div MemAlign
-  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
+  t.bits[u shr IntShift] = bitor(t.bits[u shr IntShift], 1 shl bitand(u, IntMask))
 
 proc excl(s: var CellSet, cell: PCell) =
   var u = cast[uint](cell)
@@ -166,17 +166,18 @@ proc excl(s: var CellSet, cell: PCell) =
   if t != nil:
     u = (u mod PageSize) div MemAlign
     t.bits[u shr IntShift] = (t.bits[u shr IntShift] and
-                              not (1 shl (u and IntMask)))
+                              bitnot(1 shl bitand(u, IntMask)))
 
 proc containsOrIncl(s: var CellSet, cell: PCell): bool =
   var u = cast[uint](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
     u = (u mod PageSize) div MemAlign
-    result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
+    result = bitand(t.bits[u shr IntShift], 1 shl bitand(u, IntMask)) != 0
     if not result:
-      t.bits[u shr IntShift] = t.bits[u shr IntShift] or
-          (1 shl (u and IntMask))
+      t.bits[u shr IntShift] = bitor(
+        t.bits[u shr IntShift],
+        1 shl bitand(u, IntMask))
   else:
     incl(s, cell)
     result = false
@@ -192,8 +193,7 @@ iterator elements(t: CellSet): PCell {.inline.} =
       var j: uint = 0
       while w != 0:         # test all remaining bits for zero
         if (w and 1) != 0:  # the bit is set!
-          yield cast[PCell]((r.key shl PageShift) or
-                              (i shl IntShift + j) * MemAlign)
+          yield cast[PCell](bitor(r.key shl PageShift,(i shl IntShift + j) * MemAlign))
         inc(j)
         w = w shr 1
       inc(i)
@@ -242,12 +242,11 @@ iterator elementsExcept(t, s: CellSet): PCell {.inline.} =
     while int(i) <= high(r.bits):
       var w = r.bits[i]
       if ss != nil:
-        w = w and not ss.bits[i]
+        w = bitand(w, bitnot(ss.bits[i]))
       var j:uint = 0
       while w != 0:
         if (w and 1) != 0:
-          yield cast[PCell]((r.key shl PageShift) or
-                              (i shl IntShift + j) * MemAlign)
+          yield cast[PCell](bitor(r.key shl PageShift, (i shl IntShift + j) * MemAlign))
         inc(j)
         w = w shr 1
       inc(i)

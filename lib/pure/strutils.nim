@@ -897,7 +897,7 @@ proc toBin*(x: BiggestInt, len: Positive): string {.noSideEffect,
   assert(len > 0)
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = chr(int((BiggestUInt(x) and mask) shr shift) + ord('0'))
+    result[j] = chr(int(bitand(BiggestUInt(x), mask) shr shift) + ord('0'))
     inc shift
     mask = mask shl BiggestUInt(1)
 
@@ -922,7 +922,7 @@ proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
   assert(len > 0)
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = chr(int((BiggestUInt(x) and mask) shr shift) + ord('0'))
+    result[j] = chr(int(bitand(BiggestUInt(x), mask) shr shift) + ord('0'))
     inc shift, 3
     mask = mask shl BiggestUInt(3)
 
@@ -945,7 +945,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     n = x
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = HexChars[int(n and 0xF)]
+    result[j] = HexChars[int(bitand(n, 0xF))]
     n = n shr 4
     # handle negative overflow
     if n == 0 and x < 0: n = -1

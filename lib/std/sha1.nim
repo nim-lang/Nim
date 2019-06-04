@@ -60,9 +60,9 @@ proc newSha1State(): Sha1State =
   result.state[3] = 0x10325476'u32
   result.state[4] = 0xC3D2E1F0'u32
 
-template ror27(val: uint32): uint32 = (val shr 27) or (val shl  5)
-template ror2 (val: uint32): uint32 = (val shr  2) or (val shl 30)
-template ror31(val: uint32): uint32 = (val shr 31) or (val shl  1)
+template ror27(val: uint32): uint32 = bitor(val shr 27, val shl  5)
+template ror2 (val: uint32): uint32 = bitor(val shr  2, val shl 30)
+template ror31(val: uint32): uint32 = bitor(val shr 31, val shl  1)
 
 proc transform(ctx: var Sha1State) =
   var W: array[80, uint32]
@@ -77,7 +77,7 @@ proc transform(ctx: var Sha1State) =
 
   template SHA_F1(A, B, C, D, E, t: untyped) =
     bigEndian32(addr W[t], addr ctx.buf[t * 4])
-    E += ror27(A) + W[t] + (D xor (B and (C xor D))) + 0x5A827999'u32
+    E += ror27(A) + W[t] + bitxor(D, bitand(B, bitxor(C, D))) + 0x5A827999'u32
     B = ror2(B)
 
   while t < 15:
@@ -90,8 +90,8 @@ proc transform(ctx: var Sha1State) =
   SHA_F1(A, B, C, D, E, t + 0) # 16th one, t == 15
 
   template SHA_F11(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + (D xor (B and (C xor D))) + 0x5A827999'u32
+    W[t] = ror31(W[t-3].bitxor(W[t-8]).bitxor(W[t-14]).bitxor(W[t-16]))
+    E += ror27(A) + W[t] + bitxor(D, bitand(B, bitxor(C, D))) + 0x5A827999'u32
     B = ror2(B)
 
   SHA_F11(E, A, B, C, D, t + 1)
@@ -100,8 +100,8 @@ proc transform(ctx: var Sha1State) =
   SHA_F11(B, C, D, E, A, t + 4)
 
   template SHA_F2(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + (B xor C xor D) + 0x6ED9EBA1'u32
+    W[t] = ror31(W[t-3].bitxor(W[t-8]).bitxor(W[t-14]).bitxor(W[t-16]))
+    E += ror27(A) + W[t] + bitxor(B, C).bitxor(D) + 0x6ED9EBA1'u32
     B = ror2(B)
 
   t = 20
@@ -114,8 +114,8 @@ proc transform(ctx: var Sha1State) =
     t += 5
 
   template SHA_F3(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + ((B and C) or (D and (B or C))) + 0x8F1BBCDC'u32
+    W[t] = ror31(W[t-3].bitxor(W[t-8]).bitxor(W[t-14]).bitxor(W[t-16]))
+    E += ror27(A) + W[t] + bitor(bitand(B, C), bitand(D, bitor(B, C))) + 0x8F1BBCDC'u32
     B = ror2(B)
 
   while t < 60:
@@ -127,8 +127,8 @@ proc transform(ctx: var Sha1State) =
     t += 5
 
   template SHA_F4(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + (B xor C xor D) + 0xCA62C1D6'u32
+    W[t] = ror31(W[t-3].bitxor(W[t-8]).bitxor(W[t-14]).bitxor(W[t-16]))
+    E += ror27(A) + W[t] + bitxor(B, C).bitxor(D) + 0xCA62C1D6'u32
     B = ror2(B)
 
   while t < 80:

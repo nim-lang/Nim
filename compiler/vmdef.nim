@@ -254,10 +254,10 @@ const
 # flag is used to signal opcSeqLen if node is NimNode.
 const nimNodeFlag* = 16
 
-template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
-template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
-template regB*(x: TInstr): TRegister = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
+template opcode*(x: TInstr): TOpcode = TOpcode(bitand(x.uint32, 0xff'u32))
+template regA*(x: TInstr): TRegister = TRegister(bitand(x.uint32 shr 8'u32, 0xff'u32))
+template regB*(x: TInstr): TRegister = TRegister(bitand(x.uint32 shr 16'u32, 0xff'u32))
 template regC*(x: TInstr): TRegister = TRegister(x.uint32 shr 24'u32)
-template regBx*(x: TInstr): int = (x.uint32 shr 16'u32).int
+template regBx*(x: TInstr): int = int(x.uint32 shr 16'u32)
 
 template jmpDiff*(x: TInstr): int = regBx(x) - wordExcess
