@@ -129,8 +129,10 @@ proc formatUnsafeBranchVals(t: PType, diffVals: IntSet): string =
 
 proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
   for i in countdown(c.p.caseContext.high, 0):
-    let (caseNode, index) = c.p.caseContext[i]
-    if caseNode[0].kind == nkSym and caseNode[0].sym == discrimator.sym:
+    let
+      (caseNode, index) = c.p.caseContext[i]
+      skipped = caseNode[0].skipHidden
+    if skipped.kind == nkSym and skipped.sym == discrimator.sym:
       return (caseNode, index)
 
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
@@ -252,7 +254,8 @@ proc semConstructFields(c: PContext, recNode: PNode,
         let (ctorCase, ctorIdx) = findUsefulCaseContext(c, discriminatorVal)
         if ctorCase == nil:
           badDiscriminatorError()
-        elif discriminatorVal.sym.kind != skLet:
+        elif discriminatorVal.sym.kind notin {skLet, skParam} or
+            discriminatorVal.sym.typ.kind == tyVar:
           localError(c.config, discriminatorVal.info,
             "runtime discriminator must be immutable if branch fields are " &
             "initialized, a 'let' binding is required.")
