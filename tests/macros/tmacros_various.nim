@@ -19,6 +19,8 @@ proc foo[T; N: static[int]]()
 a[0]: 42
 a[1]: 45
 x: some string
+([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
+([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 '''
 """
 
@@ -114,3 +116,29 @@ block tdebugstmt:
   a[1] = 45
 
   debug(a[0], a[1], x)
+
+const
+  pairs = {"key": "val", "keyB": "2"}
+
+macro bilookups(arg: static[openArray[(string, string)]]): untyped =
+  var a = newTree(nnkBracket)
+  var b = newTree(nnkBracket)
+  for (k, v) in items(arg):
+    a.add(newTree(nnkTupleConstr, newLit k, newLit v))
+    b.add(newTree(nnkTupleConstr, newLit v, newLit k))
+  result = newTree(nnkTupleConstr, a, b)
+
+macro bilookups2(arg: untyped): untyped =
+  var a = newTree(nnkBracket)
+  var b = newTree(nnkBracket)
+  arg.expectKind(nnkTableConstr)
+  for x in items(arg):
+    x.expectKind(nnkExprColonExpr)
+    a.add(newTree(nnkTupleConstr, x[0], x[1]))
+    b.add(newTree(nnkTupleConstr, x[1], x[0]))
+  result = newTree(nnkTupleConstr, a, b)
+
+const cnst1 = bilookups(pairs)
+echo cnst1
+const cnst2 = bilookups2({"key": "val", "keyB": "2"})
+echo cnst2
