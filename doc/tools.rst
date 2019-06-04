@@ -13,7 +13,7 @@ The standard distribution ships with the following tools:
     and obtain useful information like definition of symbols or suggestions for
     completion.
 
-- | `C2nim <https://nim-lang.org/docs/c2nim.html>`_
+- | `C2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_
   | C to Nim source converter. Translates C header files to Nim.
 
 - | `nimgrep <nimgrep.html>`_
