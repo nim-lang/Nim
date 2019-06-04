@@ -4828,16 +4828,8 @@ While macros enable advanced compile-time code transformations, they
 cannot change Nim's syntax. However, this is no real restriction because
 Nim's syntax is flexible enough anyway.
 
-To write macros, one needs to know how the Nim concrete syntax is converted
-to an AST.
-
-There are two ways to invoke a macro:
-(1) invoking a macro like a procedure call (`expression macros`)
-(2) invoking a macro with the special ``macrostmt`` syntax (`statement macros`)
-
-
-Expression Macros
------------------
+Debug Example
+-------------
 
 The following example implements a powerful ``debug`` command that accepts a
 variable number of arguments:
@@ -4943,22 +4935,23 @@ However, the symbols ``write``, ``writeLine`` and ``stdout`` are already bound
 and are not looked up again. As the example shows, ``bindSym`` does work with
 overloaded symbols implicitly.
 
+Case-Of Macro
+-------------
 
-Statement Macros
-----------------
-
-Statement macros are defined just as expression macros. However, they are
-invoked by an expression following a colon.
-
-The following example outlines a macro that generates a lexical analyzer from
-regular expressions:
+In Nim it is possible to have a macro with the syntax of a *case-of*
+expression just with the difference that all of branches are passed to
+and processed by the macro implementation. It is then up the macro
+implementation to transform the *of-branches* into a valid Nim
+statement. The following example should show how this feature could be
+used for a lexical analyzer.
 
 .. code-block:: nim
   import macros
 
-  macro case_token(n: untyped): untyped =
+  macro case_token(args: varargs[untyped]): untyped =
+    echo args.treeRepr
     # creates a lexical analyzer from regular expressions
-    # ... (implementation is an exercise for the reader :-)
+    # ... (implementation is an exercise for the reader ;-)
     discard
 
   case_token: # this colon tells the parser it is a macro statement
@@ -5001,8 +4994,8 @@ This is a simple syntactic transformation into:
     proc p() = discard
 
 
-For loop macros
----------------
+For Loop Macro
+--------------
 
 A macro that takes as its only input parameter an expression of the special
 type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
@@ -5197,8 +5190,10 @@ Once bound, type params can appear in the rest of the proc signature:
   declareVariableWithType int, 42
 
 
-Overload resolution can be further influenced by constraining the set of
-types that will match the type param:
+Overload resolution can be further influenced by constraining the set
+of types that will match the type param. This works in practice to
+attaching attributes to types via templates. The constraint can be a
+concrete type or a type class.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -5211,14 +5206,34 @@ types that will match the type param:
   when false:
     var s = string.maxval # error, maxval is not implemented for string
 
-The constraint can be a concrete type or a type class.
+  template isNumber(t: typedesc[object]): string = "Don't think so."
+  template isNumber(t: typedesc[SomeInteger]): string = "Yes!"
+  template isNumber(t: typedesc[SomeFloat]): string = "Maybe, could be NaN."
 
+  echo "is int a number? ", isNumber(int)
+  echo "is float a number? ", isNumber(float)
+  echo "is RootObj a number? ", isNumber(RootObj)
+
+Passing ``typedesc`` almost identical, just with the differences that
+the macro is not instantiated generically. The type expression is
+simply passed as a ``NimNode`` to the macro, like everything else.
+
+.. code-block:: nim
+
+  import macros
+
+  macro forwardType(arg: typedesc): typedesc =
+    # ``arg`` is of type ``NimNode``
+    let tmp: NimNode = arg
+    result = tmp
+
+  var tmp: forwardType(int)
 
 typeof operator
 ---------------
 
-**Note**: ``typeof(x)`` can also be written as ``type(x)`` but ``type(x)``
-is discouraged.
+**Note**: ``typeof(x)`` can for historical reasons also be written as
+``type(x)`` but ``type(x)`` is discouraged.
 
 You can obtain the type of a given expression by constructing a ``typeof``
 value from it (in many other languages this is known as the `typeof`:idx:
@@ -6989,5 +7004,3 @@ Threads and exceptions
 The interaction between threads and exceptions is simple: A *handled* exception
 in one thread cannot affect any other thread. However, an *unhandled* exception
 in one thread terminates the whole *process*!
-
-

@@ -52,6 +52,11 @@
 - With the exception of `uint` and `uint64`, conversion to unsigned types
   are now range checked during runtime.
 
+- Macro arguments of type `typedesc` are now passed in to the macro as
+  `NimNode` like every other type. Use either `typed` or
+  `static[typedesc]` for a behavior that is identical in new and old
+  Nim.
+
 
 #### Breaking changes in the standard library
 
