@@ -869,8 +869,8 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
       var a = copySym(param)
       a.typ = staticType.base
       addDecl(c, a)
-    elif param.typ != nil and param.typ.kind == tyTypeDesc:
-      addDecl(c, param)
+      #elif param.typ != nil and param.typ.kind == tyTypeDesc:
+      #  addDecl(c, param)
     else:
       # within a macro, every param has the type NimNode!
       let nn = getSysSym(c.graph, param.info, "NimNode")
