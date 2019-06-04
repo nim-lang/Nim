@@ -56,7 +56,8 @@
   `NimNode` like every other type. Use either `typed` or
   `static[typedesc]` for a behavior that is identical in new and old
   Nim.
-
+  RFC: `Pass typedesc as NimNode to macros
+  <https://github.com/nim-lang/RFCs/issues/148>`_.
 
 #### Breaking changes in the standard library
 
