@@ -1786,25 +1786,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let by = regs[instr.regB].intVal
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let by = regs[rc].intVal
       let v = getOrDefault(g.cacheCounters, destKey)
       g.cacheCounters[destKey] = v+by
       recordInc(c, c.debug[pc], destKey, by)
     of opcNcsAdd:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let val = regs[instr.regB].node
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
-        # newNodeI(nkStmtList, c.debug[pc])
       else:
         g.cacheSeqs[destKey].add val
       recordAdd(c, c.debug[pc], destKey, val)
     of opcNcsIncl:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let val = regs[instr.regB].node
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
       else:
