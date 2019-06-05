@@ -1192,13 +1192,13 @@ proc `not`*(x: int): int {.magic: "BitnotI", noSideEffect, deprecated: "Use ``bi
   ##   echo not b # => -1
   ##   echo not c # => 64535
   ##   echo not d # => -1001
-proc `not`*(x: int8): int8 {.magic: "BitnotI", noSideEffect, deprecated: "Use ``bitnot`` proc instead.".}
-proc `not`*(x: int16): int16 {.magic: "BitnotI", noSideEffect, deprecated: "Use ``bitnot`` proc instead.".}
-proc `not`*(x: int32): int32 {.magic: "BitnotI", noSideEffect, deprecated: "Use ``bitnot`` proc instead.".}
+proc `not`*(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
+proc `not`*(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
+proc `not`*(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
 when defined(nimnomagic64):
-  proc `not`*(x: int64): int64 {.magic: "BitnotI", noSideEffect, deprecated: "Use ``bitnot`` proc instead.".}
+  proc `not`*(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
 else:
-  proc `not`*(x: int64): int64 {.magic: "BitnotI64", noSideEffect, deprecated: "Use ``bitnot`` proc instead.".}
+  proc `not`*(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
 
 proc bitnot*(x: int): int {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
@@ -1380,10 +1380,10 @@ proc `and`*(x, y: int): int {.magic: "BitandI", noSideEffect.}
   ## .. code-block:: Nim
   ##   (0b0011 and 0b0101) == 0b0001
   ##   (0b0111 and 0b1100) == 0b0100
-proc `and`*(x, y: int8): int8 {.magic: "BitandI", noSideEffect, deprecated: "Use ``bitand`` proc instead.".}
-proc `and`*(x, y: int16): int16 {.magic: "BitandI", noSideEffect, deprecated: "Use ``bitand`` proc instead.".}
-proc `and`*(x, y: int32): int32 {.magic: "BitandI", noSideEffect, deprecated: "Use ``bitand`` proc instead.".}
-proc `and`*(x, y: int64): int64 {.magic: "BitandI", noSideEffect, deprecated: "Use ``bitand`` proc instead.".}
+proc `and`*(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
+proc `and`*(x, y: int16): int16 {.magic: "BitandI", noSideEffect.}
+proc `and`*(x, y: int32): int32 {.magic: "BitandI", noSideEffect.}
+proc `and`*(x, y: int64): int64 {.magic: "BitandI", noSideEffect.}
 
 proc bitand*(x, y: int): int {.magic: "BitandI", noSideEffect.}
   ## Computes the `bitwise and` of numbers `x` and `y`.
@@ -1402,10 +1402,10 @@ proc `or`*(x, y: int): int {.magic: "BitorI", noSideEffect, deprecated: "Use ``b
   ## .. code-block:: Nim
   ##   (0b0011 or 0b0101) == 0b0111
   ##   (0b0111 or 0b1100) == 0b1111
-proc `or`*(x, y: int8): int8 {.magic: "BitorI", noSideEffect, deprecated: "Use ``bitor`` proc instead.".}
-proc `or`*(x, y: int16): int16 {.magic: "BitorI", noSideEffect, deprecated: "Use ``bitor`` proc instead.".}
-proc `or`*(x, y: int32): int32 {.magic: "BitorI", noSideEffect, deprecated: "Use ``bitor`` proc instead.".}
-proc `or`*(x, y: int64): int64 {.magic: "BitorI", noSideEffect, deprecated: "Use ``bitor`` proc instead.".}
+proc `or`*(x, y: int8): int8 {.magic: "BitorI", noSideEffect.}
+proc `or`*(x, y: int16): int16 {.magic: "BitorI", noSideEffect.}
+proc `or`*(x, y: int32): int32 {.magic: "BitorI", noSideEffect.}
+proc `or`*(x, y: int64): int64 {.magic: "BitorI", noSideEffect.}
 
 proc bitor*(x, y: int): int {.magic: "BitorI", noSideEffect.}
   ## Computes the `bitwise or` of numbers `x` and `y`.
@@ -1418,16 +1418,16 @@ proc bitor*(x, y: int16): int16 {.magic: "BitorI", noSideEffect.}
 proc bitor*(x, y: int32): int32 {.magic: "BitorI", noSideEffect.}
 proc bitor*(x, y: int64): int64 {.magic: "BitorI", noSideEffect.}
 
-proc `xor`*(x, y: int): int {.magic: "BitxorI", noSideEffect, deprecated: "Use ``bitxor`` proc instead.".}
+proc `xor`*(x, y: int): int {.magic: "BitxorI", noSideEffect.}
   ## Computes the `bitwise xor` of numbers `x` and `y`.
   ##
   ## .. code-block:: Nim
   ##   (0b0011 xor 0b0101) == 0b0110
   ##   (0b0111 xor 0b1100) == 0b1011
-proc `xor`*(x, y: int8): int8 {.magic: "BitxorI", noSideEffect, deprecated: "Use ``bitxor`` proc instead.".}
-proc `xor`*(x, y: int16): int16 {.magic: "BitxorI", noSideEffect, deprecated: "Use ``bitxor`` proc instead.".}
-proc `xor`*(x, y: int32): int32 {.magic: "BitxorI", noSideEffect, deprecated: "Use ``bitxor`` proc instead.".}
-proc `xor`*(x, y: int64): int64 {.magic: "BitxorI", noSideEffect, deprecated: "Use ``bitxor`` proc instead.".}
+proc `xor`*(x, y: int8): int8 {.magic: "BitxorI", noSideEffect.}
+proc `xor`*(x, y: int16): int16 {.magic: "BitxorI", noSideEffect.}
+proc `xor`*(x, y: int32): int32 {.magic: "BitxorI", noSideEffect.}
+proc `xor`*(x, y: int64): int64 {.magic: "BitxorI", noSideEffect.}
 
 proc bitxor*(x, y: int): int {.magic: "BitxorI", noSideEffect.}
   ## Computes the `bitwise xor` of numbers `x` and `y`.
@@ -1519,7 +1519,7 @@ template `>%`*(x, y: untyped): untyped = y <% x
 
 
 # unsigned integer operations:
-proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect, deprecated: "Use ``bitnot`` proc instead.".}
+proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
 
 proc bitnot*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
@@ -1536,19 +1536,19 @@ else:
   proc `shl`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShlI", noSideEffect.}
     ## Computes the `shift left` operation of `x` and `y`.
 
-proc `and`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitandI", noSideEffect, deprecated: "Use ``bitand`` proc instead.".}
+proc `and`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitandI", noSideEffect.}
   ## Computes the `bitwise and` of numbers `x` and `y`.
 
 proc bitand*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitandI", noSideEffect.}
   ## Computes the `bitwise and` of numbers `x` and `y`.
 
-proc `or`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitorI", noSideEffect, deprecated: "Use ``bitor`` proc instead.".}
+proc `or`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitorI", noSideEffect.}
   ## Computes the `bitwise or` of numbers `x` and `y`.
 
 proc bitor*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitorI", noSideEffect.}
   ## Computes the `bitwise or` of numbers `x` and `y`.
 
-proc `xor`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitxorI", noSideEffect, deprecated: "Use ``bitxor`` proc instead.".}
+proc `xor`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitxorI", noSideEffect.}
   ## Computes the `bitwise xor` of numbers `x` and `y`.
 
 proc bitxor*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitxorI", noSideEffect.}
