@@ -1418,9 +1418,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node
-      case a.kind
-      of nkCharLit..nkUInt64Lit: regs[ra].intVal = a.intVal
-      else: stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
+      if a.kind in {nkCharLit..nkUInt64Lit}:
+        regs[ra].intVal = a.intVal
+      elif a.kind == nkSym and a.sym.kind == skEnumField:
+        regs[ra].intVal = a.sym.position
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
     of opcNFloatVal:
       decodeB(rkFloat)
       let a = regs[rb].node
@@ -1692,6 +1695,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind in {nkCharLit..nkUInt64Lit} and
          regs[rb].kind in {rkInt}:
         dest.intVal = regs[rb].intVal
+      elif dest.kind == nkSym and dest.sym.kind == skEnumField:
+        stackTrace(c, tos, pc, "`intVal` cannot be changed for an enum symbol.")
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
     of opcNSetFloatVal:
