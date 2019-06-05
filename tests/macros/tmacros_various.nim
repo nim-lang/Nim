@@ -9,6 +9,7 @@ Infix
       Ident "b"
       Ident "cint"
   NilLit
+macrocache ok
 '''
 
   output: '''
@@ -142,3 +143,54 @@ const cnst1 = bilookups(pairs)
 echo cnst1
 const cnst2 = bilookups2({"key": "val", "keyB": "2"})
 echo cnst2
+
+
+
+# macrocache #11404
+const
+  mcTable = CacheTable"nimTest"
+  mcSeq = CacheSeq"nimTest"
+  mcCounter = CacheCounter"nimTest"
+
+static:
+  doAssert(mcCounter.value == 0) # CacheCounter.value
+  mcCounter.inc                  # CacheCounter.inc
+  doAssert(mcCounter.value == 1) # CacheCounter.value
+
+  let a = newLit(1)
+  let b = newLit(2)
+  let c = newLit(3)
+  let d = newLit(4)
+
+  mcSeq.add a # CacheSeq.add
+  mcSeq.add b # CacheSeq.add
+  mcSeq.add c # CacheSeq.add
+
+  doAssert(mcSeq.len == 3)  # CacheSeq.len
+  doAssert(c in mcSeq)      # CacheSeq.contains
+  doAssert(d notin mcSeq)   # CacheSeq.contains
+
+  mcSeq.incl d              # CacheSeq.incl
+  doAssert(mcSeq.len == 4)  # CacheSeq.len
+
+  mcSeq.incl c              # CacheSeq.incl
+  doAssert(mcSeq.len == 4)  # CacheSeq.len
+
+  doAssert(mcSeq[3] == d)   # CacheSeq.[]
+
+  doAssert(mcSeq.pop() == d)# CacheSeq.pop
+  doAssert(mcSeq.len == 3)  # CacheSeq.len
+
+  doAssert(mcTable.len == 0)  # CacheTable.len
+  mcTable["a"] = a            # CacheTable.[]=
+  doAssert(mcTable.len == 1)  # CacheTable.len
+
+  doAssert(mcTable["a"] == a) # CacheTable.[]
+  doAssert("a" in mcTable)    # CacheTable.contains
+  doAssert(mcTable.hasKey("a"))# CacheTable.hasKey
+
+  for k, v in mcTable:  # CacheTable.items
+    doAssert(k == "a")
+    doAssert(v == a)
+
+  echo "macrocache ok"
