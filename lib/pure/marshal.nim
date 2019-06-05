@@ -375,7 +375,7 @@ when not defined(testing) and isMainModule:
 
   var test3: TestObj
   test3.test = 42
-  test3.test2 = blah
+  test3 = TestObj(test2: blah)
   testit(test3)
 
   var test4: ref tuple[a, b: string]

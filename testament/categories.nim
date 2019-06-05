@@ -647,7 +647,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   writeFile("megatest.nim", megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
+              "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
   proc onStdout(line: string) = echo line
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:

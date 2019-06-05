@@ -165,7 +165,7 @@ proc buildNimble(latest: bool) =
   nimCompile(installDir / "src/nimble.nim", options = "--noNimblePath --nilseqs:on -d:release")
 
 proc bundleNimsuggest() =
-  nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim", options = "-d:release")
+  nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim", options = "-d:release -d:danger")
 
 proc buildVccTool() =
   nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim")
@@ -286,7 +286,7 @@ proc boot(args: string) =
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
   let useCpp = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
-  let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
+  let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
   let nimStart = findStartNim()
@@ -463,7 +463,7 @@ proc runCI(cmd: string) =
   when defined(posix): # appveyor (on windows) didn't run this
     kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release")
+  kochExecFold("Boot in release mode", "boot -d:release -d:danger")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")

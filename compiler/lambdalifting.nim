@@ -480,9 +480,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if n.typ != nil:
       detectCapturedVars(n[namePos], owner, c)
   of nkReturnStmt:
-    if n[0].kind in {nkAsgn, nkFastAsgn}:
-      detectCapturedVars(n[0].sons[1], owner, c)
-    else: assert n[0].kind == nkEmpty
+    detectCapturedVars(n[0], owner, c)
   else:
     for i in 0..<n.len:
       detectCapturedVars(n[i], owner, c)
