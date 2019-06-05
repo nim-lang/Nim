@@ -16,7 +16,7 @@
 ## Similarly, if you hide the cursor, make sure to unhide it with
 ## ``showCursor`` before quitting.
 
-import macros
+import macros, bitops
 import strformat
 from strutils import toLowerAscii, `%`
 import colors, tables

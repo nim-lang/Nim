@@ -378,7 +378,7 @@ else:
               gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
               sp = sp +% sizeof(pointer)
         # Make sure sp is word-aligned
-        sp = bitand(sp, bitnot(sizeof(pointer) - 1))
+        sp = `and`(sp, not(sizeof(pointer) - 1))
         # loop unrolled:
         while sp <% max - 8*sizeof(pointer):
           gcMark(gch, cast[PStackSlice](sp)[0])

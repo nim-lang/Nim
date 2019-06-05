@@ -117,7 +117,7 @@ template gcAssert(cond: bool, msg: string) =
 
 proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
   if (c.refcount and ZctFlag) == 0:
-    c.refcount = bitor(c.refcount, ZctFlag)
+    c.refcount = `or`(c.refcount, ZctFlag)
     add(s, c)
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
@@ -360,7 +360,7 @@ proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
     template replaceZctEntry(i: untyped) =
       c = d[i]
       if c.refcount >=% rcIncrement:
-        c.refcount = bitand(c.refcount, bitnot(ZctFlag))
+        c.refcount = `and`(c.refcount, not(ZctFlag))
         d[i] = res
         return
     if L > 8:
@@ -701,7 +701,7 @@ proc collectZCT(gch: var GcHeap): bool =
     # remove from ZCT:
     gcAssert((c.refcount and ZctFlag) == ZctFlag, "collectZCT")
 
-    c.refcount = bitand(c.refcount, bitnot(ZctFlag))
+    c.refcount = `and`(c.refcount, not(ZctFlag))
     gch.zct.d[0] = gch.zct.d[L[] - 1]
     dec(L[])
     when withRealTime: dec steps

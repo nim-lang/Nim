@@ -73,13 +73,13 @@ when defined(builtinOverflow):
 else:
   proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
     result = a +% b
-    if bitxor(result, a) >= int64(0) or bitxor(result, b) >= int64(0):
+    if `xor`(result, a) >= int64(0) or `xor`(result, b) >= int64(0):
       return result
     raiseOverflow()
 
   proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
     result = a -% b
-    if bitxor(result, a) >= int64(0) or bitxor(result, bitnot(b)) >= int64(0):
+    if `xor`(result, a) >= int64(0) or `xor`(result, not(b)) >= int64(0):
       return result
     raiseOverflow()
 
@@ -332,14 +332,14 @@ when not declared(mulInt) and defined(builtinOverflow):
 when not declared(addInt):
   proc addInt(a, b: int): int {.compilerProc, inline.} =
     result = a +% b
-    if bitxor(result, a) >= 0 or bitxor(result, b) >= 0:
+    if `xor`(result, a) >= 0 or `xor`(result, b) >= 0:
       return result
     raiseOverflow()
 
 when not declared(subInt):
   proc subInt(a, b: int): int {.compilerProc, inline.} =
     result = a -% b
-    if bitxor(result, a) >= 0 or bitxor(result, bitnot(b)) >= 0:
+    if `xor`(result, a) >= 0 or `xor`(result, not(b)) >= 0:
       return result
     raiseOverflow()
 

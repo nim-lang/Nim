@@ -104,13 +104,13 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   else:
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
-      if bitand(ze(a[i div 8]), 1 shl (i mod 8)) != 0:
+      if `and`(ze(a[i div 8]), 1 shl (i mod 8)) != 0:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)
   if typ.size <= 8:
     for i in 0..sizeof(int64)*8-1:
-      if bitand(u, 1'u64 shl uint64(i)) != 0'u64:
+      if `and`(u, 1'u64 shl uint64(i)) != 0'u64:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)

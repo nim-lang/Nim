@@ -55,6 +55,8 @@
 
 include "system/inclrtl"
 
+import bitops
+
 const
   Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}

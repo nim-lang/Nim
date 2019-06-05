@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, trees, nversion, lineinfos, platform, bitsets, types, renderer,
-  options
+  options, bitops
 
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly

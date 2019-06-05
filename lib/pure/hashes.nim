@@ -46,7 +46,7 @@
 
 
 import
-  strutils
+  strutils, bitops
 
 type
   Hash* = int  ## A hash value. Hash tables using these values should

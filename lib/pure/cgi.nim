@@ -29,7 +29,7 @@
 ##    writeLine(stdout, "your password: " & myData["password"])
 ##    writeLine(stdout, "</body></html>")
 
-import strutils, os, strtabs, cookies, uri
+import strutils, os, strtabs, cookies, uri, bitops
 export uri.encodeUrl, uri.decodeUrl
 
 proc handleHexChar(c: char, x: var int) {.inline.} =

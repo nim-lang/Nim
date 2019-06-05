@@ -48,7 +48,7 @@
 include "system/inclrtl"
 
 import
-  strutils, pathnorm
+  strutils, pathnorm, bitops
 
 const weirdTarget = defined(nimscript) or defined(js)
 

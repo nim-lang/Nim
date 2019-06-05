@@ -72,7 +72,7 @@
 ##   easier substring extraction than regular expressions
 
 
-import parseutils
+import parseutils, bitops
 from math import pow, floor, log10
 from algorithm import reverse
 

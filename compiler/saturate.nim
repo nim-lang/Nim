@@ -9,6 +9,8 @@
 
 ## Saturated arithmetic routines. XXX Make part of the stdlib?
 
+import bitops
+
 proc `|+|`*(a, b: BiggestInt): BiggestInt =
   ## saturated addition.
   result = a +% b

@@ -12,7 +12,7 @@
 ## module, but can also be used in its own right.
 
 import
-  strutils, lexbase, streams, unicode
+  strutils, lexbase, streams, unicode, bitops
 
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing

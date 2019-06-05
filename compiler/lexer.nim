@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, lineinfos, pathutils, parseutils
+  wordrecg, lineinfos, pathutils, parseutils, bitops
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning

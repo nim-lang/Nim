@@ -143,7 +143,7 @@ runnableExamples:
 
 import
   hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
-  typetraits, options
+  typetraits, options, bitops
 
 export
   tables.`$`

@@ -29,7 +29,7 @@
 
 import
   strutils, ast, astalgo, types, msgs, renderer, vmdef,
-  trees, intsets, magicsys, options, lowerings, lineinfos, transf
+  trees, intsets, magicsys, options, lowerings, lineinfos, transf, bitops
 import platform
 from os import splitFile
 

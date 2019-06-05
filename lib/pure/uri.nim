@@ -37,7 +37,7 @@
 ##    else:
 ##      echo "Wrong format"
 
-import strutils, parseutils
+import strutils, parseutils, bitops
 type
   Url* = distinct string
 

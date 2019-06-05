@@ -9,7 +9,7 @@
 ## This module implements color handling for Nim. It is used by
 ## the ``graphics`` module.
 
-import strutils
+import strutils, bitops
 from algorithm import binarySearch
 
 type

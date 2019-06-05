@@ -39,6 +39,18 @@ template toUnsigned(x: int32): uint32 = cast[uint32](x)
 template toUnsigned(x: int64): uint64 = cast[uint64](x)
 template toUnsigned(x: int): uint = cast[uint](x)
 
+proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
+  ## Computes the `bitwise complement` of the integer `x`.
+
+proc bitand*[T: SomeInteger](x, y: T): T {.magic: "BitandI", noSideEffect.}
+  ## Computes the `bitwise and` of numbers `x` and `y`.
+
+proc bitor*[T: SomeInteger](x, y: T): T {.magic: "BitorI", noSideEffect.}
+  ## Computes the `bitwise or` of numbers `x` and `y`.
+
+proc bitxor*[T: SomeInteger](x, y: T): T {.magic: "BitxorI", noSideEffect.}
+  ## Computes the `bitwise xor` of numbers `x` and `y`.
+
 template forwardImpl(impl, arg) {.dirty.} =
   when sizeof(x) <= 4:
     when x is SomeSignedInt:

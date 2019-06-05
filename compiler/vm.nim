@@ -16,7 +16,7 @@ import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  modulegraphs, sighashes
+  modulegraphs, sighashes, bitops
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate

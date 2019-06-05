@@ -10,6 +10,8 @@
 # this unit handles Nim sets; it implements bit sets
 # the code here should be reused in the Nim standard library
 
+import bitops
+
 type
   TBitSet* = seq[int8]        # we use byte here to avoid issues with
                               # cross-compiling; uint would be more efficient
@@ -43,7 +45,7 @@ proc bitSetIncl(x: var TBitSet, elem: BiggestInt) =
 proc bitSetExcl(x: var TBitSet, elem: BiggestInt) =
   x[int(elem div ElemSize)] = bitand(
     x[int(elem div ElemSize)],
-    bitnot(toU8(int(1 shl (elem mod ElemSize))))
+    bitnot(toU8(int(1 shl (elem mod ElemSize)))))
 
 proc bitSetInit(b: var TBitSet, length: int) =
   newSeq(b, length)
@@ -78,7 +80,7 @@ const populationCount: array[low(int8)..high(int8), int8] = block:
 
     proc countSetBits(x: uint8): uint8 =
       return
-         bitant(x, 0b00000001'u8) +
+         bitand(x, 0b00000001'u8) +
         (bitand(x, 0b00000010'u8) shr 1) +
         (bitand(x, 0b00000100'u8) shr 2) +
         (bitand(x, 0b00001000'u8) shr 3) +
