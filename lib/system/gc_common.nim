@@ -263,6 +263,9 @@ when nimCoroutines:
     gch.activeStack = gch.stack.find(bottom)
     gch.activeStack.setPosition(addr(sp))
 
+  proc GC_getActiveStack() : pointer {.cdecl, exportc.} =
+    return gch.activeStack.bottom
+
 when not defined(useNimRtl):
   proc nimGC_setStackBottom(theStackBottom: pointer) =
     # Initializes main stack of the thread.
@@ -289,6 +292,9 @@ when not defined(useNimRtl):
         gch.stack.bottom = cast[pointer](min(a, b))
       else:
         gch.stack.bottom = cast[pointer](max(a, b))
+
+    when nimCoroutines:
+      if theStackBottom != nil: gch.stack.bottom = theStackBottom
 
     gch.stack.setPosition(theStackBottom)
 {.pop.}
