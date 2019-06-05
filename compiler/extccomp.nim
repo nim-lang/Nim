@@ -775,6 +775,8 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
       let t = now()
       let pdb = output.string & "." & format(t, "MMMM-yyyy-HH-mm-") & $t.nanosecond & ".pdb"
       result.add " /link /PDB:" & pdb
+  if optCDebug in conf.globalOptions and conf.cCompiler == ccVcc:
+    result.add " /Zi /FS /Od"
 
 template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
   getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)

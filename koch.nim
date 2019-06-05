@@ -41,7 +41,7 @@ Usage:
 Options:
   --help, -h               shows this help and quits
   --latest                 bundle the installers with a bleeding edge Nimble
-  --stable                 bundle the installers with a stable Nimble
+  --stable                 bundle the installers with a stable Nimble (default)
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -159,9 +159,10 @@ proc buildNimble(latest: bool) =
     withDir(installDir):
       if latest:
         exec("git checkout -f master")
+        exec("git pull")
       else:
-        exec("git checkout -f stable")
-      exec("git pull")
+        exec("git fetch")
+        exec("git checkout tags/v0.10.2")
   nimCompile(installDir / "src/nimble.nim", options = "--noNimblePath --nilseqs:on -d:release")
 
 proc bundleNimsuggest() =
@@ -582,18 +583,13 @@ proc showHelp() =
 when isMainModule:
   var op = initOptParser()
   var latest = false
-  var stable = false
-  template isLatest(): bool =
-    if stable: false
-    else:
-      existsDir(".git") or latest
   while true:
     op.next()
     case op.kind
     of cmdLongOption, cmdShortOption:
       case normalize(op.key)
       of "latest": latest = true
-      of "stable": stable = true
+      of "stable": latest = false
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)
@@ -617,13 +613,13 @@ when isMainModule:
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools()
-      of "nimble": buildNimble(isLatest())
+      of "nimble": buildNimble(latest)
       of "nimsuggest": bundleNimsuggest()
       of "toolsnonimble":
         buildTools()
       of "tools":
         buildTools()
-        buildNimble(isLatest())
+        buildNimble(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim()
