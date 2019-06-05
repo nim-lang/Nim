@@ -2028,8 +2028,8 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
   of tyStatic:
     putIntoReg(result, x)
-  of tyTypeDesc:
-    putIntoReg(result, x)
+  #of tyTypeDesc:
+  #  putIntoReg(result, x)
   else:
     result.kind = rkNode
     var n = x
