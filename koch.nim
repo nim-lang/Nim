@@ -159,9 +159,10 @@ proc buildNimble(latest: bool) =
     withDir(installDir):
       if latest:
         exec("git checkout -f master")
+        exec("git pull")
       else:
-        exec("git checkout -f stable")
-      exec("git pull")
+        exec("git fetch")
+        exec("git checkout tags/v0.10.2")
   nimCompile(installDir / "src/nimble.nim", options = "--noNimblePath --nilseqs:on -d:release")
 
 proc bundleNimsuggest() =
