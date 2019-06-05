@@ -236,7 +236,8 @@ proc enumToString*(enums: openArray[enum]): string =
   pragmas for further analysis by macros
 - Custom pragmas are now supported for `var` and `let` symbols.
 - Tuple unpacking is now supported for constants and for loop variables.
-
+- Case object branches can be initialized with a runtime discriminator if
+  possible discriminator values are constrained within a case statement.
 
 ### Language changes
 

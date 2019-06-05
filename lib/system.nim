@@ -1291,8 +1291,12 @@ when defined(nimNewShiftOps):
       ##
       ## .. code-block:: Nim
       ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
-      ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
       ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
+      ##   0b1000_0000'i8 shr 4 == 0b1111_1000'i8
+      ##   -1 shr 5 == -1
+      ##   1 shr 5 == 0
+      ##   16 shr 2 == 4
+      ##   -16 shr 2 == -4
     proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
     proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
     proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}

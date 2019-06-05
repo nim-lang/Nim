@@ -36,7 +36,7 @@ pkg "iterutils"
 pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "loopfusion"
-# pkg "msgpack4nim"
+pkg "msgpack4nim"
 pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas tests/all.nim", true
 # pkg "nico", "", true
@@ -52,7 +52,7 @@ pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
 # pkg "nimly", "nim c -r tests/test_nimly", true
 # pkg "nimongo", "nimble test_ci", true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-# pkg "nimquery"
+pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
 pkg "nimx", "nim c --threads:on test/main.nim", true

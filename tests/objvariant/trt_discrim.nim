@@ -136,3 +136,15 @@ reject: # not immutable.
   of k1, k2, k3: discard KindObj(varkind: kind, i32: 1)
   of k4: discard KindObj(varkind: kind, f32: 2.0)
   else: discard KindObj(varkind: kind, str: "3")
+
+accept:
+  proc kindProc(kind: Kind): KindObj =
+    case kind:
+    of k1: result = KindObj(kind: kind, i32: 1)
+    else: discard
+
+reject:
+  proc varKindProc(kind: var Kind): KindObj =
+    case kind:
+    of k1: result = KindObj(kind: kind, i32: 1)
+    else: discard
