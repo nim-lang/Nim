@@ -116,6 +116,35 @@
 ## Creating JSON
 ## =============
 ##
+## Serialization of Nim types to ``JsonNode`` is handled via ``%`` procedures
+## for each type.
+##
+## For instance serialization of basic types results in a ``JsonNode`` of the
+## corresponding ``JsonNodeKind``.
+##
+## .. code-block:: nim
+##   import json
+##   let number = 10
+##   let numJson = % number
+##   doAssert numJson.kind == JInt
+##
+## For objects it may be desirable to avoid serialization of one or more object
+## fields. This can be achieved by using the ``{.noserialize.}`` pragma.
+##
+## .. code-block:: nim
+##   import json
+##
+##   type
+##     User = object
+##       name: string
+##       age: int
+##       uid {.noserialize.}: int
+##
+##    let user = User(name: "Siri", age: 7, uid: 1234)
+##    let uJson = % user
+##    doAssert not uJson.hasKey(uid)
+##    echo uJson
+##
 ## This module can also be used to comfortably create JSON using the ``%*``
 ## operator:
 ##
@@ -363,10 +392,25 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
+template noserialize*() {.pragma.}
+
 proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
+  ## An object field annotated with the `{.noserialize.}` pragma will not appear
+  ## in the serialized JsonNode.
+  runnableExamples:
+    type
+      User = object
+        name: string
+        age: int
+        uid {.noserialize.}: int
+    let user = User(name: "Siri", age: 7, uid: 1234)
+    let uJson = % user
+    doAssert not uJson.hasKey(uid)
   result = newJObject()
-  for k, v in o.fieldPairs: result[k] = %v
+  for k, v in o.fieldPairs:
+    when not hasCustomPragma(v, noserialize):
+      result[k] = %v
 
 proc `%`*(o: ref object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`

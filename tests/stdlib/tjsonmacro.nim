@@ -553,6 +553,47 @@ block:
   let cFromJson = (% c).to(RecoEvent[Pix])
   doAssert c == cFromJson
 
+  # avoid serialization of specific field
+  block:
+    type
+      User = object
+        name: string
+        age: int
+        uid {.noserialize.}: int
+
+    let user = User(name: "Siri", age: 7, uid: 1234)
+    let uJson = % user
+    echo uJson
+    doAssert uJson["name"].getStr == "Siri"
+    doAssert uJson["age"].getInt == 7
+    doAssert not uJson.hasKey("uid")
+
+  # avoid serialization of specific field in variant object
+  # was broken pre #11415
+  block:
+    type
+      ReplayEvent2 = object
+        time: float
+        anotherPos {.noserialize.}: Point[float]
+        case kind: ReplayEventKind
+        of FoodEaten, FoodAppeared:
+          foodPos {.noserialize.}: Point[float]
+        of DirectionChanged:
+          playerPos: float
+
+    let ev = ReplayEvent2(
+      anotherPos: Point[float](x: 5.0, y: 1.0),
+      time: 1.2345,
+      kind: FoodEaten,
+      foodPos: Point[float](x: 5.0, y: 1.0)
+    )
+
+    let node = % ev
+    doAssert node["time"].getFloat == 1.2345
+    doAssert node["kind"].getStr == "FoodEaten"
+    doAssert not hasKey(node, "anotherPos")
+    doAssert not hasKey(node, "foodPos")
+
 # TODO: when the issue with the limeted vm registers is solved, the
 # exact same test as above should be evaluated at compile time as
 # well, to ensure that the vm functionality won't diverge from the
