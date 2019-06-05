@@ -1,4 +1,4 @@
-## v0.20.0 - XX/XX/2019
+## v0.20.0 - 2019-06-05
 
 
 ### Changes affecting backwards compatibility
@@ -6,13 +6,13 @@
 - The ``isLower``, ``isUpper`` family of procs in strutils/unicode
   operating on **strings** have been
   deprecated since it was unclear what these do. Note that the much more
-  useful procs that operator on ``char`` or ``Rune`` are not affected.
+  useful procs that operate on ``char`` or ``Rune`` are not affected.
 
 - `strutils.editDistance` has been deprecated,
   use `editdistance.editDistance` or `editdistance.editDistanceAscii`
   instead.
 
-- The OpenMP parallel iterator \``||`\` now supports any `#pragma omp directives`
+- The OpenMP parallel iterator \``||`\` now supports any `#pragma omp directive`
   and not just `#pragma omp parallel for`. See
   [OpenMP documentation](https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf).
 
@@ -32,7 +32,10 @@
 - `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
   tree from the symbol declaration instead of just the initializer portion.
 
-- To use multi-methods, explicit `--multimethods:on` is now needed.
+- Methods are now ordinary "single" methods, only the first parameter is
+  used to select the variant at runtime. For backwards compatbility
+  use the new `--multimethods:on` switch.
+
 - Generic methods are now deprecated; they never worked well.
 
 - Compile time checks for integer and float conversions are now stricter.
@@ -44,20 +47,20 @@
   as `void` or no result type at all.
 
 - A bug allowed `macro foo(): int = 123` to compile even though a
-  macros has to return a `NimNode`. This has been fixed.
+  macro has to return a `NimNode`. This has been fixed.
 
-- `shr` is now sign preserving. Use `-d:nimOldShiftRight` to enable old
-  behavior globally.
+- `shr` is now sign preserving. Use `-d:nimOldShiftRight` to enable
+  the old behavior globally.
 
 - With the exception of `uint` and `uint64`, conversion to unsigned types
   are now range checked during runtime.
 
-- Macro arguments of type `typedesc` are now passed in to the macro as
-  `NimNode` like every other type. Use either `typed` or
-  `static[typedesc]` for a behavior that is identical in new and old
-  Nim.
-  RFC: `Pass typedesc as NimNode to macros
-  <https://github.com/nim-lang/RFCs/issues/148>`_.
+- Macro arguments of type `typedesc` are now passed to the macro as
+  `NimNode` like every other type except `static`. Use `typed` for a
+  behavior that is identical in new and old
+  Nim. Seet the RFC [Pass typedesc as NimNode to macros](https://github.com/nim-lang/RFCs/issues/148>)
+  for more details.
+
 
 #### Breaking changes in the standard library
 
@@ -74,13 +77,14 @@
 - The procs `parseutils.parseBiggestInt`, `parseutils.parseInt`,
   `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a
   `ValueError` when the parsed integer is outside of the valid range.
-  Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
+  Previously they sometimes raised an `OverflowError` and sometimes they
+  returned `0`.
 
 - The procs `parseutils.parseBin`, `parseutils.parseOct` and `parseutils.parseHex`
   were not clearing their `var` parameter `number` and used to push its value to
   the left when storing the parsed string into it. Now they always set the value
   of the parameter to `0` before storing the result of the parsing, unless the
-  string to parse is not valid and then the value of `number` is not changed.
+  string to parse is not valid (then the value of `number` is not changed).
 
 - `streams.StreamObject` now restricts its fields to only raise `system.Defect`,
   `system.IOError` and `system.OSError`.
@@ -96,8 +100,8 @@
 
 - nre's `RegexMatch.captures.{items,toSeq}` now returns an `Option[string]`
   instead of a `string`. With the removal of `nil` strings, this is the only
-  way to indicate a missing match. Inside your loops, instead of `capture ==
-  ""` or `capture == nil`, use `capture.isSome` to check if a capture is
+  way to indicate a missing match. Inside your loops, instead
+  of `capture == ""` or `capture == nil`, use `capture.isSome` to check if a capture is
   present, and `capture.get` to get its value.
 
 - nre's `replace()` no longer throws `ValueError` when the replacement string
@@ -105,7 +109,7 @@
   `IndexError` for un-named captures. This is consistant with
   `RegexMatch.{captureBounds,captures}[]`.
 
-- splitFile now correctly handles edge cases, see #10047
+- `splitFile` now correctly handles edge cases, see #10047.
 
 - `isNil` is no longer false for undefined in the JavaScript backend:
   now it's true for both nil and undefined.
@@ -188,7 +192,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added ``std/sums`` module for fast summation functions.
 
-- Added `Rusage`, `getrusage`, `wait4` to posix interface.
+- Added `Rusage`, `getrusage`, `wait4` to the posix interface.
 
 - Added the `posix_utils` module.
 
@@ -210,7 +214,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - In `strutils` empty strings now no longer matched as substrings
   anymore.
 
-- Complex type is now generic and not a tuple anymore.
+- The `Complex` type is now a generic object and not a tuple anymore.
 
 - The `ospaths` module is now deprecated, use `os` instead. Note that
   `os` is available in a NimScript environment but unsupported
@@ -223,7 +227,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - `os.joinPath` and `os.normalizePath` handle edge cases like ``"a/b/../../.."``
   differently.
 
-- `securehash` is moved to `lib/deprecated`
+- `securehash` was moved to `lib/deprecated`.
 
 - The switch ``-d:useWinAnsi`` is not supported anymore.
 
@@ -236,10 +240,10 @@ proc enumToString*(enums: openArray[enum]): string =
 - Vm support for float32<->int32 and float64<->int64 casts was added.
 - There is a new pragma block `noSideEffect` that works like
   the `gcsafe` pragma block.
-- added os.getCurrentProcessId()
-- User defined pragmas are now allowed in the pragma blocks
+- added `os.getCurrentProcessId`.
+- User defined pragmas are now allowed in the pragma blocks.
 - Pragma blocks are no longer eliminated from the typed AST tree to preserve
-  pragmas for further analysis by macros
+  pragmas for further analysis by macros.
 - Custom pragmas are now supported for `var` and `let` symbols.
 - Tuple unpacking is now supported for constants and for loop variables.
 - Case object branches can be initialized with a runtime discriminator if
@@ -265,8 +269,8 @@ proc enumToString*(enums: openArray[enum]): string =
 
 ### Tool changes
 
-- `jsondoc` now include a `moduleDescription` field with the module
-  description. `jsondoc0` shows comments as it's own objects as shown in the
+- `jsondoc` now includes a `moduleDescription` field with the module
+  description. `jsondoc0` shows comments as its own objects as shown in the
   documentation.
 - `nimpretty`: --backup now defaults to `off` instead of `on` and the flag was
   un-documented; use `git` instead of relying on backup files.
@@ -276,7 +280,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 ### Compiler changes
 
-- The deprecated `fmod` proc is now unavailable on the VM'.
+- The deprecated `fmod` proc is now unavailable on the VM.
 - A new `--outdir` option was added.
 - The compiled JavaScript file for the project produced by executing `nim js`
   will no longer be placed in the nimcache directory.
