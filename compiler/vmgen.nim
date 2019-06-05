@@ -1242,13 +1242,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNcsIncl: genBinaryABC(c, n, dest, opcNcsIncl)
   of mNcsLen: genUnaryABC(c, n, dest, opcNcsLen)
   of mNcsAt: genBinaryABC(c, n, dest, opcNcsAt)
-  of mNcsPop: genUnaryABC(c, n, dest, opcNcsPop)
   of mNctPut: genVoidABC(c, n, dest, opcNctPut)
   of mNctLen: genUnaryABC(c, n, dest, opcNctLen)
   of mNctGet: genBinaryABC(c, n, dest, opcNctGet)
   of mNctHasNext: genBinaryABC(c, n, dest, opcNctHasNext)
   of mNctNext: genBinaryABC(c, n, dest, opcNctNext)
-  of mNctContains: genBinaryABC(c, n, dest, opcNctContains)
 
   of mNIntVal: genUnaryABC(c, n, dest, opcNIntVal)
   of mNFloatVal: genUnaryABC(c, n, dest, opcNFloatVal)

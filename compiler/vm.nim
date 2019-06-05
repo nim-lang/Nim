@@ -1826,14 +1826,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = g.cacheSeqs[destKey][idx.int]
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1))
-    of opcNcsPop:
-      let g = c.graph
-      decodeB(rkNode)
-      let destKey = regs[rb].node.strVal
-      if contains(g.cacheSeqs, destKey):
-        regs[ra].node = pop(g.cacheSeqs[destKey].sons)
-      else:
-        stackTrace(c, tos, pc, "key does not exist: " & destKey)
     of opcNctPut:
       let g = c.graph
       let destKey = regs[ra].node.strVal
@@ -1882,15 +1874,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let (k, v, nextIndex) = btrees.next(g.cacheTables[destKey], index.int)
         regs[ra].node = newTree(nkTupleConstr, newStrNode(k, c.debug[pc]), v,
                                 newIntNode(nkIntLit, nextIndex))
-      else:
-        stackTrace(c, tos, pc, "key does not exist: " & destKey)
-    of opcNctContains:
-      let g = c.graph
-      decodeBC(rkInt)
-      let destKey = regs[rb].node.strVal
-      let key = regs[rc].node.strVal
-      if contains(g.cacheTables, destKey):
-        regs[ra].intVal = contains(g.cacheTables[destKey], key).int
       else:
         stackTrace(c, tos, pc, "key does not exist: " & destKey)
 

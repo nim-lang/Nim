@@ -656,8 +656,8 @@ type
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
     mNKind, mNSymKind,
 
-    mNccValue, mNccInc, mNcsAdd, mNcsIncl, mNcsLen, mNcsAt, mNcsPop,
-    mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext, mNctContains,
+    mNccValue, mNccInc, mNcsAdd, mNcsIncl, mNcsLen, mNcsAt,
+    mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
