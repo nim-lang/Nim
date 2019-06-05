@@ -36,7 +36,7 @@ substrings starting with ``$``. These constructions are available:
 ``$i``              Matches a decimal integer. This uses ``parseutils.parseInt``.
 ``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
 ``$f``              Matches a floating pointer number. Uses ``parseFloat``.
-``$w``              Matches an ASCII identifier: ``[A-Z-a-z_][A-Za-z_0-9]*``.
+``$w``              Matches an ASCII identifier: ``[A-Za-z_][A-Za-z_0-9]*``.
 ``$s``              Skips optional whitespace.
 ``$$``              Matches a single dollar sign.
 ``$.``              Matches if the end of the input string has been reached.
@@ -131,7 +131,7 @@ to use prefix instead of postfix operators.
 ``E{n,m}``       From ``n`` up to ``m`` times ``E``
 ``~E``           Not predicate
 ``a ^* b``       Shortcut for ``?(a *(b a))``. Usually used for separators.
-``a ^* b``       Shortcut for ``?(a +(b a))``. Usually used for separators.
+``a ^+ b``       Shortcut for ``?(a +(b a))``. Usually used for separators.
 ``'a'``          Matches a single character
 ``{'a'..'b'}``   Matches a character set
 ``"s"``          Matches a string
