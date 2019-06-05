@@ -93,3 +93,14 @@ static:
     quit("may not be evaluated")
 
   assert( (myLit or bottom()) == myLit )
+
+type
+  Fruit = enum
+    apple
+    banana
+    orange
+
+macro foo(x: typed) =
+  doAssert Fruit(x.intVal) == banana
+
+foo(banana)

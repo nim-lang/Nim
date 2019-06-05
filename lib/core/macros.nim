@@ -226,8 +226,10 @@ proc kind*(n: NimNode): NimNodeKind {.magic: "NKind", noSideEffect.}
   ## returns the `kind` of the node `n`.
 
 proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
+  ## Returns an integer value from any integer literal or enum field symbol.
 
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
+  ## Returns a float from any floating point literal.
 
 {.push warnings: off.}
 
