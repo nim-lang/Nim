@@ -1472,7 +1472,12 @@ proc customPragmaNode(n: NimNode): NimNode =
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
     let typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
-    var typDef = getImpl(if typInst.kind == nnkVarTy: typInst[0] else: typInst)
+    var typDef = getImpl(
+      if typInst.kind == nnkVarTy or
+         typInst.kind == nnkBracketExpr:
+        typInst[0]
+      else: typInst
+    )
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       let typ = typDef[2]
