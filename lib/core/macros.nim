@@ -1493,12 +1493,12 @@ proc customPragmaNode(n: NimNode): NimNode =
               let varNode = identDefs[i]
               # if it is and empty branch, skip
               if varNode[0].kind == nnkNilLit: continue
-              if varNode[1].kind == nnkIdentDefs:
-                identDefsStack.add(varNode[1])
-              else: # nnkRecList
-                for j in 0 ..< varNode[1].len:
-                  identDefsStack.add(varNode[1][j])
-
+              for j in 1 ..< varNode.len:
+                if varNode[j].kind == nnkIdentDefs:
+                  identDefsStack.add(varNode[j])
+                else: # nnkRecList
+                  for m in 0 ..< varNode[j].len:
+                    identDefsStack.add(varNode[j][m])
           else:
             for i in 0 .. identDefs.len - 3:
               let varNode = identDefs[i]
