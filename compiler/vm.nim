@@ -1189,7 +1189,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcFinallyEnd:
       # The control flow may not resume at the next instruction since we may be
       # raising an exception or performing a cleanup.
-      if not savedPC < 0:
+      if savedPC >= 0:
         pc = savedPC - 1
         savedPC = -1
         if tos != savedFrame:

@@ -28,7 +28,7 @@ proc parseAtom(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
     result = parseExpr(L, tok, config)
     if tok.tokType == tkParRi: ppGetTok(L, tok)
     else: lexMessage(L, errGenerated, "expected closing ')'")
-  elif tok.ident.id == ord(wNot):
+  elif tok.tokType == tkNot:
     ppGetTok(L, tok)
     result = not parseAtom(L, tok, config)
   else:
@@ -37,14 +37,14 @@ proc parseAtom(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
 
 proc parseAndExpr(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
   result = parseAtom(L, tok, config)
-  while tok.ident.id == ord(wAnd):
+  while tok.tokType == tkAnd:
     ppGetTok(L, tok)          # skip "and"
     var b = parseAtom(L, tok, config)
     result = result and b
 
 proc parseExpr(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
   result = parseAndExpr(L, tok, config)
-  while tok.ident.id == ord(wOr):
+  while tok.tokType == tkOr:
     ppGetTok(L, tok)          # skip "or"
     var b = parseAndExpr(L, tok, config)
     result = result or b

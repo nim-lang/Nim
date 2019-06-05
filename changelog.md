@@ -277,7 +277,9 @@ proc enumToString*(enums: openArray[enum]): string =
   hot code reloading events in the code.
 - The compiler nows supports a ``--expandMacro:macroNameHere`` switch
   for easy introspection into what a macro expands into.
-
+- The `-d:release` switch now does not disable runtime checks anymore.
+  For a release build that also disables runtime checks
+  use `-d:release -d:danger` or simply `-d:danger`.
 
 
 ### Bugfixes

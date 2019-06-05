@@ -4,7 +4,7 @@ const rangesGCHoldEnabled = not defined(rangesDisableGCHold)
 
 type
   # A view into immutable array
-  Range* {.shallow.} [T] = object
+  Range*[T] {.shallow.} = object
     when rangesGCHoldEnabled:
       gcHold: seq[T]
     start: ptr T
