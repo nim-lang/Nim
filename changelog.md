@@ -270,6 +270,8 @@ proc enumToString*(enums: openArray[enum]): string =
   documentation.
 - `nimpretty`: --backup now defaults to `off` instead of `on` and the flag was
   un-documented; use `git` instead of relying on backup files.
+- `koch` now defaults to build the latest *stable* Nimble version unless you
+  explicitly ask for the latest master version via `--latest`.
 
 
 ### Compiler changes
