@@ -762,33 +762,29 @@ proc `$`*(node: JsonNode): string =
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
-  # assert node.kind == JArray
-  if node.kind == JArray: 
-    for i in items(node.elems):
-      yield i
+  assert node.kind == JArray
+  for i in items(node.elems):
+    yield i
 
 iterator mitems*(node: var JsonNode): var JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray. Items can be
   ## modified.
-  # assert node.kind == JArray
-  if node.kind == JArray: 
-    for i in mitems(node.elems):
-      yield i
+  assert node.kind == JArray
+  for i in mitems(node.elems):
+    yield i
 
 iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
-  # assert node.kind == JObject
-  if node.kind == JObject:
-    for key, val in pairs(node.fields):
-      yield (key, val)
+  assert node.kind == JObject
+  for key, val in pairs(node.fields):
+    yield (key, val)
 
 iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   ## Values can be modified
-  # assert node.kind == JObject
-  if node.kind == JObject: 
-    for key, val in mpairs(node.fields):
-      yield (key, val)
+  assert node.kind == JObject
+  for key, val in mpairs(node.fields):
+    yield (key, val)
 
 proc parseJson(p: var JsonParser): JsonNode =
   ## Parses JSON from a JSON Parser `p`.
