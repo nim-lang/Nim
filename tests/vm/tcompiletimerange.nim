@@ -1,3 +1,7 @@
+discard """
+  disabled: "true"
+"""
+
 # issue #8199
 
 const rangesGCHoldEnabled = not defined(rangesDisableGCHold)
