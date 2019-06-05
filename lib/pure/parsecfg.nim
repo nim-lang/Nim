@@ -391,8 +391,10 @@ proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
 
 proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
   if c.tok.kind == tkSymbol:
-    result = CfgEvent(kind: cfgKeyValuePair, key: c.tok.literal, value: "")
-    result.kind = kind
+    case kind
+    of cfgOption, cfgKeyValuePair:
+      result = CfgEvent(kind: kind, key: c.tok.literal, value: "")
+    else: discard
     rawGetTok(c, c.tok)
     if c.tok.kind in {tkEquals, tkColon}:
       rawGetTok(c, c.tok)
