@@ -563,7 +563,6 @@ block:
 
     let user = User(name: "Siri", age: 7, uid: 1234)
     let uJson = % user
-    echo uJson
     doAssert uJson["name"].getStr == "Siri"
     doAssert uJson["age"].getInt == 7
     doAssert not uJson.hasKey("uid")
