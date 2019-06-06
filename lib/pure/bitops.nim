@@ -25,6 +25,17 @@
 ## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
 ## may return undefined and/or platform dependant value if given invalid input.
 
+proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
+  ## Computes the `bitwise complement` of the integer `x`.
+
+proc bitand*[T: SomeInteger](x, y: T): T {.magic: "BitandI", noSideEffect.}
+  ## Computes the `bitwise and` of numbers `x` and `y`.
+
+proc bitor*[T: SomeInteger](x, y: T): T {.magic: "BitorI", noSideEffect.}
+  ## Computes the `bitwise or` of numbers `x` and `y`.
+
+proc bitxor*[T: SomeInteger](x, y: T): T {.magic: "BitxorI", noSideEffect.}
+  ## Computes the `bitwise xor` of numbers `x` and `y`.
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
 const noUndefined = defined(noUndefinedBitOpts)
