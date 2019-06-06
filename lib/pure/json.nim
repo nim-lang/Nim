@@ -1571,8 +1571,6 @@ when false:
 when isMainModule:
   # Note: Macro tests are in tests/stdlib/tjsonmacro.nim
   var cost = newJObject()
-  for j in cost:
-    echo j
   var rows = [["AWS","compute","cost"],
               ["Alibaba","compute","monthly"],
               ["Alibaba","network","monthly"],
