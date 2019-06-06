@@ -1,5 +1,5 @@
 discard """
-  errormsg: "size of array exceeds range of index type 'Color' by 3 elements"
+  errormsg: "size of array exceeds range of index type 'range 1..2(Color)' by 3 elements"
   line: 6
 """
 type Color = enum Red, Green, Blue

@@ -569,8 +569,10 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
   let extraElems = lastIndex - lastOrd(c.config, indexType)
   if extraElems > 0:
+    let validRange = makeRangeType(c, firstIndex, lastOrd(c.config, indexType),
+                                   n.info, indexType)
     localError(c.config, n.info, "size of array exceeds range of index " &
-      "type '$1' by $2 elements" % [typeToString(indexType), $extraElems])
+      "type '$1' by $2 elements" % [typeToString(validRange), $extraElems])
   result.typ.sons[0] = makeRangeType(c, firstIndex, lastIndex, n.info,
                                      indexType)
 
