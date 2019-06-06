@@ -142,7 +142,7 @@
 ##
 ##    let user = User(name: "Siri", age: 7, uid: 1234)
 ##    let uJson = % user
-##    doAssert not uJson.hasKey(uid)
+##    doAssert not uJson.hasKey("uid")
 ##    echo uJson
 ##
 ## This module can also be used to comfortably create JSON using the ``%*``
@@ -406,7 +406,7 @@ proc `%`*[T: object](o: T): JsonNode =
         uid {.noserialize.}: int
     let user = User(name: "Siri", age: 7, uid: 1234)
     let uJson = % user
-    doAssert not uJson.hasKey(uid)
+    doAssert not uJson.hasKey("uid")
   result = newJObject()
   for k, v in o.fieldPairs:
     when not hasCustomPragma(v, noserialize):
