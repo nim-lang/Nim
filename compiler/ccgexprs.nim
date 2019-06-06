@@ -103,11 +103,11 @@ proc genRawSetData(cs: TBitSet, size: int): Rope =
     var res = "{\n"
     for i in 0 ..< size:
       res.add "0x"
-      res.add "0123456789abcdef"[cs[i] and 7]
-      res.add "0123456789abcdef"[cs[i] shr 4]
+      res.add "0123456789abcdef"[cs[i] div 16]
+      res.add "0123456789abcdef"[cs[i] mod 16]
       if i < size - 1:
         # not last iteration
-        if (i + 1) mod 8 == 0:
+        if i mod 8 == 7:
           res.add ",\n"
         else:
           res.add ", "
@@ -117,7 +117,6 @@ proc genRawSetData(cs: TBitSet, size: int): Rope =
     result = rope(res)
   else:
     result = intLiteral(cast[BiggestInt](bitSetToWord(cs, size)))
-    #  result := rope('0x' + ToHex(bitSetToWord(cs, size), size * 2))
 
 proc genSetNode(p: BProc, n: PNode): Rope =
   var cs: TBitSet
