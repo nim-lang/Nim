@@ -2031,12 +2031,24 @@ proc evalStaticStmt*(module: PSym; g: ModuleGraph; e: PNode, prc: PSym) =
 proc setupCompileTimeVar*(module: PSym; g: ModuleGraph; n: PNode) =
   discard evalConstExprAux(module, g, nil, n, emStaticStmt)
 
+proc prepareVMValue(arg: PNode): PNode =
+  ## strip nkExprColonExpr from tuple values recurively. That is how
+  ## they are expected to be stored in the VM.
+  result = copyNode(arg)
+  if arg.kind == nkTupleConstr:
+    for child in arg:
+      if child.kind == nkExprColonExpr:
+        result.add prepareVMValue(child[1])
+      else:
+        result.add prepareVMValue(child)
+  else:
+    for child in arg:
+      result.add prepareVMValue(child)
+
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
   of tyStatic:
-    putIntoReg(result, x)
-  #of tyTypeDesc:
-  #  putIntoReg(result, x)
+    putIntoReg(result, prepareVMValue(x))
   else:
     result.kind = rkNode
     var n = x
