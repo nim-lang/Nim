@@ -116,8 +116,6 @@ const
   errOffHintsError = "'off', 'hint' or 'error' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
-  echo "HERE"
-  writeStackTrace()
   if switch == " ": localError(conf, info, errInvalidCmdLineOption % "-")
   else: localError(conf, info, errInvalidCmdLineOption % addPrefix(switch))
 
@@ -168,7 +166,6 @@ proc expectArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: T
 
 proc expectNoArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if arg != "":
-    echo "B"
     localError(conf, info, "invalid argument for command line option: '$1'" % addPrefix(switch))
 
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
