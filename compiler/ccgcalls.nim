@@ -389,7 +389,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
           result.add genOtherArg(p, ri, k, typ)
       inc i
     of '#':
-      if pat[i+1] in {'+', '@'}:
+      if i+1 < pat.len and pat[i+1] in {'+', '@'}:
         let ri = ri[j]
         if ri.kind in nkCallKinds:
           let typ = skipTypes(ri.sons[0].typ, abstractInst)
@@ -404,10 +404,10 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
         else:
           localError(p.config, ri.info, "call expression expected for C++ pattern")
         inc i
-      elif pat[i+1] == '.':
+      elif i+1 < pat.len and pat[i+1] == '.':
         result.add genThisArg(p, ri, j, typ)
         inc i
-      elif pat[i+1] == '[':
+      elif i+1 < pat.len and pat[i+1] == '[':
         var arg = ri.sons[j].skipAddrDeref
         while arg.kind in {nkAddr, nkHiddenAddr, nkObjDownConv}: arg = arg[0]
         result.add genArgNoParam(p, arg)
