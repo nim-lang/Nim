@@ -527,15 +527,21 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = newNodeI(nkBracket, n.info)
   result.typ = newTypeS(tyArray, c)
   rawAddSon(result.typ, nil)     # index type
+  var
+    firstIndex, lastIndex: BiggestInt = 0
+    indexType = getSysType(c.graph, n.info, tyInt)
   if sonsLen(n) == 0:
     rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
+    lastIndex = -1
   else:
     var x = n.sons[0]
-    var lastIndex: BiggestInt = 0
-    var indexType = getSysType(c.graph, n.info, tyInt)
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
       var idx = semConstExpr(c, x.sons[0])
-      lastIndex = getOrdValue(idx)
+      if not isOrdinalType(idx.typ):
+        localError(c.config, idx.info, "expected ordinal value for array " &
+                   "index, got '$1'" % renderTree(idx))
+      firstIndex = getOrdValue(idx)
+      lastIndex = firstIndex
       indexType = idx.typ
       x = x.sons[1]
 
@@ -561,7 +567,13 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     addSonSkipIntLit(result.typ, typ)
     for i in 0 ..< result.len:
       result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
-  result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
+  let extraElems = lastIndex - lastOrd(c.config, indexType)
+  if extraElems > 0:
+    localError(c.config, n.info, "size of array exceeds range of index " &
+      "type '$1' by $2 elements" % [typeToString(indexType), $extraElems])
+  result.typ.sons[0] = makeRangeType(c, firstIndex, lastIndex, n.info,
+                                     indexType)
+
 
 proc fixAbstractType(c: PContext, n: PNode) =
   for i in 1 ..< n.len:
