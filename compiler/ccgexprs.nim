@@ -93,25 +93,30 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
 proc genLiteral(p: BProc, n: PNode): Rope =
   result = genLiteral(p, n, n.typ)
 
-proc bitSetToWord(s: TBitSet, size: int): BiggestInt =
+proc bitSetToWord(s: TBitSet, size: int): BiggestUInt =
   result = 0
   for j in 0 ..< size:
-    if j < len(s): result = result or (ze64(s[j]) shl (j * 8))
+    if j < len(s): result = result or (BiggestUInt(s[j]) shl (j * 8))
 
 proc genRawSetData(cs: TBitSet, size: int): Rope =
   if size > 8:
-    result = "{$n" % []
+    var res = "{\n"
     for i in 0 ..< size:
+      res.add "0x"
+      res.add "0123456789abcdef"[cs[i] and 7]
+      res.add "0123456789abcdef"[cs[i] shr 4]
       if i < size - 1:
-        # not last iteration?
+        # not last iteration
         if (i + 1) mod 8 == 0:
-          addf(result, "0x$1,$n", [rope(toHex(ze64(cs[i]), 2))])
+          res.add ",\n"
         else:
-          addf(result, "0x$1, ", [rope(toHex(ze64(cs[i]), 2))])
+          res.add ", "
       else:
-        addf(result, "0x$1}$n", [rope(toHex(ze64(cs[i]), 2))])
+        res.add "}\n"
+
+    result = rope(res)
   else:
-    result = intLiteral(bitSetToWord(cs, size))
+    result = intLiteral(cast[BiggestInt](bitSetToWord(cs, size)))
     #  result := rope('0x' + ToHex(bitSetToWord(cs, size), size * 2))
 
 proc genSetNode(p: BProc, n: PNode): Rope =
