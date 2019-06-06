@@ -2034,6 +2034,11 @@ proc setupCompileTimeVar*(module: PSym; g: ModuleGraph; n: PNode) =
 proc prepareVMValue(arg: PNode): PNode =
   ## strip nkExprColonExpr from tuple values recurively. That is how
   ## they are expected to be stored in the VM.
+
+  # Early abort without copy. No transformation takes place.
+  if arg.kind in nkLiterals:
+    return arg
+
   result = copyNode(arg)
   if arg.kind == nkTupleConstr:
     for child in arg:
