@@ -1,4 +1,4 @@
-## v0.20.0 - 2019-06-05
+## v0.20.0 - 2019-06-06
 
 
 ### Changes affecting backwards compatibility
