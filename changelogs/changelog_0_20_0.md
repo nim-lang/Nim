@@ -1,7 +1,10 @@
-## v0.20.0 - 2019-06-05
+## v0.20.0 - 2019-06-06
 
 
 ### Changes affecting backwards compatibility
+
+- `shr` is now sign preserving. Use `-d:nimOldShiftRight` to enable
+  the old behavior globally.
 
 - The ``isLower``, ``isUpper`` family of procs in strutils/unicode
   operating on **strings** have been
@@ -48,9 +51,6 @@
 
 - A bug allowed `macro foo(): int = 123` to compile even though a
   macro has to return a `NimNode`. This has been fixed.
-
-- `shr` is now sign preserving. Use `-d:nimOldShiftRight` to enable
-  the old behavior globally.
 
 - With the exception of `uint` and `uint64`, conversion to unsigned types
   are now range checked during runtime.
@@ -113,7 +113,7 @@
 
 - `isNil` is no longer false for undefined in the JavaScript backend:
   now it's true for both nil and undefined.
-  Use `isNull` or `isUndefined` if you need exact equallity:
+  Use `isNull` or `isUndefined` if you need exact equality:
   `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
 
 - several deprecated modules were removed: `ssl`, `matchers`, `httpserver`,
@@ -121,9 +121,6 @@
 
 - two poorly documented and not used modules (`subexes`, `scgi`) were moved to
   graveyard (they are available as Nimble packages)
-
-- Custom types that should be supported by `strformat` (&) now need an
-  explicit overload of `formatValue`.
 
 - procs `string.add(int)` and `string.add(float)` which implicitly convert
   ints and floats to string have been deprecated.
@@ -185,7 +182,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `parseopt.remainingArgs`.
 
-- Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
+- Added `os.getCurrentCompilerExe` (implemented as `getAppFilename` at CT),
   can be used to retrieve the currently executing compiler.
 
 - Added `xmltree.toXmlAttributes`.
@@ -253,7 +250,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - The standard extension for SCF (source code filters) files was changed from
   ``.tmpl`` to ``.nimf``,
-  it's more recognizable and allows tools like github to recognize it as Nim,
+  it's more recognizable and allows tools like Github to recognize it as Nim,
   see [#9647](https://github.com/nim-lang/Nim/issues/9647).
   The previous extension will continue to work.
 
@@ -287,7 +284,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - The `--hotCodeReloading` has been implemented for the native targets.
   The compiler also provides a new more flexible API for handling the
   hot code reloading events in the code.
-- The compiler nows supports a ``--expandMacro:macroNameHere`` switch
+- The compiler now supports a ``--expandMacro:macroNameHere`` switch
   for easy introspection into what a macro expands into.
 - The `-d:release` switch now does not disable runtime checks anymore.
   For a release build that also disables runtime checks
