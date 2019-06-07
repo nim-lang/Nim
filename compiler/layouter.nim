@@ -113,6 +113,10 @@ const
   openPars = {tkParLe, tkParDotLe,
               tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
               tkCurlyLe}
+  closedPars = {tkParRi, tkParDotRi,
+              tkBracketRi, tkCurlyDotRi,
+              tkCurlyRi}
+
   splitters = openPars + {tkComma, tkSemicolon}
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
@@ -196,8 +200,12 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.fixedUntil = em.content.high
 
   elif tok.indent >= 0:
-    if em.lastTok in (splitters + oprSet) or em.keepIndents > 0:
+    if em.keepIndents > 0:
       em.indentLevel = tok.indent
+    elif (em.lastTok in (splitters + oprSet) and tok.tokType notin closedPars):
+      # aka: we are in an expression context:
+      let alignment = tok.indent - em.indentStack[^1]
+      em.indentLevel = alignment + em.indentStack.high * em.indWidth
     else:
       if tok.indent > em.indentStack[^1]:
         em.indentStack.add tok.indent
