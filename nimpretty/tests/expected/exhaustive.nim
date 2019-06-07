@@ -394,3 +394,15 @@ proc foo*() =
 
 proc foo*[T]() =
   discard
+
+
+# bug #10159
+
+proc fun() =
+  discard
+
+proc main() =
+  echo "foo"; echo "bar";
+  discard
+
+main()
