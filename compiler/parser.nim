@@ -96,6 +96,8 @@ proc getTok(p: var TParser) =
   p.hasProgress = true
   when defined(nimpretty2):
     emitTok(p.em, p.lex, p.tok)
+    # skip the additional tokens that nimpretty needs but the parser has no
+    # interest in:
     while p.tok.tokType == tkComment:
       rawGetTok(p.lex, p.tok)
       emitTok(p.em, p.lex, p.tok)
