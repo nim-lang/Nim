@@ -132,8 +132,8 @@ Through the ``-d:x`` or ``--define:x`` switch you can define compile time
 symbols for conditional compilation. The defined switches can be checked in
 source code with the `when statement <manual.html#when-statement>`_ and
 `defined proc <system.html#defined>`_. The typical use of this switch is to
-enable builds in release mode (``-d:release``) where certain safety checks are
-omitted for better performance. Another common use is the ``-d:ssl`` switch to
+enable builds in release mode (``-d:release``) where optimizations are
+enabled for better performance. Another common use is the ``-d:ssl`` switch to
 activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
@@ -168,6 +168,10 @@ The default build of a project is a `debug build`:idx:. To compile a
 `release build`:idx: define the ``release`` symbol::
 
   nim c -d:release myproject.nim
+
+ To compile a `dangerous release build`:idx: define the ``danger`` symbol::
+
+  nim c -d:danger myproject.nim
 
 
 Search path handling
@@ -344,10 +348,10 @@ complete list.
 ======================   =========================================================
 Define                   Effect
 ======================   =========================================================
-``release``              Turns off runtime checks and turns on the optimizer.
+``release``              Turns on the optimizer.
                          More aggressive optimizations are possible, eg:
                          ``--passC:-ffast-math`` (but see issue #10305)
-                         ``--stacktrace:off``
+``danger``               Turns off all runtime checks and turns on the optimizer.
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
