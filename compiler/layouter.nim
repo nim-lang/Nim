@@ -156,6 +156,31 @@ proc softLinebreak(em: var Emitter, lit: string) =
           a = -1
           break
 
+proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
+  # re-align every line in the multi-line comment:
+  var i = 0
+  var lastIndent = em.indentStack[^1]
+  var b = 0
+  for commentLine in splitLines(lit):
+    let stripped = commentLine.strip()
+    var a = 0
+    while a < commentLine.len and commentLine[a] == ' ': inc a
+    if i == 0:
+      discard
+    elif stripped.len == 0:
+      wr em, "\L", ltNewline
+    else:
+      if a > lastIndent:
+        b += em.indWidth
+        lastIndent = a
+      elif a < lastIndent:
+        b -= em.indWidth
+        lastIndent = a
+      wr em, "\L", ltNewline
+      for i in 1 .. col + b: wr(em, " ", ltSpaces)
+    wr em, stripped, ltComment
+    inc i
+
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
 
   template endsInWhite(em): bool =
@@ -167,6 +192,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
 
   proc emitComment(em: var Emitter; tok: TToken) =
+    let col = em.col
     let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
     em.lineSpan = countNewlines(lit)
     if em.lineSpan > 0: calcCol(em, lit)
@@ -174,7 +200,10 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       wr(em, " ", ltSpaces)
       if em.lineSpan == 0 and max(em.col, LineCommentColumn) + lit.len <= MaxLineLen:
         for i in 1 .. LineCommentColumn - em.col: wr(em, " ", ltSpaces)
-    wr em, lit, ltComment
+    if em.lineSpan == 0:
+      wr em, lit, ltComment
+    else:
+      emitMultilineComment(em, lit, col)
 
   if tok.tokType == tkComment and tok.literal.startsWith("#!nimpretty"):
     case tok.literal
