@@ -545,6 +545,11 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       indexType = idx.typ
       x = x.sons[1]
 
+    template unlessOverflows(body: untyped): untyped =
+      if lastIndex == high(BiggestInt):
+        localError(c.config, x.info, "array index too large")
+      body
+
     let yy = semExprWithType(c, x)
     var typ = yy.typ
     addSon(result, yy)
@@ -554,7 +559,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if x.kind == nkExprColonExpr and sonsLen(x) == 2:
         var idx = semConstExpr(c, x.sons[0])
         idx = fitNode(c, indexType, idx, x.info)
-        if lastIndex+1 != getOrdValue(idx):
+        if unlessOverflows(lastIndex+1) != getOrdValue(idx):
           localError(c.config, x.info, "invalid order in array constructor")
         x = x.sons[1]
 
@@ -563,19 +568,19 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       typ = commonType(typ, xx.typ)
       #n.sons[i] = semExprWithType(c, x, flags*{efAllowDestructor})
       #addSon(result, fitNode(c, typ, n.sons[i]))
-      inc(lastIndex)
+      unlessOverflows(inc(lastIndex))
     addSonSkipIntLit(result.typ, typ)
     for i in 0 ..< result.len:
       result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
-  let extraElems = lastIndex - lastOrd(c.config, indexType)
+  let
+    validRange = makeRangeType(c, firstIndex, lastOrd(c.config, indexType),
+                               n.info, indexType)
+    indexRange = makeRangeType(c, firstIndex, lastIndex, n.info, indexType)
+    extraElems = lengthOrd(c.config, indexRange)-lengthOrd(c.config, validRange)
   if extraElems > 0:
-    let validRange = makeRangeType(c, firstIndex, lastOrd(c.config, indexType),
-                                   n.info, indexType)
     localError(c.config, n.info, "size of array exceeds range of index " &
       "type '$1' by $2 elements" % [typeToString(validRange), $extraElems])
-  result.typ.sons[0] = makeRangeType(c, firstIndex, lastIndex, n.info,
-                                     indexType)
-
+  result.typ.sons[0] = indexRange
 
 proc fixAbstractType(c: PContext, n: PNode) =
   for i in 1 ..< n.len:
