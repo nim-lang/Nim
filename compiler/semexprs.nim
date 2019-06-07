@@ -530,6 +530,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var
     firstIndex, lastIndex: BiggestInt = 0
     indexType = getSysType(c.graph, n.info, tyInt)
+    lastInt = lastOrd(c.config, indexType)
   if sonsLen(n) == 0:
     rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
     lastIndex = -1
@@ -546,7 +547,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       x = x.sons[1]
 
     template unlessOverflows(body: untyped): untyped =
-      if lastIndex == high(BiggestInt):
+      if lastIndex == lastInt:
         localError(c.config, x.info, "array index too large")
       body
 
