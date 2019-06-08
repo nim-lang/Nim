@@ -1899,15 +1899,15 @@ proc initTimeFormat*(format: string): TimeFormat =
     of tkLiteral:
       case token
       else:
-        result.patterns.add(FormatPattern.Lit.byte)
+        result.patterns.add(ord(FormatPattern.Lit).byte)
         if token.len > 255:
           raise newException(TimeFormatParseError,
                              "Format literal is to long:" & token)
         result.patterns.add(token.len.byte)
         for c in token:
-          result.patterns.add(c.byte)
+          result.patterns.add(ord(c).byte)
     of tkPattern:
-      result.patterns.add(stringToPattern(token).byte)
+      result.patterns.add(ord(stringToPattern(token)).byte)
 
 proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc: DateTimeLocale) =
   template yearOfEra(dt: DateTime): int =
