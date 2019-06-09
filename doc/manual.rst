@@ -6020,6 +6020,27 @@ In the example a new pragma named ``rtl`` is introduced that either imports
 a symbol from a dynamic library or exports the symbol for dynamic library
 generation.
 
+noRewrite pragmas
+-----------------
+
+Term rewriting macros and templates are currently greedy and
+they will rewrite as long as there is a match.
+So there was no way to ensure some rewrite happens only once,
+eg. when rewriting term to same term plus extra content.
+
+noRewrite pragma can actually prevent further rewriting on marked code,
+eg. with given example ``echo("ab")`` will be rewritten just once:
+
+Example:
+
+.. code-block:: nim
+  template pwnEcho{echo(x)}(x: expr) =
+    {.noRewrite.}: echo("pwned!")
+
+  echo "ab"
+
+noRewrite pragma can be useful to control term-rewriting macros recursion.
+
 
 Disabling certain messages
 --------------------------
