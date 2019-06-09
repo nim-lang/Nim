@@ -6020,8 +6020,8 @@ In the example a new pragma named ``rtl`` is introduced that either imports
 a symbol from a dynamic library or exports the symbol for dynamic library
 generation.
 
-noRewrite pragmas
------------------
+noRewrite pragma
+----------------
 
 Term rewriting macros and templates are currently greedy and
 they will rewrite as long as there is a match.
