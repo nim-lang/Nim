@@ -798,13 +798,16 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## * `expandTilde proc <#expandTilde,string>`_
   ## * `getCurrentDir proc <#getCurrentDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
-  const tempDirDefault = "/tmp/"
+  const tempDirDefault = "/tmp"
+  result = tempDirDefault
   when defined(tempDir):
     const tempDir {.strdefine.}: string = tempDirDefault
-    return tempDir
-  elif defined(windows): return string(getEnv("TEMP")) & "\\"
-  elif defined(android): return getHomeDir()
-  else: return tempDirDefault
+    result = tempDir
+  elif defined(windows): result = string(getEnv("TEMP"))
+  elif defined(android): result = getHomeDir()
+  else:
+    if existsEnv("TMPDIR"): result = string(getEnv("TMPDIR"))
+  normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
