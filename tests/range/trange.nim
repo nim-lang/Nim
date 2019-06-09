@@ -120,8 +120,8 @@ block:
   doAssert $x1 & $x2 & $x3 == "444"
 
 block:
-  var x1: range[0'f..1'f] = 1
-  const x2: range[0'f..1'f] = 1
+  # var x1: range[0'f..1'f] = 1
+  # const x2: range[0'f..1'f] = 1
   var x3: range[0'u8..1'u8] = 1
   const x4: range[0'u8..1'u8] = 1
   var x5: range[0'f32..1'f32] = 1'f64

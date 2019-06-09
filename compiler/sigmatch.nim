@@ -410,7 +410,7 @@ proc isConvertibleToRange(f, a: PType): bool =
     of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt, tyUInt64}
     else: result = false
   elif f.kind in {tyFloat..tyFloat128}:
-    result = isIntLit(a) or a.kind in {tyFloat..tyFloat128}
+    result = a.kind in {tyFloat..tyFloat128}
 
 proc handleFloatRange(f, a: PType): TTypeRelation =
   if a.kind == f.kind:
