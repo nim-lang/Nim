@@ -121,12 +121,59 @@
 ## if however data does not reach the client within the specified timeout a
 ## ``TimeoutError`` exception will be raised.
 ##
+## Examples:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    let client = newHttpClient(timeout = 42)
+##
 ## Proxy
 ## =====
 ##
 ## A proxy can be specified as a param to any of the procedures defined in
 ## this module. To do this, use the ``newProxy`` constructor. Unfortunately,
 ## only basic authentication is supported at the moment.
+##
+## Examples:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    let myProxy = newProxy("http://myproxy.network")
+##    let client = newHttpClient(proxy = myProxy)
+##
+## Get Proxy URL from environment variables:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    var url = ""
+##    try:
+##      if existsEnv("http_proxy"):
+##        url = getEnv("http_proxy")
+##      elif existsEnv("https_proxy"):
+##        url = getEnv("https_proxy")
+##    except ValueError:
+##      echo "Unable to parse proxy from environment variables."
+##
+##    let myProxy = newProxy(url = url)
+##    let client = newHttpClient(proxy = myProxy)
+##
+## Redirects
+## =========
+##
+## The maximum redirects can be set with the ``maxRedirects`` of ``int`` type,
+## it specifies the maximum amount of redirects to follow,
+## it defaults to ``5``, you can set it to ``0`` to disable redirects.
+##
+## Examples:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    let client = newHttpClient(maxRedirects = 0)
+##
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
   math, random, httpcore, times, tables, streams
@@ -647,7 +694,7 @@ proc getSocket*(client: HttpClient): Socket  =
   ##
   ## .. code-block:: Nim
   ##   if client.connected:
-  ##     echo client.getSocket.getLocalAddr  
+  ##     echo client.getSocket.getLocalAddr
   ##     echo client.getSocket.getPeerAddr
   ##
   return client.socket
