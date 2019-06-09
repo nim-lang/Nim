@@ -13,8 +13,17 @@ The standard distribution ships with the following tools:
     and obtain useful information like definition of symbols or suggestions for
     completion.
 
-- | `C2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_
-  | C to Nim source converter. Translates C header files to Nim.
+- | `niminst <https://nim-lang.org/docs/niminst.html>`_
+  | niminst is a tool to generate an installer for a Nim program.
 
 - | `nimgrep <nimgrep.html>`_
   | Nim search and replace utility.
+
+- | nimpretty
+  | ``nimpretty`` is a Nim source code beatifier,
+    to format code according to the official style guide.
+
+- | REPL (Experimental)
+  | ``nim secret`` is a Nim REPL-like interpreter embebed on the compiler,
+    is experimental, you can use it to learn Nim syntax or try simple snippets.
+    NimScript syntax subset should work in it. You can quit using ``quit()``.
