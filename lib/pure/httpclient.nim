@@ -121,7 +121,7 @@
 ## if however data does not reach the client within the specified timeout a
 ## ``TimeoutError`` exception will be raised.
 ##
-## Examples:
+## Here is how to set a timeout when creating an ``HttpClient`` instance:
 ##
 ## .. code-block:: Nim
 ##    import httpclient
@@ -135,7 +135,7 @@
 ## this module. To do this, use the ``newProxy`` constructor. Unfortunately,
 ## only basic authentication is supported at the moment.
 ##
-## Examples:
+## Some examples on how to configure a Proxy for ``HttpClient``:
 ##
 ## .. code-block:: Nim
 ##    import httpclient
@@ -167,7 +167,7 @@
 ## it specifies the maximum amount of redirects to follow,
 ## it defaults to ``5``, you can set it to ``0`` to disable redirects.
 ##
-## Examples:
+## Here you can see an example about how to set the ``maxRedirects`` of ``HttpClient``:
 ##
 ## .. code-block:: Nim
 ##    import httpclient
