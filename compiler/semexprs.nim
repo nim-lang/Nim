@@ -530,7 +530,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var
     firstIndex, lastIndex: BiggestInt = 0
     indexType = getSysType(c.graph, n.info, tyInt)
-    lastInt = lastOrd(c.config, indexType)
+    lastValidIndex = lastOrd(c.config, indexType)
   if sonsLen(n) == 0:
     rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
     lastIndex = -1
@@ -544,23 +544,25 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       firstIndex = getOrdValue(idx)
       lastIndex = firstIndex
       indexType = idx.typ
+      lastValidIndex = lastOrd(c.config, indexType)
       x = x.sons[1]
-
-    template unlessOverflows(body: untyped): untyped =
-      if lastIndex == lastInt:
-        localError(c.config, x.info, "array index too large")
-      body
 
     let yy = semExprWithType(c, x)
     var typ = yy.typ
     addSon(result, yy)
     #var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal})
     for i in 1 ..< sonsLen(n):
+      if lastIndex == lastValidIndex:
+        let validIndex = makeRangeType(c, firstIndex, lastValidIndex, n.info,
+                                       indexType)
+        localError(c.config, n.info, "size of array exceeds range of index " &
+          "type '$1' by $2 elements" % [typeToString(validIndex), $(n.len-i)])
+
       x = n.sons[i]
       if x.kind == nkExprColonExpr and sonsLen(x) == 2:
         var idx = semConstExpr(c, x.sons[0])
         idx = fitNode(c, indexType, idx, x.info)
-        if unlessOverflows(lastIndex+1) != getOrdValue(idx):
+        if lastIndex+1 != getOrdValue(idx):
           localError(c.config, x.info, "invalid order in array constructor")
         x = x.sons[1]
 
@@ -569,19 +571,12 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       typ = commonType(typ, xx.typ)
       #n.sons[i] = semExprWithType(c, x, flags*{efAllowDestructor})
       #addSon(result, fitNode(c, typ, n.sons[i]))
-      unlessOverflows(inc(lastIndex))
+      inc(lastIndex)
     addSonSkipIntLit(result.typ, typ)
     for i in 0 ..< result.len:
       result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
-  let
-    validRange = makeRangeType(c, firstIndex, lastOrd(c.config, indexType),
-                               n.info, indexType)
-    indexRange = makeRangeType(c, firstIndex, lastIndex, n.info, indexType)
-    extraElems = lengthOrd(c.config, indexRange)-lengthOrd(c.config, validRange)
-  if extraElems > 0:
-    localError(c.config, n.info, "size of array exceeds range of index " &
-      "type '$1' by $2 elements" % [typeToString(validRange), $extraElems])
-  result.typ.sons[0] = indexRange
+  result.typ.sons[0] = makeRangeType(c, firstIndex, lastIndex, n.info,
+                                     indexType)
 
 proc fixAbstractType(c: PContext, n: PNode) =
   for i in 1 ..< n.len:
