@@ -30,7 +30,7 @@ import
   llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos,
   pathutils
 
-when defined(nimpretty2):
+when defined(nimpretty):
   import layouter
 
 type
@@ -44,7 +44,7 @@ type
     inPragma*: int             # Pragma level
     inSemiStmtList*: int
     emptyNode: PNode
-    when defined(nimpretty2):
+    when defined(nimpretty):
       em*: Emitter
 
   SymbolMode = enum
@@ -89,12 +89,17 @@ proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode
 
 # implementation
 
+template prettySection(body) =
+  when defined(nimpretty): beginSection(p.em)
+  body
+  when defined(nimpretty): endSection(p.em)
+
 proc getTok(p: var TParser) =
   ## Get the next token from the parser's lexer, and store it in the parser's
   ## `tok` member.
   rawGetTok(p.lex, p.tok)
   p.hasProgress = true
-  when defined(nimpretty2):
+  when defined(nimpretty):
     emitTok(p.em, p.lex, p.tok)
     # skip the additional tokens that nimpretty needs but the parser has no
     # interest in:
@@ -108,7 +113,7 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
   ##
   initToken(p.tok)
   openLexer(p.lex, fileIdx, inputStream, cache, config)
-  when defined(nimpretty2):
+  when defined(nimpretty):
     openEmitter(p.em, cache, config, fileIdx)
   getTok(p)                   # read the first token
   p.firstTok = true
@@ -121,7 +126,7 @@ proc openParser*(p: var TParser, filename: AbsoluteFile, inputStream: PLLStream,
 proc closeParser(p: var TParser) =
   ## Close a parser, freeing up its resources.
   closeLexer(p.lex)
-  when defined(nimpretty2):
+  when defined(nimpretty):
     closeEmitter(p.em)
 
 proc parMessage(p: TParser, msg: TMsgKind, arg = "") =
@@ -384,7 +389,7 @@ proc exprColonEqExpr(p: var TParser): PNode =
 
 proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
   #| exprList = expr ^+ comma
-  when defined(nimpretty2):
+  when defined(nimpretty):
     inc p.em.doIndentMore
   getTok(p)
   optInd(p, result)
@@ -395,7 +400,7 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
     if p.tok.tokType != tkComma: break
     getTok(p)
     optInd(p, a)
-  when defined(nimpretty2):
+  when defined(nimpretty):
     dec p.em.doIndentMore
 
 proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
@@ -830,10 +835,10 @@ proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = parseOperators(p, result, limit, mode)
 
 proc simpleExpr(p: var TParser, mode = pmNormal): PNode =
-  when defined(nimpretty2):
+  when defined(nimpretty):
     inc p.em.doIndentMore
   result = simpleExprAux(p, -1, mode)
-  when defined(nimpretty2):
+  when defined(nimpretty):
     dec p.em.doIndentMore
 
 proc parseIfExpr(p: var TParser, kind: TNodeKind): PNode =
@@ -910,7 +915,7 @@ proc parsePragma(p: var TParser): PNode =
       skipComment(p, a)
   optPar(p)
   if p.tok.tokType in {tkCurlyDotRi, tkCurlyRi}:
-    when defined(nimpretty2):
+    when defined(nimpretty):
       if p.tok.tokType == tkCurlyRi: curlyRiWasPragma(p.em)
     getTok(p)
   else:
@@ -922,7 +927,7 @@ proc identVis(p: var TParser; allowDot=false): PNode =
   #| identVisDot = symbol '.' optInd symbol opr?
   var a = parseSymbol(p)
   if p.tok.tokType == tkOpr:
-    when defined(nimpretty2):
+    when defined(nimpretty):
       starWasExportMarker(p.em)
     result = newNodeP(nkPostfix, p)
     addSon(result, newIdentNodeP(p.tok.ident, p))
@@ -1001,7 +1006,7 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
       var a = parseIdentColonEquals(p, {})
       addSon(result, a)
       if p.tok.tokType notin {tkComma, tkSemiColon}: break
-      when defined(nimpretty2):
+      when defined(nimpretty):
         commaWasSemicolon(p.em)
       getTok(p)
       skipComment(p, a)
@@ -1037,7 +1042,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
   var a: PNode
   result = newNodeP(nkFormalParams, p)
   addSon(result, p.emptyNode) # return type
-  when defined(nimpretty2):
+  when defined(nimpretty):
     inc p.em.doIndentMore
     inc p.em.keepIndents
   let hasParLe = p.tok.tokType == tkParLe and p.tok.indent < 0
@@ -1059,7 +1064,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
         break
       addSon(result, a)
       if p.tok.tokType notin {tkComma, tkSemiColon}: break
-      when defined(nimpretty2):
+      when defined(nimpretty):
         commaWasSemicolon(p.em)
       getTok(p)
       skipComment(p, a)
@@ -1074,7 +1079,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
   elif not retColon and not hasParle:
     # Mark as "not there" in order to mark for deprecation in the semantic pass:
     result = p.emptyNode
-  when defined(nimpretty2):
+  when defined(nimpretty):
     dec p.em.doIndentMore
     dec p.em.keepIndents
 
@@ -1237,13 +1242,15 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     else: result.kind = nkIteratorTy
   of tkEnum:
     if mode == pmTypeDef:
-      result = parseEnum(p)
+      prettySection:
+        result = parseEnum(p)
     else:
       result = newNodeP(nkEnumTy, p)
       getTok(p)
   of tkObject:
     if mode == pmTypeDef:
-      result = parseObject(p)
+      prettySection:
+        result = parseObject(p)
     else:
       result = newNodeP(nkObjectTy, p)
       getTok(p)
@@ -1696,7 +1703,7 @@ proc parseGenericParamList(p: var TParser): PNode =
     var a = parseGenericParam(p)
     addSon(result, a)
     if p.tok.tokType notin {tkComma, tkSemiColon}: break
-    when defined(nimpretty2):
+    when defined(nimpretty):
       commaWasSemicolon(p.em)
     getTok(p)
     skipComment(p, a)
@@ -2187,10 +2194,16 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
       result = parseOperators(p, result, -1, pmNormal)
     else:
       result = parseSection(p, nkTypeSection, parseTypeDef)
-  of tkConst: result = parseSection(p, nkConstSection, parseConstant)
-  of tkLet: result = parseSection(p, nkLetSection, parseVariable)
+  of tkConst:
+    prettySection:
+      result = parseSection(p, nkConstSection, parseConstant)
+  of tkLet:
+    prettySection:
+      result = parseSection(p, nkLetSection, parseVariable)
+  of tkVar:
+    prettySection:
+      result = parseSection(p, nkVarSection, parseVariable)
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
-  of tkVar: result = parseSection(p, nkVarSection, parseVariable)
   of tkBind: result = parseBind(p, nkBindStmt)
   of tkMixin: result = parseBind(p, nkMixinStmt)
   of tkUsing: result = parseSection(p, nkUsingStmt, parseVariable)

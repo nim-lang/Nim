@@ -16,7 +16,6 @@ from sequtils import delete
 
 const
   MaxLineLen = 80
-  LineCommentColumn = 30
 
 type
   SplitKind = enum
@@ -26,8 +25,10 @@ type
     detectSemicolonKind, useSemicolon, dontTouch
 
   LayoutToken = enum
-    ltSpaces, ltNewline, ltComment, ltLit, ltKeyword, ltExportMarker, ltIdent,
-    ltOther, ltOpr
+    ltSpaces, ltNewline, ltTab,
+    ltComment, ltLit, ltKeyword, ltExportMarker, ltIdent,
+    ltOther, ltOpr,
+    ltBeginSection, ltEndSection
 
   Emitter* = object
     config: ConfigRef
@@ -60,12 +61,59 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.indentStack.add 0
   em.lastLineNumber = 1
 
+proc computeMax(em: Emitter; pos: int): int =
+  var p = pos
+  result = 0
+  while p < em.tokens.len and em.kinds[p] != ltEndSection:
+    var lhs = 0
+    var lineLen = 0
+    var foundTab = false
+    while p < em.tokens.len and em.kinds[p] != ltEndSection:
+      if em.kinds[p] == ltNewline:
+        if foundTab and lineLen <= MaxLineLen: result = max(result, lhs)
+        inc p
+        break
+      if em.kinds[p] == ltTab:
+        foundTab = true
+      else:
+        if not foundTab:
+          inc lhs, em.tokens[p].len
+        inc lineLen, em.tokens[p].len
+      inc p
+
+proc computeRhs(em: Emitter; pos: int): int =
+  var p = pos
+  result = 0
+  while p < em.tokens.len and em.kinds[p] != ltNewline:
+    inc result, em.tokens[p].len
+    inc p
+
 proc closeEmitter*(em: var Emitter) =
   let outFile = em.config.absOutFile
 
   var content = newStringOfCap(16_000)
+  var maxLhs = 0
+  var lineLen = 0
+  var lineBegin = 0
   for i in 0..em.tokens.high:
-    content.add em.tokens[i]
+    case em.kinds[i]
+    of ltBeginSection:
+      maxLhs = computeMax(em, lineBegin)
+    of ltEndSection:
+      maxLhs = 0
+    of ltTab:
+      if maxLhs == 0 or computeRhs(em, i)+maxLhs > MaxLineLen:
+        content.add ' '
+      else:
+        let spaces = max(maxLhs - lineLen + 1, 1)
+        for j in 1..spaces: content.add ' '
+    of ltNewline:
+      content.add em.tokens[i]
+      lineLen = 0
+      lineBegin = i+1
+    else:
+      content.add em.tokens[i]
+      inc lineLen, em.tokens[i].len
 
   if fileExists(outFile) and readFile(outFile.string) == content:
     discard "do nothing, see #9499"
@@ -106,6 +154,12 @@ proc wrSpaces(em: var Emitter; spaces: int) =
 
 proc wrSpace(em: var Emitter) =
   wr(em, " ", ltSpaces)
+
+proc wrTab(em: var Emitter) =
+  wr(em, " ", ltTab)
+
+proc beginSection*(em: var Emitter) = wr(em, "", ltBeginSection)
+proc endSection*(em: var Emitter) = wr(em, "", ltEndSection)
 
 proc removeSpaces(em: var Emitter) =
   while em.kinds.len > 0 and em.kinds[^1] == ltSpaces:
@@ -197,29 +251,41 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
     wr em, stripped, ltComment
     inc i
 
+proc lastChar(s: string): char =
+  result = if s.len > 0: s[s.high] else: '\0'
+
+proc endsInWhite(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
+  result = if i >= 0: em.kinds[i] in {ltSpaces, ltNewline, ltTab} else: true
+
+proc endsInNewline(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection, ltSpaces}: dec(i)
+  result = if i >= 0: em.kinds[i] in {ltNewline, ltTab} else: true
+
+proc endsInAlpha(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
+  result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
+
+proc emitComment(em: var Emitter; tok: TToken) =
+  let col = em.col
+  let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
+  em.lineSpan = countNewlines(lit)
+  if em.lineSpan > 0: calcCol(em, lit)
+  if em.lineSpan == 0:
+    if not endsInNewline(em):
+      wrTab em
+    wr em, lit, ltComment
+  else:
+    if not endsInWhite(em):
+      wrTab em
+    emitMultilineComment(em, lit, col)
+
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
-
-  template endsInWhite(em): bool =
-    em.kinds.len == 0 or em.kinds[em.kinds.high] in {ltSpaces, ltNewline}
-  template endsInAlpha(em): bool =
-    em.tokens.len > 0 and em.tokens[em.tokens.high][^1] in SymChars+{'_'}
-
   template wasExportMarker(em): bool =
     em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
-
-  proc emitComment(em: var Emitter; tok: TToken) =
-    let col = em.col
-    let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
-    em.lineSpan = countNewlines(lit)
-    if em.lineSpan > 0: calcCol(em, lit)
-    if not endsInWhite(em):
-      wrSpace em
-      if em.lineSpan == 0 and max(em.col, LineCommentColumn) + lit.len <= MaxLineLen:
-        wrSpaces em, LineCommentColumn - em.col
-    if em.lineSpan == 0:
-      wr em, lit, ltComment
-    else:
-      emitMultilineComment(em, lit, col)
 
   if tok.tokType == tkComment and tok.literal.startsWith("#!nimpretty"):
     case tok.literal

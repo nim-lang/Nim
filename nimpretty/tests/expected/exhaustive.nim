@@ -29,10 +29,10 @@ var x = 1
 
 type
   GeneralTokenizer* = object of RootObj ## comment here
-    kind*: TokenClass         ## and here
-    start*, length*: int      ## you know how it goes...
+    kind*: TokenClass                   ## and here
+    start*, length*: int                ## you know how it goes...
     buf: cstring
-    pos: int                  # other comment here.
+    pos: int                            # other comment here.
     state: TokenClass
 
 var x*: string
@@ -122,7 +122,7 @@ type
     inquote {.pragmaHereWrongCurlyEnd.}: bool
     col, lastLineNumber, lineSpan, indentLevel: int
     content: string
-    fixedUntil: int           # marks where we must not go in the content
+    fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
 
 proc openEmitter*[T, S](em: var Emitter; config: ConfigRef;
@@ -406,3 +406,16 @@ proc main() =
   discard
 
 main()
+
+type
+  TCallingConvention* = enum
+    ccDefault,     # proc has no explicit calling convention
+    ccStdCall,     # procedure is stdcall
+    ccCDecl,       # cdecl
+    ccSafeCall,    # safecall
+    ccSysCall,     # system call
+    ccInline,      # proc should be inlined
+    ccNoInline,    # proc should not be inlined
+    ccFastCall,    # fastcall (pass parameters in registers)
+    ccClosure,     # proc has a closure
+    ccNoConvention # needed for generating proper C procs sometimes
