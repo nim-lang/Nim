@@ -26,6 +26,7 @@ matrix:
 
 install:
   - ps: Install-Product node 8 # node 8 or later is required to test js async stuff
+  - cinst make
   - MKDIR %CD%\DIST
   - MKDIR %CD%\DIST\PCRE
   - nuget install pcre -Verbosity quiet -Version 8.33.0.1 -OutputDirectory %CD%\DIST\PCRE
