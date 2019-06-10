@@ -42,7 +42,7 @@ install:
   - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
   - git clone --depth 1 https://github.com/nim-lang/csources
   - cd csources
-  - IF "%PLATFORM%" == "x64" ( build64.bat ) else ( build.bat )
+  - make -j "%NUMBER_OF_PROCESSORS%" CC=gcc
   - cd ..
 
 build_script:
