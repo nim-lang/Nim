@@ -13,6 +13,9 @@ The standard distribution ships with the following tools:
     and obtain useful information like definition of symbols or suggestions for
     completion.
 
+- | `C2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_
+  | C to Nim source converter. Translates C header files to Nim.
+
 - | `niminst <https://nim-lang.org/docs/niminst.html>`_
   | niminst is a tool to generate an installer for a Nim program.
 
