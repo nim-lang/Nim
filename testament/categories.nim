@@ -474,11 +474,7 @@ iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
   for n, cmd, hasDeps, url in important_packages.packages.items:
     let cmd = if cmd.len == 0: defaultCmd else: cmd
     if url.len != 0:
-      if hasDeps:
-        # use url instead of name, so we can do 'nimble install'
-        yield (url, url, cmd, hasDeps)
-      else:
-        yield (n, url, cmd, hasDeps)
+      yield (n, url, cmd, hasDeps)
     else:
       var found = false
       for package in packageList.items:
@@ -515,7 +511,8 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       let buildPath = packagesDir / name
       if not existsDir(buildPath):
         if hasDep:
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", name])
+          let installName = if url.len != 0: url else: name
+          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
           if nimbleStatus != QuitSuccess:
             let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
             r.addResult(test, targetC, "", message, reInstallFailed)
