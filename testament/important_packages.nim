@@ -57,7 +57,7 @@ pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
 pkg "nimx", "nim c --threads:on test/main.nim", true
-pkg "norm", "nim c -o:normm src/norm.nim", true
+# pkg "norm", "nim c -o:normm src/norm.nim", true
 pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
 pkg "parsetoml"
@@ -78,6 +78,6 @@ pkg "unicodedb"
 pkg "unicodeplus", "", true
 pkg "unpack"
 pkg "with"
-pkg "winim", "", true
+# pkg "winim", "", true
 pkg "yaml"
 pkg "zero_functional", "nim c -r test.nim"
