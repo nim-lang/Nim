@@ -78,5 +78,6 @@ pkg "unicodedb"
 pkg "unicodeplus", "", true
 pkg "unpack"
 pkg "with"
+pkg "winim", "", true
 pkg "yaml"
 pkg "zero_functional", "nim c -r test.nim"
