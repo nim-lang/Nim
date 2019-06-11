@@ -78,7 +78,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  PByteArray = ptr array[0xffff, int8]
+  PByteArray = ptr array[0xffff, byte]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
@@ -104,7 +104,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   else:
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
-      if (ze(a[i div 8]) and (1 shl (i mod 8))) != 0:
+      if (uint(a[i shr 3]) and (1'u shl (i and 7))) != 0:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)
