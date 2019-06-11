@@ -61,7 +61,7 @@ when not defined(nimhygiene):
 type
   KeyValuePair[A] = tuple[hcode: Hash, key: A]
   KeyValuePairSeq[A] = seq[KeyValuePair[A]]
-  HashSet* {.myShallow.} [A] = object ## \
+  HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
     ## Use `init proc <#init,HashSet[A],int>`_ or `initHashSet proc <#initHashSet,int>`_
@@ -73,7 +73,7 @@ type
   OrderedKeyValuePair[A] = tuple[
     hcode: Hash, next: int, key: A]
   OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
-  OrderedSet* {.myShallow.} [A] = object ## \
+  OrderedSet*[A] {.myShallow.} = object ## \
     ## A generic hash set that remembers insertion order.
     ##
     ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc

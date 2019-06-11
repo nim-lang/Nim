@@ -534,13 +534,13 @@ proc getNumber(L: var TLexer, result: var TToken) =
 
       case result.tokType
       of tkIntLit, tkInt64Lit: result.iNumber = xi
-      of tkInt8Lit: result.iNumber = BiggestInt(int8(toU8(int(xi))))
-      of tkInt16Lit: result.iNumber = BiggestInt(int16(toU16(int(xi))))
-      of tkInt32Lit: result.iNumber = BiggestInt(int32(toU32(int64(xi))))
+      of tkInt8Lit: result.iNumber = ashr(xi shl 56, 56)
+      of tkInt16Lit: result.iNumber = ashr(xi shl 48, 48)
+      of tkInt32Lit: result.iNumber = ashr(xi shl 32, 32)
       of tkUIntLit, tkUInt64Lit: result.iNumber = xi
-      of tkUInt8Lit: result.iNumber = BiggestInt(cast[uint8](toU8(int(xi))))
-      of tkUInt16Lit: result.iNumber = BiggestInt(cast[uint16](toU16(int(xi))))
-      of tkUInt32Lit: result.iNumber = BiggestInt(cast[uint32](toU32(int64(xi))))
+      of tkUInt8Lit: result.iNumber = xi and 0xff
+      of tkUInt16Lit: result.iNumber = xi and 0xffff
+      of tkUInt32Lit: result.iNumber = xi and 0xffffffff
       of tkFloat32Lit:
         result.fNumber = (cast[PFloat32](addr(xi)))[]
         # note: this code is endian neutral!
