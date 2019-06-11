@@ -1,6 +1,7 @@
 discard """
 disabled: "travis"
 disabled: "appveyor"
+disabled: "azure"
 joinable: false
 disabled: 32bit
 """
