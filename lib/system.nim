@@ -4450,9 +4450,8 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-when not defined(nimnoio):
-  import system/io
-  export io
+import system/io
+export io
 
 when not defined(createNimHcr):
   include nimhcr

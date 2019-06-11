@@ -149,6 +149,12 @@ proc hash*(x: float): Hash {.inline.} =
   var y = x + 1.0
   result = cast[ptr Hash](addr(y))[]
 
+
+# Forward declarations before methods that hash containers. This allows
+# containers to contain other containers
+proc hash*[A](x: openArray[A]): Hash
+proc hash*[A](x: set[A]): Hash
+
 template bytewiseHashing(result: Hash, x: typed, start, stop: int) =
   for i in start .. stop:
     result = result !& hash(x[i])
@@ -290,12 +296,6 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
     h = h !& ord(c)
   result = !$h
-
-
-# Forward declarations before methods that hash containers. This allows
-# containers to contain other containers
-proc hash*[A](x: openArray[A]): Hash
-proc hash*[A](x: set[A]): Hash
 
 
 proc hash*[T: tuple](x: T): Hash =

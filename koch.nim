@@ -111,7 +111,7 @@ proc overwriteFile(source, dest: string) =
 proc copyExe(source, dest: string) =
   safeRemove(dest)
   copyFile(dest=dest, source=source)
-  inclFilePermissions(dest, {fpUserExec})
+  inclFilePermissions(dest, {fpUserExec, fpGroupExec, fpOthersExec})
 
 const
   compileNimInst = "tools/niminst/niminst"

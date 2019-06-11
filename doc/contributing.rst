@@ -343,12 +343,10 @@ The Git stuff
 General commit rules
 --------------------
 
-1. Bugfixes that should be backported to the latest stable release should
-   contain the string ``[backport]`` in the commit message! There will be an
-   outmated process relying on these. However, bugfixes also have the inherent
-   risk of causing regressions which are worse for a "stable, bugfixes-only"
-   branch, so in doubt, leave out the ``[backport]``. Standard library bugfixes
-   are less critical than compiler bugfixes.
+1. The commit message should contain either ``[bugfix]`` or ``[feature]``
+   or ``[refactoring]`` or ``[other]``. Refactorings and bugfixes and "other"
+   are backported to the latest stable release branch (currently 0.20.x).
+   Refactorings are backported because they often enable further bugfixes.
 
 2. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.
