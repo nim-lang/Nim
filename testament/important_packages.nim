@@ -24,6 +24,7 @@ pkg "comprehension", "", false, "https://github.com/alehander42/comprehension"
 pkg "criterion"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "docopt"
+pkg "easygl", "nim c -o:egl -r src/easygl.nim", true, "https://github.com/jackmott/easygl"
 pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "gara"
 pkg "glob"
@@ -49,17 +50,17 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
 # pkg "nimlsp", "", true
-# pkg "nimly", "nim c -r tests/test_nimly", true
+pkg "nimly", "nim c -r tests/test_nimly", true
 # pkg "nimongo", "nimble test_ci", true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
 pkg "nimx", "nim c --threads:on test/main.nim", true
-pkg "norm", "nim c -o:normm src/norm.nim"
+# pkg "norm", "nim c -o:normm src/norm.nim", true
 pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
-#pkg "parsetoml"
+pkg "parsetoml"
 pkg "patty"
 pkg "plotly", "nim c examples/all.nim", true
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
@@ -68,11 +69,15 @@ pkg "result", "nim c -r result.nim"
 pkg "rosencrantz", "nim c -o:rsncntz -r rosencrantz.nim"
 pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
+pkg "snip", "", false, "https://github.com/genotrance/snip"
 pkg "stint", "nim c -o:stintt -r stint.nim"
 pkg "strunicode", "nim c -r src/strunicode.nim", true
+pkg "telebot", "nim c -o:tbot -r telebot.nim", true
 pkg "tiny_sqlite"
 pkg "unicodedb"
 pkg "unicodeplus", "", true
 pkg "unpack"
+pkg "with"
+# pkg "winim", "", true
 pkg "yaml"
 pkg "zero_functional", "nim c -r test.nim"
