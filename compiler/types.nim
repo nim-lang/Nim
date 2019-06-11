@@ -1204,30 +1204,35 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   # if we have already checked the type, return true, because we stop the
   # evaluation if something is wrong:
   result = nil
-  if typ == nil: return
-  if containsOrIncl(marker, typ.id): return
+  if typ == nil: return nil
+  if containsOrIncl(marker, typ.id): return nil
   var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   case t.kind
   of tyVar, tyLent:
-    if kind in {skProc, skFunc, skConst}: return t
-    elif t.kind == tyLent and kind != skResult: return t
-    var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
-    case t2.kind
-    of tyVar, tyLent:
-      if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
-    of tyOpenArray, tyUncheckedArray:
-      if kind != skParam: result = t
-      else: result = typeAllowedAux(marker, t2.sons[0], skParam, flags)
+    if kind in {skProc, skFunc, skConst}:
+      result = t
+    elif t.kind == tyLent and kind != skResult:
+      result = t
     else:
-      if kind notin {skParam, skResult}: result = t
-      else: result = typeAllowedAux(marker, t2, kind, flags)
+      var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
+      case t2.kind
+      of tyVar, tyLent:
+        if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
+      of tyOpenArray, tyUncheckedArray:
+        if kind != skParam: result = t
+        else: result = typeAllowedAux(marker, t2.sons[0], skParam, flags)
+      else:
+        if kind notin {skParam, skResult}: result = t
+        else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
-    if kind == skConst and t.callConv == ccClosure: return t
-    for i in 1 ..< sonsLen(t):
-      result = typeAllowedAux(marker, t.sons[i], skParam, flags)
-      if result != nil: break
-    if result.isNil and t.sons[0] != nil:
-      result = typeAllowedAux(marker, t.sons[0], skResult, flags)
+    if kind == skConst and t.callConv == ccClosure:
+      result = t
+    else:
+      for i in 1 ..< sonsLen(t):
+        result = typeAllowedAux(marker, t.sons[i], skParam, flags)
+        if result != nil: break
+      if result.isNil and t.sons[0] != nil:
+        result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:
     # XXX: This is still a horrible idea...
     result = nil
@@ -1287,13 +1292,15 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if result != nil: break
   of tyObject, tyTuple:
     if kind in {skProc, skFunc, skConst} and
-        t.kind == tyObject and t.sons[0] != nil: return t
-    let flags = flags+{taField}
-    for i in 0 ..< sonsLen(t):
-      result = typeAllowedAux(marker, t.sons[i], kind, flags)
-      if result != nil: break
-    if result.isNil and t.n != nil:
-      result = typeAllowedNode(marker, t.n, kind, flags)
+        t.kind == tyObject and t.sons[0] != nil:
+      result = t
+    else:
+      let flags = flags+{taField}
+      for i in 0 ..< sonsLen(t):
+        result = typeAllowedAux(marker, t.sons[i], kind, flags)
+        if result != nil: break
+      if result.isNil and t.n != nil:
+        result = typeAllowedNode(marker, t.n, kind, flags)
   of tyEmpty:
     if kind in {skVar, skLet}: result = t
   of tyProxy:
