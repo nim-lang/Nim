@@ -124,12 +124,11 @@
 ##
 ## .. code-block:: nim
 ##   import json
-##   let number = 10
-##   let numJson = % number
+##   let numJson = %10
 ##   doAssert numJson.kind == JInt
 ##
 ## For objects it may be desirable to avoid serialization of one or more object
-## fields. This can be achieved by using the ``{.noserialize.}`` pragma.
+## fields. This can be achieved by using the ``{.noSerialize.}`` pragma.
 ##
 ## .. code-block:: nim
 ##   import json
@@ -138,7 +137,7 @@
 ##     User = object
 ##       name: string
 ##       age: int
-##       uid {.noserialize.}: int
+##       uid {.noSerialize.}: int
 ##
 ##    let user = User(name: "Siri", age: 7, uid: 1234)
 ##    let uJson = % user
@@ -392,24 +391,28 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
-template noserialize*() {.pragma.}
+template noSerialize*() {.pragma.}
+  ## The `{.noSerialize.}` pragma can be attached to a field of an object to avoid
+  ## serialization of said field to a `JsonNode` via `%`. See the `%` proc for
+  ## objects below for an example.
 
 proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
-  ## An object field annotated with the `{.noserialize.}` pragma will not appear
+  ##
+  ## An object field annotated with the `{.noSerialize.}` pragma will not appear
   ## in the serialized JsonNode.
   runnableExamples:
     type
       User = object
         name: string
         age: int
-        uid {.noserialize.}: int
+        uid {.noSerialize.}: int
     let user = User(name: "Siri", age: 7, uid: 1234)
     let uJson = % user
     doAssert not uJson.hasKey("uid")
   result = newJObject()
   for k, v in o.fieldPairs:
-    when not hasCustomPragma(v, noserialize):
+    when not hasCustomPragma(v, noSerialize):
       result[k] = %v
 
 proc `%`*(o: ref object): JsonNode =
