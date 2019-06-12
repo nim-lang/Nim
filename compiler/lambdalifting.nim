@@ -12,7 +12,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs,
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
-  transf
+  transf, liftdestructors
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -583,6 +583,11 @@ proc rawClosureCreation(owner: PSym;
     #             oldenv, env.info))
     else:
       localError(d.graph.config, env.info, "internal error: cannot create up reference")
+  # we are not in the sem'check phase anymore! so pass 'nil' for the PContext
+  # and hope for the best:
+  when false:
+    if optNimV2 in d.graph.config.globalOptions:
+      createTypeBoundOps(d.graph, nil, env.typ, owner.info)
 
 proc closureCreationForIter(iter: PNode;
                             d: DetectionPass; c: var LiftingPass): PNode =
