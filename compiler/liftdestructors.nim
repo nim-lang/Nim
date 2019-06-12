@@ -10,12 +10,11 @@
 ## This module implements lifting for type-bound operations
 ## (``=sink``, ``=``, ``=destroy``, ``=deepCopy``).
 
-# included from sempass2.nim
-
 # Todo:
 # - use openArray instead of array to avoid over-specializations
 
-import sighashes
+import modulegraphs, lineinfos, idents, ast, astalgo, renderer, semdata,
+  sighashes, lowerings, options, types, msgs, magicsys, tables
 
 type
   TLiftCtx = object
@@ -135,8 +134,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     if field != nil and sfOverriden in field.flags:
       if sfError in op.flags:
         incl c.fn.flags, sfError
-      else:
-        markUsed(c.graph.config, c.info, op, c.graph.usageSym)
+      #else:
+      #  markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
       body.add newAsgnCall(c.graph, op, x, y)
       result = true
@@ -155,8 +154,8 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
         op = produceSym(c.c, t, c.kind, c.info)
     if sfError in op.flags:
       incl c.fn.flags, sfError
-    else:
-      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
+    #else:
+    #  markUsed(c.graph.config, c.info, op, c.graph.usageSym)
     onUse(c.info, op)
     # We also now do generic instantiations in the destructor lifting pass:
     if op.ast[genericParamsPos].kind != nkEmpty:
@@ -179,7 +178,7 @@ proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode) =
     doAssert op == t.destructor
 
   if op != nil:
-    markUsed(c.graph.config, c.info, op, c.graph.usageSym)
+    #markUsed(c.graph.config, c.info, op, c.graph.usageSym)
     onUse(c.info, op)
     body.add destructorCall(c.graph, op, x)
   elif useNoGc(c, t):
@@ -198,7 +197,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
         op = c.c.instTypeBoundOp(c.c, op, t.typeInst, c.info, attachedAsgn, 1)
         t.attachedOps[attachedDestructor] = op
 
-      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
+      #markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
       body.add destructorCall(c.graph, op, x)
       result = true
@@ -210,7 +209,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   of attachedDeepCopy:
     let op = t.attachedOps[attachedDeepCopy]
     if op != nil:
-      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
+      #markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
       body.add newDeepCopyCall(op, x, y)
       result = true
