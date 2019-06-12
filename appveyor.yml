@@ -1,14 +1,11 @@
 version: '{build}'
 
 environment:
+  DLLS_URL: https://nim-lang.org/download/dlls.zip
+  DLLS_ARCHIVE: dlls.zip
   MINGW_DIR: mingw64
   MINGW_URL: https://nim-lang.org/download/mingw64-6.3.0.7z
   MINGW_ARCHIVE: mingw64-6.3.0.7z
-  OPENBLAS_URL: https://sourceforge.net/projects/openblas/files/v0.3.5/OpenBLAS%200.3.5%20version.zip/download
-  OPENBLAS_ARCHIVE: OpenBLAS-0.3.5.zip
-  SQLITE_URL: http://www.sqlite.org/2017/sqlite-dll-win64-x64-3160200.zip
-  SQLITE_ARCHIVE: sqlite-dll-win64-x64-3160200.zip
-  platform: x64
 
   matrix:
     - NIM_TEST_PACKAGES: false
@@ -16,8 +13,7 @@ environment:
 
 cache:
     - '%MINGW_ARCHIVE%'
-    - '%SQLITE_ARCHIVE%'
-    - '%OPENBLAS_ARCHIVE%'
+    - '%DLLS_ARCHIVE%'
 
 matrix:
   #allow_failures:
@@ -26,23 +22,14 @@ matrix:
 
 install:
   - ps: Install-Product node 8 # node 8 or later is required to test js async stuff
-  - MKDIR %CD%\DIST
-  - MKDIR %CD%\DIST\PCRE
-  - nuget install pcre -Verbosity quiet -Version 8.33.0.1 -OutputDirectory %CD%\DIST\PCRE
-  - IF not exist "%SQLITE_ARCHIVE%" appveyor DownloadFile "%SQLITE_URL%" -FileName "%SQLITE_ARCHIVE%"
-  - 7z x -y "%SQLITE_ARCHIVE%" -o"%CD%\DIST"> nul
+  - IF not exist "%DLLS_ARCHIVE%" appveyor DownloadFile "%DLLS_URL%" -FileName "%DLLS_ARCHIVE%"
+  - 7z x -y "%DLLS_ARCHIVE%" -o"%CD%\BIN"> nul
   - IF not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
   - 7z x -y "%MINGW_ARCHIVE%" -o"%CD%\DIST"> nul
-  - IF not exist "%OPENBLAS_ARCHIVE%" appveyor DownloadFile "%OPENBLAS_URL%" -FileName "%OPENBLAS_ARCHIVE%"
-  - 7z x -y "%OPENBLAS_ARCHIVE%" -o"%CD%\DIST"> nul
   - SET PATH=%CD%\DIST\%MINGW_DIR%\BIN;%CD%\BIN;%PATH%
-  - IF "%PLATFORM%" == "x64" ( copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay64.dll & copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl64.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl32.dll )
-    ELSE ( copy C:\OpenSSL-Win32\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win32\libssl32.dll %CD%\BIN\libssl32.dll )
-  - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_64.dll ) ELSE ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_32.dll )
-  - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
   - git clone --depth 1 https://github.com/nim-lang/csources
   - cd csources
-  - IF "%PLATFORM%" == "x64" ( build64.bat ) else ( build.bat )
+  - build64.bat
   - cd ..
 
 build_script:
