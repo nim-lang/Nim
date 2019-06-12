@@ -4,6 +4,7 @@ discard """
   output: "OK"
   disabled: "travis"
   disabled: "appveyor"
+  disabled: "azure"
 """
 
 import strutils
