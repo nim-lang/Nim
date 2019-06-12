@@ -248,8 +248,23 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
       result = doAndFit(newIntNodeT(`shl`(getInt(a), getInt(b)), n, g))
     else: internalError(g.config, n.info, "constant folding for shl")
   of mShrI:
-    let a = cast[uint64](getInt(a))
+    var a = cast[uint64](getInt(a))
     let b = cast[uint64](getInt(b))
+    # To support the ``-d:nimOldShiftRight`` flag, we need to mask the
+    # signed integers to cut off the extended sign bit in the internal
+    # representation.
+    if 0'u64 < b: # do not cut off the sign extension, when there is
+              # no bit shifting happening.
+      case skipTypes(n.typ, abstractRange).kind
+      of tyInt8: a = a and 0xff'u64
+      of tyInt16: a = a and 0xffff'u64
+      of tyInt32: a = a and 0xffffffff'u64
+      of tyInt:
+        if g.config.target.intSize == 4:
+          a = a and 0xffffffff'u64
+      else:
+        # unsigned and 64 bit integers don't need masking
+        discard
     let c = cast[BiggestInt](a shr b)
     result = newIntNodeT(c, n, g)
   of mAshrI:
