@@ -844,9 +844,10 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-    if result.typ != nil and
-        not (result.typ.kind == tySequence and result.typ.sons[0].kind == tyEmpty):
-      liftTypeBoundOps(c, result.typ, n.info)
+    when false:
+      if result.typ != nil and
+          not (result.typ.kind == tySequence and result.typ.sons[0].kind == tyEmpty):
+        liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
@@ -1689,8 +1690,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     borrowCheck(c, n, lhs, rhs)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
-    liftTypeBoundOps(c, lhs.typ, lhs.info)
-    #liftTypeBoundOps(c, n.sons[0].typ, n.sons[0].info)
+    when false: liftTypeBoundOps(c, lhs.typ, lhs.info)
 
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])

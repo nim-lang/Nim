@@ -18,7 +18,7 @@ when not defined(leanCompiler):
 when defined(useDfa):
   import dfa
 
-include liftdestructors
+import liftdestructors
 
 #[ Second semantic checking pass over the AST. Necessary because the old
    way had some inherent problems. Performs:
