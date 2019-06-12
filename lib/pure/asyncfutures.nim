@@ -393,11 +393,13 @@ proc asyncCheck*[T](future: Future[T]) =
   ## This should be used instead of ``discard`` to discard void futures,
   ## or use ``waitFor`` if you need to wait for the future's completion.
   assert(not future.isNil, "Future is nil")
-  future.callback =
-    proc () =
-      if future.failed:
-        injectStacktrace(future)
-        raise future.error
+  # TODO: We can likely look at the stack trace here and inject the location
+  # where the `asyncCheck` was called to give a better error stack message.
+  proc asyncCheckCallback() =
+    if future.failed:
+      injectStacktrace(future)
+      raise future.error
+  future.callback = asyncCheckCallback
 
 proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once both ``fut1`` and ``fut2``
