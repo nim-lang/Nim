@@ -88,8 +88,6 @@ when defined(macosx):
   const SIGBUS* = cint(10)
 elif defined(haiku):
   const SIGBUS* = cint(30)
-else:
-  template SIGBUS*: untyped = SIGSEGV
 
 when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
   proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
@@ -109,8 +107,8 @@ else:
   proc c_setjmp*(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "setjmp".}
 
-type c_sighandler_t = proc (a: cint) {.noconv.}
-proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): c_sighandler_t {.
+type CSighandlerT = proc (a: cint) {.noconv.}
+proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): CSighandlerT {.
   importc: "signal", header: "<signal.h>", discardable.}
 
 type
