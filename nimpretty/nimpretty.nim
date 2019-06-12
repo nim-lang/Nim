@@ -49,7 +49,9 @@ type
 proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
-  conf.outFile = RelativeFile outfile
+  let f = splitFile(outfile.expandTilde)
+  conf.outFile = RelativeFile f.name & f.ext
+  conf.outDir = toAbsoluteDir f.dir
   var p: TParsers
   p.parser.em.indWidth = opt.indWidth
   if setupParsers(p, fileIdx, newIdentCache(), conf):
