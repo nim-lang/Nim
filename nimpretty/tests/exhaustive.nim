@@ -409,3 +409,11 @@ type
     ccFastCall,               # fastcall (pass parameters in registers)
     ccClosure,        # proc has a closure
     ccNoConvention       # needed for generating proper C procs sometimes
+
+
+proc isValid1*[A](s: HashSet[A]): bool {.deprecated:
+    "Deprecated since v0.20; sets are initialized by default".} =
+  ## Returns `true` if the set has been initialized (with `initHashSet proc
+  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  result = s.data.len > 0
+  # bug #11468

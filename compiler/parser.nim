@@ -343,13 +343,13 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
         var accm = ""
         while p.tok.tokType in {tkOpr, tkDot, tkDotDot, tkEquals,
                                 tkParLe..tkParDotRi}:
-          accm.add(tokToStr(p.tok))
+          accm.add($p.tok)
           getTok(p)
         let node = newNodeI(nkIdent, lineinfo)
         node.ident = p.lex.cache.getIdent(accm)
         result.add(node)
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
-        result.add(newIdentNodeP(p.lex.cache.getIdent(tokToStr(p.tok)), p))
+        result.add(newIdentNodeP(p.lex.cache.getIdent($p.tok), p))
         getTok(p)
       else:
         parMessage(p, errIdentifierExpected, p.tok)
@@ -903,6 +903,8 @@ proc parsePragma(p: var TParser): PNode =
   #| pragma = '{.' optInd (exprColonExpr comma?)* optPar ('.}' | '}')
   result = newNodeP(nkPragma, p)
   inc p.inPragma
+  when defined(nimpretty):
+    inc p.em.keepIndents
   getTok(p)
   optInd(p, result)
   while p.tok.tokType notin {tkCurlyDotRi, tkCurlyRi, tkEof}:
@@ -921,6 +923,8 @@ proc parsePragma(p: var TParser): PNode =
   else:
     parMessage(p, "expected '.}'")
   dec p.inPragma
+  when defined(nimpretty):
+    dec p.em.keepIndents
 
 proc identVis(p: var TParser; allowDot=false): PNode =
   #| identVis = symbol opr?  # postfix position
