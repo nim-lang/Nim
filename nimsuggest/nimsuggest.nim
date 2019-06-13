@@ -224,8 +224,8 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
   execute(cmd, file, dirtyfile, int(line), int(column), graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
-               return_symbol = "return") =
-  let response = $convertSexp([newSSymbol(return_symbol), uid, s])
+               returnSymbol = "return") =
+  let response = $convertSexp([newSSymbol(returnSymbol), uid, s])
   socket.send(toHex(len(response), 6))
   socket.send(response)
 
