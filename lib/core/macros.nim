@@ -1302,7 +1302,8 @@ proc basename*(a: NimNode): NimNode =
   of nnkIdent: return a
   of nnkPostfix, nnkPrefix: return a[1]
   else:
-    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
+    error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
+      repr(a), a)
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
@@ -1311,7 +1312,8 @@ proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   of nnkPostfix, nnkPrefix:
     a[1] = ident(val)
   else:
-    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
+    error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
+      repr(a), a)
 
 proc postfix*(node: NimNode; op: string): NimNode {.compileTime.} =
   newNimNode(nnkPostfix).add(ident(op), node)
