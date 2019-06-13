@@ -3776,8 +3776,11 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
-    cstderr.rawWrite(errormsg)
-    cstderr.rawWrite("\n")
+    when nimvm:
+      echo errormsg
+    else:
+      cstderr.rawWrite(errormsg)
+      cstderr.rawWrite("\n")
   quit(errorcode)
 
 {.pop.} # checks
