@@ -15,8 +15,7 @@ let expr = if true: "true" else: "false"
 
 var body = newNimNode(nnkIfExpr).add(
   newNimNode(nnkElifBranch).add(
-    infix(newDotExpr(ident("a"), ident("kind")), "==", newDotExpr(ident("b"),
-        ident("kind"))),
+    infix(newDotExpr(ident("a"), ident("kind")), "==", newDotExpr(ident("b"), ident("kind"))),
     condition
   ),
   newNimNode(nnkElse).add(newStmtList(newNimNode(nnkReturnStmt).add(ident(
@@ -125,8 +124,8 @@ type
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
 
-proc openEmitter*[T, S](em: var Emitter; config: ConfigRef;
-    fileIdx: FileIndex) {.pragmaHereWrongCurlyEnd.} =
+proc openEmitter*[T, S](em: var Emitter; config: ConfigRef; fileIdx: FileIndex) {.
+    pragmaHereWrongCurlyEnd.} =
   let outfile = changeFileExt(config.toFullPath(fileIdx), ".pretty.nim")
   em.f = llStreamOpen(outfile, fmWrite)
   em.config = config
@@ -200,8 +199,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if em.lineSpan > 0: calcCol(em, lit)
     if not endsInWhite(em):
       wr(" ")
-      if em.lineSpan == 0 and max(em.col,
-          LineCommentColumn) + lit.len <= MaxLineLen:
+      if em.lineSpan == 0 and max(em.col, LineCommentColumn) + lit.len <= MaxLineLen:
         for i in 1 .. LineCommentColumn - em.col: wr(" ")
     wr lit
 
@@ -219,8 +217,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       "case returns value"
 
 
-  if tok.tokType == tkComment and tok.line == em.lastLineNumber and
-      tok.indent >= 0:
+  if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
     # we have an inline comment so handle it before the indentation token:
     emitComment(em, tok)
     preventComment = true
@@ -289,8 +286,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
     softLinebreak(em, lit)
-    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wr(
-        " ")
+    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wr(" ")
     em.lineSpan = countNewlines(lit)
     if em.lineSpan > 0: calcCol(em, lit)
     wr lit
@@ -383,8 +379,7 @@ import osproc
 let res = execProcess(
     "echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
 
-let res = execProcess(
-    "echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
+let res = execProcess("echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
 
 
 # bug #10177
