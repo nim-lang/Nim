@@ -346,7 +346,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if endsInAlpha(em):
       wrSpace em
     elif not em.inquote and not endsInWhite(em) and
-        em.lastTok notin openPars and not em.lastTokWasTerse:
+        em.lastTok notin (openPars+{tkOpr, tkDotDot}) and not em.lastTokWasTerse:
       #and tok.tokType in oprSet
       wrSpace em
 
@@ -392,8 +392,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
-    if ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) or em.inquote) and
-      tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]:
+    if em.inquote or ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) and
+        tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]):
       # bug #9504: remember to not spacify a keyword:
       lastTokWasTerse = true
       # if not surrounded by whitespace, don't produce any whitespace either:

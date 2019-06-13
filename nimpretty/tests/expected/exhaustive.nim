@@ -427,3 +427,18 @@ proc isValid1*[A](s: HashSet[A]): bool {.deprecated:
   ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
   result = s.data.len > 0
   # bug #11468
+
+assert $type(a) == "Option[system.int]"
+foo(a, $type(b), c)
+foo(type(b), c) # this is ok
+
+proc `<`*[A](s, t: A): bool = discard
+proc `==`*[A](s, t: HashSet[A]): bool = discard
+proc `<=`*[A](s, t: HashSet[A]): bool = discard
+
+# these are ok:
+proc `$`*[A](s: HashSet[A]): string = discard
+proc `*`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} = discard
+proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} = discard
+
+# bug #11470
