@@ -173,7 +173,7 @@ proc isNimIdentifier*(s: string): bool =
       inc(i)
     result = true
 
-proc tokToStr*(tok: TToken): string =
+proc `$`*(tok: TToken): string =
   case tok.tokType
   of tkIntLit..tkInt64Lit: result = $tok.iNumber
   of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
@@ -188,11 +188,11 @@ proc tokToStr*(tok: TToken): string =
 
 proc prettyTok*(tok: TToken): string =
   if isKeyword(tok.tokType): result = "keyword " & tok.ident.s
-  else: result = tokToStr(tok)
+  else: result = $tok
 
 proc printTok*(conf: ConfigRef; tok: TToken) =
   msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
-      TokTypeToStr[tok.tokType] & " " & tokToStr(tok))
+      TokTypeToStr[tok.tokType] & " " & $tok)
 
 proc initToken*(L: var TToken) =
   L.tokType = tkInvalid
