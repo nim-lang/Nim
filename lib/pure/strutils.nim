@@ -1854,7 +1854,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,int>`_
+  ## * `rfind proc<#rfind,string,char,int,int>`_
   ## * `replace proc<#replace,string,char,char>`_
   let last = if last==0: s.high else: last
   when nimvm:
@@ -1882,7 +1882,7 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],int>`_
+  ## * `rfind proc<#rfind,string,set[char],int,int>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
   let last = if last==0: s.high else: last
   for i in int(start)..last:
@@ -1899,7 +1899,7 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,int>`_
+  ## * `rfind proc<#rfind,string,string,int,int>`_
   ## * `replace proc<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
