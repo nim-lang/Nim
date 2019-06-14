@@ -70,7 +70,7 @@ proc computeMax(em: Emitter; pos: int): int =
     var foundTab = false
     while p < em.tokens.len and em.kinds[p] != ltEndSection:
       if em.kinds[p] == ltNewline:
-        if foundTab and lineLen <= MaxLineLen: result = max(result, lhs)
+        if foundTab and lineLen <= MaxLineLen: result = max(result, lhs+1)
         inc p
         break
       if em.kinds[p] == ltTab:
@@ -102,11 +102,13 @@ proc closeEmitter*(em: var Emitter) =
     of ltEndSection:
       maxLhs = 0
     of ltTab:
-      if maxLhs == 0 or computeRhs(em, i)+maxLhs > MaxLineLen:
-        content.add ' '
+      if maxLhs == 0 or computeRhs(em, i+1)+maxLhs > MaxLineLen:
+        content.add em.tokens[i]
+        inc lineLen, em.tokens[i].len
       else:
-        let spaces = max(maxLhs - lineLen + 1, 1)
+        let spaces = maxLhs - lineLen #max(maxLhs - lineLen, 1)
         for j in 1..spaces: content.add ' '
+        inc lineLen, spaces
     of ltNewline:
       content.add em.tokens[i]
       lineLen = 0
@@ -236,7 +238,7 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
     var a = 0
     while a < commentLine.len and commentLine[a] == ' ': inc a
     if i == 0:
-      discard
+      wr(em, "", ltTab)
     elif stripped.len == 0:
       wrNewline em
     else:
@@ -247,7 +249,11 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
         b -= em.indWidth
         lastIndent = a
       wrNewline em
-      wrSpaces em, col + b
+      #wrSpaces em, col + b
+      if col + b > 0:
+        wr(em, repeat(' ', col+b), ltTab)
+      else:
+        wr(em, "", ltTab)
     wr em, stripped, ltComment
     inc i
 
