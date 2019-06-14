@@ -4427,7 +4427,7 @@ when not defined(js):
 type
   ForLoopStmt* {.compilerProc.} = object ## \
     ## A special type that marks a macro as a `for-loop macro`:idx:.
-    ## See `"For loop macros" <manual.html#macros-for-loop-macros>`_.
+    ## See `"For Loop Macro" <manual.html#macros-for-loop-macro>`_.
 
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
