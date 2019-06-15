@@ -1908,7 +1908,7 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   result = find(a, s, sub, start, last)
 
 proc rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.noSideEffect,
-  rtl.} =
+  rtl, extern: "nsuRFindChar".} =
   ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
   ## in reverse -- starting at high indexes and moving lower to the first
   ## character or ``start``.  If `last` is unspecified, it defaults to `s.high`
@@ -1926,7 +1926,7 @@ proc rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.noSideEf
   return -1
 
 proc rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.noSideEffect,
-  rtl.} =
+  rtl, extern: "nsuRFindCharSet".} =
   ## Searches for `chars` in `s` inside range ``start..last`` (both ends
   ## included) in reverse -- starting at high indexes and moving lower to the
   ## first character or ``start``.  If `last` is unspecified, it defaults to
@@ -1944,7 +1944,7 @@ proc rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.n
   return -1
 
 proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
-  rtl.} =
+  rtl, extern: "nsuRFindStr".} =
   ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
   ## included) in reverse -- starting at high indexes and moving lower to the
   ## first character or ``start``.   If `last` is unspecified, it defaults to
