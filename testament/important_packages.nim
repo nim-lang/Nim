@@ -12,7 +12,7 @@ pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
 pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "blscurve", "", true
 pkg "bncurve", "", true
-pkg "c2nim", "nim c -r testsuite/tester.nim"
+pkg "c2nim", "nim c -r testsuite/tester.nim", true
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
