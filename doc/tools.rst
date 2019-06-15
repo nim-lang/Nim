@@ -23,10 +23,5 @@ The standard distribution ships with the following tools:
   | Nim search and replace utility.
 
 - | nimpretty
-  | ``nimpretty`` is a Nim source code beatifier,
+  | ``nimpretty`` is a Nim source code beautifier,
     to format code according to the official style guide.
-
-- | REPL (Experimental)
-  | ``nim secret`` is a Nim REPL-like interpreter embebed on the compiler,
-    is experimental, you can use it to learn Nim syntax or try simple snippets.
-    NimScript syntax subset should work in it. You can quit using ``quit()``.
