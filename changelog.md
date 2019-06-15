@@ -22,7 +22,7 @@
 
 ### Library changes
 
-
+- Added `os.delEnv` and `nimscript.delEnv`.
 
 ### Language additions
 
