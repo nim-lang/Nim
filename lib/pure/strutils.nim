@@ -1850,9 +1850,11 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,int>`_
+  ## * `rfind proc<#rfind,string,char,int,int>`_
   ## * `replace proc<#replace,string,char,char>`_
   let last = if last==0: s.high else: last
   when nimvm:
@@ -1876,9 +1878,11 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],int>`_
+  ## * `rfind proc<#rfind,string,set[char],int,int>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
   let last = if last==0: s.high else: last
   for i in int(start)..last:
@@ -1891,9 +1895,11 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,int>`_
+  ## * `rfind proc<#rfind,string,string,int,int>`_
   ## * `replace proc<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
@@ -1901,45 +1907,59 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   initSkipTable(a, sub)
   result = find(a, s, sub, start, last)
 
-proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
-  rtl.} =
-  ## Searches for characer `sub` in `s` in reverse, starting at position `start`
-  ## (default: the last character) and going backwards to the first character.
+proc rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.noSideEffect,
+  rtl, extern: "nsuRFindChar".} =
+  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+  ## in reverse -- starting at high indexes and moving lower to the first
+  ## character or ``start``.  If `last` is unspecified, it defaults to `s.high`
+  ## (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
   ## * `find proc<#find,string,char,int,int>`_
-  let realStart = if start == -1: s.len-1 else: start
-  for i in countdown(realStart, 0):
+  let last = if last == -1: s.high else: last
+  for i in countdown(last, start):
     if sub == s[i]: return i
   return -1
 
-proc rfind*(s: string, chars: set[char], start: int = -1): int {.noSideEffect.} =
-  ## Searches for `chars` in `s` in reverse, starting at position `start`
-  ## (default: the last character) and going backwards to the first character.
+proc rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.noSideEffect,
+  rtl, extern: "nsuRFindCharSet".} =
+  ## Searches for `chars` in `s` inside range ``start..last`` (both ends
+  ## included) in reverse -- starting at high indexes and moving lower to the
+  ## first character or ``start``.  If `last` is unspecified, it defaults to
+  ## `s.high` (the last element).
   ##
-  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## If `s` contains none of the characters in `chars`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
   ## * `find proc<#find,string,set[char],Natural,int>`_
-  let realStart = if start == -1: s.len-1 else: start
-  for i in countdown(realStart, 0):
+  let last = if last == -1: s.high else: last
+  for i in countdown(last, start):
     if s[i] in chars: return i
   return -1
 
-proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
-  ## Searches for string `sub` in `s` in reverse, starting at position `start`
-  ## (default: the last character) and going backwards to the first character.
+proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
+  rtl, extern: "nsuRFindStr".} =
+  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+  ## included) in reverse -- starting at high indexes and moving lower to the
+  ## first character or ``start``.   If `last` is unspecified, it defaults to
+  ## `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
   ## * `find proc<#find,string,string,Natural,int>`_
   if sub.len == 0:
     return -1
-  let realStart = if start == -1: s.len else: start
-  for i in countdown(realStart-sub.len, 0):
+  let last = if last == -1: s.high else: last
+  for i in countdown(last - sub.len + 1, start):
     for j in 0..sub.len-1:
       result = i
       if sub[j] != s[i+j]:
