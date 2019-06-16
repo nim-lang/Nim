@@ -144,10 +144,13 @@ proc newAsyncSmtp*(useSsl = false, debug=false,
     else:
       {.error: "SMTP module compiled without SSL support".}
 
-proc quitExcpt(smtp: AsyncSmtp, msg: string) {.async.} =
-  await smtp.debugSend("QUIT")
-  if true:
-    raise newException(ReplyError, msg)
+proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
+  var retFuture = newFuture[void]()
+  var sendFut = smtp.debugSend("QUIT")
+  sendFut.callback =
+    proc () =
+      retFuture.fail(newException(ReplyError, msg))
+  return retFuture
 
 proc checkReply(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
   var line = await smtp.debugRecv()
