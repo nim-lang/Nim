@@ -183,6 +183,8 @@ proc connect*(smtp: Smtp | AsyncSmtp,
   await smtp.checkReply("250")
   
 proc starttls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
+  ## Put the SMTP connection in TLS (Transport Layer Security) mode.
+  ## May fail with ReplyError
   await smtp.debugSend("STARTTLS\c\L")
   await smtp.checkReply("220")
   when compiledWithSsl:
