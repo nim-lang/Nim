@@ -612,3 +612,14 @@ type
     tagVar,         ## the HTML ``var`` element
     tagVideo,       ## the HTML ``video`` element
     tagWbr          ## the HTML ``wbr`` element
+
+
+# bug #11469
+const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20,
+    15, 16, 17, 25, 17, 4, 8, 31, 27, 13, 23]
+
+veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1],
+    futureValue1, futureValue2, node)
+
+veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1], futureValue1,
+                               futureValue2, node)
