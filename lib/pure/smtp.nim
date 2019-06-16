@@ -26,6 +26,20 @@
 ##   smtpConn.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##
 ##
+## Example for starttls use:
+##
+##
+## .. code-block:: Nim
+##   var msg = createMessage("Hello from Nim's SMTP",
+##                           "Hello!.\n Is this awesome or what?",
+##                           @["foo@gmail.com"])
+##   let smtpConn = newSmtp(debug=true)
+##   smtpConn.connect("smtp.mailtrap.io", Port 2525)
+##   smtpConn.starttls()
+##   smtpConn.auth("username", "password")
+##   smtpConn.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
+##
+##
 ## For SSL support this module relies on OpenSSL. If you want to
 ## enable SSL, compile with ``-d:ssl``.
 
@@ -167,6 +181,19 @@ proc connect*(smtp: Smtp | AsyncSmtp,
   await smtp.checkReply("220")
   await smtp.debugSend("HELO " & address & "\c\L")
   await smtp.checkReply("250")
+  
+proc starttls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
+  ## Put the SMTP connection in TLS (Transport Layer Security) mode.
+  ## May fail with ReplyError
+  await smtp.debugSend("STARTTLS\c\L")
+  await smtp.checkReply("220")
+  when compiledWithSsl:
+    if sslContext == nil:
+      getSSLContext().wrapConnectedSocket(smtp.sock, handshakeAsClient)
+    else:
+      sslContext.wrapConnectedSocket(smtp.sock, handshakeAsClient)
+  else:
+    {.error: "SMTP module compiled without SSL support".}
 
 proc auth*(smtp: Smtp | AsyncSmtp, username, password: string) {.multisync.} =
   ## Sends an AUTH command to the server to login as the `username`
