@@ -813,28 +813,44 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
 
 proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar}
-  var signedIntegers = {tyInt..tyInt64}
-  var unsignedIntegers = {tyUInt..tyUInt64, tyChar}
+  var signedIntegers = {tyInt8..tyInt32}
+  var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
   let src_size = getSize(c.config, src)
   let dst_size = getSize(c.config, dst)
-  if src.kind in allowedIntegers and dst.kind in allowedIntegers:
+  if c.config.target.intSize < 8:
+    signedIntegers.incl(tyInt)
+    unsignedIntegers.incl(tyUInt)
+  if src_size == dst_size and src.kind in allowedIntegers and
+                                 dst.kind in allowedIntegers:
     let tmp = c.genx(n.sons[1])
+    var tmp2 = c.getTemp(n.sons[1].typ)
+    let tmp3 = c.getTemp(n.sons[1].typ)
     if dest < 0: dest = c.getTemp(n[0].typ)
-    c.gABC(n, opcAsgnInt, dest, tmp)
-    if dst_size != sizeof(BiggestInt): # don't do anything on biggest int types
-      if dst.kind in signedIntegers: # we need to do sign extensions
-        if dst_size <= src_size:
-          # Sign extension can be omitted when the size increases.
-          c.gABC(n, opcSignExtend, dest, TRegister(dst_size*8))
-      elif dst.kind in unsignedIntegers:
-        if src.kind in signedIntegers or dst_size < src_size:
-          # Cast from signed to unsigned always needs narrowing. Cast
-          # from unsigned to unsigned only needs narrowing when target
-          # is smaller than source.
-          c.gABC(n, opcNarrowU, dest, TRegister(dst_size*8))
+    proc mkIntLit(ival: int): int =
+      result = genLiteral(c, newIntTypeNode(nkIntLit, ival, getSysType(c.graph, n.info, tyInt)))
+    if src.kind in unsignedIntegers and dst.kind in signedIntegers:
+      # cast unsigned to signed integer of same size
+      # signedVal = (unsignedVal xor offset) -% offset
+      let offset = 1 shl (src_size * 8 - 1)
+      c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
+      c.gABC(n, opcBitxorInt, tmp3, tmp, tmp2)
+      c.gABC(n, opcSubInt, dest, tmp3, tmp2)
+    elif src.kind in signedIntegers and dst.kind in unsignedIntegers:
+      # cast signed to unsigned integer of same size
+      # unsignedVal = (offset +% signedVal +% 1) and offset
+      let offset = (1 shl (src_size * 8)) - 1
+      c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
+      c.gABx(n, opcLdConst, dest, mkIntLit(offset+1))
+      c.gABC(n, opcAddu, tmp3, tmp, dest)
+      c.gABC(n, opcNarrowU, tmp3, TRegister(src_size*8))
+      c.gABC(n, opcBitandInt, dest, tmp3, tmp2)
+    else:
+      c.gABC(n, opcAsgnInt, dest, tmp)
     c.freeTemp(tmp)
+    c.freeTemp(tmp2)
+    c.freeTemp(tmp3)
   elif src_size == dst_size and src.kind in allowedIntegers and
                            dst.kind in {tyFloat, tyFloat32, tyFloat64}:
     let tmp = c.genx(n[1])
