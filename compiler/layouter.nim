@@ -88,17 +88,29 @@ proc computeRhs(em: Emitter; pos: int): int =
     inc result, em.tokens[p].len
     inc p
 
-proc optionalIsGood(em: Emitter; pos: int): bool =
+proc optionalIsGood(em: var Emitter; pos: int): bool =
   let ourIndent = em.tokens[pos].len
   var p = pos+1
   var lineLen = 0
   while p < em.tokens.len and em.kinds[p] != ltNewline:
     inc lineLen, em.tokens[p].len
     inc p
-  if p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
-      em.tokens[p-1] == "," and
-      em.tokens[p+1].len != ourIndent:
-    result = false
+  if p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and em.tokens[p-1] == ",":
+    if em.tokens[p+1].len == ourIndent:
+      var nlPos = p
+      inc p
+      var lineLenTotal = lineLen
+      while p < em.tokens.len and em.kinds[p] != ltNewline:
+        inc lineLenTotal, em.tokens[p].len
+        inc p
+      if p > nlPos + 3 and lineLenTotal < MaxLineLen:
+        em.kinds[nlPos] = ltOptionalNewline
+        if em.kinds[nlPos+1] == ltSpaces:
+          # inhibit extra spaces when concatenating two lines
+          em.tokens[nlPos+1] = " "
+        result = true
+    else:
+      result = false
   elif em.kinds[pos+1] == ltOther: # note: pos+1, not p+1
     result = false
   else:
