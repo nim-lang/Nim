@@ -153,7 +153,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = ""
+const toDebug = "main"
 
 template dbg(body) =
   when toDebug.len > 0:
