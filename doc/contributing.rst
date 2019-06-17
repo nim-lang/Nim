@@ -26,7 +26,7 @@ There are 3 types of tests:
 2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
    ``nimble test`` also typially runs these in external nimble packages.
 
-3. testament tests, eg: ``tests/stdlib/tos.nim`` (only used for Nim repo).
+3. testament tests, e.g.: ``tests/stdlib/tos.nim`` (only used for Nim repo).
 
 Not all the tests follow the convention here, feel free to change the ones
 that don't. Always leave the code cleaner than you found it.
@@ -34,7 +34,7 @@ that don't. Always leave the code cleaner than you found it.
 Stdlib
 ------
 
-If you change the stdlib (anything under ``lib/``, eg ``lib/pure/os.nim``),
+If you change the stdlib (anything under ``lib/``, e.g. ``lib/pure/os.nim``),
 put a test in the file you changed. Add the tests under a ``when isMainModule:``
 condition so they only get executed when the tester is building the
 file. Each test should be in a separate ``block:`` statement, such that
@@ -57,7 +57,7 @@ Sample test:
       doAssert not (1 == 2)
 
 Newer tests tend to be run via ``testament`` rather than via ``when isMainModule:``,
-eg ``tests/stdlib/tos.nim``; this allows additional features such as custom
+e.g. ``tests/stdlib/tos.nim``; this allows additional features such as custom
 compiler flags; for more details see below.
 
 Compiler
@@ -96,6 +96,7 @@ An example for a test:
   var buf: PTest
   buf.test()
 
+
 Running tests
 =============
 
@@ -125,15 +126,16 @@ To run a single test:
 
 ::
 
-  ./koch test run <category>/<name>    # eg: tuples/ttuples_issues
+  ./koch test run <category>/<name>    # e.g.: tuples/ttuples_issues
   ./koch test run tests/stdlib/tos.nim # can also provide relative path
 
 For reproducible tests (to reproduce an environment more similar to the one
 run by Continuous Integration on travis/appveyor), you may want to disable your
-local configuration (eg in ``~/.config/nim/nim.cfg``) which may affect some
+local configuration (e.g. in ``~/.config/nim/nim.cfg``) which may affect some
 tests; this can also be achieved by using
 ``export XDG_CONFIG_HOME=pathtoAlternateConfig`` before running ``./koch``
 commands.
+
 
 Comparing tests
 ===============
@@ -177,7 +179,8 @@ the old name and introduce a new name:
 .. code-block:: nim
 
   # for routines (proc/template/macro/iterator) and types:
-  proc oldProc() {.deprecated: "use `newImpl: string -> int` instead".} = discard
+  proc oldProc(a: int, b: float): bool {.deprecated:
+      "deprecated since v1.2.3; use `newImpl: string -> int` instead".} = discard
 
   # for (const/var/let/fields) the msg is not yet supported:
   const Foo {.deprecated.}  = 1
@@ -263,6 +266,7 @@ or
 
 the first is preferred.
 
+
 Best practices
 =============
 
@@ -309,7 +313,7 @@ which for which ``nim doc`` ignores ``-d:release``).
 
 .. _delegate_printing:
 Delegate printing to caller: return ``string`` instead of calling ``echo``
-rationale: it's more flexible (eg allows caller to call custom printing,
+rationale: it's more flexible (e.g. allows caller to call custom printing,
 including prepending location info, writing to log files, etc).
 
 .. code-block:: nim
@@ -319,7 +323,7 @@ including prepending location info, writing to log files, etc).
 
 .. _use_Option:
 [Ongoing debate] Consider using Option instead of return bool + var argument,
-unless stack allocation is needed (eg for efficiency).
+unless stack allocation is needed (e.g. for efficiency).
 
 .. code-block:: nim
 
@@ -337,6 +341,7 @@ https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
   echo foo() # adds a line for testament in `output:` block inside `discard`.
   doAssert foo() == [1, 2] # preferred, except when not possible to do so.
 
+
 The Git stuff
 =============
 
@@ -348,7 +353,11 @@ General commit rules
    are backported to the latest stable release branch (currently 0.20.x).
    Refactorings are backported because they often enable further bugfixes.
 
-2. All changes introduced by the commit (diff lines) must be related to the
+2. If you introduce changes which affect backwards compatibility,
+   make breaking changes, or have PR which is tagged as ``[feature]``,
+   the changes should be mentioned in `<changelog.md>`_.
+
+3. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.
 
    If you change something unrelated to the subject parts of the file, because
@@ -358,7 +367,7 @@ General commit rules
    *Tip:* Never commit everything as is using ``git commit -a``, but review
    carefully your changes with ``git add -p``.
 
-3. Changes should not introduce any trailing whitespace.
+4. Changes should not introduce any trailing whitespace.
 
    Always check your changes for whitespace errors using ``git diff --check``
    or add following ``pre-commit`` hook:
@@ -368,26 +377,26 @@ General commit rules
       #!/bin/sh
       git diff --check --cached || exit $?
 
-4. Describe your commit and use your common sense.
+5. Describe your commit and use your common sense.
+   Example commit message:
 
-   Example Commit messages: ``Fixes #123; refs #124``
+   ``Fixes #123; refs #124``
 
    indicates that issue ``#123`` is completely fixed (github may automatically
    close it when the PR is committed), wheres issue ``#124`` is referenced
-   (eg: partially fixed) and won't close the issue when committed.
+   (e.g.: partially fixed) and won't close the issue when committed.
 
-5. Commits should be always be rebased against devel (so a fast forward
+6. Commits should be always be rebased against devel (so a fast forward
    merge can happen)
 
-   eg: use ``git pull --rebase origin devel``. This is to avoid messing up
-   git history, see `#8664 <https://github.com/nim-lang/Nim/issues/8664>`_ .
+   e.g.: use ``git pull --rebase origin devel``. This is to avoid messing up
+   git history.
    Exceptions should be very rare: when rebase gives too many conflicts, simply
    squash all commits using the script shown in
    https://github.com/nim-lang/Nim/pull/9356
 
-
-6. Do not mix pure formatting changes (eg whitespace changes, nimpretty) or
-   automated changes (eg nimfix) with other code changes: these should be in
+7. Do not mix pure formatting changes (e.g. whitespace changes, nimpretty) or
+   automated changes (e.g. nimfix) with other code changes: these should be in
    separate commits (and the merge on github should not squash these into 1).
 
 
@@ -395,11 +404,11 @@ Continuous Integration (CI)
 ---------------------------
 
 1. Continuous Integration is by default run on every push in a PR; this clogs
-   the CI pipeline and affects other PR's; if you don't need it (eg for WIP or
+   the CI pipeline and affects other PR's; if you don't need it (e.g. for WIP or
    documentation only changes), add ``[ci skip]`` to your commit message title.
-   This convention is supported by `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
-   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_
-
+   This convention is supported by `Appveyor
+   <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
+   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 
 2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
    waiting for CI to be green in that fork (fixing bugs as needed) before
@@ -424,7 +433,7 @@ Code reviews
       git show --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
 
 3. In addition, you can view github-like diffs locally to identify what was changed
-   within a code block using `diff-highlight` or `diff-so-fancy`, eg:
+   within a code block using `diff-highlight` or `diff-so-fancy`, e.g.:
 
    .. code-block:: sh
 
