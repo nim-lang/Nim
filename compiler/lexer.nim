@@ -1119,7 +1119,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
       inc(tok.strongSpaceA)
     of '\t':
-      if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabulators are not allowed")
+      if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "\\t (tabulators) are not allowed for code indetation")
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
