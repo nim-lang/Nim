@@ -981,7 +981,7 @@ proc buildElse(n: PNode; o: Operators): PNode =
   var s = newNodeIT(nkCurly, n.info, settype(n.sons[0]))
   for i in 1..n.len-2:
     let branch = n.sons[i]
-    assert branch.kind == nkOfBranch
+    assert branch.kind == nkElse
     for j in 0..branch.len-2:
       s.add(branch.sons[j])
   result = newNodeI(nkCall, n.info, 3)
