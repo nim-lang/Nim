@@ -186,6 +186,9 @@ when not defined(JS): # C
 else: # JS
   proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
   proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
+  
+  proc cbrt*(x: float32): float32 {.importc: "Math.cbrt", nodecl.}
+  proc cbrt*(x: float64): float64 {.importc: "Math.cbrt", nodecl.}
 
   proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
   proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
