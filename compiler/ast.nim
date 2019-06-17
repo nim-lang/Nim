@@ -279,6 +279,8 @@ type
     sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
                       # meaning that it won't be renamed and/or changed in any way
     sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
+                      # variable is generated closure environment; requires early
+                      # destruction for --newruntime.
 
 
   TSymFlags* = set[TSymFlag]

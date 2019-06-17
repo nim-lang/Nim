@@ -53,7 +53,7 @@ proc main =
   var b = newButton("button", nil)
   let u = unown b
   b.onclick = proc () =
-    b.caption = "clicked!"
+    u.caption = "clicked!"
   w.add b
 
   w.draw()

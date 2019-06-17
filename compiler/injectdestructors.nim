@@ -153,7 +153,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = ""
+const toDebug = "main"
 
 template dbg(body) =
   when toDebug.len > 0:
@@ -165,12 +165,12 @@ proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
   while pc < c.g.len:
     case c.g[pc].kind
     of def:
-      if instrTargets(c.g[pc], location):
+      if defInstrTargets(c.g[pc], location):
         # the path lead to a redefinition of 's' --> abandon it.
         return high(int)
       inc pc
     of use:
-      if instrTargets(c.g[pc], location):
+      if useInstrTargets(c.g[pc], location):
         c.otherRead = c.g[pc].n
         return -1
       inc pc
@@ -611,7 +611,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkTupleConstr, nkClosure:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
-    for i in 0..<ri.len:
+    for i in ord(ri.kind == nkClosure)..<ri.len:
       # everything that is passed to an tuple constructor is consumed,
       # so these all act like 'sink' parameters:
       if ri[i].kind == nkExprColonExpr:
@@ -757,7 +757,7 @@ proc p(n: PNode; c: var Con): PNode =
     else:
       result = n
   of nkAsgn, nkFastAsgn:
-    if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda, nkClosure}:
+    if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
       result = moveOrCopy(n[0], n[1], c)
     else:
       result = copyNode(n)
