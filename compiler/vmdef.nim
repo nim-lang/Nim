@@ -149,7 +149,6 @@ type
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
-    opcToNarrowInt,
     opcSymOwner,
     opcSymIsInstantiationOf
 
