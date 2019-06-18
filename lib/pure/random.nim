@@ -321,7 +321,7 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## Allowed input types are:
   ## * Integer
   ## * Floats
-  ## * Enums without holes 
+  ## * Enums without holes
   ##
   ## See also:
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice and uses the
@@ -407,7 +407,7 @@ proc sample*[T](r: var Rand; s: set[T]): T =
   for e in s:
     if i == 0: return e
     dec(i)
-    
+
 proc sample*[T](s: set[T]): T =
   ## returns a random element from a set
   sample(state, s)
@@ -607,8 +607,8 @@ when not defined(nimscript):
     ## See also:
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
     ## * `initRand proc<#initRand,int64>`_
-    when defined(js):
-      let time = int64(times.epochTime() * 1_000_000_000)
+    when defined(JS):
+      let time = int64(times.epochTime() * 100_000)
       randomize(time)
     else:
       let now = times.getTime()
