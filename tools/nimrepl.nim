@@ -9,10 +9,8 @@
 
 import glib2, gtk2, gdk2, os, osproc, dialogs, strutils
 
-when defined(tinyc):
-  const runCmd = "run"
-else:
-  const runCmd = "c -r"
+
+const runCmd = "c -r"
 
 var nimExe = findExe("nim")
 if nimExe.len == 0: nimExe = "../bin" / addFileExt("nim", os.ExeExt)

@@ -240,51 +240,6 @@ when defined(vcc):
     else:
       {.error: "invalid CAS instruction".}
 
-elif defined(tcc):
-  when defined(amd64):
-    {.emit:"""
-static int __tcc_cas(int *ptr, int oldVal, int newVal)
-{
-    unsigned char ret;
-    __asm__ __volatile__ (
-            "  lock\n"
-            "  cmpxchgq %2,%1\n"
-            "  sete %0\n"
-            : "=q" (ret), "=m" (*ptr)
-            : "r" (newVal), "m" (*ptr), "a" (oldVal)
-            : "memory");
-
-    if (ret)
-      return 0;
-    else
-      return 1;
-}
-""".}
-  else:
-    #assert sizeof(int) == 4
-    {.emit:"""
-static int __tcc_cas(int *ptr, int oldVal, int newVal)
-{
-    unsigned char ret;
-    __asm__ __volatile__ (
-            "  lock\n"
-            "  cmpxchgl %2,%1\n"
-            "  sete %0\n"
-            : "=q" (ret), "=m" (*ptr)
-            : "r" (newVal), "m" (*ptr), "a" (oldVal)
-            : "memory");
-
-    if (ret)
-      return 0;
-    else
-      return 1;
-}
-""".}
-
-  proc tcc_cas(p: ptr int; oldValue, newValue: int): bool
-    {.importc: "__tcc_cas", nodecl.}
-  proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
-    tcc_cas(cast[ptr int](p), cast[int](oldValue), cast[int](newValue))
 elif declared(atomicCompareExchangeN):
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     atomicCompareExchangeN(p, oldValue.unsafeAddr, newValue, false, ATOMIC_SEQ_CST, ATOMIC_SEQ_CST)
@@ -300,7 +255,7 @@ when (defined(x86) or defined(amd64)) and defined(vcc):
 elif (defined(x86) or defined(amd64)) and (someGcc or defined(bcc)):
   proc cpuRelax* {.inline.} =
     {.emit: """asm volatile("pause" ::: "memory");""".}
-elif someGcc or defined(tcc):
+elif someGcc:
   proc cpuRelax* {.inline.} =
     {.emit: """asm volatile("" ::: "memory");""".}
 elif defined(icl):

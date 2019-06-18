@@ -39,8 +39,6 @@ when not declared(dynlib.libCandidates):
     else:
       add(dest, s)
 
-when options.hasTinyCBackend:
-  import tccgen
 
 proc hcrOn(m: BModule): bool = m.config.hcrOn
 proc hcrOn(p: BProc): bool = p.module.config.hcrOn
@@ -1923,11 +1921,6 @@ proc writeModule(m: BModule, pending: bool) =
                    obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     var code = genModule(m, cf)
     if code != nil:
-      when hasTinyCBackend:
-        if conf.cmd == cmdRun:
-          tccgen.compileCCode($code)
-          return
-
       if not shouldRecompile(m, code, cf): cf.flags = {CfileFlag.Cached}
       addFileToCompile(m.config, cf)
   elif pending and mergeRequired(m) and sfMainModule notin m.module.flags:

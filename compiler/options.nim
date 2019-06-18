@@ -15,7 +15,6 @@ from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
 
 const
-  hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
@@ -106,7 +105,6 @@ type
     cmdRst2html,              # convert a reStructuredText file to HTML
     cmdRst2tex,               # convert a reStructuredText file to TeX
     cmdInteractive,           # start interactive session
-    cmdRun,                   # run the project via TCC backend
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
@@ -140,7 +138,7 @@ type
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
+    ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time

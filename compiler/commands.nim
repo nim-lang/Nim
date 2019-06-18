@@ -30,7 +30,6 @@ import
   pathutils, strtabs
 
 # but some have deps to imported modules. Yay.
-bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedNativeStacktrace,
   defined(nativeStackTrace) and nativeStackTraceSupported,
   "-d:nativeStackTrace")
@@ -97,7 +96,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease &
-      usedTinyC & usedGnuReadline & usedNativeStacktrace &
+      usedGnuReadline & usedNativeStacktrace &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)

@@ -91,13 +91,12 @@ proc commandCompileToC(graph: ModuleGraph) =
   if graph.config.errorCounter > 0:
     return # issue #9933
   cgenWriteModules(graph.backend, conf)
-  if conf.cmd != cmdRun:
-    extccomp.callCCompiler(conf)
-    # for now we do not support writing out a .json file with the build instructions when HCR is on
-    if not conf.hcrOn:
-      extccomp.writeJsonBuildInstructions(conf)
-    if optGenScript in graph.config.globalOptions:
-      writeDepsFile(graph)
+  extccomp.callCCompiler(conf)
+  # for now we do not support writing out a .json file with the build instructions when HCR is on
+  if not conf.hcrOn:
+    extccomp.writeJsonBuildInstructions(conf)
+  if optGenScript in graph.config.globalOptions:
+    writeDepsFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
   let proj = changeFileExt(graph.config.projectFull, "")
@@ -200,13 +199,6 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdCompileToOC
     defineSymbol(graph.config.symbols, "objc")
     commandCompileToC(graph)
-  of "run":
-    conf.cmd = cmdRun
-    when hasTinyCBackend:
-      extccomp.setCC("tcc")
-      commandCompileToC(graph)
-    else:
-      rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   of "js", "compiletojs":
     when defined(leanCompiler):
       quit "compiler wasn't built with JS code generator"
@@ -355,7 +347,7 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and
-     conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
+     conf.cmd notin {cmdInterpret, cmdDump}:
     when declared(system.getMaxMem):
       let usedMem = formatSize(getMaxMem()) & " peakmem"
     else:

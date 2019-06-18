@@ -580,7 +580,7 @@ when hasSpawnH:
     # better be safe than sorry; Linux has this flag, macosx doesn't, don't
     # know about the other OSes
 
-    # Non-GNU systems like TCC and musl-libc  don't define __USE_GNU, so we
+    # Non-GNU systems like musl-libc  don't define __USE_GNU, so we
     # can't get the magic number from spawn.h
     const POSIX_SPAWN_USEVFORK* = cint(0x40)
   else:

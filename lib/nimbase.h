@@ -15,7 +15,6 @@ __LCC__
 __GNUC__
 __DMC__
 __POCC__
-__TINYC__
 __clang__
 */
 
@@ -78,17 +77,8 @@ __clang__
 #  define _GNU_SOURCE 1
 #endif
 
-#if defined(__TINYC__)
-/*#  define __GNUC__ 3
-#  define GCC_MAJOR 4
-#  define __GNUC_MINOR__ 4
-#  define __GNUC_PATCHLEVEL__ 5 */
-#  define __DECLSPEC_SUPPORTED 1
-#endif
-
 /* calling convention mess ----------------------------------------------- */
-#if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__) \
-                      || defined(__TINYC__)
+#if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__)
   /* these should support C99's inline */
   /* the test for __POCC__ has to come before the test for _MSC_VER,
      because PellesC defines _MSC_VER too. This is brain-dead. */
@@ -131,7 +121,7 @@ __clang__
        defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
-#elif defined(__TINYC__) || defined(__GENODE__)
+#elif defined(__GENODE__)
 #  define NIM_THREADVAR
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
@@ -232,15 +222,9 @@ __clang__
 #if defined(__BORLANDC__) || defined(__WATCOMC__) || \
     defined(__POCC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 /* these compilers have a fastcall so use it: */
-#  ifdef __TINYC__
-#    define N_NIMCALL(rettype, name) rettype __attribute((__fastcall)) name
-#    define N_NIMCALL_PTR(rettype, name) rettype (__attribute((__fastcall)) *name)
-#    define N_RAW_NIMCALL __attribute((__fastcall))
-#  else
-#    define N_NIMCALL(rettype, name) rettype __fastcall name
-#    define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
-#    define N_RAW_NIMCALL __fastcall
-#  endif
+#  define N_NIMCALL(rettype, name) rettype __fastcall name
+#  define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
+#  define N_RAW_NIMCALL __fastcall
 #else
 #  define N_NIMCALL(rettype, name) rettype name /* no modifier */
 #  define N_NIMCALL_PTR(rettype, name) rettype (*name)

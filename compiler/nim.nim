@@ -26,8 +26,6 @@ import
 
 include nodejs
 
-when hasTinyCBackend:
-  import tccgen
 
 when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
@@ -76,9 +74,6 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
-  when hasTinyCBackend:
-    if conf.cmd == cmdRun:
-      tccgen.run(conf.arguments)
   if optRun in conf.globalOptions:
     var ex = quoteShell conf.absOutFile
     if conf.cmd == cmdCompileToJS:

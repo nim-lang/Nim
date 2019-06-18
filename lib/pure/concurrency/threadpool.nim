@@ -361,7 +361,7 @@ proc slave(w: ptr Worker) {.thread.} =
     blockUntil(w.taskArrived)
     # XXX Somebody needs to look into this (why does this assertion fail
     # in Visual Studio?)
-    when not defined(vcc) and not defined(tcc): assert(not w.ready)
+    when not defined(vcc): assert(not w.ready)
 
     withLock numSlavesLock:
       inc numSlavesRunning

@@ -1899,9 +1899,6 @@ const
   taintMode = compileOption("taintmode")
   nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
-when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
-  # tcc doesn't support TLS
-  {.error: "``--tlsEmulation:on`` must be used when using threads with tcc backend".}
 
 when defined(boehmgc):
   when defined(windows):

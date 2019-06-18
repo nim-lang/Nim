@@ -267,7 +267,6 @@ lib/wrappers/mysql.nim
 lib/wrappers/iup.nim
 lib/wrappers/sqlite3.nim
 lib/wrappers/postgres.nim
-lib/wrappers/tinyc.nim
 lib/wrappers/odbcsql.nim
 lib/wrappers/pcre.nim
 lib/wrappers/openssl.nim

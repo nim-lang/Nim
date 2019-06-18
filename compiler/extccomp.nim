@@ -271,30 +271,6 @@ compiler wcc:
     structStmtFmt: "$1 $2",
     props: {hasCpp})
 
-# Tiny C Compiler
-compiler tcc:
-  result = (
-    name: "tcc",
-    objExt: "o",
-    optSpeed: "",
-    optSize: "",
-    compilerExe: "tcc",
-    cppCompiler: "",
-    compileTmpl: "-c $options $include -o $objfile $file",
-    buildGui: "-Wl,-subsystem=gui",
-    buildDll: " -shared",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "tcc",
-    linkTmpl: "-o $exefile $options $buildgui $builddll $objfiles",
-    includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -g ",
-    pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$1 $2",
-    props: {hasSwitchRange, hasComputedGoto})
-
 # Pelles C Compiler
 compiler pcc:
   # Pelles C
@@ -355,7 +331,6 @@ const
     dmc(),
     wcc(),
     vcc(),
-    tcc(),
     pcc(),
     ucc(),
     icl(),
