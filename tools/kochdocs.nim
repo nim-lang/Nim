@@ -101,6 +101,7 @@ doc/tut1.rst
 doc/tut2.rst
 doc/tut3.rst
 doc/nimc.rst
+doc/hcr.rst
 doc/overview.rst
 doc/filters.rst
 doc/tools.rst

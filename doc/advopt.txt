@@ -9,7 +9,6 @@ Advanced commands:
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
-  //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
                           module dependency graph
   //dump                    dump all defined conditionals and search paths

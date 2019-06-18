@@ -1589,6 +1589,26 @@ having unknown lock level as well:
       g.memberProc()
 
 
+noRewrite pragma
+----------------
+
+Term rewriting macros and templates are currently greedy and
+they will rewrite as long as there is a match.
+There was no way to ensure some rewrite happens only once,
+eg. when rewriting term to same term plus extra content.
+
+``noRewrite`` pragma can actually prevent further rewriting on marked code,
+e.g. with given example ``echo("ab")`` will be rewritten just once:
+
+.. code-block:: nim
+  template pwnEcho{echo(x)}(x: expr) =
+    {.noRewrite.}: echo("pwned!")
+
+  echo "ab"
+
+``noRewrite`` pragma can be useful to control term-rewriting macros recursion.
+
+
 Taint mode
 ==========
 
