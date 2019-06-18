@@ -4,6 +4,10 @@ Tools available with Nim
 
 The standard distribution ships with the following tools:
 
+- | `Hot code reloading <hcr.html>`_
+  | The "Hot code reloading" feature is built into the compiler but has its own
+    document explaining how it works.
+
 - | `Documentation generator <docgen.html>`_
   | The builtin document generator ``nim doc`` generates HTML documentation
     from ``.nim`` source files.
