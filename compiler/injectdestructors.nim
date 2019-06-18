@@ -153,7 +153,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = "main"
+const toDebug = ""
 
 template dbg(body) =
   when toDebug.len > 0:
@@ -410,7 +410,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   add(v, vpart)
 
   result.add v
-  result.add genWasMoved(n, c)
+  result.add genWasMoved(skipConv(n), c)
   result.add tempAsNode
 
 proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
