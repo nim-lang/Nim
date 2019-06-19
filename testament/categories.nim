@@ -194,8 +194,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " -d:release --gc:markAndSweep", cat)
   template test(filename: untyped) =
     testWithoutBoehm filename
-    # XXX Once travis OSX supports boehm again, re-enable this:
-    when not defined(windows) and not defined(android) and not defined(macosx):
+    when not defined(windows) and not defined(android):
       # AR: cannot find any boehm.dll on the net, right now, so disabled
       # for windows:
       testSpec r, makeTest("tests/gc" / filename, options &
