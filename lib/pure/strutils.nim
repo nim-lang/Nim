@@ -1479,7 +1479,7 @@ proc unindent*(s: string): string
     doAssert x == "Hello\nThere\n"
   unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
 
-proc delete*(s: var string, first, last: int) {.noSideEffect,
+proc delete*(s: var string, first, last: Natural) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
   ## Deletes in `s` (must be declared as ``var``) the characters at positions
   ## ``first ..last`` (both ends included).
@@ -1494,8 +1494,11 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     a.delete(1, 6)
     doAssert a == "ara"
 
+    a.delete(2, 999)
+    doAssert a == "ar"
+
   var i = first
-  var j = last+1
+  var j = min(len(s), last+1)
   var newLen = len(s)-j+i
   while i < newLen:
     s[i] = s[j]
