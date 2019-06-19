@@ -1334,10 +1334,13 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
   var tok: TToken
   initToken(tok)
   openLexer(lex, fileIdx, inputstream, cache, config)
-  while true:
+  var prevToken = tkEof
+  while tok.tokType != tkEof:
     rawGetTok(lex, tok)
-    result = tok.indent
-    if result > 0 or tok.tokType == tkEof: break
+    if tok.indent > 0 and prevToken in {tkColon, tkEquals, tkType, tkConst, tkLet, tkVar, tkUsing}:
+      result = tok.indent
+      if result > 0: break
+    prevToken = tok.tokType
   closeLexer(lex)
 
 proc getPrecedence*(ident: PIdent): int =

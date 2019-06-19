@@ -9,11 +9,11 @@ import pkg/[
 ]
 
 proc fun() =
-  let a = [
-    1,
-    2,
-  ]
-  discard
+    let a = [
+      1,
+      2,
+    ]
+    discard
 
 proc funB() =
   let a = [

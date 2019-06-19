@@ -116,12 +116,11 @@ proc optionalIsGood(em: var Emitter; pos: int): bool =
   else:
     result = lineLen > 10 and p > pos + 3
 
-proc lenOfNextTokens(em: Emitter; pos: int, n = 3): int =
+proc lenOfNextTokens(em: Emitter; pos: int): int =
   result = 0
-  for i in 1 .. n:
-    if pos+i < em.tokens.len:
-      if em.kinds[pos+i] == ltNewline: break
-      inc result, em.tokens[pos+i].len
+  for i in 1 ..< em.tokens.len-pos:
+    if em.kinds[pos+i] in {ltNewline, ltOptionalNewline}: break
+    inc result, em.tokens[pos+i].len
 
 proc closeEmitter*(em: var Emitter) =
   let outFile = em.config.absOutFile
@@ -219,7 +218,7 @@ proc removeSpaces(em: var Emitter) =
     setLen(em.kinds, em.kinds.len-1)
     dec em.col, tokenLen
 
-template goodCol(col): bool = col in 40..MaxLineLen
+template goodCol(col): bool = col >= 40
 
 const
   openPars = {tkParLe, tkParDotLe,
@@ -234,8 +233,11 @@ const
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
 template rememberSplit(kind) =
-  if goodCol(em.col):
-    em.altSplitPos[kind] = em.tokens.len
+  if goodCol(em.col) and not em.inquote:
+    let spaces = em.indentLevel+moreIndent(em)
+    if spaces < em.col and spaces > 0:
+      wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
+    #em.altSplitPos[kind] = em.tokens.len
 
 template moreIndent(em): int =
   (if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth)
@@ -244,36 +246,27 @@ proc softLinebreak(em: var Emitter, lit: string) =
   # XXX Use an algorithm that is outlined here:
   # https://llvm.org/devmtg/2013-04/jasper-slides.pdf
   # +2 because we blindly assume a comma or ' &' might follow
-  if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
-    if em.lastTok in splitters:
-      # bug #10295, check first if even more indentation would help:
-      let spaces = em.indentLevel+moreIndent(em)
-      if spaces < em.col and spaces > 0:
-        wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
-    else:
-      # search backwards for a good split position:
-      for a in mitems(em.altSplitPos):
-        if a > em.fixedUntil:
-          when false:
-            var spaces = 0
-            while a+spaces < em.kinds.len and em.kinds[a+spaces] in {ltSpaces, ltOptionalNewline}:
-              inc spaces
-            if spaces > 0:
-              delete(em.tokens, a, a+spaces-1)
-              delete(em.kinds, a, a+spaces-1)
-
-          em.kinds.insert(ltOptionalNewline, a+1)
-          em.tokens.insert(repeat(' ', em.indentLevel+moreIndent(em)), a+1)
-          when false:
-            # recompute em.col:
-            var i = em.kinds.len-1
-            em.col = 0
-            while i >= 0 and em.kinds[i] != ltNewline:
-              inc em.col, em.tokens[i].len
-              dec i
-          # mark position as "already split here"
-          a = -1
-          break
+  when false:
+    if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
+      if em.lastTok in splitters:
+        # bug #10295, check first if even more indentation would help:
+        let spaces = em.indentLevel+moreIndent(em)
+        if spaces < em.col and spaces > 0:
+          wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
+      else:
+        var correctTerms = false
+        # search backwards for a good split position:
+        for a in mitems(em.altSplitPos):
+          if correctTerms:
+            # we inserted a token so patch the potential
+            # ltOptionalNewline positions that follow:
+            inc a
+          elif a > em.fixedUntil:
+            em.kinds.insert(ltOptionalNewline, a)
+            em.tokens.insert(repeat(' ', em.indentLevel+moreIndent(em)), a)
+            # mark position as "already split here"
+            a = -1
+            correctTerms = true
 
 proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
   # re-align every line in the multi-line comment:
