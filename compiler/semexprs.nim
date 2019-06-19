@@ -541,11 +541,12 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if not isOrdinalType(idx.typ):
         localError(c.config, idx.info, "expected ordinal value for array " &
                    "index, got '$1'" % renderTree(idx))
-      firstIndex = getOrdValue(idx)
-      lastIndex = firstIndex
-      indexType = idx.typ
-      lastValidIndex = lastOrd(c.config, indexType)
-      x = x.sons[1]
+      else:
+        firstIndex = getOrdValue(idx)
+        lastIndex = firstIndex
+        indexType = idx.typ
+        lastValidIndex = lastOrd(c.config, indexType)
+        x = x.sons[1]
 
     let yy = semExprWithType(c, x)
     var typ = yy.typ
