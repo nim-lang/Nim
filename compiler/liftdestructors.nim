@@ -89,6 +89,11 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
   else:
     illFormedAstLocal(n, c.g.config)
 
+proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
+  if t.len > 0 and t.sons[0] != nil:
+    fillBodyObjT(c, skipTypes(t.sons[0], abstractPtrs), body, x, y)
+  fillBodyObj(c, t.n, body, x, y)
+
 proc genAddr(g: ModuleGraph; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
     checkSonsLen(x, 1, g.config)
@@ -482,7 +487,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyObject:
     if not considerUserDefinedOp(c, t, body, x, y):
-      fillBodyObj(c, t.n, body, x, y)
+      fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
       fillBody(c, t.sons[0].skipTypes(skipPtrs), body, x, y)

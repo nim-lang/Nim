@@ -163,8 +163,7 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
   var sendFut = smtp.debugSend("QUIT")
   sendFut.callback =
     proc () =
-      # TODO: Fix this in async procs.
-      raise newException(ReplyError, msg)
+      retFuture.fail(newException(ReplyError, msg))
   return retFuture
 
 proc checkReply(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =

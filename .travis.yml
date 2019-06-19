@@ -56,6 +56,7 @@ addons:
     - boehmgc
     - make
     - sfml
+    update: true
 
 install:
   - if [[ $CPU = i386 ]]; then echo -e "#!/bin/bash\n$(which gcc) -m32 \"\$@\"" > bin/gcc; fi

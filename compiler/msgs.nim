@@ -452,7 +452,8 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   const indent = "  "
   msgWriteln(conf, indent & $sourceLine(conf, info))
-  msgWriteln(conf, indent & spaces(info.col) & '^')
+  if info.col >= 0:
+    msgWriteln(conf, indent & spaces(info.col) & '^')
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg

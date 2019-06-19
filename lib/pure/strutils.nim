@@ -2856,8 +2856,6 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
 proc editDistance*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuEditDistance",
   deprecated: "use editdistance.editDistanceAscii instead".} =
-  ## **Deprecated**: Use `editdistance module<editdistance.html>`_
-  ##
   ## Returns the edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
@@ -2948,8 +2946,6 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl,
                                       extern: "nsuIsNilOrEmpty",
                                       deprecated: "use 'x.len == 0' instead".} =
-  ## **Deprecated**: use 'x.len == 0'
-  ##
   ## Checks if `s` is nil or empty.
   result = len(s) == 0
 
@@ -2969,8 +2965,6 @@ template isImpl(call) =
 proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsAlphaAsciiStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -2987,8 +2981,6 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsAlphaNumericStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -3005,8 +2997,6 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsDigitStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is a numeric value.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -3021,8 +3011,6 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsSpaceAsciiStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -3049,8 +3037,6 @@ template isCaseImpl(s, charProc, skipNonAlpha) =
 
 proc isLowerAscii*(s: string, skipNonAlpha: bool): bool {.
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether ``s`` is lower case.
   ##
   ## This checks ASCII characters only.
@@ -3073,8 +3059,6 @@ proc isLowerAscii*(s: string, skipNonAlpha: bool): bool {.
 
 proc isUpperAscii*(s: string, skipNonAlpha: bool): bool {.
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether ``s`` is upper case.
   ##
   ## This checks ASCII characters only.
@@ -3101,8 +3085,6 @@ proc wordWrap*(s: string, maxLineWidth = 80,
                newLine = "\n"): string {.
                noSideEffect, rtl, extern: "nsuWordWrap",
                deprecated: "use wrapWords in std/wordwrap instead".} =
-  ## **Deprecated**: use wrapWords in std/wordwrap instead
-  ##
   ## Word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
   var spaceLeft = maxLineWidth
