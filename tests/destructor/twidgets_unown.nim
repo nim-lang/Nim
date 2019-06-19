@@ -2,7 +2,7 @@ discard """
   cmd: '''nim c --newruntime $file'''
   output: '''button
 clicked!
-3 3  alloc/dealloc pairs: 0'''
+6 6  alloc/dealloc pairs: 0'''
 """
 
 import core / allocators
@@ -52,8 +52,10 @@ proc main =
 
   var b = newButton("button", nil)
   let u = unown b
+  var clicked = "clicked"
   b.onclick = proc () =
-    u.caption = "clicked!"
+    clicked.add "!"
+    u.caption = clicked
   w.add b
 
   w.draw()

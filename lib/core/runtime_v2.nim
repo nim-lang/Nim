@@ -81,6 +81,10 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   when false:
     cstderr.rawWrite cast[ptr PNimType](p)[].name
     cstderr.rawWrite "\n"
+    if d == nil:
+      cstderr.rawWrite "bah, nil\n"
+    else:
+      cstderr.rawWrite "has destructor!\n"
   nimRawDispose(p)
 
 proc isObj(obj: PNimType, subclass: cstring): bool {.compilerproc.} =
