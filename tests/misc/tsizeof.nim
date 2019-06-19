@@ -536,3 +536,16 @@ proc main() =
   typeProcessing(mylocal)
 
 main()
+
+# issue #11320 use UncheckedArray
+
+type
+  Payload {.objectconfig.} = object
+    something: int8
+    vals: UncheckedArray[int64]
+
+proc payloadCheck() =
+  doAssert offsetOf(Payload, vals) == 8
+  doAssert sizeOf(Payload) == 8
+
+payloadCheck()

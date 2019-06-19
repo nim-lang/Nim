@@ -877,8 +877,8 @@ when defined(nimHasalignOf):
   proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
 
   template offsetOf*[T](t: typedesc[T]; member: untyped): int =
-    var tmp: T
-    offsetOfDotExpr(tmp.member)
+    var tmp {.noinit.}: ptr T
+    offsetOfDotExpr(tmp[].member)
 
   template offsetOf*[T](value: T; member: untyped): int =
     offsetOfDotExpr(value.member)

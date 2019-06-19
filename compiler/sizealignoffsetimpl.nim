@@ -291,7 +291,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   of tyUncheckedArray:
     let base = typ.lastSon
     computeSizeAlign(conf, base)
-    typ.size = szUnknownSize
+    typ.size = 0
     typ.align = base.align
   of tyEnum:
     if firstOrd(conf, typ) < 0:
