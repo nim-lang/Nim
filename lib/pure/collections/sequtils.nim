@@ -847,9 +847,7 @@ template mapIt*(s: typed, op: untyped): untyped =
     result
 
 template mapIt*(s, typ, op: untyped): untyped {.error:
-  "Use 'mapIt(seq1, op)' - without specifying the type of the returned seqence".} =
-  ## **Deprecated since version 0.12.0:** Use the `mapIt(seq1, op) template
-  ## <#mapIt.t,typed,untyped>`_ instead.
+  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned seqence".} =
   var result: seq[typ] = @[]
   for it {.inject.} in items(s):
     result.add(op)
