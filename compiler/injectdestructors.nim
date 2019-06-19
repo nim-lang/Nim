@@ -349,8 +349,10 @@ proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
     # we generate a fast assignment in this case:
     result = newTree(nkFastAsgn, dest)
 
-proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
+proc genCopy(c: var Con; t: PType; dest, ri: PNode): PNode =
   if tfHasOwned in t.flags:
+    # try to improve the error message here:
+    if c.otherRead == nil: discard isLastRead(ri, c)
     checkForErrorPragma(c, t, ri, "=")
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   result = genOp(c, t, attachedAsgn, dest, ri)
