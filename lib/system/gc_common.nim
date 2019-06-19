@@ -156,7 +156,7 @@ else:
   iterator items(first: var GcStack): ptr GcStack = yield addr(first)
   proc len(stack: var GcStack): int = 1
 
-when declared(threadType):
+when defined(nimdoc):
   proc setupForeignThreadGc*() {.gcsafe.} =
     ## Call this if you registered a callback that will be run from a thread not
     ## under your control. This has a cheap thread-local guard, so the GC for
@@ -165,11 +165,7 @@ when declared(threadType):
     ##
     ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
-    if threadType == ThreadType.None:
-      var stackTop {.volatile.}: pointer
-      nimGC_setStackBottom(addr(stackTop))
-      initGC()
-      threadType = ThreadType.ForeignThread
+    discard
 
   proc tearDownForeignThreadGc*() {.gcsafe.} =
     ## Call this to tear down the GC, previously initialized by ``setupForeignThreadGc``.
@@ -178,6 +174,16 @@ when declared(threadType):
     ##
     ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
+    discard
+elif declared(threadType):
+  proc setupForeignThreadGc*() {.gcsafe.} =
+    if threadType == ThreadType.None:
+      var stackTop {.volatile.}: pointer
+      nimGC_setStackBottom(addr(stackTop))
+      initGC()
+      threadType = ThreadType.ForeignThread
+
+  proc tearDownForeignThreadGc*() {.gcsafe.} =
     if threadType != ThreadType.ForeignThread:
       return
     when declared(deallocOsPages): deallocOsPages()
