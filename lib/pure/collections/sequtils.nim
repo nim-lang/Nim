@@ -432,7 +432,7 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     assert outcome == dest
 
   var i = first
-  var j = last+1
+  var j = min(len(s), last+1)
   var newLen = len(s)-j+i
   while i < newLen:
     s[i].shallowCopy(s[j])
