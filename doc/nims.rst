@@ -88,7 +88,7 @@ At least the following standard library modules are available:
 * `uri <uri.html>`_
 * `std/editdistance <editdistance.html>`_
 * `std/wordwrap <wordwrap.html>`_
-* std/sums
+* `std/sums <sums.html>`_
 
 In addition to the standard Nim syntax (`system <system.html>`_ module),
 NimScripts support the procs and templates defined in the
