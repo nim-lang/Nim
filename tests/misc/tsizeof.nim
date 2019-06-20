@@ -540,7 +540,7 @@ main()
 # issue #11320 use UncheckedArray
 
 type
-  Payload {.objectconfig.} = object
+  Payload = object
     something: int8
     vals: UncheckedArray[int64]
 
