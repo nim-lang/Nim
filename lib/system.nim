@@ -1340,14 +1340,13 @@ when defined(nimNewShiftOps):
   else:
     proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
       ## Computes the `shift right` operation of `x` and `y`, filling
-      ## vacant bit positions with the sign bit.
+      ## vacant bit positions with the sign bit. The argument ``y`` is
+      ## bitmasked to always be in the range ``0 ..< sizeof(int)``.
       ##
       ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
       ## is different than in *C*.
       ##
       ## See also:
-      ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
-      ##
       ## .. code-block:: Nim
       ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
       ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8

@@ -9,6 +9,7 @@
 
 ### Breaking changes in the compiler
 
+- Bitshifting operators apply bitmasking to right argument.
 
 ## Library additions
 
