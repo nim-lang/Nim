@@ -124,8 +124,8 @@ block tshl:
     const t1: int16 = 1'i16 shl 16
     const t2: int32 = 1'i32 shl 32
     const t3: int64 = 1'i64 shl 64
-    doAssert t0 == 0
-    doAssert t1 == 0
+    doAssert t0 == 1
+    doAssert t1 == 1
     doAssert t2 == 1
     doAssert t3 == 1
 
@@ -135,9 +135,9 @@ block tshl:
     const t1: uint16 = 1'u16 shl 16
     const t2: uint32 = 1'u32 shl 32
     const t3: uint64 = 1'u64 shl 64
-    doAssert t0 == 0
-    doAssert t1 == 0
-    doAssert t2 == 0
+    doAssert t0 == 1
+    doAssert t1 == 1
+    doAssert t2 == 1
     doAssert t3 == 1
 
 

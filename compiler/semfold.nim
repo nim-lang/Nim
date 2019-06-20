@@ -232,18 +232,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     if getInt(a) > getInt(b): result = newIntNodeT(getInt(a), n, g)
     else: result = newIntNodeT(getInt(b), n, g)
   of mShlI:
-    case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result = newIntNodeT(int8(getInt(a)) shl int8(getInt(b)), n, g)
-    of tyInt16: result = newIntNodeT(int16(getInt(a)) shl int16(getInt(b)), n, g)
-    of tyInt32: result = newIntNodeT(int32(getInt(a)) shl int32(getInt(b)), n, g)
-    of tyInt64, tyInt:
-      result = newIntNodeT(`shl`(getInt(a), getInt(b)), n, g)
-    of tyUInt..tyUInt64:
-      result = doAndFit(newIntNodeT(`shl`(getInt(a), getInt(b)), n, g))
-    else: internalError(g.config, n.info, "constant folding for shl")
+    let valueA = getInt(a)
+    let valueB = getInt(b) and (n.typ.size * 8 - 1)
+    result = newIntNodeT(valueA shl valueB, n, g)
   of mShrI:
     var a = cast[uint64](getInt(a))
-    let b = cast[uint64](getInt(b))
+    let b = cast[uint64](getInt(b)) and cast[uint64](n.typ.size * 8 - 1)
     # To support the ``-d:nimOldShiftRight`` flag, we need to mask the
     # signed integers to cut off the extended sign bit in the internal
     # representation.
@@ -259,16 +253,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
       else:
         # unsigned and 64 bit integers don't need masking
         discard
-    let c = cast[BiggestInt](a shr b)
-    result = newIntNodeT(c, n, g)
+    result = newIntNodeT(cast[BiggestInt](a shr b), n, g)
   of mAshrI:
-    case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result = newIntNodeT(ashr(int8(getInt(a)), int8(getInt(b))), n, g)
-    of tyInt16: result = newIntNodeT(ashr(int16(getInt(a)), int16(getInt(b))), n, g)
-    of tyInt32: result = newIntNodeT(ashr(int32(getInt(a)), int32(getInt(b))), n, g)
-    of tyInt64, tyInt:
-      result = newIntNodeT(ashr(getInt(a), getInt(b)), n, g)
-    else: internalError(g.config, n.info, "constant folding for ashr")
+    let valueA = getInt(a)
+    let valueB = getInt(b) and (n.typ.size * 8 - 1)
+    result = newIntNodeT(ashr(valueA, valueB), n, g)
   of mDivI: result = foldDiv(getInt(a), getInt(b), n, g)
   of mModI: result = foldMod(getInt(a), getInt(b), n, g)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n, g)

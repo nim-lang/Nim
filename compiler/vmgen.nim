@@ -1009,6 +1009,19 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
 
     # inlined modified: genBinaryABC(c, n, dest, opcShrInt)
     let tmp2 = c.genx(n.sons[2])
+    var logSize: TRegister
+    case t.size * 8:
+    of 8:
+      logSize = 3
+    of 16:
+      logSize = 4
+    of 32:
+      logSize = 5
+    of 64:
+      logSize = 6
+    else:
+      assert(false, $(t.size*8))
+    c.gABC(n, opcNarrowU, tmp2, logSize)
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcShrInt, dest, tmp, tmp2)
     c.freeTemp(tmp)
