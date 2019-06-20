@@ -3071,8 +3071,12 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     assert a == @[1, 3, 5]
 
   var L = s.len-1
-  result = s[L]
-  setLen(s, L)
+  when defined(nimV2):
+    result = move s[L]
+    shrink(s, L)
+  else:
+    result = s[L]
+    setLen(s, L)
 
 proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic ``==`` operator for tuples that is lifted from the components.
