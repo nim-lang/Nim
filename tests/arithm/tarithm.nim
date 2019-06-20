@@ -1,9 +1,28 @@
 discard """
-  output: '''
+nimout: '''
+test bitmask for type int8
+test bitmask for type uint8
+test bitmask for type int16
+test bitmask for type uint16
+test bitmask for type int32
+test bitmask for type uint32
+test bitmask for type int64
+test bitmask for type uint64
+'''
+output:
+'''
 int32
 int32
 1280
 1280
+test bitmask for type int8
+test bitmask for type uint8
+test bitmask for type int16
+test bitmask for type uint16
+test bitmask for type int32
+test bitmask for type uint32
+test bitmask for type int64
+test bitmask for type uint64
 '''
 """
 
@@ -171,3 +190,46 @@ block tsubrange:
 
   level = min(level + 2, maxLevel)
   doAssert level == 1
+
+
+block bitmaking:
+
+  # test semfold (single expression)
+  doAssert (0x10'i8  shr 2) == (0x10'i8  shr 0b1010_1010)
+  doAssert (0x10'u8  shr 2) == (0x10'u8  shr 0b0101_1010)
+  doAssert (0x10'i16 shr 2) == (0x10'i16 shr 0b1011_0010)
+  doAssert (0x10'u16 shr 2) == (0x10'u16 shr 0b0101_0010)
+  doAssert (0x10'i32 shr 2) == (0x10'i32 shr 0b1010_0010)
+  doAssert (0x10'u32 shr 2) == (0x10'u32 shr 0b0110_0010)
+  doAssert (0x10'i64 shr 2) == (0x10'i32 shr 0b1100_0010)
+  doAssert (0x10'u64 shr 2) == (0x10'u32 shr 0b0100_0010)
+
+  doAssert (0x10'i8  shl 2) == (0x10'i8  shl 0b1010_1010)
+  doAssert (0x10'u8  shl 2) == (0x10'u8  shl 0b0101_1010)
+  doAssert (0x10'i16 shl 2) == (0x10'i16 shl 0b1011_0010)
+  doAssert (0x10'u16 shl 2) == (0x10'u16 shl 0b0101_0010)
+  doAssert (0x10'i32 shl 2) == (0x10'i32 shl 0b1010_0010)
+  doAssert (0x10'u32 shl 2) == (0x10'u32 shl 0b0110_0010)
+  doAssert (0x10'i64 shl 2) == (0x10'i32 shl 0b1100_0010)
+  doAssert (0x10'u64 shl 2) == (0x10'u32 shl 0b0100_0010)
+
+  proc testVmAndBackend[T: SomeInteger](a: T, b1,b2: int) =
+    # this echo is to cause a side effect and therefore ensuer this
+    # proc isn't evealuated at compile time when it should not.
+    echo "test bitmask for type ", typeof(a)
+    doAssert((a shr b1) == (a shr b2))
+    doAssert((a shl b1) == (a shl b2))
+
+  proc callTestVmAndBackend() =
+    testVmAndBackend(0x10'i8,  2, 0b1010_1010)
+    testVmAndBackend(0x10'u8,  2, 0b0101_1010)
+    testVmAndBackend(0x10'i16, 2, 0b1011_0010)
+    testVmAndBackend(0x10'u16, 2, 0b0101_0010)
+    testVmAndBackend(0x10'i32, 2, 0b1010_0010)
+    testVmAndBackend(0x10'u32, 2, 0b0110_0010)
+    testVmAndBackend(0x10'i64, 2, 0b1100_0010)
+    testVmAndBackend(0x10'u64, 2, 0b0100_0010)
+
+  callTestVmAndBackend() # test at runtime
+  static:
+    callTestVmAndBackend() # test at compiletime
