@@ -25,9 +25,9 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wConstructor, wExportNims, wUsed, wLiftLocals, wStacktrace, wLinetrace}
-  converterPragmas* = procPragmas
-  methodPragmas* = procPragmas+{wBase}-{wImportCpp}
+    wConstructor, wExportNims, wUsed, wLiftLocals, wStacktrace, wLinetrace, wNoDestroy}
+  converterPragmas* = procPragmas - {wNoDestroy}
+  methodPragmas* = procPragmas+{wBase}-{wImportCpp, wNoDestroy}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc,
@@ -874,6 +874,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")
+      of wNoDestroy:
+        noVal(c, it)
+        incl(sym.flags, sfGeneratedOp)
       of wDynlib:
         processDynLib(c, it, sym)
       of wCompilerProc, wCore:
