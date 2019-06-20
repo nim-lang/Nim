@@ -201,9 +201,10 @@ Use ``#!/usr/bin/env -S nim --hints:off`` to disable hints.
 Benefits
 ========
 
-**Cross-Platform**
+Cross-Platform
+--------------
 
-Its a cross-platform scripting language that can run where Nim can run,
+It is a cross-platform scripting language that can run where Nim can run,
 e.g. you can not run Batch or PowerShell on Linux or Mac,
 the Bash for Linux might not run on Mac,
 theres no Unittests tools for Batch, etc.
@@ -243,13 +244,15 @@ See the following (incomplete) example:
     echo "Distro is Debian"
 
 
-**Uniform Syntax**
+Uniform Syntax
+--------------
 
 The syntax, style, and rest of the ecosystem is the same as for compiled Nim,
 that means there is nothing new to learn, no context switch for developers.
 
 
-**Powerful Metaprogramming**
+Powerful Metaprogramming
+------------------------
 
 NimScript can use Nim's templates, macros, types, concepts, effect tracking system, and more,
 you can create modules that work on compiled Nim and also on interpreted NimScript.
@@ -280,7 +283,8 @@ translations.cfg
 * `Nimterlingua <https://nimble.directory/pkg/nimterlingua>`_
 
 
-**Graceful Fallback**
+Graceful Fallback
+-----------------
 
 Some features of compiled Nim may not work on NimScript,
 but often a graceful and seamless fallback degradation is used.
@@ -304,19 +308,22 @@ See the following NimScript:
 will produce no code at all when run on NimScript,
 but still no error nor warning is produced and the code just works.
 
-**Evolving Scripting language**
+Evolving Scripting language
+---------------------------
 
 NimScript evolves together with Nim,
 `occasionally new features might become available on NimScript <https://github.com/nim-lang/Nim/pulls?utf8=%E2%9C%93&q=nimscript>`_ ,
 adapted from compiled Nim or added as new features on both.
 
-**Scripting Language with a Package Manager**
+Scripting Language with a Package Manager
+-----------------------------------------
 
 You can create your own modules to be compatible with NimScript,
 and check `Nimble <https://nimble.directory>`_
 to search for third party modules that may work on NimScript.
 
-**DevOps Scripting**
+DevOps Scripting
+----------------
 
 You can use NimScript to deploy to production, run tests, build projects, do benchmarks,
 generate documentation, and all kinds of DevOps/SysAdmin specific tasks.
