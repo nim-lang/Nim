@@ -1340,7 +1340,9 @@ when defined(nimNewShiftOps):
   else:
     proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
       ## Computes the `shift right` operation of `x` and `y`, filling
-      ## vacant bit positions with the sign bit. The argument ``y`` is
+      ## vacant bit positions with the sign bit. `y` (the number of
+      ## positions to shift) is reduced to modulo ``sizeof(x) * 8``.
+      ## That is ``15'i32 shr 35`` is equivalent to ``15'i32 shr 3``.
       ## bitmasked to always be in the range ``0 ..< sizeof(int)``.
       ##
       ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
@@ -1362,7 +1364,9 @@ when defined(nimNewShiftOps):
 
 
   proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
-    ## Computes the `shift left` operation of `x` and `y`.
+    ## Computes the `shift left` operation of `x` and `y`. `y` (the number of
+    ## positions to shift) is reduced to modulo ``sizeof(x) * 8``.
+    ## That is ``15'i32 shl 35`` is equivalent to ``15'i32 shl 3``.
     ##
     ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
     ## is different than in *C*.
@@ -1390,7 +1394,9 @@ else:
 when defined(nimAshr):
   proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
     ## Shifts right by pushing copies of the leftmost bit in from the left,
-    ## and let the rightmost bits fall off.
+    ## and let the rightmost bits fall off. `y` (the number of
+    ## positions to shift) is reduced to modulo ``sizeof(x) * 8``.
+    ## That is ``ashr(15'i32, 35)`` is equivalent to ``ashr(15'i32, 3)``.
     ##
     ## Note that `ashr` is not an operator so use the normal function
     ## call syntax for it.
