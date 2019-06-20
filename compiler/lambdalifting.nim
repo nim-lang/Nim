@@ -257,6 +257,8 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     result.add(v)
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
+  if optNimV2 in g.config.globalOptions:
+    createTypeBoundOps(g, nil, env.typ, n.info)
   result.add makeClosure(g, iter, env, n.info)
 
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
@@ -635,6 +637,8 @@ proc closureCreationForIter(iter: PNode;
     addVar(vs, vnode)
     result.add(vs)
   result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
+  if optNimV2 in d.graph.config.globalOptions:
+    createTypeBoundOps(d.graph, nil, vnode.typ, iter.info)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -916,6 +920,9 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
+    if optNimV2 in g.config.globalOptions:
+      createTypeBoundOps(g, nil, env.typ, body.info)
+
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon
     if closure.kind == nkClosure:
