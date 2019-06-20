@@ -680,7 +680,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
         path = path[cwd.len+1 .. ^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
-      let defaultBranch = if NimPatch mod 2 == 1: "devel" else: "master"
+      let defaultBranch =
+        if NimPatch mod 2 == 1: "devel"
+        else: "version-$1-$2" % [$NimMajor, $NimMinor]
       let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
       let develBranch = getConfigVar(d.conf, "git.devel", "devel")
       dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
