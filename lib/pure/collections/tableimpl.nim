@@ -118,6 +118,9 @@ template initImpl(result: typed, size: int) =
   assert isPowerOfTwo(size)
   result.counter = 0
   newSeq(result.data, size)
+  when compiles(result.first):
+    result.first = -1
+    result.last = -1
 
 template insertImpl() = # for CountTable
   if t.dataLen == 0: initImpl(t, defaultInitialSize)

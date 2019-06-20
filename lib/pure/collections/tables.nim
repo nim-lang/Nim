@@ -1282,8 +1282,6 @@ proc initOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTable[A, 
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
-  result.first = -1
-  result.last = -1
 
 proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given ``pairs``.
