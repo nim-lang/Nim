@@ -1494,8 +1494,11 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     a.delete(1, 6)
     doAssert a == "ara"
 
+    a.delete(2, 999)
+    doAssert a == "ar"
+
   var i = first
-  var j = last+1
+  var j = min(len(s), last+1)
   var newLen = len(s)-j+i
   while i < newLen:
     s[i] = s[j]
