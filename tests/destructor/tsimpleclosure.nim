@@ -1,7 +1,8 @@
 discard """
   cmd: '''nim c --newruntime $file'''
   output: '''a b
-0 0  alloc/dealloc pairs: 0'''
+70
+2 2  alloc/dealloc pairs: 0'''
 """
 
 import core / allocators
@@ -13,9 +14,16 @@ proc main(): owned(proc()) =
   result = proc() =
     echo a, " ", b
 
+
+proc foo(f: (iterator(): int)) =
+  for i in f(): echo i
+
 proc wrap =
   let p = main()
   p()
+
+  let fIt = iterator(): int = yield 70
+  foo fIt
 
 wrap()
 let (a, d) = allocCounters()
