@@ -155,6 +155,7 @@ proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
+  propagateToOwner(obj, field.typ)
 
 proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   # returns a[].field as a node
@@ -205,6 +206,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   let t = skipIntLit(s.typ)
   field.typ = t
   assert t.kind != tyTyped
+  propagateToOwner(obj, t)
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
@@ -217,6 +219,7 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable
     let t = skipIntLit(s.typ)
     field.typ = t
     assert t.kind != tyTyped
+    propagateToOwner(obj, t)
     field.position = sonsLen(obj.n)
     addSon(obj.n, newSymNode(field))
     result = field
