@@ -16,7 +16,7 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, pluginsupport, plugins/active, rod, lineinfos
+  lowerings, pluginsupport, plugins/active, rod, lineinfos, strtabs
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
@@ -79,7 +79,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   result = arg
   let x = result.skipConv
-  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyExpr:
+  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
     changeType(c, x, formal, check=true)
   else:
     result = skipHiddenSubConv(result)
@@ -106,7 +106,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
 
-template commonTypeBegin*(): PType = PType(kind: tyExpr)
+template commonTypeBegin*(): PType = PType(kind: tyUntyped)
 
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
@@ -116,10 +116,10 @@ proc commonType*(x, y: PType): PType =
   var a = skipTypes(x, {tyGenericInst, tyAlias, tySink})
   var b = skipTypes(y, {tyGenericInst, tyAlias, tySink})
   result = x
-  if a.kind in {tyExpr, tyNil}: result = y
-  elif b.kind in {tyExpr, tyNil}: result = x
-  elif a.kind == tyStmt: result = a
-  elif b.kind == tyStmt: result = b
+  if a.kind in {tyUntyped, tyNil}: result = y
+  elif b.kind in {tyUntyped, tyNil}: result = x
+  elif a.kind == tyTyped: result = a
+  elif b.kind == tyTyped: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
     if a.len == 0: result = a
@@ -290,7 +290,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
   when true:
-    if eOrig.typ.kind in {tyExpr, tyStmt, tyTypeDesc}:
+    if eOrig.typ.kind in {tyUntyped, tyTyped, tyTypeDesc}:
       result = semExprWithType(c, evaluated)
     else:
       result = evaluated
@@ -406,13 +406,12 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     result = semStmt(c, result, flags)
   else:
     case s.typ.sons[0].kind
-    of tyExpr:
-      # BUGFIX: we cannot expect a type here, because module aliases would not
-      # work then (see the ``tmodulealias`` test)
-      # semExprWithType(c, result)
+    of tyUntyped:
+      # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags)
-    of tyStmt:
-      result = semStmt(c, result, flags)
+    of tyTyped:
+      # More restrictive version.
+      result = semExprWithType(c, result, flags)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
@@ -456,8 +455,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if sym == c.p.owner:
     globalError(c.config, info, "recursive dependency: '$1'" % sym.name.s)
 
-  let genericParams = if sfImmediate in sym.flags: 0
-                      else: sym.ast[genericParamsPos].len
+  let genericParams = sym.ast[genericParamsPos].len
   let suppliedParams = max(n.safeLen - 1, 0)
 
   if suppliedParams < genericParams:
@@ -468,6 +466,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.graph, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
+  if c.config.macrosToExpand.hasKey(sym.name.s):
+    message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
 
@@ -492,7 +492,7 @@ proc semConceptBody(c: PContext, n: PNode): PNode
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
-  for i in countup(c.lastGenericIdx, c.generics.len - 1):
+  for i in c.lastGenericIdx ..< c.generics.len:
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast.sons[bodyPos] == nil:

@@ -258,7 +258,7 @@ proc getQuality(s: PSym): range[0..100] =
   if s.typ != nil and s.typ.len > 1:
     var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
-    if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return 50
+    if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
   return 100
 
 template wholeSymTab(cond, section: untyped) =
@@ -275,7 +275,7 @@ template wholeSymTab(cond, section: untyped) =
                                  pm, c.inTypeContext > 0, scopeN))
 
 proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var Suggestions) =
-  for i in countup(0, sonsLen(list) - 1):
+  for i in 0 ..< sonsLen(list):
     if list.sons[i].kind == nkSym:
       suggestField(c, list.sons[i].sym, f, info, outputs)
     #else: InternalError(list.info, "getSymFromList")
@@ -283,12 +283,12 @@ proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var S
 proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], f, info, outputs)
+    for i in 0 ..< sonsLen(n): suggestObject(c, n.sons[i], f, info, outputs)
   of nkRecCase:
     var L = sonsLen(n)
     if L > 0:
       suggestObject(c, n.sons[0], f, info, outputs)
-      for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), f, info, outputs)
+      for i in 1 ..< L: suggestObject(c, lastSon(n.sons[i]), f, info, outputs)
   of nkSym: suggestField(c, n.sym, f, info, outputs)
   else: discard
 
@@ -319,7 +319,7 @@ proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var Suggestions) =
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
   if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
-    # special rule: if system and some weird generic match via 'tyExpr'
+    # special rule: if system and some weird generic match via 'tyUntyped'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion
     let m = s.getModule()
@@ -327,7 +327,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
       if s.kind == skType: return
       var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
       if exp.kind == tyVarargs: exp = elemType(exp)
-      if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
+      if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
 
 proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Suggestions) =

@@ -266,8 +266,6 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
 
 proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## Resets an object `obj` to its initial (binary zero) value.
-  ##
-  ## This needs to be called before any possible `object branch transition`:idx:.
 
 proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
@@ -1272,24 +1270,38 @@ else:
   proc `mod`*(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
 
 when defined(nimNewShiftOps):
-  proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect.}
-    ## Computes the `shift right` operation of `x` and `y`, filling
-    ## vacant bit positions with zeros.
-    ##
-    ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
-    ## is different than in *C*.
-    ##
-    ## See also:
-    ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
-    ##
-    ## .. code-block:: Nim
-    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
-    ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
-    ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
-  proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect.}
+
+  when defined(nimOldShiftRight) or not defined(nimAshr):
+    const shrDepMessage = "`shr` will become sign preserving."
+    proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+  else:
+    proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
+      ## Computes the `shift right` operation of `x` and `y`, filling
+      ## vacant bit positions with the sign bit.
+      ##
+      ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
+      ## is different than in *C*.
+      ##
+      ## See also:
+      ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
+      ##
+      ## .. code-block:: Nim
+      ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+      ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
+      ##   0b1000_0000'i8 shr 4 == 0b1111_1000'i8
+      ##   -1 shr 5 == -1
+      ##   1 shr 5 == 0
+      ##   16 shr 2 == 4
+      ##   -16 shr 2 == -4
+    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
+
 
   proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
     ## Computes the `shift left` operation of `x` and `y`.
@@ -1646,7 +1658,7 @@ when defined(nimV2) and not defined(nimscript):
 
 else:
   template owned*(t: typeDesc): typedesc = t
-  template unown*(x: typed): typed = x
+  template unown*(x: typed): untyped = x
 
   proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
@@ -1937,10 +1949,10 @@ const
     ## failure.
 
 when defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode", deprecated.}: int
+  var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
-  var programResult* {.compilerproc, exportc: "nim_program_result", deprecated.}: int
+  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
 
 when defined(nimdoc):
@@ -2479,14 +2491,11 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
 
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
-  ## Deprecated.
+  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
 proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
-  ## Deprecated.
+  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
 proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
-  ## Deprecated.
+  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
   ##
   ## Retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
@@ -3062,8 +3071,12 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     assert a == @[1, 3, 5]
 
   var L = s.len-1
-  result = s[L]
-  setLen(s, L)
+  when defined(nimV2):
+    result = move s[L]
+    shrink(s, L)
+  else:
+    result = s[L]
+    setLen(s, L)
 
 proc `==`*[T: tuple|object](x, y: T): bool =
   ## Generic ``==`` operator for tuples that is lifted from the components.
@@ -3382,8 +3395,8 @@ else:
 
 
 when not defined(JS):
-  proc likelyProc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-  proc unlikelyProc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+  proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, nosideeffect.}
+  proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, nosideeffect.}
 
 template likely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be true.
@@ -3442,10 +3455,10 @@ const
   NimMajor* {.intdefine.}: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 19
+  NimMinor* {.intdefine.}: int = 20
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 9
+  NimPatch* {.intdefine.}: int = 99
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3637,21 +3650,21 @@ when not defined(JS): #and not defined(nimscript):
       const GenericSeqSize = (2 * sizeof(int))
 
     when not defined(nimV2):
-      proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
+      proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
         sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
-        var d: int
-        var a = cast[ByteAddress](aa)
+        var d: uint
+        var a = cast[uint](aa)
         case n.typ.size
-        of 1: d = ze(cast[ptr int8](a +% n.offset)[])
-        of 2: d = ze(cast[ptr int16](a +% n.offset)[])
-        of 4: d = int(cast[ptr int32](a +% n.offset)[])
-        of 8: d = int(cast[ptr int64](a +% n.offset)[])
+        of 1: d = uint(cast[ptr uint8](a + uint(n.offset))[])
+        of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
+        of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
+        of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
         else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
         return d
 
       proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
         var discr = getDiscriminant(aa, n)
-        if discr <% n.len:
+        if discr < cast[uint](n.len):
           result = n.sons[discr]
           if result == nil: result = n.sons[n.len]
           # n.sons[n.len] contains the ``else`` part (but may be nil)
@@ -3767,8 +3780,11 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
-    cstderr.rawWrite(errormsg)
-    cstderr.rawWrite("\n")
+    when nimvm:
+      echo errormsg
+    else:
+      cstderr.rawWrite(errormsg)
+      cstderr.rawWrite("\n")
   quit(errorcode)
 
 {.pop.} # checks
@@ -3836,36 +3852,35 @@ template `^^`(s, i: untyped): untyped =
 template `[]`*(s: string; i: int): char = arrGet(s, i)
 template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
-when hasAlloc or defined(nimscript):
-  proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
-    ## Slice operation for strings.
-    ## Returns the inclusive range `[s[x.a], s[x.b]]`:
-    ##
-    ## .. code-block:: Nim
-    ##    var s = "abcdef"
-    ##    assert s[1..3] == "bcd"
-    let a = s ^^ x.a
-    let L = (s ^^ x.b) - a + 1
-    result = newString(L)
-    for i in 0 ..< L: result[i] = s[i + a]
+proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
+  ## Slice operation for strings.
+  ## Returns the inclusive range `[s[x.a], s[x.b]]`:
+  ##
+  ## .. code-block:: Nim
+  ##    var s = "abcdef"
+  ##    assert s[1..3] == "bcd"
+  let a = s ^^ x.a
+  let L = (s ^^ x.b) - a + 1
+  result = newString(L)
+  for i in 0 ..< L: result[i] = s[i + a]
 
-  proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
-    ## Slice assignment for strings.
-    ##
-    ## If ``b.len`` is not exactly the number of elements that are referred to
-    ## by `x`, a `splice`:idx: is performed:
-    ##
-    runnableExamples:
-      var s = "abcdefgh"
-      s[1 .. ^2] = "xyz"
-      assert s == "axyzh"
+proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
+  ## Slice assignment for strings.
+  ##
+  ## If ``b.len`` is not exactly the number of elements that are referred to
+  ## by `x`, a `splice`:idx: is performed:
+  ##
+  runnableExamples:
+    var s = "abcdefgh"
+    s[1 .. ^2] = "xyz"
+    assert s == "axyzh"
 
-    var a = s ^^ x.a
-    var L = (s ^^ x.b) - a + 1
-    if L == b.len:
-      for i in 0..<L: s[i+a] = b[i]
-    else:
-      spliceImpl(s, a, L, b)
+  var a = s ^^ x.a
+  var L = (s ^^ x.b) - a + 1
+  if L == b.len:
+    for i in 0..<L: s[i+a] = b[i]
+  else:
+    spliceImpl(s, a, L, b)
 
 proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for arrays.
@@ -4202,6 +4217,10 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
+  elif T is SomeSignedInt and not defined(JS):
+    s.addInt(x)
+  elif T is SomeFloat and not defined(JS):
+    s.addFloat(x)
   elif compiles(s.add(x)):
     s.add(x)
   else:
@@ -4210,8 +4229,6 @@ proc addQuoted*[T](s: var string, x: T) =
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
-    ## **Deprecated**
-    ##
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``.
     when defined(nimNoNilSeqs):
@@ -4221,8 +4238,6 @@ when hasAlloc:
       else: x.add(y)
 
   proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
-    ## **Deprecated**
-    ##
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``.
     when defined(nimNoNilSeqs):
       x.add(y)
@@ -4231,8 +4246,6 @@ when hasAlloc:
       x.add(y)
 
   proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
-    ## **Deprecated**
-    ##
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``.
     when defined(nimNoNilSeqs):
@@ -4418,7 +4431,7 @@ when not defined(js):
 type
   ForLoopStmt* {.compilerProc.} = object ## \
     ## A special type that marks a macro as a `for-loop macro`:idx:.
-    ## See `"For loop macros" <manual.html#macros-for-loop-macros>`_.
+    ## See `"For Loop Macro" <manual.html#macros-for-loop-macro>`_.
 
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
@@ -4444,9 +4457,8 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-when not defined(nimnoio):
-  import system/io
-  export io
+import system/io
+export io
 
 when not defined(createNimHcr):
   include nimhcr

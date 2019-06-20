@@ -237,16 +237,24 @@ proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
   t.tnl = OS[o].newLine
 
 proc nameToOS*(name: string): TSystemOS =
-  for i in countup(succ(osNone), high(TSystemOS)):
+  for i in succ(osNone) .. high(TSystemOS):
     if cmpIgnoreStyle(name, OS[i].name) == 0:
       return i
   result = osNone
 
+proc listOSnames*(): seq[string] =
+  for i in succ(osNone) .. high(TSystemOS):
+    result.add OS[i].name
+
 proc nameToCPU*(name: string): TSystemCPU =
-  for i in countup(succ(cpuNone), high(TSystemCPU)):
+  for i in succ(cpuNone) .. high(TSystemCPU):
     if cmpIgnoreStyle(name, CPU[i].name) == 0:
       return i
   result = cpuNone
+
+proc listCPUnames*(): seq[string] =
+  for i in succ(cpuNone) .. high(TSystemCPU):
+    result.add CPU[i].name
 
 proc setTargetFromSystem*(t: var Target) =
   t.hostOS = nameToOS(system.hostOS)

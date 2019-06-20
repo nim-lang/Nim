@@ -366,3 +366,244 @@ proc fun4() =
   var i = 0
   while i<a.len and i<a.len:
     return
+
+
+# bug #10295
+
+import osproc
+let res = execProcess(
+    "echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
+
+let res = execProcess("echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
+
+
+# bug #10177
+
+proc foo  *  () =
+  discard
+
+proc foo* [T]() =
+  discard
+
+
+# bug #10159
+
+proc fun() =
+  discard
+
+proc main() =
+    echo "foo"; echo "bar";
+    discard
+
+main()
+
+type
+  TCallingConvention* = enum
+    ccDefault,                # proc has no explicit calling convention
+    ccStdCall,    # procedure is stdcall
+    ccCDecl,                  # cdecl
+    ccSafeCall,               # safecall
+    ccSysCall, # system call
+    ccInline,                 # proc should be inlined
+    ccNoInline,               # proc should not be inlined
+    ccFastCall,               # fastcall (pass parameters in registers)
+    ccClosure,        # proc has a closure
+    ccNoConvention       # needed for generating proper C procs sometimes
+
+
+proc isValid1*[A](s: HashSet[A]): bool {.deprecated:
+    "Deprecated since v0.20; sets are initialized by default".} =
+  ## Returns `true` if the set has been initialized (with `initHashSet proc
+  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  result = s.data.len > 0
+  # bug #11468
+
+assert $type(a) == "Option[system.int]"
+foo(a, $type(b), c)
+foo(type(b), c) # this is ok
+
+proc `<`*[A](s, t: A): bool = discard
+proc `==`*[A](s, t: HashSet[A]): bool = discard
+proc `<=`*[A](s, t: HashSet[A]): bool = discard
+
+# these are ok:
+proc `$`*[A](s: HashSet[A]): string = discard
+proc `*`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} = discard
+proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} = discard
+
+# bug #11470
+
+
+# bug #11467
+
+type
+  FirstEnum = enum ## doc comment here
+    first,  ## this is first
+    second, ## second doc
+    third,  ## third one
+    fourth  ## the last one
+
+
+type
+  SecondEnum = enum ## doc comment here
+    first,  ## this is first
+    second, ## second doc
+    third,  ## third one
+    fourth, ## the last one
+
+
+type
+  ThirdEnum = enum ## doc comment here
+    first    ## this is first
+    second   ## second doc
+    third    ## third one
+    fourth   ## the last one
+
+
+type
+  HttpMethod* = enum  ## the requested HttpMethod
+    HttpHead,         ## Asks for the response identical to the one that would
+                      ## correspond to a GET request, but without the response
+                      ## body.
+    HttpGet,          ## Retrieves the specified resource.
+    HttpPost,         ## Submits data to be processed to the identified
+                      ## resource. The data is included in the body of the
+                      ## request.
+    HttpPut,          ## Uploads a representation of the specified resource.
+    HttpDelete,       ## Deletes the specified resource.
+    HttpTrace,        ## Echoes back the received request, so that a client
+                      ## can see what intermediate servers are adding or
+                      ## changing in the request.
+    HttpOptions,      ## Returns the HTTP methods that the server supports
+                      ## for specified address.
+    HttpConnect,      ## Converts the request connection to a transparent
+                      ## TCP/IP tunnel, usually used for proxies.
+    HttpPatch         ## Applies partial modifications to a resource.
+
+type
+  HtmlTag* = enum  ## list of all supported HTML tags; order will always be
+                   ## alphabetically
+    tagUnknown,    ## unknown HTML element
+    tagA,          ## the HTML ``a`` element
+    tagAbbr,       ## the deprecated HTML ``abbr`` element
+    tagAcronym,    ## the HTML ``acronym`` element
+    tagAddress,    ## the HTML ``address`` element
+    tagApplet,     ## the deprecated HTML ``applet`` element
+    tagArea,       ## the HTML ``area`` element
+    tagArticle,    ## the HTML ``article`` element
+    tagAside,      ## the HTML ``aside`` element
+    tagAudio,      ## the HTML ``audio`` element
+    tagB,          ## the HTML ``b`` element
+    tagBase,       ## the HTML ``base`` element
+    tagBdi,        ## the HTML ``bdi`` element
+    tagBdo,        ## the deprecated HTML ``dbo`` element
+    tagBasefont,   ## the deprecated HTML ``basefont`` element
+    tagBig,        ## the HTML ``big`` element
+    tagBlockquote, ## the HTML ``blockquote`` element
+    tagBody,       ## the HTML ``body`` element
+    tagBr,         ## the HTML ``br`` element
+    tagButton,     ## the HTML ``button`` element
+    tagCanvas,     ## the HTML ``canvas`` element
+    tagCaption,    ## the HTML ``caption`` element
+    tagCenter,     ## the deprecated HTML ``center`` element
+    tagCite,       ## the HTML ``cite`` element
+    tagCode,       ## the HTML ``code`` element
+    tagCol,        ## the HTML ``col`` element
+    tagColgroup,   ## the HTML ``colgroup`` element
+    tagCommand,    ## the HTML ``command`` element
+    tagDatalist,   ## the HTML ``datalist`` element
+    tagDd,         ## the HTML ``dd`` element
+    tagDel,        ## the HTML ``del`` element
+    tagDetails,    ## the HTML ``details`` element
+    tagDfn,        ## the HTML ``dfn`` element
+    tagDialog,     ## the HTML ``dialog`` element
+    tagDiv,        ## the HTML ``div`` element
+    tagDir,        ## the deprecated HTLM ``dir`` element
+    tagDl,         ## the HTML ``dl`` element
+    tagDt,         ## the HTML ``dt`` element
+    tagEm,         ## the HTML ``em`` element
+    tagEmbed,      ## the HTML ``embed`` element
+    tagFieldset,   ## the HTML ``fieldset`` element
+    tagFigcaption, ## the HTML ``figcaption`` element
+    tagFigure,     ## the HTML ``figure`` element
+    tagFont,       ## the deprecated HTML ``font`` element
+    tagFooter,     ## the HTML ``footer`` element
+    tagForm,       ## the HTML ``form`` element
+    tagFrame,      ## the HTML ``frame`` element
+    tagFrameset,   ## the deprecated HTML ``frameset`` element
+    tagH1,         ## the HTML ``h1`` element
+    tagH2,         ## the HTML ``h2`` element
+    tagH3,         ## the HTML ``h3`` element
+    tagH4,         ## the HTML ``h4`` element
+    tagH5,         ## the HTML ``h5`` element
+    tagH6,         ## the HTML ``h6`` element
+    tagHead,       ## the HTML ``head`` element
+    tagHeader,     ## the HTML ``header`` element
+    tagHgroup,     ## the HTML ``hgroup`` element
+    tagHtml,       ## the HTML ``html`` element
+    tagHr,         ## the HTML ``hr`` element
+    tagI,          ## the HTML ``i`` element
+    tagIframe,     ## the deprecated HTML ``iframe`` element
+    tagImg,        ## the HTML ``img`` element
+    tagInput,      ## the HTML ``input`` element
+    tagIns,        ## the HTML ``ins`` element
+    tagIsindex,    ## the deprecated HTML ``isindex`` element
+    tagKbd,        ## the HTML ``kbd`` element
+    tagKeygen,     ## the HTML ``keygen`` element
+    tagLabel,      ## the HTML ``label`` element
+    tagLegend,     ## the HTML ``legend`` element
+    tagLi,         ## the HTML ``li`` element
+    tagLink,       ## the HTML ``link`` element
+    tagMap,        ## the HTML ``map`` element
+    tagMark,       ## the HTML ``mark`` element
+    tagMenu,       ## the deprecated HTML ``menu`` element
+    tagMeta,       ## the HTML ``meta`` element
+    tagMeter,      ## the HTML ``meter`` element
+    tagNav,        ## the HTML ``nav`` element
+    tagNobr,       ## the deprecated HTML ``nobr`` element
+    tagNoframes,   ## the deprecated HTML ``noframes`` element
+    tagNoscript,   ## the HTML ``noscript`` element
+    tagObject,     ## the HTML ``object`` element
+    tagOl,         ## the HTML ``ol`` element
+    tagOptgroup,   ## the HTML ``optgroup`` element
+    tagOption,     ## the HTML ``option`` element
+    tagOutput,     ## the HTML ``output`` element
+    tagP,          ## the HTML ``p`` element
+    tagParam,      ## the HTML ``param`` element
+    tagPre,        ## the HTML ``pre`` element
+    tagProgress,   ## the HTML ``progress`` element
+    tagQ,          ## the HTML ``q`` element
+    tagRp,         ## the HTML ``rp`` element
+    tagRt,         ## the HTML ``rt`` element
+    tagRuby,       ## the HTML ``ruby`` element
+    tagS,          ## the deprecated HTML ``s`` element
+    tagSamp,       ## the HTML ``samp`` element
+    tagScript,     ## the HTML ``script`` element
+    tagSection,    ## the HTML ``section`` element
+    tagSelect,     ## the HTML ``select`` element
+    tagSmall,      ## the HTML ``small`` element
+    tagSource,     ## the HTML ``source`` element
+    tagSpan,       ## the HTML ``span`` element
+    tagStrike,     ## the deprecated HTML ``strike`` element
+    tagStrong,     ## the HTML ``strong`` element
+    tagStyle,      ## the HTML ``style`` element
+    tagSub,        ## the HTML ``sub`` element
+    tagSummary,    ## the HTML ``summary`` element
+    tagSup,        ## the HTML ``sup`` element
+    tagTable,      ## the HTML ``table`` element
+    tagTbody,      ## the HTML ``tbody`` element
+    tagTd,         ## the HTML ``td`` element
+    tagTextarea,   ## the HTML ``textarea`` element
+    tagTfoot,      ## the HTML ``tfoot`` element
+    tagTh,         ## the HTML ``th`` element
+    tagThead,      ## the HTML ``thead`` element
+    tagTime,       ## the HTML ``time`` element
+    tagTitle,      ## the HTML ``title`` element
+    tagTr,         ## the HTML ``tr`` element
+    tagTrack,      ## the HTML ``track`` element
+    tagTt,         ## the HTML ``tt`` element
+    tagU,          ## the deprecated HTML ``u`` element
+    tagUl,         ## the HTML ``ul`` element
+    tagVar,        ## the HTML ``var`` element
+    tagVideo,      ## the HTML ``video`` element
+    tagWbr         ## the HTML ``wbr`` element

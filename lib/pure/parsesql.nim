@@ -554,17 +554,14 @@ type
     tok: Token
 
 proc newNode*(k: SqlNodeKind): SqlNode =
-  new(result)
-  result.kind = k
+  result = SqlNode(kind: k)
 
 proc newNode*(k: SqlNodeKind, s: string): SqlNode =
-  new(result)
-  result.kind = k
+  result = SqlNode(kind: k)
   result.strVal = s
 
 proc newNode*(k: SqlNodeKind, sons: seq[SqlNode]): SqlNode =
-  new(result)
-  result.kind = k
+  result = SqlNode(kind: k)
   result.sons = sons
 
 proc len*(n: SqlNode): int =

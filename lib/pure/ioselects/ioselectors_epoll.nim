@@ -378,6 +378,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   if maxres > len(results):
     maxres = len(results)
 
+  verifySelectParams(timeout)
+
   let count = epoll_wait(s.epollFD, addr(resTable[0]), maxres.cint,
                          timeout.cint)
   if count < 0:

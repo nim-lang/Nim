@@ -36,7 +36,7 @@ type
     warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnUser,
+    warnInconsistentSpacing, warnCaseTransition, warnUser,
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
@@ -44,7 +44,7 @@ type
     hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
-    hintGlobalVar,
+    hintGlobalVar, hintExpandMacro,
     hintUser, hintUserRaw,
     hintExtendedContext
 
@@ -90,6 +90,7 @@ const
     warnLockLevel: "$1",
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
+    warnCaseTransition: "Potential object case transition, instantiate new object instead",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
@@ -117,6 +118,7 @@ const
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
+    hintExpandMacro: "expanded macro: $1",
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
@@ -134,14 +136,14 @@ const
     "UnsafeCode", "EachIdentIsTuple",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "User"]
+    "Spacing", "CaseTransition", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
+    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
     "User", "UserRaw", "ExtendedContext",
   ]
 

@@ -92,8 +92,7 @@ proc deinitSharedList*[A](t: var SharedList[A]) =
   clear(t)
   deinitLock t.lock
 
-proc initSharedList*[A](): SharedList[A] {.deprecated.} =
-  ## Deprecated. Use `init` instead.
+proc initSharedList*[A](): SharedList[A] {.deprecated: "use 'init' instead".} =
   ## This is not posix compliant, may introduce undefined behavior.
   initLock result.lock
   result.head = nil

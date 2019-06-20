@@ -37,7 +37,7 @@ var `hu "XYZ"` = "yay"
 
 echo prefix(XYZ)
 
-template typedef(name: untyped, typ: typeDesc) {.immediate, dirty.} =
+template typedef(name: untyped, typ: typeDesc) {.dirty.} =
   type
     `T name`* = typ
     `P name`* = ref `T name`

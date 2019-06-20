@@ -27,7 +27,7 @@ proc makeCString*(s: string): Rope =
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   add(res, "\"")
-  for i in countup(0, len(s) - 1):
+  for i in 0 ..< len(s):
     if (i + 1) mod MaxLineLength == 0:
       add(res, "\"\L\"")
     toCChar(s[i], res)
@@ -452,7 +452,8 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   const indent = "  "
   msgWriteln(conf, indent & $sourceLine(conf, info))
-  msgWriteln(conf, indent & spaces(info.col) & '^')
+  if info.col >= 0:
+    msgWriteln(conf, indent & spaces(info.col) & '^')
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg

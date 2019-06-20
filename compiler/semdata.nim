@@ -40,6 +40,7 @@ type
     wasForwarded*: bool       # whether the current proc has a separate header
     mappingExists*: bool
     mapping*: TIdTable
+    caseContext*: seq[tuple[n: PNode, idx: int]]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -213,7 +214,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.enforceVoidContext = PType(kind: tyStmt)
+  result.enforceVoidContext = PType(kind: tyTyped)
   result.ambiguousSymbols = initIntSet()
   result.optionStack = @[]
   result.libs = @[]
@@ -235,7 +236,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
   var L = len(sq)
-  for i in countup(0, L - 1):
+  for i in 0 ..< L:
     if sq[i].id == s.id: return
   setLen(sq, L + 1)
   sq[L] = s
@@ -416,3 +417,12 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
+
+proc pushCaseContext*(c: PContext, caseNode: PNode) =
+  add(c.p.caseContext, (caseNode, 0))
+
+proc popCaseContext*(c: PContext) =
+  discard pop(c.p.caseContext)
+
+proc setCaseContextIdx*(c: PContext, idx: int) =
+  c.p.caseContext[^1].idx = idx

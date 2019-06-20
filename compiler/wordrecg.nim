@@ -57,7 +57,7 @@ type
     wAssertions, wPatterns, wTrMacros, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
-    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite,
+    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
     wPragma,
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
@@ -148,7 +148,7 @@ const
     "assertions", "patterns", "trmacros", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim",  # deprecated, dead code elim always happens
-    "safecode", "package", "noforward", "reorder", "norewrite",
+    "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
     "pragma",
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",
@@ -180,7 +180,7 @@ const
     ]
 
 proc findStr*(a: openArray[string], s: string): int =
-  for i in countup(low(a), high(a)):
+  for i in low(a) .. high(a):
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1

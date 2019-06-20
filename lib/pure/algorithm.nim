@@ -221,9 +221,8 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
     assert binarySearch([0, 1, 4, 2, 3], 4) == 2
   binarySearch(a, key, cmp[T])
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
-  ## **Deprecated since version 0.18.1**; Use `binarySearch proc
-  ## <#binarySearch,openArray[T],T>`_ instead.
+proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated:
+  "Deprecated since v0.18.1; Use 'binarySearch'".} =
   binarySearch(a, key, cmp[T])
 
 const

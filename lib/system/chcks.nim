@@ -46,6 +46,12 @@ proc chckRange64(i, a, b: int64): int64 {.compilerproc.} =
   else:
     raiseRangeError(i)
 
+proc chckRangeU(i, a, b: uint64): uint64 {.compilerproc.} =
+  if i >= a and i <= b:
+    return i
+  else:
+    sysFatal(RangeError, "value out of range")
+
 proc chckRangeF(x, a, b: float): float =
   if x >= a and x <= b:
     return x
@@ -108,3 +114,8 @@ when not defined(nimV2):
       if x == nil: return false
       x = x.base
     return true
+
+when defined(nimV2):
+  proc nimFieldDiscriminantCheckV2(oldDiscVal, newDiscVal: uint8) {.compilerProc.} =
+    if oldDiscVal != newDiscVal:
+      sysFatal(FieldError, "assignment to discriminant changes object branch")

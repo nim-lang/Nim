@@ -12,10 +12,10 @@
 import idents, lexer, lineinfos, llstream, options, msgs, strutils,
   pathutils
 from os import changeFileExt
+from sequtils import delete
 
 const
   MaxLineLen = 80
-  LineCommentColumn = 30
 
 type
   SplitKind = enum
@@ -23,6 +23,12 @@ type
 
   SemicolonKind = enum
     detectSemicolonKind, useSemicolon, dontTouch
+
+  LayoutToken = enum
+    ltSpaces, ltNewline, ltTab,
+    ltComment, ltLit, ltKeyword, ltExportMarker, ltIdent,
+    ltOther, ltOpr,
+    ltBeginSection, ltEndSection
 
   Emitter* = object
     config: ConfigRef
@@ -33,7 +39,8 @@ type
     col, lastLineNumber, lineSpan, indentLevel, indWidth*: int
     keepIndents*: int
     doIndentMore*: int
-    content: string
+    kinds: seq[LayoutToken]
+    tokens: seq[string]
     indentStack: seq[int]
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
@@ -50,21 +57,74 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.lastTok = tkInvalid
   em.inquote = false
   em.col = 0
-  em.content = newStringOfCap(16_000)
   em.indentStack = newSeqOfCap[int](30)
   em.indentStack.add 0
   em.lastLineNumber = 1
 
+proc computeMax(em: Emitter; pos: int): int =
+  var p = pos
+  result = 0
+  while p < em.tokens.len and em.kinds[p] != ltEndSection:
+    var lhs = 0
+    var lineLen = 0
+    var foundTab = false
+    while p < em.tokens.len and em.kinds[p] != ltEndSection:
+      if em.kinds[p] == ltNewline:
+        if foundTab and lineLen <= MaxLineLen: result = max(result, lhs+1)
+        inc p
+        break
+      if em.kinds[p] == ltTab:
+        foundTab = true
+      else:
+        if not foundTab:
+          inc lhs, em.tokens[p].len
+        inc lineLen, em.tokens[p].len
+      inc p
+
+proc computeRhs(em: Emitter; pos: int): int =
+  var p = pos
+  result = 0
+  while p < em.tokens.len and em.kinds[p] != ltNewline:
+    inc result, em.tokens[p].len
+    inc p
+
 proc closeEmitter*(em: var Emitter) =
   let outFile = em.config.absOutFile
-  if fileExists(outFile) and readFile(outFile.string) == em.content:
+
+  var content = newStringOfCap(16_000)
+  var maxLhs = 0
+  var lineLen = 0
+  var lineBegin = 0
+  for i in 0..em.tokens.high:
+    case em.kinds[i]
+    of ltBeginSection:
+      maxLhs = computeMax(em, lineBegin)
+    of ltEndSection:
+      maxLhs = 0
+    of ltTab:
+      if maxLhs == 0 or computeRhs(em, i+1)+maxLhs > MaxLineLen:
+        content.add em.tokens[i]
+        inc lineLen, em.tokens[i].len
+      else:
+        let spaces = maxLhs - lineLen #max(maxLhs - lineLen, 1)
+        for j in 1..spaces: content.add ' '
+        inc lineLen, spaces
+    of ltNewline:
+      content.add em.tokens[i]
+      lineLen = 0
+      lineBegin = i+1
+    else:
+      content.add em.tokens[i]
+      inc lineLen, em.tokens[i].len
+
+  if fileExists(outFile) and readFile(outFile.string) == content:
     discard "do nothing, see #9499"
     return
   var f = llStreamOpen(outFile, fmWrite)
   if f == nil:
     rawMessage(em.config, errGenerated, "cannot open file: " & outFile.string)
     return
-  f.llStreamWrite em.content
+  f.llStreamWrite content
   llStreamClose(f)
 
 proc countNewlines(s: string): int =
@@ -79,9 +139,36 @@ proc calcCol(em: var Emitter; s: string) =
     dec i
     inc em.col
 
-template wr(x) =
-  em.content.add x
+proc wr(em: var Emitter; x: string; lt: LayoutToken) =
+  em.tokens.add x
+  em.kinds.add lt
   inc em.col, x.len
+  assert em.tokens.len == em.kinds.len
+
+proc wrNewline(em: var Emitter) =
+  em.tokens.add "\L"
+  em.kinds.add ltNewline
+  em.col = 0
+
+proc wrSpaces(em: var Emitter; spaces: int) =
+  if spaces > 0:
+    wr(em, strutils.repeat(' ', spaces), ltSpaces)
+
+proc wrSpace(em: var Emitter) =
+  wr(em, " ", ltSpaces)
+
+proc wrTab(em: var Emitter) =
+  wr(em, " ", ltTab)
+
+proc beginSection*(em: var Emitter) = wr(em, "", ltBeginSection)
+proc endSection*(em: var Emitter) = wr(em, "", ltEndSection)
+
+proc removeSpaces(em: var Emitter) =
+  while em.kinds.len > 0 and em.kinds[^1] == ltSpaces:
+    let tokenLen = em.tokens[^1].len
+    setLen(em.tokens, em.tokens.len-1)
+    setLen(em.kinds, em.kinds.len-1)
+    dec em.col, tokenLen
 
 template goodCol(col): bool = col in 40..MaxLineLen
 
@@ -89,13 +176,17 @@ const
   openPars = {tkParLe, tkParDotLe,
               tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
               tkCurlyLe}
+  closedPars = {tkParRi, tkParDotRi,
+              tkBracketRi, tkCurlyDotRi,
+              tkCurlyRi}
+
   splitters = openPars + {tkComma, tkSemicolon}
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
 template rememberSplit(kind) =
   if goodCol(em.col):
-    em.altSplitPos[kind] = em.content.len
+    em.altSplitPos[kind] = em.tokens.len
 
 template moreIndent(em): int =
   (if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth)
@@ -106,54 +197,113 @@ proc softLinebreak(em: var Emitter, lit: string) =
   # +2 because we blindly assume a comma or ' &' might follow
   if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
     if em.lastTok in splitters:
-      while em.content.len > 0 and em.content[em.content.high] == ' ':
-        setLen(em.content, em.content.len-1)
-      wr("\L")
-      em.col = 0
-      for i in 1..em.indentLevel+moreIndent(em): wr(" ")
+      # bug #10295, check first if even more indentation would help:
+      let spaces = em.indentLevel+moreIndent(em)
+      if spaces < em.col:
+        removeSpaces em
+        wrNewline(em)
+        em.col = 0
+        wrSpaces em, spaces
     else:
       # search backwards for a good split position:
       for a in mitems(em.altSplitPos):
         if a > em.fixedUntil:
           var spaces = 0
-          while a+spaces < em.content.len and em.content[a+spaces] == ' ':
+          while a+spaces < em.kinds.len and em.kinds[a+spaces] == ltSpaces:
             inc spaces
-          if spaces > 0: delete(em.content, a, a+spaces-1)
-          em.col = em.content.len - a
-          let ws = "\L" & repeat(' ', em.indentLevel+moreIndent(em))
-          em.content.insert(ws, a)
+          if spaces > 0:
+            delete(em.tokens, a, a+spaces-1)
+            delete(em.kinds, a, a+spaces-1)
+          em.kinds.insert(ltNewline, a)
+          em.tokens.insert("\L", a)
+          em.kinds.insert(ltSpaces, a+1)
+          em.tokens.insert(repeat(' ', em.indentLevel+moreIndent(em)), a+1)
+          # recompute em.col:
+          var i = em.kinds.len-1
+          em.col = 0
+          while i >= 0 and em.kinds[i] != ltNewline:
+            inc em.col, em.tokens[i].len
+            dec i
+          # mark position as "already split here"
           a = -1
           break
 
-proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
+proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
+  # re-align every line in the multi-line comment:
+  var i = 0
+  var lastIndent = em.indentStack[^1]
+  var b = 0
+  for commentLine in splitLines(lit):
+    let stripped = commentLine.strip()
+    var a = 0
+    while a < commentLine.len and commentLine[a] == ' ': inc a
+    if i == 0:
+      wr(em, "", ltTab)
+    elif stripped.len == 0:
+      wrNewline em
+    else:
+      if a > lastIndent:
+        b += em.indWidth
+        lastIndent = a
+      elif a < lastIndent:
+        b -= em.indWidth
+        lastIndent = a
+      wrNewline em
+      #wrSpaces em, col + b
+      if col + b > 0:
+        wr(em, repeat(' ', col+b), ltTab)
+      else:
+        wr(em, "", ltTab)
+    wr em, stripped, ltComment
+    inc i
 
-  template endsInWhite(em): bool =
-    em.content.len == 0 or em.content[em.content.high] in {' ', '\L'}
-  template endsInAlpha(em): bool =
-    em.content.len > 0 and em.content[em.content.high] in SymChars+{'_'}
+proc lastChar(s: string): char =
+  result = if s.len > 0: s[s.high] else: '\0'
 
-  proc emitComment(em: var Emitter; tok: TToken) =
-    let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
-    em.lineSpan = countNewlines(lit)
-    if em.lineSpan > 0: calcCol(em, lit)
+proc endsInWhite(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
+  result = if i >= 0: em.kinds[i] in {ltSpaces, ltNewline, ltTab} else: true
+
+proc endsInNewline(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection, ltSpaces}: dec(i)
+  result = if i >= 0: em.kinds[i] in {ltNewline, ltTab} else: true
+
+proc endsInAlpha(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
+  result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
+
+proc emitComment(em: var Emitter; tok: TToken) =
+  let col = em.col
+  let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
+  em.lineSpan = countNewlines(lit)
+  if em.lineSpan > 0: calcCol(em, lit)
+  if em.lineSpan == 0:
+    if not endsInNewline(em):
+      wrTab em
+    wr em, lit, ltComment
+  else:
     if not endsInWhite(em):
-      wr(" ")
-      if em.lineSpan == 0 and max(em.col, LineCommentColumn) + lit.len <= MaxLineLen:
-        for i in 1 .. LineCommentColumn - em.col: wr(" ")
-    wr lit
+      wrTab em
+    emitMultilineComment(em, lit, col)
+
+proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
+  template wasExportMarker(em): bool =
+    em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
 
   if tok.tokType == tkComment and tok.literal.startsWith("#!nimpretty"):
     case tok.literal
     of "#!nimpretty off":
       inc em.keepIndents
-      wr("\L")
+      wrNewline em
       em.lastLineNumber = tok.line + 1
     of "#!nimpretty on":
       dec em.keepIndents
       em.lastLineNumber = tok.line
-    wr("\L")
-    #for i in 1 .. tok.indent: wr " "
-    wr tok.literal
+    wrNewline em
+    wr em, tok.literal, ltComment
     em.col = 0
     em.lineSpan = 0
     return
@@ -163,11 +313,15 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     # we have an inline comment so handle it before the indentation token:
     emitComment(em, tok)
     preventComment = true
-    em.fixedUntil = em.content.high
+    em.fixedUntil = em.tokens.high
 
   elif tok.indent >= 0:
-    if em.lastTok in (splitters + oprSet) or em.keepIndents > 0:
+    if em.keepIndents > 0:
       em.indentLevel = tok.indent
+    elif (em.lastTok in (splitters + oprSet) and tok.tokType notin closedPars):
+      # aka: we are in an expression context:
+      let alignment = tok.indent - em.indentStack[^1]
+      em.indentLevel = alignment + em.indentStack.high * em.indWidth
     else:
       if tok.indent > em.indentStack[^1]:
         em.indentStack.add tok.indent
@@ -186,51 +340,48 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
        is not touched.
     ]#
     # remove trailing whitespace:
-    while em.content.len > 0 and em.content[em.content.high] == ' ':
-      setLen(em.content, em.content.len-1)
-    wr("\L")
-    for i in 2..tok.line - em.lastLineNumber: wr("\L")
-    em.col = 0
-    for i in 1..em.indentLevel:
-      wr(" ")
-    em.fixedUntil = em.content.high
+    removeSpaces em
+    wrNewline em
+    for i in 2..tok.line - em.lastLineNumber: wrNewline(em)
+    wrSpaces em, em.indentLevel
+    em.fixedUntil = em.tokens.high
 
   var lastTokWasTerse = false
   case tok.tokType
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
-      wr(" ")
+      wrSpace em
     elif not em.inquote and not endsInWhite(em) and
-        em.lastTok notin openPars and not em.lastTokWasTerse:
+        em.lastTok notin (openPars+{tkOpr, tkDotDot}) and not em.lastTokWasTerse:
       #and tok.tokType in oprSet
-      wr(" ")
+      wrSpace em
 
     if not em.inquote:
-      wr(TokTypeToStr[tok.tokType])
+      wr(em, TokTypeToStr[tok.tokType], ltKeyword)
 
       case tok.tokType
       of tkAnd: rememberSplit(splitAnd)
       of tkOr: rememberSplit(splitOr)
       of tkIn, tkNotin:
         rememberSplit(splitIn)
-        wr(" ")
+        wrSpace em
       else: discard
     else:
       # keywords in backticks are not normalized:
-      wr(tok.ident.s)
+      wr(em, tok.ident.s, ltIdent)
 
   of tkColon:
-    wr(TokTypeToStr[tok.tokType])
-    wr(" ")
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wrSpace em
   of tkSemicolon, tkComma:
-    wr(TokTypeToStr[tok.tokType])
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitComma)
-    wr(" ")
+    wrSpace em
   of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
      tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
-    if tok.strongSpaceA > 0 and not em.endsInWhite:
-      wr(" ")
-    wr(TokTypeToStr[tok.tokType])
+    if tok.strongSpaceA > 0 and not em.endsInWhite and not em.wasExportMarker:
+      wrSpace em
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitParLe)
   of tkParRi,
      tkBracketRi, tkCurlyRi,
@@ -238,33 +389,33 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
      tkCurlyDotRi,
      tkParDotRi,
      tkColonColon:
-    wr(TokTypeToStr[tok.tokType])
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
   of tkDot:
     lastTokWasTerse = true
-    wr(TokTypeToStr[tok.tokType])
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
   of tkEquals:
-    if not em.inquote and not em.endsInWhite: wr(" ")
-    wr(TokTypeToStr[tok.tokType])
-    if not em.inquote: wr(" ")
+    if not em.inquote and not em.endsInWhite: wrSpace(em)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
-    if ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) or em.inquote) and
-      tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]:
+    if em.inquote or ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) and
+        tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]):
       # bug #9504: remember to not spacify a keyword:
       lastTokWasTerse = true
       # if not surrounded by whitespace, don't produce any whitespace either:
-      wr(tok.ident.s)
+      wr(em, tok.ident.s, ltOpr)
     else:
-      if not em.endsInWhite: wr(" ")
-      wr(tok.ident.s)
+      if not em.endsInWhite: wrSpace(em)
+      wr(em, tok.ident.s, ltOpr)
       template isUnary(tok): bool =
         tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
       if not isUnary(tok):
         rememberSplit(splitBinary)
-        wr(" ")
+        wrSpace(em)
   of tkAccent:
-    if not em.inquote and endsInAlpha(em): wr(" ")
-    wr(TokTypeToStr[tok.tokType])
+    if not em.inquote and endsInAlpha(em): wrSpace(em)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     em.inquote = not em.inquote
   of tkComment:
     if not preventComment:
@@ -272,36 +423,43 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
     softLinebreak(em, lit)
-    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wr(" ")
+    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
     em.lineSpan = countNewlines(lit)
     if em.lineSpan > 0: calcCol(em, lit)
-    wr lit
+    wr em, lit, ltLit
   of tkEof: discard
   else:
     let lit = if tok.ident != nil: tok.ident.s else: tok.literal
     softLinebreak(em, lit)
-    if endsInAlpha(em): wr(" ")
-    wr lit
+    if endsInAlpha(em): wrSpace(em)
+    wr em, lit, ltIdent
 
   em.lastTok = tok.tokType
   em.lastTokWasTerse = lastTokWasTerse
   em.lastLineNumber = tok.line + em.lineSpan
   em.lineSpan = 0
 
+proc endsWith(em: Emitter; k: varargs[string]): bool =
+  if em.tokens.len < k.len: return false
+  for i in 0..high(k):
+    if em.tokens[em.tokens.len - k.len + i] != k[i]: return false
+  return true
+
 proc starWasExportMarker*(em: var Emitter) =
-  if em.content.endsWith(" * "):
-    setLen(em.content, em.content.len-3)
-    em.content.add("*")
+  if em.endsWith(" ", "*", " "):
+    setLen(em.tokens, em.tokens.len-3)
+    setLen(em.kinds, em.kinds.len-3)
+    em.tokens.add("*")
+    em.kinds.add ltExportMarker
     dec em.col, 2
 
 proc commaWasSemicolon*(em: var Emitter) =
   if em.semicolons == detectSemicolonKind:
-    em.semicolons = if em.content.endsWith(", "): dontTouch else: useSemicolon
-  if em.semicolons == useSemicolon and em.content.endsWith(", "):
-    setLen(em.content, em.content.len-2)
-    em.content.add("; ")
+    em.semicolons = if em.endsWith(",", " "): dontTouch else: useSemicolon
+  if em.semicolons == useSemicolon and em.endsWith(",", " "):
+    em.tokens[em.tokens.len-2] = ";"
 
 proc curlyRiWasPragma*(em: var Emitter) =
-  if em.content.endsWith("}"):
-    setLen(em.content, em.content.len-1)
-    em.content.add(".}")
+  if em.endsWith("}"):
+    em.tokens[em.tokens.len-1] = ".}"
+    inc em.col

@@ -79,7 +79,7 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
   ## ``FutureStream``.
   var resFut = newFuture[(bool, T)]("FutureStream.take")
   let savedCb = future.cb
-  future.callback =
+  var newCb =
     proc (fs: FutureStream[T]) =
       # Exit early if `resFut` is already complete. (See #8994).
       if resFut.finished: return
@@ -100,6 +100,11 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
 
       # If the saved callback isn't nil then let's call it.
       if not savedCb.isNil: savedCb()
+
+  if future.queue.len > 0 or future.finished:
+    newCb(future)
+  else:
+    future.callback = newCb
   return resFut
 
 proc len*[T](future: FutureStream[T]): int =

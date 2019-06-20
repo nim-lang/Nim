@@ -82,7 +82,7 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
       result.add renderTree(c[i].n)
     of goto, fork, join:
       result.add "L"
-      result.add c[i].dest+i
+      result.addInt c[i].dest+i
     result.add("\t#")
     result.add(debugInfo(c[i].n.info))
     result.add("\n")
@@ -441,7 +441,7 @@ proc genIf(c: var Con, n: PNode) =
   ]#
   let oldLen = c.forks.len
   var endings: seq[TPosition] = @[]
-  for i in countup(0, len(n) - 1):
+  for i in 0 ..< len(n):
     var it = n.sons[i]
     c.gen(it.sons[0])
     if it.len == 2:
@@ -619,8 +619,8 @@ proc aliases(obj, field: PNode): bool =
       break
   return false
 
-proc instrTargets*(ins: Instr; loc: PNode): bool =
-  assert ins.kind in {def, use}
+proc useInstrTargets*(ins: Instr; loc: PNode): bool =
+  assert ins.kind == use
   if ins.sym != nil and loc.kind == nkSym:
     result = ins.sym == loc.sym
   else:
@@ -632,6 +632,20 @@ proc instrTargets*(ins: Instr; loc: PNode): bool =
     # use x.f;  question: does it affect the full 'x'? No.
     # use x; question does it affect 'x.f'? Yes.
     result = aliases(ins.n, loc) or aliases(loc, ins.n)
+
+proc defInstrTargets*(ins: Instr; loc: PNode): bool =
+  assert ins.kind == def
+  if ins.sym != nil and loc.kind == nkSym:
+    result = ins.sym == loc.sym
+  else:
+    result = ins.n == loc or sameTrees(ins.n, loc)
+  if not result:
+    # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+    # def x.f; question: does it affect the full 'x'? No.
+    # def x; question: does it affect the 'x.f'? Yes.
+    # use x.f;  question: does it affect the full 'x'? No.
+    # use x; question does it affect 'x.f'? Yes.
+    result = aliases(ins.n, loc)
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig

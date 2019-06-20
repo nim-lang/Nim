@@ -283,6 +283,12 @@ type
     dSat = "Saturday"
     dSun = "Sunday"
 
+  DateTimeLocale* = object
+    MMM*: array[mJan..mDec, string]
+    MMMM*: array[mJan..mDec, string]
+    ddd*: array[dMon..dSun, string]
+    dddd*: array[dMon..dSun, string]
+
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
@@ -420,6 +426,13 @@ const unitWeights: array[FixedTimeUnit, int64] = [
   secondsInDay * 1e9.int64,
   7 * secondsInDay * 1e9.int64,
 ]
+
+const DefaultLocale* = DateTimeLocale(
+  MMM: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  MMMM: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  ddd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  dddd: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+)
 
 proc convert*[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit, quantity: T): T
     {.inline.} =
@@ -1089,7 +1102,7 @@ else:
 
     # In case of a 32-bit time_t, we fallback to the closest available
     # timezone information.
-    var a = clamp(unix, low(CTime), high(CTime)).CTime
+    var a = clamp(unix, low(CTime).int64, high(CTime).int64).CTime
     let tmPtr = localtime(a)
     if not tmPtr.isNil:
       let tm = tmPtr[]
@@ -1267,15 +1280,17 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
 
   result = ti1 + (-ti2)
 
-proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
+proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current local date as a string of the format ``YYYY-MM-DD``.
-  var dt = now()
+  runnableExamples:
+    echo getDateStr(now() - 1.months)
   result = $dt.year & '-' & intToStr(ord(dt.month), 2) &
     '-' & intToStr(dt.monthday, 2)
 
-proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
+proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current local clock time as a string of the format ``HH:MM:SS``.
-  var dt = now()
+  runnableExamples:
+    echo getClockStr(now() - 1.hours)
   result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
     ':' & intToStr(dt.second, 2)
 
@@ -1894,7 +1909,7 @@ proc initTimeFormat*(format: string): TimeFormat =
     of tkPattern:
       result.patterns.add(stringToPattern(token).byte)
 
-proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
+proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc: DateTimeLocale) =
   template yearOfEra(dt: DateTime): int =
     if dt.year <= 0: abs(dt.year) + 1 else: dt.year
 
@@ -1904,9 +1919,9 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
   of dd:
     result.add dt.monthday.intToStr(2)
   of ddd:
-    result.add ($dt.weekday)[0..2]
+    result.add loc.ddd[dt.weekday]
   of dddd:
-    result.add $dt.weekday
+    result.add loc.dddd[dt.weekday]
   of h:
     result.add(
       if dt.hour == 0:   "12"
@@ -1932,9 +1947,9 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
   of MM:
     result.add ord(dt.month).intToStr(2)
   of MMM:
-    result.add ($dt.month)[0..2]
+    result.add loc.MMM[dt.month]
   of MMMM:
-    result.add $dt.month
+    result.add loc.MMMM[dt.month]
   of s:
     result.add $dt.second
   of ss:
@@ -2003,7 +2018,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
   of Lit: assert false # Can't happen
 
 proc parsePattern(input: string, pattern: FormatPattern, i: var int,
-                  parsed: var ParsedTime): bool =
+                  parsed: var ParsedTime, loc: DateTimeLocale): bool =
   template takeInt(allowedWidth: Slice[int], allowSign = false): int =
     var sv: int
     var pd = parseInt(input, sv, i, allowedWidth.b, allowSign)
@@ -2027,27 +2042,19 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     parsed.monthday = some(monthday)
     result = monthday in MonthdayRange
   of ddd:
-    result = input.substr(i, i+2).toLowerAscii() in [
-      "sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-    if result:
-      i.inc 3
+    result = false
+    for v in loc.ddd:
+      if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
+        result = true
+        i.inc v.len
+        break
   of dddd:
-    if input.substr(i, i+5).cmpIgnoreCase("sunday") == 0:
-      i.inc 6
-    elif input.substr(i, i+5).cmpIgnoreCase("monday") == 0:
-      i.inc 6
-    elif input.substr(i, i+6).cmpIgnoreCase("tuesday") == 0:
-      i.inc 7
-    elif input.substr(i, i+8).cmpIgnoreCase("wednesday") == 0:
-      i.inc 9
-    elif input.substr(i, i+7).cmpIgnoreCase("thursday") == 0:
-      i.inc 8
-    elif input.substr(i, i+5).cmpIgnoreCase("friday") == 0:
-      i.inc 6
-    elif input.substr(i, i+7).cmpIgnoreCase("saturday") == 0:
-      i.inc 8
-    else:
-      result = false
+    result = false
+    for v in loc.dddd:
+      if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
+        result = true
+        i.inc v.len
+        break
   of h, H:
     parsed.hour = takeInt(1..2)
     result = parsed.hour in HourRange
@@ -2069,62 +2076,21 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     result = month in 1..12
     parsed.month = some(month)
   of MMM:
-    case input.substr(i, i+2).toLowerAscii()
-    of "jan": parsed.month = some(1)
-    of "feb": parsed.month = some(2)
-    of "mar": parsed.month = some(3)
-    of "apr": parsed.month = some(4)
-    of "may": parsed.month = some(5)
-    of "jun": parsed.month = some(6)
-    of "jul": parsed.month = some(7)
-    of "aug": parsed.month = some(8)
-    of "sep": parsed.month = some(9)
-    of "oct": parsed.month = some(10)
-    of "nov": parsed.month = some(11)
-    of "dec": parsed.month = some(12)
-    else:
-      result = false
-    if result:
-      i.inc 3
+    result = false
+    for n,v in loc.MMM:
+      if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
+        result = true
+        i.inc v.len
+        parsed.month = some(n.int)
+        break
   of MMMM:
-    if input.substr(i, i+6).cmpIgnoreCase("january") == 0:
-      parsed.month = some(1)
-      i.inc 7
-    elif input.substr(i, i+7).cmpIgnoreCase("february") == 0:
-      parsed.month = some(2)
-      i.inc 8
-    elif input.substr(i, i+4).cmpIgnoreCase("march") == 0:
-      parsed.month = some(3)
-      i.inc 5
-    elif input.substr(i, i+4).cmpIgnoreCase("april") == 0:
-      parsed.month = some(4)
-      i.inc 5
-    elif input.substr(i, i+2).cmpIgnoreCase("may") == 0:
-      parsed.month = some(5)
-      i.inc 3
-    elif input.substr(i, i+3).cmpIgnoreCase("june") == 0:
-      parsed.month = some(6)
-      i.inc 4
-    elif input.substr(i, i+3).cmpIgnoreCase("july") == 0:
-      parsed.month = some(7)
-      i.inc 4
-    elif input.substr(i, i+5).cmpIgnoreCase("august") == 0:
-      parsed.month = some(8)
-      i.inc 6
-    elif input.substr(i, i+8).cmpIgnoreCase("september") == 0:
-      parsed.month = some(9)
-      i.inc 9
-    elif input.substr(i, i+6).cmpIgnoreCase("october") == 0:
-      parsed.month = some(10)
-      i.inc 7
-    elif input.substr(i, i+7).cmpIgnoreCase("november") == 0:
-      parsed.month = some(11)
-      i.inc 8
-    elif input.substr(i, i+7).cmpIgnoreCase("december") == 0:
-      parsed.month = some(12)
-      i.inc 8
-    else:
-      result = false
+    result = false
+    for n,v in loc.MMMM:
+      if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
+        result = true
+        i.inc v.len
+        parsed.month = some(n.int)
+        break
   of s:
     parsed.second = takeInt(1..2)
   of ss:
@@ -2294,7 +2260,7 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
     result.utcOffset = p.utcOffset.get()
     result = result.toTime.inZone(zone)
 
-proc format*(dt: DateTime, f: TimeFormat): string {.raises: [].} =
+proc format*(dt: DateTime, f: TimeFormat, loc: DateTimeLocale = DefaultLocale): string {.raises: [].} =
   ## Format ``dt`` using the format specified by ``f``.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
@@ -2311,10 +2277,10 @@ proc format*(dt: DateTime, f: TimeFormat): string {.raises: [].} =
         result.add f.patterns[idx].char
       idx.inc
     else:
-      formatPattern(dt, f.patterns[idx].FormatPattern, result = result)
+      formatPattern(dt, f.patterns[idx].FormatPattern, result = result, loc = loc)
       idx.inc
 
-proc format*(dt: DateTime, f: string): string
+proc format*(dt: DateTime, f: string, loc: DateTimeLocale = DefaultLocale): string
     {.raises: [TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format ``dt``.
   ##
@@ -2324,7 +2290,7 @@ proc format*(dt: DateTime, f: string): string
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == format(dt, "yyyy-MM-dd")
   let dtFormat = initTimeFormat(f)
-  result = dt.format(dtFormat)
+  result = dt.format(dtFormat, loc)
 
 proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   ## Overload that validates ``format`` at compile time.
@@ -2358,12 +2324,14 @@ template formatValue*(result: var string; value: Time, specifier: string) =
   ## adapter for strformat. Not intended to be called directly.
   result.add format(value, specifier)
 
-proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
+proc parse*(input: string, f: TimeFormat, zone: Timezone = local(), loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, Defect].} =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
   ## the ``zone`` timezone. If a UTC offset was parsed, the result will be
   ## converted to the ``zone`` timezone.
+  ##
+  ## Month and day names from the passed in ``loc`` are used.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
@@ -2385,7 +2353,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
         inpIdx.inc
         patIdx.inc
     else:
-      if not parsePattern(input, pattern, inpIdx, parsed):
+      if not parsePattern(input, pattern, inpIdx, parsed, loc):
         raiseParseException(f, input, "Failed on pattern '" & $pattern & "'")
       patIdx.inc
 
@@ -2399,7 +2367,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
 
   result = toDateTime(parsed, zone, f, input)
 
-proc parse*(input, f: string, tz: Timezone = local()): DateTime
+proc parse*(input, f: string, tz: Timezone = local(), loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
@@ -2410,13 +2378,13 @@ proc parse*(input, f: string, tz: Timezone = local()): DateTime
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert dt == parse("2000-01-01", "yyyy-MM-dd", utc())
   let dtFormat = initTimeFormat(f)
-  result = input.parse(dtFormat, tz)
+  result = input.parse(dtFormat, tz, loc = loc)
 
-proc parse*(input: string, f: static[string], zone: Timezone = local()):
+proc parse*(input: string, f: static[string], zone: Timezone = local(), loc: DateTimeLocale = DefaultLocale):
     DateTime {.raises: [TimeParseError, Defect].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
-  result = input.parse(f2, zone)
+  result = input.parse(f2, zone, loc = loc)
 
 proc parseTime*(input, f: string, zone: Timezone): Time
     {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
@@ -2518,56 +2486,55 @@ when not defined(JS):
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int
 
-  when not defined(useNimRtl):
-    proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-      ## gets time spent that the CPU spent to run the current process in
-      ## seconds. This may be more useful for benchmarking than ``epochTime``.
-      ## However, it may measure the real time instead (depending on the OS).
-      ## The value of the result has no meaning.
-      ## To generate useful timing values, take the difference between
-      ## the results of two ``cpuTime`` calls:
-      runnableExamples:
-        var t0 = cpuTime()
-        # some useless work here (calculate fibonacci)
-        var fib = @[0, 1, 1]
-        for i in 1..10:
-          fib.add(fib[^1] + fib[^2])
-        echo "CPU time [s] ", cpuTime() - t0
-        echo "Fib is [s] ", fib
-      when defined(posix) and not defined(osx):
-        # 'clocksPerSec' is a compile-time constant, possibly a
-        # rather awful one, so use clock_gettime instead
-        var ts: Timespec
-        discard clock_gettime(cpuClockId, ts)
-        result = toFloat(ts.tv_sec.int) +
-          toFloat(ts.tv_nsec.int) / 1_000_000_000
-      else:
-        result = toFloat(int(getClock())) / toFloat(clocksPerSec)
+  proc cpuTime*(): float {.tags: [TimeEffect].} =
+    ## gets time spent that the CPU spent to run the current process in
+    ## seconds. This may be more useful for benchmarking than ``epochTime``.
+    ## However, it may measure the real time instead (depending on the OS).
+    ## The value of the result has no meaning.
+    ## To generate useful timing values, take the difference between
+    ## the results of two ``cpuTime`` calls:
+    runnableExamples:
+      var t0 = cpuTime()
+      # some useless work here (calculate fibonacci)
+      var fib = @[0, 1, 1]
+      for i in 1..10:
+        fib.add(fib[^1] + fib[^2])
+      echo "CPU time [s] ", cpuTime() - t0
+      echo "Fib is [s] ", fib
+    when defined(posix) and not defined(osx):
+      # 'clocksPerSec' is a compile-time constant, possibly a
+      # rather awful one, so use clock_gettime instead
+      var ts: Timespec
+      discard clock_gettime(cpuClockId, ts)
+      result = toFloat(ts.tv_sec.int) +
+        toFloat(ts.tv_nsec.int) / 1_000_000_000
+    else:
+      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
-    proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-      ## gets time after the UNIX epoch (1970) in seconds. It is a float
-      ## because sub-second resolution is likely to be supported (depending
-      ## on the hardware/OS).
-      ##
-      ## ``getTime`` should generally be prefered over this proc.
-      when defined(macosx):
-        var a: Timeval
-        gettimeofday(a)
-        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
-      elif defined(posix):
-        var ts: Timespec
-        discard clock_gettime(realTimeClockId, ts)
-        result = toBiggestFloat(ts.tv_sec.int64) +
-          toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
-      elif defined(windows):
-        var f: winlean.FILETIME
-        getSystemTimeAsFileTime(f)
-        var i64 = rdFileTime(f) - epochDiff
-        var secs = i64 div rateDiff
-        var subsecs = i64 mod rateDiff
-        result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-      else:
-        {.error: "unknown OS".}
+  proc epochTime*(): float {.tags: [TimeEffect].} =
+    ## gets time after the UNIX epoch (1970) in seconds. It is a float
+    ## because sub-second resolution is likely to be supported (depending
+    ## on the hardware/OS).
+    ##
+    ## ``getTime`` should generally be prefered over this proc.
+    when defined(macosx):
+      var a: Timeval
+      gettimeofday(a)
+      result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
+    elif defined(posix):
+      var ts: Timespec
+      discard clock_gettime(realTimeClockId, ts)
+      result = toBiggestFloat(ts.tv_sec.int64) +
+        toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
+    elif defined(windows):
+      var f: winlean.FILETIME
+      getSystemTimeAsFileTime(f)
+      var i64 = rdFileTime(f) - epochDiff
+      var secs = i64 div rateDiff
+      var subsecs = i64 mod rateDiff
+      result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+    else:
+      {.error: "unknown OS".}
 
 when defined(JS):
   proc epochTime*(): float {.tags: [TimeEffect].} =

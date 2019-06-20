@@ -366,7 +366,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
   #  Lend:
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
-  for i in countup(0, len(n) - 1):
+  for i in 0 ..< len(n):
     var it = n.sons[i]
     if it.len == 2:
       withTemp(tmp, it.sons[0].typ):
@@ -436,7 +436,7 @@ proc sameConstant*(a, b: PNode): bool =
     of nkEmpty: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameConstant(a.sons[i], b.sons[i]): return
         result = true
 
@@ -510,7 +510,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
       var blen = len(it)
       # first opcExcept contains the end label of the 'except' block:
       let endExcept = c.xjmp(it, opcExcept, 0)
-      for j in countup(0, blen - 2):
+      for j in 0 .. blen - 2:
         assert(it.sons[j].kind == nkType)
         let typ = it.sons[j].typ.skipTypes(abstractPtrs-{tyTypeDesc})
         c.gABx(it, opcExcept, 0, c.genType(typ))
@@ -813,44 +813,28 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
 
 proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar}
-  var signedIntegers = {tyInt8..tyInt32}
-  var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
+  var signedIntegers = {tyInt..tyInt64}
+  var unsignedIntegers = {tyUInt..tyUInt64, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
   let src_size = getSize(c.config, src)
   let dst_size = getSize(c.config, dst)
-  if c.config.target.intSize < 8:
-    signedIntegers.incl(tyInt)
-    unsignedIntegers.incl(tyUInt)
-  if src_size == dst_size and src.kind in allowedIntegers and
-                                 dst.kind in allowedIntegers:
+  if src.kind in allowedIntegers and dst.kind in allowedIntegers:
     let tmp = c.genx(n.sons[1])
-    var tmp2 = c.getTemp(n.sons[1].typ)
-    let tmp3 = c.getTemp(n.sons[1].typ)
     if dest < 0: dest = c.getTemp(n[0].typ)
-    proc mkIntLit(ival: int): int =
-      result = genLiteral(c, newIntTypeNode(nkIntLit, ival, getSysType(c.graph, n.info, tyInt)))
-    if src.kind in unsignedIntegers and dst.kind in signedIntegers:
-      # cast unsigned to signed integer of same size
-      # signedVal = (unsignedVal xor offset) -% offset
-      let offset = 1 shl (src_size * 8 - 1)
-      c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
-      c.gABC(n, opcBitxorInt, tmp3, tmp, tmp2)
-      c.gABC(n, opcSubInt, dest, tmp3, tmp2)
-    elif src.kind in signedIntegers and dst.kind in unsignedIntegers:
-      # cast signed to unsigned integer of same size
-      # unsignedVal = (offset +% signedVal +% 1) and offset
-      let offset = (1 shl (src_size * 8)) - 1
-      c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
-      c.gABx(n, opcLdConst, dest, mkIntLit(offset+1))
-      c.gABC(n, opcAddu, tmp3, tmp, dest)
-      c.gABC(n, opcNarrowU, tmp3, TRegister(src_size*8))
-      c.gABC(n, opcBitandInt, dest, tmp3, tmp2)
-    else:
-      c.gABC(n, opcAsgnInt, dest, tmp)
+    c.gABC(n, opcAsgnInt, dest, tmp)
+    if dst_size != sizeof(BiggestInt): # don't do anything on biggest int types
+      if dst.kind in signedIntegers: # we need to do sign extensions
+        if dst_size <= src_size:
+          # Sign extension can be omitted when the size increases.
+          c.gABC(n, opcSignExtend, dest, TRegister(dst_size*8))
+      elif dst.kind in unsignedIntegers:
+        if src.kind in signedIntegers or dst_size < src_size:
+          # Cast from signed to unsigned always needs narrowing. Cast
+          # from unsigned to unsigned only needs narrowing when target
+          # is smaller than source.
+          c.gABC(n, opcNarrowU, dest, TRegister(dst_size*8))
     c.freeTemp(tmp)
-    c.freeTemp(tmp2)
-    c.freeTemp(tmp3)
   elif src_size == dst_size and src.kind in allowedIntegers and
                            dst.kind in {tyFloat, tyFloat32, tyFloat64}:
     let tmp = c.genx(n[1])
@@ -1378,7 +1362,7 @@ proc genMarshalStore(c: PCtx, n: PNode, dest: var TDest) =
 
 const
   atomicTypes = {tyBool, tyChar,
-    tyExpr, tyStmt, tyTypeDesc, tyStatic,
+    tyUntyped, tyTyped, tyTypeDesc, tyStatic,
     tyEnum,
     tyOrdinal,
     tyRange,
@@ -1575,6 +1559,9 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   n.typ = t
   genLit(c, n, dest)
 
+proc importcCond(s: PSym): bool {.inline.} =
+  sfImportc in s.flags and (lfDynamicLib notin s.loc.flags or s.ast == nil)
+
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
     if compiletimeFFI in c.config.features:
@@ -1584,7 +1571,7 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
       localError(c.config, info, "VM is not allowed to 'importc'")
   else:
     localError(c.config, info,
-               "cannot 'importc' variable at compile time")
+               "cannot 'importc' variable at compile time; " & s.name.s)
 
 proc getNullValue*(typ: PType, info: TLineInfo; conf: ConfigRef): PNode
 
@@ -1612,7 +1599,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if sfImportc in s.flags: c.importcSym(n.info, s)
+      if importcCond(s): c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
@@ -1739,10 +1726,10 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc getNullValueAux(obj: PNode, result: PNode; conf: ConfigRef) =
   case obj.kind
   of nkRecList:
-    for i in countup(0, sonsLen(obj) - 1): getNullValueAux(obj.sons[i], result, conf)
+    for i in 0 ..< sonsLen(obj): getNullValueAux(obj.sons[i], result, conf)
   of nkRecCase:
     getNullValueAux(obj.sons[0], result, conf)
-    for i in countup(1, sonsLen(obj) - 1):
+    for i in 1 ..< sonsLen(obj):
       getNullValueAux(lastSon(obj.sons[i]), result, conf)
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info)
@@ -1763,8 +1750,8 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
     result.strVal = ""
-  of tyVar, tyLent, tyPointer, tyPtr, tyExpr,
-     tyStmt, tyTypeDesc, tyRef, tyNil:
+  of tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
+     tyTyped, tyTypeDesc, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
     if t.callConv != ccClosure:
@@ -1779,16 +1766,17 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     # initialize inherited fields:
     var base = t.sons[0]
     while base != nil:
-      getNullValueAux(skipTypes(base, skipPtrs).n, result, conf)
-      base = base.sons[0]
+      let b = skipTypes(base, skipPtrs)
+      getNullValueAux(b.n, result, conf)
+      base = b.sons[0]
     getNullValueAux(t.n, result, conf)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in countup(0, int(lengthOrd(conf, t)) - 1):
+    for i in 0 ..< int(lengthOrd(conf, t)):
       addSon(result, getNullValue(elemType(t), info, conf))
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
-    for i in countup(0, sonsLen(t) - 1):
+    for i in 0 ..< sonsLen(t):
       addSon(result, getNullValue(t.sons[i], info, conf))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
@@ -1815,7 +1803,7 @@ proc genVarSection(c: PCtx; n: PNode) =
       checkCanEval(c, a.sons[0])
       if s.isGlobal:
         if s.position == 0:
-          if sfImportc in s.flags: c.importcSym(a.info, s)
+          if importcCond(s): c.importcSym(a.info, s)
           else:
             let sa = getNullValue(s.typ, a.info, c.config)
             #if s.ast.isNil: getNullValue(s.typ, a.info)
@@ -1972,7 +1960,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if procIsCallback(c, s): discard
-      elif sfImportc in s.flags: c.importcSym(n.info, s)
+      elif importcCond(s): c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
       let constVal = if s.ast != nil: s.ast else: s.typ.n
@@ -2238,9 +2226,7 @@ proc genProc(c: PCtx; s: PSym): int =
     genParams(c, s.typ.n)
 
     # allocate additional space for any generically bound parameters
-    if s.kind == skMacro and
-       sfImmediate notin s.flags and
-       s.ast[genericParamsPos].kind != nkEmpty:
+    if s.kind == skMacro and s.ast[genericParamsPos].kind != nkEmpty:
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:

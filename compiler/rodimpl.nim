@@ -154,7 +154,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       encodeNode(g, n.info, n.sons[i], result)
   add(result, ')')
 
@@ -248,7 +248,7 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     add(result, '\21')
     encodeVInt(t.typeInst.uniqueId, result)
     pushType(w, t.typeInst)
-  for i in countup(0, sonsLen(t) - 1):
+  for i in 0 ..< sonsLen(t):
     if t.sons[i] == nil:
       add(result, "^()")
     else:
@@ -846,7 +846,9 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       of "error": localError(g.config, n.info, errUser, n[1].strVal)
       of "compile":
         internalAssert g.config, n.len == 3 and n[2].kind == nkStrLit
-        var cf = Cfile(cname: AbsoluteFile n[1].strVal, obj: AbsoluteFile n[2].strVal,
+        let cname = AbsoluteFile n[1].strVal,
+        var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
+                       obj: AbsoluteFile n[2].strVal,
                        flags: {CfileFlag.External})
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":

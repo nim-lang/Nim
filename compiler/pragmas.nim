@@ -25,12 +25,12 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wConstructor, wExportNims, wUsed, wLiftLocals, wStacktrace, wLinetrace}
-  converterPragmas* = procPragmas
-  methodPragmas* = procPragmas+{wBase}-{wImportCpp}
-  templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
+    wConstructor, wExportNims, wUsed, wLiftLocals, wStacktrace, wLinetrace, wNoDestroy}
+  converterPragmas* = procPragmas - {wNoDestroy}
+  methodPragmas* = procPragmas+{wBase}-{wImportCpp, wNoDestroy}
+  templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
-  macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
+  macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc,
     wNodecl, wMagic, wNosideeffect, wCompilerProc, wNonReloadable, wCore, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
     wExportNims, wUsed}
@@ -104,7 +104,7 @@ proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
 proc pragmaAsm*(c: PContext, n: PNode): char =
   result = '\0'
   if n != nil:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       let it = n.sons[i]
       if it.kind in nkPragmaCallKinds and it.len == 2 and it.sons[0].kind == nkIdent:
         case whichKeyword(it.sons[0].ident)
@@ -209,7 +209,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   var v: string
   if n.sons[1].kind == nkIdent: v = n.sons[1].ident.s
   else: v = expectStrLit(c, n)
-  for m in countup(low(TMagic), high(TMagic)):
+  for m in low(TMagic) .. high(TMagic):
     if substr($m, 1) == v:
       s.magic = m
       break
@@ -423,7 +423,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   x.notes = c.config.notes
   x.features = c.features
   c.optionStack.add(x)
-  for i in countup(start, sonsLen(n) - 1):
+  for i in start ..< sonsLen(n):
     if not tryProcessOption(c, n.sons[i], c.config.options):
       # simply store it somewhere:
       if x.otherPragmas.isNil:
@@ -471,7 +471,8 @@ proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
 
 proc processCompile(c: PContext, n: PNode) =
   proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile) =
-    var cf = Cfile(cname: src, obj: dest, flags: {CfileFlag.External})
+    var cf = Cfile(nimname: splitFile(src).name,
+                   cname: src, obj: dest, flags: {CfileFlag.External})
     extccomp.addExternalFileToCompile(c.config, cf)
     recordPragma(c, it, "compile", src.string, dest.string)
 
@@ -788,12 +789,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         recordPragma(c, it, "cppdefine", name)
         processImportCompilerProc(c, sym, name, it.info)
       of wExtern: setExternName(c, sym, expectStrLit(c, it), it.info)
-      of wImmediate:
-        if sym.kind in {skTemplate, skMacro}:
-          incl(sym.flags, sfImmediate)
-          incl(sym.flags, sfAllUntyped)
-          message(c.config, n.info, warnDeprecated, "use 'untyped' parameters instead; immediate is deprecated")
-        else: invalidPragma(c, it)
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
         else: invalidPragma(c, it)
@@ -879,6 +874,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")
+      of wNoDestroy:
+        noVal(c, it)
+        incl(sym.flags, sfGeneratedOp)
       of wDynlib:
         processDynLib(c, it, sym)
       of wCompilerProc, wCore:

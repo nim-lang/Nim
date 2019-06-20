@@ -20,7 +20,7 @@ nimout: '''
 
 #bug #2514
 
-macro foo(): typed =
+macro foo() =
   var x = 8'u8
   var y = 9'u16
   var z = 17'u32
@@ -58,7 +58,7 @@ macro foo(): typed =
   var zz = 0x7FFFFFFF'u32
   echo zz
 
-macro foo2(): typed =
+macro foo2() =
   var xx = 0x7FFFFFFFFFFFFFFF
   echo xx
 

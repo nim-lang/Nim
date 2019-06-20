@@ -147,6 +147,7 @@ type
     External   ## file was introduced via .compile pragma
 
   Cfile* = object
+    nimname*: string
     cname*, obj*: AbsoluteFile
     flags*: set[CFileFlag]
   CfileList* = seq[Cfile]
@@ -179,6 +180,7 @@ type
     linesCompiled*: int  # all lines that have been compiled
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
+    macrosToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -274,7 +276,8 @@ const
     optBoundsCheck, optOverflowCheck, optAssert, optWarns,
     optHints, optStackTrace, optLineTrace,
     optTrMacros, optNilCheck, optMoveCheck}
-  DefaultGlobalOptions* = {optThreadAnalysis}
+  DefaultGlobalOptions* = {optThreadAnalysis,
+    optExcessiveStackTrace, optListFullPaths}
 
 proc getSrcTimestamp(): DateTime =
   try:
@@ -307,9 +310,10 @@ proc newConfigRef*(): ConfigRef =
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
+    macrosToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
-    cppDefines: initSet[string](),
+    cppDefines: initHashSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
@@ -537,7 +541,7 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
              conf.projectPath / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               (if isDefined(conf, "release"): "_r" else: "_d"))
+               (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())

@@ -121,12 +121,59 @@
 ## if however data does not reach the client within the specified timeout a
 ## ``TimeoutError`` exception will be raised.
 ##
+## Here is how to set a timeout when creating an ``HttpClient`` instance:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    let client = newHttpClient(timeout = 42)
+##
 ## Proxy
 ## =====
 ##
 ## A proxy can be specified as a param to any of the procedures defined in
 ## this module. To do this, use the ``newProxy`` constructor. Unfortunately,
 ## only basic authentication is supported at the moment.
+##
+## Some examples on how to configure a Proxy for ``HttpClient``:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    let myProxy = newProxy("http://myproxy.network")
+##    let client = newHttpClient(proxy = myProxy)
+##
+## Get Proxy URL from environment variables:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    var url = ""
+##    try:
+##      if existsEnv("http_proxy"):
+##        url = getEnv("http_proxy")
+##      elif existsEnv("https_proxy"):
+##        url = getEnv("https_proxy")
+##    except ValueError:
+##      echo "Unable to parse proxy from environment variables."
+##
+##    let myProxy = newProxy(url = url)
+##    let client = newHttpClient(proxy = myProxy)
+##
+## Redirects
+## =========
+##
+## The maximum redirects can be set with the ``maxRedirects`` of ``int`` type,
+## it specifies the maximum amount of redirects to follow,
+## it defaults to ``5``, you can set it to ``0`` to disable redirects.
+##
+## Here you can see an example about how to set the ``maxRedirects`` of ``HttpClient``:
+##
+## .. code-block:: Nim
+##    import httpclient
+##
+##    let client = newHttpClient(maxRedirects = 0)
+##
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
   math, random, httpcore, times, tables, streams
@@ -639,6 +686,21 @@ proc close*(client: HttpClient | AsyncHttpClient) =
   if client.connected:
     client.socket.close()
     client.connected = false
+
+proc getSocket*(client: HttpClient): Socket  =
+  ## Get network socket, useful if you want to find out more details about the connection
+  ##
+  ## this example shows info about local and remote endpoints
+  ##
+  ## .. code-block:: Nim
+  ##   if client.connected:
+  ##     echo client.getSocket.getLocalAddr
+  ##     echo client.getSocket.getPeerAddr
+  ##
+  return client.socket
+
+proc getSocket*(client: AsyncHttpClient): AsyncSocket  =
+  return client.socket
 
 proc reportProgress(client: HttpClient | AsyncHttpClient,
                     progress: BiggestInt) {.multisync.} =

@@ -279,16 +279,14 @@ type
     sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
                       # meaning that it won't be renamed and/or changed in any way
     sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
+                      # variable is generated closure environment; requires early
+                      # destruction for --newruntime.
 
 
   TSymFlags* = set[TSymFlag]
 
 const
   sfNoInit* = sfMainModule       # don't generate code to init the variable
-
-  sfImmediate* = sfDispatcher
-    # macro or template is immediately expanded
-    # without considering any possible overloads
 
   sfCursor* = sfDispatcher
     # local variable has been computed to be a "cursor".
@@ -347,7 +345,7 @@ type
                      # (apparently something with bootstrapping)
                      # if you need to add a type, they can apparently be reused
     tyNone, tyBool, tyChar,
-    tyEmpty, tyAlias, tyNil, tyExpr, tyStmt, tyTypeDesc,
+    tyEmpty, tyAlias, tyNil, tyUntyped, tyTyped, tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
@@ -448,7 +446,7 @@ const
                     tyUserTypeClass, tyUserTypeClassInst,
                     tyAnd, tyOr, tyNot, tyAnything}
 
-  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyExpr} + tyTypeClasses
+  tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyUntyped} + tyTypeClasses
   tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
 
 type
@@ -656,7 +654,6 @@ type
     mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
-    mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
     mNKind, mNSymKind,
@@ -1158,17 +1155,17 @@ const                         # for all kind of hash tables:
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
+  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
   newSeq(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
+  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
   setLen(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
+  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
   when defined(nimNoNilSeqs):
@@ -1357,7 +1354,7 @@ proc assignType*(dest, src: PType) =
     else:
       dest.sym = src.sym
   newSons(dest, sonsLen(src))
-  for i in countup(0, sonsLen(src) - 1): dest.sons[i] = src.sons[i]
+  for i in 0 ..< sonsLen(src): dest.sons[i] = src.sons[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1520,7 +1517,7 @@ proc delSon*(father: PNode, idx: int) =
   else:
     if isNil(father.sons): return
   var length = sonsLen(father)
-  for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
+  for i in idx .. length - 2: father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)
 
 proc copyNode*(src: PNode): PNode =
@@ -1582,17 +1579,17 @@ proc copyTree*(src: PNode): PNode =
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
     newSeq(result.sons, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1):
+    for i in 0 ..< sonsLen(src):
       result.sons[i] = copyTree(src.sons[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     if n.sons[i].kind == kind:
       return true
   result = false
 
 proc hasNilSon*(n: PNode): bool =
-  for i in countup(0, safeLen(n) - 1):
+  for i in 0 ..< safeLen(n):
     if n.sons[i] == nil:
       return true
     elif hasNilSon(n.sons[i]):
@@ -1604,14 +1601,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if n.kind in kinds or containsNode(n.sons[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
         return true
     result = false
@@ -1714,7 +1711,7 @@ proc isAtom*(n: PNode): bool {.inline.} =
 
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
-  result = t == nil or t.kind in {tyVoid, tyStmt}
+  result = t == nil or t.kind in {tyVoid, tyTyped}
 
 proc makeStmtList*(n: PNode): PNode =
   if n.kind == nkStmtList:
@@ -1753,20 +1750,6 @@ proc toObject*(typ: PType): PType =
   let t = typ.skipTypes({tyAlias, tyGenericInst})
   if t.kind == tyRef: t.lastSon
   else: typ
-
-proc isException*(t: PType): bool =
-  # check if `y` is object type and it inherits from Exception
-  assert(t != nil)
-
-  if t.kind notin {tyObject, tyGenericInst}:
-    return false
-
-  var base = t
-  while base != nil and base.kind in {tyRef, tyObject, tyGenericInst}:
-    if base.sym != nil and base.sym.magic == mException:
-      return true
-    base = base.lastSon
-  return false
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil
@@ -1813,6 +1796,9 @@ template detailedInfo*(sym: PSym): string =
 
 proc isInlineIterator*(s: PSym): bool {.inline.} =
   s.kind == skIterator and s.typ.callConv != ccClosure
+
+proc isClosureIterator*(s: PSym): bool {.inline.} =
+  s.kind == skIterator and s.typ.callConv == ccClosure
 
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)

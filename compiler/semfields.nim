@@ -55,7 +55,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
     newSons(result, sonsLen(n))
-    for i in countup(0, sonsLen(n)-1):
+    for i in 0 ..< sonsLen(n):
       result.sons[i] = instFieldLoopBody(c, n.sons[i], forLoop)
 
 type

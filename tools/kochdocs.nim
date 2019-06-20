@@ -101,6 +101,7 @@ doc/tut1.rst
 doc/tut2.rst
 doc/tut3.rst
 doc/nimc.rst
+doc/hcr.rst
 doc/overview.rst
 doc/filters.rst
 doc/tools.rst
@@ -241,6 +242,7 @@ lib/pure/oswalkdir.nim
 lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
+lib/std/sums.nim
 lib/std/varints.nim
 lib/std/time_t.nim
 lib/impure/rdstdin.nim

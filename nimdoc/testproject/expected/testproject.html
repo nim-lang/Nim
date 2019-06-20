@@ -837,6 +837,10 @@ function main() {
   <ul class="simple simple-toc-section">
       <li><a class="reference" href="#bar%2CT%2CT"
     title="bar[T](a, b: T): T"><wbr />bar<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#baz%2CT%2CT"
+    title="baz[T](a, b: T): T"><wbr />baz<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#buzz%2CT%2CT"
+    title="buzz[T](a, b: T): T"><wbr />buzz<span class="attachedType"></span></a></li>
   <li><a class="reference" href="#isValid%2CT"
     title="isValid[T](x: T): bool"><wbr />is<wbr />Valid<span class="attachedType"></span></a></li>
 
@@ -872,6 +876,7 @@ function main() {
   </div>
   <div class="nine columns" id="content">
   <div id="tocRoot"></div>
+  
   <p class="module-desc">This is the top level module.
 <p><strong class="examples_text">Examples:</strong></p>
 <pre class="listing"><span class="Keyword">import</span>
@@ -893,6 +898,7 @@ function main() {
 <dt><pre><a href="testproject.html#A"><span class="Identifier">A</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">inject</span></span><span class="Other">.}</span></span> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">aA</span></pre></dt>
 <dd>
+
 The enum A.
 
 </dd>
@@ -900,6 +906,7 @@ The enum A.
 <dt><pre><a href="testproject.html#B"><span class="Identifier">B</span></a> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">inject</span></span><span class="Other">.}</span></span> <span class="Other">=</span> <span class="Keyword">enum</span>
   <span class="Identifier">bB</span></pre></dt>
 <dd>
+
 The enum B.
 
 </dd>
@@ -913,6 +920,7 @@ The enum B.
 <dd>
 
 
+
 </dd>
 
 </dl></div>
@@ -924,10 +932,32 @@ The enum B.
 <dd>
 
 
+
+</dd>
+<a id="baz,T,T"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#baz%2CT%2CT"><span class="Identifier">baz</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">deprecated</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+  <div class="deprecation-message">
+    <b>Deprecated</b> 
+  </div>
+
+This is deprecated without message.
+
+</dd>
+<a id="buzz,T,T"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#buzz%2CT%2CT"><span class="Identifier">buzz</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">deprecated</span><span class="Other">:</span> <span class="StringLit">&quot;since v0.20&quot;</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+  <div class="deprecation-message">
+    <b>Deprecated:</b> since v0.20
+  </div>
+
+This is deprecated with a message.
+
 </dd>
 <a id="isValid,T"></a>
 <dt><pre><span class="Keyword">proc</span> <a href="#isValid%2CT"><span class="Identifier">isValid</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
 <dd>
+
 
 
 </dd>
@@ -939,6 +969,7 @@ The enum B.
 <a id="someFunc"></a>
 <dt><pre><span class="Keyword">func</span> <a href="#someFunc"><span class="Identifier">someFunc</span></a><span class="Other">(</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
 <dd>
+
 My someFunc. Stuff in <tt class="docutils literal"><span class="pre">quotes</span></tt> here. <a class="reference external" href="https://nim-lang.org">Some link</a>
 
 </dd>
@@ -952,6 +983,7 @@ My someFunc. Stuff in <tt class="docutils literal"><span class="pre">quotes</spa
 <dd>
 
 
+
 </dd>
 
 </dl></div>
@@ -961,6 +993,7 @@ My someFunc. Stuff in <tt class="docutils literal"><span class="pre">quotes</spa
 <a id="foo.t,SomeType,SomeType"></a>
 <dt><pre><span class="Keyword">template</span> <a href="#foo.t%2CSomeType%2CSomeType"><span class="Identifier">foo</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <a href="subdir/subdir_b/utils.html#SomeType"><span class="Identifier">SomeType</span></a><span class="Other">)</span></pre></dt>
 <dd>
+
 This does nothing 
 
 </dd>

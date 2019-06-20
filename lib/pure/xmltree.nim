@@ -70,8 +70,7 @@ const
 
 proc newXmlNode(kind: XmlNodeKind): XmlNode =
   ## Creates a new ``XmlNode``.
-  new(result)
-  result.k = kind
+  result = XmlNode(k: kind)
 
 proc newElement*(tag: string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnElement`` with the given `tag`.
@@ -137,19 +136,21 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
   ## See also:
   ## * `newElement proc <#newElement,string>`_
   ## * [<> macro](#<>.m,untyped)
-  runnableExamples:
-    from strutils import unindent
-    var g = newElement("myTag")
-    g.add newText("some text")
-    g.add newComment("this is comment")
-    var h = newElement("secondTag")
-    h.add newEntity("some entity")
-    let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
-    let k = newXmlTree("treeTag", [g, h], att)
-    assert ($k).unindent == """<treeTag key2="second value" key1="first value">
-        <myTag>some text<!-- this is comment --></myTag>
-        <secondTag>&some entity;</secondTag>
-      </treeTag>""".unindent
+  ##
+  ## .. code-block::
+  ##   var g = newElement("myTag")
+  ##   g.add newText("some text")
+  ##   g.add newComment("this is comment")
+  ##   var h = newElement("secondTag")
+  ##   h.add newEntity("some entity")
+  ##   let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
+  ##   let k = newXmlTree("treeTag", [g, h], att)
+  ##
+  ##   echo k
+  ##   ## <treeTag key2="second value" key1="first value">
+  ##   ##   <myTag>some text<!-- this is comment --></myTag>
+  ##   ##   <secondTag>&some entity;</secondTag>
+  ##   ## </treeTag>
 
   result = newXmlNode(xnElement)
   result.fTag = tag
@@ -362,26 +363,27 @@ proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
 
 proc clear*(n: var XmlNode) =
   ## Recursively clear all children of an XmlNode.
-  runnableExamples:
-    from strutils import unindent
-
-    var g = newElement("myTag")
-    g.add newText("some text")
-    g.add newComment("this is comment")
-
-    var h = newElement("secondTag")
-    h.add newEntity("some entity")
-
-    let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
-    var k = newXmlTree("treeTag", [g, h], att)
-
-    assert ($k).unindent ==
-      """<treeTag key2="second value" key1="first value">
-         <myTag>some text<!-- this is comment --></myTag>
-         <secondTag>&some entity;</secondTag>
-         </treeTag>""".unindent
-    clear(k)
-    assert $k == """<treeTag key2="second value" key1="first value" />"""
+  ##
+  ## .. code-block::
+  ##   var g = newElement("myTag")
+  ##   g.add newText("some text")
+  ##   g.add newComment("this is comment")
+  ##
+  ##   var h = newElement("secondTag")
+  ##   h.add newEntity("some entity")
+  ##
+  ##   let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
+  ##   var k = newXmlTree("treeTag", [g, h], att)
+  ##
+  ##   echo k
+  ##   ## <treeTag key2="second value" key1="first value">
+  ##   ##   <myTag>some text<!-- this is comment --></myTag>
+  ##   ##   <secondTag>&some entity;</secondTag>
+  ##   ## </treeTag>
+  ##
+  ##   clear(k)
+  ##   echo k
+  ##   ## <treeTag key2="second value" key1="first value" />
 
   for i in 0 ..< n.len:
     clear(n[i])
@@ -421,11 +423,14 @@ iterator mitems*(n: var XmlNode): var XmlNode {.inline.} =
 
 proc toXmlAttributes*(keyValuePairs: varargs[tuple[key, val: string]]): XmlAttributes =
   ## Converts `{key: value}` pairs into `XmlAttributes`.
-  runnableExamples:
-    let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
-    var j = newElement("myTag")
-    j.attrs = att
-    assert $j == """<myTag key2="second value" key1="first value" />"""
+  ##
+  ## .. code-block::
+  ##   let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
+  ##   var j = newElement("myTag")
+  ##   j.attrs = att
+  ##
+  ##   echo j
+  ##   ## <myTag key2="second value" key1="first value" />
 
   newStringTable(keyValuePairs)
 
@@ -649,7 +654,7 @@ proc child*(n: XmlNode, name: string): XmlNode =
       if i.tag == name:
         return i
 
-proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
+proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode], caseInsensitive = false) =
   ## Iterates over all the children of `n` returning those matching `tag`.
   ##
   ## Found nodes satisfying the condition will be appended to the `result`
@@ -658,8 +663,8 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
     var
       b = newElement("good")
       c = newElement("bad")
-      d = newElement("bad")
-      e = newElement("good")
+      d = newElement("BAD")
+      e = newElement("GOOD")
     b.add newText("b text")
     c.add newText("c text")
     d.add newText("d text")
@@ -667,34 +672,46 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
     let a = newXmlTree("father", [b, c, d, e])
     var s = newSeq[XmlNode]()
     a.findAll("good", s)
-    assert $s == "@[<good>b text</good>, <good>e text</good>]"
+    assert $s == "@[<good>b text</good>]"
+    s.setLen(0)
+    a.findAll("good", s, caseInsensitive = true)
+    assert $s == "@[<good>b text</good>, <GOOD>e text</GOOD>]"
+    s.setLen(0)
+    a.findAll("BAD", s)
+    assert $s == "@[<BAD>d text</BAD>]"
+    s.setLen(0)
+    a.findAll("BAD", s, caseInsensitive = true)
+    assert $s == "@[<bad>c text</bad>, <BAD>d text</BAD>]"
 
   assert n.k == xnElement
   for child in n.items():
     if child.k != xnElement:
       continue
-    if child.tag == tag:
+    if child.tag == tag or
+        (caseInsensitive and cmpIgnoreCase(child.tag, tag) == 0):
       result.add(child)
     child.findAll(tag, result)
 
-proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
+proc findAll*(n: XmlNode, tag: string, caseInsensitive = false): seq[XmlNode] =
   ## A shortcut version to assign in let blocks.
   runnableExamples:
     var
       b = newElement("good")
       c = newElement("bad")
-      d = newElement("bad")
-      e = newElement("good")
+      d = newElement("BAD")
+      e = newElement("GOOD")
     b.add newText("b text")
     c.add newText("c text")
     d.add newText("d text")
     e.add newText("e text")
     let a = newXmlTree("father", [b, c, d, e])
-    assert $(a.findAll("good")) == "@[<good>b text</good>, <good>e text</good>]"
-    assert $(a.findAll("bad")) == "@[<bad>c text</bad>, <bad>d text</bad>]"
+    assert $(a.findAll("good")) == "@[<good>b text</good>]"
+    assert $(a.findAll("BAD")) == "@[<BAD>d text</BAD>]"
+    assert $(a.findAll("good", caseInsensitive = true)) == "@[<good>b text</good>, <GOOD>e text</GOOD>]"
+    assert $(a.findAll("BAD", caseInsensitive = true)) == "@[<bad>c text</bad>, <BAD>d text</BAD>]"
 
   newSeq(result, 0)
-  findAll(n, tag, result)
+  findAll(n, tag, result, caseInsensitive)
 
 proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
   if a.kind == nnkCall:

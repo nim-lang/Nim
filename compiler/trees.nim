@@ -45,7 +45,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not exprStructuralEquivalent(a.sons[i], b.sons[i],
                                           strictSymEquality): return
         result = true
@@ -69,7 +69,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
@@ -120,8 +120,14 @@ proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n.sons[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
+proc findPragma*(n: PNode, which: TSpecialWord): PNode =
+  if n.kind == nkPragma:
+    for son in n:
+      if whichPragma(son) == which:
+        return son
+
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     var it = n.sons[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
       result = it.sons[1]

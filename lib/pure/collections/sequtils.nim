@@ -15,7 +15,7 @@
 ## * array
 ##
 ## The system module defines several common functions, such as:
-## * ``newseq[T]`` for creating new sequences of type ``T``
+## * ``newSeq[T]`` for creating new sequences of type ``T``
 ## * ``@`` for converting arrays and strings to sequences
 ## * ``add`` for adding new elements to strings and sequences
 ## * ``&`` for string and seq concatenation
@@ -432,7 +432,7 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     assert outcome == dest
 
   var i = first
-  var j = last+1
+  var j = min(len(s), last+1)
   var newLen = len(s)-j+i
   while i < newLen:
     s[i].shallowCopy(s[j])
@@ -847,9 +847,7 @@ template mapIt*(s: typed, op: untyped): untyped =
     result
 
 template mapIt*(s, typ, op: untyped): untyped {.error:
-  "Use 'mapIt(seq1, op)' - without specifying the type of the returned seqence".} =
-  ## **Deprecated since version 0.12.0:** Use the `mapIt(seq1, op) template
-  ## <#mapIt.t,typed,untyped>`_ instead.
+  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned seqence".} =
   var result: seq[typ] = @[]
   for it {.inject.} in items(s):
     result.add(op)

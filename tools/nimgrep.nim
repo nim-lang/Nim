@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "1.2"
+  Version = "1.3"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -33,7 +33,7 @@ Options:
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
   --nocolor           output will be given without any colours.
-  --oneline           show file on each matched line
+  --group             group matches by file
   --verbose           be verbose: list every processed file
   --filenames         find the pattern in the filenames, not in the contents
                       of the file
@@ -268,6 +268,7 @@ proc checkOptions(subset: TOptions, a, b: string) =
   if subset <= options:
     quit("cannot specify both '$#' and '$#'" % [a, b])
 
+oneline = true
 for kind, key, val in getopt():
   case kind
   of cmdArgument:
@@ -298,6 +299,7 @@ for kind, key, val in getopt():
     of "ext": extensions.add val.split('|')
     of "nocolor": useWriteStyled = false
     of "oneline": oneline = true
+    of "group": oneline = false
     of "verbose": incl(options, optVerbose)
     of "filenames": incl(options, optFilenames)
     of "help", "h": writeHelp()
@@ -346,5 +348,4 @@ else:
     let rep = re(pattern, reflags)
     for f in items(filenames):
       walker(rep, f, counter)
-  if not oneline:
-    stdout.write($counter & " matches\n")
+  stdout.write($counter & " matches\n")

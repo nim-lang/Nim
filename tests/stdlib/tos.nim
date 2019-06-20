@@ -333,3 +333,28 @@ block ospaths:
   doAssert joinPath("", "lib") == "lib"
   doAssert joinPath("", "/lib") == unixToNativePath"/lib"
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
+
+block getTempDir:
+  block TMPDIR:
+    # TMPDIR env var is not used if either of these are defined.
+    when not (defined(tempDir) or defined(windows) or defined(android)):
+      if existsEnv("TMPDIR"):
+        let origTmpDir = getEnv("TMPDIR")
+        putEnv("TMPDIR", "/mytmp")
+        doAssert getTempDir() == "/mytmp/"
+        delEnv("TMPDIR")
+        doAssert getTempDir() == "/tmp/"
+        putEnv("TMPDIR", origTmpDir)
+      else:
+        doAssert getTempDir() == "/tmp/"
+
+block osenv:
+  block delEnv:
+    const dummyEnvVar = "DUMMY_ENV_VAR" # This env var wouldn't be likely to exist to begin with
+    doAssert existsEnv(dummyEnvVar) == false
+    putEnv(dummyEnvVar, "1")
+    doAssert existsEnv(dummyEnvVar) == true
+    delEnv(dummyEnvVar)
+    doAssert existsEnv(dummyEnvVar) == false
+    delEnv(dummyEnvVar)         # deleting an already deleted env var
+    doAssert existsEnv(dummyEnvVar) == false

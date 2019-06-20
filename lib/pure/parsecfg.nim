@@ -391,29 +391,29 @@ proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
 
 proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
   if c.tok.kind == tkSymbol:
-    result.kind = kind
-    result.key = c.tok.literal
-    result.value = ""
+    case kind
+    of cfgOption, cfgKeyValuePair:
+      result = CfgEvent(kind: kind, key: c.tok.literal, value: "")
+    else: discard
     rawGetTok(c, c.tok)
     if c.tok.kind in {tkEquals, tkColon}:
       rawGetTok(c, c.tok)
       if c.tok.kind == tkSymbol:
         result.value = c.tok.literal
       else:
-        reset result
-        result.kind = cfgError
-        result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+        result = CfgEvent(kind: cfgError,
+          msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
       rawGetTok(c, c.tok)
   else:
-    result.kind = cfgError
-    result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+    result = CfgEvent(kind: cfgError,
+      msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
     rawGetTok(c, c.tok)
 
 proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   ## retrieves the first/next event. This controls the parser.
   case c.tok.kind
   of tkEof:
-    result.kind = cfgEof
+    result = CfgEvent(kind: cfgEof)
   of tkDashDash:
     rawGetTok(c, c.tok)
     result = getKeyValPair(c, cfgOption)
@@ -422,21 +422,19 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   of tkBracketLe:
     rawGetTok(c, c.tok)
     if c.tok.kind == tkSymbol:
-      result.kind = cfgSectionStart
-      result.section = c.tok.literal
+      result = CfgEvent(kind: cfgSectionStart, section: c.tok.literal)
     else:
-      result.kind = cfgError
-      result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
     rawGetTok(c, c.tok)
     if c.tok.kind == tkBracketRi:
       rawGetTok(c, c.tok)
     else:
-      reset(result)
-      result.kind = cfgError
-      result.msg = errorStr(c, "']' expected, but found: " & c.tok.literal)
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "']' expected, but found: " & c.tok.literal))
   of tkInvalid, tkEquals, tkColon, tkBracketRi:
-    result.kind = cfgError
-    result.msg = errorStr(c, "invalid token: " & c.tok.literal)
+    result = CfgEvent(kind: cfgError,
+      msg: errorStr(c, "invalid token: " & c.tok.literal))
     rawGetTok(c, c.tok)
 
 # ---------------- Configuration file related operations ----------------

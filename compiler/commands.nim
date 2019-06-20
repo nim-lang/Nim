@@ -27,7 +27,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
   wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos,
-  pathutils
+  pathutils, strtabs
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -106,7 +106,7 @@ proc writeCommandLineUsage*(conf: ConfigRef) =
   msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
 
 proc addPrefix(switch: string): string =
-  if len(switch) == 1: result = "-" & switch
+  if len(switch) <= 1: result = "-" & switch
   else: result = "--" & switch
 
 const
@@ -615,14 +615,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
       let theOS = platform.nameToOS(arg)
-      if theOS == osNone: localError(conf, info, "unknown OS: '$1'" % arg)
+      if theOS == osNone:
+        let osList = platform.listOSnames().join(", ")
+        localError(conf, info, "unknown OS: '$1'. Available options are: $2" % [arg, $osList])
       elif theOS != conf.target.hostOS:
         setTarget(conf.target, theOS, conf.target.targetCPU)
   of "cpu":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
       let cpu = platform.nameToCPU(arg)
-      if cpu == cpuNone: localError(conf, info, "unknown CPU: '$1'" % arg)
+      if cpu == cpuNone:
+        let cpuList = platform.listCPUnames().join(", ")
+        localError(conf, info, "unknown CPU: '$1'. Available options are: $2" % [ arg, cpuList])
       elif cpu != conf.target.hostCPU:
         setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
@@ -770,6 +774,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optDocInternal}, arg, pass, info)
   of "multimethods":
     processOnOffSwitchG(conf, {optMultiMethods}, arg, pass, info)
+  of "expandmacro":
+    expectArg(conf, switch, arg, pass, info)
+    conf.macrosToExpand[arg] = "T"
+  of "":
+    conf.projectName = "-"
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)

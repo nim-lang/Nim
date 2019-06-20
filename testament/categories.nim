@@ -474,11 +474,7 @@ iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
   for n, cmd, hasDeps, url in important_packages.packages.items:
     let cmd = if cmd.len == 0: defaultCmd else: cmd
     if url.len != 0:
-      if hasDeps:
-        # use url instead of name, so we can do 'nimble install'
-        yield (url, url, cmd, hasDeps)
-      else:
-        yield (n, url, cmd, hasDeps)
+      yield (n, url, cmd, hasDeps)
     else:
       var found = false
       for package in packageList.items:
@@ -515,21 +511,25 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       let buildPath = packagesDir / name
       if not existsDir(buildPath):
         if hasDep:
-          let (nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", name])
+          let installName = if url.len != 0: url else: name
+          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
           if nimbleStatus != QuitSuccess:
-            r.addResult(test, targetC, "", "'nimble install' failed\n" & nimbleOutput, reInstallFailed)
+            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
+            r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
-        let (installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
+        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
         if installStatus != QuitSuccess:
-          r.addResult(test, targetC, "", "'git clone' failed\n" & installOutput, reInstallFailed)
+          let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
+          r.addResult(test, targetC, "", message, reInstallFailed)
           continue
 
       let cmdArgs = parseCmdLine(cmd)
 
-      let (buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
+      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
       if buildStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "package test failed\n" & buildOutput, reBuildFailed)
+        let message = "package test failed\n$ " & buildCmdLine & "\n" & buildOutput
+        r.addResult(test, targetC, "", message, reBuildFailed)
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
@@ -551,7 +551,8 @@ proc testNimblePackages(r: var TResults, cat: Category) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "megatest"]
+const AdditionalCategories = ["debugger", "examples", "lib"]
+const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -643,10 +644,12 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   writeFile("megatest.nim", megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
+              "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
   proc onStdout(line: string) = echo line
-  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
+  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
+    echo "$ ", cmdLine
     echo buf.string
     quit("megatest compilation failed")
 
@@ -679,22 +682,9 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
 # ---------------------------------------------------------------------------
 
-proc loadSkipFrom(name: string): seq[string] =
-  # One skip per line, comments start with #
-  # used by `nlvm` (at least)
-  try:
-    for line in lines(name):
-      let sline = line.strip()
-      if sline.len > 0 and not sline.startsWith("#"):
-        result.add sline
-  except:
-    echo "Could not load " & name & ", ignoring"
-
 proc processCategory(r: var TResults, cat: Category,
-                     options, testsDir, skipFrom: string,
+                     options, testsDir: string,
                      runJoinableTests: bool) =
-  let skips = loadSkipFrom(skipFrom)
-
   case cat.string.normalize
   of "rodfiles":
     when false:
@@ -750,9 +740,6 @@ proc processCategory(r: var TResults, cat: Category,
 
     for i, name in files:
       var test = makeTest(name, options, cat)
-      if skips.anyIt(it in name):
-        test.spec.err = reDisabled
-
       if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
         discard "run the test"
       else:

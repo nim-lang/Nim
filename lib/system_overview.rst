@@ -65,7 +65,7 @@ Proc                                       Usage
 ========================================   ==========================================
 
 **See also:**
-* `sequtils module <collections/sequtils.html>`_ for operations on container
+* `sequtils module <sequtils.html>`_ for operations on container
   types (including strings)
 * `json module <json.html>`_ for a structure which allows heterogeneous members
 * `lists module <lists.html>`_ for linked lists

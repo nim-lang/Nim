@@ -363,7 +363,8 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
                formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
                usedMem,
-               if isDefined(conf, "release"): "Release Build"
+               if isDefined(conf, "danger"): "Dangerous Release Build"
+               elif isDefined(conf, "release"): "Release Build"
                else: "Debug Build"])
 
   when PrintRopeCacheStats:

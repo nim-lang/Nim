@@ -44,6 +44,7 @@ Options:
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messagescoloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
+  --megatest:on|off         Enable or disable megatest. Default is on.
   --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
 """ % resultsFile
 
@@ -89,9 +90,16 @@ proc getFileDir(filename: string): string =
     result = getCurrentDir() / result
 
 proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
+                cmdLine: string,
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+
+  result.cmdLine.add quoteShell(command)
+  for arg in args:
+    result.cmdLine.add ' '
+    result.cmdLine.add quoteShell(arg)
+
   var p = startProcess(command, workingDir=workingDir, args=args, options={poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
 
@@ -102,7 +110,7 @@ proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: str
   instream.write(input)
   close instream
 
-  result = (TaintedString"", -1)
+  result.exitCode =  -1
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
@@ -129,6 +137,7 @@ proc prepareTestArgs(cmdTemplate, filename, options: string,
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, target, extraOptions)
+  result.cmd = quoteShellCommand(c)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -137,16 +146,19 @@ proc callCompiler(cmdTemplate, filename, options: string,
   var tmpl = ""
   var x = newStringOfCap(120)
   result.nimout = ""
-  while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
-    if x =~ pegOfInterest:
-      # `err` should contain the last error/warning message
-      err = x
-    elif x =~ pegLineTemplate and err == "":
-      # `tmpl` contains the last template expansion before the error
-      tmpl = x
-    elif x =~ pegSuccess:
-      suc = x
+  while true:
+    if outp.readLine(x.TaintedString):
+      result.nimout.add(x & "\n")
+      if x =~ pegOfInterest:
+        # `err` should contain the last error/warning message
+        err = x
+      elif x =~ pegLineTemplate and err == "":
+        # `tmpl` contains the last template expansion before the error
+        tmpl = x
+      elif x =~ pegSuccess:
+        suc = x
+    elif not running(p):
+      break
   close(p)
   result.msg = ""
   result.file = ""
@@ -184,8 +196,11 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   result.file = ""
   result.output = ""
   result.line = -1
-  while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
+  while true:
+    if outp.readLine(x.TaintedString):
+      result.nimout.add(x & "\n")
+    elif not running(p):
+      break
   close(p)
   if p.peekExitCode == 0:
     result.err = reSuccess
@@ -370,7 +385,7 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
       givenmsg = given.nimout.strip
       nimoutCheck(test, expectedmsg, given)
   else:
-    givenmsg = given.nimout.strip
+    givenmsg = "$ " & given.cmd & "\n" & given.nimout
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
@@ -380,6 +395,15 @@ proc getTestSpecTarget(): TTarget =
   else:
     return targetC
 
+proc checkDisabled(r: var TResults, test: TTest): bool =
+  if test.spec.err in {reDisabled, reJoined}:
+    # targetC is a lie, but parameter is required
+    r.addResult(test, targetC, "", "", test.spec.err)
+    inc(r.skipped)
+    inc(r.total)
+    return
+  true
+
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
   if expected.parseErrors.len > 0:
@@ -387,12 +411,8 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     r.addResult(test, targetC, "", expected.parseErrors, reInvalidSpec)
     inc(r.total)
     return
-  if expected.err in {reDisabled, reJoined}:
-    # targetC is a lie, but parameter is required
-    r.addResult(test, targetC, "", "", expected.err)
-    inc(r.skipped)
-    inc(r.total)
-    return
+  if not checkDisabled(r, test): return
+
   expected.targets.incl targets
   # still no target specified at all
   if expected.targets == {}:
@@ -420,7 +440,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.getCmd, test.name, test.options, target)
       if given.err != reSuccess:
-        r.addResult(test, target, "", given.nimout, given.err)
+        r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
         continue
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
@@ -441,7 +461,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         args = concat(@[exeFile], args)
       else:
         exeCmd = exeFile
-      var (buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+      var (cmdLine, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
       if exitCode != 0: exitCode = 1
@@ -472,6 +492,8 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
+  if not checkDisabled(r, test): return
+
   let tname = test.name.addFileExt(".c")
   inc(r.total)
   maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
@@ -486,6 +508,8 @@ proc testC(r: var TResults, test: TTest, action: TTestAction) =
 
 proc testExec(r: var TResults, test: TTest) =
   # runs executable or script, just goes by exit code
+  if not checkDisabled(r, test): return
+
   inc(r.total)
   let (outp, errC) = execCmdEx(test.options.strip())
   var given: TSpec
@@ -534,6 +558,19 @@ else:
 
 include categories
 
+proc loadSkipFrom(name: string): seq[string] =
+  if name.len() == 0: return
+
+  # One skip per line, comments start with #
+  # used by `nlvm` (at least)
+  try:
+    for line in lines(name):
+      let sline = line.strip()
+      if sline.len > 0 and not sline.startsWith("#"):
+        result.add sline
+  except:
+    echo "Could not load " & name & ", ignoring"
+
 proc main() =
   os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
@@ -544,6 +581,7 @@ proc main() =
   var targetsStr = ""
   var isMainProcess = true
   var skipFrom = ""
+  var useMegatest = true
 
   var p = initOptParser()
   p.next()
@@ -569,6 +607,14 @@ proc main() =
         quit Usage
     of "simulate":
       simulate = true
+    of "megatest":
+      case p.val.string:
+      of "on":
+        useMegatest = true
+      of "off":
+        useMegatest = false
+      else:
+        quit Usage
     of "backendlogging":
       case p.val.string:
       of "on":
@@ -608,32 +654,37 @@ proc main() =
       if kind == pcDir and cat notin ["testdata", "nimcache"]:
         cats.add cat
     cats.add AdditionalCategories
+    if useMegatest: cats.add MegaTestCat
 
     var cmds: seq[string]
     for cat in cats:
-      cmds.add(myself & " pcat " & quoteShell(cat) & rest)
+      let runtype = if useMegatest: " pcat " else: " cat "
+      cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
       echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
 
     if simulate:
+      skips = loadSkipFrom(skipFrom)
       for i, cati in cats:
         progressStatus(i)
-        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = false)
+        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
     else:
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
+    skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = true)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
   of "pcat":
+    skips = loadSkipFrom(skipFrom)
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
     # are covered by the 'megatest' category.
     isMainProcess = false
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = false)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
   of "r", "run":
     # at least one directory is required in the path, to use as a category name
     let pathParts = split(p.key.string, {DirSep, AltSep})

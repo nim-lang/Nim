@@ -65,7 +65,7 @@ proc finalizeRegEx(x: Regex) =
   # Fortunately the implementation is unlikely to change.
   pcre.free_substring(cast[cstring](x.h))
   if not isNil(x.e):
-    pcre.free_substring(cast[cstring](x.e))
+    pcre.free_study(x.e)
 
 proc re*(s: string, flags = {reStudy}): Regex =
   ## Constructor of regular expressions.
@@ -485,10 +485,10 @@ proc multiReplace*(s: string, subs: openArray[
   add(result, substr(s, i))
 
 proc parallelReplace*(s: string, subs: openArray[
-                      tuple[pattern: Regex, repl: string]]): string {.deprecated.} =
+  tuple[pattern: Regex, repl: string]]): string {.deprecated:
+  "Deprecated since v0.18.0: Use ``multiReplace`` instead.".} =
   ## Returns a modified copy of ``s`` with the substitutions in ``subs``
   ## applied in parallel.
-  ## **Deprecated since version 0.18.0**: Use ``multiReplace`` instead.
   result = multiReplace(s, subs)
 
 proc transformFile*(infile, outfile: string,

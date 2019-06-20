@@ -67,21 +67,21 @@ proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
 
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
                 module: PSym) =
-  for i in countup(0, g.passes.len - 1):
+  for i in 0 ..< g.passes.len:
     if not isNil(g.passes[i].open):
       a[i] = g.passes[i].open(g, module)
     else: a[i] = nil
 
 proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
-  for i in countup(0, graph.passes.len - 1):
+  for i in 0 ..< graph.passes.len:
     if not isNil(graph.passes[i].close): m = graph.passes[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline
   var m = n
-  for i in countup(0, graph.passes.len - 1):
+  for i in 0 ..< graph.passes.len:
     if not isNil(graph.passes[i].process):
       m = graph.passes[i].process(a[i], m)
       if isNil(m): return false

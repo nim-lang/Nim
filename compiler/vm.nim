@@ -200,7 +200,7 @@ proc copyValue(src: PNode): PNode =
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
     newSeq(result.sons, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1):
+    for i in 0 ..< sonsLen(src):
       result.sons[i] = copyValue(src.sons[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
@@ -421,12 +421,15 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       else:
         let srcDist = (sizeof(src.intVal) - srctyp.size) * 8
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
+
+        var value = cast[BiggestUInt](src.intVal)
         when system.cpuEndian == bigEndian:
-          dest.intVal = (src.intVal shr srcDist) shl srcDist
-          dest.intVal = (dest.intVal shr destDist) shl destDist
+          value = (value shr srcDist) shl srcDist
+          value = (value shr destDist) shl destDist
         else:
-          dest.intVal = (src.intVal shl srcDist) shr srcDist
-          dest.intVal = (dest.intVal shl destDist) shr destDist
+          value = (value shl srcDist) shr srcDist
+          value = (value shl destDist) shr destDist
+        dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
         myreset(dest); dest.kind = rkFloat
@@ -778,7 +781,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       addSon(b, regs[rb].regToNode)
       var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
-      for i in countup(0, sonsLen(r) - 1): addSon(regs[ra].node, r.sons[i])
+      for i in 0 ..< sonsLen(r): addSon(regs[ra].node, r.sons[i])
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
@@ -818,7 +821,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].floatVal = regs[rb].floatVal / regs[rc].floatVal
     of opcShrInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal shr regs[rc].intVal
+      let b = cast[uint64](regs[rb].intVal)
+      let c = cast[uint64](regs[rc].intVal)
+      let a = cast[int64](b shr c)
+      regs[ra].intVal = a
     of opcShlInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shl regs[rc].intVal
@@ -1104,7 +1110,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset+ord(isClosure))
-        if not isEmptyType(prc.typ.sons[0]) or prc.kind == skMacro:
+        if not isEmptyType(prc.typ.sons[0]):
           putIntoReg(newFrame.slots[0], getNullValue(prc.typ.sons[0], prc.info, c.config))
         for i in 1 .. rc-1:
           newFrame.slots[i] = regs[rb+i]
@@ -1154,7 +1160,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in countup(0, sonsLen(branch) - 2):
+      for j in 0 .. sonsLen(branch) - 2:
         if overlap(regs[ra].regToNode, branch.sons[j]):
           cond = true
           break
@@ -1183,7 +1189,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcFinallyEnd:
       # The control flow may not resume at the next instruction since we may be
       # raising an exception or performing a cleanup.
-      if not savedPC < 0:
+      if savedPC >= 0:
         pc = savedPC - 1
         savedPC = -1
         if tos != savedFrame:
@@ -1412,9 +1418,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node
-      case a.kind
-      of nkCharLit..nkUInt64Lit: regs[ra].intVal = a.intVal
-      else: stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
+      if a.kind in {nkCharLit..nkUInt64Lit}:
+        regs[ra].intVal = a.intVal
+      elif a.kind == nkSym and a.sym.kind == skEnumField:
+        regs[ra].intVal = a.sym.position
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
     of opcNFloatVal:
       decodeB(rkFloat)
       let a = regs[rb].node
@@ -1686,6 +1695,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind in {nkCharLit..nkUInt64Lit} and
          regs[rb].kind in {rkInt}:
         dest.intVal = regs[rb].intVal
+      elif dest.kind == nkSym and dest.sym.kind == skEnumField:
+        stackTrace(c, tos, pc, "`intVal` cannot be changed for an enum symbol.")
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
     of opcNSetFloatVal:
@@ -1756,7 +1767,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNDel:
       decodeBC(rkNode)
       let bb = regs[rb].intVal.int
-      for i in countup(0, regs[rc].intVal.int-1):
+      for i in 0 ..< regs[rc].intVal.int:
         delSon(regs[ra].node, bb)
     of opcGenSym:
       decodeBC(rkNode)
@@ -1775,25 +1786,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let by = regs[instr.regB].intVal
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let by = regs[rc].intVal
       let v = getOrDefault(g.cacheCounters, destKey)
       g.cacheCounters[destKey] = v+by
       recordInc(c, c.debug[pc], destKey, by)
     of opcNcsAdd:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let val = regs[instr.regB].node
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
-        # newNodeI(nkStmtList, c.debug[pc])
       else:
         g.cacheSeqs[destKey].add val
       recordAdd(c, c.debug[pc], destKey, val)
     of opcNcsIncl:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let val = regs[instr.regB].node
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
       else:
@@ -2018,12 +2031,29 @@ proc evalStaticStmt*(module: PSym; g: ModuleGraph; e: PNode, prc: PSym) =
 proc setupCompileTimeVar*(module: PSym; g: ModuleGraph; n: PNode) =
   discard evalConstExprAux(module, g, nil, n, emStaticStmt)
 
+proc prepareVMValue(arg: PNode): PNode =
+  ## strip nkExprColonExpr from tuple values recurively. That is how
+  ## they are expected to be stored in the VM.
+
+  # Early abort without copy. No transformation takes place.
+  if arg.kind in nkLiterals:
+    return arg
+
+  result = copyNode(arg)
+  if arg.kind == nkTupleConstr:
+    for child in arg:
+      if child.kind == nkExprColonExpr:
+        result.add prepareVMValue(child[1])
+      else:
+        result.add prepareVMValue(child)
+  else:
+    for child in arg:
+      result.add prepareVMValue(child)
+
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
   of tyStatic:
-    putIntoReg(result, x)
-  of tyTypeDesc:
-    putIntoReg(result, x)
+    putIntoReg(result, prepareVMValue(x))
   else:
     result.kind = rkNode
     var n = x
@@ -2083,19 +2113,14 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
 
   let gp = sym.ast[genericParamsPos]
   for i in 0 ..< gp.len:
-    if sfImmediate notin sym.flags:
-      let idx = sym.typ.len + i
-      if idx < n.len:
-        tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
-      else:
-        dec(g.config.evalMacroCounter)
-        c.callsite = nil
-        localError(c.config, n.info, "expected " & $gp.len &
-                   " generic parameter(s)")
-    elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
+    let idx = sym.typ.len + i
+    if idx < n.len:
+      tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
+    else:
       dec(g.config.evalMacroCounter)
       c.callsite = nil
-      globalError(c.config, n.info, "static[T] or typedesc nor supported for .immediate macros")
+      localError(c.config, n.info, "expected " & $gp.len &
+                 " generic parameter(s)")
   # temporary storage:
   #for i in L ..< maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode

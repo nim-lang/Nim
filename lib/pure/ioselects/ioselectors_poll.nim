@@ -214,6 +214,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   if maxres > len(results):
     maxres = len(results)
 
+  verifySelectParams(timeout)
+
   s.withPollLock():
     let count = posix.poll(addr(s.pollfds[0]), Tnfds(s.pollcnt), timeout)
     if count < 0:

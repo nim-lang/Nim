@@ -309,6 +309,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   var ptv = addr tv
   var rset, wset, eset: FdSet
 
+  verifySelectParams(timeout)
+
   if timeout != -1:
     when defined(genode):
       tv.tv_sec = Time(timeout div 1_000)

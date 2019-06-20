@@ -199,7 +199,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(typ.kind == tyProc)
   assert(sonsLen(typ) == sonsLen(typ.n))
   var length = sonsLen(ri)
-  for i in countup(1, length - 1):
+  for i in 1 ..< length:
     genParamLoop(params)
   var callee = rdLoc(op)
   if p.hcrOn and ri.sons[0].kind == nkSym:
@@ -223,7 +223,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   var length = sonsLen(ri)
-  for i in countup(1, length - 1):
+  for i in 1 ..< length:
     assert(sonsLen(typ) == sonsLen(typ.n))
     genParamLoop(pl)
 
@@ -389,7 +389,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
           result.add genOtherArg(p, ri, k, typ)
       inc i
     of '#':
-      if pat[i+1] in {'+', '@'}:
+      if i+1 < pat.len and pat[i+1] in {'+', '@'}:
         let ri = ri[j]
         if ri.kind in nkCallKinds:
           let typ = skipTypes(ri.sons[0].typ, abstractInst)
@@ -404,10 +404,10 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
         else:
           localError(p.config, ri.info, "call expression expected for C++ pattern")
         inc i
-      elif pat[i+1] == '.':
+      elif i+1 < pat.len and pat[i+1] == '.':
         result.add genThisArg(p, ri, j, typ)
         inc i
-      elif pat[i+1] == '[':
+      elif i+1 < pat.len and pat[i+1] == '[':
         var arg = ri.sons[j].skipAddrDeref
         while arg.kind in {nkAddr, nkHiddenAddr, nkObjDownConv}: arg = arg[0]
         result.add genArgNoParam(p, arg)
@@ -470,7 +470,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
       add(pl, genThisArg(p, ri, 1, typ))
     add(pl, op.r)
     var params: Rope
-    for i in countup(2, length - 1):
+    for i in 2 ..< length:
       if params != nil: params.add(~", ")
       assert(sonsLen(typ) == sonsLen(typ.n))
       add(params, genOtherArg(p, ri, i, typ))
@@ -506,7 +506,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     if length > 2:
       add(pl, ~": ")
       add(pl, genArg(p, ri.sons[2], typ.n.sons[2].sym, ri))
-  for i in countup(start, length-1):
+  for i in start ..< length:
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
       internalError(p.config, ri.info, "varargs for objective C method?")

@@ -133,7 +133,7 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   result = usrToCell(c).typ
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
-  result = int(usrToCell(p).refcount) shr rcShift
+  result = usrToCell(p).refcount shr rcShift
 
 # this that has to equals zero, otherwise we have to round up UnitsPerPage:
 when BitsPerPage mod (sizeof(int)*8) != 0:

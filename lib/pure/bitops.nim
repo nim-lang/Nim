@@ -25,6 +25,17 @@
 ## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
 ## may return undefined and/or platform dependant value if given invalid input.
 
+proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
+  ## Computes the `bitwise complement` of the integer `x`.
+
+proc bitand*[T: SomeInteger](x, y: T): T {.magic: "BitandI", noSideEffect.}
+  ## Computes the `bitwise and` of numbers `x` and `y`.
+
+proc bitor*[T: SomeInteger](x, y: T): T {.magic: "BitorI", noSideEffect.}
+  ## Computes the `bitwise or` of numbers `x` and `y`.
+
+proc bitxor*[T: SomeInteger](x, y: T): T {.magic: "BitxorI", noSideEffect.}
+  ## Computes the `bitwise xor` of numbers `x` and `y`.
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
 const noUndefined = defined(noUndefinedBitOpts)
@@ -32,6 +43,12 @@ const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or defined(clang)) an
 const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
 const arch64 = sizeof(int) == 8
+
+template toUnsigned(x: int8): uint8 = cast[uint8](x)
+template toUnsigned(x: int16): uint16 = cast[uint16](x)
+template toUnsigned(x: int32): uint32 = cast[uint32](x)
+template toUnsigned(x: int64): uint64 = cast[uint64](x)
+template toUnsigned(x: int): uint = cast[uint](x)
 
 template forwardImpl(impl, arg) {.dirty.} =
   when sizeof(x) <= 4:
@@ -242,6 +259,8 @@ proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Counts the set bits in integer. (also called `Hamming weight`:idx:.)
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
+  when x is SomeSignedInt:
+    let x = x.toUnsigned
   when nimvm:
     result = forwardImpl(countSetBits_nim, x)
   else:
@@ -272,6 +291,8 @@ proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## is odd parity is 1, otherwise 0.
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
+  when x is SomeSignedInt:
+    let x = x.toUnsigned
   when nimvm:
     result = forwardImpl(parity_impl, x)
   else:
@@ -287,6 +308,8 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
   ## otherwise result is undefined.
   # GCC builtin 'builtin_ffs' already handle zero input.
+  when x is SomeSignedInt:
+    let x = x.toUnsigned
   when nimvm:
     when noUndefined:
       if x == 0:
@@ -321,6 +344,8 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Quickly find the log base 2 of an integer.
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is -1,
   ## otherwise result is undefined.
+  when x is SomeSignedInt:
+    let x = x.toUnsigned
   when noUndefined:
     if x == 0:
       return -1
@@ -352,6 +377,8 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of leading zero bits in integer.
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
   ## otherwise result is undefined.
+  when x is SomeSignedInt:
+    let x = x.toUnsigned
   when noUndefined:
     if x == 0:
       return 0
@@ -369,6 +396,8 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of trailing zeros in integer.
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
   ## otherwise result is undefined.
+  when x is SomeSignedInt:
+    let x = x.toUnsigned
   when noUndefined:
     if x == 0:
       return 0

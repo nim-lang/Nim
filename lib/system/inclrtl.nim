@@ -19,11 +19,6 @@
 when not defined(nimNewShared):
   {.pragma: gcsafe.}
 
-when not defined(nimImmediateDeprecated):
-  {.pragma: oldimmediate, immediate.}
-else:
-  {.pragma: oldimmediate.}
-
 when defined(createNimRtl):
   when defined(useNimRtl):
     {.error: "Cannot create and use nimrtl at the same time!".}

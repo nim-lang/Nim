@@ -28,13 +28,16 @@ proc next*(it: var PathIter; x: string): (int, int) =
   if not it.notFirst and x[it.i] in {DirSep, AltSep}:
     # absolute path:
     inc it.i
+    when doslikeFileSystem: # UNC paths have leading `\\`
+      if hasNext(it, x) and x[it.i] == DirSep and
+          it.i+1 < x.len and x[it.i+1] != DirSep:
+        inc it.i
   else:
     while it.i < x.len and x[it.i] notin {DirSep, AltSep}: inc it.i
   if it.i > it.prev:
     result = (it.prev, it.i-1)
   elif hasNext(it, x):
     result = next(it, x)
-
   # skip all separators:
   while it.i < x.len and x[it.i] in {DirSep, AltSep}: inc it.i
   it.notFirst = true

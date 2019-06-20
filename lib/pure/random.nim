@@ -206,17 +206,15 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-proc random*(max: int): int {.benign, deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand(int)<#rand,int>`_ instead.
+proc random*(max: int): int {.benign, deprecated:
+  "Deprecated since v0.18.0; use 'rand' istead".} =
   while true:
     let x = next(state)
     if x < randMax - (randMax mod ui(max)):
       return int(x mod uint64(max))
 
-proc random*(max: float): float {.benign, deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand(float)<#rand,float>`_ instead.
+proc random*(max: float): float {.benign, deprecated:
+  "Deprecated since v0.18.0; use 'rand' istead".} =
   let x = next(state)
   when defined(JS):
     result = (float(x) / float(high(uint32))) * max
@@ -224,14 +222,12 @@ proc random*(max: float): float {.benign, deprecated.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc random*[T](x: HSlice[T, T]): T {.deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand[T](HSlice[T, T])<#rand,HSlice[T,T]>`_ instead.
+proc random*[T](x: HSlice[T, T]): T {.deprecated:
+  "Deprecated since v0.18.0; use 'rand' instead".} =
   result = T(random(x.b - x.a)) + x.a
 
-proc random*[T](a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `sample[T](openArray[T])<#sample,openArray[T]>`_ instead.
+proc random*[T](a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.18.0; use 'sample' instead".} =
   result = a[random(a.low..a.len)]
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
@@ -318,9 +314,14 @@ proc rand*(max: float): float {.benign.} =
     ## f = 8.717181376738381e-07
   rand(state, max)
 
-proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
   ## state.
+  ##
+  ## Allowed input types are:
+  ## * Integer
+  ## * Floats
+  ## * Enums without holes
   ##
   ## See also:
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice and uses the
@@ -333,9 +334,14 @@ proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 6
-  result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
+    let f = r.rand(-1.0 .. 1.0)
+    ## f = 0.8741183448756229
+  when T is SomeFloat:
+    result = rand(r, x.b - x.a) + x.a
+  else: # Integers and Enum types
+    result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
 
-proc rand*[T: Ordinal](x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
@@ -357,9 +363,8 @@ proc rand*[T: Ordinal](x: HSlice[T, T]): T =
     doAssert rand(1..6) == 6
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.20.0:**
-  ## Use `sample[T](Rand, openArray[T])<#sample,Rand,openArray[T]>`_ instead.
+proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(r, a.low..a.high)]
 
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
@@ -391,9 +396,8 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   else:
     result = cast[T](state.next)
 
-proc rand*[T](a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.20.0:**
-  ## Use `sample[T](openArray[T])<#sample,openArray[T]>`_ instead.
+proc rand*[T](a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =
@@ -403,7 +407,7 @@ proc sample*[T](r: var Rand; s: set[T]): T =
   for e in s:
     if i == 0: return e
     dec(i)
-    
+
 proc sample*[T](s: set[T]): T =
   ## returns a random element from a set
   sample(state, s)
@@ -603,8 +607,8 @@ when not defined(nimscript):
     ## See also:
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
     ## * `initRand proc<#initRand,int64>`_
-    when defined(js):
-      let time = int64(times.epochTime() * 1_000_000_000)
+    when defined(JS):
+      let time = int64(times.epochTime() * 100_000)
       randomize(time)
     else:
       let now = times.getTime()

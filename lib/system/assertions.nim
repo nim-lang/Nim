@@ -71,7 +71,7 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
     let msg = msgIMPL
     code
 
-template doAssertRaises*(exception: typedesc, code: untyped): typed =
+template doAssertRaises*(exception: typedesc, code: untyped) =
   ## Raises ``AssertionError`` if specified ``code`` does not raise the
   ## specified exception. Example:
   ##

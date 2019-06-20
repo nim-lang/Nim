@@ -224,8 +224,8 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
   execute(cmd, file, dirtyfile, int(line), int(column), graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
-               return_symbol = "return") =
-  let response = $convertSexp([newSSymbol(return_symbol), uid, s])
+               returnSymbol = "return") =
+  let response = $convertSexp([newSSymbol(returnSymbol), uid, s])
   socket.send(toHex(len(response), 6))
   socket.send(response)
 
@@ -445,8 +445,8 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
     if i < cmd.len and cmd[i] == ';':
       i = parseQuoted(cmd, dirtyfile, i+1)
     i += skipWhile(cmd, seps, i)
-  var line = -1
-  var col = 0
+  var line = 0
+  var col = -1
   i += parseInt(cmd, line, i)
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)

@@ -18,6 +18,14 @@ template foo*(a, b: SomeType) =
 proc bar*[T](a, b: T): T =
   result = a + b
 
+proc baz*[T](a, b: T): T {.deprecated.} =
+  ## This is deprecated without message.
+  result = a + b
+
+proc buzz*[T](a, b: T): T {.deprecated: "since v0.20".} =
+  ## This is deprecated with a message.
+  result = a + b
+
 import std/macros
 
 macro bar*(): untyped =

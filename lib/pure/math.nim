@@ -188,8 +188,8 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 1)
   result += 1 + ord(x<=0)
 
-proc countBits32*(n: int32): int {.noSideEffect, deprecated: "use bitops.countSetBits instead".} =
-  ## **Deprecated since version v0.20.0**: Use ``bitops.countSetBits`` instead.
+proc countBits32*(n: int32): int {.noSideEffect, deprecated:
+  "Deprecated since v0.20.0; use 'bitops.countSetBits' instead".} =
   runnableExamples:
     doAssert countBits32(7) == 3
     doAssert countBits32(8) == 1
@@ -297,6 +297,9 @@ when not defined(JS): # C
 else: # JS
   proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
   proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
+
+  proc cbrt*(x: float32): float32 {.importc: "Math.cbrt", nodecl.}
+  proc cbrt*(x: float64): float64 {.importc: "Math.cbrt", nodecl.}
 
   proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
   proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
@@ -594,11 +597,10 @@ when not defined(JS): # C
       ##  echo gamma(11.0) # 3628800.0
       ##  echo gamma(-1.0) # nan
     proc tgamma*(x: float32): float32
-      {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgammaf", header: "<math.h>".}
     proc tgamma*(x: float64): float64
-      {.deprecated: "use gamma instead", importc: "tgamma", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgamma", header: "<math.h>".}
       ## The gamma function
-      ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
       ## Computes the natural log of the gamma function for ``x``.
@@ -646,9 +648,9 @@ when not defined(JS): # C
     # this implementation was inspired by Go-lang Math.Trunc
     proc truncImpl(f: float64): float64 =
       const
-        mask : uint64 = 0x7FF
+        mask: uint64 = 0x7FF
         shift: uint64 = 64 - 12
-        bias : uint64 = 0x3FF
+        bias: uint64 = 0x3FF
 
       if f < 1:
         if f < 0: return -truncImpl(-f)
@@ -666,9 +668,9 @@ when not defined(JS): # C
 
     proc truncImpl(f: float32): float32 =
       const
-        mask : uint32 = 0xFF
+        mask: uint32 = 0xFF
         shift: uint32 = 32 - 9
-        bias : uint32 = 0x7F
+        bias: uint32 = 0x7F
 
       if f < 1:
         if f < 0: return -truncImpl(-f)
@@ -729,11 +731,8 @@ when not defined(JS): # C
       ##  echo trunc(PI) # 3.0
       ##  echo trunc(-1.85) # -1.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
-    ## **Deprecated since version 0.19.0**: Use the `mod proc
-    ## <#mod,float64,float64>`_ instead.
-    ##
+  proc fmod*(x, y: float32): float32 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of ``x`` divided by ``y``.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
@@ -772,9 +771,7 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use format instead".} =
-  ## **Deprecated:** use `strformat module <strformat.html>`_
-  ##
+proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use strformat module instead".} =
   ## Decimal rounding on a binary floating point number.
   ##
   ## This function is NOT reliable. Floating point numbers cannot hold
@@ -846,7 +843,7 @@ when not defined(JS):
     ## m.
     ##
     ## .. code-block:: nim
-    ##  var x : int
+    ##  var x: int
     ##  echo frexp(5.0, x) # 0.625
     ##  echo x # 3
     var exp: int32
@@ -975,23 +972,28 @@ proc `^`*[T](x: T, y: Natural): T =
   ## * `sqrt proc <#sqrt,float64>`_
   ## * `cbrt proc <#cbrt,float64>`_
   ##
-  ## .. code-block:: nim
-  ##  echo 2^3  # 8
-  ##  echo -2^3 # -8
-  when compiles(y >= T(0)):
-    assert y >= T(0)
-  else:
-    assert T(y) >= T(0)
-  var (x, y) = (x, y)
-  result = 1
+  runnableExamples:
+    assert -3.0^0 == 1.0
+    assert -3^1 == -3
+    assert -3^2 == 9
+    assert -3.0^3 == -27.0
+    assert -3.0^4 == 81.0
 
-  while true:
-    if (y and 1) != 0:
-      result *= x
-    y = y shr 1
-    if y == 0:
-      break
-    x *= x
+  case y
+  of 0: result = 1
+  of 1: result = x
+  of 2: result = x * x
+  of 3: result = x * x * x
+  else:
+    var (x, y) = (x, y)
+    result = 1
+    while true:
+      if (y and 1) != 0:
+        result *= x
+      y = y shr 1
+      if y == 0:
+        break
+      x *= x
 
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.

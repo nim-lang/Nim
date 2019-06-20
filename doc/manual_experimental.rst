@@ -17,13 +17,16 @@ Some of these are not covered by the ``.experimental`` pragma or
 one may want to use Nim libraries using these features without using them
 oneself.
 
+**Note**: Unless otherwise indicated, these features are not to be removed,
+but refined and overhauled.
+
 
 Package level objects
 =====================
 
 Every Nim module resides in a (nimble) package. An object type can be attached
 to the package it resides in. If that is done, the type can be referenced from
-other modules as an `incomplete`:idx: object type. This features allows to
+other modules as an `incomplete`:idx: object type. This feature allows to
 break up recursive type dependencies accross module boundaries. Incomplete
 object types are always passed ``byref`` and can only be used in pointer like
 contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
@@ -1584,6 +1587,26 @@ having unknown lock level as well:
   method testMethod(g: SomeDerived) =
     if g.memberProc != nil:
       g.memberProc()
+
+
+noRewrite pragma
+----------------
+
+Term rewriting macros and templates are currently greedy and
+they will rewrite as long as there is a match.
+There was no way to ensure some rewrite happens only once,
+eg. when rewriting term to same term plus extra content.
+
+``noRewrite`` pragma can actually prevent further rewriting on marked code,
+e.g. with given example ``echo("ab")`` will be rewritten just once:
+
+.. code-block:: nim
+  template pwnEcho{echo(x)}(x: expr) =
+    {.noRewrite.}: echo("pwned!")
+
+  echo "ab"
+
+``noRewrite`` pragma can be useful to control term-rewriting macros recursion.
 
 
 Taint mode
