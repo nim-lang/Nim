@@ -5,7 +5,7 @@ is in separate files:
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
 * `io <io.html>`_
-* `widestr <widestr.html>`_
+* `widestrs <widestrs.html>`_
 
 
 Here is a short overview of the most commonly used functions from the
