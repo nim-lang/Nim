@@ -891,10 +891,12 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   of tyFloat..tyFloat128, tyString, tyError:
     discard
   else:
+    popCaseContext(c)
+    closeScope(c)
     if caseStmtMacros in c.features:
       result = handleCaseStmtMacro(c, n)
-      if result != nil: return result
-
+      if result != nil:
+        return result
     localError(c.config, n.sons[0].info, errSelectorMustBeOfCertainTypes)
     return
   for i in 1 ..< sonsLen(n):
