@@ -75,9 +75,19 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       cstderr.rawWrite "[FATAL] unpaired dealloc\n"
       quit 1
 
+template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
+#proc dispose*(x: pointer) = nimRawDispose(x)
+
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor
   if d != nil: cast[DestructorProc](d)(p)
+  when false:
+    cstderr.rawWrite cast[ptr PNimType](p)[].name
+    cstderr.rawWrite "\n"
+    if d == nil:
+      cstderr.rawWrite "bah, nil\n"
+    else:
+      cstderr.rawWrite "has destructor!\n"
   nimRawDispose(p)
 
 proc isObj(obj: PNimType, subclass: cstring): bool {.compilerproc.} =

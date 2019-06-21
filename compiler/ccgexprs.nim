@@ -360,7 +360,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
-     tyInt..tyUInt64, tyRange, tyVar, tyLent:
+     tyInt..tyUInt64, tyRange, tyVar, tyLent, tyNil:
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: internalError(p.config, "genAssignment: " & $ty.kind)
 
@@ -2061,18 +2061,19 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
 
 proc genDestroy(p: BProc; n: PNode) =
   if optNimV2 in p.config.globalOptions:
-    let t = n[1].typ.skipTypes(abstractInst)
+    let arg = n[1].skipAddr
+    let t = arg.typ.skipTypes(abstractInst)
     case t.kind
     of tyString:
       var a: TLoc
-      initLocExpr(p, n[1].skipAddr, a)
-      linefmt(p, cpsStmts, "if ($1.len && $1.p->allocator) {$n" &
+      initLocExpr(p, arg, a)
+      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
         " $1.p->allocator->dealloc($1.p->allocator, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*)); }$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
-      initLocExpr(p, n[1].skipAddr, a)
-      linefmt(p, cpsStmts, "if ($1.len && $1.p->allocator) {$n" &
+      initLocExpr(p, arg, a)
+      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
         " $1.p->allocator->dealloc($1.p->allocator, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*)); }$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
