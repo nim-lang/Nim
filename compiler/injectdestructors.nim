@@ -450,6 +450,25 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
 
+proc isDangerousSeq(t: PType): bool {.inline.} =
+  let t = t.skipTypes(abstractInst)
+  result = t.kind == tySequence and tfHasOwned notin t.sons[0].flags
+
+proc containsConstSeq(n: PNode): bool =
+  if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):
+    return true
+  result = false
+  case n.kind
+  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
+    result = containsConstSeq(n[1])
+  of nkObjConstr, nkClosure:
+    for i in 1 ..< n.len:
+      if containsConstSeq(n[i]): return true
+  of nkCurly, nkBracket, nkPar, nkTupleConstr:
+    for i in 0 ..< n.len:
+      if containsConstSeq(n[i]): return true
+  else: discard
+
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   template pArgIfTyped(argPart: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
@@ -466,7 +485,12 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result.add arg[0]
       for i in 1..<arg.len:
         result.add pArg(arg[i], c, i < L and isSinkTypeForParam(parameters[i]))
-    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkTripleStrLit}:
+    elif arg.containsConstSeq:
+      # const sequences are not mutable and so we need to pass a copy to the
+      # sink parameter (bug #11524). Note that the string implemenation is
+      # different and can deal with 'const string sunk into var'.
+      result = passCopyToSink(arg, c)
+    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkCharLit..nkTripleStrLit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
     elif arg.kind == nkSym and isSinkParam(arg.sym):
@@ -595,7 +619,10 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result.add branch
   of nkBracket:
     # array constructor
-    result = genSink(c, dest.typ, dest, ri)
+    if ri.len > 0 and isDangerousSeq(ri.typ):
+      result = genCopy(c, dest.typ, dest, ri)
+    else:
+      result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 0..<ri.len:
       # everything that is passed to an array constructor is consumed,

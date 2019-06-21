@@ -1,6 +1,6 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''442 442'''
+  output: '''443 443'''
 """
 
 import strutils, os
@@ -10,7 +10,6 @@ import system / ansi_c
 
 # bug #11004
 proc retTuple(): (seq[int], int) =
-  # XXX this doesn't allocate yet but probably it should
   return (@[1], 1)
 
 proc nonStaticTests =

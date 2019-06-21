@@ -6,7 +6,8 @@ ha
 @["arg", "asdfklasdfkl", "asdkfj", "dfasj", "klfjl"]
 @[1, 2, 3]
 @["red", "yellow", "orange", "rtrt1", "pink"]
-30 30'''
+a: @[4, 2, 3]
+35 35'''
 """
 
 import allocators
@@ -168,6 +169,14 @@ proc testWarm =
   echo w
 
 testWarm()
+
+proc mutConstSeq() =
+  # bug #11524
+  var a = @[1,2,3]
+  a[0] = 4
+  echo "a: ", a
+
+mutConstSeq()
 
 #echo s
 let (a, d) = allocCounters()
