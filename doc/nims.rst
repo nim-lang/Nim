@@ -207,10 +207,10 @@ Cross-Platform
 It is a cross-platform scripting language that can run where Nim can run,
 e.g. you can not run Batch or PowerShell on Linux or Mac,
 the Bash for Linux might not run on Mac,
-theres no Unittests tools for Batch, etc.
+there are no unit tests tools for Batch, etc.
 
 NimScript can detect on which platform, operating system,
-architecture, and even which Linux Distribution is running on,
+architecture, and even which Linux distribution is running on,
 allowing the same script to support a lot of systems.
 
 See the following (incomplete) example:
@@ -257,7 +257,7 @@ Powerful Metaprogramming
 NimScript can use Nim's templates, macros, types, concepts, effect tracking system, and more,
 you can create modules that work on compiled Nim and also on interpreted NimScript.
 
-``func`` will still check for Side Effects, ``debugEcho`` also works as expected,
+``func`` will still check for side effects, ``debugEcho`` also works as expected,
 making it ideal for functional scripting metaprogramming.
 
 This is an example of a third party module that uses macros and templates to
