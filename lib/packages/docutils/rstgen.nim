@@ -381,9 +381,9 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   renderAux(d, n, term)
   setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
   dispA(d.target, result,
-        "<span id=\"$1\">$2</span>",                  # HTML
-        "$2\\label{$1}",                              # TEX
-        "<span id=\"$1\"><text:p>$2</text:p></span>", # ODT
+        "<span id=\"$1\">$2</span>", # HTML
+        "$2\\label{$1}",             # TEX
+        "\n<text:p>$2</text:p>\n",   # ODT
         [id, term])
 
 type
@@ -754,13 +754,13 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
       "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2\">$3</a></h$1>", # HTML
       "\\rsth$4{$3}\\label{$2}\n",                                           # TEX
-      "\n<text:h><text:p>$3</text:p></text:h>\n",                           # ODT
+      "\n<text:p text:style-name=\"NIM_rnTitle\">$3</text:p>\n",             # ODT
       [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
   else:
     dispA(d.target, result,
-      "\n<h$1 id=\"$2\">$3</h$1>", # HTML
-      "\\rsth$4{$3}\\label{$2}\n", # TEX
-      "\n<text:h>$3</text:h>\n",  # ODT
+      "\n<h$1 id=\"$2\">$3</h$1>",                               # HTML
+      "\\rsth$4{$3}\\label{$2}\n",                               # TEX
+      "\n<text:p text:style-name=\"NIM_rnTitle\">$3</text:p>\n", # ODT
       [$n.level, refname, tmp, $chr(n.level - 1 + ord('A'))])
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
@@ -782,17 +782,17 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
     d.currentSection = tmp
     dispA(d.target, result,
-      "<h$1 id=\"$2\"><center>$3</center></h$1>",  # HTML
-      "\\rstov$4{$3}\\label{$2}\n",                # TEX
-      "\n<text:h><center>$3</center></text:h>\n", # ODT
+      "<h$1 id=\"$2\"><center>$3</center></h$1>",                # HTML
+      "\\rstov$4{$3}\\label{$2}\n",                              # TEX
+      "\n<text:p text:style-name=\"NIM_rnTitle\">$3</text:p>\n", # ODT
       [$n.level, rstnodeToRefname(n), tmp, $chr(n.level - 1 + ord('A'))])
 
 
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
   dispA(d.target, result,
-    "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n", # HTML
-    "\\item\\label{$1_toc} $2\\ref{$1}\n",                                 # TEX
-    "\n</text:h>$2</text:h>\n",                                            # ODT
+    "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",    # HTML
+    "\\item\\label{$1_toc} $2\\ref{$1}\n",                                    # TEX
+    "\n</text:p text:style-name=\"NIM_rnStandaloneHyperlink\">$2</text:p>\n", # ODT
     [e.refname, e.header])
 
 proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
@@ -972,7 +972,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
 
   let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text)
 
-  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", "", [])
+  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", "\n", [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
@@ -988,12 +988,12 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
         add(result, substr(m.text, g.start, g.length + g.start - 1))
       else:
         dispA(d.target, result,
-          "<span class=\"$2\">$1</span>",     # HTML
-          "\\span$2{$1}",                     # TEX
-          "<span><text:p>$1</text:p></span>", # ODT
+          "<span class=\"$2\">$1</span>",                                      # HTML
+          "\\span$2{$1}",                                                      # TEX
+          "\n<text:p text:style-name=\"NIM_rnInterpretedText\">$1</text:p>\n", # ODT
           [esc(d.target, substr(m.text, g.start, g.length+g.start-1)), tokenClassToStr[g.kind]])
     deinitGeneralTokenizer(g)
-  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n", "")
+  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n", "\n")
 
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
@@ -1031,25 +1031,25 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnInner: renderAux(d, n, result)
   of rnHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
-  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", "<hr />\n", result)
-  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", "<text:p>$1</text:p>\n", result)
+  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", "<text:p text:style-name=\"NIM_rnTransition\"></text:p>\n", result)
+  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", "<text:p text:style-name=\"NIM_rnParagraph\">$1</text:p>\n", result)
   of rnBulletList:
-    renderAux(d, n, "<ul class=\"simple\">$1</ul>\n",     # HTML
-                    "\\begin{itemize}$1\\end{itemize}\n", # TEX
-                    "<text:p>$1</text:p>\n", result)      # ODT
+    renderAux(d, n, "<ul class=\"simple\">$1</ul>\n",                                     # HTML
+                    "\\begin{itemize}$1\\end{itemize}\n",                                 # TEX
+                    "<text:p text:style-name=\"NIM_rnBulletList\">$1</text:p>\n", result) # ODT
   of rnBulletItem, rnEnumItem:
-    renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", "<text:p>$1</text:p>\n", result)
+    renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", "<text:p text:style-name=\"NIM_rnBulletItem\">$1</text:p>\n", result)
   of rnEnumList:
-    renderAux(d, n, "<ol class=\"simple\">$1</ol>\n",         # HTML
-                    "\\begin{enumerate}$1\\end{enumerate}\n", # TEX
-                    "<text:p>$1</text:p>\n", result)          # ODT
+    renderAux(d, n, "<ol class=\"simple\">$1</ol>\n",                                   # HTML
+                    "\\begin{enumerate}$1\\end{enumerate}\n",                           # TEX
+                    "<text:p text:style-name=\"NIM_rnEnumList\">$1</text:p>\n", result) # ODT
   of rnDefList:
     renderAux(d, n, "<dl class=\"docutils\">$1</dl>\n",           # HTML
                     "\\begin{description}$1\\end{description}\n", # TEX
                     "<text:p>$1</text:p>\n", result)              # ODT
   of rnDefItem: renderAux(d, n, result)
-  of rnDefName: renderAux(d, n, "<dt>$1</dt>\n", "\\item[$1] ", "<text:p>$1</text:p>\n", result)
-  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", "<text:p>$1</text:p>\n", result)
+  of rnDefName: renderAux(d, n, "<dt>$1</dt>\n", "\\item[$1] ", "<text:p text:style-name=\"NIM_rnDefName\">$1</text:p>\n", result)
+  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", "<text:p text:style-name=\"NIM_rnDefBody\">$1</text:p>\n", result)
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
@@ -1061,48 +1061,48 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           "<col class=\"docinfo-content\" />" &
           "<tbody valign=\"top\">$1" &
           "</tbody></table>",
-          "\\begin{description}$1\\end{description}\n", "<text:p>$1</text:p>\n",
+          "\\begin{description}$1\\end{description}\n", "<text:p text:style-name=\"NIM_rnFieldList\">$1</text:p>\n",
           [tmp])
   of rnField: renderField(d, n, result)
   of rnFieldName:
     renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
-                    "\\item[$1:]", "<text:p>$1</text:p>\n", result)
+                    "\\item[$1:]", "<text:p text:style-name=\"NIM_rnFieldName\">$1</text:p>\n", result)
   of rnFieldBody:
-    renderAux(d, n, "<td>$1</td>", " $1\n", "<text:p>$1</text:p>\n", result)
+    renderAux(d, n, "<td>$1</td>", " $1\n", "<text:p text:style-name=\"NIM_rnFieldBody\">$1</text:p>\n", result)
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
     renderAux(d, n, "<table frame=\"void\">$1</table>",
       "\\begin{description}\n$1\\end{description}\n",
-      "<text:p>$1</text:p>\n", result)
+      "<text:p text:style-name=\"NIM_rnOptionList\">$1</text:p>\n", result)
   of rnOptionListItem:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", "<text:p>$1</text:p>\n", result)
+    renderAux(d, n, "<tr>$1</tr>\n", "$1", "<text:p text:style-name=\"NIM_rnOptionListItem\">$1</text:p>\n", result)
   of rnOptionGroup:
-    renderAux(d, n, "<th align=\"left\">$1</th>", "\\item[$1]", "<text:p>$1</text:p>\n", result)
+    renderAux(d, n, "<th align=\"left\">$1</th>", "\\item[$1]", "<text:p text:style-name=\"NIM_rnOptionGroup\">$1</text:p>\n", result)
   of rnDescription:
-    renderAux(d, n, "<td align=\"left\">$1</td>\n", " $1\n", "<text:p>$1</text:p>\n", result)
+    renderAux(d, n, "<td align=\"left\">$1</td>\n", " $1\n", "<text:p text:style-name=\"NIM_rnDescription\">$1</text:p>\n", result)
   of rnOption, rnOptionString, rnOptionArgument:
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre>$1</pre>\n",
                     "\\begin{rstpre}\n$1\n\\end{rstpre}\n",
-                    "<pre><text:p>$1</text:p></pre>\n",result)
+                    "<text:p text:style-name=\"NIM_rnLiteralBlock\">$1</text:p>\n",result)
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
-    renderAux(d, n, "<p>$1</p>", "$1\n\n", "<text:p>$1</text:p>", result)
+    renderAux(d, n, "<p>$1</p>", "$1\n\n", "<text:p text:style-name=\"NIM_rnLineBlock\">$1</text:p>", result)
   of rnLineBlockItem:
-    renderAux(d, n, "$1<br />", "$1\\\\\n", "<text:p>$1</text:p>", result)
+    renderAux(d, n, "$1<br />", "$1\\\\\n", "<text:p text:style-name=\"NIM_rnLineBlockItem\">$1</text:p>", result)
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n",
-                    "<text:p><blockquote>$1</blockquote></text:p>", result)
+                    "<text:p text:style-name=\"NIM_rnBlockQuote\">$1</text:p>", result)
   of rnTable, rnGridTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &
         texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}",
-        "<text:p>$1</text:p>", result)
+        "<text:p text:style-name=\"NIM_rnTable\">$1</text:p>", result)
   of rnTableRow:
     if len(n) >= 1:
       if d.target == outLatex:
@@ -1117,9 +1117,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
         renderAux(d, n, result)
         result.add("</tr>\n")
   of rnTableDataCell:
-    renderAux(d, n, "<td>$1</td>", "$1", "<text:p>$1</text:p>", result)
+    renderAux(d, n, "<td>$1</td>", "$1", "<text:p text:style-name=\"NIM_rnTableDataCell\">$1</text:p>", result)
   of rnTableHeaderCell:
-    renderAux(d, n, "<th>$1</th>", "\\textbf{$1}", "<text:p>$1</text:p>", result)
+    renderAux(d, n, "<th>$1</th>", "\\textbf{$1}", "<text:p text:style-name=\"NIM_rnTableHeaderCell\">$1</text:p>", result)
   of rnLabel:
     doAssert false, "renderRstToOut" # used for footnotes and other
   of rnFootnote:
@@ -1131,11 +1131,11 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, tmp)
     dispA(d.target, result,
       "<a class=\"reference external\" href=\"#$2\">$1</a>",
-      "$1\\ref{$2}", "<text:p><a>$1</a></text:p>", [tmp, rstnodeToRefname(n)])
+      "$1\\ref{$2}", "<text:p text:style-name=\"NIM_rnStandaloneHyperlink\">$1</text:p>", [tmp, rstnodeToRefname(n)])
   of rnStandaloneHyperlink:
     renderAux(d, n,
       "<a class=\"reference external\" href=\"$1\">$1</a>",
-      "\\href{$1}{$1}", "<text:p>$1</text:p>", result)
+      "\\href{$1}{$1}", "<text:p text:style-name=\"NIM_rnStandaloneHyperlink\">$1</text:p>", result)
   of rnHyperlink:
     var tmp0 = ""
     var tmp1 = ""
@@ -1143,7 +1143,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderRstToOut(d, n.sons[1], tmp1)
     dispA(d.target, result,
       "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", "<text:p>$1</text:p>", [tmp0, tmp1])
+      "\\href{$2}{$1}", "<text:p text:style-name=\"NIM_rnHyperlink\">$1</text:p>", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
     if d.target != outLatex:
@@ -1164,22 +1164,22 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", "<text:p>$1</text:p>",
+    dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", "<text:p text:style-name=\"NIM_rnGeneralRole\">$1</text:p>",
           [tmp0, tmp1])
-  of rnSub: renderAux(d, n, "<sub>$1</sub>", "\\rstsub{$1}", "<text:p><sub>$1</sub></text:p>", result)
-  of rnSup: renderAux(d, n, "<sup>$1</sup>", "\\rstsup{$1}", "<text:p><sup>$1</sup></text:p>", result)
-  of rnEmphasis: renderAux(d, n, "<em>$1</em>", "\\emph{$1}", "<text:p><em>$1</em></text:p>", result)
+  of rnSub: renderAux(d, n, "<sub>$1</sub>", "\\rstsub{$1}", "<text:p text:style-name=\"NIM_rnSub\">$1</text:p>", result)
+  of rnSup: renderAux(d, n, "<sup>$1</sup>", "\\rstsup{$1}", "<text:p text:style-name=\"NIM_rnSup\">$1</text:p>", result)
+  of rnEmphasis: renderAux(d, n, "<em>$1</em>", "\\emph{$1}", "<text:p text:style-name=\"NIM_rnEmphasis\">$1</text:p>", result)
   of rnStrongEmphasis:
-    renderAux(d, n, "<strong>$1</strong>", "\\textbf{$1}", "<text:p><strong>$1</strong></text:p>", result)
+    renderAux(d, n, "<strong>$1</strong>", "\\textbf{$1}", "<text:p text:style-name=\"NIM_rnStrongEmphasis\">$1</text:p>", result)
   of rnTripleEmphasis:
     renderAux(d, n, "<strong><em>$1</em></strong>",
-                    "\\textbf{emph{$1}}", "<text:p><strong><em>$1</em></strong></text:p>", result)
+                    "\\textbf{emph{$1}}", "<text:p text:style-name=\"NIM_rnTripleEmphasis\">$1</text:p>", result)
   of rnIdx:
     renderIndexTerm(d, n, result)
   of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
-      "\\texttt{$1}", "<text:p><span><pre>$1</pre></span></text:p>", result)
+      "\\texttt{$1}", "<text:p text:style-name=\"NIM_rnInlineLiteral\">$1</text:p>", result)
   of rnSmiley: renderSmiley(d, n, result)
   of rnLeaf: result.add(esc(d.target, n.text))
   of rnContents: d.hasToc = true
@@ -1360,48 +1360,52 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   renderRstToOut(d, rst, result)
 
 
-proc rstToOdt*(rstSource: string): string =
-  ## Converts an input RST string into ODT (Unstyled).
-  ## File extension must be ``*.fodt``, when saving to a file.
+proc rstToOdt*(rstSource: string, options: RstParseOptions): string =
+  ## Converts RST to ODT (Unstyled). File extension must be ``*.fodt``.
+  ## `OASIS OpenDocument Spec <https://www.oasis-open.org/committees/download.php/19274/OpenDocument-v1.0ed2-cs1.pdf>`_
+  ## `ISO-26300 Standard <https://www.iso.org/standard/66363.html>`_
   ##
   ## Example:
   ##
   ## .. code-block:: nim
   ##   import packages/docutils/rstgen
-  ##   echo rstToOdt("*Hello* **world**!")
+  ##   rstToOdt("*Hello* **world**", {})
   assert rstSource.len > 0, "'rstSource' must not be empty string."
   var gen: RstGenerator
   var dummyHasToc = false
   var odtBody: string
-  initRstGenerator(gen, outOdt, newStringTable(modeStyleInsensitive), "", {})
-  renderRstToOut(gen, rstParse(rstSource, "", 0, 1, dummyHasToc, {}), odtBody)
-  result = odtHeaders.format(odtBody)
+  initRstGenerator(gen, outOdt, newStringTable(modeStyleInsensitive), "", options)
+  renderRstToOut(gen, rstParse(rstSource, "", 0, 1, dummyHasToc, options), odtBody)
+  result = odtHeaders.format(odtBody)  # Headers + Body
+
+
+proc rstToLatex*(rstSource: string, options: RstParseOptions): string =
+  ## Convenience proc for ``renderRstToOut`` and ``initRstGenerator`` on Latex mode
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   import packages/docutils/rstgen
+  ##   echo rstToLatex("*Hello* **world**", {})
+  assert rstSource.len > 0, "'rstSource' must not be empty string."
+  var option: bool
+  var rst2latex: RstGenerator
+  rst2latex.initRstGenerator(outLatex, defaultConfig(), "input", options)
+  rst2latex.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
+
+
+runnableExamples:
+  import strtabs  ## Needed for StringTable
+  echo rstToHtml("*Hello* **world**", {}, newStringTable(modeStyleInsensitive)) ## RST to HTML
+  echo rstToLatex("*Hello* **world**", {})                                      ## RST to Latex
+  echo rstToOdt("*Hello* **world**", {})                                        ## RST to ODT
 
 
 when isMainModule:
-  const myLibreOfficeDocument = """<?xml version="1.0" encoding="UTF-8"?>
-  <office:document
-      xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
-      xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
-      xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"
-      xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
-      xmlns:xhtml="http://www.w3.org/1999/xhtml"
-    office:mimetype="application/vnd.oasis.opendocument.text">
-    <office:meta>
-      <meta:generator>Generated by Nim $1 http://nim-lang.org</meta:generator>
-      <dc:date>$2T$3</dc:date>
-    </office:meta>
-    <office:body><office:text><text:p>Yo</text:p> <strong><text:p>Yo</text:p></strong>
-</office:text>
-</office:body>
-</office:document>
-""".format(NimVersion, CompileDate, CompileTime)
-  echo rstToOdt("*Yo* **Yo**") # == myLibreOfficeDocument
-
-
-# when isMainModule:
-#   assert rstToHtml("*Hello* **world**!", {},
-#     newStringTable(modeStyleInsensitive)) ==
-#     "<em>Hello</em> <strong>world</strong>!"
-
-#   echo rstToOdt("*Yo* **Yo**")
+  import xmlparser, xmltree
+  const nothing = {}
+  const stringy = "*Hello* **world**"
+  doAssert rstToHtml(stringy, nothing, newStringTable(modeStyleInsensitive)
+    ) == "<em>Hello</em> <strong>world</strong>"
+  doAssert rstToLatex(stringy, nothing) ==  r"\emph{Hello} \textbf{world}"
+  doAssert parseXml(rstToOdt(stringy, nothing)) is XmlNode
