@@ -469,6 +469,7 @@ const mimes* = {
   "fmf": "video/x-atomic3d-feature",
   "fnc": "application/vnd.frogans.fnc",
   "fo": "application/vnd.software602.filler.form+xml",
+  "fodt": "application/vnd.oasis.opendocument.text",
   "for": "text/x-fortran",
   "fpx": "image/vnd.fpx",
   "frame": "application/vnd.framemaker",
