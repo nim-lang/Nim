@@ -7,7 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a generator of HTML/Latex/ODT from
+## This module implements a generator of HTML/
+## `Latex <http://wikipedia.org/wiki/LaTeX>`_/
+## `ODT <http://wikipedia.org/wiki/OpenDocument>`_ from
 ## `reStructuredText`:idx: (see http://docutils.sourceforge.net/rst.html for
 ## information on this markup syntax) and is used by the compiler's `docgen
 ## tools <docgen.html>`_.
@@ -23,11 +25,12 @@
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 ##
-## It generates ODT Open Document Format for Office Applications (OpenDocument)
-## `OASIS OpenDocument Spec <https://www.oasis-open.org/committees/download.php/19274/OpenDocument-v1.0ed2-cs1.pdf>`_
+## It can generate ODT "Open Document Format for Office Applications", see
+## `OpenDocument Spec <https://www.oasis-open.org/committees/download.php/19274/OpenDocument-v1.0ed2-cs1.pdf>`_
 ## `ISO-26300 Standard <https://www.iso.org/standard/66363.html>`_
 ## through the convenience proc ``rstToOdt``,
 ## which provided an string with RST returns a string with the generated ODT.
+## If saved to a file it should open on anything that follows the ISO standards.
 ## The final output is meant to be styled by the user, it won't contain styles.
 ##
 ## **Note:** Import ``packages/docutils/rstgen`` to use this module
@@ -38,8 +41,7 @@ import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
 const
   HtmlExt = "html"
   IndexExt* = ".idx"
-  odtHeaders = staticRead"opendocument_template.xml".format(
-    NimVersion, CompileDate, CompileTime) # ISO-26300 XML,Dont touch this file.
+  odtHeaders = staticRead"opendocument_template.xml"
 
 type
   OutputTarget* = enum ## which document type to generate
@@ -88,7 +90,7 @@ type
     testCmd: string
     status: int
 
-proc init(p: var CodeBlockParams) =
+func init(p: var CodeBlockParams) {.inline.} =
   ## Default initialisation of CodeBlockParams to sane values.
   p.startLine = 1
   p.lang = langNone
@@ -168,7 +170,7 @@ proc writeIndexFile*(g: var RstGenerator, outfile: string) =
   ## <#setIndexTerm>`_ proc. If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
 
-proc addXmlChar(dest: var string, c: char) =
+func addXmlChar(dest: var string, c: char) =
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -176,14 +178,14 @@ proc addXmlChar(dest: var string, c: char) =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
 
-proc addRtfChar(dest: var string, c: char) =
+func addRtfChar(dest: var string, c: char) =
   case c
   of '{': add(dest, "\\{")
   of '}': add(dest, "\\}")
   of '\\': add(dest, "\\\\")
   else: add(dest, c)
 
-proc addTexChar(dest: var string, c: char) =
+func addTexChar(dest: var string, c: char) =
   case c
   of '_': add(dest, "\\_")
   of '{': add(dest, "\\symbol{123}")
@@ -201,15 +203,16 @@ proc addTexChar(dest: var string, c: char) =
   of '`': add(dest, "\\symbol{96}")
   else: add(dest, c)
 
-proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
+func escChar*(target: OutputTarget, dest: var string, c: char) =
   case target
-  of outHtml, outOdt:  addXmlChar(dest, c)
-  of outLatex: addTexChar(dest, c)
+  of outHtml, outOdt:  addXmlChar(dest, c) # HTML or ODT
+  of outLatex: addTexChar(dest, c)         # TEX
 
-proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
+func addSplitter(target: OutputTarget; dest: var string) =
   case target
-  of outHtml, outOdt: add(dest, "<wbr />")
-  of outLatex: add(dest, "\\-")
+  of outHtml: add(dest, "<wbr />") # HTML
+  of outLatex: add(dest, "\\-")    # TEX
+  of outOdt: add(dest, "\n")       # ODT
 
 func nextSplitPoint*(s: string, start: int): int =
   result = start
@@ -241,22 +244,25 @@ func esc*(target: OutputTarget, s: string, splitAfter = -1): string =
     for i in countup(0, len(s) - 1): escChar(target, result, s[i])
 
 
-func disp(target: OutputTarget, xml, tex, odt: string): string =
-  if target == outHtml: result = xml  # HTML
-  if target == outOdt: result = odt   # ODT
-  else: result = tex                  # TEX
+func disp(target: OutputTarget, html, tex, odt: string): string =
+  case target
+  of outHtml:  result = html # HTML
+  of outLatex: result = tex  # TEX
+  of outOdt:   result = odt  # ODT
 
-func dispF(target: OutputTarget, xml, tex, odt: string,
+func dispF(target: OutputTarget, html, tex, odt: string,
            args: varargs[string]): string =
-  if target == outHtml: result = xml % args # HTML
-  if target == outOdt: result = odt % args  # ODT
-  else: result = tex % args                 # TEX
+  case target
+  of outHtml:  result = html % args # HTML
+  of outLatex: result = tex % args  # TEX
+  of outOdt:   result = odt % args  # ODT
 
 proc dispA(target: OutputTarget, dest: var string,
-           xml, tex, odt: string, args: varargs[string]) =
-  if target == outHtml: addf(dest, xml, args) # HTML
-  if target == outOdt: addf(dest, odt, args)  # ODT
-  else: addf(dest, tex, args)                 # TEX
+           html, tex, odt: string, args: varargs[string]) =
+  case target
+  of outHtml:  addf(dest, html, args) # HTML
+  of outLatex: addf(dest, tex, args)  # TEX
+  of outOdt:   addf(dest, odt, args)  # ODT
 
 func `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
@@ -278,15 +284,13 @@ proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
 
-proc renderAux(d: PDoc, n: PRstNode, frmtXml, frmtTex, frmtOdt: string, result: var string) =
+proc renderAux(d: PDoc, n: PRstNode, frmtHtml, frmtTex, frmtOdt: string, result: var string) =
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
-  if d.target == outHtml:
-    result.addf(frmtXml, [tmp])  # HTML
-  elif d.target == outLatex:
-    result.addf(frmtTex, [tmp])  # TEX
-  else:
-    result.addf(frmtOdt, [tmp])  # ODT
+  case d.target
+  of outHtml:  result.addf(frmtHtml, [tmp])  # HTML
+  of outLatex: result.addf(frmtTex, [tmp])   # TEX
+  of outOdt:   result.addf(frmtOdt, [tmp])   # ODT
 
 # ---------------- index handling --------------------------------------------
 
@@ -309,11 +313,11 @@ func quoteIndexColumn(text: string): string =
     of '\t': result.add "\\t"
     else: result.add c
 
-func unquoteIndexColumn(text: string): string =
+func unquoteIndexColumn(text: string): string {.inline.} =
   ## Returns the unquoted version generated by ``quoteIndexColumn``.
   result = text.multiReplace(("\\t", "\t"), ("\\n", "\n"), ("\\\\", "\\"))
 
-proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
+func setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
                    linkTitle, linkDesc = "") =
   ## Adds a `term` to the index using the specified hyperlink identifier.
   ##
@@ -354,7 +358,7 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   if isTitle: d.theIndex.insert(entry)
   else: d.theIndex.add(entry)
 
-proc hash(n: PRstNode): int =
+func hash(n: PRstNode): int =
   if n.kind == rnLeaf:
     result = hash(n.text)
   elif n.len > 0:
@@ -418,14 +422,14 @@ func hash(x: IndexEntry): Hash =
   result = result !& x.linkDesc.hash
   result = !$result
 
-proc `<-`(a: var IndexEntry, b: IndexEntry) =
+func `<-`(a: var IndexEntry, b: IndexEntry) =
   shallowCopy a.keyword, b.keyword
   shallowCopy a.link, b.link
   shallowCopy a.linkTitle, b.linkTitle
   shallowCopy a.linkDesc, b.linkDesc
 
-proc sortIndex(a: var openArray[IndexEntry]) =
-  # we use shellsort here; fast and simple
+func sortIndex(a: var openArray[IndexEntry]) =
+  ## `Shellsort <http://wikipedia.org/wiki/Shellsort>`_ is used; Fast and simple.
   let n = len(a)
   var h = 1
   while true:
@@ -788,14 +792,14 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
       [$n.level, rstnodeToRefname(n), tmp, $chr(n.level - 1 + ord('A'))])
 
 
-proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
+func renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
   dispA(d.target, result,
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",    # HTML
     "\\item\\label{$1_toc} $2\\ref{$1}\n",                                    # TEX
     "\n</text:p text:style-name=\"NIM_rnStandaloneHyperlink\">$2</text:p>\n", # ODT
     [e.refname, e.header])
 
-proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
+func renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
                        result: var string) =
   var tmp = ""
   while j <= high(d.tocPart):
@@ -858,7 +862,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
         [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
-proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
+func renderSmiley(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
     """<img src="$1" width="15"
         height="17" hspace="2" vspace="2" class="smiley" />""",
@@ -1359,6 +1363,20 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   result = ""
   renderRstToOut(d, rst, result)
 
+proc rstToLatex*(rstSource: string, options: RstParseOptions): string =
+  ## Convenience proc for ``renderRstToOut`` and ``initRstGenerator`` on Latex mode
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   import packages/docutils/rstgen
+  ##   echo rstToLatex("*Hello* **world**", {})
+  assert rstSource.len > 0, "'rstSource' must not be empty string."
+  var option: bool
+  var rst2latex: RstGenerator
+  rst2latex.initRstGenerator(outLatex, defaultConfig(), "input", options)
+  rst2latex.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
+  assert result.len > 0, "'result' must not be empty string; Latex render error"
 
 proc rstToOdt*(rstSource: string, options: RstParseOptions): string =
   ## Converts RST to ODT (Unstyled). File extension must be ``*.fodt``.
@@ -1376,26 +1394,12 @@ proc rstToOdt*(rstSource: string, options: RstParseOptions): string =
   var odtBody: string
   initRstGenerator(gen, outOdt, newStringTable(modeStyleInsensitive), "", options)
   renderRstToOut(gen, rstParse(rstSource, "", 0, 1, dummyHasToc, options), odtBody)
+  assert odtBody.len > 0, "'odtBody' must not be empty string; ODT render error"
   result = odtHeaders.format(odtBody)  # Headers + Body
 
 
-proc rstToLatex*(rstSource: string, options: RstParseOptions): string =
-  ## Convenience proc for ``renderRstToOut`` and ``initRstGenerator`` on Latex mode
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   import packages/docutils/rstgen
-  ##   echo rstToLatex("*Hello* **world**", {})
-  assert rstSource.len > 0, "'rstSource' must not be empty string."
-  var option: bool
-  var rst2latex: RstGenerator
-  rst2latex.initRstGenerator(outLatex, defaultConfig(), "input", options)
-  rst2latex.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
-
-
 runnableExamples:
-  import strtabs  ## Needed for StringTable
+  import strtabs
   echo rstToHtml("*Hello* **world**", {}, newStringTable(modeStyleInsensitive)) ## RST to HTML
   echo rstToLatex("*Hello* **world**", {})                                      ## RST to Latex
   echo rstToOdt("*Hello* **world**", {})                                        ## RST to ODT
@@ -1405,7 +1409,8 @@ when isMainModule:
   import xmlparser, xmltree
   const nothing = {}
   const stringy = "*Hello* **world**"
-  doAssert rstToHtml(stringy, nothing, newStringTable(modeStyleInsensitive)
-    ) == "<em>Hello</em> <strong>world</strong>"
+  let t = newStringTable(modeStyleInsensitive)
+  doAssert rstToHtml(stringy, nothing, t) == "<em>Hello</em> <strong>world</strong>"
   doAssert rstToLatex(stringy, nothing) ==  r"\emph{Hello} \textbf{world}"
   doAssert parseXml(rstToOdt(stringy, nothing)) is XmlNode
+  # Tests at: Nim/tests/stdlib/trstgen.nim
