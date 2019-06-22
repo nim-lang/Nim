@@ -4,7 +4,7 @@ discard """
 """
 
 import verylongnamehere, verylongnamehere,
-  verylongnamehereverylongnamehereverylong, namehere, verylongnamehere
+    verylongnamehereverylongnamehereverylong, namehere, verylongnamehere
 
 proc `[]=`() = discard "index setter"
 proc `putter=`() = discard cast[pointer](cast[int](buffer) + size)
@@ -15,7 +15,8 @@ let expr = if true: "true" else: "false"
 
 var body = newNimNode(nnkIfExpr).add(
   newNimNode(nnkElifBranch).add(
-    infix(newDotExpr(ident("a"), ident("kind")), "==", newDotExpr(ident("b"), ident("kind"))),
+    infix(newDotExpr(ident("a"), ident("kind")), "==", newDotExpr(ident("b"),
+        ident("kind"))),
     condition
   ),
   newNimNode(nnkElse).add(newStmtList(newNimNode(nnkReturnStmt).add(ident(
@@ -124,8 +125,8 @@ type
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
 
-proc openEmitter*[T, S](em: var Emitter; config: ConfigRef; fileIdx: FileIndex) {.
-    pragmaHereWrongCurlyEnd.} =
+proc openEmitter*[T, S](em: var Emitter; config: ConfigRef;
+    fileIdx: FileIndex) {.pragmaHereWrongCurlyEnd.} =
   let outfile = changeFileExt(config.toFullPath(fileIdx), ".pretty.nim")
   em.f = llStreamOpen(outfile, fmWrite)
   em.config = config
@@ -217,7 +218,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       "case returns value"
 
 
-  if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
+  if tok.tokType == tkComment and tok.line == em.lastLineNumber and
+      tok.indent >= 0:
     # we have an inline comment so handle it before the indentation token:
     emitComment(em, tok)
     preventComment = true
@@ -282,8 +284,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkComment:
     if not preventComment:
       emitComment(em, tok)
-  of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit,
-      tkGTripleStrLit, tkCharLit:
+  of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
     softLinebreak(em, lit)
     if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wr(" ")
@@ -615,8 +616,8 @@ type
 
 
 # bug #11469
-const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20,
-    15, 16, 17, 25, 17, 4, 8, 31, 27, 13, 23]
+const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15,
+    16, 17, 25, 17, 4, 8, 31, 27, 13, 23]
 
 veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1],
     futureValue1, futureValue2, node)

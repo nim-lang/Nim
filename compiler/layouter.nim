@@ -16,6 +16,7 @@ from sequtils import delete
 
 const
   MaxLineLen = 80
+  MinLineLen = 10
 
 type
   SplitKind = enum
@@ -88,33 +89,39 @@ proc computeRhs(em: Emitter; pos: int): int =
     inc result, em.tokens[p].len
     inc p
 
+proc isLongEnough(lineLen, startPos, endPos: int): bool =
+  result = lineLen > MinLineLen and endPos > startPos + 4
+
+proc findNewline(em: Emitter; p, lineLen: var int) =
+  while p < em.tokens.len and em.kinds[p] != ltNewline:
+    inc lineLen, em.tokens[p].len
+    inc p
+
 proc optionalIsGood(em: var Emitter; pos: int): bool =
   let ourIndent = em.tokens[pos].len
   var p = pos+1
   var lineLen = 0
-  while p < em.tokens.len and em.kinds[p] != ltNewline:
-    inc lineLen, em.tokens[p].len
-    inc p
-  if p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and em.tokens[p-1] == ",":
+  em.findNewline(p, lineLen)
+  if p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
+      em.kinds[p-1] == ltOptionalNewline:
     if em.tokens[p+1].len == ourIndent:
+      # concatenate lines with the same indententation
       var nlPos = p
-      inc p
       var lineLenTotal = lineLen
-      while p < em.tokens.len and em.kinds[p] != ltNewline:
-        inc lineLenTotal, em.tokens[p].len
-        inc p
-      if p > nlPos + 3 and lineLenTotal < MaxLineLen:
+      inc p
+      em.findNewline(p, lineLenTotal)
+      if isLongEnough(lineLenTotal, nlPos, p):
         em.kinds[nlPos] = ltOptionalNewline
         if em.kinds[nlPos+1] == ltSpaces:
           # inhibit extra spaces when concatenating two lines
-          em.tokens[nlPos+1] = " "
-        result = true
-    else:
-      result = false
+          em.tokens[nlPos+1] = if em.tokens[nlPos-2] == ",": " " else: ""
+      result = true
+    elif em.tokens[p+1].len < ourIndent:
+      result = isLongEnough(lineLen, pos, p)
   elif em.kinds[pos+1] == ltOther: # note: pos+1, not p+1
     result = false
   else:
-    result = lineLen > 10 and p > pos + 3
+    result = isLongEnough(lineLen, pos, p)
 
 proc lenOfNextTokens(em: Emitter; pos: int): int =
   result = 0
@@ -149,7 +156,9 @@ proc closeEmitter*(em: var Emitter) =
       lineLen = 0
       lineBegin = i+1
     of ltOptionalNewline:
-      if lineLen + lenOfNextTokens(em, i) >= MaxLineLen and optionalIsGood(em, i):
+      let totalLineLen = lineLen + lenOfNextTokens(em, i)
+      if totalLineLen > MaxLineLen + MinLineLen or
+         totalLineLen > MaxLineLen and optionalIsGood(em, i):
         if i-1 >= 0 and em.kinds[i-1] == ltSpaces:
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
@@ -218,7 +227,6 @@ proc removeSpaces(em: var Emitter) =
     setLen(em.kinds, em.kinds.len-1)
     dec em.col, tokenLen
 
-template goodCol(col): bool = col >= 40
 
 const
   openPars = {tkParLe, tkParDotLe,
@@ -232,41 +240,17 @@ const
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
+template goodCol(col): bool = col >= MaxLineLen div 2
+
+template moreIndent(em): int =
+  if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth
+
 template rememberSplit(kind) =
   if goodCol(em.col) and not em.inquote:
     let spaces = em.indentLevel+moreIndent(em)
     if spaces < em.col and spaces > 0:
       wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
     #em.altSplitPos[kind] = em.tokens.len
-
-template moreIndent(em): int =
-  (if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth)
-
-proc softLinebreak(em: var Emitter, lit: string) =
-  # XXX Use an algorithm that is outlined here:
-  # https://llvm.org/devmtg/2013-04/jasper-slides.pdf
-  # +2 because we blindly assume a comma or ' &' might follow
-  when false:
-    if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
-      if em.lastTok in splitters:
-        # bug #10295, check first if even more indentation would help:
-        let spaces = em.indentLevel+moreIndent(em)
-        if spaces < em.col and spaces > 0:
-          wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
-      else:
-        var correctTerms = false
-        # search backwards for a good split position:
-        for a in mitems(em.altSplitPos):
-          if correctTerms:
-            # we inserted a token so patch the potential
-            # ltOptionalNewline positions that follow:
-            inc a
-          elif a > em.fixedUntil:
-            em.kinds.insert(ltOptionalNewline, a)
-            em.tokens.insert(repeat(' ', em.indentLevel+moreIndent(em)), a)
-            # mark position as "already split here"
-            a = -1
-            correctTerms = true
 
 proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
   # re-align every line in the multi-line comment:
@@ -398,14 +382,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
 
     if not em.inquote:
       wr(em, TokTypeToStr[tok.tokType], ltKeyword)
-
-      case tok.tokType
-      of tkAnd: rememberSplit(splitAnd)
-      of tkOr: rememberSplit(splitOr)
-      of tkIn, tkNotin:
+      if tok.tokType in {tkAnd, tkOr, tkIn, tkNotin}:
         rememberSplit(splitIn)
         wrSpace em
-      else: discard
     else:
       # keywords in backticks are not normalized:
       wr(em, tok.ident.s, ltIdent)
@@ -462,7 +441,6 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       emitComment(em, tok)
   of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
-    softLinebreak(em, lit)
     if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
     em.lineSpan = countNewlines(lit)
     if em.lineSpan > 0: calcCol(em, lit)
@@ -470,7 +448,6 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkEof: discard
   else:
     let lit = if tok.ident != nil: tok.ident.s else: tok.literal
-    softLinebreak(em, lit)
     if endsInAlpha(em): wrSpace(em)
     wr em, lit, ltIdent
 
