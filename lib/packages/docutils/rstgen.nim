@@ -1379,7 +1379,7 @@ proc rstToLatex*(rstSource: string, options: RstParseOptions): string =
   assert result.len > 0, "'result' must not be empty string; Latex render error"
 
 proc rstToOdt*(rstSource: string, options: RstParseOptions): string =
-  ## Converts RST to ODT (Unstyled). File extension must be ``*.fodt``.
+  ## Converts RST to ODT. File extension must be ``*.fodt``.
   ## `OASIS OpenDocument Spec <https://www.oasis-open.org/committees/download.php/19274/OpenDocument-v1.0ed2-cs1.pdf>`_
   ## `ISO-26300 Standard <https://www.iso.org/standard/66363.html>`_
   ##
