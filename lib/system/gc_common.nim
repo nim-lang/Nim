@@ -252,17 +252,17 @@ else:
 
 {.push stack_trace: off.}
 when nimCoroutines:
-  proc GC_addStack(bottom: pointer) {.cdecl, exportc.} =
+  proc GC_addStack(bottom: pointer) {.cdecl, dynlib, exportc.} =
     # c_fprintf(stdout, "GC_addStack: %p;\n", bottom)
     var stack = gch.stack.append()
     stack.bottom = bottom
     stack.setPosition(bottom)
 
-  proc GC_removeStack(bottom: pointer) {.cdecl, exportc.} =
+  proc GC_removeStack(bottom: pointer) {.cdecl, dynlib, exportc.} =
     # c_fprintf(stdout, "GC_removeStack: %p;\n", bottom)
     gch.stack.find(bottom).remove()
 
-  proc GC_setActiveStack(bottom: pointer) {.cdecl, exportc.} =
+  proc GC_setActiveStack(bottom: pointer) {.cdecl, dynlib, exportc.} =
     ## Sets active stack and updates current stack position.
     # c_fprintf(stdout, "GC_setActiveStack: %p;\n", bottom)
     var sp {.volatile.}: pointer
