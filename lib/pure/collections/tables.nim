@@ -1253,11 +1253,13 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
     h = nxt
 
 template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
-  var h = t.first
-  while h >= 0:
-    var nxt = t.data[h].next
-    if isFilled(t.data[h].hcode): yieldStmt
-    h = nxt
+  if t.counter > 0:
+    var h = t.first
+    while h >= 0:
+      var nxt = t.data[h].next
+      if isFilled(t.data[h].hcode):
+        yieldStmt
+      h = nxt
 
 # ----------------------------------------------------------------------
 
