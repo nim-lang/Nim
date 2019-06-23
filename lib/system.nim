@@ -830,7 +830,7 @@ type
     ## **Note**: Nim currently does not detect these!
   DeadThreadError* = object of Defect ## \
     ## Raised if it is attempted to send a message to a dead thread.
-  NilAccessError* = object of Defect ## \
+  NilAccessError* {.deprecated: "broken".} = object of Defect ## \
     ## Raised on dereferences of ``nil`` pointers.
     ##
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!

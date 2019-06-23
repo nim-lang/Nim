@@ -13,7 +13,6 @@
 proc chckIndx(i, a, b: int): int {.inline, compilerproc.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
-proc chckNil(p: pointer) {.inline, compilerproc.}
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} = discard
 proc popFrame {.compilerRtl, inl.} = discard

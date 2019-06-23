@@ -429,9 +429,6 @@ Miscellaneous
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
 
-* `segfaults <segfaults.html>`_
-  Turns access violations or segfaults into a ``NilAccessError`` exception.
-
 
 Modules for JS backend
 ----------------------

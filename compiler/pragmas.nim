@@ -334,7 +334,6 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wRangechecks: {optRangeCheck}
   of wBoundchecks: {optBoundsCheck}
   of wOverflowchecks: {optOverflowCheck}
-  of wNilchecks: {optNilCheck}
   of wFloatchecks: {optNaNCheck, optInfCheck}
   of wNanChecks: {optNaNCheck}
   of wInfChecks: {optInfCheck}

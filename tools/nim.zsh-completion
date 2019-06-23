@@ -58,8 +58,6 @@ _nim() {
     '*--nanChecks=off[turn NaN checks off]' \
     '*--infChecks=on[turn Inf checks on]' \
     '*--infChecks=off[turn Inf checks off]' \
-    '*--nilChecks=on[turn nil checks on]' \
-    '*--nilChecks=off[turn nil checks off]' \
     '*--opt=none[do not optimize]' \
     '*--opt=speed[optimize for speed|size - use -d:release for a release build]' \
     '*--opt=size[optimize for size]' \

@@ -46,7 +46,6 @@ proc quitOrDebug() {.inline.} =
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc, benign.}
-proc chckNil(p: pointer) {.noinline, compilerproc, benign.}
 
 type
   GcFrame = ptr GcFrameHeader
@@ -474,10 +473,10 @@ when defined(endb):
 when defined(cpp) and appType != "lib" and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
-      
-  type 
+
+  type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
-      
+
   proc what(ex: StdException): cstring {.importcpp: "((char *)#.what())".}
 
   proc setTerminate(handler: proc() {.noconv.})
@@ -497,7 +496,7 @@ when defined(cpp) and appType != "lib" and
       msg = "Error: unhandled cpp exception: " & $e.what()
     except:
       msg = "Error: unhandled unknown cpp exception"
-      
+
     when defined(genode):
       # stderr not available by default, use the LOG session
       echo msg

@@ -229,17 +229,10 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = sonsLen(base.typ)
-  var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysMagic(g, unknownLineInfo(), "and", mAnd)
   var iss = getSysMagic(g, unknownLineInfo(), "of", mOf)
   let boolType = getSysType(g, unknownLineInfo(), tyBool)
-  for col in 1 ..< paramLen:
-    if contains(relevantCols, col):
-      let param = base.typ.n.sons[col].sym
-      if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
-        addSon(nilchecks, newTree(nkCall,
-            newSymNode(getCompilerProc(g, "chckNilDisp")), newSymNode(param)))
   for meth in 0 .. high(methods):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
@@ -280,9 +273,8 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
       addSon(disp, a)
     else:
       disp = ret
-  nilchecks.add disp
-  nilchecks.flags.incl nfTransf # should not be further transformed
-  result.ast.sons[bodyPos] = nilchecks
+  disp.flags.incl nfTransf # should not be further transformed
+  result.ast.sons[bodyPos] = disp
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)

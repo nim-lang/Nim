@@ -63,7 +63,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNewRoof")
   defineSymbol("nimHasRunnableExamples")
   defineSymbol("nimNewDot")
-  defineSymbol("nimHasNilChecks")
   defineSymbol("nimSymKind")
   defineSymbol("nimVmEqIdent")
   defineSymbol("nimNoNil")

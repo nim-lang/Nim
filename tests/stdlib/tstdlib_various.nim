@@ -20,12 +20,6 @@ Hi Andreas! How do you feel, Rumpf?
 @[0, 2, 1]
 @[0, 1, 2]
 055this should be the casehugh@["(", "+", " 1", " 2", ")"]
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
 [5]
 [4, 5]
 [3, 4, 5]
@@ -157,23 +151,6 @@ block tropes:
   doAssert $r2 == "123456"
   doAssert $r1[1] == "2"
   doAssert $r2[2] == "3"
-
-
-
-block tsegfaults:
-  proc main =
-    try:
-      var x: ptr int
-      echo x[]
-      try:
-        raise newException(ValueError, "not a crash")
-      except ValueError:
-        discard
-    except NilAccessError:
-      echo "caught a crash!"
-  for i in 0..5:
-    main()
-
 
 
 block tsinglylinkedring:

@@ -61,13 +61,8 @@ proc chckRangeF(x, a, b: float): float =
     else:
       sysFatal(RangeError, "value out of range: ", $x)
 
-proc chckNil(p: pointer) =
-  if p == nil:
-    sysFatal(NilAccessError, "attempt to write to a nil address")
-
-proc chckNilDisp(p: pointer) {.compilerproc.} =
-  if p == nil:
-    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
+proc chckNil(p: pointer) {.compilerproc, deprecated: "broken".} = discard
+proc chckNilDisp(p: pointer) {.compilerproc, deprecated: "broken".} = discard
 
 when not defined(nimV2):
 
