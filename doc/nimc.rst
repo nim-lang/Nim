@@ -266,11 +266,11 @@ configuration file should contain something like::
 Cross compilation for Windows
 =============================
 
-To cross compile for Windows from Linux or OSX using the MinGW-w64 toolchain::
+To cross compile for Windows from Linux or macOS using the MinGW-w64 toolchain::
 
   nim c -d:mingw myproject.nim
 
-Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the cpu arch.
+Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the CPU architecture.
 
 The MinGW-w64 toolchain can be installed as follows::
 
@@ -443,7 +443,7 @@ Backend language options
 The typical compiler usage involves using the ``compile`` or ``c`` command to
 transform a ``.nim`` file into one or more ``.c`` files which are then
 compiled with the platform's C compiler into a static binary. However there
-are other commands to compile to C++, Objective-C or Javascript. More details
+are other commands to compile to C++, Objective-C or JavaScript. More details
 can be read in the `Nim Backend Integration document <backends.html>`_.
 
 
