@@ -265,14 +265,14 @@ proc genLabel(c: Con): TPosition =
 
 proc jmpBack(c: var Con, n: PNode, p = TPosition(0)) =
   let dist = p.int - c.code.len
-  doAssert(-0x7fff < dist and dist < 0x7fff)
+  doAssert(low(int) div 2 + 1 < dist and dist < high(int) div 2)
   c.code.add Instr(n: n, kind: goto, dest: dist)
 
 proc patch(c: var Con, p: TPosition) =
   # patch with current index
   let p = p.int
   let diff = c.code.len - p
-  doAssert(-0x7fff < diff and diff < 0x7fff)
+  doAssert(low(int) div 2 + 1 < diff and diff < high(int) div 2)
   c.code[p].dest = diff
 
 proc popBlock(c: var Con; oldLen: int) =
