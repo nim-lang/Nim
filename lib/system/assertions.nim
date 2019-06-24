@@ -31,9 +31,7 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
-    # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
-    # here, regardless of --excessiveStackTrace
-    {.line: instantiationInfo(fullPaths = true).}:
+    {.line: instantiationInfo(fullPaths = compileOption("excessiveStackTrace")).}:
       if not cond:
         failedAssertImpl(loc & " `" & expr & "` " & msg)
 
