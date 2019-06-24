@@ -11,7 +11,7 @@
 ##
 ## **See also:**
 ## * `threads module <threads.html>`_
-## * `chanels module <channels.html>`_
+## * `channels module <channels.html>`_
 ## * `locks module <locks.html>`_
 ## * `asyncdispatch module <asyncdispatch.html>`_
 
