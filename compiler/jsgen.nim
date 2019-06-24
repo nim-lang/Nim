@@ -431,15 +431,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # UnaryPlusF64
     ["", ""], # UnaryMinusF64
     ["", ""], # AbsF64
-    ["Ze8ToI", "Ze8ToI"], # mZe8ToI
-    ["Ze8ToI64", "Ze8ToI64"], # mZe8ToI64
-    ["Ze16ToI", "Ze16ToI"], # mZe16ToI
-    ["Ze16ToI64", "Ze16ToI64"], # mZe16ToI64
-    ["Ze32ToI64", "Ze32ToI64"], # mZe32ToI64
-    ["ZeIToI64", "ZeIToI64"], # mZeIToI64
-    ["toU8", "toU8"], # toU8
-    ["toU16", "toU16"], # toU16
-    ["toU32", "toU32"], # toU32
     ["", ""],     # ToFloat
     ["", ""],     # ToBiggestFloat
     ["", ""], # ToInt
@@ -621,15 +612,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mUnaryPlusF64: applyFormat("+($1)", "+($1)")
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
   of mAbsF64: applyFormat("Math.abs($1)", "Math.abs($1)")
-  of mZe8ToI: applyFormat("Ze8ToI($1)", "Ze8ToI($1)")
-  of mZe8ToI64: applyFormat("Ze8ToI64($1)", "Ze8ToI64($1)")
-  of mZe16ToI: applyFormat("Ze16ToI($1)", "Ze16ToI($1)")
-  of mZe16ToI64: applyFormat("Ze16ToI64($1)", "Ze16ToI64($1)")
-  of mZe32ToI64: applyFormat("Ze32ToI64($1)", "Ze32ToI64($1)")
-  of mZeIToI64: applyFormat("ZeIToI64($1)", "ZeIToI64($1)")
-  of mtoU8: applyFormat("toU8($1)", "toU8($1)")
-  of mtoU16: applyFormat("toU16($1)", "toU16($1)")
-  of mtoU32: applyFormat("toU32($1)", "toU32($1)")
   of mToFloat: applyFormat("$1", "$1")
   of mToBiggestFloat: applyFormat("$1", "$1")
   of mToInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")

@@ -639,28 +639,6 @@ proc genIsNil(p: BProc, e: PNode, d: var TLoc) =
     unaryExpr(p, e, d, "($1 == 0)")
 
 proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
-  const
-    unArithTab: array[mNot..mToBiggestInt, string] = [
-      "!($1)", # Not
-      "$1",                   # UnaryPlusI
-      "($3)((NU$2) ~($1))",   # BitnotI
-      "$1",                   # UnaryPlusF64
-      "-($1)",                # UnaryMinusF64
-      "($1 < 0? -($1) : ($1))", # AbsF64; BUGFIX: fabs() makes problems
-                                # for Tiny C, so we don't use it
-      "(($3)(NU)(NU8)($1))",  # mZe8ToI
-      "(($3)(NU64)(NU8)($1))", # mZe8ToI64
-      "(($3)(NU)(NU16)($1))", # mZe16ToI
-      "(($3)(NU64)(NU16)($1))", # mZe16ToI64
-      "(($3)(NU64)(NU32)($1))", # mZe32ToI64
-      "(($3)(NU64)(NU)($1))", # mZeIToI64
-      "(($3)(NU8)(NU)($1))", # ToU8
-      "(($3)(NU16)(NU)($1))", # ToU16
-      "(($3)(NU32)(NU64)($1))", # ToU32
-      "((double) ($1))",      # ToFloat
-      "((double) ($1))",      # ToBiggestFloat
-      "float64ToInt32($1)",   # ToInt
-      "float64ToInt64($1)"]   # ToBiggestInt
   var
     a: TLoc
     t: PType
@@ -671,7 +649,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   template applyFormat(frmt: untyped) =
     putIntoDest(p, d, e, frmt % [rdLoc(a), rope(getSize(p.config, t) * 8),
                 getSimpleTypeDesc(p.module, e.typ)])
-
   case op
   of mNot:
     applyFormat("!($1)")
@@ -686,24 +663,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAbsF64:
     applyFormat("($1 < 0? -($1) : ($1))")
     # BUGFIX: fabs() makes problems for Tiny C
-  of mZe8ToI:
-    applyFormat("(($3)(NU)(NU8)($1))")
-  of mZe8ToI64:
-    applyFormat("(($3)(NU64)(NU8)($1))")
-  of mZe16ToI:
-    applyFormat("(($3)(NU)(NU16)($1))")
-  of mZe16ToI64:
-    applyFormat("(($3)(NU64)(NU16)($1))")
-  of mZe32ToI64:
-    applyFormat("(($3)(NU64)(NU32)($1))")
-  of mZeIToI64:
-    applyFormat("(($3)(NU64)(NU)($1))")
-  of mToU8:
-    applyFormat("(($3)(NU8)(NU)($1))")
-  of mToU16:
-    applyFormat("(($3)(NU16)(NU)($1))")
-  of mToU32:
-    applyFormat("(($3)(NU32)(NU64)($1))")
   of mToFloat:
     applyFormat("((double) ($1))")
   of mToBiggestFloat:

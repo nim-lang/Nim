@@ -219,12 +219,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mToInt, mToBiggestInt: result = newIntNodeT(system.toInt(getFloat(a)), n, g)
   of mAbsF64: result = newFloatNodeT(abs(getFloat(a)), n, g)
   of mAbsI: result = foldAbs(getInt(a), n, g)
-  of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64:
-    # byte(-128) = 1...1..1000_0000'64 --> 0...0..1000_0000'64
-    result = newIntNodeT(getInt(a) and (`shl`(1, getSize(g.config, a.typ) * 8) - 1), n, g)
-  of mToU8: result = newIntNodeT(getInt(a) and 0x000000FF, n, g)
-  of mToU16: result = newIntNodeT(getInt(a) and 0x0000FFFF, n, g)
-  of mToU32: result = newIntNodeT(getInt(a) and 0x00000000FFFFFFFF'i64, n, g)
   of mUnaryLt: result = doAndFit(foldSub(getOrdValue(a), 1, n, g))
   of mSucc: result = doAndFit(foldAdd(getOrdValue(a), getInt(b), n, g))
   of mPred: result = doAndFit(foldSub(getOrdValue(a), getInt(b), n, g))
