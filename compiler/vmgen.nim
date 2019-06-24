@@ -1077,21 +1077,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
     genConv(c, n, n.sons[1], dest)
-  of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64:
-    #genNarrowU modified
-    let t = skipTypes(n.sons[1].typ, abstractVar-{tyTypeDesc})
-    let tmp = c.genx(n.sons[1])
-    c.gABC(n, opcNarrowU, tmp, TRegister(t.size*8))
-    # assign result to dest register
-    if dest < 0: dest = c.getTemp(n.typ)
-    c.gABC(n, opcAsgnInt, dest, tmp)
-    c.freeTemp(tmp)
-  of mToU8, mToU16, mToU32:
-    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
-    var tmp = c.genx(n.sons[1])
-    if dest < 0: dest = c.getTemp(n.typ)
-    c.gABC(n, opcToNarrowInt, dest, tmp, TRegister(t.size*8))
-    c.freeTemp(tmp)
   of mEqStr, mEqCString: genBinaryABC(c, n, dest, opcEqStr)
   of mLeStr: genBinaryABC(c, n, dest, opcLeStr)
   of mLtStr: genBinaryABC(c, n, dest, opcLtStr)

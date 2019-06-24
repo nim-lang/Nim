@@ -1905,16 +1905,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       when not defined(nimNoNilSeqs):
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
-    of opcToNarrowInt:
-      decodeBC(rkInt)
-      let mask = (1'i64 shl rc) - 1 # 0xFF
-      let signbit = 1'i64 shl (rc - 1) # 0x80
-      let toggle = mask - signbit # 0x7F
-      # algorithm: -((i8 and 0xFF) xor 0x7F) + 0x7F
-      # mask off higher bits.
-      # uses two's complement to sign-extend integer.
-      # reajust integer into desired range.
-      regs[ra].intVal = -((regs[rb].intVal and mask) xor toggle) + toggle
 
     inc pc
 

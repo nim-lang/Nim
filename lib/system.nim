@@ -1116,7 +1116,64 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # --------------------------------------------------------------------------
 # built-in operators
 
-when not defined(JS):
+when defined(nimNoZeroExtendMagic):
+  proc ze*(x: int8): int =
+    ## zero extends a smaller integer type to ``int``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+    cast[int](uint(cast[uint8](x)))
+
+  proc ze*(x: int16): int =
+    ## zero extends a smaller integer type to ``int``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int](uint(cast[uint16](x)))
+
+  proc ze64*(x: int8): int64 =
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int64](uint64(cast[uint8](x)))
+
+  proc ze64*(x: int16): int64 =
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int64](uint64(cast[uint16](x)))
+
+  proc ze64*(x: int32): int64 =
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int64](uint64(cast[uint32](x)))
+
+  proc ze64*(x: int): int64 =
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
+    ## (This is the case on 64 bit processors.)
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int64](uint64(cast[uint](x)))
+
+  proc toU8*(x: int): int8 =
+    ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
+    ## from `x`.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int8](x)
+
+  proc toU16*(x: int): int16 =
+    ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
+    ## 16 bits from `x`.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int16](x)
+
+  proc toU32*(x: int64): int32 =
+    ## treats `x` as unsigned and converts it to an ``int32`` by taking the
+    ## last 32 bits from `x`.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+    cast[int32](x)
+
+elif not defined(JS):
   proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
