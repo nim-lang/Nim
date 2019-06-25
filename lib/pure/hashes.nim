@@ -142,6 +142,9 @@ proc hash*(x: char): Hash {.inline.} =
 
 proc hash*[T: Ordinal | enum](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
+  ##
+  ## NOTE: An enum type will only match the system.Ordinal type if it
+  ## has no holes.
   result = ord(x)
 
 proc hash*(x: float): Hash {.inline.} =
