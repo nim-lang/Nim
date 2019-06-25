@@ -77,6 +77,8 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
     var L = parseInt(getEnv("CONTENT_LENGTH").string)
+    if L == 0:
+      return ""
     result = newString(L)
     if readBuffer(stdin, addr(result[0]), L) != L:
       cgiError("cannot read from stdin")
