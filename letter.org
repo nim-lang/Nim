@@ -1,0 +1,35 @@
+
+
+
+Dear NVidea
+
+We are developing the Nim Programming language. A Language designed
+for game programming. Via Nim's macro system, a subset of the Language
+can be compiled for the GPU. Contrary to most other software
+solutions, this allows the game programmer to share code between the
+CPU and GPU. Contrary to compute kernels from other SDK's, our
+compiler does behaves similarly to closures, so that the kernel is
+allowed to access other local variables.
+
+The overall goal of the Project is to make GPU programming simpler and
+less error prone.
+
+For example the code can be debugged on the CPU with common CPU
+debugging tools. And then after debugging the code can be deployed on
+the GPU for the obvious performance improvement. For further
+information we refer you to our showcase video (<insert url here>).
+
+We think our existing solution is a compelling Reason for NVidia to
+invest into Nim's development, so that the language can be even more
+suitable for GPU programming, and more and more people are creating
+GPU applications.
+
+- transform feedback
+- tesselation shader stages
+- compute shaders
+- optimizations
+
+Cheers
+
+
+The Nim Team

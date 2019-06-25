@@ -435,6 +435,14 @@ proc `+`*(a: BiggestInt, b: Int128): Int128 =
 proc `+`*(a: Int128, b: BiggestInt): Int128 =
   a + toInt128(b)
 
+proc toFloat64*(arg: Int128): float64 =
+  let isNegative = isNegative(arg)
+  let arg = abs(arg)
+
+  let a = float64(bitconcat(arg.udata[1], arg.udata[0]))
+  let b = float64(bitconcat(arg.udata[3], arg.udata[2]))
+
+  result = a + 18446744073709551616'f64 * b # a + 2^64 * b
 
 when isMainModule:
   let (a,b) = divMod(Ten,Ten)
