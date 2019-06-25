@@ -411,7 +411,3 @@ when isMainModule:
     stdout.flushFile
 
   main()
-
-
-runnableExamples:
-  echo diffInt(@[0, 1, 99, int.high, 'a'.ord], [0, 1, -99, int.low, 'b'.ord])
