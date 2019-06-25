@@ -217,7 +217,7 @@ proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   # consider calling `helpers.lineInfoToString` instead
-  result = toFilename(conf, info) & "(" & $info.line & ", " &
+  result = toMsgFilename(conf, info) & "(" & $info.line & ", " &
     $(info.col + ColOffset) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
