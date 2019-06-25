@@ -206,8 +206,7 @@ proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if optListFullPaths in conf.globalOptions:
     result = absPath
   else:
-    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
-    result = if relPath.count("..") > 2: absPath else: relPath
+    result = conf.m.fileInfos[info.fileIndex.int32].projPath.string
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
