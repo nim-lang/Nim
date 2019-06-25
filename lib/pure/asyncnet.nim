@@ -95,10 +95,7 @@
 ##   runForever()
 ##
 
-import asyncdispatch
-import nativesockets
-import net
-import os
+import asyncdispatch, nativesockets, net, os, hashes
 
 export SOBool
 
@@ -129,6 +126,14 @@ type
     sockType: SockType
     protocol: Protocol
   AsyncSocket* = ref AsyncSocketDesc
+
+proc hash*(x: AsyncSocket): Hash =
+  var h: Hash = 0
+  h = h !& hash(x.fd)
+  h = h !& hash(x.domain)
+  h = h !& hash(x.sockType)
+  h = h !& hash(x.protocol)
+  result = !$h
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     sockType: SockType = SOCK_STREAM,

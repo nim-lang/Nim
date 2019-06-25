@@ -140,7 +140,7 @@ proc hash*(x: char): Hash {.inline.} =
   ## Efficient hashing of characters.
   result = ord(x)
 
-proc hash*[T: Ordinal](x: T): Hash {.inline.} =
+proc hash*[T: Ordinal | enum](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
   result = ord(x)
 

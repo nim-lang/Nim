@@ -12,7 +12,7 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import os, options
+import os, options, hashes
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -183,6 +183,23 @@ proc toSockType*(protocol: Protocol): SockType =
     SOCK_DGRAM
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP, IPPROTO_ICMPV6:
     SOCK_RAW
+
+proc hash*(x: Servent): Hash =
+  var h: Hash = 0
+  h = h !& hash(x.name)
+  h = h !& hash(x.aliases)
+  h = h !& hash(x.port)
+  h = h !& hash(x.proto)
+  result = !$h
+
+proc hash*(x: Hostent): Hash =
+  var h: Hash = 0
+  h = h !& hash(x.name)
+  h = h !& hash(x.aliases)
+  h = h !& hash(x.addrtype)
+  h = h !& hash(x.length)
+  h = h !& hash(x.addrList)
+  result = !$h
 
 proc createNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
