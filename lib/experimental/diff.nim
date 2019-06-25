@@ -23,9 +23,9 @@
 ##
 ##   import experimental/diff
 ##   # 2 samples of text for testing (from "The Call of Cthulhu" by Lovecraft)
-##   const txt0 = """I have looked upon all the universe has to hold of horror,
+##   let txt0 = """I have looked upon all the universe has to hold of horror,
 ##   even skies of spring and flowers of summer must ever be poison to me."""
-##   const txt1 = """I have looked upon all your code has to hold of bugs,
+##   let txt1 = """I have looked upon all your code has to hold of bugs,
 ##   even skies of spring and flowers of summer must ever be poison to me."""
 ##
 ##   echo diffText(txt0, txt1)
