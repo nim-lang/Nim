@@ -78,7 +78,7 @@ type                          # please make sure we have under 32 options
     optWholeProject           # for 'doc2': output any dependency
     optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths          # use full paths in toMsgFilename, toFilename
+    optListFullPaths          # use full paths in toMsgFilename
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll

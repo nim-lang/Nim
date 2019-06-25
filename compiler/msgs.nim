@@ -159,10 +159,7 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     "???"
   else:
-    if optListFullPaths in conf.globalOptions:
-      conf.m.fileInfos[fileIdx.int32].fullPath.string
-    else:
-      conf.m.fileInfos[fileIdx.int32].projPath.string
+    conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil: result = "???"
