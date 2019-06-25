@@ -1304,7 +1304,7 @@ elif not defined(useNimRtl):
         p.exitStatus = status
         result = exitStatusLikeShell(status)
 
-  proc createStream(stream: var Stream, handle: var FileHandle,
+  proc createStream(stream: var owned(Stream), handle: var FileHandle,
                     fileMode: FileMode) =
     var f: File
     if not open(f, handle, fileMode): raiseOSError(osLastError())
