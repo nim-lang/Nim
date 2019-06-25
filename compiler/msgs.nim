@@ -197,14 +197,16 @@ template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
 
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
-    result = "???"
-    return
-  let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-  if optListFullPaths in conf.globalOptions:
-    result = absPath
-  else:
-    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
-    result = if relPath.count("..") > 2: absPath else: relPath
+    return "???"
+  let
+    absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
+    relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
+  result = if (optListFullPaths in conf.globalOptions) or
+              (relPath.len > absPath.len) or
+              (relPath.count("..") > 2):
+             absPath
+           else:
+             relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
