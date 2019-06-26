@@ -20,5 +20,17 @@ proc main =
 
 main()
 
+# bug #11563
+type
+  MyTypeType = enum
+    Zero, One
+  MyType = object
+    case kind: MyTypeType
+    of Zero:
+      s*: seq[MyType]
+    of One:
+      x*: int
+var t: MyType
+
 let (a, d) = allocCounters()
 discard cprintf("%ld %ld  new: %ld\n", a, d, allocs)

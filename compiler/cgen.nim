@@ -780,7 +780,7 @@ proc cgsym(m: BModule, name: string): Rope =
     # we're picky here for the system module too:
     rawMessage(m.config, errGenerated, "system module needs: " & name)
   result = sym.loc.r
-  if m.hcrOn and sym != nil and sym.kind in skProc..skIterator:
+  if m.hcrOn and sym != nil and sym.kind in {skProc..skIterator}:
     result.addActualPrefixForHCR(m.module, sym)
 
 proc generateHeaders(m: BModule) =
