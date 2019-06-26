@@ -997,8 +997,7 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ##   assert len(x) == 1
   discard
 
-when not defined(JS) and not defined(gcDestructors):
-  # XXX enable this for --gc:destructors
+when not defined(JS):
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
     ## Creates a new sequence of type ``seq[T]`` with length ``len``.
     ##
@@ -1011,8 +1010,11 @@ when not defined(JS) and not defined(gcDestructors):
     ##   assert len(x) == 3
     ##   x[0] = 10
     result = newSeqOfCap[T](len)
-    var s = cast[PGenericSeq](result)
-    s.len = len
+    when defined(gcDestructors):
+      cast[ptr int](addr result)[] = len
+    else:
+      var s = cast[PGenericSeq](result)
+      s.len = len
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
