@@ -2749,7 +2749,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   else:
     globalError(p.config, info, "cannot create null element for: " & $t.kind)
 
-proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode, result: var Rope; count: var int) =
+proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
+                     result: var Rope; count: var int) =
   case obj.kind
   of nkRecList:
     for it in obj.sons:
@@ -2775,7 +2776,8 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode, result: var Rope; cou
   else:
     localError(p.config, cons.info, "cannot create null element for: " & $obj)
 
-proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode, result: var Rope; count: var int) =
+proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode,
+                      result: var Rope; count: var int) =
   var base = t.sons[0]
   let oldRes = result
   if not p.module.compileToCpp: result.add "{"
