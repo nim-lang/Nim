@@ -1,4 +1,4 @@
-import strutils, strtabs, os, osproc, vcvarsall, vccenv
+import strutils, strtabs, os, osproc, vcvarsall, vccenv, vccvswhere
 
 type
   VccVersion* = enum ## VCC compiler backend versions
@@ -18,7 +18,11 @@ proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
   ##
   ## Returns `nil` if the VCC compiler backend discovery failed.
 
-  # TODO: Attempt discovery using vswhere utility.
+  # Attempt discovery using vswhere utility (VS 2017 and later) if no version specified.
+  if version == vccUndefined:
+    result = vccVswhereVcVarsAllPath()
+    if result.len > 0:
+      return
 
   # Attempt discovery through VccEnv
   # (Trying Visual Studio Common Tools Environment Variables)
