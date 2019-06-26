@@ -154,7 +154,7 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
         if f != InvalidFileIDX:
           if containsOrIncl(includedFiles, f.int):
             localError(graph.config, a.info, "recursive dependency: '$1'" %
-              toFilename(graph.config, f))
+              toMsgFilename(graph.config, f))
           else:
             let nn = includeModule(graph, module, f)
             let nnn = expandIncludes(graph, module, nn, modulePath,
