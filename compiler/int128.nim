@@ -1,5 +1,9 @@
+
+# because it is a union, this type does not work at compile time, but
+# the compiler doesn't know it and might do crappy stuff.
+
 type
-  Int128 {.union.} = object
+  Int128* {.union.} = object
     udata: array[4,uint32]
     sdata: array[4, int32]
 
@@ -16,20 +20,22 @@ let # not a const section because union doesn't work at compile time
   Zero = Int128(udata: [0'u32,0,0,0])
   One = Int128(udata: [1'u32,0,0,0])
   Ten = Int128(udata: [10'u32,0,0,0])
+  Min = Int128(sdata: [0'i32,0,0,low(int32)])
+  Max = Int128(udata: [high(uint32),high(uint32),high(uint32),uint32(high(int32))])
 
-template low(t: typedesc[Int128]): Int128 = Int128(sdata: [0'i32,0,0,low(int32)])
-template high(t: typedesc[Int128]): Int128 = Int128(udata: [high(uint32),high(uint32),high(uint32),uint32(high(int32))])
+template low*(t: typedesc[Int128]): Int128 = Min
+template high*(t: typedesc[Int128]): Int128 = Max
 
-proc `$`(a: Int128): string
+proc `$`*(a: Int128): string
 
-proc toInt128(arg: SomeUnsignedInt): Int128 =
+proc toInt128*(arg: SomeUnsignedInt): Int128 =
   when sizeof(arg) <= 4:
     result.udata[0] = uint32(arg)
   else:
     result.udata[0] = uint32(arg and 0xffffffff'u64)
     result.udata[1] = uint32(arg shr 32)
 
-proc toInt128(arg: SomeSignedInt): Int128 =
+proc toInt128*(arg: SomeSignedInt): Int128 =
   when sizeof(arg) <= 4:
     result.sdata[0] = int32(arg)
     if arg < 0: # sign extend
@@ -56,7 +62,7 @@ proc bitconcat(a,b: uint32): uint64 =
 proc bitsplit(a: uint64): (uint32,uint32) =
   (cast[uint32](a shr 32), cast[uint32](a))
 
-proc toInt64(arg: Int128): int64 =
+proc toInt64*(arg: Int128): int64 =
   if isNegative(arg):
     assert(arg.sdata[3] == -1, "out of range")
     assert(arg.sdata[2] == -1, "out of range")
@@ -66,7 +72,7 @@ proc toInt64(arg: Int128): int64 =
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
-proc toUInt64(arg: Int128): uint64 =
+proc toUInt64*(arg: Int128): uint64 =
   assert(arg.udata[3] == 0)
   assert(arg.udata[2] == 0)
   bitconcat(arg.udata[1], arg.udata[0])
@@ -76,13 +82,16 @@ proc addToHex(result: var string; arg: uint32) =
     let idx = (arg shr ((7-i) * 4)) and 0xf
     result.add "0123456789abcdef"[idx]
 
-proc addToHex(result: var string; arg: Int128) =
+proc addToHex*(result: var string; arg: Int128) =
   var i = 3
   while i >= 0:
     result.addToHex(arg.udata[i])
     i -= 1
 
-proc inc(a: var Int128, y: uint32 = 1) =
+proc toHex*(arg: Int128): string =
+  result.addToHex(arg)
+
+proc inc*(a: var Int128, y: uint32 = 1) =
   let input = a
   a.udata[0] += y
   if unlikely(a.udata[0] < y):
@@ -93,42 +102,23 @@ proc inc(a: var Int128, y: uint32 = 1) =
         a.udata[3].inc
         doAssert(a.sdata[3] != low(int32), "overflow")
 
-proc `+`(a,b: Int128): Int128 =
-  let tmp0 = uint64(a.udata[0]) + uint64(b.udata[0])
-  result.udata[0] = cast[uint32](tmp0)
-  let tmp1 = uint64(a.udata[1]) + uint64(b.udata[1]) + (tmp0 shr 32)
-  result.udata[1] = cast[uint32](tmp1)
-  let tmp2 = uint64(a.udata[2]) + uint64(b.udata[2]) + (tmp1 shr 32)
-  result.udata[2] = cast[uint32](tmp2)
-  let tmp3 = uint64(a.udata[3]) + uint64(b.udata[3]) + (tmp2 shr 32)
-  result.udata[3] = cast[uint32](tmp3)
-
-proc cmp(a,b: Int128): int =
+proc cmp*(a,b: Int128): int =
   let tmp1 = cmp(a.sdata[3], b.sdata[3])
   if tmp1 != 0: return tmp1
-  if a.isNegative:
-    # both are negative numbers
-    let tmp2 = cmp(a.sdata[2], b.sdata[2])
-    if tmp2 != 0: return tmp2
-    let tmp3 = cmp(a.sdata[1], b.sdata[1])
-    if tmp3 != 0: return tmp3
-    let tmp4 = cmp(a.sdata[0], b.sdata[0])
-    return tmp4
-  else:
-    let tmp2 = cmp(a.udata[2], b.udata[2])
-    if tmp2 != 0: return tmp2
-    let tmp3 = cmp(a.udata[1], b.udata[1])
-    if tmp3 != 0: return tmp3
-    let tmp4 = cmp(a.udata[0], b.udata[0])
-    return tmp4
+  let tmp2 = cmp(a.udata[2], b.udata[2])
+  if tmp2 != 0: return tmp2
+  let tmp3 = cmp(a.udata[1], b.udata[1])
+  if tmp3 != 0: return tmp3
+  let tmp4 = cmp(a.udata[0], b.udata[0])
+  return tmp4
 
-proc `<`(a,b: Int128): bool =
+proc `<`*(a,b: Int128): bool =
   cmp(a,b) < 0
 
-proc `<=`(a,b: Int128): bool =
+proc `<=`*(a,b: Int128): bool =
   cmp(a,b) <= 0
 
-proc `==`(a,b: Int128): bool =
+proc `==`*(a,b: Int128): bool =
   if a.udata[0] != b.udata[0]: return false
   if a.udata[1] != b.udata[1]: return false
   if a.udata[2] != b.udata[2]: return false
@@ -214,12 +204,29 @@ proc `shl`(a: Int128, b: int): Int128 =
     result.udata[2] = 0
     result.udata[3] = a.udata[0] shl (b and 31)
 
+
+proc `+`*(a,b: Int128): Int128 =
+  let tmp0 = uint64(a.udata[0]) + uint64(b.udata[0])
+  result.udata[0] = cast[uint32](tmp0)
+  let tmp1 = uint64(a.udata[1]) + uint64(b.udata[1]) + (tmp0 shr 32)
+  result.udata[1] = cast[uint32](tmp1)
+  let tmp2 = uint64(a.udata[2]) + uint64(b.udata[2]) + (tmp1 shr 32)
+  result.udata[2] = cast[uint32](tmp2)
+  let tmp3 = uint64(a.udata[3]) + uint64(b.udata[3]) + (tmp2 shr 32)
+  result.udata[3] = cast[uint32](tmp3)
+
+proc `+=`*(a: var Int128, b: Int128) =
+  a = a + b
+
 proc `-`(a: Int128): Int128 =
   result = bitnot(a)
   result.inc
 
 proc `-`(a,b: Int128): Int128 =
   a + (-b)
+
+proc `-=`*(a: var Int128, b: Int128) =
+  a = a - b
 
 proc abs(a: Int128 | int32): Int128 =
   if isNegative(a):
@@ -241,11 +248,14 @@ proc `*`(a: Int128, b: uint32): Int128 =
   result.udata[2] = cast[uint32](tmp2) + cast[uint32](tmp1 shr 32)
   result.udata[3] = cast[uint32](tmp3) + cast[uint32](tmp2 shr 32)
 
-proc `*`(a: Int128, b: int32): Int128 =
+proc `*`*(a: Int128, b: int32): Int128 =
   let isNegative = isNegative(a) xor isNegative(b)
   result = a * cast[uint32](abs(b))
   if b < 0:
     result = -result
+
+proc `*=`*(a: var Int128, b: int32): Int128 =
+  result = result * b
 
 proc makeint128(high,low: uint64): Int128 =
   result.udata[0] = cast[uint32](low)
@@ -259,7 +269,7 @@ proc high64(a: Int128): uint64 =
 proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
-proc `*`(lhs,rhs: Int128): Int128 =
+proc `*`*(lhs,rhs: Int128): Int128 =
   let isNegative = isNegative(lhs) xor isNegative(rhs)
 
   let
@@ -287,9 +297,12 @@ proc `*`(lhs,rhs: Int128): Int128 =
     echo result
     assert(false, "overflow")
 
+proc `*=`*(a: var Int128, b: Int128) =
+  a = a * b
+
 import bitops
 
-proc fastLog2(a: Int128): int =
+proc fastLog2*(a: Int128): int =
   if a.udata[3] != 0:
     return 96 + fastLog2(a.udata[3])
   if a.udata[2] != 0:
@@ -299,7 +312,7 @@ proc fastLog2(a: Int128): int =
   if a.udata[0] != 0:
     return      fastLog2(a.udata[0])
 
-proc divMod(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
+proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
   assert(divisor != Zero)
   let isNegative = isNegative(dividend) xor isNegative(divisor)
 
@@ -336,15 +349,15 @@ proc divMod(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
   result.quotient = quotient
   result.remainder = dividend
 
-proc `div`(a,b: Int128): Int128 =
+proc `div`*(a,b: Int128): Int128 =
   let (a,b) = divMod(a,b)
   return a
 
-proc `mod`(a,b: Int128): Int128 =
+proc `mod`*(a,b: Int128): Int128 =
   let (a,b) = divMod(a,b)
   return b
 
-proc `$`(a: Int128): string =
+proc `$`*(a: Int128): string =
   if a == Zero:
     result = "0"
   elif a == low(Int128):
@@ -366,7 +379,7 @@ proc `$`(a: Int128): string =
       i += 1
       j -= 1
 
-proc parseDecimalInt128(arg: string, pos: int = 0): Int128 =
+proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
   assert(pos < arg.len)
   assert(arg[pos] in {'-','0'..'9'})
 
@@ -437,21 +450,29 @@ when isMainModule:
 
   for i in 0 ..< d.len:
     for j in 0 ..< d.len:
+      doAssert(cmp(d[i], d[j]) == cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == d[i+j]
       if i - j >= 0:
         doAssert d[i] div d[j] == d[i-j]
+
+  var sum: Int128
+
+  for it in d:
+    sum += it
+
+  doAssert $sum == "111111111111111111111111111111111111111"
 
   for it in d.mitems:
     it = -it
 
   for i in 0 ..< d.len:
     for j in 0 ..< d.len:
+      doAssert(cmp(d[i], d[j]) == -cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == -d[i+j]
       if i - j >= 0:
         doAssert d[i] div d[j] == -d[i-j]
 
-  echo high(Int128)
-  let l = low(Int128)
-  echo l
+  doAssert $high(Int128) == "170141183460469231731687303715884105727"
+  doAssert $low(Int128) == "-170141183460469231731687303715884105728"
