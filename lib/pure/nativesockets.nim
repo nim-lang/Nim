@@ -192,6 +192,10 @@ proc hash*(x: Servent): Hash =
   h = h !& hash(x.proto)
   result = !$h
 
+proc `==`*(a, b: Servent): bool =
+  a.name == b.name and a.aliases == b.aliases and a.port == b.port and
+  a.proto == b.proto
+
 proc hash*(x: Hostent): Hash =
   var h: Hash = 0
   h = h !& hash(x.name)
@@ -200,6 +204,10 @@ proc hash*(x: Hostent): Hash =
   h = h !& hash(x.length)
   h = h !& hash(x.addrList)
   result = !$h
+
+proc `==`*(a, b: Hostent): bool =
+  a.name == b.name and a.aliases == b.aliases and a.addrtype == b.addrtype and
+  a.length == b.length and a.addrList == b.addrList
 
 proc createNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,

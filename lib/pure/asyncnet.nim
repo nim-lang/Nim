@@ -128,12 +128,21 @@ type
   AsyncSocket* = ref AsyncSocketDesc
 
 proc hash*(x: AsyncSocket): Hash =
+  ## Generates a hash using only a subset of the fields.  The ones
+  ## used are considered to provide identity.
   var h: Hash = 0
   h = h !& hash(x.fd)
   h = h !& hash(x.domain)
   h = h !& hash(x.sockType)
   h = h !& hash(x.protocol)
   result = !$h
+
+proc `==`*(a, b: AsyncSocket): bool =
+  ## Comparison using only a subset of the fields.  The ones used are
+  ## considered to provide identity.
+  not isNil(a) and not isNil(b) and
+  a.fd == b.fd and a.domain == b.domain and a.sockType == b.sockType and
+  a.protocol == b.protocol
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     sockType: SockType = SOCK_STREAM,
