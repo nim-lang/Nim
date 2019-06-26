@@ -7,7 +7,9 @@ ha
 @[1, 2, 3]
 @["red", "yellow", "orange", "rtrt1", "pink"]
 a: @[4, 2, 3]
-35 35'''
+0
+30
+41 41'''
 """
 
 import allocators
@@ -177,6 +179,16 @@ proc mutConstSeq() =
   echo "a: ", a
 
 mutConstSeq()
+
+proc mainSeqOfCap =
+  # bug #11098
+  var s = newSeqOfCap[int](10)
+  echo s.len
+
+  var s2 = newSeqUninitialized[int](30)
+  echo s2.len
+
+mainSeqOfCap()
 
 #echo s
 let (a, d) = allocCounters()

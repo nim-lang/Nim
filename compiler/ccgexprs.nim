@@ -1306,11 +1306,17 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   let seqtype = skipTypes(e.typ, abstractVarRange)
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
-  putIntoDest(p, d, e, ropecg(p.module,
-              "($1)#nimNewSeqOfCap($2, $3)", [
-              getTypeDesc(p.module, seqtype),
-              genTypeInfo(p.module, seqtype, e.info), a.rdLoc]))
-  gcUsage(p.config, e)
+  if p.config.selectedGC == gcDestructors:
+    if d.k == locNone: getTemp(p, e.typ, d, needsInit=false)
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+      [d.rdLoc, a.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
+      getSeqPayloadType(p.module, seqtype)])
+  else:
+    putIntoDest(p, d, e, ropecg(p.module,
+                "($1)#nimNewSeqOfCap($2, $3)", [
+                getTypeDesc(p.module, seqtype),
+                genTypeInfo(p.module, seqtype, e.info), a.rdLoc]))
+    gcUsage(p.config, e)
 
 proc genConstExpr(p: BProc, n: PNode): Rope
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
