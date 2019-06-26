@@ -19,7 +19,7 @@ include "system/inclrtl"
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
-  KeyValuePairSeq[A, B] = ptr array[10_000_000, KeyValuePair[A, B]]
+  KeyValuePairSeq[A, B] = ptr UncheckedArray[KeyValuePair[A, B]]
   SharedTable* [A, B] = object ## generic hash SharedTable
     data: KeyValuePairSeq[A, B]
     counter, dataLen: int
@@ -204,6 +204,8 @@ proc del*[A, B](t: var SharedTable[A, B], key: A) =
 
 proc init*[A, B](t: var SharedTable[A, B], initialSize=64) =
   ## creates a new hash table that is empty.
+  ##
+  ## This proc must be called before any other usage of `t`.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the

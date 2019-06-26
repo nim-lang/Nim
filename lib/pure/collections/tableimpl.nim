@@ -30,9 +30,13 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
   rawInsertImpl()
 
+template checkIfInitialized() =
+  when compiles(defaultInitialSize):
+    if t.dataLen == 0:
+      initImpl(t, defaultInitialSize)
+
 template addImpl(enlarge) {.dirty.} =
-  if t.dataLen == 0:
-    initImpl(t, defaultInitialSize)
+  checkIfInitialized()
   if mustRehash(t.dataLen, t.counter): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
@@ -40,8 +44,7 @@ template addImpl(enlarge) {.dirty.} =
   inc(t.counter)
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
-  if t.dataLen == 0:
-    initImpl(t, defaultInitialSize)
+  checkIfInitialized()
   if mustRehash(t.dataLen, t.counter):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
@@ -50,16 +53,14 @@ template maybeRehashPutImpl(enlarge) {.dirty.} =
   inc(t.counter)
 
 template putImpl(enlarge) {.dirty.} =
-  if t.dataLen == 0:
-    initImpl(t, defaultInitialSize)
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
   else: maybeRehashPutImpl(enlarge)
 
 template mgetOrPutImpl(enlarge) {.dirty.} =
-  if t.dataLen == 0:
-    initImpl(t, defaultInitialSize)
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -69,8 +70,7 @@ template mgetOrPutImpl(enlarge) {.dirty.} =
   result = t.data[index].val
 
 template hasKeyOrPutImpl(enlarge) {.dirty.} =
-  if t.dataLen == 0:
-    initImpl(t, defaultInitialSize)
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
