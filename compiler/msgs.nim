@@ -195,18 +195,19 @@ template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
 template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
-proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
-  if info.fileIndex.int32 < 0:
-    return "???"
+proc toMsgFilename*(conf: ConfigRef; info: FileIndex): string =
   let
-    absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-    relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
+    absPath = toFullPath(conf, info)
+    relPath = toFilename(conf, info)
   result = if (optListFullPaths in conf.globalOptions) or
               (relPath.len > absPath.len) or
               (relPath.count("..") > 2):
              absPath
            else:
              relPath
+
+template toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
+  toMsgFilename(conf, info.fileIndex)
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
