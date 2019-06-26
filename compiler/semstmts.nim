@@ -1288,7 +1288,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
         var f = checkModuleName(c.config, n.sons[i])
         if f != InvalidFileIDX:
           if containsOrIncl(c.includedFiles, f.int):
-            localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
+            localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
           else:
             let code = c.graph.includeFileCallback(c.graph, c.module, f)
             gatherStmts c, code, result
@@ -2023,7 +2023,7 @@ proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
   var f = checkModuleName(c.config, it)
   if f != InvalidFileIDX:
     if containsOrIncl(c.includedFiles, f.int):
-      localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
+      localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
     else:
       addSon(includeStmtResult, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f), {}))
       excl(c.includedFiles, f.int)
