@@ -758,7 +758,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       # transform, let's not touch the LHS in order to make the lifting pass
       # correct when `result` is lifted
       n[0].sons[1] = liftCapturedVars(n[0].sons[1], owner, d, c)
-    else: assert n[0].kind == nkEmpty
+    else:
+      n.sons[0] = liftCapturedVars(n[0], owner, d, c)
   else:
     if owner.isIterator:
       if nfLL in n.flags:
