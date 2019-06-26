@@ -883,7 +883,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   semOpAux(c, n)
   var t: PType = nil
   if n.sons[0].typ != nil:
-    t = skipTypes(n.sons[0].typ, abstractInst+{tyOwned}-{tyTypeDesc})
+    t = skipTypes(n.sons[0].typ, abstractInst+{tyOwned}-{tyTypeDesc, tyDistinct})
   if t != nil and t.kind == tyProc:
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
