@@ -1,7 +1,7 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''OK 2
-4 1'''
+  output: '''OK 3
+5 1'''
 """
 
 import strutils, math
@@ -35,6 +35,19 @@ except ValueError:
   inc ok
 except:
   discard
+
+#  bug #11577
+
+proc newError*: owned(ref Exception) {.noinline.} =
+  new(result)
+
+proc mainC =
+  raise newError()
+
+try:
+  mainC()
+except:
+  inc ok
 
 echo "OK ", ok
 

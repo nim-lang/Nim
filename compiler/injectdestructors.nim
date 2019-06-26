@@ -806,17 +806,23 @@ proc p(n: PNode; c: var Con): PNode =
     result[1][0] = p(result[1][0], c)
   of nkRaiseStmt:
     if optNimV2 in c.graph.config.globalOptions and n[0].kind != nkEmpty:
-      let t = n[0].typ
-      let tmp = getTemp(c, t, n.info)
-      var m = genCopyNoCheck(c, t, tmp, n[0])
+      if n[0].kind in nkCallKinds:
+        let call = copyNode(n[0])
+        recurse(n[0], call)
+        result = copyNode(n)
+        result.add call
+      else:
+        let t = n[0].typ
+        let tmp = getTemp(c, t, n.info)
+        var m = genCopyNoCheck(c, t, tmp, n[0])
 
-      m.add p(n[0], c)
-      result = newTree(nkStmtList, genWasMoved(tmp, c), m)
-      var toDisarm = n[0]
-      if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
-      if toDisarm.kind == nkSym and toDisarm.sym.owner == c.owner:
-        result.add genWasMoved(toDisarm, c)
-      result.add newTree(nkRaiseStmt, tmp)
+        m.add p(n[0], c)
+        result = newTree(nkStmtList, genWasMoved(tmp, c), m)
+        var toDisarm = n[0]
+        if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
+        if toDisarm.kind == nkSym and toDisarm.sym.owner == c.owner:
+          result.add genWasMoved(toDisarm, c)
+        result.add newTree(nkRaiseStmt, tmp)
     else:
       result = copyNode(n)
       recurse(n, result)
