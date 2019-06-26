@@ -159,10 +159,7 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     "???"
   else:
-    if optListFullPaths in conf.globalOptions:
-      conf.m.fileInfos[fileIdx.int32].fullPath.string
-    else:
-      conf.m.fileInfos[fileIdx.int32].projPath.string
+    conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil: result = "???"
@@ -200,14 +197,16 @@ template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
 
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
-    result = "???"
-    return
-  let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-  if optListFullPaths in conf.globalOptions:
-    result = absPath
-  else:
-    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
-    result = if relPath.count("..") > 2: absPath else: relPath
+    return "???"
+  let
+    absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
+    relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
+  result = if (optListFullPaths in conf.globalOptions) or
+              (relPath.len > absPath.len) or
+              (relPath.count("..") > 2):
+             absPath
+           else:
+             relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
@@ -215,12 +214,9 @@ proc toLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
-proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & ":" & $info.line
-
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   # consider calling `helpers.lineInfoToString` instead
-  result = toFilename(conf, info) & "(" & $info.line & ", " &
+  result = toMsgFilename(conf, info) & "(" & $info.line & ", " &
     $(info.col + ColOffset) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
