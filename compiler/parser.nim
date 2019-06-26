@@ -904,6 +904,7 @@ proc parsePragma(p: var TParser): PNode =
   result = newNodeP(nkPragma, p)
   inc p.inPragma
   when defined(nimpretty):
+    inc p.em.doIndentMore
     inc p.em.keepIndents
   getTok(p)
   optInd(p, result)
@@ -924,6 +925,7 @@ proc parsePragma(p: var TParser): PNode =
     parMessage(p, "expected '.}'")
   dec p.inPragma
   when defined(nimpretty):
+    dec p.em.doIndentMore
     dec p.em.keepIndents
 
 proc identVis(p: var TParser; allowDot=false): PNode =

@@ -4,7 +4,7 @@ discard """
 """
 
 import verylongnamehere, verylongnamehere,
-  verylongnamehereverylongnamehereverylong, namehere, verylongnamehere
+    verylongnamehereverylongnamehereverylong, namehere, verylongnamehere
 
 proc `[]=`() = discard "index setter"
 proc `putter=`() = discard cast[pointer](cast[int](buffer) + size)
@@ -200,8 +200,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if em.lineSpan > 0: calcCol(em, lit)
     if not endsInWhite(em):
       wr(" ")
-      if em.lineSpan == 0 and max(em.col,
-          LineCommentColumn) + lit.len <= MaxLineLen:
+      if em.lineSpan == 0 and max(em.col, LineCommentColumn) + lit.len <= MaxLineLen:
         for i in 1 .. LineCommentColumn - em.col: wr(" ")
     wr lit
 
@@ -285,12 +284,10 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkComment:
     if not preventComment:
       emitComment(em, tok)
-  of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit,
-      tkGTripleStrLit, tkCharLit:
+  of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
     softLinebreak(em, lit)
-    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wr(
-        " ")
+    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wr(" ")
     em.lineSpan = countNewlines(lit)
     if em.lineSpan > 0: calcCol(em, lit)
     wr lit
@@ -383,8 +380,7 @@ import osproc
 let res = execProcess(
     "echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
 
-let res = execProcess(
-    "echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
+let res = execProcess("echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
 
 
 # bug #10177
@@ -617,3 +613,14 @@ type
     tagVar,         ## the HTML ``var`` element
     tagVideo,       ## the HTML ``video`` element
     tagWbr          ## the HTML ``wbr`` element
+
+
+# bug #11469
+const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15,
+    16, 17, 25, 17, 4, 8, 31, 27, 13, 23]
+
+veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1],
+    futureValue1, futureValue2, node)
+
+veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1], futureValue1,
+                               futureValue2, node)
