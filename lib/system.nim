@@ -3416,7 +3416,7 @@ template newException*(exceptn: typedesc, message: string;
   e.parent = parentException
   e
 
-when defined(nogc):
+when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
     if s == nil or s.len == 0: result = cstring""
     else: result = cstring(addr s.data)
