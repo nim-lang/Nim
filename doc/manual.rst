@@ -3310,7 +3310,7 @@ backticks notation:
   `f=`(myObject, "value")
 
 
-``f=`` can called implicitly in the pattern
+``f=`` can be called implicitly in the pattern
 ``x.f = value`` if and only if the type of ``x`` does not have a field
 named ``f`` or if ``f`` is not visible in the current module. These rules
 ensure that object fields and accessors can have the same name. Within the
