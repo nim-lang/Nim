@@ -441,7 +441,7 @@ proc attrs*(n: XmlNode): XmlAttributes {.inline.} =
   ##
   ## See also:
   ## * `attrs= proc <#attrs=,XmlNode,XmlAttributes>`_ for XmlAttributes setter
-  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for numbef of attributes
+  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   ## * `attr proc <#attr,XmlNode,string>`_ for finding an attribute
   runnableExamples:
     var j = newElement("myTag")
@@ -458,7 +458,7 @@ proc `attrs=`*(n: XmlNode, attr: XmlAttributes) {.inline.} =
   ##
   ## See also:
   ## * `attrs proc <#attrs,XmlNode>`_ for XmlAttributes getter
-  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for numbef of attributes
+  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   ## * `attr proc <#attr,XmlNode,string>`_ for finding an attribute
   runnableExamples:
     var j = newElement("myTag")
@@ -494,7 +494,7 @@ proc attr*(n: XmlNode, name: string): string =
   ## See also:
   ## * `attrs proc <#attrs,XmlNode>`_ for XmlAttributes getter
   ## * `attrs= proc <#attrs=,XmlNode,XmlAttributes>`_ for XmlAttributes setter
-  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for numbef of attributes
+  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   runnableExamples:
     var j = newElement("myTag")
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
