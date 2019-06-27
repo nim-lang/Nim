@@ -663,3 +663,22 @@ type
     key*, val*: TaintedString ## Key and value pair; the key is the option
                               ## or the argument, and the value is not "" if
                               ## the option was given a value
+
+block:
+  var t = 3
+
+## This MUST be a multiline comment,
+## single line comment would be ok.
+block:
+  var x = 7
+
+
+block:
+  var t = 3
+  ## another
+  ## multi
+
+## This MUST be a multiline comment,
+## single line comment would be ok.
+block:
+  var x = 7
