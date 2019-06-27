@@ -349,8 +349,13 @@ General commit rules
 --------------------
 
 1. The commit message should contain either ``[bugfix]`` or ``[feature]``
-   or ``[refactoring]`` or ``[other]``. Refactorings and bugfixes and "other"
-   are backported to the latest stable release branch (currently 0.20.x).
+   or ``[refactoring]`` or ``[other]``. In practice however this is very
+   often forgotten and a commit message like ``fixes #xyz`` is good enough.
+
+   Every commit is backported unless
+   tagged with either ``[feature]`` or with ``[nobackport]``. They are
+   backported to the latest stable release branch (currently 0.20.x).
+
    Refactorings are backported because they often enable further bugfixes.
 
 2. If you introduce changes which affect backwards compatibility,
