@@ -3298,6 +3298,25 @@ different; for this a special setter syntax is needed:
   new s
   s.host = 34  # same as `host=`(s, 34)
 
+A proc defined as ``f=`` (with the trailing ``=``) is called
+a `setter`:idx:. A setter can be called explicitly via the common
+backticks notation:
+
+.. code-block:: nim
+
+  proc `f=`(x: MyObject; value: string) =
+    discard
+
+  `f=`(myObject, "value")
+
+
+``f=`` can called implicitly in the pattern
+``x.f = value`` if and only if the type of ``x`` does not have a field
+named ``f`` or if ``f`` is not visible in the current module. These rules
+ensure that object fields and accessors can have the same name. Within the
+module ``x.f`` is then always interpreted as field access and outside the
+module it is interpreted as an accessor proc call.
+
 
 Command invocation syntax
 -------------------------
