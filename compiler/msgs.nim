@@ -96,8 +96,14 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
-  result.line = uint16(line)
-  result.col = int16(col)
+  if line < int high(uint16):
+    result.line = uint16(line)
+  else:
+    result.line = high(uint16)
+  if col < int high(int16):
+    result.col = int16(col)
+  else:
+    result.col = -1
 
 proc newLineInfo*(conf: ConfigRef; filename: AbsoluteFile, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
