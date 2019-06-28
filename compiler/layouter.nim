@@ -143,14 +143,21 @@ proc closeEmitter*(em: var Emitter) =
       maxLhs = computeMax(em, lineBegin)
     of ltEndSection:
       maxLhs = 0
+      lineBegin = i+1
     of ltTab:
-      if maxLhs == 0 or computeRhs(em, i+1)+maxLhs > MaxLineLen:
+      if maxLhs == 0:
         content.add em.tokens[i]
         inc lineLen, em.tokens[i].len
       else:
-        let spaces = maxLhs - lineLen #max(maxLhs - lineLen, 1)
-        for j in 1..spaces: content.add ' '
-        inc lineLen, spaces
+        # pick the shorter indentation token:
+        var spaces = maxLhs - lineLen
+        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= MaxLineLen:
+          if spaces <= 0 and content[^1] notin {' ', '\L'}: spaces = 1
+          for j in 1..spaces: content.add ' '
+          inc lineLen, spaces
+        else:
+          content.add em.tokens[i]
+          inc lineLen, em.tokens[i].len
     of ltNewline:
       content.add em.tokens[i]
       lineLen = 0
@@ -217,8 +224,16 @@ proc wrSpace(em: var Emitter) =
 proc wrTab(em: var Emitter) =
   wr(em, " ", ltTab)
 
-proc beginSection*(em: var Emitter) = wr(em, "", ltBeginSection)
-proc endSection*(em: var Emitter) = wr(em, "", ltEndSection)
+proc beginSection*(em: var Emitter) =
+  em.tokens.insert "", em.tokens.len-2
+  em.kinds.insert ltBeginSection, em.kinds.len-2
+
+#wr(em, "", ltBeginSection)
+proc endSection*(em: var Emitter) =
+  em.tokens.insert "", em.tokens.len-2
+  em.kinds.insert ltEndSection, em.kinds.len-2
+
+#wr(em, "", ltEndSection)
 
 proc removeSpaces(em: var Emitter) =
   while em.kinds.len > 0 and em.kinds[^1] == ltSpaces:
@@ -262,7 +277,8 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
     var a = 0
     while a < commentLine.len and commentLine[a] == ' ': inc a
     if i == 0:
-      wr(em, "", ltTab)
+      if em.kinds.len > 0 and em.kinds[^1] != ltTab:
+        wr(em, "", ltTab)
     elif stripped.len == 0:
       wrNewline em
     else:
