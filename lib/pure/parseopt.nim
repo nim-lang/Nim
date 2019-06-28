@@ -160,11 +160,11 @@ type
     cmdArgument,              ## An argument such as a filename
     cmdLongOption,            ## A long option such as --option
     cmdShortOption            ## A short option such as -c
-  OptParser* =
-      object of RootObj ## Implementation of the command line parser.
-      ##
-      ## To initialize it, use the
-      ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+  OptParser* = object of RootObj ## \
+    ## Implementation of the command line parser.
+    ##
+    ## To initialize it, use the
+    ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
     pos*: int
     inShortState: bool
     allowWhitespaceAfterColon: bool

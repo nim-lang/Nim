@@ -624,3 +624,42 @@ veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1],
 
 veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1], futureValue1,
                                futureValue2, node)
+
+type
+  CmdLineKind* = enum ## The detected command line token.
+    cmdEnd,           ## End of command line reached
+    cmdArgument,      ## An argument such as a filename
+    cmdLongOption,    ## A long option such as --option
+    cmdShortOption    ## A short option such as -c
+  OptParser* = object of RootObj ## \
+                                 ## Implementation of the command line parser. Here is even more text yad.
+                                 ##
+                                 ## To initialize it, use the
+                                 ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+    pos*: int
+    inShortState: bool
+    allowWhitespaceAfterColon: bool
+    shortNoVal: set[char]
+    longNoVal: seq[string]
+    cmds: seq[string]
+    idx: int
+    kind*: CmdLineKind           ## The detected command line token
+    key*, val*: TaintedString    ## Key and value pair; the key is the option
+                                 ## or the argument, and the value is not "" if
+                                 ## the option was given a value
+
+  OptParserDifferently* = object of RootObj ## Implementation of the command line parser.
+                              ##
+                              ## To initialize it, use the
+                              ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+    pos*: int
+    inShortState: bool
+    allowWhitespaceAfterColon: bool
+    shortNoVal: set[char]
+    longNoVal: seq[string]
+    cmds: seq[string]
+    idx: int
+    kind*: CmdLineKind        ## The detected command line token
+    key*, val*: TaintedString ## Key and value pair; the key is the option
+                              ## or the argument, and the value is not "" if
+                              ## the option was given a value
