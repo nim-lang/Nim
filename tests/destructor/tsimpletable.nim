@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim cpp --newruntime $file'''
   output: '''(field: "value")
 3 3  new: 0'''
 """

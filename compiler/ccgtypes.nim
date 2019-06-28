@@ -416,7 +416,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
 
 proc getSeqPayloadType(m: BModule; t: PType): Rope =
   var check = initIntSet()
-  result = getTypeDescWeak(m, t, check)
+  result = getTypeDescWeak(m, t, check) & "_Content"
   #result = getTypeForward(m, t, hashType(t)) & "_Content"
 
 proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
