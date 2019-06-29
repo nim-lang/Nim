@@ -687,10 +687,14 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:
-      lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
-          [e, makeCString(typ.sym.name.s),
-          makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
-          quotedFilename(p.config, t.info), toLinenumber(t.info)])
+      if optStackTrace in p.module.config.options:
+        lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
+               [e, makeCString(typ.sym.name.s)])
+      else:
+        lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
+            [e, makeCString(typ.sym.name.s),
+            makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
+            quotedFilename(p.config, t.info), toLinenumber(t.info)])
       if optNimV2 in p.config.globalOptions:
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
