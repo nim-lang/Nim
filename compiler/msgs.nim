@@ -566,8 +566,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
   if not e: internalError(conf, $instantiationInfo())
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
-  assert i.fileIndex.int32 >= 0
-  if optExcessiveStackTrace in conf.globalOptions:
+  if i.fileIndex.int32 < 0:
+    result = makeCString "???"
+  elif optExcessiveStackTrace in conf.globalOptions:
     result = conf.m.fileInfos[i.fileIndex.int32].quotedFullName
   else:
     result = conf.m.fileInfos[i.fileIndex.int32].quotedName
