@@ -690,7 +690,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
           [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
-          makeCString(toFileName(p.config, t.info)), toLinenumber(t.info)])
+          quotedFilename(p.config, t.info), toLinenumber(t.info)])
       if optNimV2 in p.config.globalOptions:
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
