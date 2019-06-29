@@ -13,7 +13,7 @@
 import
   strutils, options, ast, astalgo, trees, treetab, nimsets,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
-  commands, magicsys, modulegraphs, strtabs, lineinfos
+  commands, magicsys, modulegraphs, strtabs, lineinfos, int128
 
 proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
@@ -35,6 +35,9 @@ proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
     result.typ = n.typ
   result.info = n.info
 
+proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
+   newIntNodeT(toInt64(intVal), n, g)
+
 proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode; g: ModuleGraph): PNode =
   result = newFloatNode(nkFloatLit, floatVal)
   result.typ = n.typ
@@ -46,69 +49,54 @@ proc newStrNodeT*(strVal: string, n: PNode; g: ModuleGraph): PNode =
   result.info = n.info
 
 proc getConstExpr*(m: PSym, n: PNode; g: ModuleGraph): PNode
-  # evaluates the constant expression or returns nil if it is no constant
-  # expression
+  ## Evaluates the constant expression or returns nil if it is no
+  ## constant expression.
+
 proc evalOp*(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode
 
-proc checkInRange(conf: ConfigRef; n: PNode, res: BiggestInt): bool =
+proc checkInRange(conf: ConfigRef; n: PNode, res: Int128): bool =
   if res in firstOrd(conf, n.typ)..lastOrd(conf, n.typ):
     result = true
 
-proc foldAdd(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  let res = a +% b
-  if ((res xor a) >= 0'i64 or (res xor b) >= 0'i64) and
-      checkInRange(g.config, n, res):
+proc foldAdd(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  let res = a + b
+  if checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, g)
 
-proc foldSub*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  let res = a -% b
-  if ((res xor a) >= 0'i64 or (res xor not b) >= 0'i64) and
-      checkInRange(g.config, n, res):
+proc foldSub*(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  let res = a - b
+  if checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, g)
 
-proc foldUnarySub(a: BiggestInt, n: PNode, g: ModuleGraph): PNode =
+proc foldUnarySub(a: Int128, n: PNode, g: ModuleGraph): PNode =
   if a != firstOrd(g.config, n.typ):
     result = newIntNodeT(-a, n, g)
 
-proc foldAbs*(a: BiggestInt, n: PNode; g: ModuleGraph): PNode =
+proc foldAbs*(a: Int128, n: PNode; g: ModuleGraph): PNode =
   if a != firstOrd(g.config, n.typ):
     result = newIntNodeT(abs(a), n, g)
 
-proc foldMod*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
+proc foldMod*(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
   if b != 0'i64:
     result = newIntNodeT(a mod b, n, g)
 
-proc foldModU*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  if b != 0'i64:
-    result = newIntNodeT(a %% b, n, g)
+proc foldModU*(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  if a >= 0 and b > 0:
+    result = newIntNodeT(a mod b, n, g)
 
-proc foldDiv*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
+proc foldDiv*(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  # don't division by zero or negation of min(T) value.
   if b != 0'i64 and (a != firstOrd(g.config, n.typ) or b != -1'i64):
     result = newIntNodeT(a div b, n, g)
 
-proc foldDivU*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  if b != 0'i64:
-    result = newIntNodeT(a /% b, n, g)
+proc foldDivU*(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  # Don't fold negative numbers, it is unclear at this point how many bits of the extended sign to interpret.
+  if a >= 0 and b > 0:
+    result = newIntNodeT(a div b, n, g)
 
-proc foldMul*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  let res = a *% b
-  let floatProd = toBiggestFloat(a) * toBiggestFloat(b)
-  let resAsFloat = toBiggestFloat(res)
-
-  # Fast path for normal case: small multiplicands, and no info
-  # is lost in either method.
-  if resAsFloat == floatProd and checkInRange(g.config, n, res):
-    return newIntNodeT(res, n, g)
-
-  # Somebody somewhere lost info. Close enough, or way off? Note
-  # that a != 0 and b != 0 (else resAsFloat == floatProd == 0).
-  # The difference either is or isn't significant compared to the
-  # true value (of which floatProd is a good approximation).
-
-  # abs(diff)/abs(prod) <= 1/32 iff
-  #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
-  if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd) and
-      checkInRange(g.config, n, res):
+proc foldMul*(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  let res = a * b
+  if checkInRange(g.config, n, res):
     return newIntNodeT(res, n, g)
 
 proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
@@ -119,7 +107,7 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
   var t = skipTypes(a.typ, abstractRange)
   case t.kind
   of tyChar:
-    result = $chr(int(x) and 0xff)
+    result = $chr(toInt64(x) and 0xff)
   of tyEnum:
     var n = t.n
     for i in 0 ..< sonsLen(n):
@@ -188,7 +176,7 @@ proc fitLiteral(c: ConfigRef, n: PNode): PNode =
 
   let typ = n.typ.skipTypes(abstractRange)
   if typ.kind in tyUInt..tyUint32:
-    result.intVal = result.intVal and lastOrd(c, typ, fixedUnsigned=true)
+    result.intVal = result.intVal and lastOrd(c, typ).toInt64
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   template doAndFit(op: untyped): untyped =
@@ -204,7 +192,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mNot: result = newIntNodeT(1 - getInt(a), n, g)
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
   of mBitnotI: result = doAndFit(newIntNodeT(not getInt(a), n, g))
-  of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
+  of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ).toInt64, n, g)
   of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
     if a.kind == nkNilLit:
       result = newIntNodeT(0, n, g)
@@ -415,13 +403,8 @@ proc getAppType(n: PNode; g: ModuleGraph): PNode =
   else:
     result = newStrNodeT("console", n, g)
 
-proc rangeCheck(n: PNode, value: BiggestInt; g: ModuleGraph) =
-  var err = false
-  if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
-    err = value <% firstOrd(g.config, n.typ) or value >% lastOrd(g.config, n.typ, fixedUnsigned=true)
-  else:
-    err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
-  if err:
+proc rangeCheck(n: PNode, value: Int128; g: ModuleGraph) =
+  if value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ):
     localError(g.config, n.info, "cannot convert " & $value &
                                     " to " & typeToString(n.typ))
 

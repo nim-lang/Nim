@@ -1,11 +1,13 @@
 
-# because it is a union, this type does not work at compile time, but
-# the compiler doesn't know it and might do crappy stuff.
 
 type
-  Int128* {.union.} = object
+  Int128* = object
     udata: array[4,uint32]
-    sdata: array[4, int32]
+
+template sdata(arg: Int128, idx: int): int32 =
+  # udata and sdata was supposed to be in a union, but unions are
+  # handled incorrectly in the VM.
+  cast[ptr int32](arg.udata[idx].unsafeAddr)[]
 
 # encoding least significant int first (like LittleEndian)
 
@@ -16,11 +18,11 @@ template require(cond: bool) =
   if unlikely(not cond):
     raise newException(InvalidArgument, "")
 
-let # not a const section because union doesn't work at compile time
-  Zero = Int128(udata: [0'u32,0,0,0])
-  One = Int128(udata: [1'u32,0,0,0])
-  Ten = Int128(udata: [10'u32,0,0,0])
-  Min = Int128(sdata: [0'i32,0,0,low(int32)])
+const
+  Zero* = Int128(udata: [0'u32,0,0,0])
+  One* = Int128(udata: [1'u32,0,0,0])
+  Ten* = Int128(udata: [10'u32,0,0,0])
+  Min = Int128(udata: [0'u32,0,0,0x80000000'u32])
   Max = Int128(udata: [high(uint32),high(uint32),high(uint32),uint32(high(int32))])
 
 template low*(t: typedesc[Int128]): Int128 = Min
@@ -28,30 +30,30 @@ template high*(t: typedesc[Int128]): Int128 = Max
 
 proc `$`*(a: Int128): string
 
-proc toInt128*(arg: SomeUnsignedInt): Int128 =
-  when sizeof(arg) <= 4:
-    result.udata[0] = uint32(arg)
+proc toInt128*[T: SomeInteger](arg: T): Int128 =
+  when T is SomeUnsignedInt:
+    when sizeof(arg) <= 4:
+      result.udata[0] = uint32(arg)
+    else:
+      result.udata[0] = uint32(arg and T(0xffffffff))
+      result.udata[1] = uint32(arg shr 32)
   else:
-    result.udata[0] = uint32(arg and 0xffffffff'u64)
-    result.udata[1] = uint32(arg shr 32)
-
-proc toInt128*(arg: SomeSignedInt): Int128 =
-  when sizeof(arg) <= 4:
-    result.sdata[0] = int32(arg)
-    if arg < 0: # sign extend
-      result.sdata[1] = -1
-      result.sdata[2] = -1
-      result.sdata[3] = -1
-  else:
-    let tmp = int64(arg)
-    result.sdata[0] = int32(tmp and 0xffffffff'i64)
-    result.sdata[1] = int32(tmp shr 32)
-    if arg < 0: # sign extend
-      result[2] = cast[uint32](-1)
-      result[3] = cast[uint32](-1)
+    when sizeof(arg) <= 4:
+      result.sdata(0) = int32(arg)
+      if arg < 0: # sign extend
+        result.sdata(1) = -1
+        result.sdata(2) = -1
+        result.sdata(3) = -1
+    else:
+      let tmp = int64(arg)
+      result.sdata(0) = int32(tmp and T(0xffffffff))
+      result.sdata(1) = int32(tmp shr 32)
+      if arg < 0: # sign extend
+        result.sdata(2) = -1
+        result.sdata(3) = -1
 
 template isNegative(arg: Int128): bool =
-  arg.sdata[3] < 0
+  arg.sdata(3) < 0
 
 template isNegative(arg: int32): bool =
   arg < 0
@@ -64,11 +66,11 @@ proc bitsplit(a: uint64): (uint32,uint32) =
 
 proc toInt64*(arg: Int128): int64 =
   if isNegative(arg):
-    assert(arg.sdata[3] == -1, "out of range")
-    assert(arg.sdata[2] == -1, "out of range")
+    assert(arg.sdata(3) == -1, "out of range")
+    assert(arg.sdata(2) == -1, "out of range")
   else:
-    assert(arg.sdata[3] == 0, "out of range")
-    assert(arg.sdata[2] == 0, "out of range")
+    assert(arg.sdata(3) == 0, "out of range")
+    assert(arg.sdata(2) == 0, "out of range")
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
@@ -100,10 +102,10 @@ proc inc*(a: var Int128, y: uint32 = 1) =
       a.udata[2].inc
       if unlikely(a.udata[2] == 0):
         a.udata[3].inc
-        doAssert(a.sdata[3] != low(int32), "overflow")
+        doAssert(a.sdata(3) != low(int32), "overflow")
 
 proc cmp*(a,b: Int128): int =
-  let tmp1 = cmp(a.sdata[3], b.sdata[3])
+  let tmp1 = cmp(a.sdata(3), b.sdata(3))
   if tmp1 != 0: return tmp1
   let tmp2 = cmp(a.udata[2], b.udata[2])
   if tmp2 != 0: return tmp2
@@ -158,28 +160,28 @@ proc bitxor(a,b: Int128): Int128 =
 proc `shr`(a: Int128, b: int): Int128 =
   let b = b and 127
   if b < 32:
-    result.sdata[3] = a.sdata[3] shr b
+    result.sdata(3) = a.sdata(3) shr b
     result.udata[2] = cast[uint32](bitconcat(a.udata[3], a.udata[2]) shr b)
     result.udata[1] = cast[uint32](bitconcat(a.udata[2], a.udata[1]) shr b)
     result.udata[0] = cast[uint32](bitconcat(a.udata[1], a.udata[0]) shr b)
   elif b < 64:
     if isNegative(a):
-      result.sdata[3] = -1
-    result.sdata[2] = a.sdata[3] shr (b and 31)
+      result.sdata(3) = -1
+    result.sdata(2) = a.sdata(3) shr (b and 31)
     result.udata[1] = cast[uint32](bitconcat(a.udata[2], a.udata[1]) shr (b and 31))
     result.udata[0] = cast[uint32](bitconcat(a.udata[1], a.udata[0]) shr (b and 31))
   elif b < 96:
     if isNegative(a):
-      result.sdata[3] = -1
-      result.sdata[2] = -1
-    result.sdata[1] = a.sdata[3] shr (b and 31)
+      result.sdata(3) = -1
+      result.sdata(2) = -1
+    result.sdata(1) = a.sdata(3) shr (b and 31)
     result.udata[0] = cast[uint32](bitconcat(a.udata[1], a.udata[0]) shr (b and 31))
   else: # b < 128
     if isNegative(a):
-      result.sdata[3] = -1
-      result.sdata[2] = -1
-      result.sdata[1] = -1
-    result.sdata[0] = a.sdata[3] shr (b and 31)
+      result.sdata(3) = -1
+      result.sdata(2) = -1
+      result.sdata(1) = -1
+    result.sdata(0) = a.sdata(3) shr (b and 31)
 
 proc `shl`(a: Int128, b: int): Int128 =
   let b = b and 127
@@ -218,21 +220,24 @@ proc `+`*(a,b: Int128): Int128 =
 proc `+=`*(a: var Int128, b: Int128) =
   a = a + b
 
-proc `-`(a: Int128): Int128 =
+proc `-`*(a: Int128): Int128 =
   result = bitnot(a)
   result.inc
 
-proc `-`(a,b: Int128): Int128 =
+proc `-`*(a,b: Int128): Int128 =
   a + (-b)
 
 proc `-=`*(a: var Int128, b: Int128) =
   a = a - b
 
-proc abs(a: Int128 | int32): Int128 =
+proc abs*(a: Int128): Int128 =
   if isNegative(a):
     -a
   else:
     a
+
+proc abs(a: int32): int =
+  if a < 0: -a else: a
 
 proc `*`(a: Int128, b: uint32): Int128 =
   let tmp0 = uint64(a.udata[0]) * uint64(b)
@@ -397,6 +402,29 @@ proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
 
   if isNegative:
     result = -result
+
+# fluff
+
+proc `<`*(a: Int128, b: BiggestInt): bool =
+  cmp(a,toInt128(b)) < 0
+
+proc `<`*(a: BiggestInt, b: Int128): bool =
+  cmp(toInt128(a), b) < 0
+
+proc `<=`*(a: Int128, b: BiggestInt): bool =
+  cmp(a,toInt128(b)) <= 0
+
+proc `<=`*(a: BiggestInt, b: Int128): bool =
+  cmp(toInt128(a), b) <= 0
+
+proc `==`*(a: Int128, b: BiggestInt): bool =
+  a == toInt128(b)
+
+proc `==`*(a: BiggestInt, b: Int128): bool =
+  toInt128(a) == b
+
+proc `-`*(a: BiggestInt, b: Int128): Int128 =
+  toInt128(a) - b
 
 when isMainModule:
   let (a,b) = divMod(Ten,Ten)
