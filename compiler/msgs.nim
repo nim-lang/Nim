@@ -40,9 +40,8 @@ proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
   #shallow(result.fullPath)
   result.projPath = projPath
   #shallow(result.projPath)
-  let fileName = fullPath.extractFilename
-  result.shortName = fileName.changeFileExt("")
-  result.quotedName = fileName.makeCString
+  result.shortName = fullPath.extractFilename
+  result.quotedName = result.shortName.makeCString
   result.quotedFullName = fullPath.string.makeCString
   result.lines = @[]
   when defined(nimpretty):
@@ -165,7 +164,11 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     "???"
   else:
-    conf.m.fileInfos[fileIdx.int32].projPath.string
+    conf.m.fileInfos[fileIdx.int32].shortName
+
+proc toProjPath*(conf: ConfigRef; fileIdx: FileIndex): string =
+  if fileIdx.int32 < 0 or conf == nil: "???"
+  else: conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil: result = "???"
@@ -195,6 +198,9 @@ proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile
 template toFilename*(conf: ConfigRef; info: TLineInfo): string =
   toFilename(conf, info.fileIndex)
 
+template toProjPath*(conf: ConfigRef; info: TLineInfo): string =
+  toProjPath(conf, info.fileIndex)
+
 template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
   toFullPath(conf, info.fileIndex)
 
@@ -204,7 +210,7 @@ template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
 proc toMsgFilename*(conf: ConfigRef; info: FileIndex): string =
   let
     absPath = toFullPath(conf, info)
-    relPath = toFilename(conf, info)
+    relPath = toProjPath(conf, info)
   result = if (optListFullPaths in conf.globalOptions) or
               (relPath.len > absPath.len) or
               (relPath.count("..") > 2):
