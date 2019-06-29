@@ -1283,6 +1283,39 @@ Arrays are always bounds checked (statically or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--boundChecks:off`` command line switch.
 
+An array constructor can have explicit indexes for readability:
+
+.. code-block:: nim
+
+  type
+    Values = enum
+      valA, valB, valC
+
+  const
+    lookupTable = [
+      valA: "A",
+      valB: "B",
+      valC: "C"
+    ]
+
+If an index is left out, ``succ(lastIndex)`` is used as the index
+value:
+
+.. code-block:: nim
+
+  type
+    Values = enum
+      valA, valB, valC, valD, valE
+
+  const
+    lookupTable = [
+      valA: "A",
+      "B",
+      valC: "C",
+      "D", "e"
+    ]
+
+
 
 Open arrays
 -----------
@@ -1667,7 +1700,39 @@ To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
 ``realloc`` can be used. The documentation of the system module contains
 further information.
 
-If a reference points to *nothing*, it has the value ``nil``.
+
+Nil
+---
+
+If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
+the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
+is an unrecoverable fatal runtime error. A dereferencing operation ``p[]``
+implies that ``p`` is not nil. This can be exploited by the implementation to
+optimize code like:
+
+
+.. code-block:: nim
+
+  p[].field = 3
+  if p != nil:
+    # if p were nil, ``p[]`` would have caused a crash already,
+    # so we know ``p`` is always not nil here.
+    action()
+
+Into:
+
+.. code-block:: nim
+
+  p[].field = 3
+  action()
+
+
+*Note*: This is not comparable to C's "undefined behavior" for
+dereferencing NULL pointers.
+
+
+Mixing GC'ed memory with ``ptr``
+--------------------------------
 
 Special care has to be taken if an untraced object contains traced objects like
 traced references, strings or sequences: in order to free everything properly,
@@ -3061,6 +3126,16 @@ results in an exception (if it cannot be determined statically).
 Ordinary procs are often preferred over type conversions in Nim: For instance,
 ``$`` is the ``toString`` operator by convention and ``toFloat`` and ``toInt``
 can be used to convert from floating point to integer or vice versa.
+
+A type conversion can also be used to disambiguate overloaded routines:
+
+.. code-block:: nim
+
+  proc p(x: int) = echo "int"
+  proc p(x: string) = echo "string"
+
+  let procVar = (proc(x: string))(p)
+  procVar("a")
 
 
 Type casts
