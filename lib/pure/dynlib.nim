@@ -106,7 +106,7 @@ proc loadLibPattern*(pattern: string, global_symbols=false): LibHandle =
     result = loadLib(c, global_symbols)
     if not result.isNil: break
 
-when defined(posix):
+when defined(posix) and not defined(nintendoswitch):
   #
   # =========================================================================
   # This is an implementation based on the dlfcn interface.
