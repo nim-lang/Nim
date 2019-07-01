@@ -302,7 +302,7 @@ proc boot(args: string) =
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
       let ret = execCmdEx(nimStart & " --version")
-      doAssert ret.exitCode == 0
+      doAssert ret.exitCode == 0, ret.output
       let version = ret.output.splitLines[0]
       if version.startsWith "Nim Compiler Version 0.19.0":
         extraOption.add " -d:nimBoostrapCsources0_19_0"
