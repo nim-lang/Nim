@@ -11,6 +11,8 @@
   then you need to change that to `rfind X, last=N` or `rfind X, 0, N`. (This
   should minimize gotchas porting code from other languages like Python or C++.)
 
+- On Windows stderr/stdout/stdin are not opened as binary files anymore. Use the switch
+  `-d:nimBinaryStdFiles` for a transition period.
 
 ### Breaking changes in the standard library
 
