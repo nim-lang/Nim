@@ -230,7 +230,8 @@ when not defined(useNimRtl):
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)
-      add result, "ref " & reprPointer(p)
+      add result, if typ.kind == tyPtr: "ptr " else: "ref "
+      add result, reprPointer(p)
       if cell notin cl.marked:
         # only the address is shown:
         incl(cl.marked, cell)
