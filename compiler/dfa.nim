@@ -659,7 +659,7 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       # pointer indirection.
       n = n[0]
       return n.kind == nkSym and n.sym.owner == owner and (isSinkParam(n.sym) or
-          n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned, tyVar})
+          n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
     of nkBracketExpr:
       let x = n[0]
       if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:
