@@ -696,6 +696,7 @@ proc track(tracked: PEffects, n: PNode) =
       addEffect(tracked, n.sons[0], useLineInfo=false)
       for i in 0 ..< safeLen(n):
         track(tracked, n.sons[i])
+      createTypeBoundOps(tracked.graph, tracked.c, n[0].typ, n.info)
     else:
       # A `raise` with no arguments means we're going to re-raise the exception
       # being handled or, if outside of an `except` block, a `ReraiseError`.
