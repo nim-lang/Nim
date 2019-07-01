@@ -98,7 +98,7 @@ proc sameInstantiation(a, b: TInstantiation): bool =
 proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
   for inst in genericSym.procInstCache:
-    if inst.compilesId <= id and sameInstantiation(entry, inst[]):
+    if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
 when false:
