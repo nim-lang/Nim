@@ -498,7 +498,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # to disable the destructor which we have not elided
       sinkParamIsLastReadCheck(c, arg)
       result = destructiveMoveVar(arg, c)
-    elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
+    elif isAnalysableFieldAccess(arg, c.owner) and isLastRead(arg, c):
       # it is the last read, can be sinked. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(arg, c)
