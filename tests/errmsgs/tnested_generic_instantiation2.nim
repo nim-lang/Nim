@@ -1,5 +1,5 @@
 discard """
-errormsg: "generic instantiation too nested"
+action: compile
 """
 
 #[
