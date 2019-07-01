@@ -30,13 +30,17 @@ type
 
   CandidateErrors* = seq[CandidateError]
 
+  MatchQuality = enum  # todo: spec this; order is important
+    noMatch,
+    convMatch,
+    intConvMatch,
+    subtypeMatch,
+    genericMatch,
+    exactMatch
+
   TCandidate* = object
+    matchQual: MatchQuality
     c*: PContext
-    exactMatches*: int       # also misused to prefer iters over procs
-    genericMatches: int      # also misused to prefer constraints
-    subtypeMatches: int
-    intConvMatches: int      # conversions to int are not as expensive
-    convMatches: int
     state*: TCandidateState
     callee*: PType           # may not be nil!
     calleeSym*: PSym         # may be nil
@@ -105,12 +109,8 @@ template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
 proc initCandidateAux(ctx: PContext,
                       c: var TCandidate, callee: PType) {.inline.} =
+  c.matchQual = exactMatch
   c.c = ctx
-  c.exactMatches = 0
-  c.subtypeMatches = 0
-  c.convMatches = 0
-  c.intConvMatches = 0
-  c.genericMatches = 0
   c.state = csEmpty
   c.callee = callee
   c.call = nil
@@ -177,11 +177,7 @@ proc newCandidate*(ctx: PContext, callee: PType): TCandidate =
 
 proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.c = b.c
-  a.exactMatches = b.exactMatches
-  a.subtypeMatches = b.subtypeMatches
-  a.convMatches = b.convMatches
-  a.intConvMatches = b.intConvMatches
-  a.genericMatches = b.genericMatches
+  a.matchQual = b.matchQual
   a.state = b.state
   a.callee = b.callee
   a.calleeSym = b.calleeSym
@@ -265,32 +261,30 @@ proc complexDisambiguation(a, b: PType): int =
 
 proc writeMatches*(c: TCandidate) =
   echo "Candidate '", c.calleeSym.name.s, "' at ", c.c.config $ c.calleeSym.info
-  echo "  exact matches: ", c.exactMatches
-  echo "  generic matches: ", c.genericMatches
-  echo "  subtype matches: ", c.subtypeMatches
-  echo "  intconv matches: ", c.intConvMatches
-  echo "  conv matches: ", c.convMatches
+  echo "  match quality: ", c.matchQual
   echo "  inheritance: ", c.inheritancePenalty
 
 proc cmpCandidates*(a, b: TCandidate): int =
-  result = a.exactMatches - b.exactMatches
+  proc isIter(a: TCandidate): int {.inline.} =
+    result = ord(a.calleeSym != nil and a.calleeSym.kind == skIterator)
+
+  # prefer iterators over anything else...
+  result = isIter(a) - isIter(b)
   if result != 0: return
-  result = a.genericMatches - b.genericMatches
-  if result != 0: return
-  result = a.subtypeMatches - b.subtypeMatches
-  if result != 0: return
-  result = a.intConvMatches - b.intConvMatches
-  if result != 0: return
-  result = a.convMatches - b.convMatches
-  if result != 0: return
-  # the other way round because of other semantics:
-  result = b.inheritancePenalty - a.inheritancePenalty
-  if result != 0: return
-  # prefer more specialized generic over more general generic:
-  result = complexDisambiguation(a.callee, b.callee)
-  # only as a last resort, consider scoping:
-  if result != 0: return
-  result = a.calleeScope - b.calleeScope
+
+  if a.matchQual == b.matchQual:
+    # the other way round because of other semantics:
+    result = b.inheritancePenalty - a.inheritancePenalty
+    if result != 0: return
+    # prefer more specialized generic over more general generic:
+    result = complexDisambiguation(a.callee, b.callee)
+    # only as a last resort, consider scoping:
+    if result != 0: return
+    result = a.calleeScope - b.calleeScope
+  elif a.matchQual > b.matchQual:
+    result = 1
+  else:
+    result = -1
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
@@ -1825,6 +1819,9 @@ when false:
     if nowDebug:
       echo f, " <- ", aOrig, " res ", result
 
+template setQuality(q) =
+  if q < m.matchQual: m.matchQual = q
+
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate
   initCandidate(c, m, f)
@@ -1901,7 +1898,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         dest.flags.incl tfVarIsPtr
         result = newDeref(result)
 
-      inc(m.convMatches)
+      setQuality(convMatch)
       if not m.genericConverter:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
@@ -1925,21 +1922,27 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     var r = typeRel(m, f.sons[0], result.typ)
     if r < isGeneric: return nil
     if result.kind == nkCall: result.kind = nkHiddenCallConv
-    inc(m.convMatches)
+    setQuality(convMatch)
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
 
-proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
-  case r
-  of isConvertible, isIntConv: inc(m.convMatches, convMatch)
-  of isSubtype, isSubrange: inc(m.subtypeMatches)
-  of isGeneric, isInferred, isBothMetaConvertible: inc(m.genericMatches)
-  of isFromIntLit: inc(m.intConvMatches, 256)
-  of isInferredConvertible:
-    inc(m.convMatches)
-  of isEqual: inc(m.exactMatches)
-  of isNone: discard
+proc incMatches(m: var TCandidate; r: TTypeRelation) =
+  let q =
+    case r
+    of isConvertible, isIntConv, isInferredConvertible:
+      convMatch
+    of isSubtype, isSubrange:
+      subtypeMatch
+    of isGeneric, isInferred, isBothMetaConvertible:
+      genericMatch
+    of isFromIntLit:
+      subtypeMatch
+    of isEqual:
+      exactMatch
+    of isNone:
+      noMatch
+  setQuality(q)
 
 template matchesVoidProc(t: PType): bool =
   (t.kind == tyProc and t.len == 1 and t.sons[0] == nil) or
@@ -2029,27 +2032,27 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
-    inc(m.convMatches)
+    setQuality(convMatch)
     arg = result
     r = typeRel(m, f, arg.typ)
 
   case r
   of isConvertible:
-    inc(m.convMatches)
+    setQuality(convMatch)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isIntConv:
     # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
-    inc(m.intConvMatches)
+    setQuality(intConvMatch)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isSubtype:
-    inc(m.subtypeMatches)
+    setQuality(subtypeMatch)
     if f.kind == tyTypeDesc:
       result = arg
     else:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
-    inc(m.subtypeMatches)
+    setQuality(subtypeMatch)
     if f.kind == tyVar:
       result = arg
     else:
@@ -2063,12 +2066,12 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
     if r == isInferredConvertible:
-      inc(m.convMatches)
+      setQuality(convMatch)
       result = implicitConv(nkHiddenStdConv, f, result, m, c)
     else:
-      inc(m.genericMatches)
+      setQuality(genericMatch)
   of isGeneric:
-    inc(m.genericMatches)
+    setQuality(genericMatch)
     if arg.typ == nil:
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
@@ -2085,10 +2088,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
-    inc(m.intConvMatches, 256)
+    setQuality(subtypeMatch)
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isEqual:
-    inc(m.exactMatches)
+    setQuality(exactMatch)
     result = arg
     if skipTypes(f, abstractVar-{tyTypeDesc}).kind == tyTuple or
       (arg.typ != nil and skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple):
@@ -2096,7 +2099,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   of isNone:
     # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
-      inc(m.genericMatches)
+      setQuality(genericMatch)
       m.fauxMatch = a.kind
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
@@ -2106,9 +2109,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
           params = p.emptyNode, name = p.emptyNode, pattern = p.emptyNode,
           genericParams = p.emptyNode, pragmas = p.emptyNode, exceptions = p.emptyNode), {})
       if f.kind == tyBuiltInTypeClass:
-        inc m.genericMatches
         put(m, f, lifted.typ)
-      inc m.convMatches
+      setQuality(convMatch)
       return implicitConv(nkHiddenStdConv, f, lifted, m, c)
     result = userConvMatch(c, m, f, a, arg)
     # check for a base type match, which supports varargs[T] without []
@@ -2121,20 +2123,20 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         r = typeRel(m, base(f), a)
         case r
         of isGeneric:
-          inc(m.convMatches)
+          setQuality(convMatch)
           result = copyTree(arg)
           result.typ = getInstantiatedType(c, arg, m, base(f))
           m.baseTypeMatch = true
         of isFromIntLit:
-          inc(m.intConvMatches, 256)
+          setQuality(subtypeMatch)
           result = implicitConv(nkHiddenStdConv, f[0], arg, m, c)
           m.baseTypeMatch = true
         of isEqual:
-          inc(m.convMatches)
+          setQuality(convMatch)
           result = copyTree(arg)
           m.baseTypeMatch = true
         of isSubtype: # bug #4799, varargs accepting subtype relation object
-          inc(m.subtypeMatches)
+          setQuality(subtypeMatch)
           if base(f).kind == tyTypeDesc:
             result = arg
           else:
@@ -2176,7 +2178,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
         let r = typeRel(z, f, arg.sons[i].typ)
-        incMatches(z, r, 2)
+        incMatches(z, r)
         #if arg.sons[i].sym.name.s == "cmp": # and arg.info.line == 606:
         #  echo "M ", r, " ", arg.info, " ", typeToString(arg.sons[i].sym.typ)
         #  writeMatches(z)
@@ -2278,8 +2280,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   template checkConstraint(n: untyped) {.dirty.} =
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
-        # better match over other routines with no such restriction:
-        inc(m.genericMatches, 100)
+        discard "do nothing"
       else:
         m.state = csNoMatch
         return
@@ -2482,8 +2483,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
     # Note the following doesn't work as it would produce ambiguities.
     # Instead we patch system.nim, see bug #8049.
     when false:
-      inc m.genericMatches
-      inc m.exactMatches
+      m.matchQual = genericMatch
     return
   var marker = initIntSet()
   matchesAux(c, n, nOrig, m, marker)
@@ -2541,7 +2541,7 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
     res != nil
   else:
     # pattern templates do not allow for conversions except from int literal
-    res != nil and m.convMatches == 0 and m.intConvMatches in [0, 256]
+    res != nil and m.matchQual >= intConvMatch
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
                       op: TTypeAttachedOp; col: int): PSym {.procvar.} =

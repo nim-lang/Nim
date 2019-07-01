@@ -96,8 +96,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
         #  echo typeToString(sym.typ)
         #  writeMatches(z)
 
-        # little hack so that iterators are preferred over everything else:
-        if sym.kind == skIterator: inc(z.exactMatches, 200)
         case best.state
         of csEmpty, csNoMatch: best = z
         of csMatch:
