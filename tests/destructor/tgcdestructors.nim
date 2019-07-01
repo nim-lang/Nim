@@ -9,6 +9,7 @@ ha
 a: @[4, 2, 3]
 0
 30
+true
 41 41'''
 """
 
@@ -189,6 +190,17 @@ proc mainSeqOfCap =
   echo s2.len
 
 mainSeqOfCap()
+
+# bug #11614
+
+let ga = "foo"
+
+proc takeAinArray =
+  let b = [ga]
+
+takeAinArray()
+echo ga == "foo"
+
 
 #echo s
 let (a, d) = allocCounters()
