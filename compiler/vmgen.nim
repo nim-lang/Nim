@@ -1547,6 +1547,12 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 proc importcCond(s: PSym): bool {.inline.} =
   sfImportc in s.flags and (lfDynamicLib notin s.loc.flags or s.ast == nil)
 
+proc shouldImportcSymbol*(s: PSym): bool =
+  ## return true to importc `s`, false to execute its body instead (refs #8405)
+  if sfImportc in s.flags:
+    assert s.kind == skProc
+    return s.ast.sons[bodyPos].kind == nkEmpty
+
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
     if compiletimeFFI in c.config.features:

@@ -1863,7 +1863,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         " operator has to be enabled with {.experimental: \"callOperator\".}")
 
   if n.sons[bodyPos].kind != nkEmpty and sfError notin s.flags:
-    # for DLL generation it is annoying to check for sfImportc!
+    # for DLL generation we allow sfImportc to have a body, for use in VM
     if sfBorrow in s.flags:
       localError(c.config, n.sons[bodyPos].info, errImplOfXNotAllowed % s.name.s)
     let usePseudoGenerics = kind in {skMacro, skTemplate}
@@ -1881,8 +1881,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
         c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
-        if lfDynamicLib notin s.loc.flags:
-          # no semantic checking for importc:
+        if lfDynamicLib notin s.loc.flags or n.sons[bodyPos] != nil:
+          # semantic checking for importc needed in case used in VM
           s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
@@ -1899,8 +1899,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           fixupInstantiatedSymbols(c, s)
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       if sfImportc in s.flags:
-        # so we just ignore the body after semantic checking for importc:
-        n.sons[bodyPos] = c.graph.emptyNode
+        # don't ignore the body in case used in VM
+        # n.sons[bodyPos] = c.graph.emptyNode
+        discard
       popProcCon(c)
   else:
     if s.kind == skMethod: semMethodPrototype(c, s, n)
