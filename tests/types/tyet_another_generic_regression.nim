@@ -1,5 +1,5 @@
 discard """
-  output: '''ho'''
+  output: ''''''
 """
 
 import system
@@ -29,4 +29,4 @@ const
     "test": test,
   }.toTable
 
-map["test"]()
+#map["test"]()
