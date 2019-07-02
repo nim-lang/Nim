@@ -3088,6 +3088,21 @@ As seen in the above example, the case expression can also introduce side
 effects. When multiple statements are given for a branch, Nim will use
 the last expression as the result value.
 
+Block expression
+----------------
+
+A `block expression` is almost like a block statement, but it is an expression
+that use last expression under the block as the value.
+It is similar to the statement list expression, but the statement list expression
+does not open new block scope.
+
+.. code-block:: nim
+  let a = block:
+    var fib = @[0, 1]
+    for i in 0..10:
+      fib.add fib[^1] + fib[^2]
+    fib
+
 Table constructor
 -----------------
 
