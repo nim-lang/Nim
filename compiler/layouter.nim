@@ -145,6 +145,10 @@ proc closeEmitter*(em: var Emitter) =
       maxLhs = 0
       lineBegin = i+1
     of ltTab:
+      if i >= 2 and em.kinds[i-2] == ltNewline and em.kinds[i-1] in {ltNewline, ltSpaces}:
+        # a previous section has ended
+        maxLhs = 0
+
       if maxLhs == 0:
         content.add em.tokens[i]
         inc lineLen, em.tokens[i].len
