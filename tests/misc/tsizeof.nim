@@ -542,10 +542,10 @@ main()
 type
   Payload = object
     something: int8
-    vals: UncheckedArray[int64]
+    vals: UncheckedArray[int32]
 
 proc payloadCheck() =
-  doAssert offsetOf(Payload, vals) == 8
-  doAssert sizeOf(Payload) == 8
+  doAssert offsetOf(Payload, vals) == 4
+  doAssert sizeOf(Payload) == 4
 
 payloadCheck()
