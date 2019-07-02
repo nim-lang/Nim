@@ -13,7 +13,7 @@
   It's also available for the
   `JavaScript target <backends.html#backends-the-javascript-target>`_.
 
-  Although the ``times`` module support nanosecond time resolution, the
+  Although the ``times`` module supports nanosecond time resolution, the
   resolution used by ``getTime()`` depends on the platform and backend
   (JS is limited to millisecond precision).
 
@@ -64,31 +64,31 @@
                                                                                                     | ``Monday -> Monday``
   ``h``          The hours in one digit if possible. Ranging from 1-12.                             | ``5pm -> 5``
                                                                                                     | ``2am -> 2``
-  ``hh``         The hours in two digits always. If the hour is one digit 0 is prepended.           | ``5pm -> 05``
+  ``hh``         The hours in two digits always. If the hour is one digit, 0 is prepended.          | ``5pm -> 05``
                                                                                                     | ``11am -> 11``
   ``H``          The hours in one digit if possible, ranging from 0-23.                             | ``5pm -> 17``
                                                                                                     | ``2am -> 2``
   ``HH``         The hours in two digits always. 0 is prepended if the hour is one digit.           | ``5pm -> 17``
                                                                                                     | ``2am -> 02``
-  ``m``          The minutes in 1 digit if possible.                                                | ``5:30 -> 30``
+  ``m``          The minutes in one digit if possible.                                              | ``5:30 -> 30``
                                                                                                     | ``2:01 -> 1``
-  ``mm``         Same as above but always 2 digits, 0 is prepended if the minute is one digit.      | ``5:30 -> 30``
+  ``mm``         Same as above but always two digits, 0 is prepended if the minute is one digit.    | ``5:30 -> 30``
                                                                                                     | ``2:01 -> 01``
   ``M``          The month in one digit if possible.                                                | ``September -> 9``
                                                                                                     | ``December -> 12``
-  ``MM``         The month in two digits always. 0 is prepended.                                    | ``September -> 09``
+  ``MM``         The month in two digits always. 0 is prepended if the month value is one digit.    | ``September -> 09``
                                                                                                     | ``December -> 12``
   ``MMM``        Abbreviated three-letter form of the month.                                        | ``September -> Sep``
                                                                                                     | ``December -> Dec``
   ``MMMM``       Full month string, properly capitalized.                                           | ``September -> September``
   ``s``          Seconds as one digit if possible.                                                  | ``00:00:06 -> 6``
-  ``ss``         Same as above but always two digits. 0 is prepended.                               | ``00:00:06 -> 06``
+  ``ss``         Same as above but always two digits. 0 is prepended if the second is one digit.    | ``00:00:06 -> 06``
   ``t``          ``A`` when time is in the AM. ``P`` when time is in the PM.                        | ``5pm -> P``
                                                                                                     | ``2am -> A``
   ``tt``         Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.      | ``5pm -> PM``
                                                                                                     | ``2am -> AM``
   ``yy``         The last two digits of the year. When parsing, the current century is assumed.     | ``2012 AD -> 12``
-  ``yyyy``       The year, padded to atleast four digits.                                           | ``2012 AD -> 2012``
+  ``yyyy``       The year, padded to at least four digits.                                          | ``2012 AD -> 2012``
                  Is always positive, even when the year is BC.                                      | ``24 AD -> 0024``
                  When the year is more than four digits, '+' is prepended.                          | ``24 BC -> 00024``
                                                                                                     | ``12345 AD -> +12345``
@@ -96,7 +96,7 @@
                  Is always positive, even when the year is BC.                                      | ``24 AD -> 24``
                                                                                                     | ``24 BC -> 24``
                                                                                                     | ``12345 AD -> 12345``
-  ``uuuu``       The year, padded to atleast four digits. Will be negative when the year is BC.     | ``2012 AD -> 2012``
+  ``uuuu``       The year, padded to at least four digits. Will be negative when the year is BC.    | ``2012 AD -> 2012``
                  When the year is more than four digits, '+' is prepended unless the year is BC.    | ``24 AD -> 0024``
                                                                                                     | ``24 BC -> -0023``
                                                                                                     | ``12345 AD -> +12345``
@@ -124,13 +124,13 @@
   inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
   ``,``. A literal ``'`` can be specified with ``''``.
 
-  However you don't need to necessarily separate format patterns, an
-  unambiguous format string like ``yyyyMMddhhmmss`` is valid too (although
+  However you don't need to necessarily separate format patterns, as an
+  unambiguous format string like ``yyyyMMddhhmmss`` is also valid (although
   only for years in the range 1..9999).
 
   Duration vs TimeInterval
   ============================
-  The ``times`` module exports two similiar types that are both used to
+  The ``times`` module exports two similar types that are both used to
   represent some amount of time: `Duration <#Duration>`_ and
   `TimeInterval <#TimeInterval>`_.
   This section explains how they differ and when one should be prefered over the
@@ -141,23 +141,23 @@
   ----------------------------
   A ``Duration`` represents a duration of time stored as seconds and
   nanoseconds. A ``Duration`` is always fully normalized, so
-``initDuration(hours = 1)`` and ``initDuration(minutes = 60)`` are equivilant.
+``initDuration(hours = 1)`` and ``initDuration(minutes = 60)`` are equivalent.
 
-  Arithmetics with a ``Duration`` is very fast, especially when used with the
+  Arithmetic with a ``Duration`` is very fast, especially when used with the
   ``Time`` type, since it only involves basic arithmetic. Because ``Duration``
-  is more performant and easier to understand it should generally prefered.
+  is more performant and easier to understand it should generally preferred.
 
   TimeInterval
   ----------------------------
-  A ``TimeInterval`` represents some amount of time expressed in calendar
+  A ``TimeInterval`` represents an amount of time expressed in calendar
   units, for example "1 year and 2 days". Since some units cannot be
   normalized (the length of a year is different for leap years for example),
   the ``TimeInterval`` type uses seperate fields for every unit. The
-  ``TimeInterval``'s returned form the this module generally don't normalize
+  ``TimeInterval``'s returned from this module generally don't normalize
   **anything**, so even units that could be normalized (like seconds,
   milliseconds and so on) are left untouched.
 
-  Arithmetics with a ``TimeInterval`` can be very slow, because it requires
+  Arithmetic with a ``TimeInterval`` can be very slow, because it requires
   timezone information.
 
   Since it's slower and more complex, the ``TimeInterval`` type should be
@@ -176,9 +176,9 @@
     - 2018-03-25T12:00+02:00
     - 2018-03-26T12:00+01:00
 
-  If only the date & time is considered, it appears that exatly one day has
+  If only the date & time is considered, it appears that exactly one day has
   passed. However, the UTC offsets are different, which means that the
-  UTC offset was changed somewhere between. This happens twice each year for
+  UTC offset was changed somewherein between. This happens twice each year for
   timezones that use daylight savings time. Because of this change, the amount
   of time that has passed is actually 25 hours.
 
@@ -895,13 +895,13 @@ proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
   subImpl[Time](a, b)
 
 proc `<`*(a, b: Time): bool {.operator, extern: "ntLtTime".} =
-  ## Returns true iff ``a < b``, that is iff a happened before b.
+  ## Returns true if ``a < b``, that is if ``a`` happened before ``b``.
   runnableExamples:
     doAssert initTime(50, 0) < initTime(99, 0)
   ltImpl(a, b)
 
 proc `<=`*(a, b: Time): bool {.operator, extern: "ntLeTime".} =
-  ## Returns true iff ``a <= b``.
+  ## Returns true if ``a <= b``.
   lqImpl(a, b)
 
 proc `==`*(a, b: Time): bool {.operator, extern: "ntEqTime".} =
@@ -1452,7 +1452,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
-  ## in the order of their size, i.e first the ``years`` component, then the
+  ## in the order of their size, i.e. first the ``years`` component, then the
   ## ``months`` component and so on. The returned ``DateTime`` will have the
   ## same timezone as the input.
   ##
@@ -1481,7 +1481,7 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` from ``dt``. Components from ``interval`` are
-  ## subtracted in the order of their size, i.e first the ``years`` component,
+  ## subtracted in the order of their size, i.e .first the ``years`` component,
   ## then the ``months`` component and so on. The returned ``DateTime`` will
   ## have the same timezone as the input.
   runnableExamples:
@@ -1517,15 +1517,15 @@ proc `-`*(dt1, dt2: DateTime): Duration =
   dt1.toTime - dt2.toTime
 
 proc `<`*(a, b: DateTime): bool =
-  ## Returns true iff ``a`` happened before ``b``.
+  ## Returns true if ``a`` happened before ``b``.
   return a.toTime < b.toTime
 
 proc `<=`*(a, b: DateTime): bool =
-  ## Returns true iff ``a`` happened before or at the same time as ``b``.
+  ## Returns true if ``a`` happened before or at the same time as ``b``.
   return a.toTime <= b.toTime
 
 proc `==`*(a, b: DateTime): bool =
-  ## Returns true iff ``a`` and ``b`` represent the same point in time.
+  ## Returns true if ``a`` and ``b`` represent the same point in time.
   return a.toTime == b.toTime
 
 proc isStaticInterval(interval: TimeInterval): bool =
@@ -2321,7 +2321,7 @@ proc format*(time: Time, f: static[string], zone: Timezone = local()): string
   result = time.inZone(zone).format(f2)
 
 template formatValue*(result: var string; value: Time, specifier: string) =
-  ## adapter for strformat. Not intended to be called directly.
+  ## adapter for ``strformat``. Not intended to be called directly.
   result.add format(value, specifier)
 
 proc parse*(input: string, f: TimeFormat, zone: Timezone = local(), loc: DateTimeLocale = DefaultLocale): DateTime
