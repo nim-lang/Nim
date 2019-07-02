@@ -178,7 +178,7 @@
 
   If only the date & time is considered, it appears that exactly one day has
   passed. However, the UTC offsets are different, which means that the
-  UTC offset was changed somewherein between. This happens twice each year for
+  UTC offset was changed somewhere in between. This happens twice each year for
   timezones that use daylight savings time. Because of this change, the amount
   of time that has passed is actually 25 hours.
 
@@ -1481,7 +1481,7 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` from ``dt``. Components from ``interval`` are
-  ## subtracted in the order of their size, i.e .first the ``years`` component,
+  ## subtracted in the order of their size, i.e. first the ``years`` component,
   ## then the ``months`` component and so on. The returned ``DateTime`` will
   ## have the same timezone as the input.
   runnableExamples:
