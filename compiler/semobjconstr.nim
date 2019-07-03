@@ -200,8 +200,9 @@ proc semConstructFields(c: PContext, recNode: PNode,
       fieldsPresentInInitExpr(c, fields, initExpr)
 
     template checkMissingFields(branchNode: PNode) =
-      let fields = branchNode[branchNode.len - 1]
-      checkForMissingFields(c, fields, initExpr)
+      if branchNode != nil:
+        let fields = branchNode[branchNode.len - 1]
+        checkForMissingFields(c, fields, initExpr)
 
     let discriminator = recNode.sons[0]
     internalAssert c.config, discriminator.kind == nkSym
