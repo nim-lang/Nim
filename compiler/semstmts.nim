@@ -1881,12 +1881,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
         c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
-        if lfDynamicLib notin s.loc.flags or n.sons[bodyPos] != nil:
-          # semantic checking for importc needed in case used in VM
-          s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-          # unfortunately we cannot skip this step when in 'system.compiles'
-          # context as it may even be evaluated in 'system.compiles':
-          trackProc(c, s, s.ast[bodyPos])
+        # semantic checking also needed with importc in case used in VM
+        s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+        # unfortunately we cannot skip this step when in 'system.compiles'
+        # context as it may even be evaluated in 'system.compiles':
+        trackProc(c, s, s.ast[bodyPos])
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       else:
         if (s.typ.sons[0] != nil and kind != skIterator) or kind == skMacro:
