@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, trees, nversion, lineinfos, platform, bitsets, types, renderer,
-  options, int128
+  options
 
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly
@@ -60,17 +60,17 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   result = false
 
 proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
-  var first, j: Int128
+  var first, j: BiggestInt
   first = firstOrd(conf, s.typ.sons[0])
   bitSetInit(b, int(getSize(conf, s.typ)))
   for i in 0 ..< sonsLen(s):
     if s.sons[i].kind == nkRange:
       j = getOrdValue(s.sons[i].sons[0])
       while j <= getOrdValue(s.sons[i].sons[1]):
-        bitSetIncl(b, toInt64(j - first))
+        bitSetIncl(b, j - first)
         inc(j)
     else:
-      bitSetIncl(b, toInt64(getOrdValue(s.sons[i]) - first))
+      bitSetIncl(b, getOrdValue(s.sons[i]) - first)
 
 proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): PNode =
   var
@@ -78,7 +78,7 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
     elemType: PType
     n: PNode
   elemType = settype.sons[0]
-  first = firstOrd(conf, elemType).toInt64
+  first = firstOrd(conf, elemType)
   result = newNodeI(nkCurly, info)
   result.typ = settype
   result.info = info

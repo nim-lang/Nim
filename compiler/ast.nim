@@ -11,7 +11,7 @@
 
 import
   lineinfos, hashes, nversion, options, strutils, std / sha1, ropes, idents,
-  intsets, idgen, int128
+  intsets, idgen
 
 type
   TCallingConvention* = enum
@@ -1605,14 +1605,14 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc getInt*(a: PNode): Int128 =
+proc getInt*(a: PNode): BiggestInt =
   case a.kind
-  of nkCharLit, nkUintLit..nkUInt64Lit:
-    result = toInt128(cast[uint64](a.intVal))
-  of nkIntLit..nkInt64Lit:
-    result = toInt128(a.intVal)
+  of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")
+    #internalError(a.info, "getInt")
+    #doAssert false, "getInt"
+    #result = 0
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind

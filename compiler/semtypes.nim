@@ -507,7 +507,7 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode
   result.add(at)
   result.add(bt)
   if emptyRange(ac, bc): localError(c.config, b.info, "range is empty")
-  else: covered = covered + getOrdValue(bc) + 1 - getOrdValue(ac)
+  else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
 
 proc semCaseBranchRange(c: PContext, t, b: PNode,
                         covered: var BiggestInt): PNode =
