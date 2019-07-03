@@ -682,3 +682,16 @@ block:
 ## single line comment would be ok.
 block:
   var x = 7
+
+
+proc newRecordGen(ctx: Context; typ: TypRef): PNode =
+  result = nkTypeDef.t(
+    newId(typ.optSym.name, true, pragmas = [id(
+        if typ.isUnion: "cUnion" else: "cStruct")]),
+    empty(),
+    nkObjectTy.t(
+      empty(),
+      empty(),
+      nkRecList.t(
+        typ.recFields.map(newRecFieldGen))))
+

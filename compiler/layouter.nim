@@ -364,7 +364,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       em.indentLevel = tok.indent
     elif (em.lastTok in (splitters + oprSet) and tok.tokType notin closedPars):
       # aka: we are in an expression context:
-      let alignment = tok.indent - em.indentStack[^1]
+      let alignment = max(tok.indent - em.indentStack[^1], 0)
       em.indentLevel = alignment + em.indentStack.high * em.indWidth
     else:
       if tok.indent > em.indentStack[^1]:
