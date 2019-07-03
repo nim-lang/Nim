@@ -17,6 +17,7 @@ template bootSwitch(name, expr, userString) =
   const name = if expr: " " & userString else: ""
 
 bootSwitch(usedRelease, defined(release), "-d:release")
+bootSwitch(usedDanger, defined(danger), "-d:danger")
 bootSwitch(usedGnuReadline, defined(useLinenoise), "-d:useLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
@@ -96,7 +97,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
     when gitHash.len == 40:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
-    msgWriteln(conf, "active boot switches:" & usedRelease &
+    msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & usedGnuReadline & usedNativeStacktrace &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
