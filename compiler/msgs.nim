@@ -390,8 +390,6 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
   msg >= errGenerated and conf.cmd == cmdIdeTools and optIdeDebug notin conf.globalOptions
 
-var getDebugMsgAdditional*: proc()
-
 proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   var
     title: string
@@ -434,7 +432,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
     else:
       styledMsgWriteln(color, title, resetStyle, s)
 
-  if getDebugMsgAdditional != nil: getDebugMsgAdditional()
+  if conf.errorDiagnosticCallback != nil: conf.errorDiagnosticCallback()
 
   handleError(conf, msg, doAbort, s)
 
