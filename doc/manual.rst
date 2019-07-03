@@ -3092,7 +3092,7 @@ Block expression
 ----------------
 
 A `block expression` is almost like a block statement, but it is an expression
-that use last expression under the block as the value.
+that uses last expression under the block as the value.
 It is similar to the statement list expression, but the statement list expression
 does not open new block scope.
 
