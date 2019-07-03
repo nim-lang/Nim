@@ -187,7 +187,7 @@ proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
 
 proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
     sockType: SockType = SOCK_STREAM,
-    protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
+    protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
   ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
   result = Socket(
@@ -203,7 +203,7 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
   when defined(macosx) and not defined(nimdoc):
     setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
 
-proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
+proc newSocket*(domain, sockType, protocol: cint, buffered = true): owned(Socket) =
   ## Creates a new socket.
   ##
   ## If an error occurs OSError will be raised.
@@ -214,7 +214,7 @@ proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
                      buffered)
 
 proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-                protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
+                protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
   ## Creates a new socket.
   ##
   ## If an error occurs OSError will be raised.
@@ -766,7 +766,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
     raiseOSError(osLastError())
   freeAddrInfo(aiList)
 
-proc acceptAddr*(server: Socket, client: var Socket, address: var string,
+proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
                  flags = {SocketFlag.SafeDisconn}) {.
                  tags: [ReadIOEffect], gcsafe, locks: 0.} =
   ## Blocks until a connection is being made from a client. When a connection
@@ -858,7 +858,7 @@ when false: #defineSsl:
       acceptAddrPlain(AcceptNoClient, AcceptSuccess):
         doHandshake()
 
-proc accept*(server: Socket, client: var Socket,
+proc accept*(server: Socket, client: var owned(Socket),
              flags = {SocketFlag.SafeDisconn}) {.tags: [ReadIOEffect].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.
@@ -1509,7 +1509,7 @@ proc `$`*(address: IpAddress): string =
           printedLastGroup = true
 
 proc dial*(address: string, port: Port,
-           protocol = IPPROTO_TCP, buffered = true): Socket
+           protocol = IPPROTO_TCP, buffered = true): owned(Socket)
            {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Establishes connection to the specified ``address``:``port`` pair via the
   ## specified protocol. The procedure iterates through possible

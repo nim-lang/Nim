@@ -6,7 +6,7 @@ type
 
   CallbackList = object
     function: CallbackFunc
-    next: ref CallbackList
+    next: owned(ref CallbackList)
 
   FutureBase* = ref object of RootObj ## Untyped future.
     callbacks: CallbackList
@@ -99,7 +99,7 @@ template setupFutureBase(fromProc: string) =
     result.fromProc = fromProc
     currentID.inc()
 
-proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
+proc newFuture*[T](fromProc: string = "unspecified"): owned(Future[T]) =
   ## Creates a new future.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
@@ -107,7 +107,7 @@ proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   setupFutureBase(fromProc)
   when isFutureLoggingEnabled: logFutureStart(result)
 
-proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
+proc newFutureVar*[T](fromProc = "unspecified"): owned(FutureVar[T]) =
   ## Create a new ``FutureVar``. This Future type is ideally suited for
   ## situations where you want to avoid unnecessary allocations of Futures.
   ##

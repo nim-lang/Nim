@@ -220,8 +220,11 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
   let prcName = prc.name.getName
 
-  let returnType = prc.params[0]
+  var returnType = prc.params[0]
   var baseType: NimNode
+  if returnType.kind in nnkCallKinds and returnType[0].eqIdent("owned") and
+      returnType.len == 2:
+    returnType = returnType[1]
   # Verify that the return type is a Future[T]
   if returnType.kind == nnkBracketExpr:
     let fut = repr(returnType[0])
