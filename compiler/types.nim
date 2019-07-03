@@ -168,7 +168,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
       for i in 0 ..< sonsLen(t):
         result = iterOverTypeAux(marker, t.sons[i], iter, closure)
         if result: return
-      if t.n != nil: result = iterOverNode(marker, t.n, iter, closure)
+      if t.n != nil and t.kind != tyProc: result = iterOverNode(marker, t.n, iter, closure)
 
 proc iterOverType(t: PType, iter: TTypeIter, closure: RootRef): bool =
   var marker = initIntSet()
