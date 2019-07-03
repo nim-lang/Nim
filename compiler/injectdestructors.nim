@@ -150,6 +150,7 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
+    inLoop: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
@@ -750,7 +751,7 @@ proc p(n: PNode; c: var Con): PNode =
     for i in 0..<n.len:
       let it = n[i]
       let L = it.len
-      let ri = it[L-1]
+      var ri = it[L-1]
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
@@ -764,6 +765,8 @@ proc p(n: PNode; c: var Con): PNode =
             # make sure it's destroyed at the end of the proc:
             if not isUnpackedTuple(it[0].sym):
               c.destroys.add genDestroy(c, v.typ, v)
+          if ri.kind == nkEmpty and c.inLoop > 0:
+            ri = genDefaultCall(v.typ, c, v.info)
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -826,6 +829,11 @@ proc p(n: PNode; c: var Con): PNode =
     else:
       result = copyNode(n)
       recurse(n, result)
+  of nkForStmt, nkParForStmt, nkWhileStmt:
+    inc c.inLoop
+    result = copyNode(n)
+    recurse(n, result)
+    dec c.inLoop
   else:
     result = copyNode(n)
     recurse(n, result)
