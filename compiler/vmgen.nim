@@ -1547,7 +1547,7 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 proc importcCond*(s: PSym): bool {.inline.} =
   ## return true to importc `s`, false to execute its body instead (refs #8405)
   if sfImportc in s.flags:
-    if s.kind == skProc:
+    if s.kind in routineKinds:
       return s.ast.sons[bodyPos].kind == nkEmpty
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
