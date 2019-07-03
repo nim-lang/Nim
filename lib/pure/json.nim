@@ -779,6 +779,12 @@ iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   for key, val in pairs(node.fields):
     yield (key, val)
 
+iterator keys*(node: JsonNode): string =
+  ## Iterator for the keys in `node`. `node` has to be a JObject.
+  assert node.kind == JObject
+  for key in node.fields.keys:
+    yield key
+
 iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   ## Values can be modified
