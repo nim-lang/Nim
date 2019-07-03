@@ -299,18 +299,19 @@ when not defined(useNimRtl):
       add result, "(invalid data!)"
     inc(cl.recdepth)
 
-proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
-                   compilerRtl.} =
-  var
-    cl: ReprClosure
-  initReprClosure(cl)
-  result = "["
-  var bs = elemtyp.size
-  for i in 0..length - 1:
-    if i > 0: add result, ", "
-    reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
-  add result, "]"
-  deinitReprClosure(cl)
+when not defined(useNimRtl):
+  proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
+                     compilerRtl.} =
+    var
+      cl: ReprClosure
+    initReprClosure(cl)
+    result = "["
+    var bs = elemtyp.size
+    for i in 0..length - 1:
+      if i > 0: add result, ", "
+      reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
+    add result, "]"
+    deinitReprClosure(cl)
 
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string =
