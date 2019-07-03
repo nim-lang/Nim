@@ -1650,8 +1650,11 @@ proc makePtrType(baseType: PType): PType =
   addSonSkipIntLit(result, baseType)
 
 proc makeAddr(n: PNode): PNode =
-  result = newTree(nkHiddenAddr, n)
-  result.typ = makePtrType(n.typ)
+  if n.kind == nkHiddenAddr:
+    result = n
+  else:
+    result = newTree(nkHiddenAddr, n)
+    result.typ = makePtrType(n.typ)
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   if p.config.selectedGc == gcDestructors:
