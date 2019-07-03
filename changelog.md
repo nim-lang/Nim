@@ -19,6 +19,7 @@
 
 - Enable Oid usage in hashtables. (#11472)
 
+- Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
 
 ## Language additions
 
