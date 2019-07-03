@@ -22,7 +22,7 @@ type
   MD5Digest* = array[0..15, uint8] ## \
     ## MD5 checksum of a string, obtained with `toMD5 proc <#toMD5,string>`_.
   MD5Buffer = array[0..63, uint8]
-  MD5Context* {.final.} = object
+  MD5Context*{.final.} = object
     state: MD5State
     count: array[0..1, uint32]
     buffer: MD5Buffer
@@ -169,7 +169,8 @@ proc transform(buffer: pointer, state: var MD5State) =
   state[3] = state[3] + d
 
 proc md5Init*(c: var MD5Context) {.raises: [], tags: [], gcsafe.}
-proc md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [], tags: [], gcsafe.}
+proc md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [],
+    tags: [], gcsafe.}
 proc md5Final*(c: var MD5Context, digest: var MD5Digest) {.raises: [], tags: [], gcsafe.}
 
 
@@ -197,7 +198,7 @@ proc `$`*(d: MD5Digest): string =
     add(result, digits[d[i].int and 0xF])
 
 proc getMD5*(s: string): string =
-  ## Computes an MD5 value of `s` and returns its string representation. 
+  ## Computes an MD5 value of `s` and returns its string representation.
   ## .. note::
   ## available at compile time
   ##

@@ -44,10 +44,10 @@ export
   MSG_PEEK
 
 when defined(macosx) and not defined(nimdoc):
-    export SO_NOSIGPIPE
+  export SO_NOSIGPIPE
 
 type
-  Port* = distinct uint16  ## port type
+  Port* = distinct uint16 ## port type
 
   Domain* = enum    ## domain, which specifies the protocol family of the
                     ## created socket. Other domains than those that are listed
@@ -126,36 +126,36 @@ proc toInt*(p: Protocol): cint
 when not useWinVersion:
   proc toInt(domain: Domain): cint =
     case domain
-    of AF_UNSPEC:      result = posix.AF_UNSPEC.cint
-    of AF_UNIX:        result = posix.AF_UNIX.cint
-    of AF_INET:        result = posix.AF_INET.cint
-    of AF_INET6:       result = posix.AF_INET6.cint
+    of AF_UNSPEC: result = posix.AF_UNSPEC.cint
+    of AF_UNIX: result = posix.AF_UNIX.cint
+    of AF_INET: result = posix.AF_INET.cint
+    of AF_INET6: result = posix.AF_INET6.cint
 
   proc toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent ``cint`` to the Domain or none(),
     ## if the ``cint`` is not known.
-    result = if   family == posix.AF_UNSPEC: some(Domain.AF_UNSPEC)
-             elif family == posix.AF_UNIX:   some(Domain.AF_UNIX)
-             elif family == posix.AF_INET:   some(Domain.AF_INET)
-             elif family == posix.AF_INET6:  some(Domain.AF_INET6)
-             else: none(Domain)
+    result = if family == posix.AF_UNSPEC: some(Domain.AF_UNSPEC)
+      elif family == posix.AF_UNIX: some(Domain.AF_UNIX)
+      elif family == posix.AF_INET: some(Domain.AF_INET)
+      elif family == posix.AF_INET6: some(Domain.AF_INET6)
+      else: none(Domain)
 
   proc toInt(typ: SockType): cint =
     case typ
-    of SOCK_STREAM:    result = posix.SOCK_STREAM
-    of SOCK_DGRAM:     result = posix.SOCK_DGRAM
+    of SOCK_STREAM: result = posix.SOCK_STREAM
+    of SOCK_DGRAM: result = posix.SOCK_DGRAM
     of SOCK_SEQPACKET: result = posix.SOCK_SEQPACKET
-    of SOCK_RAW:       result = posix.SOCK_RAW
+    of SOCK_RAW: result = posix.SOCK_RAW
 
   proc toInt(p: Protocol): cint =
     case p
-    of IPPROTO_TCP:    result = posix.IPPROTO_TCP
-    of IPPROTO_UDP:    result = posix.IPPROTO_UDP
-    of IPPROTO_IP:     result = posix.IPPROTO_IP
-    of IPPROTO_IPV6:   result = posix.IPPROTO_IPV6
-    of IPPROTO_RAW:    result = posix.IPPROTO_RAW
-    of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
-    of IPPROTO_ICMPV6:   result = posix.IPPROTO_ICMPV6
+    of IPPROTO_TCP: result = posix.IPPROTO_TCP
+    of IPPROTO_UDP: result = posix.IPPROTO_UDP
+    of IPPROTO_IP: result = posix.IPPROTO_IP
+    of IPPROTO_IPV6: result = posix.IPPROTO_IPV6
+    of IPPROTO_RAW: result = posix.IPPROTO_RAW
+    of IPPROTO_ICMP: result = posix.IPPROTO_ICMP
+    of IPPROTO_ICMPV6: result = posix.IPPROTO_ICMPV6
 
 else:
   proc toInt(domain: Domain): cint =
@@ -164,10 +164,10 @@ else:
   proc toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent ``cint`` to the Domain or none(),
     ## if the ``cint`` is not known.
-    result = if   family == winlean.AF_UNSPEC: some(Domain.AF_UNSPEC)
-             elif family == winlean.AF_INET:   some(Domain.AF_INET)
-             elif family == winlean.AF_INET6:  some(Domain.AF_INET6)
-             else: none(Domain)
+    result = if family == winlean.AF_UNSPEC: some(Domain.AF_UNSPEC)
+      elif family == winlean.AF_INET: some(Domain.AF_INET)
+      elif family == winlean.AF_INET6: some(Domain.AF_INET6)
+      else: none(Domain)
 
   proc toInt(typ: SockType): cint =
     result = cint(ord(typ))
@@ -223,10 +223,12 @@ proc close*(socket: SocketHandle) =
   # TODO: These values should not be discarded. An OSError should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
-proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint =
+proc bindAddr*(socket: SocketHandle, name: ptr SockAddr,
+    namelen: SockLen): cint =
   result = bindSocket(socket, name, namelen)
 
-proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [ReadIOEffect].} =
+proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [
+    ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
@@ -250,7 +252,8 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   # FreeBSD, Haiku don't support AI_V4MAPPED but defines the macro.
   # https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=198092
   # https://dev.haiku-os.org/ticket/14323
-  when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and not defined(android) and not defined(haiku):
+  when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and
+      not defined(android) and not defined(haiku):
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
   let socket_port = if sockType == SOCK_RAW: "" else: $port
@@ -306,7 +309,8 @@ proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
   result.port = Port(s.s_port)
   result.proto = $s.s_proto
 
-proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].} =
+proc getServByPort*(port: Port, proto: string): Servent {.tags: [
+    ReadIOEffect].} =
   ## Searches the database from the beginning and finds the first entry for
   ## which the port specified by ``port`` matches the s_port member and the
   ## protocol name specified by ``proto`` matches the s_proto member.
@@ -427,7 +431,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
   elif sockAddr.sa_family.cint == nativeAfInet6:
     let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN
-                  else: 46 # it's actually 46 in both cases
+      else: 46 # it's actually 46 in both cases
     result = newString(addrLen)
     let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
     when not useWinVersion:
@@ -499,7 +503,8 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
     result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0],
+                 (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
     setLen(result[0], result[0].cstring.len)
     result[1] = Port(nativesockets.ntohs(name.sin6_port))
@@ -536,7 +541,8 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
     result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0],
+                 (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
     setLen(result[0], result[0].cstring.len)
     result[1] = Port(nativesockets.ntohs(name.sin6_port))
@@ -569,7 +575,7 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if ioctlsocket(s, FIONBIO, addr(mode)) == -1:
       raiseOSError(osLastError())
-  else: # BSD sockets
+  else:  # BSD sockets
     var x: int = fcntl(s, F_GETFL, 0)
     if x == -1:
       raiseOSError(osLastError())

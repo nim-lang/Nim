@@ -4,7 +4,7 @@
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 
-when defined(Nimdoc): # only for proper documentation:
+when defined(Nimdoc):  # only for proper documentation:
   const
     CurDir* = '.'
       ## The constant character used by the operating system to refer to the
@@ -112,7 +112,7 @@ elif defined(RISCOS):
     ExeExt* = ""
     ScriptExt* = ""
     DynlibFormat* = "lib$1.so"
-else: # UNIX-like operating system
+else:  # UNIX-like operating system
   const
     CurDir* = '.'
     ParDir* = ".."

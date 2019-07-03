@@ -17,7 +17,7 @@ const MAX_POLL_EVENTS = 64
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
-      maxFD : int
+      maxFD: int
       pollcnt: int
       fds: ptr SharedArray[SelectorKey[T]]
       pollfds: ptr SharedArray[TPollFd]
@@ -27,7 +27,7 @@ when hasThreadSupport:
 else:
   type
     SelectorImpl[T] = object
-      maxFD : int
+      maxFD: int
       pollcnt: int
       fds: seq[SelectorKey[T]]
       pollfds: seq[TPollFd]
@@ -80,7 +80,7 @@ proc close*[T](s: Selector[T]) =
     deallocSharedArray(s.pollfds)
     deallocShared(cast[pointer](s))
 
-template pollAdd[T](s: Selector[T], sock: cint, events: set[Event]) =
+template pollAdd[T](s: Selector[T]; sock: cint, events: set[Event]) =
   withPollLock(s):
     var pollev: cshort = 0
     if Event.Read in events: pollev = pollev or POLLIN
@@ -90,7 +90,7 @@ template pollAdd[T](s: Selector[T], sock: cint, events: set[Event]) =
     inc(s.count)
     inc(s.pollcnt)
 
-template pollUpdate[T](s: Selector[T], sock: cint, events: set[Event]) =
+template pollUpdate[T](s: Selector[T]; sock: cint, events: set[Event]) =
   withPollLock(s):
     var i = 0
     var pollev: cshort = 0
@@ -105,7 +105,7 @@ template pollUpdate[T](s: Selector[T], sock: cint, events: set[Event]) =
     doAssert(i < s.pollcnt,
              "Descriptor [" & $sock & "] is not registered in the queue!")
 
-template pollRemove[T](s: Selector[T], sock: cint) =
+template pollRemove[T](s: Selector[T]; sock: cint) =
   withPollLock(s):
     var i = 0
     while i < s.pollcnt:
@@ -128,7 +128,7 @@ template checkFd(s, f) =
   if f >= s.maxFD:
     raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
 
-proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
+proc registerHandle*[T](s: Selector[T]; fd: int | SocketHandle,
                         events: set[Event], data: T) =
   var fdi = int(fd)
   s.checkFd(fdi)
@@ -136,7 +136,7 @@ proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
   setKey(s, fdi, events, 0, data)
   if events != {}: s.pollAdd(fdi.cint, events)
 
-proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
+proc updateHandle*[T](s: Selector[T]; fd: int | SocketHandle,
                       events: set[Event]) =
   let maskEvents = {Event.Timer, Event.Signal, Event.Process, Event.Vnode,
                     Event.User, Event.Oneshot, Event.Error}
@@ -157,7 +157,7 @@ proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
         s.pollRemove(fd.cint)
     pkey.events = events
 
-proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
+proc registerEvent*[T](s: Selector[T]; ev: SelectEvent, data: T) =
   var fdi = int(ev.rfd)
   doAssert(s.fds[fdi].ident == InvalidIdent, "Event is already registered in the queue!")
   var events = {Event.User}
@@ -165,7 +165,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   events.incl(Event.Read)
   s.pollAdd(fdi.cint, events)
 
-proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
+proc unregister*[T](s: Selector[T]; fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
@@ -176,7 +176,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
     pkey.events = {}
     s.pollRemove(fdi.cint)
 
-proc unregister*[T](s: Selector[T], ev: SelectEvent) =
+proc unregister*[T](s: Selector[T]; ev: SelectEvent) =
   let fdi = int(ev.rfd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
@@ -208,7 +208,7 @@ proc close*(ev: SelectEvent) =
   if res1 != 0 or res2 != 0:
     raiseIOSelectorsError(osLastError())
 
-proc selectInto*[T](s: Selector[T], timeout: int,
+proc selectInto*[T](s: Selector[T]; timeout: int,
                     results: var openarray[ReadyKey]): int =
   var maxres = MAX_POLL_EVENTS
   if maxres > len(results):
@@ -261,7 +261,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         inc(i)
       result = k
 
-proc select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
+proc select*[T](s: Selector[T]; timeout: int): seq[ReadyKey] =
   result = newSeq[ReadyKey](MAX_POLL_EVENTS)
   let count = selectInto(s, timeout, result)
   result.setLen(count)
@@ -269,23 +269,23 @@ proc select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
-proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+proc contains*[T](s: Selector[T]; fd: SocketHandle|int): bool {.inline.} =
   return s.fds[fd.int].ident != InvalidIdent
 
-proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
+proc getData*[T](s: Selector[T]; fd: SocketHandle|int): var T =
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
     result = s.fds[fdi].data
 
-proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
+proc setData*[T](s: Selector[T]; fd: SocketHandle|int, data: T): bool =
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
     s.fds[fdi].data = data
     result = true
 
-template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
+template withData*[T](s: Selector[T]; fd: SocketHandle|int, value,
                         body: untyped) =
   mixin checkFd
   let fdi = int(fd)
@@ -294,7 +294,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
     var value = addr(s.getData(fdi))
     body
 
-template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
+template withData*[T](s: Selector[T]; fd: SocketHandle|int, value, body1,
                         body2: untyped) =
   mixin checkFd
   let fdi = int(fd)

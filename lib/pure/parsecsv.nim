@@ -356,7 +356,7 @@ when not defined(testing) and isMainModule:
 when isMainModule:
   import os
   import strutils
-  block: # Tests for reading the header row
+  block:  # Tests for reading the header row
     let content = "\nOne,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
     writeFile("temp.csv", content)
 

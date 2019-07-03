@@ -20,15 +20,15 @@ when defined(linux):
   import linux
 
 when defined(freebsd) or defined(macosx):
-  {.emit:"#include <sys/types.h>".}
+  {.emit: "#include <sys/types.h>".}
 
 when defined(openbsd) or defined(netbsd):
-  {.emit:"#include <sys/param.h>".}
+  {.emit: "#include <sys/param.h>".}
 
 when defined(macosx) or defined(bsd):
   # we HAVE to emit param.h before sysctl.h so we cannot use .header here
   # either. The amount of archaic bullshit in Poonix based OSes is just insane.
-  {.emit:"#include <sys/sysctl.h>".}
+  {.emit: "#include <sys/sysctl.h>".}
   const
     CTL_HW = 6
     HW_AVAILCPU = 25
@@ -68,7 +68,8 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
         wProcessorLevel: int16
         wProcessorRevision: int16
 
-    proc GetSystemInfo(lpSystemInfo: var SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
+    proc GetSystemInfo(lpSystemInfo: var SYSTEM_INFO) {.stdcall,
+        dynlib: "kernel32", importc: "GetSystemInfo".}
 
     var
       si: SYSTEM_INFO

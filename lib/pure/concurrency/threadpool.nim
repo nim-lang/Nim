@@ -20,7 +20,7 @@ when not compileOption("threads"):
 
 import cpuinfo, cpuload, locks, os
 
-{.push stackTrace:off.}
+{.push stackTrace: off.}
 
 type
   Semaphore = object
@@ -54,7 +54,7 @@ const CacheLineSize = 32 # true for most archs
 type
   Barrier {.compilerProc.} = object
     entered: int
-    cv: Semaphore # Semaphore takes 3 words at least
+    cv: Semaphore  # Semaphore takes 3 words at least
     when sizeof(int) < 8:
       cacheAlign: array[CacheLineSize-4*sizeof(int), byte]
     left: int
@@ -127,9 +127,9 @@ type
     # task data:
     f: WorkerProc
     data: pointer
-    ready: bool # put it here for correct alignment!
-    initialized: bool # whether it has even been initialized
-    shutdown: bool # the pool requests to shut down this worker thread
+    ready: bool            # put it here for correct alignment!
+    initialized: bool      # whether it has even been initialized
+    shutdown: bool         # the pool requests to shut down this worker thread
     q: ToFreeQueue
     readyForTask: Semaphore
 
@@ -309,8 +309,8 @@ proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   signal(w.taskStarted)
 
 const
-  MaxThreadPoolSize* = 256 ## Maximum size of the thread pool. 256 threads
-                           ## should be good enough for anybody ;-)
+  MaxThreadPoolSize* = 256     ## Maximum size of the thread pool. 256 threads
+                               ## should be good enough for anybody ;-)
   MaxDistinguishedThread* = 32 ## Maximum number of "distinguished" threads.
 
 type
@@ -320,15 +320,15 @@ var
   currentPoolSize: int
   maxPoolSize = MaxThreadPoolSize
   minPoolSize = 4
-  gSomeReady : Semaphore
+  gSomeReady: Semaphore
   readyWorker: ptr Worker
 
 # A workaround for recursion deadlock issue
 # https://github.com/nim-lang/Nim/issues/4597
 var
   numSlavesLock: Lock
-  numSlavesRunning {.guard: numSlavesLock}: int
-  numSlavesWaiting {.guard: numSlavesLock}: int
+  numSlavesRunning {.guard: numSlavesLock.}: int
+  numSlavesWaiting {.guard: numSlavesLock.}: int
   isSlave {.threadvar.}: bool
 
 numSlavesLock.initLock

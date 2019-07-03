@@ -31,11 +31,11 @@ when not defined(nimscript):
   from osproc import execProcess
 
 type
-  Distribution* {.pure.} = enum ## the list of known distributions
-    Windows ## some version of Windows
-    Posix   ## some Posix system
-    MacOSX  ## some version of OSX
-    Linux   ## some version of Linux
+  Distribution*{.pure.} = enum ## the list of known distributions
+    Windows                    ## some version of Windows
+    Posix                      ## some Posix system
+    MacOSX                     ## some version of OSX
+    Linux                      ## some version of Linux
     Ubuntu
     Debian
     Gentoo
@@ -147,7 +147,7 @@ template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
 
 proc detectOsImpl(d: Distribution): bool =
   case d
-  of Distribution.Windows: ## some version of Windows
+  of Distribution.Windows:  ## some version of Windows
     result = defined(windows)
   of Distribution.Posix: result = defined(posix)
   of Distribution.MacOSX: result = defined(macosx)
@@ -173,7 +173,8 @@ proc detectOsImpl(d: Distribution): bool =
     result = defined(haiku)
   else:
     let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
+    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or (
+        "operating system: " & dd) in toLowerAscii(hostnamectl())
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
@@ -184,7 +185,7 @@ template detectOs*(d: untyped): bool =
 when not defined(nimble):
   var foreignDeps: seq[string] = @[]
 
-proc foreignCmd*(cmd: string; requiresSudo=false) =
+proc foreignCmd*(cmd: string; requiresSudo = false) =
   ## Registers a foreign command to the intern list of commands
   ## that can be queried later.
   let c = (if requiresSudo: "sudo " else: "") & cmd

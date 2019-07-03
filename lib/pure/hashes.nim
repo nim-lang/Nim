@@ -49,7 +49,7 @@ import
   strutils
 
 type
-  Hash* = int  ## A hash value. Hash tables using these values should
+  Hash* = int ## A hash value. Hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
@@ -348,19 +348,19 @@ when isMainModule:
     doAssert hash("aa bb aaaa1234") == hash(cstring"aa bb aaaa1234")
     doAssert hashIgnoreCase("aA bb aAAa1234") == hashIgnoreCase("aa bb aaaa1234")
     doAssert hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234")
-  block smallSize: # no multibyte hashing
+  block smallSize:  # no multibyte hashing
     let
-      xx = @['H','e','l','l','o']
+      xx = @['H', 'e', 'l', 'l', 'o']
       ii = @[72'i8, 101, 108, 108, 111]
       ss = "Hello"
     doAssert hash(xx) == hash(ii)
     doAssert hash(xx) == hash(ss)
     doAssert hash(xx) == hash(xx, 0, xx.high)
     doAssert hash(ss) == hash(ss, 0, ss.high)
-  block largeSize: # longer than 8 characters, should trigger multibyte hashing
+  block largeSize:  # longer than 8 characters, should trigger multibyte hashing
     let
-      xx = @['H','e','l','l','o']
-      xxl = @['H','e','l','l','o','w','e','e','n','s']
+      xx = @['H', 'e', 'l', 'l', 'o']
+      xxl = @['H', 'e', 'l', 'l', 'o', 'w', 'e', 'e', 'n', 's']
       ssl = "Helloweens"
     doAssert hash(xxl) == hash(ssl)
     doAssert hash(xxl) == hash(xxl, 0, xxl.high)

@@ -114,11 +114,11 @@ type
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc = object
     fd: SocketHandle
-    closed: bool ## determines whether this socket has been closed
+    closed: bool     ## determines whether this socket has been closed
     isBuffered: bool ## determines whether this socket is buffered.
     buffer: array[0..BufferSize, char]
-    currPos: int # current index in buffer
-    bufLen: int # current length of buffer
+    currPos: int     # current index in buffer
+    bufLen: int      # current length of buffer
     isSsl: bool
     when defineSsl:
       sslHandle: SslPtr
@@ -449,7 +449,8 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
-  var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
+  var retFuture = newFuture[tuple[address: string, client: AsyncSocket]](
+      "asyncnet.acceptAddr")
   var fut = acceptAddr(socket.fd.AsyncFD, flags)
   fut.callback =
     proc (future: Future[tuple[address: string, client: AsyncFD]]) =
@@ -602,7 +603,8 @@ proc recvLine*(socket: AsyncSocket,
   await socket.recvLineInto(resString, flags, maxLength)
   result = resString.mget()
 
-proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
+proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [
+    ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
@@ -619,7 +621,7 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
   if realaddr == "":
     case socket.domain
     of AF_INET6: realaddr = "::"
-    of AF_INET:  realaddr = "0.0.0.0"
+    of AF_INET: realaddr = "0.0.0.0"
     else:
       raise newException(ValueError,
         "Unknown socket address family and no address specified to bindAddr")
@@ -663,14 +665,15 @@ when defined(posix):
         else:
           retFuture.fail(newException(OSError, osErrorMsg(lastError)))
 
-  proc bindUnix*(socket: AsyncSocket, path: string)  {.
+  proc bindUnix*(socket: AsyncSocket, path: string) {.
     tags: [ReadIOEffect].} =
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
+                            (sizeof(socketAddr.sun_family) +
+                                path.len).Socklen) != 0'i32:
         raiseOSError(osLastError())
 
 elif defined(nimdoc):

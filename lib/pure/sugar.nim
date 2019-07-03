@@ -123,7 +123,7 @@ macro `->`*(p, b: untyped): untyped =
   result = createProcType(p, b)
 
 type ListComprehension = object
-var lc* {.deprecated.}: ListComprehension
+var lc*{.deprecated.}: ListComprehension
 
 template `|`*(lc: ListComprehension, comp: untyped): untyped {.deprecated.} = lc
 

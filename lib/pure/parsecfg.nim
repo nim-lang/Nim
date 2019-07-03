@@ -115,34 +115,34 @@ include "system/inclrtl"
 
 type
   CfgEventKind* = enum ## enumeration of all events that may occur when parsing
-    cfgEof,             ## end of file reached
-    cfgSectionStart,    ## a ``[section]`` has been parsed
-    cfgKeyValuePair,    ## a ``key=value`` pair has been detected
-    cfgOption,          ## a ``--key=value`` command line option
-    cfgError            ## an error occurred during parsing
+    cfgEof,            ## end of file reached
+    cfgSectionStart,   ## a ``[section]`` has been parsed
+    cfgKeyValuePair,   ## a ``key=value`` pair has been detected
+    cfgOption,         ## a ``--key=value`` command line option
+    cfgError           ## an error occurred during parsing
 
   CfgEvent* = object of RootObj ## describes a parsing event
     case kind*: CfgEventKind    ## the kind of the event
     of cfgEof: nil
     of cfgSectionStart:
-      section*: string           ## `section` contains the name of the
-                                 ## parsed section start (syntax: ``[section]``)
+      section*: string          ## `section` contains the name of the
+                                ## parsed section start (syntax: ``[section]``)
     of cfgKeyValuePair, cfgOption:
-      key*, value*: string       ## contains the (key, value) pair if an option
-                                 ## of the form ``--key: value`` or an ordinary
-                                 ## ``key= value`` pair has been parsed.
-                                 ## ``value==""`` if it was not specified in the
-                                 ## configuration file.
-    of cfgError:                 ## the parser encountered an error: `msg`
-      msg*: string               ## contains the error message. No exceptions
-                                 ## are thrown if a parse error occurs.
+      key*, value*: string      ## contains the (key, value) pair if an option
+                                ## of the form ``--key: value`` or an ordinary
+                                ## ``key= value`` pair has been parsed.
+                                ## ``value==""`` if it was not specified in the
+                                ## configuration file.
+    of cfgError:                ## the parser encountered an error: `msg`
+      msg*: string              ## contains the error message. No exceptions
+                                ## are thrown if a parse error occurs.
 
   TokKind = enum
     tkInvalid, tkEof,
     tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
-  Token = object             # a token
-    kind: TokKind            # the type of the token
-    literal: string          # the parsed (string) literal
+  Token = object    # a token
+    kind: TokKind   # the type of the token
+    literal: string # the parsed (string) literal
 
   CfgParser* = object of BaseLexer ## the parser object.
     tok: Token
@@ -203,7 +203,7 @@ proc handleDecChars(c: var CfgParser, xi: var int) =
     inc(c.bufpos)
 
 proc getEscapedChar(c: var CfgParser, tok: var Token) =
-  inc(c.bufpos)               # skip '\'
+  inc(c.bufpos) # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N':
     add(tok.literal, "\n")
@@ -258,12 +258,12 @@ proc handleCRLF(c: var CfgParser, pos: int): int =
   else: result = pos
 
 proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
-  var pos = c.bufpos + 1          # skip "
+  var pos = c.bufpos + 1 # skip "
   tok.kind = tkSymbol
   if (c.buf[pos] == '"') and (c.buf[pos + 1] == '"'):
     # long string literal:
-    inc(pos, 2)               # skip ""
-                              # skip leading newline:
+    inc(pos, 2) # skip ""
+                # skip leading newline:
     pos = handleCRLF(c, pos)
     while true:
       case c.buf[pos]
@@ -280,13 +280,13 @@ proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
       else:
         add(tok.literal, c.buf[pos])
         inc(pos)
-    c.bufpos = pos + 3       # skip the three """
+    c.bufpos = pos + 3 # skip the three """
   else:
     # ordinary string literal
     while true:
       var ch = c.buf[pos]
       if ch == '"':
-        inc(pos)              # skip '"'
+        inc(pos) # skip '"'
         break
       if ch in {'\c', '\L', lexbase.EndOfFile}:
         tok.kind = tkInvalid
@@ -320,7 +320,7 @@ proc skip(c: var CfgParser) =
     of '\c', '\L':
       pos = handleCRLF(c, pos)
     else:
-      break                   # EndOfFile also leaves the loop
+      break # EndOfFile also leaves the loop
   c.bufpos = pos
 
 proc rawGetTok(c: var CfgParser, tok: var Token) =
@@ -460,7 +460,7 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
     case e.kind
     of cfgEof:
       break
-    of cfgSectionStart: # Only look for the first time the Section
+    of cfgSectionStart:  # Only look for the first time the Section
       curSection = e.section
     of cfgKeyValuePair:
       var t = newOrderedTable[string, string]()
@@ -509,14 +509,15 @@ proc writeConfig*(dict: Config, stream: Stream) =
   ##
   ## **Note:** Comment statement will be ignored.
   for section, sectionData in dict.pairs():
-    if section != "": ## Not general section
-      if not allCharsInSet(section, SymChars): ## Non system character
+    if section != "":  ## Not general section
+      if not allCharsInSet(section, SymChars):  ## Non system character
         stream.writeLine("[\"" & section & "\"]")
       else:
         stream.writeLine("[" & section & "]")
     for key, value in sectionData.pairs():
       var kv, segmentChar: string
-      if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
+      if key.len > 1 and key[0] == '-' and
+         key[1] == '-':  ## If it is a command key
         segmentChar = ":"
         if not allCharsInSet(key[2..key.len()-1], SymChars):
           kv.add("--\"")
@@ -527,7 +528,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
       else:
         segmentChar = "="
         kv = key
-      if value != "": ## If the key is not empty
+      if value != "":  ## If the key is not empty
         if not allCharsInSet(value, SymChars):
           if find(value, '"') == -1:
             kv.add(segmentChar)

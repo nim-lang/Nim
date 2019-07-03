@@ -97,7 +97,7 @@ template xBoundsCheck(deq, i) =
       raise newException(IndexError,
                          "Out of bounds: " & $i & " < 0")
 
-proc `[]`*[T](deq: Deque[T], i: Natural) : T {.inline.} =
+proc `[]`*[T](deq: Deque[T], i: Natural): T {.inline.} =
   ## Access the i-th element of `deq`.
   runnableExamples:
     var a = initDeque[int]()
@@ -124,7 +124,7 @@ proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
 
-proc `[]=`*[T](deq: var Deque[T], i: Natural, val : T) {.inline.} =
+proc `[]=`*[T](deq: var Deque[T], i: Natural, val: T) {.inline.} =
   ## Change the i-th element of `deq`.
   runnableExamples:
     var a = initDeque[int]()
@@ -306,7 +306,7 @@ proc addLast*[T](deq: var Deque[T], item: T) =
   deq.data[deq.tail] = item
   deq.tail = (deq.tail + 1) and deq.mask
 
-proc peekFirst*[T](deq: Deque[T]): T {.inline.}=
+proc peekFirst*[T](deq: Deque[T]): T {.inline.} =
   ## Returns the first element of `deq`, but does not remove it from the deque.
   ##
   ## See also:
@@ -530,12 +530,12 @@ when isMainModule:
   assert $deq == "[8, 7, 6, 5, 2, 3]"
 
   # Similar to proc from the documentation example
-  proc foo(a, b: Positive) = # assume random positive values for `a` and `b`.
+  proc foo(a, b: Positive) =  # assume random positive values for `a` and `b`.
     var deq = initDeque[int]()
     assert deq.len == 0
     for i in 1 .. a: deq.addLast i
 
-    if b < deq.len: # checking before indexed access.
+    if b < deq.len:  # checking before indexed access.
       assert deq[b] == b + 1
 
     # The following two lines don't need any checking on access due to the logic
@@ -543,13 +543,13 @@ when isMainModule:
     assert deq.peekFirst == 1
     assert deq.peekLast == a
 
-    while deq.len > 0: # checking if the deque is empty
+    while deq.len > 0:  # checking if the deque is empty
       assert deq.popFirst() > 0
 
   #foo(0,0)
-  foo(8,5)
-  foo(10,9)
-  foo(1,1)
-  foo(2,1)
-  foo(1,5)
-  foo(3,2)
+  foo(8, 5)
+  foo(10, 9)
+  foo(1, 1)
+  foo(2, 1)
+  foo(1, 5)
+  foo(3, 2)

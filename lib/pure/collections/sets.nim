@@ -600,17 +600,17 @@ proc rightSize*(count: Natural): int {.inline.} =
   ## expected extra amount to the parameter before calling this.
   ##
   ## Internally, we want `mustRehash(rightSize(x), x) == false`.
-  result = nextPowerOfTwo(count * 3 div 2  +  4)
+  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use 'initHashSet'"} = initHashSet[A](initialSize)
+     "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
 
 proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use 'toHashSet'"} = toHashSet[A](keys)
+     "Deprecated since v0.20, use 'toHashSet'".} = toHashSet[A](keys)
 
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default"} =
+     "Deprecated since v0.20; sets are initialized by default".} =
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
   ##
@@ -937,7 +937,7 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
 
 proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default"} =
+     "Deprecated since v0.20; sets are initialized by default".} =
   ##
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
@@ -958,7 +958,7 @@ proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
 when isMainModule and not defined(release):
   proc testModule() =
     ## Internal micro test to validate docstrings and such.
-    block isValidTest: # isValid is deprecated
+    block isValidTest:  # isValid is deprecated
       var options: HashSet[string]
       proc savePreferences(options: HashSet[string]) =
         assert options.isValid, "Pass an initialized set!"
@@ -1059,7 +1059,7 @@ when isMainModule and not defined(release):
       var b = a.map(proc (x: int): string = $x)
       assert b == toHashSet(["1", "2", "3"])
 
-    block isValidTest: # isValid is deprecated
+    block isValidTest:  # isValid is deprecated
       var cards: OrderedSet[string]
       proc saveTarotCards(cards: OrderedSet[string]) =
         assert cards.isValid, "Pass an initialized set!"
@@ -1101,7 +1101,7 @@ when isMainModule and not defined(release):
       for item in s: items.add item
       assert items == @[2, 6, 7]
 
-    block: #9005
+    block:  #9005
       var s = initOrderedSet[(int, int)]()
       for i in 0 .. 30: incl(s, (i, 0))
       for i in 0 .. 30: excl(s, (i, 0))
@@ -1162,8 +1162,8 @@ when isMainModule and not defined(release):
       var aa = initOrderedSet[pair]()
       var bb = initOrderedSet[pair]()
 
-      var x = (a:1,b:2)
-      var y = (a:3,b:4)
+      var x = (a: 1, b: 2)
+      var y = (a: 3, b: 4)
 
       aa.incl(x)
       aa.incl(y)

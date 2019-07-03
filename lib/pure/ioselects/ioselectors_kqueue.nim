@@ -16,8 +16,8 @@ const
   MAX_KQUEUE_EVENTS = 64
   # SIG_IGN and SIG_DFL declared in posix.nim as variables, but we need them
   # to be constants and GC-safe.
-  SIG_DFL = cast[proc(x: cint) {.noconv,gcsafe.}](0)
-  SIG_IGN = cast[proc(x: cint) {.noconv,gcsafe.}](1)
+  SIG_DFL = cast[proc(x: cint) {.noconv, gcsafe.}](0)
+  SIG_IGN = cast[proc(x: cint) {.noconv, gcsafe.}](1)
 
 when defined(kqcache):
   const CACHE_EVENTS = true
@@ -29,8 +29,8 @@ when defined(macosx) or defined(freebsd) or defined(dragonfly):
     const MAX_DESCRIPTORS_ID = 27 # KERN_MAXFILESPERPROC (FreeBSD)
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
               newp: pointer, newplen: csize): cint
-       {.importc: "sysctl",header: """#include <sys/types.h>
-                                      #include <sys/sysctl.h>"""}
+       {.importc: "sysctl", header: """#include <sys/types.h>
+                                      #include <sys/sysctl.h>""".}
 elif defined(netbsd) or defined(openbsd):
   # OpenBSD and NetBSD don't have KERN_MAXFILESPERPROC, so we are using
   # KERN_MAXFILES, because KERN_MAXFILES is always bigger,
@@ -38,8 +38,8 @@ elif defined(netbsd) or defined(openbsd):
   const MAX_DESCRIPTORS_ID = 7 # KERN_MAXFILES
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
               newp: pointer, newplen: csize): cint
-       {.importc: "sysctl",header: """#include <sys/param.h>
-                                      #include <sys/sysctl.h>"""}
+       {.importc: "sysctl", header: """#include <sys/param.h>
+                                      #include <sys/sysctl.h>""".}
 
 when hasThreadSupport:
   type

@@ -54,7 +54,8 @@ when defined(windows):
       wProcessorLevel: uint16
       wProcessorRevision: uint16
 
-  proc getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
+  proc getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall,
+      dynlib: "kernel32", importc: "GetSystemInfo".}
 
   proc getAllocationGranularity: uint =
     var sysInfo: SYSTEM_INFO
@@ -168,7 +169,8 @@ proc setLen*(m: var ReservedMem, newLen: int) =
         check virtualAlloc(m.committedMemEnd, commitExtensionSize,
                            MEM_COMMIT, m.accessFlags.cint)
       else:
-        check mprotect(m.committedMemEnd, commitExtensionSize, m.accessFlags.cint) == 0
+        check mprotect(m.committedMemEnd, commitExtensionSize,
+            m.accessFlags.cint) == 0
   else:
     let d = distance(m.usedMemEnd, m.committedMemEnd) -
             m.maxCommittedAndUnusedPages * allocationGranularity

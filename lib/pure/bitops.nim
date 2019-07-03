@@ -39,7 +39,8 @@ proc bitxor*[T: SomeInteger](x, y: T): T {.magic: "BitxorI", noSideEffect.}
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
 const noUndefined = defined(noUndefinedBitOpts)
-const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or defined(clang)) and useBuiltins
+const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or defined(
+    clang)) and useBuiltins
 const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
 const arch64 = sizeof(int) == 8
@@ -93,28 +94,28 @@ when defined(nimHasalignOf):
     ## Returns ``v``, with the bit at position ``bit`` flipped
     v.flipMask(1.T shl bit)
 
-  macro setBits*(v: typed, bits: varargs[typed]): untyped =
+  macro setBits*(v: typed; bits: varargs[typed]): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 1
     bits.expectKind(nnkBracket)
     result = newStmtList()
     for bit in bits:
       result.add newCall("setBit", v, bit)
 
-  macro clearBits*(v: typed, bits: varargs[typed]): untyped =
+  macro clearBits*(v: typed; bits: varargs[typed]): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 0
     bits.expectKind(nnkBracket)
     result = newStmtList()
     for bit in bits:
       result.add newCall("clearBit", v, bit)
 
-  macro flipBits*(v: typed, bits: varargs[typed]): untyped =
+  macro flipBits*(v: typed; bits: varargs[typed]): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 0
     bits.expectKind(nnkBracket)
     result = newStmtList()
     for bit in bits:
       result.add newCall("flipBit", v, bit)
 
-  proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
+  proc testBit*[T: SomeInteger](v: T; bit: BitsRange[T]): bool {.inline.} =
     ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
     let mask = 1.T shl bit
     return (v and mask) == mask
@@ -158,10 +159,10 @@ proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
   ## Quickly find the log base 2 of a 64-bit integer.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   # https://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers
-  const lookup: array[64, uint8] = [0'u8, 58, 1, 59, 47, 53, 2, 60, 39, 48, 27, 54,
-    33, 42, 3, 61, 51, 37, 40, 49, 18, 28, 20, 55, 30, 34, 11, 43, 14, 22, 4, 62,
-    57, 46, 52, 38, 26, 32, 41, 50, 36, 17, 19, 29, 10, 13, 21, 56, 45, 25, 31,
-    35, 16, 9, 12, 44, 24, 15, 8, 23, 7, 6, 5, 63]
+  const lookup: array[64, uint8] = [0'u8, 58, 1, 59, 47, 53, 2, 60, 39, 48, 27,
+    54, 33, 42, 3, 61, 51, 37, 40, 49, 18, 28, 20, 55, 30, 34, 11, 43, 14, 22,
+    4, 62, 57, 46, 52, 38, 26, 32, 41, 50, 36, 17, 19, 29, 10, 13, 21, 56, 45,
+    25, 31, 35, 16, 9, 12, 44, 24, 15, 8, 23, 7, 6, 5, 63]
   var v = x.uint64
   v = v or v shr 1 # first round down to one less than a power of 2
   v = v or v shr 2
@@ -196,7 +197,8 @@ template parity_impl[T](value: T): int =
 when useGCC_builtins:
   # Returns the number of set 1-bits in value.
   proc builtin_popcount(x: cuint): cint {.importc: "__builtin_popcount", cdecl.}
-  proc builtin_popcountll(x: culonglong): cint {.importc: "__builtin_popcountll", cdecl.}
+  proc builtin_popcountll(x: culonglong): cint {.
+      importc: "__builtin_popcountll", cdecl.}
 
   # Returns the bit parity in value
   proc builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
@@ -216,17 +218,24 @@ when useGCC_builtins:
 
 elif useVCC_builtins:
   # Counts the number of one bits (population count) in a 16-, 32-, or 64-byte unsigned integer.
-  proc builtin_popcnt16(a2: uint16): uint16 {.importc: "__popcnt16" header: "<intrin.h>", nosideeffect.}
-  proc builtin_popcnt32(a2: uint32): uint32 {.importc: "__popcnt" header: "<intrin.h>", nosideeffect.}
-  proc builtin_popcnt64(a2: uint64): uint64 {.importc: "__popcnt64" header: "<intrin.h>", nosideeffect.}
+  proc builtin_popcnt16(a2: uint16): uint16 {.
+      importc: "__popcnt16"header: "<intrin.h>", nosideeffect.}
+  proc builtin_popcnt32(a2: uint32): uint32 {.
+      importc: "__popcnt"header: "<intrin.h>", nosideeffect.}
+  proc builtin_popcnt64(a2: uint64): uint64 {.
+      importc: "__popcnt64"header: "<intrin.h>", nosideeffect.}
 
   # Search the mask data from most significant bit (MSB) to least significant bit (LSB) for a set bit (1).
-  proc bitScanReverse(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanReverse", header: "<intrin.h>", nosideeffect.}
-  proc bitScanReverse64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanReverse64", header: "<intrin.h>", nosideeffect.}
+  proc bitScanReverse(index: ptr culong, mask: culong): cuchar {.
+      importc: "_BitScanReverse", header: "<intrin.h>", nosideeffect.}
+  proc bitScanReverse64(index: ptr culong, mask: uint64): cuchar {.
+      importc: "_BitScanReverse64", header: "<intrin.h>", nosideeffect.}
 
   # Search the mask data from least significant bit (LSB) to the most significant bit (MSB) for a set bit (1).
-  proc bitScanForward(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanForward", header: "<intrin.h>", nosideeffect.}
-  proc bitScanForward64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanForward64", header: "<intrin.h>", nosideeffect.}
+  proc bitScanForward(index: ptr culong, mask: culong): cuchar {.
+      importc: "_BitScanForward", header: "<intrin.h>", nosideeffect.}
+  proc bitScanForward64(index: ptr culong, mask: uint64): cuchar {.
+      importc: "_BitScanForward64", header: "<intrin.h>", nosideeffect.}
 
   template vcc_scan_impl(fnc: untyped; v: untyped): int =
     var index: culong
@@ -238,16 +247,22 @@ elif useICC_builtins:
   # Intel compiler intrinsics: http://fulla.fnal.gov/intel/compiler_c/main_cls/intref_cls/common/intref_allia_misc.htm
   # see also: https://software.intel.com/en-us/node/523362
   # Count the number of bits set to 1 in an integer a, and return that count in dst.
-  proc builtin_popcnt32(a: cint): cint {.importc: "_popcnt" header: "<immintrin.h>", nosideeffect.}
-  proc builtin_popcnt64(a: uint64): cint {.importc: "_popcnt64" header: "<immintrin.h>", nosideeffect.}
+  proc builtin_popcnt32(a: cint): cint {.
+      importc: "_popcnt"header: "<immintrin.h>", nosideeffect.}
+  proc builtin_popcnt64(a: uint64): cint {.
+      importc: "_popcnt64"header: "<immintrin.h>", nosideeffect.}
 
   # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
-  proc bitScanForward(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanForward", header: "<immintrin.h>", nosideeffect.}
-  proc bitScanForward64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanForward64", header: "<immintrin.h>", nosideeffect.}
+  proc bitScanForward(p: ptr uint32; b: uint32): cuchar {.
+      importc: "_BitScanForward", header: "<immintrin.h>", nosideeffect.}
+  proc bitScanForward64(p: ptr uint32; b: uint64): cuchar {.
+      importc: "_BitScanForward64", header: "<immintrin.h>", nosideeffect.}
 
   # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  proc bitScanReverse(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanReverse", header: "<immintrin.h>", nosideeffect.}
-  proc bitScanReverse64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanReverse64", header: "<immintrin.h>", nosideeffect.}
+  proc bitScanReverse(p: ptr uint32; b: uint32): cuchar {.
+      importc: "_BitScanReverse", header: "<immintrin.h>", nosideeffect.}
+  proc bitScanReverse64(p: ptr uint32; b: uint64): cuchar {.
+      importc: "_BitScanReverse64", header: "<immintrin.h>", nosideeffect.}
 
   template icc_scan_impl(fnc: untyped; v: untyped): int =
     var index: uint32
@@ -266,21 +281,21 @@ proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_popcount(x.cuint).int
-      else:                result = builtin_popcountll(x.culonglong).int
+      else: result = builtin_popcountll(x.culonglong).int
     elif useVCC_builtins:
       when sizeof(x) <= 2: result = builtin_popcnt16(x.uint16).int
       elif sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).int
-      elif arch64:         result = builtin_popcnt64(x.uint64).int
-      else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).uint32 ).int +
-                                    builtin_popcnt32((x.uint64 shr 32'u64).uint32 ).int
+      elif arch64: result = builtin_popcnt64(x.uint64).int
+      else: result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).uint32).int +
+                         builtin_popcnt32((x.uint64 shr 32'u64).uint32).int
     elif useICC_builtins:
       when sizeof(x) <= 4: result = builtin_popcnt32(x.cint).int
-      elif arch64:         result = builtin_popcnt64(x.uint64).int
-      else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).cint ).int +
-                                    builtin_popcnt32((x.uint64 shr 32'u64).cint ).int
+      elif arch64: result = builtin_popcnt64(x.uint64).int
+      else: result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).cint).int +
+                         builtin_popcnt32((x.uint64 shr 32'u64).cint).int
     else:
       when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
-      else:                result = countSetBits_nim(x.uint64)
+      else: result = countSetBits_nim(x.uint64)
 
 proc popcount*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Alias for for countSetBits (Hamming weight.)
@@ -298,10 +313,10 @@ proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_parity(x.uint32).int
-      else:                result = builtin_parityll(x.uint64).int
+      else: result = builtin_parityll(x.uint64).int
     else:
       when sizeof(x) <= 4: result = parity_impl(x.uint32)
-      else:                result = parity_impl(x.uint64)
+      else: result = parity_impl(x.uint64)
 
 proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the 1-based index of the least significant set bit of x.
@@ -321,7 +336,7 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
         return 0
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_ffs(cast[cint](x.cuint)).int
-      else:                result = builtin_ffsll(cast[clonglong](x.culonglong)).int
+      else: result = builtin_ffsll(cast[clonglong](x.culonglong)).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
         result = 1 + vcc_scan_impl(bitScanForward, x.culong)
@@ -338,7 +353,7 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
         result = firstSetBit_nim(x.uint64)
     else:
       when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
-      else:                result = firstSetBit_nim(x.uint64)
+      else: result = firstSetBit_nim(x.uint64)
 
 proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Quickly find the log base 2 of an integer.
@@ -354,7 +369,7 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = 31 - builtin_clz(x.uint32).int
-      else:                result = 63 - builtin_clzll(x.uint64).int
+      else: result = 63 - builtin_clzll(x.uint64).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
         result = vcc_scan_impl(bitScanReverse, x.culong)
@@ -371,7 +386,7 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
         result = fastlog2_nim(x.uint64)
     else:
       when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
-      else:                result = fastlog2_nim(x.uint64)
+      else: result = fastlog2_nim(x.uint64)
 
 proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of leading zero bits in integer.
@@ -387,10 +402,10 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_clz(x.uint32).int - (32 - sizeof(x)*8)
-      else:                result = builtin_clzll(x.uint64).int
+      else: result = builtin_clzll(x.uint64).int
     else:
       when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
-      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
+      else: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
 
 proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of trailing zeros in integer.
@@ -406,7 +421,7 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_ctz(x.uint32).int
-      else:                result = builtin_ctzll(x.uint64).int
+      else: result = builtin_ctzll(x.uint64).int
     else:
       result = firstSetBit(x) - 1
 
@@ -471,7 +486,7 @@ proc repeatBits[T: SomeUnsignedInt](x: SomeUnsignedInt; retType: type[T]): T {.
   while i != (sizeof(T) div sizeof(x)):
     result = (result shl (sizeof(x)*8*i)) or result
     i *= 2
- 
+
 proc reverseBits*[T: SomeUnsignedInt](x: T): T {.noSideEffect.} =
   ## Return the bit reversal of x.
   runnableExamples:

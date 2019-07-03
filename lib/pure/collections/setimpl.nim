@@ -36,7 +36,7 @@ proc rawInsert[A](s: var HashSet[A], data: var KeyValuePairSeq[A], key: A,
 proc enlarge[A](s: var HashSet[A]) =
   var n: KeyValuePairSeq[A]
   newSeq(n, len(s.data) * growthFactor)
-  swap(s.data, n)                   # n is now old seq
+  swap(s.data, n) # n is now old seq
   for i in countup(0, high(n)):
     if isFilled(n[i].hcode):
       var j = -1 - rawGetKnownHC(s, n[i].key, n[i].hcode)
@@ -73,7 +73,7 @@ template doWhile(a, b) =
     b
     if not a: break
 
-proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
+proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
   var hc: Hash
   var i = rawGet(s, key, hc)
   var msk = high(s.data)
@@ -82,16 +82,16 @@ proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
   if i >= 0:
     result = false
     dec(s.counter)
-    while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-      var j = i         # The correctness of this depends on (h+1) in nextTry,
-      var r = j         # though may be adaptable to other simple sequences.
-      s.data[i].hcode = 0              # mark current EMPTY
+    while true:  # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
+      var j = i # The correctness of this depends on (h+1) in nextTry,
+      var r = j # though may be adaptable to other simple sequences.
+      s.data[i].hcode = 0 # mark current EMPTY
       s.data[i].key = default(type(s.data[i].key))
       doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-        i = (i + 1) and msk            # increment mod table size
-        if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
+        i = (i + 1) and msk # increment mod table size
+        if isEmpty(s.data[i].hcode):  # end of collision cluster; So all done
           return
-        r = s.data[i].hcode and msk    # "home" location of key@i
+        r = s.data[i].hcode and msk # "home" location of key@i
       shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
 
 template dollarImpl() {.dirty.} =
@@ -130,7 +130,7 @@ proc enlarge[A](s: var OrderedSet[A]) =
       rawInsert(s, s.data, n[h].key, n[h].hcode, j)
     h = nxt
 
-proc exclImpl[A](s: var OrderedSet[A], key: A) : bool {.inline.} =
+proc exclImpl[A](s: var OrderedSet[A], key: A): bool {.inline.} =
   if len(s.data) == 0:
     return true
   var n: OrderedKeyValuePairSeq[A]

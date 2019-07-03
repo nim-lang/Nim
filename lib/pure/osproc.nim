@@ -32,22 +32,22 @@ when defined(linux):
 
 type
   ProcessOption* = enum ## Options that can be passed to `startProcess proc
-    ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
-    poEchoCmd,              ## Echo the command before execution.
-    poUsePath,              ## Asks system to search for executable using PATH environment
-                            ## variable.
-                            ## On Windows, this is the default.
-    poEvalCommand,          ## Pass `command` directly to the shell, without quoting.
-                            ## Use it only if `command` comes from trusted source.
-    poStdErrToStdOut,       ## Merge stdout and stderr to the stdout stream.
-    poParentStreams,        ## Use the parent's streams.
-    poInteractive,          ## Optimize the buffer handling for responsiveness for
-                            ## UI applications. Currently this only affects
-                            ## Windows: Named pipes are used so that you can peek
-                            ## at the process' output streams.
-    poDaemon                ## Windows: The program creates no Window.
-                            ## Unix: Start the program as a daemon. This is still
-                            ## work in progress!
+                        ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
+    poEchoCmd,          ## Echo the command before execution.
+    poUsePath,          ## Asks system to search for executable using PATH environment
+                        ## variable.
+                        ## On Windows, this is the default.
+    poEvalCommand,      ## Pass `command` directly to the shell, without quoting.
+                        ## Use it only if `command` comes from trusted source.
+    poStdErrToStdOut,   ## Merge stdout and stderr to the stdout stream.
+    poParentStreams,    ## Use the parent's streams.
+    poInteractive,      ## Optimize the buffer handling for responsiveness for
+                        ## UI applications. Currently this only affects
+                        ## Windows: Named pipes are used so that you can peek
+                        ## at the process' output streams.
+    poDaemon            ## Windows: The program creates no Window.
+                        ## Unix: Start the program as a daemon. This is still
+                        ## work in progress!
 
   ProcessObj = object of RootObj
     when defined(windows):
@@ -79,8 +79,8 @@ proc execProcess*(command: string,
                                                   poUsePath,
                                                   poEvalCommand}): TaintedString {.
                                                   rtl, extern: "nosp$1",
-                                                  tags: [ExecIOEffect, ReadIOEffect,
-                                                  RootEffect].}
+                                                  tags: [ExecIOEffect,
+                                                    ReadIOEffect, RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ##
@@ -126,8 +126,8 @@ proc startProcess*(command: string,
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut}):
-              owned(Process) {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect,
-              RootEffect].}
+              owned(Process) {.rtl, extern: "nosp$1",
+                               tags: [ExecIOEffect, ReadEnvEffect, RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used (default). `args` are the command line arguments that are passed to the
@@ -413,7 +413,7 @@ proc execProcesses*(cmds: openArray[string],
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      var p = startProcess(cmds[i], options=options + {poEvalCommand})
+      var p = startProcess(cmds[i], options = options + {poEvalCommand})
       result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
@@ -426,7 +426,8 @@ when not defined(useNimRtl):
                    options: set[ProcessOption] = {poStdErrToStdOut,
                                                    poUsePath,
                                                    poEvalCommand}): TaintedString =
-    var p = startProcess(command, workingDir=workingDir, args=args, env=env, options=options)
+    var p = startProcess(command, workingDir = workingDir, args = args,
+        env = env, options = options)
     var outp = outputStream(p)
     result = TaintedString""
     var line = newStringOfCap(120).TaintedString
@@ -439,7 +440,8 @@ when not defined(useNimRtl):
     close(p)
 
 template streamAccess(p) =
-  assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
+  assert poParentStreams notin p.options,
+      "API usage error: stream access not allowed when you use poParentStreams"
 
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
@@ -501,10 +503,10 @@ when defined(Windows) and not defined(useNimRtl):
   #var
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
-  proc myDup(h: Handle; inherit: WinBool=1): Handle =
+  proc myDup(h: Handle; inherit: WinBool = 1): Handle =
     let thisProc = getCurrentProcess()
     if duplicateHandle(thisProc, h,
-                       thisProc, addr result,0,inherit,
+                       thisProc, addr result, 0, inherit,
                        DUPLICATE_SAME_ACCESS) == 0:
       raiseOSError(osLastError())
 
@@ -518,37 +520,37 @@ when defined(Windows) and not defined(useNimRtl):
     let pipeOutName = newWideCString(r"\\.\pipe\stdout" & $hash)
     let pipeInName = newWideCString(r"\\.\pipe\stdin" & $hash)
     let pipeOut = createNamedPipe(pipeOutName,
-      dwOpenMode=PIPE_ACCESS_INBOUND or FILE_FLAG_WRITE_THROUGH,
-      dwPipeMode=PIPE_NOWAIT,
-      nMaxInstances=1,
-      nOutBufferSize=1024, nInBufferSize=1024,
-      nDefaultTimeOut=0,addr sa)
+      dwOpenMode = PIPE_ACCESS_INBOUND or FILE_FLAG_WRITE_THROUGH,
+      dwPipeMode = PIPE_NOWAIT,
+      nMaxInstances = 1,
+      nOutBufferSize = 1024, nInBufferSize = 1024,
+      nDefaultTimeOut = 0, addr sa)
     if pipeOut == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
     let pipeIn = createNamedPipe(pipeInName,
-      dwOpenMode=PIPE_ACCESS_OUTBOUND or FILE_FLAG_WRITE_THROUGH,
-      dwPipeMode=PIPE_NOWAIT,
-      nMaxInstances=1,
-      nOutBufferSize=1024, nInBufferSize=1024,
-      nDefaultTimeOut=0,addr sa)
+      dwOpenMode = PIPE_ACCESS_OUTBOUND or FILE_FLAG_WRITE_THROUGH,
+      dwPipeMode = PIPE_NOWAIT,
+      nMaxInstances = 1,
+      nOutBufferSize = 1024, nInBufferSize = 1024,
+      nDefaultTimeOut = 0, addr sa)
     if pipeIn == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
     si.hStdOutput = createFileW(pipeOutName,
         FILE_WRITE_DATA or SYNCHRONIZE, 0, addr sa,
-        OPEN_EXISTING, # very important flag!
-        FILE_ATTRIBUTE_NORMAL,
-        0 # no template file for OPEN_EXISTING
-      )
+        OPEN_EXISTING,  # very important flag!
+      FILE_ATTRIBUTE_NORMAL,
+      0 # no template file for OPEN_EXISTING
+    )
     if si.hStdOutput == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
     si.hStdError = myDup(si.hStdOutput)
     si.hStdInput = createFileW(pipeInName,
         FILE_READ_DATA or SYNCHRONIZE, 0, addr sa,
-        OPEN_EXISTING, # very important flag!
-        FILE_ATTRIBUTE_NORMAL,
-        0 # no template file for OPEN_EXISTING
-      )
+        OPEN_EXISTING,  # very important flag!
+      FILE_ATTRIBUTE_NORMAL,
+      0 # no template file for OPEN_EXISTING
+    )
     if si.hStdOutput == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
@@ -789,7 +791,7 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc hasData*(p: Process): bool =
     var x: int32
-    if peekNamedPipe(p.outHandle, lpTotalBytesAvail=addr x):
+    if peekNamedPipe(p.outHandle, lpTotalBytesAvail = addr x):
       result = x > 0
 
 elif not defined(useNimRtl):
@@ -969,9 +971,11 @@ elif not defined(useNimRtl):
       var pid: Pid
 
       if (poUsePath in data.options):
-        res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs,
+            data.sysEnv)
       else:
-        res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs,
+            data.sysEnv)
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
@@ -1066,7 +1070,7 @@ elif not defined(useNimRtl):
       discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
     startProcessFail(data)
-  {.pop}
+  {.pop.}
 
   proc close(p: Process) =
     if poParentStreams notin p.options:
@@ -1401,7 +1405,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ## .. code-block:: Nim
   ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
 
-  var p = startProcess(command, options=options + {poEvalCommand})
+  var p = startProcess(command, options = options + {poEvalCommand})
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process

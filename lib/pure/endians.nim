@@ -53,13 +53,13 @@ when useBuiltinSwap:
     tmp = op(tmp)
     copyMem(outp, addr tmp, sizeOf(T))
 
-  proc swapEndian64*(outp, inp: pointer) {.inline, nosideeffect.}=
+  proc swapEndian64*(outp, inp: pointer) {.inline, nosideeffect.} =
     swapOpImpl(uint64, builtin_bswap64)
 
-  proc swapEndian32*(outp, inp: pointer) {.inline, nosideeffect.}=
+  proc swapEndian32*(outp, inp: pointer) {.inline, nosideeffect.} =
     swapOpImpl(uint32, builtin_bswap32)
 
-  proc swapEndian16*(outp, inp: pointer) {.inline, nosideeffect.}=
+  proc swapEndian16*(outp, inp: pointer) {.inline, nosideeffect.} =
     swapOpImpl(uint16, builtin_bswap16)
 
 else:

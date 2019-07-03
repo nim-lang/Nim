@@ -60,10 +60,10 @@ else:
   include "system/inclrtl"
 
 type
-  StringTableMode* = enum   ## Describes the tables operation mode.
-    modeCaseSensitive,      ## the table is case sensitive
-    modeCaseInsensitive,    ## the table is case insensitive
-    modeStyleInsensitive    ## the table is style insensitive
+  StringTableMode* = enum ## Describes the tables operation mode.
+    modeCaseSensitive,    ## the table is case sensitive
+    modeCaseInsensitive,  ## the table is case insensitive
+    modeStyleInsensitive  ## the table is style insensitive
   KeyValuePair = tuple[key, val: string, hasValue: bool]
   KeyValuePairSeq = seq[KeyValuePair]
   StringTableObj* = object of RootObj
@@ -73,15 +73,15 @@ type
 
   StringTableRef* = ref StringTableObj
 
-  FormatFlag* = enum  ## Flags for the `%` operator.
-    useEnvironment,   ## Use environment variable if the ``$key``
-                      ## is not found in the table.
-                      ## Does nothing when using `js` target.
-    useEmpty,         ## Use the empty string as a default, thus it
-                      ## won't throw an exception if ``$key`` is not
-                      ## in the table.
-    useKey            ## Do not replace ``$key`` if it is not found
-                      ## in the table (or in the environment).
+  FormatFlag* = enum ## Flags for the `%` operator.
+    useEnvironment,  ## Use environment variable if the ``$key``
+                     ## is not found in the table.
+                     ## Does nothing when using `js` target.
+    useEmpty,        ## Use the empty string as a default, thus it
+                     ## won't throw an exception if ``$key`` is not
+                     ## in the table.
+    useKey           ## Do not replace ``$key`` if it is not found
+                     ## in the table (or in the environment).
 
 const
   growthFactor = 2
@@ -107,13 +107,13 @@ iterator values*(t: StringTableRef): string =
       yield t.data[h].val
 
 
-proc myhash(t: StringTableRef, key: string): Hash =
+proc myhash(t: StringTableRef; key: string): Hash =
   case t.mode
   of modeCaseSensitive: result = hashes.hash(key)
   of modeCaseInsensitive: result = hashes.hashIgnoreCase(key)
   of modeStyleInsensitive: result = hashes.hashIgnoreStyle(key)
 
-proc myCmp(t: StringTableRef, a, b: string): bool =
+proc myCmp(t: StringTableRef; a, b: string): bool =
   case t.mode
   of modeCaseSensitive: result = cmp(a, b) == 0
   of modeCaseInsensitive: result = cmpIgnoreCase(a, b) == 0
@@ -126,7 +126,7 @@ proc mustRehash(length, counter: int): bool =
 proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
-proc rawGet(t: StringTableRef, key: string): int =
+proc rawGet(t: StringTableRef; key: string): int =
   var h: Hash = myhash(t, key) and high(t.data) # start with real hash value
   while t.data[h].hasValue:
     if myCmp(t, t.data[h].key, key):
@@ -134,7 +134,7 @@ proc rawGet(t: StringTableRef, key: string): int =
     h = nextTry(h, high(t.data))
   result = - 1
 
-template get(t: StringTableRef, key: string) =
+template get(t: StringTableRef; key: string) =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:
@@ -147,7 +147,7 @@ proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
   ## Returns the number of keys in `t`.
   result = t.counter
 
-proc `[]`*(t: StringTableRef, key: string): var string {.
+proc `[]`*(t: StringTableRef; key: string): var string {.
            rtlFunc, extern: "nstTake".} =
   ## Retrieves the location at ``t[key]``.
   ##
@@ -168,7 +168,8 @@ proc `[]`*(t: StringTableRef, key: string): var string {.
       echo t["occupation"]
   get(t, key)
 
-proc getOrDefault*(t: StringTableRef; key: string, default: string = ""): string =
+proc getOrDefault*(t: StringTableRef; key: string,
+    default: string = ""): string =
   ## Retrieves the location at ``t[key]``.
   ##
   ## If `key` is not in `t`, the default value is returned (if not specified,
@@ -191,7 +192,8 @@ proc getOrDefault*(t: StringTableRef; key: string, default: string = ""): string
   if index >= 0: result = t.data[index].val
   else: result = default
 
-proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc, extern: "nst$1".} =
+proc hasKey*(t: StringTableRef; key: string): bool {.
+    rtlFunc, extern: "nst$1".} =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
@@ -203,7 +205,7 @@ proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc, extern: "nst$1".} 
     doAssert not t.hasKey("occupation")
   result = rawGet(t, key) >= 0
 
-proc contains*(t: StringTableRef, key: string): bool =
+proc contains*(t: StringTableRef; key: string): bool =
   ## Alias of `hasKey proc <#hasKey,StringTableRef,string>`_ for use with
   ## the `in` operator.
   runnableExamples:
@@ -212,7 +214,7 @@ proc contains*(t: StringTableRef, key: string): bool =
     doAssert "occupation" notin t
   return hasKey(t, key)
 
-proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
+proc rawInsert(t: StringTableRef; data: var KeyValuePairSeq, key, val: string) =
   var h: Hash = myhash(t, key) and high(data)
   while data[h].hasValue:
     h = nextTry(h, high(data))
@@ -227,7 +229,7 @@ proc enlarge(t: StringTableRef) =
     if t.data[i].hasValue: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`*(t: StringTableRef, key, val: string) {.
+proc `[]=`*(t: StringTableRef; key, val: string) {.
   rtlFunc, extern: "nstPut", noSideEffect.} =
   ## Inserts a `(key, value)` pair into `t`.
   ##
@@ -276,8 +278,8 @@ proc newStringTable*(keyValuePairs: varargs[string],
     inc(i, 2)
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
-                     mode: StringTableMode = modeCaseSensitive): owned(StringTableRef) {.
-  rtlFunc, extern: "nst$1WithTableConstr".} =
+    mode: StringTableMode = modeCaseSensitive): owned StringTableRef {.
+    rtlFunc, extern: "nst$1WithTableConstr".} =
   ## Creates a new string table with given `(key, value)` tuple pairs.
   ##
   ## The default mode is case sensitive.
@@ -292,7 +294,7 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
 proc raiseFormatException(s: string) =
   raise newException(ValueError, "format string: key not found: " & s)
 
-proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
+proc getValue(t: StringTableRef; flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
   when defined(js):
@@ -304,7 +306,7 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
     if useKey in flags: result = '$' & key
     elif useEmpty notin flags: raiseFormatException(key)
 
-proc clear*(s: StringTableRef, mode: StringTableMode) {.
+proc clear*(s: StringTableRef; mode: StringTableMode) {.
   rtlFunc, extern: "nst$1".} =
   ## Resets a string table to be empty again.
   ##
@@ -322,7 +324,7 @@ proc clear*(s: StringTableRef, mode: StringTableMode) {.
   for i in 0..<s.data.len:
     s.data[i].hasValue = false
 
-proc del*(t: StringTableRef, key: string) =
+proc del*(t: StringTableRef; key: string) =
   ## Removes `key` from `t`.
   ##
   ## See also:
@@ -350,10 +352,10 @@ proc del*(t: StringTableRef, key: string) =
         t.data[i].key = ""
         t.data[i].val = ""
         while true:
-          i = (i + 1) and msk      # increment mod table size
-          if not t.data[i].hasValue:   # end of collision cluster; So all done
+          i = (i + 1) and msk # increment mod table size
+          if not t.data[i].hasValue:  # end of collision cluster; So all done
             break outer
-          r = t.myhash(t.data[i].key) and msk    # "home" location of key@i
+          r = t.myhash(t.data[i].key) and msk # "home" location of key@i
           if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
             break
         when defined(js):
@@ -375,7 +377,7 @@ proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
       result.add(val)
     result.add("}")
 
-proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
+proc `%`*(f: string; t: StringTableRef; flags: set[FormatFlag] = {}): string {.
   rtlFunc, extern: "nstFormat".} =
   ## The `%` operator for string tables.
   runnableExamples:

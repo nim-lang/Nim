@@ -80,7 +80,7 @@ proc newOSError*(
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:
     if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
-    e.msg.add  "Additional info: "
+    e.msg.add "Additional info: "
     e.msg.addQuoted additionalInfo
   if e.msg == "":
     e.msg = "unknown OS error"
@@ -93,7 +93,7 @@ proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
   ## how the exception object is created.
   raise newOSError(errorCode, additionalInfo)
 
-{.push stackTrace:off.}
+{.push stackTrace: off.}
 proc osLastError*(): OSErrorCode {.sideEffect.} =
   ## Retrieves the last operating system error code.
   ##

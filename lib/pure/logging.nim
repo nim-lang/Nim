@@ -185,7 +185,7 @@ type
 const
   LevelNames*: array[Level, string] = [
     "DEBUG", "DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "NONE"
-  ]  ## Array of strings representing each logging level.
+  ] ## Array of strings representing each logging level.
 
   defaultFmtStr* = "$levelname " ## \
   ## The default format string.
@@ -240,7 +240,7 @@ when not defined(js):
       ## See also:
       ## * `ConsoleLogger<#ConsoleLogger>`_
       ## * `RollingFileLogger<#RollingFileLogger>`_
-      file*: File  ## The wrapped file
+      file*: File ## The wrapped file
 
     RollingFileLogger* = ref object of FileLogger
       ## A logger that writes log messages to a file while performing log
@@ -255,14 +255,14 @@ when not defined(js):
       ## * `ConsoleLogger<#ConsoleLogger>`_
       ## * `FileLogger<#FileLogger>`_
       maxLines: int # maximum number of lines
-      curLine : int
+      curLine: int
       baseName: string # initial filename
       baseMode: FileMode # initial file mode
       logFiles: int # how many log files already created, e.g. basename.1, basename.2...
       bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
 
 var
-  level {.threadvar.}: Level   ## global log filter
+  level {.threadvar.}: Level          ## global log filter
   handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
 proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
@@ -307,7 +307,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       of "date": result.add(getDateStr())
       of "time": result.add(getClockStr())
       of "datetime": result.add(getDateStr() & "T" & getClockStr())
-      of "app":  result.add(app)
+      of "app": result.add(app)
       of "appdir":
         when not defined(js): result.add(app.splitFile.dir)
       of "appname":
@@ -369,13 +369,14 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       try:
         var handle = stdout
         if logger.useStderr:
-          handle = stderr 
+          handle = stderr
         writeLine(handle, ln)
         if level in {lvlError, lvlFatal}: flushFile(handle)
       except IOError:
         discard
 
-proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr, useStderr=false): ConsoleLogger =
+proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
+    useStderr = false): ConsoleLogger =
   ## Creates a new `ConsoleLogger<#ConsoleLogger>`_.
   ##
   ## By default, log messages are written to ``stdout``. If ``useStderr`` is
@@ -563,7 +564,7 @@ when not defined(js):
     result.fmtStr = fmtStr
     result.maxLines = maxLines
     result.bufSize = bufSize
-    result.file = open(filename, mode, bufSize=result.bufSize)
+    result.file = open(filename, mode, bufSize = result.bufSize)
     result.curLine = 0
     result.baseName = filename
     result.baseMode = mode
@@ -616,7 +617,8 @@ when not defined(js):
         rotate(logger)
         logger.logFiles.inc
         logger.curLine = 0
-        logger.file = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
+        logger.file = open(logger.baseName, logger.baseMode,
+            bufSize = logger.bufSize)
 
       writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
       if level in {lvlError, lvlFatal}: flushFile(logger.file)

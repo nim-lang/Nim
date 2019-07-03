@@ -49,7 +49,7 @@
     jobs.push(Job(priority: 2))
 
     assert jobs[0].priority == 1
-]##
+  ]##
 
 type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
@@ -94,7 +94,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   let startpos = pos
   let newitem = heap[pos]
   # Bubble up the smaller child until hitting a leaf.
-  var childpos = 2*pos + 1    # leftmost child position
+  var childpos = 2*pos + 1 # leftmost child position
   while childpos < endpos:
     # Set childpos to index of smaller child.
     let rightpos = childpos + 1
@@ -191,7 +191,7 @@ when isMainModule:
     while tmp.len > 0:
       result.add(pop(tmp))
 
-  block: # Simple sanity test
+  block:  # Simple sanity test
     var heap = initHeapQueue[int]()
     let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
     for item in data:
@@ -199,7 +199,7 @@ when isMainModule:
     doAssert(heap[0] == 0)
     doAssert(heap.toSortedSeq == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 
-  block: # Test del
+  block:  # Test del
     var heap = initHeapQueue[int]()
     let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
     for item in data: push(heap, item)
@@ -219,7 +219,7 @@ when isMainModule:
     heap.del(heap.data.find(2))
     doAssert(heap.toSortedSeq == @[1, 3, 4, 8, 9])
 
-  block: # Test del last
+  block:  # Test del last
     var heap = initHeapQueue[int]()
     let data = [1, 2, 3]
     for item in data: push(heap, item)

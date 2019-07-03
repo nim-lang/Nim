@@ -59,7 +59,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   of xmlError:
     errors.add(errorMsg(x))
     next(x)
-  of xmlElementStart:    ## ``<elem>``
+  of xmlElementStart:  ## ``<elem>``
     result = newElement(x.elementName)
     next(x)
     untilElementEnd(x, result, errors)
@@ -161,7 +161,7 @@ when isMainModule:
     else:
       quit("cannot write test.txt")
   else:
-    block: # correctly parse ../../tests/testdata/doc1.xml
+    block:  # correctly parse ../../tests/testdata/doc1.xml
       let filePath = "tests/testdata/doc1.xml"
       var errors: seq[string] = @[]
       var xml = loadXml(filePath, errors)
@@ -169,4 +169,5 @@ when isMainModule:
 
     block bug1518:
       var err: seq[string] = @[]
-      assert $parsexml(newStringStream"<tag>One &amp; two</tag>", "temp.xml", err) == "<tag>One &amp; two</tag>"
+      assert $parsexml(newStringStream"<tag>One &amp; two</tag>", "temp.xml",
+          err) == "<tag>One &amp; two</tag>"

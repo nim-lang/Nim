@@ -22,7 +22,7 @@ proc openDefaultBrowser*(url: string) =
   ##
   ## Under Windows, ``ShellExecute`` is used. Under Mac OS X the ``open``
   ## command is used. Under Unix, it is checked if ``xdg-open`` exists and
-  ## used if it does. Otherwise the environment variable ``BROWSER`` is 
+  ## used if it does. Otherwise the environment variable ``BROWSER`` is
   ## used to determine the default browser to use.
   when defined(windows):
     var o = newWideCString("open")
@@ -36,7 +36,7 @@ proc openDefaultBrowser*(url: string) =
     for b in getEnv("BROWSER").string.split(PathSep):
       try:
         # we use ``startProcess`` here because we don't want to block!
-        discard startProcess(command=b, args=[url], options={poUsePath})
+        discard startProcess(command = b, args = [url], options = {poUsePath})
         return
       except OSError:
         discard

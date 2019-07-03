@@ -36,7 +36,8 @@
 
 type
   EventArgs* = object of RootObj ## Base object for event arguments that are passed to callback functions.
-  EventHandler* = tuple[name: string, handlers: seq[proc(e: EventArgs) {.closure.}]] ## An eventhandler for an event.
+  EventHandler* = tuple[name: string, handlers: seq[proc(e: EventArgs) {.
+      closure.}]] ## An eventhandler for an event.
 
 type
   EventEmitter* = object ## An object that fires events and holds event handlers for an object.
@@ -48,18 +49,21 @@ proc initEventHandler*(name: string): EventHandler =
   result.handlers = @[]
   result.name = name
 
-proc addHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}) =
+proc addHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.
+    closure.}) =
   ## Adds the callback to the specified event handler.
   handler.handlers.add(fn)
 
-proc removeHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}) =
+proc removeHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.
+    closure.}) =
   ## Removes the callback from the specified event handler.
   for i in countup(0, len(handler.handlers)-1):
     if fn == handler.handlers[i]:
       handler.handlers.del(i)
       break
 
-proc containsHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}): bool =
+proc containsHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.
+    closure.}): bool =
   ## Checks if a callback is registered to this event handler.
   return handler.handlers.contains(fn)
 
@@ -73,7 +77,8 @@ proc getEventHandler(emitter: var EventEmitter, event: string): int =
     if emitter.s[k].name == event: return k
   return -1
 
-proc on*(emitter: var EventEmitter, event: string, fn: proc(e: EventArgs) {.closure.}) =
+proc on*(emitter: var EventEmitter, event: string, fn: proc(e: EventArgs) {.
+    closure.}) =
   ## Assigns a event handler with the specified callback. If the event
   ## doesn't exist, it will be created.
   var i = getEventHandler(emitter, event)

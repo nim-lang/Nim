@@ -248,8 +248,8 @@ when defined(windows):
     cchWideChar: cint,
     lpMultiByteStr: cstring,
     cbMultiByte: cint,
-    lpDefaultChar: cstring=nil,
-    lpUsedDefaultChar: pointer=nil): cint {.
+    lpDefaultChar: cstring = nil,
+    lpUsedDefaultChar: pointer = nil): cint {.
       stdcall, importc: "WideCharToMultiByte", dynlib: "kernel32".}
 
 else:

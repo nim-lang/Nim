@@ -51,7 +51,7 @@
 
 
 include "system/inclrtl"
-{.push debugger:off .} # the user does not want to trace a part
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
 import bitops
@@ -93,7 +93,7 @@ proc fac*(n: int): int =
   assert(n < factTable.len, $n & " is too large to look up in the table")
   factTable[n]
 
-{.push checks:off, line_dir:off, stack_trace:off.}
+{.push checks: off, line_dir: off, stack_trace: off.}
 
 when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
@@ -119,13 +119,13 @@ type
   FloatClass* = enum ## Describes the class a floating point value belongs to.
                      ## This is the type that is returned by
                      ## `classify proc <#classify,float>`_.
-    fcNormal,    ## value is an ordinary nonzero floating point value
-    fcSubnormal, ## value is a subnormal (a very small) floating point value
-    fcZero,      ## value is zero
-    fcNegZero,   ## value is the negative zero
-    fcNan,       ## value is Not-A-Number (NAN)
-    fcInf,       ## value is positive infinity
-    fcNegInf     ## value is negative infinity
+    fcNormal,        ## value is an ordinary nonzero floating point value
+    fcSubnormal,     ## value is a subnormal (a very small) floating point value
+    fcZero,          ## value is zero
+    fcNegZero,       ## value is the negative zero
+    fcNan,           ## value is Not-A-Number (NAN)
+    fcInf,           ## value is positive infinity
+    fcNegInf         ## value is negative infinity
 
 proc classify*(x: float): FloatClass =
   ## Classifies a floating point value.
@@ -186,7 +186,7 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 4)
   result = result or (result shr 2)
   result = result or (result shr 1)
-  result += 1 + ord(x<=0)
+  result += 1 + ord(x <= 0)
 
 proc countBits32*(n: int32): int {.noSideEffect, deprecated:
   "Deprecated since v0.20.0; use 'bitops.countSetBits' instead".} =
@@ -255,7 +255,7 @@ proc cumsum*[T](x: var openArray[T]) =
   for i in 1 ..< x.len: x[i] = x[i-1] + x[i]
 
 {.push noSideEffect.}
-when not defined(JS): # C
+when not defined(JS):  # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
   proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
     ## Computes the square root of ``x``.
@@ -321,7 +321,7 @@ proc log*[T: SomeFloat](x, base: T): T =
   ##  echo log(8.0, -2.0) ## nan
   ln(x) / ln(base)
 
-when not defined(JS): # C
+when not defined(JS):  # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
     ## Computes the common logarithm (base 10) of ``x``.
@@ -498,7 +498,7 @@ when not defined(JS): # C
   proc arctanh*(x: float64): float64 {.importc: "atanh", header: "<math.h>".}
     ## Computes the inverse hyperbolic tangent of ``x``.
 
-else: # JS
+else:  # JS
   proc log10*(x: float32): float32 {.importc: "Math.log10", nodecl.}
   proc log10*(x: float64): float64 {.importc: "Math.log10", nodecl.}
   proc log2*(x: float32): float32 {.importc: "Math.log2", nodecl.}
@@ -553,7 +553,7 @@ proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
 
 const windowsCC89 = defined(windows) and defined(bcc)
 
-when not defined(JS): # C
+when not defined(JS):  # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
     ## Computes the hypotenuse of a right-angle triangle with ``x`` and
@@ -603,9 +603,11 @@ when not defined(JS): # C
       ##  echo gamma(11.0) # 3628800.0
       ##  echo gamma(-1.0) # nan
     proc tgamma*(x: float32): float32
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgammaf", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead",
+          importc: "tgammaf", header: "<math.h>".}
     proc tgamma*(x: float64): float64
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgamma", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead",
+          importc: "tgamma", header: "<math.h>".}
       ## The gamma function
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
@@ -756,7 +758,7 @@ when not defined(JS): # C
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-else: # JS
+else:  # JS
   proc hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
   proc hypot*(x, y: float64): float64 {.importc: "Math.hypot", varargs, nodecl.}
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
@@ -779,7 +781,8 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use strformat module instead".} =
+proc round*[T: float32|float64](x: T, places: int): T {.
+    deprecated: "use strformat module instead".} =
   ## Decimal rounding on a binary floating point number.
   ##
   ## This function is NOT reliable. Floating point numbers cannot hold
@@ -1082,7 +1085,7 @@ when isMainModule:
   # Function for approximate comparison of floats
   proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
 
-  block: # prod
+  block:  # prod
     doAssert prod([1, 2, 3, 4]) == 24
     doAssert prod([1.5, 3.4]) == 5.1
     let x: seq[float] = @[]
@@ -1110,7 +1113,7 @@ when isMainModule:
     doAssert round(-547.652, -3) ==~ -1000.0
     doAssert round(-547.652, -4) ==~ 0.0
 
-  block: # splitDecimal() tests
+  block:  # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart ==~ 54.0
     doAssert splitDecimal(54.674).floatpart ==~ 0.674
     doAssert splitDecimal(-693.4356).intpart ==~ -693.0
@@ -1118,7 +1121,7 @@ when isMainModule:
     doAssert splitDecimal(0.0).intpart ==~ 0.0
     doAssert splitDecimal(0.0).floatpart ==~ 0.0
 
-  block: # trunc tests for vcc
+  block:  # trunc tests for vcc
     doAssert(trunc(-1.1) == -1)
     doAssert(trunc(1.1) == 1)
     doAssert(trunc(-0.1) == -0)
@@ -1147,7 +1150,7 @@ when isMainModule:
     doAssert(classify(trunc(f_nan.float32)) == fcNan)
     doAssert(classify(trunc(0.0'f32)) == fcZero)
 
-  block: # sgn() tests
+  block:  # sgn() tests
     assert sgn(1'i8) == 1
     assert sgn(1'i16) == 1
     assert sgn(1'i32) == 1
@@ -1164,7 +1167,7 @@ when isMainModule:
     assert sgn(Inf) == 1
     assert sgn(NaN) == 0
 
-  block: # fac() tests
+  block:  # fac() tests
     try:
       discard fac(-1)
     except AssertionError:
@@ -1176,7 +1179,7 @@ when isMainModule:
     doAssert fac(3) == 6
     doAssert fac(4) == 24
 
-  block: # floorMod/floorDiv
+  block:  # floorMod/floorDiv
     doAssert floorDiv(8, 3) == 2
     doAssert floorMod(8, 3) == 2
 
@@ -1192,7 +1195,7 @@ when isMainModule:
     doAssert floorMod(8.0, -3.0) ==~ -1.0
     doAssert floorMod(-8.5, 3.0) ==~ 0.5
 
-  block: # log
+  block:  # log
     doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
     doAssert log2(8.0'f64) == 3.0'f64
     doAssert log2(4.0'f64) == 2.0'f64

@@ -10,44 +10,44 @@
 ## Floating-point environment. Handling of floating-point rounding and
 ## exceptions (overflow, division by zero, etc.).
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 
 when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
 
 var
-  FE_DIVBYZERO* {.importc, header: "<fenv.h>".}: cint
+  FE_DIVBYZERO*{.importc, header: "<fenv.h>".}: cint
     ## division by zero
-  FE_INEXACT* {.importc, header: "<fenv.h>".}: cint
+  FE_INEXACT*{.importc, header: "<fenv.h>".}: cint
     ## inexact result
-  FE_INVALID* {.importc, header: "<fenv.h>".}: cint
+  FE_INVALID*{.importc, header: "<fenv.h>".}: cint
     ## invalid operation
-  FE_OVERFLOW* {.importc, header: "<fenv.h>".}: cint
+  FE_OVERFLOW*{.importc, header: "<fenv.h>".}: cint
     ## result not representable due to overflow
-  FE_UNDERFLOW* {.importc, header: "<fenv.h>".}: cint
+  FE_UNDERFLOW*{.importc, header: "<fenv.h>".}: cint
     ## result not representable due to underflow
-  FE_ALL_EXCEPT* {.importc, header: "<fenv.h>".}: cint
+  FE_ALL_EXCEPT*{.importc, header: "<fenv.h>".}: cint
     ## bitwise OR of all supported exceptions
-  FE_DOWNWARD* {.importc, header: "<fenv.h>".}: cint
+  FE_DOWNWARD*{.importc, header: "<fenv.h>".}: cint
     ## round toward -Inf
-  FE_TONEAREST* {.importc, header: "<fenv.h>".}: cint
+  FE_TONEAREST*{.importc, header: "<fenv.h>".}: cint
     ## round to nearest
-  FE_TOWARDZERO* {.importc, header: "<fenv.h>".}: cint
+  FE_TOWARDZERO*{.importc, header: "<fenv.h>".}: cint
     ## round toward 0
-  FE_UPWARD* {.importc, header: "<fenv.h>".}: cint
+  FE_UPWARD*{.importc, header: "<fenv.h>".}: cint
     ## round toward +Inf
-  FE_DFL_ENV* {.importc, header: "<fenv.h>".}: cint
+  FE_DFL_ENV*{.importc, header: "<fenv.h>".}: cint
     ## macro of type pointer to fenv_t to be used as the argument
     ## to functions taking an argument of type fenv_t; in this
     ## case the default environment will be used
 
 type
-  Tfenv* {.importc: "fenv_t", header: "<fenv.h>", final, pure.} =
+  Tfenv*{.importc: "fenv_t", header: "<fenv.h>", final, pure.} =
     object ## Represents the entire floating-point environment. The
            ## floating-point environment refers collectively to any
            ## floating-point status flags and control modes supported
            ## by the implementation.
-  Tfexcept* {.importc: "fexcept_t", header: "<fenv.h>", final, pure.} =
+  Tfexcept*{.importc: "fexcept_t", header: "<fenv.h>", final, pure.} =
     object ## Represents the floating-point status flags collectively,
            ## including any status the implementation associates with the
            ## flags. A floating-point status flag is a system variable

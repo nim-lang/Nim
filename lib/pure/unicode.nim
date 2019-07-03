@@ -21,7 +21,7 @@
 ## * `encodings module <encodings.html>`_
 
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 
 include "system/inclrtl"
 
@@ -388,7 +388,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  s[o.. (o+runeLenAt(s, o)-1)]
+  s[o .. (o+runeLenAt(s, o)-1)]
 
 proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   ## Returns the UTF-8 substring starting at code point ``pos``
@@ -415,7 +415,7 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
       if e < 0:
         result = ""
       else:
-        result = s.substr(o, runeOffset(s, e-(rl+pos) , o)-1)
+        result = s.substr(o, runeOffset(s, e-(rl+pos), o)-1)
     else:
       result = s.substr(o, runeOffset(s, len, o)-1)
   else:
@@ -631,7 +631,7 @@ template runeCheck(s, runeProc) =
     i = 0
     rune: Rune
   while i < len(s) and result:
-    fastRuneAt(s, i, rune, doInc=true)
+    fastRuneAt(s, i, rune, doInc = true)
     result = runeProc(rune) and result
 
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
@@ -659,9 +659,9 @@ template convertRune(s, runeProc) =
     resultIndex = 0
     rune: Rune
   while i < len(s):
-    fastRuneAt(s, i, rune, doInc=true)
+    fastRuneAt(s, i, rune, doInc = true)
     rune = runeProc(rune)
-    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
+    fastToUTF8Copy(rune, result, resultIndex, doInc = true)
 
 proc toUpper*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
@@ -697,7 +697,7 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
       rune = rune.toLower()
     elif rune.isLower():
       rune = rune.toUpper()
-    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
+    fastToUTF8Copy(rune, result, resultIndex, doInc = true)
 
 proc capitalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1".} =
@@ -710,7 +710,7 @@ proc capitalize*(s: string): string {.noSideEffect, procvar,
   var
     rune: Rune
     i = 0
-  fastRuneAt(s, i, rune, doInc=true)
+  fastRuneAt(s, i, rune, doInc = true)
   result = $toUpper(rune) & substr(s, i)
 
 proc translate*(s: string, replacements: proc(key: string): string): string {.
@@ -789,7 +789,7 @@ proc title*(s: string): string {.noSideEffect, procvar,
       firstRune = false
     elif rune.isWhiteSpace():
       firstRune = true
-    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
+    fastToUTF8Copy(rune, result, resultIndex, doInc = true)
 
 
 iterator runes*(s: string): Rune =
@@ -812,7 +812,7 @@ iterator utf8*(s: string): string =
   var o = 0
   while o < s.len:
     let n = runeLenAt(s, o)
-    yield s[o.. (o+n-1)]
+    yield s[o .. (o+n-1)]
     o += n
 
 proc toRunes*(s: string): seq[Rune] =
@@ -1044,8 +1044,9 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##
   splitCommon(s, sep, maxsplit, sep.size)
 
-proc split*(s: string, seps: openarray[Rune] = unicodeSpaces, maxsplit: int = -1): seq[string] {.
-  noSideEffect, rtl, extern: "nucSplitRunes".} =
+proc split*(s: string, seps: openarray[Rune] = unicodeSpaces,
+    maxsplit: int = -1):
+    seq[string] {.noSideEffect, rtl, extern: "nucSplitRunes".} =
   ## The same as the `split iterator <#split.i,string,openArray[Rune],int>`_,
   ## but is a proc that returns a sequence of substrings.
   accResult(split(s, seps, maxsplit))
@@ -1072,7 +1073,7 @@ proc strip*(s: string, leading = true, trailing = true,
     doAssert a.strip(trailing = false) == "áñyóng   "
 
   var
-    s_i = 0 ## starting index into string ``s``
+    s_i = 0          ## starting index into string ``s``
     e_i = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
   if leading:
     var
@@ -1191,7 +1192,7 @@ template runeCaseCheck(s, runeProc, skipNonAlpha) =
     rune: Rune
     hasAtleastOneAlphaRune = false
   while i < len(s):
-    fastRuneAt(s, i, rune, doInc=true)
+    fastRuneAt(s, i, rune, doInc = true)
     if skipNonAlpha:
       var runeIsAlpha = isAlpha(rune)
       if not hasAtleastOneAlphaRune:
@@ -1239,7 +1240,7 @@ proc isUpper*(s: string, skipNonAlpha: bool): bool {.
 
 proc isTitle*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str",
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".}=
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## **Deprecated since version 0.20 since its semantics are unclear**
   ##
   ## Checks whether or not ``s`` is a unicode title.
@@ -1255,7 +1256,7 @@ proc isTitle*(s: string): bool {.noSideEffect, procvar,
   var firstRune = true
 
   while i < len(s) and result:
-    fastRuneAt(s, i, rune, doInc=true)
+    fastRuneAt(s, i, rune, doInc = true)
     if not rune.isWhiteSpace() and firstRune:
       result = rune.isUpper() and result
       firstRune = false
@@ -1294,7 +1295,8 @@ when isMainModule:
     else:
       return "12345"
 
-  doAssert translate("two not alpha foo βeta", test_replacements) == "2 12345 αlpha BAR beta"
+  doAssert translate("two not alpha foo βeta", test_replacements) ==
+      "2 12345 αlpha BAR beta"
   doAssert translate("  two not foo βeta  ", test_replacements) == "  2 12345 BAR beta  "
 
   doAssert title("foo bar") == "Foo Bar"
@@ -1309,9 +1311,12 @@ when isMainModule:
   doAssert swapCase(" ") == " "
   doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
   doAssert swapCase("a✓B") == "A✓b"
-  doAssert swapCase("Јамогујестистаклоитоминештети") == "јАМОГУЈЕСТИСТАКЛОИТОМИНЕШТЕТИ"
-  doAssert swapCase("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει") == "ὝΑΛΟΝΦΑΓΕῖΝΔΎΝΑΜΑΙΤΟῦΤΟΟὔΜΕΒΛΆΠΤΕΙ"
-  doAssert swapCase("Կրնամապակիուտեևինծիանհանգիստչըներ") == "կՐՆԱՄԱՊԱԿԻՈՒՏԵևԻՆԾԻԱՆՀԱՆԳԻՍՏՉԸՆԵՐ"
+  doAssert swapCase("Јамогујестистаклоитоминештети") ==
+      "јАМОГУЈЕСТИСТАКЛОИТОМИНЕШТЕТИ"
+  doAssert swapCase("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει") ==
+      "ὝΑΛΟΝΦΑΓΕῖΝΔΎΝΑΜΑΙΤΟῦΤΟΟὔΜΕΒΛΆΠΤΕΙ"
+  doAssert swapCase("Կրնամապակիուտեևինծիանհանգիստչըներ") ==
+      "կՐՆԱՄԱՊԱԿԻՈՒՏԵևԻՆԾԻԱՆՀԱՆԳԻՍՏՉԸՆԵՐ"
   doAssert swapCase("") == ""
 
   doAssert isAlpha("r")
@@ -1370,9 +1375,12 @@ when isMainModule:
   doAssert reversed("先秦兩漢") == "漢兩秦先"
   doAssert reversed("as⃝df̅") == "f̅ds⃝a"
   doAssert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
-  doAssert reversed("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει") == "ιετπάλβεμὔοοτῦοτιαμανύδνῖεγαϕνολαὕ"
-  doAssert reversed("Јамогујестистаклоитоминештети") == "итетшенимотиолкатситсејугомаЈ"
-  doAssert reversed("Կրնամապակիուտեևինծիանհանգիստչըներ") == "րենըչտսիգնահնաիծնիևետւոիկապամանրԿ"
+  doAssert reversed("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει") ==
+      "ιετπάλβεμὔοοτῦοτιαμανύδνῖεγαϕνολαὕ"
+  doAssert reversed("Јамогујестистаклоитоминештети") ==
+      "итетшенимотиолкатситсејугомаЈ"
+  doAssert reversed("Կրնամապակիուտեևինծիանհանգիստչըներ") ==
+      "րենըչտսիգնահնաիծնիևետւոիկապամանրԿ"
   doAssert len(toRunes("as⃝df̅")) == runeLen("as⃝df̅")
   const test = "as⃝"
   doAssert lastRune(test, test.len-1)[1] == 3
@@ -1424,8 +1432,10 @@ when isMainModule:
     let s2 = ":this;is;an:example;;"
     let s3 = ":this×is×an:example××"
     doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
-    doAssert s2.split(seps = [':'.Rune, ';'.Rune]) == @["", "this", "is", "an", "example", "", ""]
-    doAssert s3.split(seps = [':'.Rune, "×".asRune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s2.split(seps = [':'.Rune, ';'.Rune]) ==
+        @["", "this", "is", "an", "example", "", ""]
+    doAssert s3.split(seps = [':'.Rune, "×".asRune]) ==
+        @["", "this", "is", "an", "example", "", ""]
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
 

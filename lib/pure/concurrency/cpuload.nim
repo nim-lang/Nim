@@ -64,7 +64,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     if f.open("/proc/loadavg"):
       var b: float
       var busy, total: int
-      fscanf(f,"%lf %lf %lf %ld/%ld",
+      fscanf(f, "%lf %lf %lf %ld/%ld",
             addr b, addr b, addr b, addr busy, addr total)
       f.close()
       let cpus = countProcessors()

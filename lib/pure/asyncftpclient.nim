@@ -100,27 +100,27 @@ type
     of JRetr, JStore:
       file: File
       filename: string
-      total: BiggestInt # In bytes.
-      progress: BiggestInt # In bytes.
-      oneSecond: BiggestInt # Bytes transferred in one second.
+      total: BiggestInt         # In bytes.
+      progress: BiggestInt      # In bytes.
+      oneSecond: BiggestInt     # Bytes transferred in one second.
       lastProgressReport: float # Time
-      toStore: string # Data left to upload (Only used with async)
+      toStore: string           # Data left to upload (Only used with async)
 
   FTPEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore
 
-  FTPEvent* = object ## Event
+  FTPEvent* = object             ## Event
     filename*: string
     case typ*: FTPEventType
     of EvLines:
-      lines*: string ## Lines that have been transferred.
-    of EvRetr, EvStore: ## Retr/Store operation finished.
+      lines*: string             ## Lines that have been transferred.
+    of EvRetr, EvStore:          ## Retr/Store operation finished.
       nil
     of EvTransferProgress:
-      bytesTotal*: BiggestInt     ## Bytes total.
-      bytesFinished*: BiggestInt  ## Bytes transferred.
-      speed*: BiggestInt          ## Speed in bytes/s
-      currentJob*: FTPJobType     ## The current job being performed.
+      bytesTotal*: BiggestInt    ## Bytes total.
+      bytesFinished*: BiggestInt ## Bytes transferred.
+      speed*: BiggestInt         ## Speed in bytes/s
+      currentJob*: FTPJobType    ## The current job being performed.
 
   ReplyError* = object of IOError
 
@@ -164,8 +164,8 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
-  var ip = nums[0.. ^3]
-  var port = nums[^2.. ^1]
+  var ip = nums[0 .. ^3]
+  var port = nums[^2 .. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
   await ftp.dsock.connect(ip.join("."), Port(properPort.toU16))
   ftp.dsockConnected = true
@@ -321,14 +321,15 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
   assertReply(await(ftp.expectReply()), "226")
 
 proc defaultOnProgressChanged*(total, progress: BiggestInt,
-    speed: float): Future[void] {.nimcall,gcsafe,procvar.} =
+    speed: float): Future[void] {.nimcall, gcsafe, procvar.} =
   ## Default FTP ``onProgressChanged`` handler. Does nothing.
   result = newFuture[void]()
   #echo(total, " ", progress, " ", speed)
   result.complete()
 
 proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
-               onProgressChanged: ProgressChangedProc = defaultOnProgressChanged) {.async.} =
+               onProgressChanged: ProgressChangedProc = defaultOnProgressChanged) {.
+                   async.} =
   ## Downloads ``file`` and saves it to ``dest``.
   ## The ``EvRetr`` event is passed to the specified ``handleEvent`` function
   ## when the download is finished. The event's ``filename`` field will be equal

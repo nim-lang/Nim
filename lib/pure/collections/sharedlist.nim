@@ -9,7 +9,7 @@
 
 ## Shared list support.
 
-{.push stackTrace:off.}
+{.push stackTrace: off.}
 
 import
   locks

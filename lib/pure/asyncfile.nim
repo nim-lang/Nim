@@ -89,7 +89,7 @@ proc newAsyncFile*(fd: AsyncFd): AsyncFile =
   result.fd = fd
   register(fd)
 
-proc openAsync*(filename: string, mode = fmRead): AsyncFile =
+proc openAsync*(filename: string; mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
   ## the specified FileMode ``mode`` asynchronously.
   when defined(windows) or defined(nimdoc):
@@ -123,7 +123,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
 
     result = newAsyncFile(fd.AsyncFd)
 
-proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
+proc readBuffer*(f: AsyncFile; buf: pointer, size: int): Future[int] =
   ## Read ``size`` bytes from the specified file asynchronously starting at
   ## the current position of the file pointer.
   ##
@@ -135,7 +135,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD; bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount > 0
@@ -201,7 +201,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
 
   return retFuture
 
-proc read*(f: AsyncFile, size: int): Future[string] =
+proc read*(f: AsyncFile; size: int): Future[string] =
   ## Read ``size`` bytes from the specified file asynchronously starting at
   ## the current position of the file pointer.
   ##
@@ -215,7 +215,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD; bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount > 0
@@ -315,7 +315,7 @@ proc getFilePos*(f: AsyncFile): int64 =
   ## index zero.
   f.offset
 
-proc setFilePos*(f: AsyncFile, pos: int64) =
+proc setFilePos*(f: AsyncFile; pos: int64) =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero.
   f.offset = pos
@@ -333,7 +333,7 @@ proc readAll*(f: AsyncFile): Future[string] {.async.} =
       return
     result.add data
 
-proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
+proc writeBuffer*(f: AsyncFile; buf: pointer, size: int): Future[void] =
   ## Writes ``size`` bytes from ``buf`` to the file specified asynchronously.
   ##
   ## The returned Future will complete once all data has been written to the
@@ -343,7 +343,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWord, errcode: OSErrorCode) =
+      proc (fd: AsyncFD; bytesCount: DWord, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == size.int32
@@ -403,7 +403,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
       addWrite(f.fd, cb)
   return retFuture
 
-proc write*(f: AsyncFile, data: string): Future[void] =
+proc write*(f: AsyncFile; data: string): Future[void] =
   ## Writes ``data`` to the file specified asynchronously.
   ##
   ## The returned Future will complete once all data has been written to the
@@ -417,7 +417,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWord, errcode: OSErrorCode) =
+      proc (fd: AsyncFD; bytesCount: DWord, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == data.len.int32
@@ -478,7 +478,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
       addWrite(f.fd, cb)
   return retFuture
 
-proc setFileSize*(f: AsyncFile, length: int64) =
+proc setFileSize*(f: AsyncFile; length: int64) =
   ## Set a file length.
   when defined(windows) or defined(nimdoc):
     var
@@ -505,7 +505,7 @@ proc close*(f: AsyncFile) =
     if close(f.fd.cint) == -1:
       raiseOSError(osLastError())
 
-proc writeFromStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
+proc writeFromStream*(f: AsyncFile; fs: FutureStream[string]) {.async.} =
   ## Reads data from the specified future stream until it is completed.
   ## The data which is read is written to the file immediately and
   ## freed from memory.
@@ -519,7 +519,7 @@ proc writeFromStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
     else:
       break
 
-proc readToStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
+proc readToStream*(f: AsyncFile; fs: FutureStream[string]) {.async.} =
   ## Writes data to the specified future stream as the file is read.
   while true:
     let data = await read(f, 4000)

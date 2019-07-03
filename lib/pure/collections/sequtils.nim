@@ -81,7 +81,8 @@ when not defined(nimhygiene):
   {.pragma: dirty.}
 
 
-macro evalOnceAs(expAlias, exp: untyped, letAssigneable: static[bool]): untyped =
+macro evalOnceAs(expAlias, exp: untyped, letAssigneable:
+    static[bool]): untyped =
   ## Injects ``expAlias`` in caller scope, to avoid bugs involving multiple
   ##  substitution in macro arguments such as
   ## https://github.com/nim-lang/Nim/issues/7187
@@ -127,7 +128,7 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
-proc count*[T](s: openArray[T], x: T): int =
+proc count*[T](s: openArray[T]; x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##
   runnableExamples:
@@ -142,7 +143,7 @@ proc count*[T](s: openArray[T], x: T): int =
     if itm == x:
       inc result
 
-proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
+proc cycle*[T](s: openArray[T]; n: Natural): seq[T] =
   ## Returns a new sequence with the items of the container `s` repeated
   ## `n` times.
   ## `n` must be a non-negative number (zero or more).
@@ -160,7 +161,7 @@ proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
       result[o] = e
       inc o
 
-proc repeat*[T](x: T, n: Natural): seq[T] =
+proc repeat*[T](x: T; n: Natural): seq[T] =
   ## Returns a new sequence with the item `x` repeated `n` times.
   ## `n` must be a non-negative number (zero or more).
   ##
@@ -173,7 +174,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   for i in 0 ..< n:
     result[i] = x
 
-proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
+proc deduplicate*[T](s: openArray[T]; isSorted: bool = false): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
   ## Setting the optional argument ``isSorted`` to ``true`` (default: false)
@@ -201,7 +202,7 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
-proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
+proc zip*[S, T](s1: openArray[S]; s2: openArray[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input containers.
   ##
   ## The input containers can be of different types.
@@ -232,7 +233,7 @@ proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
   for i in 0 ..< m:
     result[i] = (s1[i], s2[i])
 
-proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
+proc distribute*[T](s: seq[T]; num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
   ##
   ## Returns a sequence of `num` sequences. For *some* input values this is the
@@ -289,7 +290,7 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
         result[i].add(s[g])
       first = last
 
-proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
+proc map*[T, S](s: openArray[T]; op: proc (x: T): S {.closure.}):
                                                             seq[S]{.inline.} =
   ## Returns a new sequence with the results of `op` proc applied to every
   ## item in the container `s`.
@@ -311,7 +312,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
+proc apply*[T](s: var openArray[T]; op: proc (x: var T) {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -331,7 +332,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
 
   for i in 0 ..< s.len: op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
+proc apply*[T](s: var openArray[T]; op: proc (x: T): T {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -351,7 +352,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
+iterator filter*[T](s: openArray[T]; pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (function that returns a `bool`).
   ##
@@ -370,7 +371,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
     if pred(s[i]):
       yield s[i]
 
-proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
+proc filter*[T](s: openArray[T]; pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
   ## Returns a new sequence with all the items of `s` that fulfilled the
   ## predicate `pred` (function that returns a `bool`).
@@ -393,7 +394,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
     if pred(s[i]):
       result.add(s[i])
 
-proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
+proc keepIf*[T](s: var seq[T]; pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
   ## Keeps the items in the passed sequence `s` if they fulfilled the
   ## predicate `pred` (function that returns a `bool`).
@@ -426,8 +427,8 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
   ## This modifies `s` itself, it does not return a copy.
   ##
   runnableExamples:
-    let outcome = @[1,1,1,1,1,1,1,1]
-    var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
+    var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest
 
@@ -440,17 +441,17 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     inc(j)
   setLen(s, newLen)
 
-proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
+proc insert*[T](dest: var seq[T]; src: openArray[T], pos = 0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
   ## `dest` itself, it does not return a copy.
   ##
   ## Notice that `src` and `dest` must be of the same type.
   ##
   runnableExamples:
-    var dest = @[1,1,1,1,1,1,1,1]
+    var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
     let
-      src = @[2,2,2,2,2,2]
-      outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+      src = @[2, 2, 2, 2, 2, 2]
+      outcome = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.insert(src, 3)
     assert dest == outcome
 
@@ -496,7 +497,7 @@ template filterIt*(s, pred: untyped): untyped =
     if pred: result.add(it)
   result
 
-template keepItIf*(varSeq: seq, pred: untyped) =
+template keepItIf*(varSeq: seq; pred: untyped) =
   ## Keeps the items in the passed sequence (must be declared as a ``var``)
   ## if they fulfilled the predicate.
   ##
@@ -522,7 +523,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
       inc(pos)
   setLen(varSeq, pos)
 
-proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc all*[T](s: openArray[T]; pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
@@ -531,9 +532,9 @@ proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## * `any proc<#any,openArray[T],proc(T)>`_
   ##
   runnableExamples:
-     let numbers = @[1, 4, 5, 8, 9, 7, 4]
-     assert all(numbers, proc (x: int): bool = return x < 10) == true
-     assert all(numbers, proc (x: int): bool = return x < 9) == false
+    let numbers = @[1, 4, 5, 8, 9, 7, 4]
+    assert all(numbers, proc (x: int): bool = return x < 10) == true
+    assert all(numbers, proc (x: int): bool = return x < 9) == false
 
   for i in s:
     if not pred(i):
@@ -564,7 +565,7 @@ template allIt*(s, pred: untyped): bool =
       break
   result
 
-proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc any*[T](s: openArray[T]; pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if some item fulfills the
   ## predicate.
   ##
@@ -639,7 +640,7 @@ template toSeq2(iter: iterator): untyped =
     var result: seq[outType] = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
-      let iter3=iter4()
+      let iter3 = iter4()
       for x in iter3():
         result.add(x)
     else:
@@ -797,7 +798,7 @@ template foldr*(sequence, operation: untyped): untyped =
     result = operation
   result
 
-template mapIt*(s: typed, op: untyped): untyped =
+template mapIt*(s: typed; op: untyped): untyped =
   ## Returns a new sequence with the results of `op` proc applied to every
   ## item in the container `s`.
   ##
@@ -865,16 +866,16 @@ template applyIt*(varSeq, op: untyped) =
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
   ##
   runnableExamples:
-     var nums = @[1, 2, 3, 4]
-     nums.applyIt(it * 3)
-     assert nums[0] + nums[3] == 15
+    var nums = @[1, 2, 3, 4]
+    nums.applyIt(it * 3)
+    assert nums[0] + nums[3] == 15
 
   for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
 
 
-template newSeqWith*(len: int, init: untyped): untyped =
+template newSeqWith*(len: int; init: untyped): untyped =
   ## Creates a new sequence of length `len`, calling `init` to initialize
   ## each value of the sequence.
   ##
@@ -900,7 +901,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
 proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
                  filter = nnkLiterals): NimNode =
   if constructor.kind in filter:
-    result = newNimNode(nnkCall, lineInfoFrom=constructor)
+    result = newNimNode(nnkCall, lineInfoFrom = constructor)
     result.add op
     result.add constructor
   else:
@@ -962,11 +963,11 @@ when isMainModule:
   # helper for testing double substitution side effects which are handled
   # by `evalOnceAs`
   var counter = 0
-  proc identity[T](a:T):auto=
+  proc identity[T](a: T): auto =
     counter.inc
     a
 
-  block: # concat test
+  block:  # concat test
     let
       s1 = @[1, 2, 3]
       s2 = @[4, 5]
@@ -974,7 +975,7 @@ when isMainModule:
       total = concat(s1, s2, s3)
     assert total == @[1, 2, 3, 4, 5, 6, 7]
 
-  block: # count test
+  block:  # count test
     let
       s1 = @[1, 2, 3, 2]
       s2 = @['a', 'b', 'x', 'a']
@@ -1005,7 +1006,7 @@ when isMainModule:
     assert ar4 == 1
     assert ar5 == 2
 
-  block: # cycle tests
+  block:  # cycle tests
     let
       a = @[1, 2, 3]
       b: seq[int] = @[]
@@ -1018,12 +1019,12 @@ when isMainModule:
     doAssert c.cycle(3) == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
     doAssert c.cycle(0) == @[]
 
-  block: # repeat tests
+  block:  # repeat tests
     assert repeat(10, 5) == @[10, 10, 10, 10, 10]
-    assert repeat(@[1,2,3], 2) == @[@[1,2,3], @[1,2,3]]
-    assert repeat([1,2,3], 2) == @[[1,2,3], [1,2,3]]
+    assert repeat(@[1, 2, 3], 2) == @[@[1, 2, 3], @[1, 2, 3]]
+    assert repeat([1, 2, 3], 2) == @[[1, 2, 3], [1, 2, 3]]
 
-  block: # deduplicates test
+  block:  # deduplicates test
     let
       dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
       dup2 = @["a", "a", "c", "d", "d"]
@@ -1046,7 +1047,7 @@ when isMainModule:
     assert unique7 == @[1, 2, 3, 4, 8]
     assert unique8 == @["a", "c", "d"]
 
-  block: # zip test
+  block:  # zip test
     let
       short = @[1, 2, 3]
       long = @[6, 5, 4, 3, 2, 1]
@@ -1070,7 +1071,7 @@ when isMainModule:
     assert zip4[2].b == "three"
     assert zip5[2].b == "three"
 
-  block: # distribute tests
+  block:  # distribute tests
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
     doAssert numbers.distribute(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
     doAssert numbers.distribute(6)[0] == @[1, 2]
@@ -1096,7 +1097,7 @@ when isMainModule:
     doAssert b.distribute(5, true)[4].len == 5
     doAssert b.distribute(5, false)[4].len == 2
 
-  block: # map test
+  block:  # map test
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
@@ -1105,25 +1106,25 @@ when isMainModule:
     assert m1 == @[2, 8, 10, 16, 18, 14, 8]
     assert m2 == @[2, 8, 10, 16, 18, 14, 8]
 
-  block: # apply test
+  block:  # apply test
     var a = @["1", "2", "3", "4"]
     apply(a, proc(x: var string) = x &= "42")
     assert a == @["142", "242", "342", "442"]
 
-  block: # filter proc test
+  block:  # filter proc test
     let
       colors = @["red", "yellow", "black"]
       acolors = ["red", "yellow", "black"]
       f1 = filter(colors, proc(x: string): bool = x.len < 6)
-      f2 = filter(colors) do (x: string) -> bool : x.len > 5
+      f2 = filter(colors) do (x: string) -> bool: x.len > 5
       f3 = filter(acolors, proc(x: string): bool = x.len < 6)
-      f4 = filter(acolors) do (x: string) -> bool : x.len > 5
+      f4 = filter(acolors) do (x: string) -> bool: x.len > 5
     assert f1 == @["red", "black"]
     assert f2 == @["yellow"]
     assert f3 == @["red", "black"]
     assert f4 == @["yellow"]
 
-  block: # filter iterator test
+  block:  # filter iterator test
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
     let anumbers = [1, 4, 5, 8, 9, 7, 4]
     assert toSeq(filter(numbers, proc (x: int): bool = x mod 2 == 0)) ==
@@ -1131,30 +1132,30 @@ when isMainModule:
     assert toSeq(filter(anumbers, proc (x: int): bool = x mod 2 == 0)) ==
       @[4, 8, 4]
 
-  block: # keepIf test
+  block:  # keepIf test
     var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
     keepIf(floats, proc(x: float): bool = x > 10)
     assert floats == @[13.0, 12.5, 10.1]
 
-  block: # delete tests
-    let outcome = @[1,1,1,1,1,1,1,1]
-    var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+  block:  # delete tests
+    let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
+    var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest, """\
     Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     is [1,1,1,1,1,1,1,1]"""
 
-  block: # insert tests
-    var dest = @[1,1,1,1,1,1,1,1]
+  block:  # insert tests
+    var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
     let
-      src = @[2,2,2,2,2,2]
-      outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+      src = @[2, 2, 2, 2, 2, 2]
+      outcome = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.insert(src, 3)
     assert dest == outcome, """\
     Inserting [2,2,2,2,2,2] into [1,1,1,1,1,1,1,1]
     at 3 is [1,1,1,2,2,2,2,2,2,1,1,1,1,1]"""
 
-  block: # filterIt test
+  block:  # filterIt test
     let
       temperatures = @[-272.15, -2.0, 24.5, 44.31, 99.9, -113.44]
       acceptable = filterIt(temperatures, it < 50 and it > -10)
@@ -1162,56 +1163,56 @@ when isMainModule:
     assert acceptable == @[-2.0, 24.5, 44.31]
     assert notAcceptable == @[-272.15, 99.9, -113.44]
 
-  block: # keepItIf test
+  block:  # keepItIf test
     var candidates = @["foo", "bar", "baz", "foobar"]
     keepItIf(candidates, it.len == 3 and it[0] == 'b')
     assert candidates == @["bar", "baz"]
 
-  block: # all
+  block:  # all
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert all(numbers, proc (x: int): bool = return x < 10) == true
     assert all(numbers, proc (x: int): bool = return x < 9) == false
     assert all(len0seq, proc (x: int): bool = return false) == true
     assert all(anumbers, proc (x: int): bool = return x < 10) == true
     assert all(anumbers, proc (x: int): bool = return x < 9) == false
 
-  block: # allIt
+  block:  # allIt
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert allIt(numbers, it < 10) == true
     assert allIt(numbers, it < 9) == false
     assert allIt(len0seq, false) == true
     assert allIt(anumbers, it < 10) == true
     assert allIt(anumbers, it < 9) == false
 
-  block: # any
+  block:  # any
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert any(numbers, proc (x: int): bool = return x > 8) == true
     assert any(numbers, proc (x: int): bool = return x > 9) == false
     assert any(len0seq, proc (x: int): bool = return true) == false
     assert any(anumbers, proc (x: int): bool = return x > 8) == true
     assert any(anumbers, proc (x: int): bool = return x > 9) == false
 
-  block: # anyIt
+  block:  # anyIt
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert anyIt(numbers, it > 8) == true
     assert anyIt(numbers, it > 9) == false
     assert anyIt(len0seq, true) == false
     assert anyIt(anumbers, it > 8) == true
     assert anyIt(anumbers, it > 9) == false
 
-  block: # toSeq test
+  block:  # toSeq test
     block:
       let
         numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -1221,63 +1222,63 @@ when isMainModule:
       assert odd_numbers == @[1, 3, 5, 7, 9]
 
     block:
-      doAssert [1,2].toSeq == @[1,2]
-      doAssert @[1,2].toSeq == @[1,2]
+      doAssert [1, 2].toSeq == @[1, 2]
+      doAssert @[1, 2].toSeq == @[1, 2]
 
-      doAssert @[1,2].toSeq == @[1,2]
-      doAssert toSeq(@[1,2]) == @[1,2]
+      doAssert @[1, 2].toSeq == @[1, 2]
+      doAssert toSeq(@[1, 2]) == @[1, 2]
 
     block:
-      iterator myIter(seed:int):auto=
+      iterator myIter(seed: int): auto =
         for i in 0..<seed:
           yield i
       doAssert toSeq(myIter(2)) == @[0, 1]
 
     block:
-      iterator myIter():auto{.inline.}=
+      iterator myIter(): auto{.inline.} =
         yield 1
         yield 2
 
-      doAssert myIter.toSeq == @[1,2]
-      doAssert toSeq(myIter) == @[1,2]
+      doAssert myIter.toSeq == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
-      iterator myIter():int {.closure.} =
+      iterator myIter(): int {.closure.} =
         yield 1
         yield 2
 
-      doAssert myIter.toSeq == @[1,2]
-      doAssert toSeq(myIter) == @[1,2]
+      doAssert myIter.toSeq == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
-      proc myIter():auto=
-        iterator ret():int{.closure.}=
+      proc myIter(): auto =
+        iterator ret(): int{.closure.} =
           yield 1
           yield 2
         result = ret
 
-      doAssert myIter().toSeq == @[1,2]
-      doAssert toSeq(myIter()) == @[1,2]
+      doAssert myIter().toSeq == @[1, 2]
+      doAssert toSeq(myIter()) == @[1, 2]
 
     block:
-      proc myIter(n:int):auto=
+      proc myIter(n: int): auto =
         var counter = 0
-        iterator ret():int{.closure.}=
-          while counter<n:
+        iterator ret(): int{.closure.} =
+          while counter < n:
             yield counter
             counter.inc
         result = ret
 
       block:
         let myIter3 = myIter(3)
-        doAssert myIter3.toSeq == @[0,1,2]
+        doAssert myIter3.toSeq == @[0, 1, 2]
       block:
         let myIter3 = myIter(3)
-        doAssert toSeq(myIter3) == @[0,1,2]
+        doAssert toSeq(myIter3) == @[0, 1, 2]
       block:
         # makes sure this does not hang forever
-        doAssert myIter(3).toSeq == @[0,1,2]
-        doAssert toSeq(myIter(3)) == @[0,1,2]
+        doAssert myIter(3).toSeq == @[0, 1, 2]
+        doAssert toSeq(myIter(3)) == @[0, 1, 2]
 
   block:
     # tests https://github.com/nim-lang/Nim/issues/7187
@@ -1285,7 +1286,7 @@ when isMainModule:
     let ret = toSeq(@[1, 2, 3].identity().filter(proc (x: int): bool = x < 3))
     doAssert ret == @[1, 2]
     doAssert counter == 1
-  block: # foldl tests
+  block:  # foldl tests
     let
       numbers = @[5, 9, 11]
       addition = foldl(numbers, a + b)
@@ -1298,7 +1299,7 @@ when isMainModule:
     assert multiplication == 495, "Multiplication is (((5)*9)*11)"
     assert concatenation == "nimiscool"
 
-  block: # foldr tests
+  block:  # foldr tests
     let
       numbers = @[5, 9, 11]
       addition = foldr(numbers, a + b)
@@ -1311,7 +1312,7 @@ when isMainModule:
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
-  block: # mapIt + applyIt test
+  block:  # mapIt + applyIt test
     counter = 0
     var
       nums = @[1, 2, 3, 4]
@@ -1321,40 +1322,42 @@ when isMainModule:
     assert nums[0] + nums[3] == 15
     assert strings[2] == "12"
 
-  block: # newSeqWith tests
+  block:  # newSeqWith tests
     var seq2D = newSeqWith(4, newSeq[bool](2))
     seq2D[0][0] = true
     seq2D[1][0] = true
     seq2D[0][1] = true
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 
-  block: # mapLiterals tests
+  block:  # mapLiterals tests
     let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
     doAssert x is array[4, int]
-    doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
-    doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
+    doAssert mapLiterals((1, ("abc"), 2), float, nested = false) == (float(1),
+        "abc", float(2))
+    doAssert mapLiterals(([1], ("abc"), 2), `$`, nested = true) == (["1"],
+        "abc", "2")
 
-  block: # mapIt with openArray
+  block:  # mapIt with openArray
     counter = 0
     proc foo(x: openArray[int]): seq[int] = x.mapIt(it * 10)
-    doAssert foo([identity(1),identity(2)]) == @[10, 20]
+    doAssert foo([identity(1), identity(2)]) == @[10, 20]
     doAssert counter == 2
 
-  block: # mapIt with direct openArray
+  block:  # mapIt with direct openArray
     proc foo1(x: openArray[int]): seq[int] = x.mapIt(it * 10)
     counter = 0
-    doAssert foo1(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    doAssert foo1(openArray[int]([identity(1), identity(2)])) == @[10, 20]
     doAssert counter == 2
 
     # Corner cases (openArray litterals should not be common)
     template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
     counter = 0
-    doAssert foo2(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    doAssert foo2(openArray[int]([identity(1), identity(2)])) == @[10, 20]
     # TODO: this fails; not sure how to fix this case
     # doAssert counter == 2
 
     counter = 0
-    doAssert openArray[int]([identity(1), identity(2)]).mapIt(it) == @[1,2]
+    doAssert openArray[int]([identity(1), identity(2)]).mapIt(it) == @[1, 2]
     # ditto
     # doAssert counter == 2
 
@@ -1365,17 +1368,17 @@ when isMainModule:
     doAssert: not compiles(mapIt([], it))
     doAssert newSeq[int](0).mapIt(it) == @[]
 
-  block: # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
-    let s2 = [1,2].mapIt(it)
-    doAssert s2 == @[1,2]
+  block:  # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
+    let s2 = [1, 2].mapIt(it)
+    doAssert s2 == @[1, 2]
 
   block:
     counter = 0
-    doAssert [1,2].identity().mapIt(it*2).mapIt(it*10) == @[20, 40]
+    doAssert [1, 2].identity().mapIt(it*2).mapIt(it*10) == @[20, 40]
     # https://github.com/nim-lang/Nim/issues/7187 test case
     doAssert counter == 1
 
-  block: # mapIt with invalid RHS for `let` (#8566)
+  block:  # mapIt with invalid RHS for `let` (#8566)
     type X = enum
       A, B
     doAssert mapIt(X, $it) == @["A", "B"]

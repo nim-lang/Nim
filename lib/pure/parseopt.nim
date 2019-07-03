@@ -155,11 +155,11 @@ import
   os, strutils
 
 type
-  CmdLineKind* = enum         ## The detected command line token.
-    cmdEnd,                   ## End of command line reached
-    cmdArgument,              ## An argument such as a filename
-    cmdLongOption,            ## A long option such as --option
-    cmdShortOption            ## A short option such as -c
+  CmdLineKind* = enum ## The detected command line token.
+    cmdEnd,           ## End of command line reached
+    cmdArgument,      ## An argument such as a filename
+    cmdLongOption,    ## A long option such as --option
+    cmdShortOption    ## A short option such as -c
   OptParser* = object of RootObj ## \
     ## Implementation of the command line parser.
     ##
@@ -197,7 +197,7 @@ when declared(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
 
-  proc initOptParser*(cmdline = "", shortNoVal: set[char]={},
+  proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
                       longNoVal: seq[string] = @[];
                       allowWhitespaceAfterColon = true): OptParser =
     ## Initializes the command line parser.
@@ -235,7 +235,7 @@ when declared(os.paramCount):
     result.key = TaintedString""
     result.val = TaintedString""
 
-  proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char]={},
+  proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char] = {},
                       longNoVal: seq[string] = @[];
                       allowWhitespaceAfterColon = true): OptParser =
     ## Initializes the command line parser.
@@ -345,12 +345,14 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
         inc(i)
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
         # if we're at the end, use the next command line option:
-        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and p.allowWhitespaceAfterColon:
+        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and
+            p.allowWhitespaceAfterColon:
           inc p.idx
           i = 0
         if p.idx < p.cmds.len:
           p.val = TaintedString p.cmds[p.idx].substr(i)
-      elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
+      elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and
+          p.idx+1 < p.cmds.len:
         p.val = TaintedString p.cmds[p.idx+1]
         inc p.idx
       else:
@@ -385,7 +387,8 @@ when declared(os.paramCount):
     ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
     result = p.cmds[p.idx .. ^1].quoteShellCommand.TaintedString
 
-  proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
+  proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl,
+      extern: "npo$1".} =
     ## Retrieves a sequence of the arguments that have not been parsed yet.
     ##
     ## See also:
@@ -404,7 +407,8 @@ when declared(os.paramCount):
     result = @[]
     for i in p.idx..<p.cmds.len: result.add TaintedString(p.cmds[i])
 
-iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
+iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
+    val: TaintedString] =
   ## Convenience iterator for iterating over the given
   ## `OptParser<#OptParser>`_.
   ##
@@ -444,7 +448,7 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedSt
 
 when declared(initOptParser):
   iterator getopt*(cmdline: seq[TaintedString] = commandLineParams(),
-                   shortNoVal: set[char]={}, longNoVal: seq[string] = @[]):
+                   shortNoVal: set[char] = {}, longNoVal: seq[string] = @[]):
              tuple[kind: CmdLineKind, key, val: TaintedString] =
     ## Convenience iterator for iterating over command line arguments.
     ##
@@ -485,7 +489,8 @@ when declared(initOptParser):
     ##   if filename == "":
     ##     # no filename has been written, so we show the help
     ##     writeHelp()
-    var p = initOptParser(cmdline, shortNoVal=shortNoVal, longNoVal=longNoVal)
+    var p = initOptParser(cmdline, shortNoVal = shortNoVal,
+        longNoVal = longNoVal)
     while true:
       next(p)
       if p.kind == cmdEnd: break

@@ -16,8 +16,8 @@ const MAX_EPOLL_EVENTS = 64
 
 when not defined(android):
   type
-    SignalFdInfo* {.importc: "struct signalfd_siginfo",
-                    header: "<sys/signalfd.h>", pure, final.} = object
+    SignalFdInfo*{.importc: "struct signalfd_siginfo",
+                   header: "<sys/signalfd.h>", pure, final.} = object
       ssi_signo*: uint32
       ssi_errno*: int32
       ssi_code*: int32
@@ -34,7 +34,7 @@ when not defined(android):
       ssi_utime*: uint64
       ssi_stime*: uint64
       ssi_addr*: uint64
-      pad* {.importc: "__pad".}: array[0..47, uint8]
+      pad*{.importc: "__pad".}: array[0..47, uint8]
 
 proc timerfd_create(clock_id: ClockId, flags: cint): cint
      {.cdecl, importc: "timerfd_create", header: "<sys/timerfd.h>".}
@@ -148,7 +148,8 @@ proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   let fdi = int(fd)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == InvalidIdent, "Descriptor $# already registered" % $fdi)
+  doAssert(s.fds[fdi].ident == InvalidIdent,
+      "Descriptor $# already registered" % $fdi)
   s.setKey(fdi, events, 0, data)
   if events != {}:
     var epv = EpollEvent(events: EPOLLRDHUP)

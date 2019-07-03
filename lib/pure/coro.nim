@@ -20,7 +20,7 @@
 
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):
-    {.error: "Coroutines can not be used with -d:noNimCoroutines"}
+    {.error: "Coroutines can not be used with -d:noNimCoroutines".}
   else:
     {.error: "Coroutines require -d:nimCoroutines".}
 
@@ -72,13 +72,18 @@ elif coroBackend == CORO_BACKEND_UCONTEXT:
 
     Context = ucontext_t
 
-  proc getcontext(context: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
-  proc setcontext(context: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
-  proc swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
-  proc makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc, header: "<ucontext.h>", varargs.}
+  proc getcontext(context: var ucontext_t): int32 {.importc,
+      header: "<ucontext.h>".}
+  proc setcontext(context: var ucontext_t): int32 {.importc,
+      header: "<ucontext.h>".}
+  proc swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc,
+      header: "<ucontext.h>".}
+  proc makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc,
+      header: "<ucontext.h>", varargs.}
 
 elif coroBackend == CORO_BACKEND_SETJMP:
-  proc coroExecWithStack*(fn: pointer, stack: pointer) {.noreturn, importc: "narch_$1", fastcall.}
+  proc coroExecWithStack*(fn: pointer; stack: pointer) {.noreturn,
+      importc: "narch_$1", fastcall.}
   when defined(amd64):
     {.compile: "../arch/x86/amd64.S".}
   elif defined(i386):
@@ -102,14 +107,14 @@ elif coroBackend == CORO_BACKEND_SETJMP:
       {.error: "Unsupported architecture.".}
 
     proc setjmp(ctx: var JmpBuf): int {.importc: "narch_$1".}
-    proc longjmp(ctx: JmpBuf, ret=1) {.importc: "narch_$1".}
+    proc longjmp(ctx: JmpBuf; ret = 1) {.importc: "narch_$1".}
   else:
     # Use setjmp/longjmp implementation provided by the system.
     type
       JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
     proc setjmp(ctx: var JmpBuf): int {.importc, header: "<setjmp.h>".}
-    proc longjmp(ctx: JmpBuf, ret=1) {.importc, header: "<setjmp.h>".}
+    proc longjmp(ctx: JmpBuf; ret = 1) {.importc, header: "<setjmp.h>".}
 
   type
     Context = JmpBuf
@@ -208,7 +213,7 @@ proc switchTo(current, to: CoroutinePtr) =
   setFrameState(frame)
   GC_setActiveStack(current.stack.bottom)
 
-proc suspend*(sleepTime: float=0) =
+proc suspend*(sleepTime: float = 0) =
   ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
   ## Until then other coroutines are executed.
   var current = getCurrent()
@@ -231,15 +236,16 @@ proc runCurrentTask() =
     GC_setActiveStack(sp)
     current.state = CORO_EXECUTING
     try:
-      current.fn()                    # Start coroutine execution
+      current.fn() # Start coroutine execution
     except:
       echo "Unhandled exception in coroutine."
       writeStackTrace()
     current.state = CORO_FINISHED
-  suspend(0)                      # Exit coroutine without returning from coroExecWithStack()
+  suspend(0) # Exit coroutine without returning from coroExecWithStack()
   doAssert false
 
-proc start*(c: proc(), stacksize: int=defaultStackSize): CoroutineRef {.discardable.} =
+proc start*(c: proc(); stacksize: int = defaultStackSize): CoroutineRef {.
+    discardable.} =
   ## Schedule coroutine for execution. It does not run immediately.
   if ctx == nil:
     initialize()
@@ -248,7 +254,8 @@ proc start*(c: proc(), stacksize: int=defaultStackSize): CoroutineRef {.discarda
   when coroBackend == CORO_BACKEND_FIBERS:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine)))
     coro.execContext = CreateFiberEx(stacksize, stacksize,
-      FIBER_FLAG_FLOAT_SWITCH, (proc(p: pointer): void {.stdcall.} = runCurrentTask()), nil)
+      FIBER_FLAG_FLOAT_SWITCH, (proc(p: pointer): void {.
+          stdcall.} = runCurrentTask()), nil)
     coro.stack.size = stacksize
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
@@ -276,7 +283,8 @@ proc run*() =
   while ctx.current != nil:
     var current = getCurrent()
 
-    var remaining = current.sleepTime - (float(getTicks() - current.lastRun) / 1_000_000_000)
+    var remaining = current.sleepTime - (float(getTicks() - current.lastRun) /
+        1_000_000_000)
     if remaining <= 0:
       # Save main loop context. Suspending coroutine will resume after this statement with
       switchTo(addr(ctx.loop), current)
@@ -310,7 +318,7 @@ proc run*() =
 proc alive*(c: CoroutineRef): bool = c.coro != nil and c.coro.state != CORO_FINISHED
   ## Returns ``true`` if coroutine has not returned, ``false`` otherwise.
 
-proc wait*(c: CoroutineRef, interval=0.01) =
+proc wait*(c: CoroutineRef; interval = 0.01) =
   ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
   while alive(c):
     suspend(interval)

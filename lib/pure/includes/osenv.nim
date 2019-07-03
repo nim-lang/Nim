@@ -25,7 +25,8 @@ when defined(windows) and not defined(nimscript):
   when useWinUnicode:
     when defined(cpp):
       proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-        importcpp: "(NI16*)wcschr((const wchar_t *)#, #)", header: "<string.h>".}
+        importcpp: "(NI16*)wcschr((const wchar_t *)#, #)",
+        header: "<string.h>".}
     else:
       proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
         importc: "wcschr", header: "<string.h>".}
@@ -101,7 +102,8 @@ proc findEnvVar(key: string): int =
       if startsWith(environment[i], temp): return i
   return -1
 
-proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =
+proc getEnv*(key: string, default = ""): TaintedString {.
+    tags: [ReadEnvEffect].} =
   ## Returns the value of the `environment variable`:idx: named `key`.
   ##
   ## If the variable does not exist, `""` is returned. To distinguish
@@ -205,7 +207,8 @@ proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
         raiseOSError(osLastError())
     environment.delete(indx)
 
-iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
+iterator envPairs*(): tuple[key, value: TaintedString] {.
+    tags: [ReadEnvEffect].} =
   ## Iterate over all `environments variables`:idx:.
   ##
   ## In the first component of the tuple is the name of the current variable stored,

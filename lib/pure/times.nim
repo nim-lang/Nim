@@ -398,10 +398,10 @@ type
   ZonedTime* = object ## Represents a point in time with an associated
                       ## UTC offset and DST flag. This type is only used for
                       ## implementing timezones.
-    time*: Time     ## The point in time being represented.
-    utcOffset*: int ## The offset in seconds west of UTC,
-                    ## including any offset due to DST.
-    isDst*: bool    ## Determines whether DST is in effect.
+    time*: Time       ## The point in time being represented.
+    utcOffset*: int   ## The offset in seconds west of UTC,
+                      ## including any offset due to DST.
+    isDst*: bool      ## Determines whether DST is in effect.
 
   DurationParts* = array[FixedTimeUnit, int64] # Array of Duration parts starts
   TimeIntervalParts* = array[TimeUnit, int] # Array of Duration parts starts
@@ -428,10 +428,13 @@ const unitWeights: array[FixedTimeUnit, int64] = [
 ]
 
 const DefaultLocale* = DateTimeLocale(
-  MMM: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-  MMMM: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  MMM: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+      "Nov", "Dec"],
+  MMMM: ["January", "February", "March", "April", "May", "June", "July",
+      "August", "September", "October", "November", "December"],
   ddd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-  dddd: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+  dddd: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+      "Sunday"],
 )
 
 proc convert*[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit, quantity: T): T
@@ -848,14 +851,16 @@ proc `*`*(a: int64, b: Duration): Duration {.operator.} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
-    doAssert 3 * initDuration(minutes = 45) == initDuration(hours = 2, minutes = 15)
+    doAssert 3 * initDuration(minutes = 45) ==
+        initDuration(hours = 2, minutes = 15)
   normalize[Duration](a * b.seconds, a * b.nanosecond)
 
 proc `*`*(a: Duration, b: int64): Duration {.operator.} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert initDuration(seconds = 1) * 5 == initDuration(seconds = 5)
-    doAssert initDuration(minutes = 45) * 3 == initDuration(hours = 2, minutes = 15)
+    doAssert initDuration(minutes = 45) * 3 ==
+        initDuration(hours = 2, minutes = 15)
   b * a
 
 proc `div`*(a: Duration, b: int64): Duration {.operator.} =
@@ -1294,7 +1299,7 @@ proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].
   result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
     ':' & intToStr(dt.second, 2)
 
-proc toParts* (ti: TimeInterval): TimeIntervalParts =
+proc toParts*(ti: TimeInterval): TimeIntervalParts =
   ## Converts a ``TimeInterval`` into an array consisting of its time units,
   ## starting with nanoseconds and ending with years.
   ##
@@ -1743,11 +1748,11 @@ type
     # See the doc comment for ``TimeFormat.patterns``.
     Lit
 
-  TimeFormat* = object ## Represents a format for parsing and printing
-      ## time types.
-      ##
-      ## To create a new ``TimeFormat`` use `initTimeFormat proc
-      ## <#initTimeFormat,string>`_.
+  TimeFormat* = object  ## Represents a format for parsing and printing
+                        ## time types.
+                        ##
+                        ## To create a new ``TimeFormat`` use `initTimeFormat proc
+                        ## <#initTimeFormat,string>`_.
     patterns: seq[byte] ## \
       ## Contains the patterns encoded as bytes.
       ## Literal values are encoded in a special way.
@@ -1773,7 +1778,7 @@ proc `$`*(f: TimeFormat): string =
 
 proc raiseParseException(f: TimeFormat, input: string, msg: string) =
   raise newException(TimeParseError,
-                     "Failed to parse '" & input & "' with format '" & $f & "'. " & msg)
+      "Failed to parse '" & input & "' with format '" & $f & "'. " & msg)
 
 proc parseInt(s: string, b: var int, start = 0, maxLen = int.high,
               allowSign = false): int =
@@ -1909,7 +1914,8 @@ proc initTimeFormat*(format: string): TimeFormat =
     of tkPattern:
       result.patterns.add(stringToPattern(token).byte)
 
-proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc: DateTimeLocale) =
+proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
+    loc: DateTimeLocale) =
   template yearOfEra(dt: DateTime): int =
     if dt.year <= 0: abs(dt.year) + 1 else: dt.year
 
@@ -1924,15 +1930,15 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc
     result.add loc.dddd[dt.weekday]
   of h:
     result.add(
-      if dt.hour == 0:   "12"
+      if dt.hour == 0: "12"
       elif dt.hour > 12: $(dt.hour - 12)
-      else:              $dt.hour
+      else: $dt.hour
     )
   of hh:
     result.add(
-      if dt.hour == 0:   "12"
+      if dt.hour == 0: "12"
       elif dt.hour > 12: (dt.hour - 12).intToStr(2)
-      else:              dt.hour.intToStr(2)
+      else: dt.hour.intToStr(2)
     )
   of H:
     result.add $dt.hour
@@ -1964,11 +1970,11 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc
     result.add if dt.hour >= 12: "P" else: "A"
   of tt:
     result.add if dt.hour >= 12: "PM" else: "AM"
-  of y: # Deprecated
+  of y:  # Deprecated
     result.add $(dt.yearOfEra mod 10)
   of yy:
     result.add (dt.yearOfEra mod 100).intToStr(2)
-  of yyy: # Deprecated
+  of yyy:  # Deprecated
     result.add (dt.yearOfEra mod 1000).intToStr(3)
   of yyyy:
     let year = dt.yearOfEra
@@ -1976,7 +1982,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string, loc
       result.add year.intToStr(4)
     else:
       result.add '+' & $year
-  of yyyyy: # Deprecated
+  of yyyyy:  # Deprecated
     result.add (dt.yearOfEra mod 100_000).intToStr(5)
   of YYYY:
     if dt.year < 1:
@@ -2077,7 +2083,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     parsed.month = some(month)
   of MMM:
     result = false
-    for n,v in loc.MMM:
+    for n, v in loc.MMM:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
@@ -2085,7 +2091,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
         break
   of MMMM:
     result = false
-    for n,v in loc.MMMM:
+    for n, v in loc.MMMM:
       if input.substr(i, i+v.len-1).cmpIgnoreCase(v) == 0:
         result = true
         i.inc v.len
@@ -2260,7 +2266,8 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
     result.utcOffset = p.utcOffset.get()
     result = result.toTime.inZone(zone)
 
-proc format*(dt: DateTime, f: TimeFormat, loc: DateTimeLocale = DefaultLocale): string {.raises: [].} =
+proc format*(dt: DateTime, f: TimeFormat,
+    loc: DateTimeLocale = DefaultLocale): string {.raises: [].} =
   ## Format ``dt`` using the format specified by ``f``.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
@@ -2324,7 +2331,8 @@ template formatValue*(result: var string; value: Time, specifier: string) =
   ## adapter for ``strformat``. Not intended to be called directly.
   result.add format(value, specifier)
 
-proc parse*(input: string, f: TimeFormat, zone: Timezone = local(), loc: DateTimeLocale = DefaultLocale): DateTime
+proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
+    loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, Defect].} =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
@@ -2367,7 +2375,8 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local(), loc: DateTim
 
   result = toDateTime(parsed, zone, f, input)
 
-proc parse*(input, f: string, tz: Timezone = local(), loc: DateTimeLocale = DefaultLocale): DateTime
+proc parse*(input, f: string, tz: Timezone = local(),
+    loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
@@ -2380,7 +2389,8 @@ proc parse*(input, f: string, tz: Timezone = local(), loc: DateTimeLocale = Defa
   let dtFormat = initTimeFormat(f)
   result = input.parse(dtFormat, tz, loc = loc)
 
-proc parse*(input: string, f: static[string], zone: Timezone = local(), loc: DateTimeLocale = DefaultLocale):
+proc parse*(input: string, f: static[string], zone: Timezone = local(),
+    loc: DateTimeLocale = DefaultLocale):
     DateTime {.raises: [TimeParseError, Defect].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
@@ -2565,7 +2575,7 @@ proc days*(dur: Duration): int64
   dur.inDays
 
 proc hours*(dur: Duration): int64
-    {.inline,deprecated: "Use `inHours` instead".} =
+    {.inline, deprecated: "Use `inHours` instead".} =
   ## Number of whole hours represented by the duration.
   ##
   ## **Deprecated since version v0.20.0**: Use the `inHours proc
@@ -2637,7 +2647,8 @@ proc fractional*(dur: Duration): Duration {.inline, deprecated.} =
   runnableExamples:
     let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
                            microseconds = 8, nanoseconds = 9)
-    doAssert dur.fractional == initDuration(milliseconds = 7, microseconds = 8, nanoseconds = 9)
+    doAssert dur.fractional == initDuration(milliseconds = 7, microseconds = 8,
+        nanoseconds = 9)
   initDuration(nanoseconds = dur.nanosecond)
 
 when not defined(JS):

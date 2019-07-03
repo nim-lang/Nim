@@ -59,7 +59,7 @@ import strutils
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
 
-proc loadLib*(path: string, global_symbols=false): LibHandle {.gcsafe.}
+proc loadLib*(path: string, global_symbols = false): LibHandle {.gcsafe.}
   ## loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
@@ -96,7 +96,7 @@ proc libCandidates*(s: string, dest: var seq[string]) =
   else:
     add(dest, s)
 
-proc loadLibPattern*(pattern: string, global_symbols=false): LibHandle =
+proc loadLibPattern*(pattern: string, global_symbols = false): LibHandle =
   ## loads a library with name matching `pattern`, similar to what `dlimport`
   ## pragma does. Returns nil if the library could not be loaded.
   ## Warning: this proc uses the GC and so cannot be used to load the GC.
@@ -125,7 +125,7 @@ when defined(posix):
   proc dlsym(lib: LibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
 
-  proc loadLib(path: string, global_symbols=false): LibHandle =
+  proc loadLib(path: string, global_symbols = false): LibHandle =
     var flags = RTLD_NOW
     if global_symbols: flags = flags or RTLD_GLOBAL
     return dlopen(path, flags)
@@ -147,7 +147,7 @@ elif defined(nintendoswitch):
     raise newException(OSError, "dlopen not implemented on Nintendo Switch!")
   proc dlsym(lib: LibHandle, name: cstring): pointer =
     raise newException(OSError, "dlsym not implemented on Nintendo Switch!")
-  proc loadLib(path: string, global_symbols=false): LibHandle =
+  proc loadLib(path: string, global_symbols = false): LibHandle =
     raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
   proc loadLib(): LibHandle =
     raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
@@ -176,7 +176,7 @@ elif defined(windows) or defined(dos):
   proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc loadLib(path: string, global_symbols=false): LibHandle =
+  proc loadLib(path: string, global_symbols = false): LibHandle =
     result = cast[LibHandle](winLoadLibrary(path))
   proc loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))
