@@ -46,7 +46,7 @@ proc toInt128*[T: SomeInteger](arg: T): Int128 =
         result.sdata(3) = -1
     else:
       let tmp = int64(arg)
-      result.sdata(0) = int32(tmp and T(0xffffffff))
+      result.udata[0] = uint32(tmp and 0xffffffff)
       result.sdata(1) = int32(tmp shr 32)
       if arg < 0: # sign extend
         result.sdata(2) = -1
@@ -133,31 +133,31 @@ proc inplaceBitnot(a: var Int128) =
   a.udata[2] = not a.udata[2]
   a.udata[3] = not a.udata[3]
 
-proc bitnot(a: Int128): Int128 =
+proc bitnot*(a: Int128): Int128 =
   result.udata[0] = not a.udata[0]
   result.udata[1] = not a.udata[1]
   result.udata[2] = not a.udata[2]
   result.udata[3] = not a.udata[3]
 
-proc bitand(a,b: Int128): Int128 =
+proc bitand*(a,b: Int128): Int128 =
   result.udata[0] = a.udata[0] and b.udata[0]
   result.udata[1] = a.udata[1] and b.udata[1]
   result.udata[2] = a.udata[2] and b.udata[2]
   result.udata[3] = a.udata[3] and b.udata[3]
 
-proc bitor(a,b: Int128): Int128 =
+proc bitor*(a,b: Int128): Int128 =
   result.udata[0] = a.udata[0] or b.udata[0]
   result.udata[1] = a.udata[1] or b.udata[1]
   result.udata[2] = a.udata[2] or b.udata[2]
   result.udata[3] = a.udata[3] or b.udata[3]
 
-proc bitxor(a,b: Int128): Int128 =
+proc bitxor*(a,b: Int128): Int128 =
   result.udata[0] = a.udata[0] xor b.udata[0]
   result.udata[1] = a.udata[1] xor b.udata[1]
   result.udata[2] = a.udata[2] xor b.udata[2]
   result.udata[3] = a.udata[3] xor b.udata[3]
 
-proc `shr`(a: Int128, b: int): Int128 =
+proc `shr`*(a: Int128, b: int): Int128 =
   let b = b and 127
   if b < 32:
     result.sdata(3) = a.sdata(3) shr b
@@ -183,7 +183,7 @@ proc `shr`(a: Int128, b: int): Int128 =
       result.sdata(1) = -1
     result.sdata(0) = a.sdata(3) shr (b and 31)
 
-proc `shl`(a: Int128, b: int): Int128 =
+proc `shl`*(a: Int128, b: int): Int128 =
   let b = b and 127
   if b < 32:
     result.udata[0] = a.udata[0] shl b
@@ -425,6 +425,16 @@ proc `==`*(a: BiggestInt, b: Int128): bool =
 
 proc `-`*(a: BiggestInt, b: Int128): Int128 =
   toInt128(a) - b
+
+proc `-`*(a: Int128, b: BiggestInt): Int128 =
+  a - toInt128(b)
+
+proc `+`*(a: BiggestInt, b: Int128): Int128 =
+  toInt128(a) + b
+
+proc `+`*(a: Int128, b: BiggestInt): Int128 =
+  a + toInt128(b)
+
 
 when isMainModule:
   let (a,b) = divMod(Ten,Ten)

@@ -877,7 +877,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   pushCaseContext(c, n)
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
-  var covered: BiggestInt = 0
+  var covered: Int128 = toInt128(0)
   var typ = commonTypeBegin
   var hasElse = false
   let caseTyp = skipTypes(n.sons[0].typ, abstractVar-{tyTypeDesc})
