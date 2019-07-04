@@ -250,8 +250,9 @@ proc wrTab(em: var Emitter) =
   wr(em, " ", ltTab)
 
 proc beginSection*(em: var Emitter) =
-  em.tokens.insert "", em.tokens.len-2
-  em.kinds.insert ltBeginSection, em.kinds.len-2
+  let pos = max(0, em.tokens.len-2)
+  em.tokens.insert "", pos
+  em.kinds.insert ltBeginSection, pos
 
 #wr(em, "", ltBeginSection)
 proc endSection*(em: var Emitter) =
