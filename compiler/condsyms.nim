@@ -94,3 +94,5 @@ proc initDefines*(symbols: StringTableRef) =
     defineSymbol("nimHasWarning" & s)
   for s in HintsToStr:
     defineSymbol("nimHasHint" & s)
+
+  defineSymbol("nimFixedOwned")

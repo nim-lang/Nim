@@ -1107,15 +1107,15 @@ else:
       writeList: newSeqOfCap[Callback](InitCallbackListSize)
     )
 
-  proc newDispatcher*(): PDispatcher =
+  proc newDispatcher*(): owned(PDispatcher) =
     new result
     result.selector = newSelector[AsyncData]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
 
-  var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
+  var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
-  proc setGlobalDispatcher*(disp: PDispatcher) =
+  proc setGlobalDispatcher*(disp: owned PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
@@ -1328,7 +1328,7 @@ else:
     processPendingCallbacks(p, result)
 
   proc recv*(socket: AsyncFD, size: int,
-             flags = {SocketFlag.SafeDisconn}): Future[string] =
+             flags = {SocketFlag.SafeDisconn}): owned(Future[string]) =
     var retFuture = newFuture[string]("recv")
 
     var readBuffer = newString(size)
@@ -1358,7 +1358,7 @@ else:
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
-                 flags = {SocketFlag.SafeDisconn}): Future[int] =
+                 flags = {SocketFlag.SafeDisconn}): owned(Future[int]) =
     var retFuture = newFuture[int]("recvInto")
 
     proc cb(sock: AsyncFD): bool =
@@ -1382,7 +1382,7 @@ else:
     return retFuture
 
   proc send*(socket: AsyncFD, buf: pointer, size: int,
-             flags = {SocketFlag.SafeDisconn}): Future[void] =
+             flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
     var retFuture = newFuture[void]("send")
 
     var written = 0
@@ -1415,7 +1415,7 @@ else:
 
   proc sendTo*(socket: AsyncFD, data: pointer, size: int, saddr: ptr SockAddr,
                saddrLen: SockLen,
-               flags = {SocketFlag.SafeDisconn}): Future[void] =
+               flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
     ## Sends ``data`` of size ``size`` in bytes to specified destination
     ## (``saddr`` of size ``saddrLen`` in bytes, using socket ``socket``.
     ## The returned future will complete once all data has been sent.
@@ -1445,7 +1445,7 @@ else:
 
   proc recvFromInto*(socket: AsyncFD, data: pointer, size: int,
                      saddr: ptr SockAddr, saddrLen: ptr SockLen,
-                     flags = {SocketFlag.SafeDisconn}): Future[int] =
+                     flags = {SocketFlag.SafeDisconn}): owned(Future[int]) =
     ## Receives a datagram data from ``socket`` into ``data``, which must
     ## be at least of size ``size`` in bytes, address of datagram's sender
     ## will be stored into ``saddr`` and ``saddrLen``. Returned future will
@@ -1468,7 +1468,7 @@ else:
     return retFuture
 
   proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn}):
-      Future[tuple[address: string, client: AsyncFD]] =
+      owned(Future[tuple[address: string, client: AsyncFD]]) =
     var retFuture = newFuture[tuple[address: string,
         client: AsyncFD]]("acceptAddr")
     proc cb(sock: AsyncFD): bool =
@@ -1608,7 +1608,7 @@ when defined(windows) or defined(nimdoc):
       saddr.sin_family = uint16(toInt(domain))
       doBind(saddr)
 
-  proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): Future[void] =
+  proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): owned(Future[void]) =
     let retFuture = newFuture[void]("doConnect")
     result = retFuture
 
@@ -1640,7 +1640,7 @@ when defined(windows) or defined(nimdoc):
         GC_unref(ol)
         retFuture.fail(newException(OSError, osErrorMsg(lastError)))
 else:
-  proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): Future[void] =
+  proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): owned(Future[void]) =
     let retFuture = newFuture[void]("doConnect")
     result = retFuture
 
@@ -1744,7 +1744,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
   tryNextAddrInfo(nil)
 
 proc dial*(address: string, port: Port,
-           protocol: Protocol = IPPROTO_TCP): Future[AsyncFD] =
+           protocol: Protocol = IPPROTO_TCP): owned(Future[AsyncFD]) =
   ## Establishes connection to the specified ``address``:``port`` pair via the
   ## specified protocol. The procedure iterates through possible
   ## resolutions of the ``address`` until it succeeds, meaning that it
@@ -1759,7 +1759,7 @@ proc dial*(address: string, port: Port,
   asyncAddrInfoLoop(aiList, noFD, protocol)
 
 proc connect*(socket: AsyncFD, address: string, port: Port,
-              domain = Domain.AF_INET): Future[void] =
+              domain = Domain.AF_INET): owned(Future[void]) =
   let retFuture = newFuture[void]("connect")
   result = retFuture
 
@@ -1773,7 +1773,7 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
     socket.SocketHandle.bindToDomain(domain)
   asyncAddrInfoLoop(aiList, socket)
 
-proc sleepAsync*(ms: int | float): Future[void] =
+proc sleepAsync*(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## ``ms`` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
@@ -1781,7 +1781,7 @@ proc sleepAsync*(ms: int | float): Future[void] =
   p.timers.push((epochTime() + (ms / 1000), retFuture))
   return retFuture
 
-proc withTimeout*[T](fut: Future[T], timeout: int): Future[bool] =
+proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
   ## Returns a future which will complete once ``fut`` completes or after
   ## ``timeout`` milliseconds has elapsed.
   ##
@@ -1804,7 +1804,7 @@ proc withTimeout*[T](fut: Future[T], timeout: int): Future[bool] =
   return retFuture
 
 proc accept*(socket: AsyncFD,
-    flags = {SocketFlag.SafeDisconn}): Future[AsyncFD] =
+    flags = {SocketFlag.SafeDisconn}): owned(Future[AsyncFD]) =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
@@ -1820,7 +1820,7 @@ proc accept*(socket: AsyncFD,
   return retFut
 
 proc send*(socket: AsyncFD, data: string,
-           flags = {SocketFlag.SafeDisconn}): Future[void] =
+           flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   var retFuture = newFuture[void]("send")
@@ -1843,7 +1843,7 @@ proc send*(socket: AsyncFD, data: string,
 # -- Await Macro
 include asyncmacro
 
-proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
+proc readAll*(future: FutureStream[string]): owned(Future[string]) {.async.} =
   ## Returns a future that will complete when all the string data from the
   ## specified future stream is retrieved.
   result = ""

@@ -80,7 +80,7 @@ proc getUnique[T](s: Selector[T]): int {.inline.} =
   if result == -1:
     raiseIOSelectorsError(osLastError())
 
-proc newSelector*[T](): Selector[T] =
+proc newSelector*[T](): owned(Selector[T]) =
   var maxFD = 0.cint
   var size = csize(sizeof(cint))
   var namearr = [1.cint, MAX_DESCRIPTORS_ID.cint]
