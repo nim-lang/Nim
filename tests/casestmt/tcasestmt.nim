@@ -226,3 +226,14 @@ block tcasestm:
         true
       else: raise newException(ValueError, "Invalid")
   ))
+
+#issue #11552
+
+proc positiveOrNegative(num: int): string =
+  result = case num
+  of (low(int)+2) .. -1:
+    "negative"
+  of 0:
+    "zero"
+  else:
+    "impossible"
