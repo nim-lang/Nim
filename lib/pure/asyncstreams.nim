@@ -68,7 +68,7 @@ proc write*[T](future: FutureStream[T], value: T): Future[void] =
   if not future.cb.isNil: future.cb()
   result.complete()
 
-proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
+proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
   ## Returns a future that will complete when the ``FutureStream`` has data
   ## placed into it. The future will be completed with the oldest
   ## value stored inside the stream. The return value will also determine

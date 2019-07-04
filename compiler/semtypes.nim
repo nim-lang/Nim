@@ -1606,6 +1606,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeof(c, n[1], prev)
       elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeof:
         result = semTypeOf2(c, n, prev)
+      elif op.s == "owned" and optNimV2 notin c.config.globalOptions and n.len == 2:
+        result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
           result = makeTypeFromExpr(c, n.copyTree)
