@@ -2669,9 +2669,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
             (prc.kind == skMethod):
-          # we have not only the header:
-          if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags:
-            genProc(p.module, prc)
+          # Generate proc even if empty body, bugfix #11651.
+          genProc(p.module, prc)
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
   of nkGotoState:
