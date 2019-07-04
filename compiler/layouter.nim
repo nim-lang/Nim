@@ -143,6 +143,8 @@ proc closeEmitter*(em: var Emitter) =
   var lineBegin = 0
   var i = 0
   while i <= em.tokens.high:
+    when defined(debug):
+      echo "i-th token ", em.kinds[i], " ", em.tokens[i]
     case em.kinds[i]
     of ltBeginSection:
       maxLhs = computeMax(em, lineBegin)
@@ -219,10 +221,23 @@ proc wr(em: var Emitter; x: string; lt: LayoutToken) =
   inc em.col, x.len
   assert em.tokens.len == em.kinds.len
 
-proc wrNewline(em: var Emitter) =
+proc wrNewline(em: var Emitter; kind = ltCrucialNewline) =
   em.tokens.add "\L"
-  em.kinds.add ltCrucialNewline
+  em.kinds.add kind
   em.col = 0
+
+proc newlineWasSplitting*(em: var Emitter) =
+  if em.kinds.len >= 3 and em.kinds[^3] == ltCrucialNewline:
+    em.kinds[^3] = ltSplittingNewline
+
+#[
+Splitting newlines can occur:
+- after commas, semicolon, '[', '('.
+- after binary operators, '='.
+- after ':' type
+
+We only need parser support for the "after type" case.
+]#
 
 proc wrSpaces(em: var Emitter; spaces: int) =
   if spaces > 0:
@@ -261,7 +276,7 @@ const
               tkBracketRi, tkCurlyDotRi,
               tkCurlyRi}
 
-  splitters = openPars + {tkComma, tkSemicolon}
+  splitters = openPars + {tkComma, tkSemicolon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
@@ -366,12 +381,14 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.fixedUntil = em.tokens.high
 
   elif tok.indent >= 0:
+    var newlineKind = ltCrucialNewline
     if em.keepIndents > 0:
       em.indentLevel = tok.indent
     elif (em.lastTok in (splitters + oprSet) and tok.tokType notin closedPars):
       # aka: we are in an expression context:
       let alignment = max(tok.indent - em.indentStack[^1], 0)
       em.indentLevel = alignment + em.indentStack.high * em.indWidth
+      newlineKind = ltSplittingNewline
     else:
       if tok.indent > em.indentStack[^1]:
         em.indentStack.add tok.indent
@@ -391,7 +408,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     ]#
     # remove trailing whitespace:
     removeSpaces em
-    wrNewline em
+    wrNewline em, newlineKind
     for i in 2..tok.line - em.lastLineNumber: wrNewline(em)
     wrSpaces em, em.indentLevel
     em.fixedUntil = em.tokens.high
