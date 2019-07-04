@@ -355,6 +355,8 @@ proc semUnown(c: PContext; n: PNode): PNode =
 
   result = copyTree(n[1])
   result.typ = unownedType(c, result.typ)
+  # little hack for injectdestructors.nim (see bug #11350):
+  #result.sons[0].typ = nil
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
