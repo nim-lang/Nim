@@ -35,7 +35,8 @@ from patterns import sameTrees
 
 type
   InstrKind* = enum
-    goto, fork, join, def, use
+    goto, fork, join, def, use,
+    store ## store into the heap
   Instr* = object
     n*: PNode
     case kind*: InstrKind
@@ -44,6 +45,7 @@ type
                             # This is used so that we can track object
                             # and tuple field accesses precisely.
     of goto, fork, join: dest*: int
+    of store: discard
 
   ControlFlowGraph* = seq[Instr]
 
@@ -78,7 +80,7 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
     result.add ($i & " " & $c[i].kind)
     result.add "\t"
     case c[i].kind
-    of def, use:
+    of def, use, store:
       result.add renderTree(c[i].n)
     of goto, fork, join:
       result.add "L"
@@ -573,7 +575,7 @@ const
                 nkObjDownConv, nkObjUpConv}
   PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv}
 
-proc getRoot(n: PNode): PNode =
+proc getRoot*(n: PNode): PNode =
   result = n
   while true:
     case result.kind
@@ -690,6 +692,9 @@ proc genDef(c: var Con; n: PNode) =
   elif isAnalysableFieldAccess(n, c.owner):
     c.code.add Instr(n: n, kind: def, sym: nil)
 
+proc genStore(c: var Con; le, ri: PNode) =
+  c.code.add Instr(n: newTree(nkAsgn, le, ri), kind: store)
+
 proc canRaise(fn: PNode): bool =
   const magicsThatCanRaise = {
     mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst}
@@ -729,6 +734,7 @@ proc genMagic(c: var Con; n: PNode; m: TMagic) =
   of mAnd, mOr: c.genAndOr(n)
   of mNew, mNewFinalize:
     genDef(c, n[1])
+    genStore(c, n[1], n[1])
     for i in 2..<n.len: gen(c, n[i])
   else:
     genCall(c, n)
@@ -739,11 +745,14 @@ proc genVarSection(c: var Con; n: PNode) =
       discard
     elif a.kind == nkVarTuple:
       gen(c, a.lastSon)
-      for i in 0 .. a.len-3: genDef(c, a[i])
+      for i in 0 .. a.len-3:
+        genDef(c, a[i])
+        genStore(c, a[i], a.lastSon)
     else:
       gen(c, a.lastSon)
       if a.lastSon.kind != nkEmpty:
         genDef(c, a.sons[0])
+        genStore(c, a[0], a.lastSon)
 
 proc gen(c: var Con; n: PNode) =
   case n.kind
@@ -766,6 +775,7 @@ proc gen(c: var Con; n: PNode) =
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.
     genDef(c, n[0])
+    genStore(c, n[0], n[1])
   of PathKinds0 - {nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}:
     genUse(c, n)
   of nkIfStmt, nkIfExpr: genIf(c, n)

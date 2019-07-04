@@ -136,7 +136,7 @@ to do it.
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
-  lineinfos, parampatterns, sighashes
+  lineinfos, parampatterns, sighashes, guards
 
 const
   InterestingSyms = {skVar, skResult, skLet, skForVar, skTemp}
@@ -189,6 +189,8 @@ proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
     of InstrKind.join:
       let dest = pc + c.g[pc].dest
       if dest == comesFrom: return pc + 1
+      inc pc
+    of store:
       inc pc
   return pc
 
@@ -288,7 +290,72 @@ proc initialized(code: ControlFlowGraph; pc: int,
       let v = code[pc].sym
       init.incl v.id
       inc pc
+    of store:
+      inc pc
   return pc
+
+proc dangerousUse(n: PNode; init: seq[PNode]): bool =
+  if not containsNode(n, {nkDerefExpr, nkHiddenDeref}):
+    return false
+  let r = dfa.getRoot(n)
+  if analysableRoot(r):
+    for x in init:
+      if guards.sameTree(x, r):
+        return false
+    return true
+
+proc notNilUse(n: PNode): bool =
+  # does it use a non-nil value here?
+  # - def from a type that has tfNotNil flag (not nil annotation)
+  # - new(x)
+  # - x = SomeObjectConstr()
+  # - x = addr(...)
+  let ri = n[1]
+  result = tfNotNil in ri.typ.skipTypes({tyOwned}).flags or ri.kind in {nkObjConstr, nkAddr, nkHiddenAddr}
+
+proc nilderef(code: ControlFlowGraph; pc: int,
+              init: var seq[PNode]; comesFrom: int;
+              config: ConfigRef): int =
+  var pc = pc
+  while pc < code.len:
+    case code[pc].kind
+    of goto:
+      pc = pc + code[pc].dest
+    of fork:
+      let target = pc + code[pc].dest
+      var copyA = init
+      var copyB = init
+      let pcA = nilderef(code, pc+1, copyA, pc, config)
+      discard nilderef(code, target, copyB, pc, config)
+      for i in init.len..min(copyA.len-1, copyB.len-1):
+        if guards.sameTree(copyA[i], copyB[i]):
+          init.add copyA[i]
+      pc = pcA+1
+    of InstrKind.join:
+      let target = pc + code[pc].dest
+      if comesFrom == target: return pc
+      inc pc
+    of use:
+      # is it a dangerous use?
+      if dangerousUse(code[pc].n, init):
+        globalError(config, code[pc].n.info, "potential nil deref here")
+      inc pc
+    of def: inc pc
+    of store:
+      if dangerousUse(code[pc].n[0], init):
+        globalError(config, code[pc].n[0].info, "potential nil deref here")
+      elif dangerousUse(code[pc].n[1], init):
+        globalError(config, code[pc].n[1].info, "potential nil deref here")
+      if notNilUse(code[pc].n):
+        let r = dfa.getRoot(code[pc].n[0])
+        init.add r
+        echo "now init'ed ", r
+      inc pc
+  return pc
+
+proc nilderefCheck(c: Con) =
+  var init: seq[PNode] = @[]
+  discard nilderef(c.g, 0, init, -1, c.graph.config)
 
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
@@ -868,6 +935,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   dbg:
     echo "injecting into ", n
     echoCfg(c.g)
+  if owner.name.s == "main":
+    nilderefCheck(c)
   if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:
     let params = owner.typ.n
     for i in 1 ..< params.len:
