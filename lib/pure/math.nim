@@ -47,7 +47,7 @@
 ## * `random module<random.html>`_ for fast and tiny random number generator
 ## * `mersenne module<mersenne.html>`_ for Mersenne twister random number generator
 ## * `stats module<stats.html>`_ for statistical analysis
-## * `strformat module<strformat>`_ for formatting floats for print
+## * `strformat module<strformat.html>`_ for formatting floats for print
 
 
 include "system/inclrtl"
