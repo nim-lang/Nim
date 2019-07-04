@@ -52,7 +52,7 @@ type
 # This implementation of the SHA1 algorithm was ported from the Chromium OS one
 # with minor modifications that should not affect its functionality.
 
-proc newSha1State(): Sha1State =
+proc newSha1State*(): Sha1State =
   result.count = 0
   result.state[0] = 0x67452301'u32
   result.state[1] = 0xEFCDAB89'u32
@@ -145,7 +145,7 @@ proc transform(ctx: var Sha1State) =
   ctx.state[3] += D
   ctx.state[4] += E
 
-proc update(ctx: var Sha1State, data: openArray[char]) =
+proc update*(ctx: var Sha1State, data: openArray[char]) =
   var i = ctx.count mod 64
   var j = 0
   var len = data.len
@@ -176,7 +176,7 @@ proc update(ctx: var Sha1State, data: openArray[char]) =
       i = 0
   ctx.count += data.len
 
-proc finalize(ctx: var Sha1State): Sha1Digest =
+proc finalize*(ctx: var Sha1State): Sha1Digest =
   var cnt = uint64(ctx.count * 8)
   # A 1 bit
   update(ctx, "\x80")
