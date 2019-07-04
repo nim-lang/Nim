@@ -13,15 +13,11 @@ proc `putter=`() = discard cast[pointer](cast[int](buffer) + size)
 
 let expr = if true: "true" else: "false"
 
-var body = newNimNode(nnkIfExpr).add(
-  newNimNode(nnkElifBranch).add(
+var body = newNimNode(nnkIfExpr).add(newNimNode(nnkElifBranch).add(
     infix(newDotExpr(ident("a"), ident("kind")), "==", newDotExpr(ident("b"),
-        ident("kind"))),
-    condition
-  ),
+        ident("kind"))), condition),
   newNimNode(nnkElse).add(newStmtList(newNimNode(nnkReturnStmt).add(ident(
-      "false"))))
-)
+      "false")))))
 
 # comment
 
@@ -251,17 +247,13 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkColon:
     wr(TokTypeToStr[tok.tokType])
     wr(" ")
-  of tkSemicolon,
-     tkComma:
+  of tkSemicolon, tkComma:
     wr(TokTypeToStr[tok.tokType])
     wr(" ")
     rememberSplit(splitComma)
-  of tkParLe, tkParRi, tkBracketLe,
-     tkBracketRi, tkCurlyLe, tkCurlyRi,
-     tkBracketDotLe, tkBracketDotRi,
-     tkCurlyDotLe, tkCurlyDotRi,
-     tkParDotLe, tkParDotRi,
-     tkColonColon, tkDot, tkBracketLeColon:
+  of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
+     tkBracketDotLe, tkBracketDotRi, tkCurlyDotLe, tkCurlyDotRi,
+     tkParDotLe, tkParDotRi, tkColonColon, tkDot, tkBracketLeColon:
     wr(TokTypeToStr[tok.tokType])
     if tok.tokType in splitters:
       rememberSplit(splitParLe)
@@ -398,8 +390,7 @@ proc fun() =
   discard
 
 proc main() =
-  echo "foo"; echo "bar";
-  discard
+  echo "foo"; echo "bar"; discard
 
 main()
 
@@ -685,13 +676,8 @@ block:
 
 
 proc newRecordGen(ctx: Context; typ: TypRef): PNode =
-  result = nkTypeDef.t(
-    newId(typ.optSym.name, true, pragmas = [id(
-        if typ.isUnion: "cUnion" else: "cStruct")]),
-    empty(),
-    nkObjectTy.t(
-      empty(),
-      empty(),
-      nkRecList.t(
+  result = nkTypeDef.t(newId(typ.optSym.name, true, pragmas = [id(
+        if typ.isUnion: "cUnion" else: "cStruct")]), empty(), nkObjectTy.t(
+      empty(), empty(), nkRecList.t(
         typ.recFields.map(newRecFieldGen))))
 

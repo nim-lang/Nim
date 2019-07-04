@@ -144,7 +144,7 @@ proc closeEmitter*(em: var Emitter) =
   var i = 0
   while i <= em.tokens.high:
     when defined(debug):
-      echo "i-th token ", em.kinds[i], " ", em.tokens[i]
+      echo (token: em.tokens[i], kind: em.kinds[i])
     case em.kinds[i]
     of ltBeginSection:
       maxLhs = computeMax(em, lineBegin)
@@ -170,10 +170,25 @@ proc closeEmitter*(em: var Emitter) =
         else:
           content.add em.tokens[i]
           inc lineLen, em.tokens[i].len
-    of ltCrucialNewline, ltSplittingNewline:
+    of ltCrucialNewline:
       content.add em.tokens[i]
       lineLen = 0
       lineBegin = i+1
+    of ltSplittingNewline:
+      let totalLineLen = lineLen + lenOfNextTokens(em, i)
+      if totalLineLen < MaxLineLen: # can be concatenated
+        if i+1 < em.kinds.len and em.kinds[i+1] == ltSpaces:
+          inc i # inhibit extra spaces
+        if i+1 < em.kinds.len and em.kinds[i+1] == ltOther:
+          if content[^1] == ',':
+            content.setLen(content.high) # remove trailing ','
+        elif content[^1] notin {'(', '[', ' '}:
+          content.add " "
+          inc lineLen
+      else:
+        content.add em.tokens[i]
+        lineLen = 0
+        lineBegin = i+1
     of ltOptionalNewline:
       let totalLineLen = lineLen + lenOfNextTokens(em, i)
       if totalLineLen > MaxLineLen + MinLineLen or
@@ -227,8 +242,11 @@ proc wrNewline(em: var Emitter; kind = ltCrucialNewline) =
   em.col = 0
 
 proc newlineWasSplitting*(em: var Emitter) =
+  # sometimes (but not always) there are spaces at position ^2
   if em.kinds.len >= 3 and em.kinds[^3] == ltCrucialNewline:
     em.kinds[^3] = ltSplittingNewline
+  elif em.kinds.len >= 2 and em.kinds[^2] == ltCrucialNewline:
+    em.kinds[^2] = ltSplittingNewline
 
 #[
 Splitting newlines can occur:
@@ -453,6 +471,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
      tkParDotRi,
      tkColonColon:
     wr(em, TokTypeToStr[tok.tokType], ltOther)
+    newlineWasSplitting(em)
   of tkDot:
     lastTokWasTerse = true
     wr(em, TokTypeToStr[tok.tokType], ltOther)
