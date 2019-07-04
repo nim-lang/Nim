@@ -26,7 +26,12 @@ type
     detectSemicolonKind, useSemicolon, dontTouch
 
   LayoutToken = enum
-    ltSpaces, ltNewline, ltTab, ltOptionalNewline,
+    ltSpaces,
+    ltCrucialNewline, ## a semantically crucial newline (indentation!)
+    ltSplittingNewline, ## newline used for splitting up long
+                        ## expressions (like after a comma or a binary operator)
+    ltTab,
+    ltOptionalNewline, ## optional newline introduced by nimpretty
     ltComment, ltLit, ltKeyword, ltExportMarker, ltIdent,
     ltOther, ltOpr,
     ltBeginSection, ltEndSection
@@ -70,7 +75,7 @@ proc computeMax(em: Emitter; pos: int): int =
     var lineLen = 0
     var foundTab = false
     while p < em.tokens.len and em.kinds[p] != ltEndSection:
-      if em.kinds[p] == ltNewline:
+      if em.kinds[p] in {ltCrucialNewline, ltSplittingNewline}:
         if foundTab and lineLen <= MaxLineLen: result = max(result, lhs+1)
         inc p
         break
@@ -85,7 +90,7 @@ proc computeMax(em: Emitter; pos: int): int =
 proc computeRhs(em: Emitter; pos: int): int =
   var p = pos
   result = 0
-  while p < em.tokens.len and em.kinds[p] != ltNewline:
+  while p < em.tokens.len and em.kinds[p] notin {ltCrucialNewline, ltSplittingNewline}:
     inc result, em.tokens[p].len
     inc p
 
@@ -93,7 +98,7 @@ proc isLongEnough(lineLen, startPos, endPos: int): bool =
   result = lineLen > MinLineLen and endPos > startPos + 4
 
 proc findNewline(em: Emitter; p, lineLen: var int) =
-  while p < em.tokens.len and em.kinds[p] != ltNewline:
+  while p < em.tokens.len and em.kinds[p] notin {ltCrucialNewline, ltSplittingNewline}:
     inc lineLen, em.tokens[p].len
     inc p
 
@@ -126,7 +131,7 @@ proc optionalIsGood(em: var Emitter; pos: int): bool =
 proc lenOfNextTokens(em: Emitter; pos: int): int =
   result = 0
   for i in 1 ..< em.tokens.len-pos:
-    if em.kinds[pos+i] in {ltNewline, ltOptionalNewline}: break
+    if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
     inc result, em.tokens[pos+i].len
 
 proc closeEmitter*(em: var Emitter) =
@@ -145,7 +150,8 @@ proc closeEmitter*(em: var Emitter) =
       maxLhs = 0
       lineBegin = i+1
     of ltTab:
-      if i >= 2 and em.kinds[i-2] == ltNewline and em.kinds[i-1] in {ltNewline, ltSpaces}:
+      if i >= 2 and em.kinds[i-2] in {ltCrucialNewline, ltSplittingNewline} and
+          em.kinds[i-1] in {ltCrucialNewline, ltSplittingNewline, ltSpaces}:
         # a previous section has ended
         maxLhs = 0
 
@@ -162,7 +168,7 @@ proc closeEmitter*(em: var Emitter) =
         else:
           content.add em.tokens[i]
           inc lineLen, em.tokens[i].len
-    of ltNewline:
+    of ltCrucialNewline, ltSplittingNewline:
       content.add em.tokens[i]
       lineLen = 0
       lineBegin = i+1
@@ -215,7 +221,7 @@ proc wr(em: var Emitter; x: string; lt: LayoutToken) =
 
 proc wrNewline(em: var Emitter) =
   em.tokens.add "\L"
-  em.kinds.add ltNewline
+  em.kinds.add ltCrucialNewline
   em.col = 0
 
 proc wrSpaces(em: var Emitter; spaces: int) =
@@ -307,12 +313,12 @@ proc lastChar(s: string): char =
 proc endsInWhite(em: Emitter): bool =
   var i = em.tokens.len-1
   while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
-  result = if i >= 0: em.kinds[i] in {ltSpaces, ltNewline, ltTab} else: true
+  result = if i >= 0: em.kinds[i] in {ltSpaces, ltCrucialNewline, ltSplittingNewline, ltTab} else: true
 
 proc endsInNewline(em: Emitter): bool =
   var i = em.tokens.len-1
   while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection, ltSpaces}: dec(i)
-  result = if i >= 0: em.kinds[i] in {ltNewline, ltTab} else: true
+  result = if i >= 0: em.kinds[i] in {ltCrucialNewline, ltSplittingNewline, ltTab} else: true
 
 proc endsInAlpha(em: Emitter): bool =
   var i = em.tokens.len-1
