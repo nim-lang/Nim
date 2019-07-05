@@ -28,7 +28,7 @@ proc saveReceivedPort(port: int) =
 
 proc prepareAddress(intaddr: uint32, intport: uint16): ptr Sockaddr_in =
   result = cast[ptr Sockaddr_in](alloc0(sizeof(Sockaddr_in)))
-  result.sin_family = toInt(nativesockets.AF_INET).uint16
+  result.sin_family = toInt(nativesockets.AF_INET).TSa_Family
   result.sin_port = nativesockets.htons(intport)
   result.sin_addr.s_addr = nativesockets.htonl(intaddr)
 
