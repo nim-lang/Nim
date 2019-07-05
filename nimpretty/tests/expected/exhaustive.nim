@@ -631,10 +631,10 @@ type
     cmdLongOption,    ## A long option such as --option
     cmdShortOption    ## A short option such as -c
   OptParser* = object of RootObj ## \
-                                 ## Implementation of the command line parser. Here is even more text yad.
-                                 ##
-                                 ## To initialize it, use the
-                                 ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+    ## Implementation of the command line parser. Here is even more text yad.
+    ##
+    ## To initialize it, use the
+    ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
     pos*: int
     inShortState: bool
     allowWhitespaceAfterColon: bool
@@ -693,6 +693,34 @@ proc newRecordGen(ctx: Context; typ: TypRef): PNode =
       empty(),
       nkRecList.t(
         typ.recFields.map(newRecFieldGen))))
+
+
+##[
+String `interpolation`:idx: / `format`:idx: inspired by
+Python's ``f``-strings.
+
+.. code-block:: nim
+
+    import strformat
+    let msg = "hello"
+    doAssert fmt"{msg}\n" == "hello\\n"
+
+Because the literal is a raw string literal, the ``\n`` is not interpreted as
+an escape sequence.
+
+
+=================        ====================================================
+  Sign                   Meaning
+=================        ====================================================
+``+``                    Indicates that a sign should be used for both
+                         positive as well as negative numbers.
+``-``                    Indicates that a sign should be used only for
+                         negative numbers (this is the default behavior).
+(space)                  Indicates that a leading space should be used on
+                         positive numbers.
+=================        ====================================================
+
+]##
 
 
 let
