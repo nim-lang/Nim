@@ -48,7 +48,7 @@
 include "system/inclrtl"
 
 import
-  strutils, pathnorm
+  strutils, pathnorm, sets
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -1990,7 +1990,9 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false): string {.tags: [ReadDirEffect].} =
+                     relative = false,
+                     skipDirs = HashSet[string]()): string
+                    {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
@@ -2019,6 +2021,7 @@ iterator walkDirRec*(dir: string,
   ## ``pcLinkToDir``         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
+  ## skipDirs is a set of relative directory paths which must not be followed.
   ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
@@ -2031,6 +2034,8 @@ iterator walkDirRec*(dir: string,
     let d = stack.pop()
     for k, p in walkDir(dir / d, relative = true):
       let rel = d / p
+      if skipDirs.contains(rel):
+        continue
       if k in {pcDir, pcLinkToDir} and k in followFilter:
         stack.add rel
       if k in yieldFilter:
