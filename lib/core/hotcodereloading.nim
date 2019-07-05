@@ -18,9 +18,8 @@ when defined(hotcodereloading):
   when not defined(JS):
     template performCodeReload* =
       when isMainModule:
-        {.error: "Code reloading is not permitted in the main module".}
-      else:
-        hcrPerformCodeReload()
+        {.warning: "Code residing in the main module will not be changed from caling a code-reload".}
+      hcrPerformCodeReload()
   else:
     template performCodeReload* = discard
 else:
