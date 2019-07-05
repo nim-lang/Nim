@@ -146,3 +146,14 @@ block:
   echo "-------------------"
   let pLen = parseArithExpr(txt)
   assert txt.len == pLen
+
+block:
+  # Issue #9009
+  const f = find("xyz", peg"'xyz'")
+  doAssert f == 0
+  const r = "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")
+  doAssert r == "var1<-keykey; var2<-key2key2"
+  static:
+    doAssert "w_h_IlE" =~ peg" y'while'"
+    doAssert not ("w" =~ peg" y'while'")
+

@@ -1657,6 +1657,11 @@ proc getTok(c: var PegLexer, tok: var Token) =
   setLen(tok.literal, 0)
   skip(c)
 
+  if c.bufpos >= c.buf.len:
+    tok.kind = tkEof
+    tok.literal = "[EOF]"
+    return
+
   case c.buf[c.bufpos]
   of '{':
     inc(c.bufpos)
@@ -1754,9 +1759,6 @@ proc getTok(c: var PegLexer, tok: var Token) =
     inc(c.bufpos)
     add(tok.literal, '^')
   else:
-    if c.bufpos >= c.buf.len:
-      tok.kind = tkEof
-      tok.literal = "[EOF]"
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
 
