@@ -16,7 +16,7 @@ from sequtils import delete
 
 const
   MaxLineLen = 80
-  MinLineLen = 10
+  MinLineLen = 15
 
 type
   SplitKind = enum
@@ -102,12 +102,14 @@ proc findNewline(em: Emitter; p, lineLen: var int) =
     inc lineLen, em.tokens[p].len
     inc p
 
-proc optionalIsGood(em: var Emitter; pos: int): bool =
+proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
   let ourIndent = em.tokens[pos].len
   var p = pos+1
   var lineLen = 0
   em.findNewline(p, lineLen)
-  if p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
+  if em.kinds[p-1] == ltComment and currentLen+lineLen < MaxLineLen+MinLineLen:
+    result = false
+  elif p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
       em.kinds[p-1] == ltOptionalNewline:
     if em.tokens[p+1].len == ourIndent:
       # concatenate lines with the same indententation
@@ -163,7 +165,7 @@ proc closeEmitter*(em: var Emitter) =
       else:
         # pick the shorter indentation token:
         var spaces = maxLhs - lineLen
-        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= MaxLineLen:
+        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= MaxLineLen+MinLineLen:
           if spaces <= 0 and content[^1] notin {' ', '\L'}: spaces = 1
           for j in 1..spaces: content.add ' '
           inc lineLen, spaces
@@ -177,7 +179,7 @@ proc closeEmitter*(em: var Emitter) =
     of ltOptionalNewline:
       let totalLineLen = lineLen + lenOfNextTokens(em, i)
       if totalLineLen > MaxLineLen + MinLineLen or
-         totalLineLen > MaxLineLen and optionalIsGood(em, i):
+         totalLineLen > MaxLineLen and optionalIsGood(em, i, lineLen):
         if i-1 >= 0 and em.kinds[i-1] == ltSpaces:
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
