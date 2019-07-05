@@ -760,7 +760,9 @@ proc floatRangeCheck*(x: BiggestFloat, t: PType): bool =
 
 proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.skipTypes(tyUserTypeClasses).kind
-  of tyInt64, tyInt32, tyInt: result = lastOrd(conf, t)
+  of tyInt64, tyInt32, tyInt:
+    # XXX: this is just wrong
+    result = lastOrd(conf, t)
   of tyDistinct: result = lengthOrd(conf, t.sons[0])
   else:
     let last = lastOrd(conf, t)

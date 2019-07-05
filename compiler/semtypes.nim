@@ -574,9 +574,13 @@ proc toCover(c: PContext, t: PType): Int128 =
   else:
     # <----
     let t = skipTypes(t, abstractVar-{tyTypeDesc})
-    # XXX: hack incoming. lengthOrd is incorrect for 64bit integer types because it doesn't uset Int128 yet.
-    if t.kind in {tyInt64, tyUInt64} or (t.kind == tyInt and c.config.target.intSize == 8):
+    # XXX: hack incoming. lengthOrd is incorrect for 64bit integer
+    # types because it doesn't uset Int128 yet.  This entire branching
+    # should be removed as soon as lengthOrd uses int128.
+    if t.kind in {tyInt64, tyUInt64}:
       result = toInt128(1) shl 64
+    elif t.kind in {tyInt, tyUInt}:
+      result = toInt128(1) shl (c.config.target.intSize * 8)
     else:
       result = toInt128(lengthOrd(c.config, t))
 
