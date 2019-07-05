@@ -146,7 +146,7 @@ proc closeEmitter*(em: var Emitter) =
   var i = 0
   while i <= em.tokens.high:
     when defined(debug):
-      echo "i-th token ", em.kinds[i], " ", em.tokens[i]
+      echo (token: em.tokens[i], kind: em.kinds[i])
     case em.kinds[i]
     of ltBeginSection:
       maxLhs = computeMax(em, lineBegin)
