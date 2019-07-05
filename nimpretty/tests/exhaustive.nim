@@ -688,3 +688,15 @@ proc newRecordGen(ctx: Context; typ: TypRef): PNode =
       nkRecList.t(
         typ.recFields.map(newRecFieldGen))))
 
+
+let
+  lla = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is an okayish comment
+  llb = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is a very long comment which should be split
+  llc = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 3429424 + 4239489 - 42399
+  lld = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 342949924 + 423948999 - 42399
+
+type
+  MyLongEnum = enum ## doc comment here
+    first, ## this is a long comment here, but please align it
+    secondWithAVeryLongNameMightBreak, ## this is a short one
+    thirdOne ## it's ok
