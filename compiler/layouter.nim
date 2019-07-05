@@ -509,12 +509,9 @@ proc endsWith(em: Emitter; k: varargs[string]): bool =
   return true
 
 proc rfind(em: Emitter, t: string): int =
-  var i = em.tokens.high
-  while i >= 0:
-    if em.tokens[i] == t:
+  for i in 1 .. 5:
+    if em.tokens[^i] == t:
       return i
-    dec i
-  return -1
 
 proc starWasExportMarker*(em: var Emitter) =
   if em.endsWith(" ", "*", " "):
@@ -526,11 +523,11 @@ proc starWasExportMarker*(em: var Emitter) =
 
 proc commaWasSemicolon*(em: var Emitter) =
   if em.semicolons == detectSemicolonKind:
-    em.semicolons = if em.rfind(";") >= 0: useSemicolon else: dontTouch
+    em.semicolons = if em.rfind(";") > 0: useSemicolon else: dontTouch
   if em.semicolons == useSemicolon:
     let commaPos = em.rfind(",")
-    if commaPos >= em.tokens.len - 3:
-      em.tokens[commaPos] = ";"
+    if commaPos > 0:
+      em.tokens[^commaPos] = ";"
 
 proc curlyRiWasPragma*(em: var Emitter) =
   if em.endsWith("}"):
