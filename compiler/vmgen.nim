@@ -501,7 +501,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   c.gen(n.sons[0], dest)
   c.clearDest(n, dest)
   # Add a jump past the exception handling code
-  endings.add(c.xjmp(n, opcJmp, 0))
+  let jumpToFinally = c.xjmp(n, opcJmp, 0)
   # This signals where the body ends and where the exception handling begins
   c.patch(ehPos)
   for i in 1 ..< n.len:
@@ -525,6 +525,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   let fin = lastSon(n)
   # we always generate an 'opcFinally' as that pops the safepoint
   # from the stack if no exception is raised in the body.
+  c.patch(jumpToFinally)
   c.gABx(fin, opcFinally, 0, 0)
   for endPos in endings: c.patch(endPos)
   if fin.kind == nkFinally:
@@ -2230,9 +2231,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    # if s.name.s == "fun1":
-    #   echo renderTree(body)
-    #   c.echoCode(result)
+    #if s.name.s == "main":
+    #  echo renderTree(body)
+    #  c.echoCode(result)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
