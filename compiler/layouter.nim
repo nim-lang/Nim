@@ -300,29 +300,37 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
   var i = 0
   var lastIndent = em.indentStack[^1]
   var b = 0
+  var dontIndent = false
   for commentLine in splitLines(lit):
-    let stripped = commentLine.strip()
-    var a = 0
-    while a < commentLine.len and commentLine[a] == ' ': inc a
-    if i == 0:
-      if em.kinds.len > 0 and em.kinds[^1] != ltTab:
-        wr(em, "", ltTab)
-    elif stripped.len == 0:
+    if i == 0 and (commentLine.endsWith("\\") or commentLine.endsWith("[")):
+      dontIndent = true
+      wr em, commentLine, ltComment
+    elif dontIndent:
       wrNewline em
+      wr em, commentLine, ltComment
     else:
-      if a > lastIndent:
-        b += em.indWidth
-        lastIndent = a
-      elif a < lastIndent:
-        b -= em.indWidth
-        lastIndent = a
-      wrNewline em
-      #wrSpaces em, col + b
-      if col + b > 0:
-        wr(em, repeat(' ', col+b), ltTab)
+      let stripped = commentLine.strip()
+      var a = 0
+      while a < commentLine.len and commentLine[a] == ' ': inc a
+      if i == 0:
+        if em.kinds.len > 0 and em.kinds[^1] != ltTab:
+          wr(em, "", ltTab)
+      elif stripped.len == 0:
+        wrNewline em
       else:
-        wr(em, "", ltTab)
-    wr em, stripped, ltComment
+        if a > lastIndent:
+          b += em.indWidth
+          lastIndent = a
+        elif a < lastIndent:
+          b -= em.indWidth
+          lastIndent = a
+        wrNewline em
+        #wrSpaces em, col + b
+        if col + b > 0:
+          wr(em, repeat(' ', col+b), ltTab)
+        else:
+          wr(em, "", ltTab)
+      wr em, stripped, ltComment
     inc i
 
 proc lastChar(s: string): char =

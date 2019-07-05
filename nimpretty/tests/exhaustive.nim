@@ -689,6 +689,34 @@ proc newRecordGen(ctx: Context; typ: TypRef): PNode =
         typ.recFields.map(newRecFieldGen))))
 
 
+##[
+String `interpolation`:idx: / `format`:idx: inspired by
+Python's ``f``-strings.
+
+.. code-block:: nim
+
+    import strformat
+    let msg = "hello"
+    doAssert fmt"{msg}\n" == "hello\\n"
+
+Because the literal is a raw string literal, the ``\n`` is not interpreted as
+an escape sequence.
+
+
+=================        ====================================================
+  Sign                   Meaning
+=================        ====================================================
+``+``                    Indicates that a sign should be used for both
+                         positive as well as negative numbers.
+``-``                    Indicates that a sign should be used only for
+                         negative numbers (this is the default behavior).
+(space)                  Indicates that a leading space should be used on
+                         positive numbers.
+=================        ====================================================
+
+]##
+
+
 let
   lla = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is an okayish comment
   llb = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is a very long comment which should be split
