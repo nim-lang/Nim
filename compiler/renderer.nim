@@ -898,16 +898,19 @@ proc accentedName(g: var TSrcGen, n: PNode) =
     gsub(g, n)
 
 proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
-  if i >= n.len: return
-
+  if i < 1 and i > 2: return
   var needsParenthesis = false
   let n_next = n[i].skipHiddenNodes
   if n_next.kind == nkInfix:
     if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
       let nextId = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
       let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident
-      if getPrecedence(nextId) < getPrecedence(nnId):
-        needsParenthesis = true
+      if i == 1:
+        if getPrecedence(nextId) < getPrecedence(nnId):
+          needsParenthesis = true
+      elif i == 2:
+        if getPrecedence(nextId) <= getPrecedence(nnId):
+          needsParenthesis = true
   if needsParenthesis:
     put(g, tkParLe, "(")
   gsub(g, n, i)
