@@ -458,7 +458,7 @@ proc getSockName*(socket: SocketHandle): Port =
   ## returns the socket's associated port number.
   var name: Sockaddr_in
   when useWinVersion:
-    name.sin_family = TSa_Family(ord(AF_INET))
+    name.sin_family = uint16(ord(AF_INET))
   else:
     name.sin_family = TSa_Family(posix.AF_INET)
   #name.sin_port = htons(cint16(port))
