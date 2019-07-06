@@ -427,8 +427,8 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
 proc setVarType(c: PContext; v: PSym, typ: PType) =
   if v.typ != nil and not sameTypeOrNil(v.typ, typ):
     localError(c.config, v.info, "inconsistent typing for reintroduced symbol '" &
-        v.name.s & "': previous type was: " & typeToString(v.typ) &
-        "; new type is: " & typeToString(typ))
+        v.name.s & "': previous type was: " & typeToString(v.typ, preferDesc) &
+        "; new type is: " & typeToString(typ, preferDesc))
   v.typ = typ
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
