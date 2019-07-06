@@ -1492,7 +1492,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if fpOthersWrite in permissions: p = p or S_IWOTH
     if fpOthersExec in permissions: p = p or S_IXOTH
 
-    if chmod(filename, Mode(p)) != 0: raiseOSError(osLastError())
+    if chmod(filename, cast[Mode](p)) != 0: raiseOSError(osLastError())
   else:
     when useWinUnicode:
       wrapUnary(res, getFileAttributesW, filename)
