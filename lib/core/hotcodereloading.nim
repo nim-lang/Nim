@@ -18,7 +18,7 @@ when defined(hotcodereloading):
   when not defined(JS):
     template performCodeReload* =
       when isMainModule:
-        {.warning: "Code residing in the main module will not be changed from caling a code-reload".}
+        {.warning: "Code residing in the main module will not be changed from calling a code-reload".}
       hcrPerformCodeReload()
   else:
     template performCodeReload* = discard
