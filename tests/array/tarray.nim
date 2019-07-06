@@ -28,6 +28,13 @@ dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajsdf
 kgdchlfniambejop
 fjpmholcibdgeakn
 2.0
+a:1
+a:2
+a:3
+ret:
+ret:1
+ret:12
+123
 '''
 joinable: false
 """
@@ -548,3 +555,21 @@ block t3899:
     x.a[i]
   const c = O(a: [1.0,2.0])
   echo c[2]
+
+
+
+# bug #8316
+
+proc myAppend[T](a:T):string=
+  echo "a:", a
+  return $a
+
+template append2*(args: varargs[string, myAppend]): string =
+  var ret:string
+  for a in args:
+    echo "ret:", ret
+    ret.add(a)
+  ret
+
+let foo = append2("1", "2", "3")
+echo foo
