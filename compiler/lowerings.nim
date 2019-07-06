@@ -707,7 +707,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   var fn = n.sons[0]
   # templates and macros are in fact valid here due to the nature of
   # the transformation:
-  if fn.kind == nkClosure:
+  if fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure):
     localError(g.config, n.info, "closure in spawn environment is not allowed")
   if not (fn.kind == nkSym and fn.sym.kind in {skProc, skTemplate, skMacro,
                                                skFunc, skMethod, skConverter}):
