@@ -555,17 +555,22 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
 
 type
   TPutArgInto = enum
-    paDirectMapping, paFastAsgn, paVarAsgn, paComplexOpenarray
+    paDirectMapping, paFastAsgn, paFastAsgnTakeTypeFromArg
+    paVarAsgn, paComplexOpenarray
 
 proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
   # inline context.
   if formal.kind == tyTypeDesc: return paDirectMapping
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
-    if arg.kind == nkStmtListExpr:
+    case arg.kind
+    of nkStmtListExpr:
       return paComplexOpenarray
-    return paDirectMapping    # XXX really correct?
-                              # what if ``arg`` has side-effects?
+    of nkBracket:
+      return paFastAsgnTakeTypeFromArg
+    else:
+      return paDirectMapping    # XXX really correct?
+                                # what if ``arg`` has side-effects?
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
@@ -645,12 +650,15 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     # can happen for 'nim check':
     if i >= ff.n.len: return result
     var formal = ff.n.sons[i].sym
-    case putArgInto(arg, formal.typ)
+    let pa = putArgInto(arg, formal.typ)
+    case pa
     of paDirectMapping:
       idNodeTablePut(newC.mapping, formal, arg)
-    of paFastAsgn:
+    of paFastAsgn, paFastAsgnTakeTypeFromArg:
       var t = formal.typ
-      if formal.ast != nil and formal.ast.typ.destructor != nil and t.destructor == nil:
+      if pa == paFastAsgnTakeTypeFromArg:
+        t = arg.typ
+      elif formal.ast != nil and formal.ast.typ.destructor != nil and t.destructor == nil:
         t = formal.ast.typ # better use the type that actually has a destructor.
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ

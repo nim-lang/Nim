@@ -28,6 +28,13 @@ dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajsdf
 kgdchlfniambejop
 fjpmholcibdgeakn
 2.0
+a:1
+a:2
+a:3
+ret:
+ret:1
+ret:12
+123
 '''
 joinable: false
 """
@@ -557,3 +564,21 @@ block arrayLiterals:
   doAssert [1: 2][1] == 2
   doAssert [-1'i8: 2][-1] == 2
   doAssert [-1'i8: 2, 3, 4, 5].Idx is range[-1'i8..2'i8]
+
+
+
+# bug #8316
+
+proc myAppend[T](a:T):string=
+  echo "a:", a
+  return $a
+
+template append2*(args: varargs[string, myAppend]): string =
+  var ret:string
+  for a in args:
+    echo "ret:", ret
+    ret.add(a)
+  ret
+
+let foo = append2("1", "2", "3")
+echo foo
