@@ -449,7 +449,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
 
 when defined(posix) and not defined(nimdoc):
   proc makeUnixAddr*(path: string): Sockaddr_un =
-    result.sun_family = AF_UNIX.uint16
+    result.sun_family = AF_UNIX.TSa_Family
     if path.len >= Sockaddr_un_path_length:
       raise newException(ValueError, "socket path too long")
     copyMem(addr result.sun_path, path.cstring, path.len + 1)
@@ -460,7 +460,7 @@ proc getSockName*(socket: SocketHandle): Port =
   when useWinVersion:
     name.sin_family = uint16(ord(AF_INET))
   else:
-    name.sin_family = uint16(posix.AF_INET)
+    name.sin_family = TSa_Family(posix.AF_INET)
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
   var namelen = sizeof(name).SockLen
@@ -479,7 +479,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = uint16(posix.AF_INET)
+      name.sin_family = TSa_Family(posix.AF_INET)
     var namelen = sizeof(name).SockLen
     if getsockname(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -491,7 +491,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin6_family = uint16(ord(AF_INET6))
     else:
-      name.sin6_family = uint16(posix.AF_INET6)
+      name.sin6_family = TSa_Family(posix.AF_INET6)
     var namelen = sizeof(name).SockLen
     if getsockname(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -516,7 +516,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = uint16(posix.AF_INET)
+      name.sin_family = TSa_Family(posix.AF_INET)
     var namelen = sizeof(name).SockLen
     if getpeername(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -528,7 +528,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin6_family = uint16(ord(AF_INET6))
     else:
-      name.sin6_family = uint16(posix.AF_INET6)
+      name.sin6_family = TSa_Family(posix.AF_INET6)
     var namelen = sizeof(name).SockLen
     if getpeername(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
