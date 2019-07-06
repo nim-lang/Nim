@@ -1416,7 +1416,7 @@ type
 
   PegLexer {.inheritable.} = object          ## the lexer object.
     bufpos: int               ## the current position within the buffer
-    buf: cstring              ## the buffer itself
+    buf: string               ## the buffer itself
     lineNumber: int           ## the current line number
     lineStart: int            ## index of last line start in buffer
     colOffset: int            ## column to add
@@ -1567,7 +1567,7 @@ proc getString(c: var PegLexer, tok: var Token) =
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  if c.buf[pos] in {'0'..'9'}:
+  if pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
     while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
@@ -1701,9 +1701,10 @@ proc getTok(c: var PegLexer, tok: var Token) =
   of '$': getDollar(c, tok)
   of 'a'..'z', 'A'..'Z', '\128'..'\255':
     getSymbol(c, tok)
-    if c.buf[c.bufpos] in {'\'', '"'} or
+    if c.bufpos < c.buf.len and (
+        c.buf[c.bufpos] in {'\'', '"'} or
         c.buf[c.bufpos] == '$' and c.bufpos+1 < c.buf.len and
-        c.buf[c.bufpos+1] in {'0'..'9'}:
+        c.buf[c.bufpos+1] in {'0'..'9'}):
       case tok.literal
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
@@ -1766,7 +1767,7 @@ proc arrowIsNextTok(c: PegLexer): bool =
   # the only look ahead we need
   var pos = c.bufpos
   while pos < c.buf.len and c.buf[pos] in {'\t', ' '}: inc(pos)
-  result = c.buf[pos] == '<' and (pos+1 < c.buf.len) and c.buf[pos+1] == '-'
+  result = (pos+1 < c.buf.len) and c.buf[pos] == '<' and c.buf[pos+1] == '-'
 
 # ----------------------------- parser ----------------------------------------
 
