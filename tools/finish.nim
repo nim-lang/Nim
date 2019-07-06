@@ -203,7 +203,8 @@ when defined(windows):
 proc main() =
   when defined(windows):
     let nimDesiredPath = expandFilename(getCurrentDir() / "bin")
-    let nimbleDesiredPath = expandFilename(getEnv("USERPROFILE") / ".nimble" / "bin")
+    let nimbleBin = getEnv("USERPROFILE") / ".nimble" / "bin"
+    let nimbleDesiredPath = try: expandFilename(nimbleBin) except: nimbleBin
     let p = tryGetUnicodeValue(r"Environment", "Path",
       HKEY_CURRENT_USER) & ";" & tryGetUnicodeValue(
         r"System\CurrentControlSet\Control\Session Manager\Environment", "Path",
