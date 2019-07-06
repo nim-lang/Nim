@@ -79,19 +79,19 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   else:
     when false:
       if s.kind == skStub: loadStub(s)
-    if s.kind notin ExportableSymKinds:
-      internalError(c.config, n.info, "importSymbol: 2")
+    let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds
     # for an enumeration we have to add all identifiers
-    case s.kind
-    of skProcKinds:
+    if multiImport:
       # for a overloadable syms add all overloaded routines
       var it: TIdentIter
       var e = initIdentIter(it, fromMod.tab, s.name)
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
-        rawImportSymbol(c, e)
+        if s.kind in ExportableSymKinds:
+          rawImportSymbol(c, e)
         e = nextIdentIter(it, fromMod.tab)
-    else: rawImportSymbol(c, s)
+    else:
+      rawImportSymbol(c, s)
     suggestSym(c.config, n.info, s, c.graph.usageSym, false)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
