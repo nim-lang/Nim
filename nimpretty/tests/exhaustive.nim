@@ -728,3 +728,6 @@ type
     first, ## this is a long comment here, but please align it
     secondWithAVeryLongNameMightBreak, ## this is a short one
     thirdOne ## it's ok
+
+if true: # just one space before comment
+  echo 7

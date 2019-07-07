@@ -69,6 +69,7 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
 
 proc computeMax(em: Emitter; pos: int): int =
   var p = pos
+  var extraSpace = 0
   result = 0
   while p < em.tokens.len and em.kinds[p] != ltEndSection:
     var lhs = 0
@@ -76,10 +77,12 @@ proc computeMax(em: Emitter; pos: int): int =
     var foundTab = false
     while p < em.tokens.len and em.kinds[p] != ltEndSection:
       if em.kinds[p] in {ltCrucialNewline, ltSplittingNewline}:
-        if foundTab and lineLen <= MaxLineLen: result = max(result, lhs+1)
+        if foundTab and lineLen <= MaxLineLen:
+          result = max(result, lhs + extraSpace)
         inc p
         break
       if em.kinds[p] == ltTab:
+        extraSpace = if em.kinds[p-1] == ltSpaces: 0 else: 1
         foundTab = true
       else:
         if not foundTab:
@@ -160,8 +163,9 @@ proc closeEmitter*(em: var Emitter) =
         maxLhs = 0
 
       if maxLhs == 0:
-        content.add em.tokens[i]
-        inc lineLen, em.tokens[i].len
+        if em.kinds[i-1] != ltSpaces:
+          content.add em.tokens[i]
+          inc lineLen, em.tokens[i].len
       else:
         # pick the shorter indentation token:
         var spaces = maxLhs - lineLen
