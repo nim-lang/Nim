@@ -16,7 +16,7 @@ proc `=destroy`(x: var MyVal) =
   if x.f != nil:
     dealloc(x.f)
 
-proc `=sink`(x1: var MyVal, x2: Myval) =
+proc `=move`(x1, x2: var Myval) =
   if x1.f != x2.f:
     `=destroy`(x1)
     x1.f = x2.f

@@ -38,7 +38,7 @@ proc `=`*(m: var MySeq, m2: MySeq) =
     m.data = cast[ptr UncheckedArray[float]](allocShared(bytes))
     copyMem(m.data, m2.data, bytes)
 
-proc `=sink`*(m: var MySeq, m2: MySeq) {.inline.} =
+proc `=move`*(m, m2: var MySeq) {.inline.} =
   if m.data != m2.data:
     if m.data != nil:
       `=destroy`(m)
@@ -85,7 +85,7 @@ proc `=destroy`*[T](p: var UniquePtr[T]) =
 
 proc `=`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
 
-proc `=sink`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.inline.} =
+proc `=move`*[T](dest, src: var UniquePtr[T]) {.inline.} =
   if dest.val != nil and dest.val != src.val:
     `=destroy`(dest)
   dest.val = src.val
@@ -126,7 +126,7 @@ proc `=destroy`*[T](p: var ConstPtr[T]) =
 
 proc `=`*[T](dest: var ConstPtr[T], src: ConstPtr[T]) {.error.}
 
-proc `=sink`*[T](dest: var ConstPtr[T], src: ConstPtr[T]) {.inline.} =
+proc `=move`*[T](dest, src: var ConstPtr[T]) {.inline.} =
   if dest.val != nil and dest.val != src.val:
     `=destroy`(dest)
   dest.val = src.val

@@ -74,14 +74,16 @@ when not defined(nimV2):
         for i in 0..<a.len:
           a.p.data[i] = b.p.data[i]
 
-  proc `=sink`[T](x: var seq[T]; y: seq[T]) =
+  proc `=move`[T](x, y: var seq[T]) =
     mixin `=destroy`
     var a = cast[ptr NimSeqV2[T]](addr x)
-    var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
-    if a.p != nil and a.p != b.p:
-      `=destroy`(x)
-    a.len = b.len
-    a.p = b.p
+    var b = cast[ptr NimSeqV2[T]](addr y)
+    if a.p != b.p:
+      if a.p != nil: `=destroy`(x)
+      a.len = b.len
+      a.p = b.p
+      b.p = nil
+      b.len = 0
 
 
 type

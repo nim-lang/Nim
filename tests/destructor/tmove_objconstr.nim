@@ -79,7 +79,7 @@ proc `=destroy`*(m: var MySeqNonCopyable) {.inline.} =
 
 proc `=`*(m: var MySeqNonCopyable, m2: MySeqNonCopyable) {.error.}
 
-proc `=sink`*(m: var MySeqNonCopyable, m2: MySeqNonCopyable) {.inline.} =
+proc `=move`*(m, m2: var MySeqNonCopyable) {.inline.} =
   if m.data != m2.data:
     if m.data != nil:
       `=destroy`(m)

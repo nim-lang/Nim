@@ -26,7 +26,7 @@ proc `=destroy`*(s: var mystring) =
     s.len = 0
     s.cap = 0
 
-proc `=sink`*(a: var mystring, b: mystring) =
+proc `=move`*(a, b: var mystring) =
   # we hope this is optimized away for not yet alive objects:
   if a.data != nil and a.data != b.data:
     dealloc(a.data)

@@ -20,7 +20,7 @@ proc `=`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) {.inline.} =
       discard atomicInc(src.val[].atomicCounter)
     dest.val = src.val
 
-proc `=sink`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) {.inline.} =
+proc `=move`*[T](dest, src: var SharedPtr[T]) {.inline.} =
   if dest.val != src.val:
     if dest.val != nil:
       `=destroy`(dest)

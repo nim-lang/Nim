@@ -5,7 +5,7 @@ block:
       discard
 
   proc `=`[T](x: var XY[T]; v: XY[T]) {.error.}
-  proc `=sink`[T](x: var XY[T]; v: XY[T]) {.error.}
+  proc `=move`[T](x, v: var XY[T]) {.error.}
 
   proc main[T]() =
     var m = cast[ptr XY[T]](alloc0(sizeof(XY[T])))

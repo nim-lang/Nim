@@ -42,7 +42,7 @@ proc `=destroy`*[T](m: var VSeq[T]) {.inline.} =
 
 proc `=`*[T](m: var VSeq[T], m2: VSeq[T]) {.error.}
 
-proc `=sink`*[T](m: var VSeq[T], m2: VSeq[T]) {.inline.} =
+proc `=move`*[T](m, m2: var VSeq[T]) {.inline.} =
   if m.data != m2.data:
     `=destroy`(m)
   m.len = m2.len

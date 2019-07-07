@@ -670,8 +670,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   const
     FakeVarParams = {mNew, mNewFinalize, mInc, ast.mDec, mIncl, mExcl,
       mSetLengthStr, mSetLengthSeq, mAppendStrCh, mAppendStrStr, mSwap,
-      mAppendSeqElem, mNewSeq, mReset, mShallowCopy, mDeepCopy, mMove,
-      mWasMoved}
+      mAppendSeqElem, mNewSeq, mReset, mShallowCopy, mDeepCopy, mMove}
 
   # get the real type of the callee
   # it may be a proc var with a generic alias type, so we skip over them

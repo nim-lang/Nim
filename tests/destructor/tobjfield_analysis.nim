@@ -12,7 +12,7 @@ proc `=destroy`[T](x: var MyVal[T]) =
   if x.f != nil:
     dealloc(x.f)
 
-proc `=sink`[T](x1: var MyVal[T], x2: MyVal[T]) =
+proc `=move`[T](x1, x2: var MyVal[T]) =
   if x1.f != x2.f:
     `=destroy`(x1)
     x1.f = x2.f

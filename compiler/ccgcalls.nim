@@ -351,7 +351,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   # skip the deref:
   var ri = ri[i]
   while ri.kind == nkObjDownConv: ri = ri[0]
-  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias, tySink})
+  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias})
   if t.kind == tyVar:
     let x = if ri.kind == nkHiddenAddr: ri[0] else: ri
     if x.typ.kind == tyPtr:
@@ -547,7 +547,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
+  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tyOwned}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
@@ -558,7 +558,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   postStmtActions(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
+  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)

@@ -636,7 +636,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
-    mMove, mWasMoved, mDestroy,
+    mMove, mDestroy,
     mDefault, mUnown, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -871,7 +871,7 @@ type
   TTypeAttachedOp* = enum ## as usual, order is important here
     attachedDestructor,
     attachedAsgn,
-    attachedSink,
+    attachedMove,
     attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
@@ -1267,7 +1267,7 @@ const
   UnspecifiedLockLevel* = TLockLevel(-1'i16)
   MaxLockLevel* = 1000'i16
   UnknownLockLevel* = TLockLevel(1001'i16)
-  AttachedOpToStr*: array[TTypeAttachedOp, string] = ["=destroy", "=", "=sink", "=deepcopy"]
+  AttachedOpToStr*: array[TTypeAttachedOp, string] = ["=destroy", "=", "=move", "=deepcopy"]
 
 proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
@@ -1813,4 +1813,4 @@ proc addParam*(procType: PType; param: PSym) =
 
 template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]
 template assignment*(t: PType): PSym = t.attachedOps[attachedAsgn]
-template asink*(t: PType): PSym = t.attachedOps[attachedSink]
+template amove*(t: PType): PSym = t.attachedOps[attachedMove]

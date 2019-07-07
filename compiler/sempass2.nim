@@ -28,7 +28,7 @@ import liftdestructors
 * also now calls the "lift destructor logic" at strategic positions, this
   is about to be put into the spec:
 
-We treat assignment and sinks and destruction as identical.
+We treat assignment and moves and destruction as identical.
 
 In the construct let/var x = expr() x's type is marked.
 
@@ -527,7 +527,7 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
 
 proc isTrival(caller: PNode): bool {.inline.} =
-  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved}
+  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove}
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
   let a = skipConvAndClosure(n)

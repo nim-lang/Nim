@@ -58,7 +58,7 @@ proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
       for i in 0..<a.len:
         a.data[i] = b.data[i]
 
-proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
+proc `=move`*[T](a, b: var myseq[T]) =
   if a.data != nil and a.data != b.data:
     dealloc(a.data)
     inc deallocCount

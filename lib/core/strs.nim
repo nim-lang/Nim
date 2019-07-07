@@ -52,14 +52,15 @@ when not defined(nimV2):
     a.len = 0
     a.p = nil
 
-  proc `=sink`(x: var string, y: string) =
+  proc `=move`(x, y: var string) =
     var a = cast[ptr NimStringV2](addr x)
-    var b = cast[ptr NimStringV2](unsafeAddr y)
+    var b = cast[ptr NimStringV2](addr y)
     # we hope this is optimized away for not yet alive objects:
     if unlikely(a.p == b.p): return
     frees(a)
     a.len = b.len
     a.p = b.p
+    b.p = nil
 
   proc `=`(x: var string, y: string) =
     var a = cast[ptr NimStringV2](addr x)

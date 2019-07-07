@@ -277,15 +277,8 @@ else:
     ##
     ## New runtime target: An alias for `=destroy`.
 
-proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
-  ## Resets an object `obj` to its initial (binary zero) value to signify
-  ## it was "moved" and to signify its destructor should do nothing and
-  ## ideally be optimized away.
+proc move*[T](x: var T): T {.magic: "Move".} =
   discard
-
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-  result = x
-  wasMoved(x)
 
 type
   range*{.magic: "Range".}[T]         ## Generic type to construct range types.
@@ -479,9 +472,9 @@ when defined(nimArrIdx):
   proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
     ## Generic `destructor`:idx: implementation that can be overriden.
     discard
-  proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
-    ## Generic `sink`:idx: implementation that can be overriden.
-    shallowCopy(x, y)
+  proc `=move`*[T](x, y: var T) {.inline, magic: "Move".} =
+    ## Generic `move`:idx: implementation that can be overriden.
+    discard
 
 type
   HSlice*[T, U] = object   ## "Heterogenous" slice type.

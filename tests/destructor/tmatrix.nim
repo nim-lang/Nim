@@ -23,7 +23,7 @@ proc `=destroy`*(m: var Matrix) =
     m.m = 0
     m.n = 0
 
-proc `=sink`*(a: var Matrix; b: Matrix) =
+proc `=move`*(a, b: var Matrix) =
   if a.data != nil and a.data != b.data:
     dealloc(a.data)
     deallocCount.inc

@@ -43,7 +43,7 @@ proc `=`*[T](a: var opt[T]; b: opt[T]) =
     else:
       a.data[] = b.data[]
 
-proc `=sink`*[T](a: var opt[T]; b: opt[T]) =
+proc `=move`*[T](a, b: var opt[T]) =
   if a.data != nil and a.data != b.data:
     dealloc(a.data)
     inc deallocCount

@@ -1635,7 +1635,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
     incl(s.flags, sfOverriden)
-  of "=", "=sink":
+  of "=":
     if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     incl(s.flags, sfOverriden)
@@ -1657,11 +1657,10 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
-        let k = if name == "=": attachedAsgn else: attachedSink
-        if obj.attachedOps[k].isNil:
-          obj.attachedOps[k] = s
+        if obj.attachedOps[attachedAsgn].isNil:
+          obj.attachedOps[attachedAsgn] = s
         else:
-          prevDestructor(c, obj.attachedOps[k], obj, n.info)
+          prevDestructor(c, obj.attachedOps[attachedAsgn], obj, n.info)
         if obj.owner.getModule != s.getModule:
           localError(c.config, n.info, errGenerated,
             "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
@@ -1670,6 +1669,40 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     if sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
                 "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
+  of "=move":
+    if s.magic == mMove: return
+    incl(s.flags, sfUsed)
+    incl(s.flags, sfOverriden)
+    let t = s.typ
+    if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar and t.sons[2].kind == tyVar:
+      var obj = t.sons[1].sons[0]
+      while true:
+        incl(obj.flags, tfHasAsgn)
+        if obj.kind == tyGenericBody: obj = obj.lastSon
+        elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
+        else: break
+      var objB = t.sons[2].sons[0]
+      while true:
+        if objB.kind == tyGenericBody: objB = objB.lastSon
+        elif objB.kind in {tyGenericInvocation, tyGenericInst}:
+          objB = objB.sons[0]
+        else: break
+      if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
+        # attach these ops to the canonical tySequence
+        obj = canonType(c, obj)
+        #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
+        if obj.attachedOps[attachedMove].isNil:
+          obj.attachedOps[attachedMove] = s
+        else:
+          prevDestructor(c, obj.attachedOps[attachedMove], obj, n.info)
+        if obj.owner.getModule != s.getModule:
+          localError(c.config, n.info, errGenerated,
+            "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+
+        return
+    if sfSystemModule notin s.owner.flags:
+      localError(c.config, n.info, errGenerated,
+                "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: var T)")
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,

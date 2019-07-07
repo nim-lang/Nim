@@ -12,11 +12,11 @@ type
   Foo* = object
     boo: int
 
-var sink_counter = 0
+var move_counter = 0
 var assign_counter = 0
 
-proc `=sink`(dest: var Foo, src: Foo) =
-  sink_counter.inc
+proc `=move`(dest, src: var Foo) =
+  move_counter.inc
 
 proc `=`(dest: var Foo, src: Foo) =
   assign_counter.inc

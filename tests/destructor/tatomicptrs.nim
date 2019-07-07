@@ -2,11 +2,11 @@ discard """
   output: '''allocating
 allocating
 allocating
+deallocating
+deallocating
 55
 60
 99
-deallocating
-deallocating
 deallocating
 allocating
 deallocating
@@ -50,7 +50,7 @@ proc `=`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
     deallocShared(s)
     echo "deallocating"
 
-proc `=sink`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
+proc `=move`*[T](dest, src: var SharedPtr[T]) =
   ## XXX make this an atomic store:
   if dest.x != src.x:
     let s = dest.x
@@ -130,7 +130,7 @@ proc `=`*[T](m: var MySeq[T], m2: MySeq[T]) =
     m.data = cast[ptr UncheckedArray[T]](allocShared(bytes))
     copyMem(m.data, m2.data, bytes)
 
-proc `=sink`*[T](m: var MySeq[T], m2: MySeq[T]) {.inline.} =
+proc `=move`*[T](m, m2: var MySeq[T]) {.inline.} =
   if m.data != m2.data:
     if m.data != nil:
       `=destroy`(m)

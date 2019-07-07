@@ -12,7 +12,7 @@ type
 proc `=`(self: var Foo; other: Foo) =
   self.i = other.i + 1
 
-proc `=sink`(self: var Foo; other: Foo) =
+proc `=move`(self, other: var Foo) =
   self.i = other.i
 
 proc `=destroy`(self: var Foo) = discard

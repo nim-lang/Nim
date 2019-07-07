@@ -292,7 +292,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
     if newDestructors:
       result.assignment = nil
       result.destructor = nil
-      result.sink = nil
+      result.move = nil
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
@@ -635,7 +635,7 @@ proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
   while i < c.typesWithOps.len:
     let (newty, oldty) = c.typesWithOps[i]
     typeBound(c, newty, oldty, attachedDestructor, info)
-    typeBound(c, newty, oldty, attachedSink, info)
+    typeBound(c, newty, oldty, attachedMove, info)
     typeBound(c, newty, oldty, attachedAsgn, info)
     inc i
   setLen(c.typesWithOps, 0)

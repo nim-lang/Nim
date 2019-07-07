@@ -110,7 +110,7 @@ proc scopeMangledParam(p: BProc; param: PSym) =
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
-                          tyDistinct, tyRange, tyStatic, tyAlias, tySink,
+                          tyDistinct, tyRange, tyStatic, tyAlias,
                           tyInferred, tyOwned}
 
 proc typeName(typ: PType): Rope =
@@ -131,7 +131,7 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       t = t.lastSon
     else:
       break
-  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
+  let typ = if typ.kind in {tyAlias, tyOwned}: typ.lastSon else: typ #XXR
   if typ.loc.r == nil:
     typ.loc.r = typ.typeName & $sig
   else:
@@ -162,7 +162,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
     doAssert typ.isResolvedUserTypeClass
     return mapType(conf, typ.lastSon)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
-     tyTypeDesc, tyAlias, tySink, tyInferred, tyOwned:
+     tyTypeDesc, tyAlias, tyInferred, tyOwned:
     result = mapType(conf, lastSon(typ))
   of tyEnum:
     if firstOrd(conf, typ) < 0:
@@ -175,7 +175,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
       of 8: result = ctInt64
       else: result = ctInt32
   of tyRange: result = mapType(conf, typ.sons[0])
-  of tyPtr, tyVar, tyLent, tyRef:
+  of tyPtr, tyVar, tyLent, tyRef, tySink:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
@@ -224,7 +224,7 @@ proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
     case mapType(conf, rettype)
     of ctArray:
       result = not (skipTypes(rettype, typedescInst).kind in
-          {tyVar, tyLent, tyRef, tyPtr})
+          {tyVar, tyLent, tyRef, tyPtr, tySink})
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
       if rettype.isImportedCppType or t.isImportedCppType: return false
@@ -250,9 +250,10 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(size)])
 
 proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
-  var pt = skipTypes(s.typ, typedescInst)
+  var pt = skipTypes(s.typ, typedescInst-{tySink})
   assert skResult != s.kind
 
+  if pt.kind == tySink: return true
   if tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
   case pt.kind
@@ -318,7 +319,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyStatic:
     if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
     else: internalError(m.config, "tyStatic for getSimpleTypeDesc")
-  of tyGenericInst, tyAlias, tySink, tyOwned:
+  of tyGenericInst, tyAlias, tyOwned:
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
@@ -435,7 +436,7 @@ $3endif$N
       """, [getTypeDescAux(m, t.skipTypes(abstractInst).sons[0], check), result, rope"#"])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
+  if param.typ.skipTypes({tyVar, tyLent, tySink, tyTypeDesc}).kind notin {
           tyArray, tyOpenArray, tyVarargs}:
     result = OnStack
   else:
@@ -469,11 +470,11 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     add(params, param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
-    if arr.kind in {tyVar, tyLent}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
-      if param.typ.kind in {tyVar, tyLent}: param.loc.storage = OnUnknown
+      if param.typ.kind in {tyVar, tyLent, tySink}: param.loc.storage = OnUnknown
       # need to pass hidden parameter:
       addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
@@ -1331,7 +1332,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"
-  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
+  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent, tySink: # either here or some lines below
     genTypeInfoAuxBase(m, t, t, result, rope"0", info)
   of tyStatic:
     if t.n != nil: result = genTypeInfo(m, lastSon t, info)
