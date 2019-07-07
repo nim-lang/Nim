@@ -278,8 +278,8 @@ proc cmpCandidates*(a, b: TCandidate): int =
     if result != 0: return
     # prefer more specialized generic over more general generic:
     result = complexDisambiguation(a.callee, b.callee)
-    # only as a last resort, consider scoping:
     if result != 0: return
+    # only as a last resort, consider scoping:
     result = a.calleeScope - b.calleeScope
   elif a.matchQual > b.matchQual:
     result = 1
@@ -2480,6 +2480,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.magic in {mArrGet, mArrPut}:
     m.state = csMatch
     m.call = n
+    m.matchQual = genericMatch
     # Note the following doesn't work as it would produce ambiguities.
     # Instead we patch system.nim, see bug #8049.
     when false:
