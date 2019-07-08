@@ -106,7 +106,7 @@ proc loadLibPattern*(pattern: string, global_symbols=false): LibHandle =
     result = loadLib(c, global_symbols)
     if not result.isNil: break
 
-when defined(posix):
+when defined(posix) and not defined(nintendoswitch):
   #
   # =========================================================================
   # This is an implementation based on the dlfcn interface.
@@ -115,24 +115,18 @@ when defined(posix):
   # as an emulation layer on top of native functions.
   # =========================================================================
   #
-  var
-    RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
-    RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
-
-  proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: cstring, mode: int): LibHandle {.
-      importc, header: "<dlfcn.h>".}
-  proc dlsym(lib: LibHandle, name: cstring): pointer {.
-      importc, header: "<dlfcn.h>".}
+  import posix
 
   proc loadLib(path: string, global_symbols=false): LibHandle =
-    var flags = RTLD_NOW
-    if global_symbols: flags = flags or RTLD_GLOBAL
-    return dlopen(path, flags)
-  proc loadLib(): LibHandle = return dlopen(nil, RTLD_NOW)
-  proc unloadLib(lib: LibHandle) = dlclose(lib)
-  proc symAddr(lib: LibHandle, name: cstring): pointer =
-    return dlsym(lib, name)
+    let flags =
+      if global_symbols: RTLD_NOW or RTLD_GLOBAL
+      else: RTLD_NOW
+
+    dlopen(path, flags)
+
+  proc loadLib(): LibHandle = dlopen(nil, RTLD_NOW)
+  proc unloadLib(lib: LibHandle) = discard dlclose(lib)
+  proc symAddr(lib: LibHandle, name: cstring): pointer = dlsym(lib, name)
 
 elif defined(nintendoswitch):
   #
