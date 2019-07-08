@@ -1,6 +1,6 @@
 discard """
 errormsg: "type mismatch: got <Bar[system.int]>"
-disabled: "true"
+disabled: "32bit"
 nimout: '''
 t3330.nim(78, 4) Error: type mismatch: got <Bar[system.int]>
 but expected one of:
@@ -46,7 +46,7 @@ t3330.nim(71, 6) Foo: 'bar.x' cannot be assigned to
 expression: test(bar)'''
 """
 
-# Note: the test currently fails because the candidates are presented in
+# Note: currently disabled on 32bit because the candidates are presented in
 # different order on travis with `NIM_COMPILE_TO_CPP=false CPU=i386`;
 # a possible fix would be to sort the candidates by proc signature or
 # declaration location

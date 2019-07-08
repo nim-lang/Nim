@@ -1,7 +1,7 @@
 discard """
   cmd: "nim check --showAllMismatches:on --hints:off $file"
   nimout: '''
-tsigmatch.nim(161, 4) Error: type mismatch: got <A, string>
+tsigmatch.nim(111, 4) Error: type mismatch: got <A, string>
 but expected one of:
 proc f(b: B)
   first type mismatch at position: 1
@@ -12,7 +12,7 @@ proc f(a: A)
   extra argument given
 
 expression: f(A(), "extra")
-tsigmatch.nim(175, 6) Error: type mismatch: got <tuple of (string, proc (){.gcsafe, locks: 0.})>
+tsigmatch.nim(125, 6) Error: type mismatch: got <tuple of (string, proc (){.gcsafe, locks: 0.})>
 but expected one of:
 proc foo(x: (string, proc ()))
   first type mismatch at position: 1
@@ -20,7 +20,7 @@ proc foo(x: (string, proc ()))
   but expression '("foobar", proc () = echo(["Hello!"]))' is of type: tuple of (string, proc (){.gcsafe, locks: 0.})
 
 expression: foo(("foobar", proc () = echo(["Hello!"])))
-tsigmatch.nim(182, 11) Error: type mismatch: got <proc (s: string): string{.noSideEffect, gcsafe, locks: 0.}>
+tsigmatch.nim(132, 11) Error: type mismatch: got <proc (s: string): string{.noSideEffect, gcsafe, locks: 0.}>
 but expected one of:
 proc foo[T, S](op: proc (x: T): S {.cdecl.}): auto
   first type mismatch at position: 1
@@ -32,7 +32,7 @@ proc foo[T, S](op: proc (x: T): S {.safecall.}): auto
   but expression 'fun' is of type: proc (s: string): string{.noSideEffect, gcsafe, locks: 0.}
 
 expression: foo(fun)
-tsigmatch.nim(193, 13) Error: type mismatch: got <array[0..0, proc (x: int){.gcsafe, locks: 0.}]>
+tsigmatch.nim(143, 13) Error: type mismatch: got <array[0..0, proc (x: int){.gcsafe, locks: 0.}]>
 but expected one of:
 proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe, locks: 0.}])
   first type mismatch at position: 1
@@ -40,14 +40,14 @@ proc takesFuncs(fs: openArray[proc (x: int) {.gcsafe, locks: 0.}])
   but expression '[proc (x: int) {.gcsafe, locks: 0.} = echo [x]]' is of type: array[0..0, proc (x: int){.gcsafe, locks: 0.}]
 
 expression: takesFuncs([proc (x: int) {.gcsafe, locks: 0.} = echo [x]])
-tsigmatch.nim(199, 4) Error: type mismatch: got <int literal(10), a0: int literal(5), string>
+tsigmatch.nim(149, 4) Error: type mismatch: got <int literal(10), a0: int literal(5), string>
 but expected one of:
 proc f(a0: uint8; b: string)
   first type mismatch at position: 2
   named param already provided: a0
 
 expression: f(10, a0 = 5, "")
-tsigmatch.nim(206, 4) Error: type mismatch: got <string, string, string, string, string, float64, string>
+tsigmatch.nim(156, 4) Error: type mismatch: got <string, string, string, string, string, float64, string>
 but expected one of:
 proc f(a1: int)
   first type mismatch at position: 1
@@ -59,7 +59,7 @@ proc f(a1: string; a2: varargs[string]; a3: float; a4: var string)
   but expression '"bad"' is immutable, not 'var'
 
 expression: f("asdf", "1", "2", "3", "4", 2.3, "bad")
-tsigmatch.nim(214, 4) Error: type mismatch: got <string, a0: int literal(12)>
+tsigmatch.nim(164, 4) Error: type mismatch: got <string, a0: int literal(12)>
 but expected one of:
 proc f(x: string; a0: var int)
   first type mismatch at position: 2
@@ -71,7 +71,7 @@ proc f(x: string; a0: string)
   but expression 'a0 = 12' is of type: int literal(12)
 
 expression: f(foo, a0 = 12)
-tsigmatch.nim(221, 7) Error: type mismatch: got <Mystring, string>
+tsigmatch.nim(171, 7) Error: type mismatch: got <Mystring, string>
 but expected one of:
 proc fun1(a1: MyInt; a2: Mystring)
   first type mismatch at position: 1
@@ -97,57 +97,7 @@ expression: fun1(default(Mystring), "asdf")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## line 150
+## line 100
 block:
   # bug #11061 Type mismatch error "first type mismatch at" points to wrong argument/position
   # Note: the error msg now gives correct position for mismatched argument
