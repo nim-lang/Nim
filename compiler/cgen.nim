@@ -250,8 +250,10 @@ proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
   if p.lastLineInfo.line != info.line or
+     p.lastLineInfo.col != info.col or
      p.lastLineInfo.fileIndex != info.fileIndex:
     p.lastLineInfo.line = info.line
+    p.lastLineInfo.col = info.col
     p.lastLineInfo.fileIndex = info.fileIndex
     result = true
 
