@@ -2168,6 +2168,22 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if not p.module.compileToCpp:
       p.module.includeHeader("<stdalign.h>")
     putIntoDest(p, d, e, "((NI)alignof($1))" % [getTypeDesc(p.module, t)])
+  of mOffsetOf:
+    var dotExpr: PNode
+    block findDotExpr:
+      if e[1].kind == nkDotExpr:
+        dotExpr = e[1]
+      elif e[1].kind == nkCheckedFieldExpr:
+        dotExpr = e[1][0]
+      else:
+        internalError(p.config, e.info, "unknown ast")
+    let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
+    let member =
+      if t.kind == tyTuple:
+        "Field" & rope(dotExpr[1].sym.position)
+      else:
+        rope(dotExpr[1].sym.name.s)
+    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:

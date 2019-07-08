@@ -549,3 +549,54 @@ proc payloadCheck() =
   doAssert sizeOf(Payload) == 4
 
 payloadCheck()
+
+# offsetof tuple types
+
+type
+  MyTupleType = tuple
+    a: float64
+    b: float64
+    c: float64
+
+  MyOtherTupleType = tuple
+    a: float64
+    b: imported_double
+    c: float64
+
+  MyCaseObject = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+doAssert offsetof(MyTupleType, a) == 0
+doAssert offsetof(MyTupleType, b) == 8
+doAssert offsetof(MyTupleType, c) == 16
+
+doAssert offsetof(MyOtherTupleType, a) == 0
+doAssert offsetof(MyOtherTupleType, b) == 8
+
+# The following expression can only work if the offsetof expression is
+# properly forwarded for the C code generator.
+doAssert offsetof(MyOtherTupleType, c) == 16
+doAssert offsetof(Bar, foo) == 4
+echo offsetof(MyCaseObject, val2)
+echo offsetof(MyCaseObject, val5)
+#doAssert offsetof(MyCaseObject, val2) == 12
+#doAssert offsetof(MyCaseObject, val3) == 16
+#doAssert offsetof(MyCaseObject, val4) == 12
+#doAssert offsetof(MyCaseObject, val5) == 16
+
+template reject(e) =
+  static: assert(not compiles(e))
+
+reject:
+  const off1 = offsetof(MyOtherTupleType, c)
+
+reject:
+  const off2 = offsetof(MyOtherTupleType, b)
+
+
+#Foo

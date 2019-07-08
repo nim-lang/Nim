@@ -1310,7 +1310,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       # produces a value
     else:
       globalError(c.config, n.info, "expandToAst requires a call expression")
-  of mSizeOf, mAlignOf:
+  of mSizeOf, mAlignOf, mOffsetOf:
     globalError(c.config, n.info, "cannot evaluate 'sizeof/alignof' because its type is not defined completely")
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"

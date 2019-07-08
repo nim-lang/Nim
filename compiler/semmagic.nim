@@ -375,7 +375,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:
-    # TODO there is no proper way to find out if a type cannot be queried for the size.
     let size = getSize(c.config, n[1].typ)
     # We just assume here that the type might come from the c backend
     if size == szUnknownSize:
@@ -402,7 +401,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n
   of mOffsetOf:
     var dotExpr: PNode
-
     block findDotExpr:
       if n[1].kind == nkDotExpr:
         dotExpr = n[1]
@@ -418,9 +416,14 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
 
     discard computeSize(c.config, value.typ)
 
-    result = newIntNode(nkIntLit, member.sym.offset)
-    result.info = n.info
-    result.typ = n.typ
+    let offset = member.sym.offset
+
+    if offset == szUnknownSize:
+      result = n
+    else:
+      result = newIntNode(nkIntLit, offset)
+      result.info = n.info
+      result.typ = n.typ
   of mArrGet:
     result = semArrGet(c, n, flags)
   of mArrPut:
