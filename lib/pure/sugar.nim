@@ -238,3 +238,22 @@ macro distinctBase*(T: typedesc): untyped =
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
+
+template alias*(name: untyped, bodyOrExpr: untyped): untyped =
+  ## Syntax sugar to create aliases.
+  ##
+  ## Notes:
+  ##   Contrary to `let`, aliases are not allocated in memory.
+  ##   This is useful to access deep nested object fields
+  ##   without incurring the cost of allocation.
+  runnableExamples:
+    type Node = ref object
+      left, right: Node
+      val: int
+
+    let t = Node(left: Node(left: Node(left: Node(val: 10))))
+    alias(t3, t.left.left.left)
+
+    doAssert t3.val == 10
+
+  template name(): untyped {.dirty.} = bodyOrExpr
