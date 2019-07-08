@@ -81,8 +81,8 @@ Advanced options:
   --hotCodeReloading:on|off
                             turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
-                            stack traces show col + source line; can be combined
-                            with --listFullPaths
+                            stack traces show column info; can be combined
+                            with --listFullPaths to get full paths
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --laxStrings:on|off       when turned on, accessing the zero terminator in
                             strings is allowed; only for backwards compatibility
