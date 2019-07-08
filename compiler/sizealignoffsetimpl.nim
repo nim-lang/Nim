@@ -85,6 +85,14 @@ proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
   else:
     result = 1
 
+
+proc setOffsetsToUnknown(n: PNode) =
+  if n.kind == nkSym and n.sym.kind == skField:
+    n.sym.offset = szUnknownSize
+  else:
+    for i in 0 ..< safeLen(n):
+      setOffsetsToUnknown(n[i])
+
 proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
                                       initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
@@ -101,7 +109,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
     assert(n.sons[0].kind == nkSym)
     let (kindOffset, kindAlign) = computeObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset)
 
-    var maxChildAlign: BiggestInt = 0
+    var maxChildAlign: BiggestInt = if initialOffset == szUnknownSize: szUnknownSize else: 0
     for i in 1 ..< sonsLen(n):
       let child = n.sons[i]
       case child.kind
@@ -119,6 +127,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
       else:
         internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
     if maxChildAlign == szUnknownSize:
+      setOffsetsToUnknown(n)
       result.align  = szUnknownSize
       result.offset = szUnknownSize
     else:
@@ -181,10 +190,12 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
     var maxChildOffset: BiggestInt = kindUnionOffset
     for i in 1 ..< sonsLen(n):
       let offset = computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset, debug)
-      if offset < 0:
-         result = offset
-         break
-      maxChildOffset = max(maxChildOffset, offset)
+      if offset == szIllegalRecursion:
+        return szIllegalRecursion
+      if offset == szUnknownSize or maxChildOffset == szUnknownSize:
+        maxChildOffset = szUnknownSize
+      else:
+        maxChildOffset = max(maxChildOffset, offset)
     result = maxChildOffset
   of nkRecList:
     result = initialOffset

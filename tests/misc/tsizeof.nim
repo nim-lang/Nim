@@ -582,12 +582,12 @@ doAssert offsetof(MyOtherTupleType, b) == 8
 # properly forwarded for the C code generator.
 doAssert offsetof(MyOtherTupleType, c) == 16
 doAssert offsetof(Bar, foo) == 4
-echo offsetof(MyCaseObject, val2)
-echo offsetof(MyCaseObject, val5)
-#doAssert offsetof(MyCaseObject, val2) == 12
-#doAssert offsetof(MyCaseObject, val3) == 16
-#doAssert offsetof(MyCaseObject, val4) == 12
-#doAssert offsetof(MyCaseObject, val5) == 16
+doAssert offsetof(MyCaseObject, val1) == 0
+doAssert offsetof(MyCaseObject, kind) == 8
+doAssert offsetof(MyCaseObject, val2) == 12
+doAssert offsetof(MyCaseObject, val3) == 16
+doAssert offsetof(MyCaseObject, val4) == 12
+doAssert offsetof(MyCaseObject, val5) == 16
 
 template reject(e) =
   static: assert(not compiles(e))
@@ -598,5 +598,38 @@ reject:
 reject:
   const off2 = offsetof(MyOtherTupleType, b)
 
+reject:
+  const off3 = offsetof(MyCaseObject, kind)
 
-#Foo
+
+type
+  MyPackedCaseObject {.packed.} = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+# packed case object
+
+doAssert offsetof(MyPackedCaseObject, val1) == 0
+doAssert offsetof(MyPackedCaseObject, val2) == 9
+doAssert offsetof(MyPackedCaseObject, val3) == 13
+doAssert offsetof(MyPackedCaseObject, val4) == 9
+doAssert offsetof(MyPackedCaseObject, val5) == 13
+
+reject:
+  const off4 = offsetof(MyPackedCaseObject, val1)
+
+reject:
+  const off5 = offsetof(MyPackedCaseObject, val2)
+
+reject:
+  const off6 = offsetof(MyPackedCaseObject, val3)
+
+reject:
+  const off7 = offsetof(MyPackedCaseObject, val4)
+
+reject:
+  const off8 = offsetof(MyPackedCaseObject, val5)
