@@ -79,12 +79,6 @@ when defined(windows):
 else:
   import posix
 
-  var MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
-  var MAP_NORESERVE {.importc: "MAP_NORESERVE", header: "<sys/mman.h>".}: cint
-  # var MAP_FIXED_NOREPLACE {.importc: "MAP_FIXED_NOREPLACE", header: "<sys/mman.h>".}: cint
-
-  var SC_PAGESIZE {.importc: "_SC_PAGESIZE", header: "<unistd.h>".}: cint
-
   let allocationGranularity = sysconf(SC_PAGESIZE)
 
   let
