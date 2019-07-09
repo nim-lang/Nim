@@ -297,7 +297,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       # -> complete(retFuture)
       procBody.add(newCall(newIdentNode("complete"), retFutureSym))
 
-    var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
+    var closureIterator = newProc(iteratorNameSym, [parseExpr("owned(FutureBase)")],
                                   procBody, nnkIteratorDef)
     closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom=prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
@@ -326,7 +326,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     # Add discardable pragma.
     if returnType.kind == nnkEmpty:
       # Add Future[void]
-      result.params[0] = parseExpr("Future[void]")
+      result.params[0] = parseExpr("owned(Future[void])")
   if procBody.kind != nnkEmpty:
     result.body = outerProcBody
   #echo(treeRepr(result))
