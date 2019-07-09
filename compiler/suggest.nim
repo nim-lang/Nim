@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, lineinfos, pathutils, parseutils
+import algorithm, prefixmatches, lineinfos, pathutils, parseutils, linter
 from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
@@ -539,6 +539,8 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
     if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(conf, info, s, usageSym, false)
+  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
+    styleCheckUse(conf, info, s)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!

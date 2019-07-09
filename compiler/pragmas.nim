@@ -12,7 +12,7 @@
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  types, lookups, lineinfos, pathutils
+  types, lookups, lineinfos, pathutils, linter
 
 const
   FirstCallConv* = wNimcall
@@ -610,9 +610,9 @@ proc pragmaLine(c: PContext, n: PNode) =
 
 proc processPragma(c: PContext, n: PNode, i: int) =
   let it = n[i]
-  if it.kind notin nkPragmaCallKinds and it.len == 2: invalidPragma(c, n)
-  elif it[0].kind != nkIdent: invalidPragma(c, n)
-  elif it[1].kind != nkIdent: invalidPragma(c, n)
+  if it.kind notin nkPragmaCallKinds and it.safeLen == 2: invalidPragma(c, n)
+  elif it.safeLen != 2 or it[0].kind != nkIdent or it[1].kind != nkIdent:
+    invalidPragma(c, n)
 
   var userPragma = newSym(skTemplate, it[1].ident, nil, it.info, c.config.options)
   userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
@@ -762,6 +762,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   let ident = considerQuotedIdent(c, key)
   var userPragma = strTableGet(c.userPragmas, ident)
   if userPragma != nil:
+    if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+      styleCheckUse(c.config, key.info, userPragma)
+
     # number of pragmas increase/decrease with user pragma expansion
     inc c.instCounter
     if c.instCounter > 100:
@@ -774,6 +777,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   else:
     let k = whichKeyword(ident)
     if k in validPragmas:
+      if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+        checkPragmaUse(c.config, key.info, ident.s)
       case k
       of wExportc:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
