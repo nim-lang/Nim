@@ -19,6 +19,7 @@
 
 - Enable Oid usage in hashtables. (#11472)
 
+- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`, `update` and `finalize` procedures from `sha1` module. (#11694)
 
 ## Language additions
 
