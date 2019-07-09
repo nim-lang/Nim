@@ -264,8 +264,16 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
-  ## Resets an object `obj` to its initial (binary zero) value.
+when defined(nimV2):
+  proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
+    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
+    ##
+    ## New runtime target: An alias for `=destroy`.
+else:
+  proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
+    ##
+    ## New runtime target: An alias for `=destroy`.
 
 proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
