@@ -31,10 +31,10 @@ template createCb(retFutureSym, iteratorNameSym,
   proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
-        var next = nameIterVar()
+        var next = unown nameIterVar()
         # Continue while the yielded future is already finished.
         while (not next.isNil) and next.finished:
-          next = nameIterVar()
+          next = unown nameIterVar()
           if nameIterVar.finished:
             break
 
