@@ -232,8 +232,8 @@ when defined(windows) or defined(nimdoc):
 
     CompletionData* = object
       fd*: AsyncFD # TODO: Rename this.
-      cb*: proc (fd: AsyncFD, bytesTransferred: Dword,
-                errcode: OSErrorCode) {.closure,gcsafe.}
+      cb*: owned(proc (fd: AsyncFD, bytesTransferred: Dword,
+                errcode: OSErrorCode) {.closure, gcsafe.})
       cell*: ForeignCell # we need this `cell` to protect our `cb` environment,
                          # when using RegisterWaitForSingleObject, because
                          # waiting is done in different thread.
@@ -253,7 +253,7 @@ when defined(windows) or defined(nimdoc):
       ioPort: Handle
       handleFd: AsyncFD
       waitFd: Handle
-      ovl: PCustomOverlapped
+      ovl: owned PCustomOverlapped
     PostCallbackDataPtr = ptr PostCallbackData
 
     AsyncEventImpl = object
@@ -267,7 +267,7 @@ when defined(windows) or defined(nimdoc):
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
 
-  proc newDispatcher*(): PDispatcher =
+  proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
     new result
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
@@ -275,9 +275,9 @@ when defined(windows) or defined(nimdoc):
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](64)
 
-  var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
+  var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
-  proc setGlobalDispatcher*(disp: PDispatcher) =
+  proc setGlobalDispatcher*(disp: owned PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
@@ -402,7 +402,7 @@ when defined(windows) or defined(nimdoc):
     close(dummySock)
 
   proc recv*(socket: AsyncFD, size: int,
-             flags = {SocketFlag.SafeDisconn}): Future[string] =
+             flags = {SocketFlag.SafeDisconn}): owned(Future[string]) =
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
     ## complete once all the data requested is read, a part of the data has been
     ## read, or the socket has disconnected in which case the future will
@@ -476,7 +476,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
-                 flags = {SocketFlag.SafeDisconn}): Future[int] =
+                 flags = {SocketFlag.SafeDisconn}): owned(Future[int]) =
     ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``, which must
     ## at least be of that size. Returned future will complete once all the
     ## data requested is read, a part of the data has been read, or the socket
@@ -543,7 +543,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc send*(socket: AsyncFD, buf: pointer, size: int,
-             flags = {SocketFlag.SafeDisconn}): Future[void] =
+             flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
     ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future
     ## will complete once all data has been sent.
     ##
@@ -590,7 +590,7 @@ when defined(windows) or defined(nimdoc):
 
   proc sendTo*(socket: AsyncFD, data: pointer, size: int, saddr: ptr SockAddr,
                saddrLen: Socklen,
-               flags = {SocketFlag.SafeDisconn}): Future[void] =
+               flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
     ## Sends ``data`` to specified destination ``saddr``, using
     ## socket ``socket``. The returned future will complete once all data
     ## has been sent.
@@ -636,7 +636,7 @@ when defined(windows) or defined(nimdoc):
 
   proc recvFromInto*(socket: AsyncFD, data: pointer, size: int,
                      saddr: ptr SockAddr, saddrLen: ptr SockLen,
-                     flags = {SocketFlag.SafeDisconn}): Future[int] =
+                     flags = {SocketFlag.SafeDisconn}): owned(Future[int]) =
     ## Receives a datagram data from ``socket`` into ``buf``, which must
     ## be at least of size ``size``, address of datagram's sender will be
     ## stored into ``saddr`` and ``saddrLen``. Returned future will complete
@@ -684,7 +684,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn}):
-      Future[tuple[address: string, client: AsyncFD]] =
+      owned(Future[tuple[address: string, client: AsyncFD]]) =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
     ## The future will complete when the connection is successfully accepted.
@@ -811,7 +811,7 @@ when defined(windows) or defined(nimdoc):
     GC_ref(ol)
 
     ol.data = CompletionData(fd: fd, cb:
-      proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) {.gcsafe.} =
         # we excluding our `fd` because cb(fd) can register own handler
         # for this `fd`
         p.handles.excl(fd)
