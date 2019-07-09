@@ -2103,14 +2103,7 @@ proc semSizeof(c: PContext, n: PNode): PNode =
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
     #restoreOldStyleType(n.sons[1])
   n.typ = getSysType(c.graph, n.info, tyInt)
-
-  let size = getSize(c.config, n[1].typ)
-  if size >= 0:
-    result = newIntNode(nkIntLit, size)
-    result.info = n.info
-    result.typ = n.typ
-  else:
-    result = n
+  result = foldSizeOf(c.config, n, n)
 
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
@@ -2199,7 +2192,8 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = setMs(n, s)
     else:
       result = c.graph.emptyNode
-  of mSizeOf: result = semSizeof(c, setMs(n, s))
+  of mSizeOf: result =
+    semSizeof(c, setMs(n, s))
   else:
     result = semDirectOp(c, n, flags)
 

@@ -648,13 +648,11 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
         # This fixes bug #544.
         result = newIntNodeT(lengthOrd(g.config, n.sons[1].typ), n, g)
       of mSizeOf:
-        let size = getSize(g.config, n[1].typ)
-        if size >= 0:
-          result = newIntNode(nkIntLit, size)
-          result.info = n.info
-          result.typ = getSysType(g, n.info, tyInt)
-        else:
-          result = nil
+        result = foldSizeOf(g.config, n, nil)
+      of mAlignOf:
+        result = foldAlignOf(g.config, n, nil)
+      of mOffsetOf:
+        result = foldOffsetOf(g.config, n, nil)
       of mAstToStr:
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, g)
       of mConStrStr:

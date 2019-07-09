@@ -11,12 +11,48 @@
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
 
+proc align(address, alignment: int): int =
+  result = (address + (alignment - 1)) and not (alignment - 1)
+
+
 const
   ## a size is concidered "unknown" when it is an imported type from C
   ## or C++.
   szUnknownSize* = -3
   szIllegalRecursion* = -2
   szUncomputedSize* = -1
+
+type IllegalTypeRecursionError = object of Exception
+
+proc raiseIllegalTypeRecursion() =
+  raise newException(IllegalTypeRecursionError, "illegal type recursion")
+
+type
+  OffsetAccum = object
+    maxAlign: int
+    offset: int
+
+proc inc(arg: var OffsetAccum; value: int) =
+  if unlikely(value == szIllegalRecursion):  raiseIllegalTypeRecursion()
+  if value == szUnknownSize or arg.offset == szUnknownSize:
+    arg.offset = szUnknownSize
+  else:
+    arg.offset += value
+
+proc align(arg: var OffsetAccum; value: int) =
+  if unlikely(value == szIllegalRecursion):  raiseIllegalTypeRecursion()
+  if value == szUnknownSize or arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
+    arg.maxAlign = szUnknownSize
+    arg.offset = szUnknownSize
+  else:
+    arg.maxAlign = max(value, arg.maxAlign)
+    arg.offset = align(arg.offset, value)
+
+proc finish(arg: var OffsetAccum) =
+  if arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
+    arg.offset = szUnknownSize
+  else:
+    arg.offset = align(arg.offset, arg.maxAlign)
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType)
 
@@ -49,6 +85,14 @@ proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
   else:
     result = 1
 
+
+proc setOffsetsToUnknown(n: PNode) =
+  if n.kind == nkSym and n.sym.kind == skField:
+    n.sym.offset = szUnknownSize
+  else:
+    for i in 0 ..< safeLen(n):
+      setOffsetsToUnknown(n[i])
+
 proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
                                       initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
@@ -65,7 +109,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
     assert(n.sons[0].kind == nkSym)
     let (kindOffset, kindAlign) = computeObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset)
 
-    var maxChildAlign: BiggestInt = 0
+    var maxChildAlign: BiggestInt = if initialOffset == szUnknownSize: szUnknownSize else: 0
     for i in 1 ..< sonsLen(n):
       let child = n.sons[i]
       case child.kind
@@ -83,6 +127,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
       else:
         internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
     if maxChildAlign == szUnknownSize:
+      setOffsetsToUnknown(n)
       result.align  = szUnknownSize
       result.offset = szUnknownSize
     else:
@@ -145,10 +190,12 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
     var maxChildOffset: BiggestInt = kindUnionOffset
     for i in 1 ..< sonsLen(n):
       let offset = computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset, debug)
-      if offset < 0:
-         result = offset
-         break
-      maxChildOffset = max(maxChildOffset, offset)
+      if offset == szIllegalRecursion:
+        return szIllegalRecursion
+      if offset == szUnknownSize or maxChildOffset == szUnknownSize:
+        maxChildOffset = szUnknownSize
+      else:
+        maxChildOffset = max(maxChildOffset, offset)
     result = maxChildOffset
   of nkRecList:
     result = initialOffset
@@ -335,19 +382,22 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.size = typ.sons[0].size
     typ.align = typ.sons[0].align
   of tyTuple:
-    maxAlign = 1
-    sizeAccum = 0
-    for i in 0 ..< sonsLen(typ):
-      let child = typ.sons[i]
-      computeSizeAlign(conf, child)
-      if child.size < 0:
-        typ.size = child.size
-        typ.align = child.align
-        return
-      maxAlign = max(maxAlign, child.align)
-      sizeAccum = align(sizeAccum, child.align) + child.size
-    typ.size = align(sizeAccum, maxAlign)
-    typ.align = int16(maxAlign)
+    try:
+      var accum = OffsetAccum(maxAlign: 1)
+      for i in 0 ..< sonsLen(typ):
+        let child = typ.sons[i]
+        computeSizeAlign(conf, child)
+        accum.align(child.align)
+        if typ.n != nil: # is named tuple (has field symbols)?
+          let sym = typ.n[i].sym
+          sym.offset = accum.offset
+        accum.inc(int(child.size))
+      accum.finish
+      typ.size = accum.offset
+      typ.align = int16(accum.maxAlign)
+    except IllegalTypeRecursionError:
+      typ.size = szIllegalRecursion
+      typ.align = szIllegalRecursion
   of tyObject:
     var headerSize: BiggestInt
     var headerAlign: int16
@@ -448,3 +498,58 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   else:
     typ.size = szUncomputedSize
     typ.align = szUncomputedSize
+
+template foldSizeOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
+  let config = conf
+  let node = n
+  let typ = node[1].typ
+  computeSizeAlign(config, typ)
+  let size = typ.size
+  if size >= 0:
+    let res = newIntNode(nkIntLit, size)
+    res.info = node.info
+    res.typ = node.typ
+    res
+  else:
+    fallback
+
+template foldAlignOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
+  let config = conf
+  let node = n
+  let typ = node[1].typ
+  computeSizeAlign(config, typ)
+  let align = typ.align
+  if align >= 0:
+    let res = newIntNode(nkIntLit, align)
+    res.info = node.info
+    res.typ = node.typ
+    res
+  else:
+    fallback
+
+template foldOffsetOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
+  ## Returns an int literal node of the given offsetof expression in `n`.
+  ## Falls back to `fallback`, if the `offsetof` expression can't be processed.
+  let config = conf
+  let node : PNode = n
+  var dotExpr: PNode
+  block findDotExpr:
+    if node[1].kind == nkDotExpr:
+      dotExpr = node[1]
+    elif node[1].kind == nkCheckedFieldExpr:
+      dotExpr = node[1][0]
+    else:
+      localError(config, node.info, "can't compute offsetof on this ast")
+
+  assert dotExpr != nil
+  let value = dotExpr[0]
+  let member = dotExpr[1]
+  computeSizeAlign(config, value.typ)
+  let offset = member.sym.offset
+  if offset >= 0:
+    let tmp = newIntNode(nkIntLit, offset)
+    tmp.info = node.info
+    tmp.typ = node.typ
+    tmp
+  else:
+    fallback
