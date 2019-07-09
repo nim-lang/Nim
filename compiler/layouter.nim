@@ -307,7 +307,7 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int; dontIndent: bo
   var lastIndent = if em.keepIndents > 0: em.indentLevel else: em.indentStack[^1]
   var b = 0
   var dontIndent = dontIndent
-  var lastWasEmpty = false
+  var hasEmptyLine = false
   for commentLine in splitLines(lit):
     if i == 0 and (commentLine.endsWith("\\") or commentLine.endsWith("[")):
       dontIndent = true
@@ -322,7 +322,7 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int; dontIndent: bo
           wr(em, "", ltTab)
       elif stripped.len == 0:
         wrNewline em
-        lastWasEmpty = true
+        hasEmptyLine = true
       else:
         var a = 0
         while a < commentLine.len and commentLine[a] == ' ': inc a
@@ -334,13 +334,13 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int; dontIndent: bo
           b -= em.indWidth
           lastIndent = a
         wrNewline em
-        #wrSpaces em, col + b
-        if not lastWasEmpty or col + b < 15:
+        if not hasEmptyLine or col + b < 15:
           if col + b > 0:
             wr(em, repeat(' ', col+b), ltTab)
           else:
             wr(em, "", ltTab)
-      #lastWasEmpty = stripped.len == 0
+        else:
+          wr(em, repeat(' ', a), ltSpaces)
       wr em, stripped, ltComment
     inc i
 
@@ -363,7 +363,7 @@ proc endsInAlpha(em: Emitter): bool =
   result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
 
 proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
-  let col = em.col
+  var col = em.col
   let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
   em.lineSpan = countNewlines(lit)
   if em.lineSpan > 0: calcCol(em, lit)
@@ -374,6 +374,7 @@ proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
   else:
     if not endsInWhite(em):
       wrTab em
+      inc col
     emitMultilineComment(em, lit, col, dontIndent)
 
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =

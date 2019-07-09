@@ -43,3 +43,16 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   if tue:
     foo() # comment here
   # end if
+
+proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
+  ## Splits and distributes a sequence `s` into `num` sub-sequences.
+  let num = int(num) # XXX probably only needed because of .. bug
+                     # This is part of the above.
+  result = newSeq[seq[T]](num)
+
+proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
+  ## Splits and distributes a sequence `s` into `num` sub-sequences.
+  let num = int(num) # XXX probably only needed because of .. bug
+
+  # This belongs below.
+  result = newSeq[seq[T]](num)
