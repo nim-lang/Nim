@@ -223,7 +223,7 @@ when defined(nimHasTypeof):
       typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
       typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-  proc typeof*(x: untyped; mode = typeOfIter): typeDesc {.
+  proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
     magic: "TypeOf", noSideEffect, compileTime.} =
     ## Builtin `typeof` operation for accessing the type of an expression.
     ## Since version 0.20.0.
@@ -320,7 +320,7 @@ proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
   ## .. code-block:: Nim
   ##  high(2) # => 9223372036854775807
 
-proc high*[T: Ordinal|enum|range](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "High", noSideEffect.}
   ## Returns the highest possible value of an ordinal or enum type.
   ##
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
@@ -355,7 +355,7 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ##  for i in low(arr)..high(arr):
   ##    echo arr[i]
 
-proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array type.
   ##
   ## See also:
