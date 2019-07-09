@@ -42,7 +42,7 @@ type
     lastTok: TTokType
     inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
-    col, lastLineNumber, lineSpan, indentLevel, indWidth*: int
+    col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
     keepIndents*: int
     doIndentMore*: int
     kinds: seq[LayoutToken]
@@ -259,11 +259,13 @@ proc beginSection*(em: var Emitter) =
   let pos = max(0, em.tokens.len-2)
   em.tokens.insert "", pos
   em.kinds.insert ltBeginSection, pos
+  inc em.inSection
 
 #wr(em, "", ltBeginSection)
 proc endSection*(em: var Emitter) =
   em.tokens.insert "", em.tokens.len-2
   em.kinds.insert ltEndSection, em.kinds.len-2
+  dec em.inSection
 
 #wr(em, "", ltEndSection)
 
@@ -299,29 +301,32 @@ template rememberSplit(kind) =
       wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
     #em.altSplitPos[kind] = em.tokens.len
 
-proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
+proc emitMultilineComment(em: var Emitter, lit: string, col: int; dontIndent: bool) =
   # re-align every line in the multi-line comment:
   var i = 0
   var lastIndent = if em.keepIndents > 0: em.indentLevel else: em.indentStack[^1]
   var b = 0
-  var dontIndent = false
+  var dontIndent = dontIndent
+  var lastWasEmpty = false
   for commentLine in splitLines(lit):
     if i == 0 and (commentLine.endsWith("\\") or commentLine.endsWith("[")):
       dontIndent = true
       wr em, commentLine, ltComment
     elif dontIndent:
-      wrNewline em
+      if i > 0: wrNewline em
       wr em, commentLine, ltComment
     else:
       let stripped = commentLine.strip()
-      var a = 0
-      while a < commentLine.len and commentLine[a] == ' ': inc a
       if i == 0:
         if em.kinds.len > 0 and em.kinds[^1] != ltTab:
           wr(em, "", ltTab)
       elif stripped.len == 0:
         wrNewline em
+        lastWasEmpty = true
       else:
+        var a = 0
+        while a < commentLine.len and commentLine[a] == ' ': inc a
+
         if a > lastIndent:
           b += em.indWidth
           lastIndent = a
@@ -330,10 +335,12 @@ proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
           lastIndent = a
         wrNewline em
         #wrSpaces em, col + b
-        if col + b > 0:
-          wr(em, repeat(' ', col+b), ltTab)
-        else:
-          wr(em, "", ltTab)
+        if not lastWasEmpty or col + b < 15:
+          if col + b > 0:
+            wr(em, repeat(' ', col+b), ltTab)
+          else:
+            wr(em, "", ltTab)
+      #lastWasEmpty = stripped.len == 0
       wr em, stripped, ltComment
     inc i
 
@@ -355,7 +362,7 @@ proc endsInAlpha(em: Emitter): bool =
   while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
   result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
 
-proc emitComment(em: var Emitter; tok: TToken) =
+proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
   let col = em.col
   let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
   em.lineSpan = countNewlines(lit)
@@ -367,7 +374,7 @@ proc emitComment(em: var Emitter; tok: TToken) =
   else:
     if not endsInWhite(em):
       wrTab em
-    emitMultilineComment(em, lit, col)
+    emitMultilineComment(em, lit, col, dontIndent)
 
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   template wasExportMarker(em): bool =
@@ -389,9 +396,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     return
 
   var preventComment = false
-  if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
+  if tok.tokType == tkComment and tok.line == em.lastLineNumber:
     # we have an inline comment so handle it before the indentation token:
-    emitComment(em, tok)
+    emitComment(em, tok, dontIndent = (em.inSection == 0))
     preventComment = true
     em.fixedUntil = em.tokens.high
 
@@ -496,7 +503,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.inquote = not em.inquote
   of tkComment:
     if not preventComment:
-      emitComment(em, tok)
+      emitComment(em, tok, dontIndent = false)
   of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
     if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
