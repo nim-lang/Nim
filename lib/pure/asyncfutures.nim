@@ -113,7 +113,8 @@ proc newFutureVar*[T](fromProc = "unspecified"): owned(FutureVar[T]) =
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
   ## that this future belongs to, is a good habit as it helps with debugging.
-  result = FutureVar[T](newFuture[T](fromProc))
+  let fo = newFuture[T](fromProc)
+  result = typeof(result)(fo)
   when isFutureLoggingEnabled: logFutureStart(Future[T](result))
 
 proc clean*[T](future: FutureVar[T]) =
