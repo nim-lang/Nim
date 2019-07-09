@@ -88,6 +88,13 @@ proc getOrdValue*(n: PNode): Int128 =
   of nkHiddenStdConv: getOrdValue(n.sons[1])
   else: high(Int128)
 
+proc getOrdValue64*(n: PNode): BiggestInt {.deprecated: "use getOrdvalue".} =
+  case n.kind
+  of nkCharLit..nkUInt64Lit: n.intVal
+  of nkNilLit: 0
+  of nkHiddenStdConv: getOrdValue64(n.sons[1])
+  else: high(BiggestInt)
+
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
   of nkFloatLiterals: n.floatVal
@@ -672,6 +679,42 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
     result = Zero
 
+proc firstOrd64*(conf: ConfigRef; t: PType): BiggestInt {.deprecated: "use firstOrd instead".} =
+  case t.kind
+  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
+    result = 0
+  of tySet, tyVar: result = firstOrd64(conf, t.sons[0])
+  of tyArray: result = firstOrd64(conf, t.sons[0])
+  of tyRange:
+    assert(t.n != nil)        # range directly given:
+    assert(t.n.kind == nkRange)
+    result = getOrdValue64(t.n.sons[0])
+  of tyInt:
+    if conf != nil and conf.target.intSize == 4: result = - (2147483646) - 2
+    else: result = 0x8000000000000000'i64
+  of tyInt8: result = - 128
+  of tyInt16: result = - 32768
+  of tyInt32: result = - 2147483646 - 2
+  of tyInt64: result = 0x8000000000000000'i64
+  of tyUInt..tyUInt64: result = 0
+  of tyEnum:
+    # if basetype <> nil then return firstOrd of basetype
+    if sonsLen(t) > 0 and t.sons[0] != nil:
+      result = firstOrd64(conf, t.sons[0])
+    else:
+      assert(t.n.sons[0].kind == nkSym)
+      result = t.n.sons[0].sym.position
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
+     tyStatic, tyInferred, tyUserTypeClasses:
+    result = firstOrd64(conf, lastSon(t))
+  of tyOrdinal:
+    if t.len > 0: result = firstOrd64(conf, lastSon(t))
+    else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = 0
+  else:
+    internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+    result = 0
 
 proc firstFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -731,6 +774,48 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
     result = Zero
 
+proc lastOrd64*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt {.deprecated.} =
+  case t.kind
+  of tyBool: result = 1
+  of tyChar: result = 255
+  of tySet, tyVar: result = lastOrd64(conf, t.sons[0])
+  of tyArray: result = lastOrd64(conf, t.sons[0])
+  of tyRange:
+    assert(t.n != nil)        # range directly given:
+    assert(t.n.kind == nkRange)
+    result = getOrdValue64(t.n.sons[1])
+  of tyInt:
+    if conf != nil and conf.target.intSize == 4: result = 0x7FFFFFFF
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyInt8: result = 0x0000007F
+  of tyInt16: result = 0x00007FFF
+  of tyInt32: result = 0x7FFFFFFF
+  of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt:
+    if conf != nil and conf.target.intSize == 4: result = 0xFFFFFFFF
+    elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt8: result = 0xFF
+  of tyUInt16: result = 0xFFFF
+  of tyUInt32: result = 0xFFFFFFFF
+  of tyUInt64:
+    if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyEnum:
+    assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
+    result = t.n.sons[sonsLen(t.n) - 1].sym.position
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
+     tyStatic, tyInferred, tyUserTypeClasses:
+    result = lastOrd64(conf, lastSon(t))
+  of tyProxy: result = 0
+  of tyOrdinal:
+    if t.len > 0: result = lastOrd64(conf, lastSon(t))
+    else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = high(BiggestInt)
+  else:
+    internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+    result = 0
 
 proc lastFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -774,6 +859,21 @@ proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
     let last = lastOrd(conf, t)
     let first = firstOrd(conf, t)
     result = last - first + One
+
+proc lengthOrd64*(conf: ConfigRef; t: PType): BiggestInt =
+  case t.skipTypes(tyUserTypeClasses).kind
+  of tyInt64, tyInt32, tyInt:
+    # XXX: this is just wrong
+    result = lastOrd64(conf, t)
+  of tyDistinct: result = lengthOrd64(conf, t.sons[0])
+  else:
+    let last = lastOrd64(conf, t)
+    let first = firstOrd64(conf, t)
+    # XXX use a better overflow check here:
+    if last == high(BiggestInt) and first <= 0:
+      result = last
+    else:
+      result = last - first + 1
 
 # -------------- type equality -----------------------------------------------
 

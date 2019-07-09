@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
-  linter, lineinfos, lowerings, modulegraphs
+  linter, lineinfos, lowerings, modulegraphs, int128
 
 when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
   import docgen
@@ -370,8 +370,8 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     if k == f.kind: result = isSubrange
     elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64,
                                    tyUInt..tyUInt64} and
-        isIntLit(ab) and ab.n.intVal >= firstOrd(nil, f) and
-                         ab.n.intVal <= lastOrd(nil, f):
+        isIntLit(ab) and getInt(ab.n) >= firstOrd(nil, f) and
+                         getInt(ab.n) <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
       # not depent on the target integer size configurations!
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
@@ -895,10 +895,10 @@ proc inferStaticsInRange(c: var TCandidate,
                                           allowUnresolved = true)
   let upperBound = tryResolvingStaticExpr(c, inferred.n[1],
                                           allowUnresolved = true)
-  template doInferStatic(e: PNode, r: BiggestInt) =
+  template doInferStatic(e: PNode, r: Int128) =
     var exp = e
     var rhs = r
-    if inferStaticParam(c, exp, rhs):
+    if inferStaticParam(c, exp, toInt64(rhs)):
       return isGeneric
     else:
       failureToInferStaticParam(c.c.config, exp)
@@ -911,7 +911,7 @@ proc inferStaticsInRange(c: var TCandidate,
         return isNone
     doInferStatic(upperBound, lengthOrd(c.c.config, concrete) + lowerBound.intVal - 1)
   elif upperBound.kind == nkIntLit:
-    doInferStatic(lowerBound, upperBound.intVal + 1 - lengthOrd(c.c.config, concrete))
+    doInferStatic(lowerBound, getInt(upperBound) + 1 - lengthOrd(c.c.config, concrete))
 
 template subtypeCheck() =
   if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {

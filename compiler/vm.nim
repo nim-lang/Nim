@@ -16,7 +16,7 @@ import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  modulegraphs, sighashes
+  modulegraphs, sighashes, int128
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -410,7 +410,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal
-      if dest.intVal < firstOrd(c.config, desttyp) or dest.intVal > lastOrd(c.config, desttyp):
+      if toInt128(dest.intVal) < firstOrd(c.config, desttyp) or toInt128(dest.intVal) > lastOrd(c.config, desttyp):
         return true
     of tyUInt..tyUInt64:
       if dest.kind != rkInt:
@@ -1304,7 +1304,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
-        msgQuit(int8(getOrdValue(regs[ra].regToNode)))
+        msgQuit(int8(toInt(getOrdValue(regs[ra].regToNode))))
       else:
         return TFullReg(kind: rkNone)
     of opcSetLenStr:

@@ -30,6 +30,9 @@ proc intLiteral(i: BiggestInt): Rope =
   else:
     result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
+proc intLiteral(i: Int128): Rope =
+  intLiteral(toInt64(i))
+
 proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   case n.kind
   of nkCharLit..nkUInt64Lit:
@@ -1436,7 +1439,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   if d.k == locNone:
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  let L = int(lengthOrd(p.config, n.sons[1].typ))
+  let L = toInt(lengthOrd(p.config, n.sons[1].typ))
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",

@@ -805,7 +805,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t.sons[0], check)
       addf(m.s[cfsTypes], "typedef $1 $2[1];$n", [foo, result])
   of tyArray:
-    var n: BiggestInt = lengthOrd(m.config, t)
+    var n: BiggestInt = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
@@ -1047,6 +1047,8 @@ proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype)), rope(d.name.s.mangle)]
 
+proc rope(arg: Int128): Rope = rope($arg)
+
 proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
   discard cgsym(m, "TNimNode")
   var tmp = discriminatorTableName(m, objtype, d)
@@ -1105,8 +1107,8 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
         for j in 0 .. sonsLen(b) - 2:
           if b.sons[j].kind == nkRange:
-            var x = int(getOrdValue(b.sons[j].sons[0]))
-            var y = int(getOrdValue(b.sons[j].sons[1]))
+            var x = toInt(getOrdValue(b.sons[j].sons[0]))
+            var y = toInt(getOrdValue(b.sons[j].sons[1]))
             while x <= y:
               addf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, rope(x), tmp2])
               inc(x)

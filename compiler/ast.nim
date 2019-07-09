@@ -1234,6 +1234,10 @@ proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
   result = newNode(kind)
   result.intVal = intVal
 
+proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
+  result = newNode(kind)
+  result.intVal = castToInt64(intVal)
+
 proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
   result = newIntNode(kind, intVal)
   result.typ = typ
@@ -1611,6 +1615,13 @@ proc getInt*(a: PNode): Int128 =
     result = toInt128(cast[uint64](a.intVal))
   of nkIntLit..nkInt64Lit:
     result = toInt128(a.intVal)
+  else:
+    raiseRecoverableError("cannot extract number from invalid AST node")
+
+proc getInt64*(a: PNode): int64 {.deprecated: "use getInt".} =
+  case a.kind
+  of nkCharLit, nkUintLit..nkUInt64Lit, nkIntLit..nkInt64Lit:
+    result = a.intVal
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")
 

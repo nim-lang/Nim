@@ -7,7 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
+# included from jsgen.nim
+
 ## Type info generation for the JS backend.
+
+proc rope(arg: Int128): Rope = rope($arg)
 
 proc genTypeInfo(p: PProc, typ: PType): Rope
 proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =

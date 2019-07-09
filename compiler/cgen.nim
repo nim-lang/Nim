@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
-  nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
+  nversion, nimsets, msgs, std / sha1, bitsets, idents, types, int128,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr
@@ -112,6 +112,9 @@ proc cgFormatValue(result: var string; value: string): void =
 
 proc cgFormatValue(result: var string; value: BiggestInt): void =
   result.addInt value
+
+proc cgFormatValue(result: var string; value: Int128): void =
+  result.addInt128 value
 
 # TODO: please document
 macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =

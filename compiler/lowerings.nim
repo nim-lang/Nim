@@ -13,7 +13,7 @@ const
   genPrefix* = ":tmp"         # prefix for generated names
 
 import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
-  lineinfos
+  lineinfos, int128
 from trees import getMagic
 
 proc newDeref*(n: PNode): PNode {.inline.} =
@@ -562,7 +562,7 @@ proc newIntLit*(g: ModuleGraph; info: TLineInfo; value: BiggestInt): PNode =
 
 proc genHigh*(g: ModuleGraph; n: PNode): PNode =
   if skipTypes(n.typ, abstractVar).kind == tyArray:
-    result = newIntLit(g, n.info, lastOrd(g.config, skipTypes(n.typ, abstractVar)))
+    result = newIntLit(g, n.info, toInt64(lastOrd(g.config, skipTypes(n.typ, abstractVar))))
   else:
     result = newNodeI(nkCall, n.info, 2)
     result.typ = getSysType(g, n.info, tyInt)
@@ -571,7 +571,7 @@ proc genHigh*(g: ModuleGraph; n: PNode): PNode =
 
 proc genLen*(g: ModuleGraph; n: PNode): PNode =
   if skipTypes(n.typ, abstractVar).kind == tyArray:
-    result = newIntLit(g, n.info, lastOrd(g.config, skipTypes(n.typ, abstractVar)) + 1)
+    result = newIntLit(g, n.info, toInt64(lastOrd(g.config, skipTypes(n.typ, abstractVar)) + 1))
   else:
     result = newNodeI(nkCall, n.info, 2)
     result.typ = getSysType(g, n.info, tyInt)

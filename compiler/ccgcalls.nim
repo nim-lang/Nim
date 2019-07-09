@@ -92,7 +92,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     let ty = skipTypes(a.t, abstractVar+{tyPtr})
     case ty.kind
     of tyArray:
-      let first = firstOrd(p.config, ty)
+      let first = toInt64(firstOrd(p.config, ty))
       if first == 0:
         result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
       else:

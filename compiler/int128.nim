@@ -74,6 +74,31 @@ proc toInt64*(arg: Int128): int64 =
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
+proc toInt*(arg: Int128): int =
+  if isNegative(arg):
+    assert(arg.sdata(3) == -1, "out of range")
+    assert(arg.sdata(2) == -1, "out of range")
+    when sizeof(int) == 4:
+      assert(arg.sdata(1) == -1, "out of range")
+  else:
+    assert(arg.sdata(3) == 0, "out of range")
+    assert(arg.sdata(2) == 0, "out of range")
+    when sizeof(int) == 4:
+      assert(arg.sdata(1) == 0, "out of range")
+
+  when sizeof(int) == 4:
+    cast[int](arg.udata[0])
+  else:
+    cast[int](bitconcat(arg.udata[1], arg.udata[0]))
+
+proc castToInt64*(arg: Int128): int64 =
+  ## Conversion to int64 without range check.
+  cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
+
+proc castToUInt64*(arg: Int128): uint64 =
+  ## Conversion to uint64 without range check.
+  cast[uint64](bitconcat(arg.udata[1], arg.udata[0]))
+
 proc toUInt64*(arg: Int128): uint64 =
   assert(arg.udata[3] == 0)
   assert(arg.udata[2] == 0)
@@ -362,27 +387,31 @@ proc `mod`*(a,b: Int128): Int128 =
   let (a,b) = divMod(a,b)
   return b
 
-proc `$`*(a: Int128): string =
-  if a == Zero:
-    result = "0"
-  elif a == low(Int128):
-    result = "-170141183460469231731687303715884105728"
+proc addInt128*(result: var string; value: Int128) =
+  let initialSize = result.len
+  if value == Zero:
+    result.add "0"
+  elif value == low(Int128):
+    result.add "-170141183460469231731687303715884105728"
   else:
-    let isNegative = isNegative(a)
-    var a = abs(a)
-    while a > Zero:
-      let (quot, rem) = divMod(a, Ten)
+    let isNegative = isNegative(value)
+    var value = abs(value)
+    while value > Zero:
+      let (quot, rem) = divMod(value, Ten)
       result.add "0123456789"[rem.toInt64]
-      a = quot
+      value = quot
     if isNegative:
       result.add '-'
 
-    var i = 0
+    var i = initialSize
     var j = high(result)
     while i < j:
       swap(result[i], result[j])
       i += 1
       j -= 1
+
+proc `$`*(a: Int128): string =
+  result.addInt128(a)
 
 proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
   assert(pos < arg.len)

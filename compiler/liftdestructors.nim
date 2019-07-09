@@ -14,7 +14,7 @@
 # - use openArray instead of array to avoid over-specializations
 
 import modulegraphs, lineinfos, idents, ast, astalgo, renderer, semdata,
-  sighashes, lowerings, options, types, msgs, magicsys, tables
+  sighashes, lowerings, options, types, msgs, magicsys, tables, int128
 
 type
   TLiftCtx = object
@@ -288,7 +288,7 @@ proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
   result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  let i = declareCounter(c, body, firstOrd(c.g.config, t))
+  let i = declareCounter(c, body, toInt64(firstOrd(c.g.config, t)))
   let whileLoop = genWhileLoop(c, i, x)
   let elemType = t.lastSon
   fillBody(c, elemType, whileLoop.sons[1], x.at(i, elemType),
