@@ -108,7 +108,7 @@ const
     hintPath: "added path: '$1'",
     hintConditionAlwaysTrue: "condition is always true: '$1'",
     hintConditionAlwaysFalse: "condition is always false: '$1'",
-    hintName: "name should be: '$1'",
+    hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
     hintLinking: "",

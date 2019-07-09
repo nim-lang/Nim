@@ -25,17 +25,12 @@ proc identLen*(line: string, start: int): int =
 type
   StyleCheck* {.pure.} = enum None, Warn, Auto
 
-var
-  gOverWrite* = true
-  gStyleCheck*: StyleCheck
-  gCheckExtern*, gOnlyMainfile*: bool
-
 proc overwriteFiles*(conf: ConfigRef) =
   let doStrip = options.getConfigVar(conf, "pretty.strip").normalize == "on"
   for i in 0 .. high(conf.m.fileInfos):
     if conf.m.fileInfos[i].dirty and
-        (not gOnlyMainfile or FileIndex(i) == conf.projectMainIdx):
-      let newFile = if gOverWrite: conf.m.fileInfos[i].fullpath
+        (FileIndex(i) == conf.projectMainIdx):
+      let newFile = if false: conf.m.fileInfos[i].fullpath
                     else: conf.m.fileInfos[i].fullpath.changeFileExt(".pretty.nim")
       try:
         var f = open(newFile.string, fmWrite)
@@ -69,7 +64,7 @@ proc beautifyName(s: string, k: TSymKind): string =
              "pointer", "float", "csize", "cdouble", "cchar", "cschar",
              "cshort", "cu", "nil", "typedesc", "auto", "any",
              "range", "openarray", "varargs", "set", "cfloat", "ref", "ptr",
-             "untyped", "typed", "static", "sink", "lent", "type"]:
+             "untyped", "typed", "static", "sink", "lent", "type", "owned"]:
       result.add s[i]
     else:
       result.add toUpperAscii(s[i])
@@ -98,46 +93,23 @@ proc beautifyName(s: string, k: TSymKind): string =
       result.add s[i]
     inc i
 
-proc differ*(line: string, a, b: int, x: string): bool =
+proc differ*(line: string, a, b: int, x: string): string =
   let y = line[a..b]
-  result = cmpIgnoreStyle(y, x) == 0 and y != x
-
-proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
-  let line = conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1]
-  var first = min(info.col.int, line.len)
-  if first < 0: return
-  #inc first, skipIgnoreCase(line, "proc ", first)
-  while first > 0 and line[first-1] in Letters: dec first
-  if first < 0: return
-  if line[first] == '`': inc first
-
-  let last = first+identLen(line, first)-1
-  if differ(line, first, last, newName):
-    # last-first+1 != newName.len or
-    var x = line.substr(0, first-1) & newName & line.substr(last+1)
-    system.shallowCopy(conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1], x)
-    conf.m.fileInfos[info.fileIndex.int].dirty = true
-
-proc lintReport(conf: ConfigRef; info: TLineInfo, beau: string) =
-  if optStyleError in conf.globalOptions:
-    localError(conf, info, "name should be: '$1'" % beau)
+  if cmpIgnoreStyle(y, x) == 0 and y != x:
+    result = y
   else:
-    message(conf, info, hintName, beau)
+    result = ""
 
 proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
   if s != beau:
-    if gStyleCheck == StyleCheck.Auto:
-      sym.name = getIdent(cache, beau)
-      replaceInFile(conf, info, beau)
-    else:
-      lintReport(conf, info, beau)
+    lintReport(conf, info, beau, s)
 
 proc styleCheckDefImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
   if k in {skResult, skTemp} or s.name.s[0] notin Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
-  if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
+  if {sfImportc, sfExportc} * s.flags == {}:
     checkStyle(conf, cache, info, s.name.s, k, s)
 
 proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
@@ -148,7 +120,7 @@ proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   if {sfImportc, sfExportc} * s.flags != {}: return
   let beau = beautifyName(s.name.s, k)
   if s.name.s != beau:
-    lintReport(conf, info, beau)
+    lintReport(conf, info, beau, s.name.s)
 
 template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   if {optStyleHint, optStyleError} * conf.globalOptions != {}:
@@ -161,19 +133,57 @@ template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym) =
 template styleCheckDef*(conf: ConfigRef; s: PSym) =
   styleCheckDef(conf, s.info, s, s.kind)
 
-proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
+proc differs(conf: ConfigRef; info: TLineInfo; newName: string): string =
+  let line = sourceLine(conf, info)
+  var first = min(info.col.int, line.len)
+  if first < 0: return
+  #inc first, skipIgnoreCase(line, "proc ", first)
+  while first > 0 and line[first-1] in Letters: dec first
+  if first < 0: return
+  if line[first] == '`': inc first
+
+  let last = first+identLen(line, first)-1
+  result = differ(line, first, last, newName)
+
+proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
 
   # operators stay as they are:
-  if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters:
+  if s.kind == skTemp or s.name.s[0] notin Letters or sfAnon in s.flags:
     return
-  if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
-  let newName = s.name.s
 
-  replaceInFile(conf, info, newName)
-  #if newName == "File": writeStackTrace()
+  let newName = s.name.s
+  let oldName = differs(conf, info, newName)
+  if oldName.len > 0:
+    lintReport(conf, info, newName, oldName)
+
+proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; pragmaName: string) =
+  const inMixedCase = [
+    "noSideEffect", "importCompilerProc", "incompleteStruct", "requiresInit",
+    "sideEffect", "compilerProc", "lineDir", "stackTrace", "lineTrace",
+    "rangeChecks", "boundChecks",
+    "overflowChecks", "nilChecks",
+    "floatChecks", "nanChecks", "infChecks", "moveChecks",
+    "nonReloadable", "executeOnReload",
+    "deadCodeElim",
+    "compileTime", "noInit", "fieldChecks",
+    "linearScanEnd",
+    "computedGoto", "injectStmt",
+    "asmNoStackframe", "implicitStatic", "codegenDecl", "liftLocals"
+  ]
+  let name = pragmaName.normalize
+  for x in inMixedCase:
+    if x.normalize == name:
+      if pragmaName != x:
+        lintReport(conf, info, x, pragmaName)
+      return
+
+  let wanted = pragmaName.toLowerAscii.replace("_", "")
+  if pragmaName != wanted:
+    lintReport(conf, info, wanted, pragmaName)
+
 
 template styleCheckUse*(info: TLineInfo; s: PSym) =
   when defined(nimfix):
