@@ -144,16 +144,32 @@ proc checkFinished[T](future: Future[T]) =
       raise err
 
 proc call(callbacks: var CallbackList) =
-  var current = callbacks
+  when not defined(nimV2):
+    # strictly speaking a little code duplication here, but we strive
+    # to minimize regressions and I'm not sure I got the 'nimV2' logic
+    # right:
+    var current = callbacks
+    while true:
+      if not current.function.isNil:
+        callSoon(current.function)
 
-  while true:
-    if not current.function.isNil:
-      callSoon(current.function)
+      if current.next.isNil:
+        break
+      else:
+        current = current.next[]
+  else:
+    var currentFunc = unown callbacks.function
+    var currentNext = unown callbacks.next
 
-    if current.next.isNil:
-      break
-    else:
-      current = current.next[]
+    while true:
+      if not currentFunc.isNil:
+        callSoon(currentFunc)
+
+      if currentNext.isNil:
+        break
+      else:
+        currentFunc = currentNext.function
+        currentNext = unown currentNext.next
 
   # callback will be called only once, let GC collect them now
   callbacks.next = nil
