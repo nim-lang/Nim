@@ -64,14 +64,11 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   else:
     result = '`' & x & '`'
 
-when not defined(nimpretty):
-  const
-    IndentWidth = 2
-    longIndentWid = IndentWidth * 2
-else:
-  template IndentWidth: untyped = lexer.gIndentationWidth
-  template longIndentWid: untyped = IndentWidth() * 2
+const
+  IndentWidth = 2
+  longIndentWid = IndentWidth * 2
 
+when defined(nimpretty):
   proc minmaxLine(n: PNode): (int, int) =
     case n.kind
     of nkTripleStrLit:

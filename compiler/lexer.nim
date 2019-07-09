@@ -146,10 +146,6 @@ type
       previousToken: TLineInfo
     config*: ConfigRef
 
-when defined(nimpretty):
-  var
-    gIndentationWidth*: int
-
 proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
   result = newLineInfo(L.fileIdx, tok.line, tok.col)
   when defined(nimpretty):
@@ -1174,8 +1170,6 @@ proc skip(L: var TLexer, tok: var TToken) =
       tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
       tok.indent = commentIndent
-    if gIndentationWidth <= 0:
-      gIndentationWidth = tok.indent
 
 proc rawGetTok*(L: var TLexer, tok: var TToken) =
   template atTokenEnd() {.dirty.} =
