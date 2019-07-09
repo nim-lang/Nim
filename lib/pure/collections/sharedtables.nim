@@ -20,7 +20,7 @@ include "system/inclrtl"
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = ptr UncheckedArray[KeyValuePair[A, B]]
-  SharedTable* [A, B] = object ## generic hash SharedTable
+  SharedTable*[A, B] = object ## generic hash SharedTable
     data: KeyValuePairSeq[A, B]
     counter, dataLen: int
     lock: Lock
@@ -33,7 +33,7 @@ template st_maybeRehashPutImpl(enlarge) {.dirty.} =
   if mustRehash(t.dataLen, t.counter):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
-  index = -1 - index                  # important to transform for mgetOrPutImpl
+  index = -1 - index # important to transform for mgetOrPutImpl
   rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
@@ -202,7 +202,7 @@ proc del*[A, B](t: var SharedTable[A, B], key: A) =
   withLock t:
     delImpl()
 
-proc init*[A, B](t: var SharedTable[A, B], initialSize=64) =
+proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
   ## creates a new hash table that is empty.
   ##
   ## This proc must be called before any other usage of `t`.
@@ -221,7 +221,7 @@ proc deinitSharedTable*[A, B](t: var SharedTable[A, B]) =
   deallocShared(t.data)
   deinitLock t.lock
 
-proc initSharedTable*[A, B](initialSize=64): SharedTable[A, B] {.deprecated:
+proc initSharedTable*[A, B](initialSize = 64): SharedTable[A, B] {.deprecated:
   "use 'init' instead".} =
   ## This is not posix compliant, may introduce undefined behavior.
   assert isPowerOfTwo(initialSize)
