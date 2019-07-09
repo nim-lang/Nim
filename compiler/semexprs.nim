@@ -220,6 +220,10 @@ proc maybeLiftType(t: var PType, c: PContext, info: TLineInfo) =
   closeScope(c)
   if lifted != nil: t = lifted
 
+proc isOwnedSym(c: PContext; n: PNode): bool =
+  let s = qualifiedLookUp(c, n, {})
+  result = s != nil and sfSystemModule in s.owner.flags and s.name.s == "owned"
+
 proc semConv(c: PContext, n: PNode): PNode =
   if sonsLen(n) != 2:
     localError(c.config, n.info, "a type conversion takes exactly one argument")
@@ -247,7 +251,7 @@ proc semConv(c: PContext, n: PNode): PNode =
 
   maybeLiftType(targetType, c, n[0].info)
 
-  if targetType.kind in {tySink, tyLent, tyOwned}:
+  if targetType.kind in {tySink, tyLent} or isOwnedSym(c, n[0]):
     let baseType = semTypeNode(c, n.sons[1], nil).skipTypes({tyTypeDesc})
     let t = newTypeS(targetType.kind, c)
     if targetType.kind == tyOwned:
