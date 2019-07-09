@@ -238,7 +238,7 @@ iterator mpairs*[T](c: var CritBitTree[T]): tuple[key: string, val: var T] =
   for x in leaves(c.root): yield (x.key, x.val)
 
 proc allprefixedAux[T](c: CritBitTree[T], key: string;
-    longestMatch: bool): Node[T] =
+                       longestMatch: bool): Node[T] =
   var p = c.root
   var top = p
   if p != nil:
