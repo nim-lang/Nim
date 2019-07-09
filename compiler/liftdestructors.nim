@@ -393,11 +393,7 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy:
     body.add callCodegenProc(c.g, "nimAsgnStrV2", c.info, genAddr(c.g, x), y)
   of attachedMove:
-    let moveCall = genBuiltin(c.g, mMove, "move", x)
-    moveCall.add y
-    doAssert t.destructor != nil
-    moveCall.add destructorCall(c.g, t.destructor, x)
-    body.add moveCall
+    body.add callCodegenProc(c.g, "nimMoveStrV2", c.info, genAddr(c.g, x), genAddr(c.g, y))
   of attachedDestructor:
     body.add genBuiltin(c.g, mDestroy, "destroy", x)
 

@@ -347,7 +347,7 @@ when false:
 
 proc canBeMoved(t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+  result = t.kind != tyRef and t.attachedOps[attachedMove] != nil
 
 proc genMove(c: Con; t: PType; dest, ri, transfRi: PNode): PNode = #We need transfRi here, since we need to make it an addr depending on the situation...
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})

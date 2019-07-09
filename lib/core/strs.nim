@@ -190,3 +190,24 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
       a.p.cap = b.len
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
+
+proc nimMoveStrV2(a, b: var NimStringV2) {.compilerRtl.} =
+  if a.p == b.p: return
+  if isLiteral(b):
+    # we can shallow copy literals:
+    frees(a)
+    a.len = b.len
+    a.p = b.p
+  else:
+    if isLiteral(a) or a.p.cap < b.len:
+      let allocator = if a.p != nil and a.p.allocator != nil: a.p.allocator else: getLocalAllocator()
+      # we have to allocate the 'cap' here, consider
+      # 'let y = newStringOfCap(); var x = y'
+      # on the other hand... These get turned into moves now.
+      frees(a)
+      a.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(b.len)))
+      a.p.allocator = allocator
+      a.p.cap = b.len
+    a.len = b.len
+    copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
+    frees(b)
