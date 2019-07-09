@@ -302,7 +302,7 @@ template rememberSplit(kind) =
 proc emitMultilineComment(em: var Emitter, lit: string, col: int) =
   # re-align every line in the multi-line comment:
   var i = 0
-  var lastIndent = em.indentStack[^1]
+  var lastIndent = if em.keepIndents > 0: em.indentLevel else: em.indentStack[^1]
   var b = 0
   var dontIndent = false
   for commentLine in splitLines(lit):

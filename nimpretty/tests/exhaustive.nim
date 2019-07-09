@@ -731,3 +731,13 @@ type
 
 if true: # just one space before comment
   echo 7
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool
+  ## Compares two colors.
+  ##
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool {.borrow.}
+  ## Compares two colors.
+  ##
