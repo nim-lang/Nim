@@ -237,3 +237,16 @@ proc positiveOrNegative(num: int): string =
     "zero"
   else:
     "impossible"
+
+#issue #11551
+
+proc negativeOrNot(num: int): string =
+    result = case num
+    of low(int) .. -1:
+      "negative"
+    else:
+      "zero or positive"
+
+doAssert negativeOrNot(-1) == "negative"
+doAssert negativeOrNot(10000000) == "zero or positive"
+doAssert negativeOrNot(0) == "zero or positive"
