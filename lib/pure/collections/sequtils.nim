@@ -81,7 +81,8 @@ when not defined(nimhygiene):
   {.pragma: dirty.}
 
 
-macro evalOnceAs(expAlias, exp: untyped, letAssigneable: static[bool]): untyped =
+macro evalOnceAs(expAlias, exp: untyped,
+                 letAssigneable: static[bool]): untyped =
   ## Injects ``expAlias`` in caller scope, to avoid bugs involving multiple
   ##  substitution in macro arguments such as
   ## https://github.com/nim-lang/Nim/issues/7187
@@ -426,8 +427,8 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
   ## This modifies `s` itself, it does not return a copy.
   ##
   runnableExamples:
-    let outcome = @[1,1,1,1,1,1,1,1]
-    var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
+    var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest
 
@@ -440,17 +441,17 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     inc(j)
   setLen(s, newLen)
 
-proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
+proc insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
   ## `dest` itself, it does not return a copy.
   ##
   ## Notice that `src` and `dest` must be of the same type.
   ##
   runnableExamples:
-    var dest = @[1,1,1,1,1,1,1,1]
+    var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
     let
-      src = @[2,2,2,2,2,2]
-      outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+      src = @[2, 2, 2, 2, 2, 2]
+      outcome = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.insert(src, 3)
     assert dest == outcome
 
@@ -531,9 +532,9 @@ proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## * `any proc<#any,openArray[T],proc(T)>`_
   ##
   runnableExamples:
-     let numbers = @[1, 4, 5, 8, 9, 7, 4]
-     assert all(numbers, proc (x: int): bool = return x < 10) == true
-     assert all(numbers, proc (x: int): bool = return x < 9) == false
+    let numbers = @[1, 4, 5, 8, 9, 7, 4]
+    assert all(numbers, proc (x: int): bool = return x < 10) == true
+    assert all(numbers, proc (x: int): bool = return x < 9) == false
 
   for i in s:
     if not pred(i):
@@ -639,7 +640,7 @@ template toSeq2(iter: iterator): untyped =
     var result: seq[outType] = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
-      let iter3=iter4()
+      let iter3 = iter4()
       for x in iter3():
         result.add(x)
     else:
@@ -865,9 +866,9 @@ template applyIt*(varSeq, op: untyped) =
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
   ##
   runnableExamples:
-     var nums = @[1, 2, 3, 4]
-     nums.applyIt(it * 3)
-     assert nums[0] + nums[3] == 15
+    var nums = @[1, 2, 3, 4]
+    nums.applyIt(it * 3)
+    assert nums[0] + nums[3] == 15
 
   for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
@@ -900,7 +901,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
 proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
                  filter = nnkLiterals): NimNode =
   if constructor.kind in filter:
-    result = newNimNode(nnkCall, lineInfoFrom=constructor)
+    result = newNimNode(nnkCall, lineInfoFrom = constructor)
     result.add op
     result.add constructor
   else:
@@ -962,7 +963,7 @@ when isMainModule:
   # helper for testing double substitution side effects which are handled
   # by `evalOnceAs`
   var counter = 0
-  proc identity[T](a:T):auto=
+  proc identity[T](a: T): auto =
     counter.inc
     a
 
@@ -1020,8 +1021,8 @@ when isMainModule:
 
   block: # repeat tests
     assert repeat(10, 5) == @[10, 10, 10, 10, 10]
-    assert repeat(@[1,2,3], 2) == @[@[1,2,3], @[1,2,3]]
-    assert repeat([1,2,3], 2) == @[[1,2,3], [1,2,3]]
+    assert repeat(@[1, 2, 3], 2) == @[@[1, 2, 3], @[1, 2, 3]]
+    assert repeat([1, 2, 3], 2) == @[[1, 2, 3], [1, 2, 3]]
 
   block: # deduplicates test
     let
@@ -1115,9 +1116,9 @@ when isMainModule:
       colors = @["red", "yellow", "black"]
       acolors = ["red", "yellow", "black"]
       f1 = filter(colors, proc(x: string): bool = x.len < 6)
-      f2 = filter(colors) do (x: string) -> bool : x.len > 5
+      f2 = filter(colors) do (x: string) -> bool: x.len > 5
       f3 = filter(acolors, proc(x: string): bool = x.len < 6)
-      f4 = filter(acolors) do (x: string) -> bool : x.len > 5
+      f4 = filter(acolors) do (x: string) -> bool: x.len > 5
     assert f1 == @["red", "black"]
     assert f2 == @["yellow"]
     assert f3 == @["red", "black"]
@@ -1137,18 +1138,18 @@ when isMainModule:
     assert floats == @[13.0, 12.5, 10.1]
 
   block: # delete tests
-    let outcome = @[1,1,1,1,1,1,1,1]
-    var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
+    var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest, """\
     Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     is [1,1,1,1,1,1,1,1]"""
 
   block: # insert tests
-    var dest = @[1,1,1,1,1,1,1,1]
+    var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
     let
-      src = @[2,2,2,2,2,2]
-      outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+      src = @[2, 2, 2, 2, 2, 2]
+      outcome = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.insert(src, 3)
     assert dest == outcome, """\
     Inserting [2,2,2,2,2,2] into [1,1,1,1,1,1,1,1]
@@ -1171,7 +1172,7 @@ when isMainModule:
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert all(numbers, proc (x: int): bool = return x < 10) == true
     assert all(numbers, proc (x: int): bool = return x < 9) == false
     assert all(len0seq, proc (x: int): bool = return false) == true
@@ -1182,7 +1183,7 @@ when isMainModule:
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert allIt(numbers, it < 10) == true
     assert allIt(numbers, it < 9) == false
     assert allIt(len0seq, false) == true
@@ -1193,7 +1194,7 @@ when isMainModule:
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert any(numbers, proc (x: int): bool = return x > 8) == true
     assert any(numbers, proc (x: int): bool = return x > 9) == false
     assert any(len0seq, proc (x: int): bool = return true) == false
@@ -1204,7 +1205,7 @@ when isMainModule:
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
       anumbers = [1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
+      len0seq: seq[int] = @[]
     assert anyIt(numbers, it > 8) == true
     assert anyIt(numbers, it > 9) == false
     assert anyIt(len0seq, true) == false
@@ -1221,63 +1222,63 @@ when isMainModule:
       assert odd_numbers == @[1, 3, 5, 7, 9]
 
     block:
-      doAssert [1,2].toSeq == @[1,2]
-      doAssert @[1,2].toSeq == @[1,2]
+      doAssert [1, 2].toSeq == @[1, 2]
+      doAssert @[1, 2].toSeq == @[1, 2]
 
-      doAssert @[1,2].toSeq == @[1,2]
-      doAssert toSeq(@[1,2]) == @[1,2]
+      doAssert @[1, 2].toSeq == @[1, 2]
+      doAssert toSeq(@[1, 2]) == @[1, 2]
 
     block:
-      iterator myIter(seed:int):auto=
+      iterator myIter(seed: int): auto =
         for i in 0..<seed:
           yield i
       doAssert toSeq(myIter(2)) == @[0, 1]
 
     block:
-      iterator myIter():auto{.inline.}=
+      iterator myIter(): auto {.inline.} =
         yield 1
         yield 2
 
-      doAssert myIter.toSeq == @[1,2]
-      doAssert toSeq(myIter) == @[1,2]
+      doAssert myIter.toSeq == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
-      iterator myIter():int {.closure.} =
+      iterator myIter(): int {.closure.} =
         yield 1
         yield 2
 
-      doAssert myIter.toSeq == @[1,2]
-      doAssert toSeq(myIter) == @[1,2]
+      doAssert myIter.toSeq == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
-      proc myIter():auto=
-        iterator ret():int{.closure.}=
+      proc myIter(): auto =
+        iterator ret(): int {.closure.} =
           yield 1
           yield 2
         result = ret
 
-      doAssert myIter().toSeq == @[1,2]
-      doAssert toSeq(myIter()) == @[1,2]
+      doAssert myIter().toSeq == @[1, 2]
+      doAssert toSeq(myIter()) == @[1, 2]
 
     block:
-      proc myIter(n:int):auto=
+      proc myIter(n: int): auto =
         var counter = 0
-        iterator ret():int{.closure.}=
-          while counter<n:
+        iterator ret(): int {.closure.} =
+          while counter < n:
             yield counter
             counter.inc
         result = ret
 
       block:
         let myIter3 = myIter(3)
-        doAssert myIter3.toSeq == @[0,1,2]
+        doAssert myIter3.toSeq == @[0, 1, 2]
       block:
         let myIter3 = myIter(3)
-        doAssert toSeq(myIter3) == @[0,1,2]
+        doAssert toSeq(myIter3) == @[0, 1, 2]
       block:
         # makes sure this does not hang forever
-        doAssert myIter(3).toSeq == @[0,1,2]
-        doAssert toSeq(myIter(3)) == @[0,1,2]
+        doAssert myIter(3).toSeq == @[0, 1, 2]
+        doAssert toSeq(myIter(3)) == @[0, 1, 2]
 
   block:
     # tests https://github.com/nim-lang/Nim/issues/7187
@@ -1331,30 +1332,32 @@ when isMainModule:
   block: # mapLiterals tests
     let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
     doAssert x is array[4, int]
-    doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
-    doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
+    doAssert mapLiterals((1, ("abc"), 2), float, nested = false) ==
+      (float(1), "abc", float(2))
+    doAssert mapLiterals(([1], ("abc"), 2), `$`, nested = true) ==
+      (["1"], "abc", "2")
 
   block: # mapIt with openArray
     counter = 0
     proc foo(x: openArray[int]): seq[int] = x.mapIt(it * 10)
-    doAssert foo([identity(1),identity(2)]) == @[10, 20]
+    doAssert foo([identity(1), identity(2)]) == @[10, 20]
     doAssert counter == 2
 
   block: # mapIt with direct openArray
     proc foo1(x: openArray[int]): seq[int] = x.mapIt(it * 10)
     counter = 0
-    doAssert foo1(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    doAssert foo1(openArray[int]([identity(1), identity(2)])) == @[10, 20]
     doAssert counter == 2
 
     # Corner cases (openArray litterals should not be common)
     template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
     counter = 0
-    doAssert foo2(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    doAssert foo2(openArray[int]([identity(1), identity(2)])) == @[10, 20]
     # TODO: this fails; not sure how to fix this case
     # doAssert counter == 2
 
     counter = 0
-    doAssert openArray[int]([identity(1), identity(2)]).mapIt(it) == @[1,2]
+    doAssert openArray[int]([identity(1), identity(2)]).mapIt(it) == @[1, 2]
     # ditto
     # doAssert counter == 2
 
@@ -1366,12 +1369,12 @@ when isMainModule:
     doAssert newSeq[int](0).mapIt(it) == @[]
 
   block: # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
-    let s2 = [1,2].mapIt(it)
-    doAssert s2 == @[1,2]
+    let s2 = [1, 2].mapIt(it)
+    doAssert s2 == @[1, 2]
 
   block:
     counter = 0
-    doAssert [1,2].identity().mapIt(it*2).mapIt(it*10) == @[20, 40]
+    doAssert [1, 2].identity().mapIt(it*2).mapIt(it*10) == @[20, 40]
     # https://github.com/nim-lang/Nim/issues/7187 test case
     doAssert counter == 1
 
