@@ -44,7 +44,7 @@ type
     wImportCompilerProc,
     wImportc, wExportc, wExportNims, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
-    wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
+    wNoSideEffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
     wCompilerproc, wCore, wProcVar, wBase, wUsed,
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
     wLinedir, wStacktrace, wLinetrace, wLink, wCompile,
@@ -184,3 +184,37 @@ proc findStr*(a: openArray[string], s: string): int =
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
+
+proc canonPragmaSpelling*(w: TSpecialWord): string =
+  case w
+  of wNoSideEffect: "noSideEffect"
+  of wImportCompilerProc: "importCompilerProc"
+  of wIncompleteStruct: "incompleteStruct"
+  of wRequiresInit: "requiresInit"
+  of wSideEffect: "sideEffect"
+  of wCompilerProc: "compilerProc"
+  of wLineDir: "lineDir"
+  of wStackTrace: "stackTrace"
+  of wLineTrace: "lineTrace"
+  of wRangeChecks: "rangeChecks"
+  of wBoundChecks: "boundChecks"
+  of wOverflowChecks: "overflowChecks"
+  of wNilChecks: "nilChecks"
+  of wFloatChecks: "floatChecks"
+  of wNanChecks: "nanChecks"
+  of wInfChecks: "infChecks"
+  of wMoveChecks: "moveChecks"
+  of wNonReloadable: "nonReloadable"
+  of wExecuteOnReload: "executeOnReload"
+  of wDeadCodeElimUnused: "deadCodeElim"
+  of wCompileTime: "compileTime"
+  of wNoInit: "noInit"
+  of wFieldChecks: "fieldChecks"
+  of wLinearScanEnd: "linearScanEnd"
+  of wComputedGoto: "computedGoto"
+  of wInjectStmt: "injectStmt"
+  of wAsmNoStackFrame: "asmNoStackframe"
+  of wImplicitStatic: "implicitStatic"
+  of wCodegenDecl: "codegenDecl"
+  of wLiftLocals: "liftLocals"
+  else: specialWords[w]

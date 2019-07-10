@@ -6,7 +6,7 @@ type
 
   CallbackList = object
     function: CallbackFunc
-    next: ref CallbackList
+    next: owned(ref CallbackList)
 
   FutureBase* = ref object of RootObj ## Untyped future.
     callbacks: CallbackList
@@ -99,7 +99,7 @@ template setupFutureBase(fromProc: string) =
     result.fromProc = fromProc
     currentID.inc()
 
-proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
+proc newFuture*[T](fromProc: string = "unspecified"): owned(Future[T]) =
   ## Creates a new future.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
@@ -107,13 +107,14 @@ proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   setupFutureBase(fromProc)
   when isFutureLoggingEnabled: logFutureStart(result)
 
-proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
+proc newFutureVar*[T](fromProc = "unspecified"): owned(FutureVar[T]) =
   ## Create a new ``FutureVar``. This Future type is ideally suited for
   ## situations where you want to avoid unnecessary allocations of Futures.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
   ## that this future belongs to, is a good habit as it helps with debugging.
-  result = FutureVar[T](newFuture[T](fromProc))
+  let fo = newFuture[T](fromProc)
+  result = typeof(result)(fo)
   when isFutureLoggingEnabled: logFutureStart(Future[T](result))
 
 proc clean*[T](future: FutureVar[T]) =
@@ -143,16 +144,32 @@ proc checkFinished[T](future: Future[T]) =
       raise err
 
 proc call(callbacks: var CallbackList) =
-  var current = callbacks
+  when not defined(nimV2):
+    # strictly speaking a little code duplication here, but we strive
+    # to minimize regressions and I'm not sure I got the 'nimV2' logic
+    # right:
+    var current = callbacks
+    while true:
+      if not current.function.isNil:
+        callSoon(current.function)
 
-  while true:
-    if not current.function.isNil:
-      callSoon(current.function)
+      if current.next.isNil:
+        break
+      else:
+        current = current.next[]
+  else:
+    var currentFunc = unown callbacks.function
+    var currentNext = unown callbacks.next
 
-    if current.next.isNil:
-      break
-    else:
-      current = current.next[]
+    while true:
+      if not currentFunc.isNil:
+        callSoon(currentFunc)
+
+      if currentNext.isNil:
+        break
+      else:
+        currentFunc = currentNext.function
+        currentNext = unown currentNext.next
 
   # callback will be called only once, let GC collect them now
   callbacks.next = nil

@@ -1293,6 +1293,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           inc(c.inheritancePenalty, depth)
           result = isSubtype
   of tyDistinct:
+    skipOwned(a)
     if a.kind == tyDistinct:
       if sameDistinctTypes(f, a): result = isEqual
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
@@ -1467,10 +1468,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
+    var preventHack = false
+    if x.kind == tyOwned and f.sons[0].kind != tyOwned:
+      preventHack = true
+      x = x.lastSon
     # XXX: This is very hacky. It should be moved back into liftTypeParam
     if x.kind in {tyGenericInst, tyArray} and
        c.calleeSym != nil and
-       c.calleeSym.kind in {skProc, skFunc} and c.call != nil:
+       c.calleeSym.kind in {skProc, skFunc} and c.call != nil and not preventHack:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
       #echo "inferred ", typeToString(inst), " for ", f
       return typeRel(c, inst, a)

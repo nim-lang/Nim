@@ -31,10 +31,10 @@ template createCb(retFutureSym, iteratorNameSym,
   proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
-        var next = nameIterVar()
+        var next = unown nameIterVar()
         # Continue while the yielded future is already finished.
         while (not next.isNil) and next.finished:
-          next = nameIterVar()
+          next = unown nameIterVar()
           if nameIterVar.finished:
             break
 
@@ -220,8 +220,11 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
   let prcName = prc.name.getName
 
-  let returnType = prc.params[0]
+  var returnType = prc.params[0]
   var baseType: NimNode
+  if returnType.kind in nnkCallKinds and returnType[0].eqIdent("owned") and
+      returnType.len == 2:
+    returnType = returnType[1]
   # Verify that the return type is a Future[T]
   if returnType.kind == nnkBracketExpr:
     let fut = repr(returnType[0])
@@ -294,7 +297,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       # -> complete(retFuture)
       procBody.add(newCall(newIdentNode("complete"), retFutureSym))
 
-    var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
+    var closureIterator = newProc(iteratorNameSym, [parseExpr("owned(FutureBase)")],
                                   procBody, nnkIteratorDef)
     closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom=prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
@@ -323,7 +326,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     # Add discardable pragma.
     if returnType.kind == nnkEmpty:
       # Add Future[void]
-      result.params[0] = parseExpr("Future[void]")
+      result.params[0] = parseExpr("owned(Future[void])")
   if procBody.kind != nnkEmpty:
     result.body = outerProcBody
   #echo(treeRepr(result))

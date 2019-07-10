@@ -147,9 +147,16 @@ template withInd(p, body: untyped) =
   body
   p.currInd = oldInd
 
+template newlineWasSplitting(p: var TParser) =
+  when defined(nimpretty):
+    layouter.newlineWasSplitting(p.em)
+
 template realInd(p): bool = p.tok.indent > p.currInd
 template sameInd(p): bool = p.tok.indent == p.currInd
 template sameOrNoInd(p): bool = p.tok.indent == p.currInd or p.tok.indent < 0
+
+proc validInd(p: var TParser): bool {.inline.} =
+  result = p.tok.indent < 0 or p.tok.indent > p.currInd
 
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
@@ -367,6 +374,7 @@ proc colonOrEquals(p: var TParser, a: PNode): PNode =
   if p.tok.tokType == tkColon:
     result = newNodeP(nkExprColonExpr, p)
     getTok(p)
+    newlineWasSplitting(p)
     #optInd(p, result)
     addSon(result, a)
     addSon(result, parseExpr(p))
@@ -1295,6 +1303,7 @@ proc binaryNot(p: var TParser; a: PNode): PNode =
 
 proc parseTypeDesc(p: var TParser): PNode =
   #| typeDesc = simpleExpr ('not' expr)?
+  newlineWasSplitting(p)
   result = simpleExpr(p, pmTypeDesc)
   result = binaryNot(p, result)
 
@@ -1510,6 +1519,7 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
   elif p.tok.indent >= 0 and p.tok.indent <= p.currInd or not isExprStart(p):
     # NL terminates:
     addSon(result, p.emptyNode)
+    # nimpretty here!
   else:
     var e = parseExpr(p)
     e = postExprBlocks(p, e)
@@ -1722,9 +1732,6 @@ proc parsePattern(p: var TParser): PNode =
   result = parseStmt(p)
   eat(p, tkCurlyRi)
 
-proc validInd(p: var TParser): bool =
-  result = p.tok.indent < 0 or p.tok.indent > p.currInd
-
 proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   #| indAndComment = (IND{>} COMMENT)? | COMMENT?
   #| routine = optInd identVis pattern? genericParamList?
@@ -1809,7 +1816,7 @@ proc parseEnum(p: var TParser): PNode =
       symPragma = newNodeP(nkPragmaExpr, p)
       addSon(symPragma, a)
       addSon(symPragma, pragma)
-
+    # nimpretty support here
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
       add(result, symPragma)
       break
@@ -2219,6 +2226,7 @@ proc parseStmt(p: var TParser): PNode =
   #| stmt = (IND{>} complexOrSimpleStmt^+(IND{=} / ';') DED)
   #|      / simpleStmt ^+ ';'
   if p.tok.indent > p.currInd:
+    # nimpretty support here
     result = newNodeP(nkStmtList, p)
     withInd(p):
       while true:
@@ -2295,6 +2303,7 @@ proc parseTopLevelStmt(p: var TParser): PNode =
   result = p.emptyNode
   # progress guaranteed
   while true:
+    # nimpretty support here
     if p.tok.indent != 0:
       if p.firstTok and p.tok.indent < 0: discard
       elif p.tok.tokType != tkSemiColon:

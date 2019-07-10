@@ -539,7 +539,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil:
       result = lookup
-      if tfUnresolved in t.flags or cl.skipTypedesc: result = result.base
+      if result.kind != tyTypeDesc:
+        result = makeTypeDesc(cl.c, result)
+      elif tfUnresolved in t.flags or cl.skipTypedesc:
+        result = result.base
     elif t.sons[0].kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
 

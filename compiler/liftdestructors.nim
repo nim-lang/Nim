@@ -292,7 +292,7 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let whileLoop = genWhileLoop(c, i, x)
   let elemType = t.lastSon
   fillBody(c, elemType, whileLoop.sons[1], x.at(i, elemType),
-                                              y.at(i, elemType))
+                                           y.at(i, elemType))
   addIncStmt(c, whileLoop.sons[1], i)
   body.add whileLoop
 

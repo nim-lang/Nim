@@ -688,3 +688,56 @@ proc newRecordGen(ctx: Context; typ: TypRef): PNode =
       nkRecList.t(
         typ.recFields.map(newRecFieldGen))))
 
+
+##[
+String `interpolation`:idx: / `format`:idx: inspired by
+Python's ``f``-strings.
+
+.. code-block:: nim
+
+    import strformat
+    let msg = "hello"
+    doAssert fmt"{msg}\n" == "hello\\n"
+
+Because the literal is a raw string literal, the ``\n`` is not interpreted as
+an escape sequence.
+
+
+=================        ====================================================
+  Sign                   Meaning
+=================        ====================================================
+``+``                    Indicates that a sign should be used for both
+                         positive as well as negative numbers.
+``-``                    Indicates that a sign should be used only for
+                         negative numbers (this is the default behavior).
+(space)                  Indicates that a leading space should be used on
+                         positive numbers.
+=================        ====================================================
+
+]##
+
+
+let
+  lla = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is an okayish comment
+  llb = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is a very long comment which should be split
+  llc = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 3429424 + 4239489 - 42399
+  lld = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 342949924 + 423948999 - 42399
+
+type
+  MyLongEnum = enum ## doc comment here
+    first, ## this is a long comment here, but please align it
+    secondWithAVeryLongNameMightBreak, ## this is a short one
+    thirdOne ## it's ok
+
+if true: # just one space before comment
+  echo 7
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool
+  ## Compares two colors.
+  ##
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool {.borrow.}
+  ## Compares two colors.
+  ##

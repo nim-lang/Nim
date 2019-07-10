@@ -2047,7 +2047,7 @@ proc genDestroy(p: BProc; n: PNode) =
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
-    if t.destructor != nil and t.destructor.magic != mDestroy:
+    if t.destructor != nil and t.destructor.ast[bodyPos].len != 0:
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
@@ -2168,6 +2168,22 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if not p.module.compileToCpp:
       p.module.includeHeader("<stdalign.h>")
     putIntoDest(p, d, e, "((NI)alignof($1))" % [getTypeDesc(p.module, t)])
+  of mOffsetOf:
+    var dotExpr: PNode
+    block findDotExpr:
+      if e[1].kind == nkDotExpr:
+        dotExpr = e[1]
+      elif e[1].kind == nkCheckedFieldExpr:
+        dotExpr = e[1][0]
+      else:
+        internalError(p.config, e.info, "unknown ast")
+    let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
+    let member =
+      if t.kind == tyTuple:
+        "Field" & rope(dotExpr[1].sym.position)
+      else:
+        rope(dotExpr[1].sym.name.s)
+    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -2669,9 +2685,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
             (prc.kind == skMethod):
-          # we have not only the header:
-          if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags:
-            genProc(p.module, prc)
+          # Generate proc even if empty body, bugfix #11651.
+          genProc(p.module, prc)
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
   of nkGotoState:

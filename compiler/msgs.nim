@@ -588,3 +588,10 @@ proc listHints*(conf: ConfigRef) =
       if hint in conf.notes: "x" else: " ",
       lineinfos.HintsToStr[ord(hint) - ord(hintMin)]
     ])
+
+proc lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
+  let m = "'$2' should be: '$1'" % [beau, got]
+  if optStyleError in conf.globalOptions:
+    localError(conf, info, m)
+  else:
+    message(conf, info, hintName, m)

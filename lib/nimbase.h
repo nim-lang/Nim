@@ -439,30 +439,6 @@ struct TFrame_ {
   NI16 calldepth;
 };
 
-#ifdef NIM_NEW_MANGLING_RULES
-  #define nimfr_(proc, file) \
-    TFrame FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; nimFrame(&FR_);
-
-  #define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; nimFrame((TFrame*)&FR_);
-
-  #define nimln_(n, file) \
-    FR_.line = n; FR_.filename = file;
-#else
-  #define nimfr(proc, file) \
-    TFrame FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
-
-  #define nimfrs(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
-
-  #define nimln(n, file) \
-    FR.line = n; FR.filename = file;
-#endif
-
 #define NIM_POSIX_INIT  __attribute__((constructor))
 
 #ifdef __GNUC__

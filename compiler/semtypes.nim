@@ -496,7 +496,7 @@ proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
       if overlap(t.sons[i].sons[j].skipConv, ex):
         localError(c.config, ex.info, errDuplicateCaseLabel)
 
-proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode =
+proc semBranchRange(c: PContext, t, a, b: PNode, covered: var Int128): PNode =
   checkMinSonsLen(t, 1, c.config)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
@@ -510,12 +510,12 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode
   else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
 
 proc semCaseBranchRange(c: PContext, t, b: PNode,
-                        covered: var BiggestInt): PNode =
+                        covered: var Int128): PNode =
   checkSonsLen(b, 3, c.config)
   result = semBranchRange(c, t, b.sons[1], b.sons[2], covered)
 
 proc semCaseBranchSetElem(c: PContext, t, b: PNode,
-                          covered: var BiggestInt): PNode =
+                          covered: var Int128): PNode =
   if isRange(b):
     checkSonsLen(b, 3, c.config)
     result = semBranchRange(c, t, b.sons[1], b.sons[2], covered)
@@ -527,7 +527,7 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
     inc(covered)
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
-                   covered: var BiggestInt) =
+                   covered: var Int128) =
   let lastIndex = sonsLen(branch) - 2
   for i in 0..lastIndex:
     var b = branch.sons[i]
@@ -567,12 +567,22 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
   for i in lastIndex.succ..(sonsLen(branch) - 2):
     checkForOverlap(c, t, i, branchIndex)
 
-proc toCover(c: PContext, t: PType): BiggestInt =
+proc toCover(c: PContext, t: PType): Int128 =
   let t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
   if t2.kind == tyEnum and enumHasHoles(t2):
-    result = sonsLen(t2.n)
+    result = toInt128(sonsLen(t2.n))
   else:
-    result = lengthOrd(c.config, skipTypes(t, abstractVar-{tyTypeDesc}))
+    # <----
+    let t = skipTypes(t, abstractVar-{tyTypeDesc})
+    # XXX: hack incoming. lengthOrd is incorrect for 64bit integer
+    # types because it doesn't uset Int128 yet.  This entire branching
+    # should be removed as soon as lengthOrd uses int128.
+    if t.kind in {tyInt64, tyUInt64}:
+      result = toInt128(1) shl 64
+    elif t.kind in {tyInt, tyUInt}:
+      result = toInt128(1) shl (c.config.target.intSize * 8)
+    else:
+      result = toInt128(lengthOrd(c.config, t))
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
@@ -603,7 +613,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     internalError(c.config, "semRecordCase: discriminant is no symbol")
     return
   incl(a.sons[0].sym.flags, sfDiscriminant)
-  var covered: BiggestInt = 0
+  var covered: Int128 = toInt128(0)
   var chckCovered = false
   var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
   const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
@@ -1606,6 +1616,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeof(c, n[1], prev)
       elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeof:
         result = semTypeOf2(c, n, prev)
+      elif op.s == "owned" and optNimV2 notin c.config.globalOptions and n.len == 2:
+        result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
           result = makeTypeFromExpr(c, n.copyTree)
@@ -1738,7 +1750,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       markUsed(c.config, n.info, n.sym, c.graph.usageSym)
       onUse(n.info, n.sym)
     else:
-      if s.kind != skError: localError(c.config, n.info, errTypeExpected)
+      if s.kind != skError:
+        localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
+          [s.name.s, substr($s.kind, 2)])
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
   of nkTupleTy: result = semTuple(c, n, prev)

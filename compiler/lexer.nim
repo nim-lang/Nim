@@ -146,10 +146,6 @@ type
       previousToken: TLineInfo
     config*: ConfigRef
 
-when defined(nimpretty):
-  var
-    gIndentationWidth*: int
-
 proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
   result = newLineInfo(L.fileIdx, tok.line, tok.col)
   when defined(nimpretty):
@@ -882,6 +878,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
   var h: Hash = 0
   var pos = L.bufpos
   tokenBegin(tok, pos)
+  var suspicious = false
   while true:
     var c = L.buf[pos]
     case c
@@ -892,21 +889,26 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
       h = h !& ord(c)
       inc(pos)
+      suspicious = true
     of '_':
       if L.buf[pos+1] notin SymChars:
         lexMessage(L, errGenerated, "invalid token: trailing underscore")
         break
       inc(pos)
+      suspicious = true
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
   tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
-  L.bufpos = pos
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
     tok.tokType = tkSymbol
   else:
     tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
+    if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
+      lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
+  L.bufpos = pos
+
 
 proc endOperator(L: var TLexer, tok: var TToken, pos: int,
                  hash: Hash) {.inline.} =
@@ -1174,8 +1176,6 @@ proc skip(L: var TLexer, tok: var TToken) =
       tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
       tok.indent = commentIndent
-    if gIndentationWidth <= 0:
-      gIndentationWidth = tok.indent
 
 proc rawGetTok*(L: var TLexer, tok: var TToken) =
   template atTokenEnd() {.dirty.} =

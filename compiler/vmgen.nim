@@ -501,7 +501,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   c.gen(n.sons[0], dest)
   c.clearDest(n, dest)
   # Add a jump past the exception handling code
-  endings.add(c.xjmp(n, opcJmp, 0))
+  let jumpToFinally = c.xjmp(n, opcJmp, 0)
   # This signals where the body ends and where the exception handling begins
   c.patch(ehPos)
   for i in 1 ..< n.len:
@@ -525,6 +525,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   let fin = lastSon(n)
   # we always generate an 'opcFinally' as that pops the safepoint
   # from the stack if no exception is raised in the body.
+  c.patch(jumpToFinally)
   c.gABx(fin, opcFinally, 0, 0)
   for endPos in endings: c.patch(endPos)
   if fin.kind == nkFinally:
@@ -1309,8 +1310,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       # produces a value
     else:
       globalError(c.config, n.info, "expandToAst requires a call expression")
-  of mSizeOf, mAlignOf:
-    globalError(c.config, n.info, "cannot evaluate 'sizeof/alignof' because its type is not defined completely")
+  of mSizeOf:
+    globalError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
+  of mAlignOf:
+    globalError(c.config, n.info, "cannot evaluate 'alignof' because its type is not defined completely")
+  of mOffsetOf:
+    globalError(c.config, n.info, "cannot evaluate 'offsetof' because its type is not defined completely")
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy: discard "ignore calls to the default destructor"
@@ -1544,8 +1549,11 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   n.typ = t
   genLit(c, n, dest)
 
-proc importcCond(s: PSym): bool {.inline.} =
-  sfImportc in s.flags and (lfDynamicLib notin s.loc.flags or s.ast == nil)
+proc importcCond*(s: PSym): bool {.inline.} =
+  ## return true to importc `s`, false to execute its body instead (refs #8405)
+  if sfImportc in s.flags:
+    if s.kind in routineKinds:
+      return s.ast.sons[bodyPos].kind == nkEmpty
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
@@ -1553,7 +1561,8 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
       c.globals.add(importcSymbol(c.config, s))
       s.position = c.globals.len
     else:
-      localError(c.config, info, "VM is not allowed to 'importc'")
+      localError(c.config, info,
+        "VM is not allowed to 'importc' without --experimental:compiletimeFFI")
   else:
     localError(c.config, info,
                "cannot 'importc' variable at compile time; " & s.name.s)
@@ -2226,9 +2235,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    # if s.name.s == "fun1":
-    #   echo renderTree(body)
-    #   c.echoCode(result)
+    #if s.name.s == "main":
+    #  echo renderTree(body)
+    #  c.echoCode(result)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset

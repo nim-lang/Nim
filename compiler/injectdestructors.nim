@@ -154,7 +154,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = ""
+const toDebug = "" # "server_continue"
 
 template dbg(body) =
   when toDebug.len > 0:
@@ -338,10 +338,23 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
+when false:
+  proc preventMoveRef(dest, ri: PNode): bool =
+    let lhs = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+    var ri = ri
+    if ri.kind in nkCallKinds and ri[0].kind == nkSym and ri[0].sym.magic == mUnown:
+      ri = ri[1]
+    let rhs = ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+    result = lhs.kind == tyRef and rhs.kind == tyOwned
+
+proc canBeMoved(t: PType): bool {.inline.} =
+  let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
+  result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   let k = if t.attachedOps[attachedSink] != nil: attachedSink
-           else: attachedAsgn
+          else: attachedAsgn
   if t.attachedOps[k] != nil:
     result = genOp(c, t, k, dest, ri)
   else:
@@ -659,7 +672,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
-    elif ri.sym.kind != skParam and ri.sym.owner == c.owner and isLastRead(ri, c):
+    elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
+        isLastRead(ri, c) and canBeMoved(dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
@@ -691,7 +705,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
   else:
-    if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+    if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
+        canBeMoved(dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri

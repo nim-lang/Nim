@@ -427,8 +427,8 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
 proc setVarType(c: PContext; v: PSym, typ: PType) =
   if v.typ != nil and not sameTypeOrNil(v.typ, typ):
     localError(c.config, v.info, "inconsistent typing for reintroduced symbol '" &
-        v.name.s & "': previous type was: " & typeToString(v.typ) &
-        "; new type is: " & typeToString(typ))
+        v.name.s & "': previous type was: " & typeToString(v.typ, preferDesc) &
+        "; new type is: " & typeToString(typ, preferDesc))
   v.typ = typ
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
@@ -877,7 +877,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   pushCaseContext(c, n)
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
-  var covered: BiggestInt = 0
+  var covered: Int128 = toInt128(0)
   var typ = commonTypeBegin
   var hasElse = false
   let caseTyp = skipTypes(n.sons[0].typ, abstractVar-{tyTypeDesc})
@@ -1863,7 +1863,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         " operator has to be enabled with {.experimental: \"callOperator\".}")
 
   if n.sons[bodyPos].kind != nkEmpty and sfError notin s.flags:
-    # for DLL generation it is annoying to check for sfImportc!
+    # for DLL generation we allow sfImportc to have a body, for use in VM
     if sfBorrow in s.flags:
       localError(c.config, n.sons[bodyPos].info, errImplOfXNotAllowed % s.name.s)
     let usePseudoGenerics = kind in {skMacro, skTemplate}
@@ -1881,12 +1881,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
         c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
-        if lfDynamicLib notin s.loc.flags:
-          # no semantic checking for importc:
-          s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-          # unfortunately we cannot skip this step when in 'system.compiles'
-          # context as it may even be evaluated in 'system.compiles':
-          trackProc(c, s, s.ast[bodyPos])
+        # semantic checking also needed with importc in case used in VM
+        s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+        # unfortunately we cannot skip this step when in 'system.compiles'
+        # context as it may even be evaluated in 'system.compiles':
+        trackProc(c, s, s.ast[bodyPos])
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       else:
         if (s.typ.sons[0] != nil and kind != skIterator) or kind == skMacro:
@@ -1899,8 +1898,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           fixupInstantiatedSymbols(c, s)
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       if sfImportc in s.flags:
-        # so we just ignore the body after semantic checking for importc:
-        n.sons[bodyPos] = c.graph.emptyNode
+        # don't ignore the body in case used in VM
+        # n.sons[bodyPos] = c.graph.emptyNode
+        discard
       popProcCon(c)
   else:
     if s.kind == skMethod: semMethodPrototype(c, s, n)
