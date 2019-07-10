@@ -978,7 +978,7 @@ proc getNimNode(m: BModule): Rope =
   result = "$1[$2]" % [m.typeNodesName, rope(m.typeNodes)]
   inc(m.typeNodes)
 
-proc TINameForHcr(m: BModule, name: Rope): Rope =
+proc tiNameForHcr(m: BModule, name: Rope): Rope =
   return if m.hcrOn: "(*".rope & name & ")" else: name
 
 proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
@@ -990,7 +990,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   else:
     nimtypeKind = ord(typ.kind)
 
-  let nameHcr = TINameForHcr(m, name)
+  let nameHcr = tiNameForHcr(m, name)
 
   var size: Rope
   if tfIncompleteStruct in typ.flags: size = rope"void*"
@@ -1012,7 +1012,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     if typename == "ref object" and origType.skipTypes(skipPtrs).sym != nil:
       typename = "anon ref object from " & m.config$origType.skipTypes(skipPtrs).sym.info
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
-        [nameHcr, makeCstring typename])
+        [nameHcr, makeCString typename])
     discard cgsym(m, "nimTypeRoot")
     addf(m.s[cfsTypeInit3], "$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
          [nameHcr])
@@ -1142,7 +1142,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo
   var tmp = getNimNode(m)
   if not isImportedType(typ):
     genObjectFields(m, typ, origType, typ.n, tmp, info)
-  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [TINameForHcr(m, name), tmp])
+  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [tiNameForHcr(m, name), tmp])
   var t = typ.sons[0]
   while t != nil:
     t = t.skipTypes(skipPtrs)
@@ -1170,7 +1170,7 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
   else:
     addf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2;$n",
          [expr, rope(length)])
-  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [TINameForHcr(m, name), expr])
+  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [tiNameForHcr(m, name), expr])
 
 proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   # Type information for enumerations is quite heavy, so we do some
@@ -1209,17 +1209,17 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   add(m.s[cfsTypeInit3], specialCases)
   addf(m.s[cfsTypeInit3],
        "$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n$4.node = &$1;$n",
-       [getNimNode(m), rope(length), nodePtrs, TINameForHcr(m, name)])
+       [getNimNode(m), rope(length), nodePtrs, tiNameForHcr(m, name)])
   if hasHoles:
     # 1 << 2 is {ntfEnumHole}
-    addf(m.s[cfsTypeInit3], "$1.flags = 1<<2;$n", [TINameForHcr(m, name)])
+    addf(m.s[cfsTypeInit3], "$1.flags = 1<<2;$n", [tiNameForHcr(m, name)])
 
 proc genSetInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   assert(typ.sons[0] != nil)
   genTypeInfoAux(m, typ, typ, name, info)
   var tmp = getNimNode(m)
   addf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 0;$n" & "$3.node = &$1;$n",
-       [tmp, rope(firstOrd(m.config, typ)), TINameForHcr(m, name)])
+       [tmp, rope(firstOrd(m.config, typ)), tiNameForHcr(m, name)])
 
 proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, genTypeInfo(m, typ.sons[1], info), info)
@@ -1350,12 +1350,12 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     if m.config.selectedGC != gcDestructors:
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
-        addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [TINameForHcr(m, result), markerProc])
+        addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig)
-      addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [TINameForHcr(m, result), markerProc])
+      addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)
   of tySet: genSetInfo(m, t, result, info)

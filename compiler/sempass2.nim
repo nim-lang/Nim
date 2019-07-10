@@ -74,7 +74,7 @@ type
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
-    gcUnsafe, isRecursive, isToplevel, hasSideEffect, inEnforcedGcSafe: bool
+    gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     config: ConfigRef
@@ -263,7 +263,7 @@ proc useVar(a: PEffects, n: PNode) =
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
-      s.magic != mNimVm:
+      s.magic != mNimvm:
     if s.guard != nil: guardGlobal(a, n, s.guard)
     if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
         (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
@@ -476,7 +476,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
     markSideEffect(tracked, s)
   mergeLockLevels(tracked, n, s.getLockLevel)
 
-proc procVarcheck(n: PNode; conf: ConfigRef) =
+proc procVarCheck(n: PNode; conf: ConfigRef) =
   if n.kind in nkSymChoices:
     for x in n: procVarCheck(x, conf)
   elif n.kind == nkSym and n.sym.magic != mNone and n.sym.kind in routineKinds:
@@ -485,7 +485,7 @@ proc procVarcheck(n: PNode; conf: ConfigRef) =
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
   if paramType.isNil or paramType.kind != tyTypeDesc:
-    procVarcheck skipConvAndClosure(n), tracked.config
+    procVarCheck skipConvAndClosure(n), tracked.config
   #elif n.kind in nkSymChoices:
   #  echo "came here"
   let paramType = paramType.skipTypesOrNil(abstractInst)
@@ -833,7 +833,7 @@ proc track(tracked: PEffects, n: PNode) =
           createTypeBoundOps(tracked.graph, tracked.c, it.typ, it.info)
     let iterCall = n[n.len-2]
     let loopBody = n[n.len-1]
-    if tracked.owner.kind != skMacro and iterCall.safelen > 1:
+    if tracked.owner.kind != skMacro and iterCall.safeLen > 1:
       # XXX this is a bit hacky:
       if iterCall[1].typ != nil and iterCall[1].typ.skipTypes(abstractVar).kind notin {tyVarargs, tyOpenArray}:
         createTypeBoundOps(tracked.graph, tracked.c, iterCall[1].typ, iterCall[1].info)
@@ -861,7 +861,7 @@ proc track(tracked: PEffects, n: PNode) =
         lockLocations(tracked, pragmaList.sons[i])
       elif pragma == wGcSafe:
         enforcedGcSafety = true
-      elif pragma == wNosideeffect:
+      elif pragma == wNoSideEffect:
         enforceNoSideEffects = true
     if enforcedGcSafety: tracked.inEnforcedGcSafe = true
     if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
@@ -1035,5 +1035,5 @@ proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
   var effects = newNode(nkEffectList, n.info)
   var t: TEffects
   initEffects(g, effects, module, t, c)
-  t.isToplevel = true
+  t.isTopLevel = true
   track(t, n)

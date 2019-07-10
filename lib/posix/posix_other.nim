@@ -9,6 +9,9 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
 const
   hasSpawnH = true # should exist for every Posix system nowadays
   hasAioH = defined(linux)
@@ -281,7 +284,7 @@ type
     sigev_signo*: cint            ## Signal number.
     sigev_value*: SigVal          ## Signal value.
     sigev_notify_function*: proc (x: SigVal) {.noconv.} ## Notification func.
-    sigev_notify_attributes*: ptr PthreadAttr ## Notification attributes.
+    sigev_notify_attributes*: ptr Pthread_attr ## Notification attributes.
 
   SigVal* {.importc: "union sigval",
              header: "<signal.h>", final, pure.} = object ## struct sigval
@@ -603,3 +606,6 @@ proc WIFSTOPPED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child is currently stopped.
 proc WIFCONTINUED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
+
+when defined(nimHasStyleChecks):
+  {.pop.}

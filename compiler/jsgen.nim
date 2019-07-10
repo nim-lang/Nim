@@ -573,20 +573,20 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMinF64: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
   of mMaxF64: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
   of mAddU: applyFormat("", "")
-  of msubU: applyFormat("", "")
-  of mmulU: applyFormat("", "")
-  of mdivU: applyFormat("", "")
-  of mmodU: applyFormat("($1 % $2)", "($1 % $2)")
+  of mSubU: applyFormat("", "")
+  of mMulU: applyFormat("", "")
+  of mDivU: applyFormat("", "")
+  of mModU: applyFormat("($1 % $2)", "($1 % $2)")
   of mEqI: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeI: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtI: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqF64: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeF64: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtF64: applyFormat("($1 < $2)", "($1 < $2)")
-  of mleU: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mltU: applyFormat("($1 < $2)", "($1 < $2)")
-  of mleU64: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mltU64: applyFormat("($1 < $2)", "($1 < $2)")
+  of mLeU: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtU: applyFormat("($1 < $2)", "($1 < $2)")
+  of mLeU64: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtU64: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqEnum: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)", "($1 < $2)")
@@ -1591,9 +1591,9 @@ proc arrayTypeForElemType(typ: PType): string =
   of tyInt, tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
   of tyInt8: "Int8Array"
-  of tyUint, tyUint32: "Uint32Array"
-  of tyUint16: "Uint16Array"
-  of tyUint8: "Uint8Array"
+  of tyUInt, tyUInt32: "Uint32Array"
+  of tyUInt16: "Uint16Array"
+  of tyUInt8: "Uint8Array"
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
   else: ""
@@ -2246,7 +2246,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   if prc.typ.sons[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast.sons[resultPos].sym
     let mname = mangleName(p.module, resultSym)
-    if not isindirect(resultSym) and
+    if not isIndirect(resultSym) and
       resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and
         mapType(p, resultSym.typ) == etyBaseIndex:
       resultAsgn = p.indentLine(("var $# = null;$n") % [mname])
@@ -2391,7 +2391,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkFloatLit..nkFloat64Lit:
     let f = n.floatVal
     case classify(f)
-    of fcNaN:
+    of fcNan:
       r.res = rope"NaN"
     of fcNegZero:
       r.res = rope"-0.0"

@@ -219,7 +219,7 @@ proc fillToken(L: var TToken) =
 proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
-  lex.fileIdx = fileidx
+  lex.fileIdx = fileIdx
   lex.indentAhead = -1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
@@ -565,7 +565,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       case result.tokType
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
-      of tkUint64Lit:
+      of tkUInt64Lit:
         var iNumber: uint64
         var len: int
         try:

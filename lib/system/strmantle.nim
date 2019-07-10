@@ -9,7 +9,7 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
-proc cmpStrings(a, b: string): int {.inline, compilerProc.} =
+proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
   let minlen = min(alen, blen)
@@ -20,7 +20,7 @@ proc cmpStrings(a, b: string): int {.inline, compilerProc.} =
   else:
     result = alen - blen
 
-proc eqStrings(a, b: string): bool {.inline, compilerProc.} =
+proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
   if alen == blen:
@@ -135,7 +135,7 @@ const
               1e20, 1e21, 1e22]
 
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
-                          start = 0): int {.compilerProc.} =
+                          start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
   # ie whose integer part can fit inside a 53bits integer.
   # their real exponent must also be <= 22. If the float doesn't follow

@@ -354,11 +354,11 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
   if result.addrtype == AF_INET:
-    result.addrlist = @[]
+    result.addrList = @[]
     var i = 0
-    while not isNil(s.h_addrlist[i]):
+    while not isNil(s.h_addr_list[i]):
       var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+      result.addrList.add($inet_ntoa(inaddr_ptr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
@@ -383,11 +383,11 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
   if result.addrtype == AF_INET:
-    result.addrlist = @[]
+    result.addrList = @[]
     var i = 0
-    while not isNil(s.h_addrlist[i]):
+    while not isNil(s.h_addr_list[i]):
       var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+      result.addrList.add($inet_ntoa(inaddr_ptr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
@@ -400,7 +400,7 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   const size = 64
   result = newString(size)
   when useWinVersion:
-    let success = winlean.getHostname(result, size)
+    let success = winlean.gethostname(result, size)
   else:
     # Posix
     let success = posix.getHostname(result, size)
@@ -613,7 +613,7 @@ proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
+  var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var rd: TFdSet
   var m = 0
@@ -635,7 +635,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
+  var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var wr: TFdSet
   var m = 0

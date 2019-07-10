@@ -157,7 +157,7 @@ proc makeRange(typ: PType, first, last: BiggestInt; g: ModuleGraph): PType =
   let lowerNode = newIntNode(nkIntLit, minA)
   if typ.kind == tyInt and minA == maxA:
     result = getIntLitType(g, lowerNode)
-  elif typ.kind in {tyUint, tyUInt64}:
+  elif typ.kind in {tyUInt, tyUInt64}:
     # these are not ordinal types, so you get no subrange type for these:
     result = typ
   else:
@@ -187,7 +187,7 @@ proc fitLiteral(c: ConfigRef, n: PNode): PNode =
   result = n
 
   let typ = n.typ.skipTypes(abstractRange)
-  if typ.kind in tyUInt..tyUint32:
+  if typ.kind in tyUInt..tyUInt32:
     result.intVal = result.intVal and lastOrd(c, typ, fixedUnsigned=true)
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
@@ -431,7 +431,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
 
   # XXX range checks?
   case dstTyp.kind
-  of tyInt..tyInt64, tyUint..tyUInt64:
+  of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
     of tyFloat..tyFloat64:
       result = newIntNodeT(int(getFloat(a)), n, g)
@@ -441,7 +441,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       let toSigned = dstTyp.kind in tyInt..tyInt64
       var val = a.getOrdValue
 
-      if dstTyp.kind in {tyInt, tyInt64, tyUint, tyUInt64}:
+      if dstTyp.kind in {tyInt, tyInt64, tyUInt, tyUInt64}:
         # No narrowing needed
         discard
       elif dstTyp.kind in {tyInt..tyInt64}:

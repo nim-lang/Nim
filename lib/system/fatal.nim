@@ -14,7 +14,7 @@ elif defined(nimQuirky) and not defined(nimscript):
 
   proc name(t: typedesc): string {.magic: "TypeTrait".}
 
-  proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
+  proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noreturn.} =
     var buf = newStringOfCap(200)
     add(buf, "Error: unhandled exception: ")
     add(buf, message)
@@ -25,11 +25,11 @@ elif defined(nimQuirky) and not defined(nimscript):
     cstderr.rawWrite buf
     quit 1
 
-  proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
+  proc sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
     sysFatal(exceptn, message, "")
 
 else:
-  proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
+  proc sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
     when declared(owned):
       var e: owned(ref exceptn)
     else:
@@ -38,7 +38,7 @@ else:
     e.msg = message
     raise e
 
-  proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
+  proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noreturn.} =
     when declared(owned):
       var e: owned(ref exceptn)
     else:

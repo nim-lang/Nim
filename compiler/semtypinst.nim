@@ -598,7 +598,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       of tySequence:
-        if cl.isReturnType and cl.c.config.selectedGc == gcDestructors and
+        if cl.isReturnType and cl.c.config.selectedGC == gcDestructors and
             result.attachedOps[attachedDestructor].isNil and
             result[0].kind != tyEmpty and optNimV2 notin cl.c.config.globalOptions:
           let s = cl.c.graph.sysTypes[tySequence]

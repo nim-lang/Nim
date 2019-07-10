@@ -152,7 +152,7 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
           src.intVal notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
-          (classify(src.floatVal) in {fcNaN, fcNegInf, fcInf} or
+          (classify(src.floatVal) in {fcNan, fcNegInf, fcInf} or
             src.floatVal.int64 notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp)):
         result = convNotInRange
     elif targetBaseTyp.kind in tyFloat..tyFloat64:
@@ -160,7 +160,7 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
           not floatRangeCheck(src.floatVal, targetTyp):
         result = convNotInRange
       elif src.kind in nkCharLit..nkUInt64Lit and
-          not floatRangeCheck(src.intval.float, targetTyp):
+          not floatRangeCheck(src.intVal.float, targetTyp):
         result = convNotInRange
   else:
     # we use d, s here to speed up that operation a bit:
@@ -1621,7 +1621,7 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
 template resultTypeIsInferrable(typ: PType): untyped =
   typ.isMetaType and typ.kind != tyTypeDesc
 
-proc goodLineInfo(arg: PNode): TLineinfo =
+proc goodLineInfo(arg: PNode): TLineInfo =
   if arg.kind == nkStmtListExpr and arg.len > 0:
     goodLineInfo(arg[^1])
   else:
@@ -2108,7 +2108,7 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   # since it's an instantiation, we unmark it as a compilerproc. Otherwise
   # codegen would fail:
   if sfCompilerProc in result.flags:
-    result.flags = result.flags - {sfCompilerProc, sfExportC, sfImportC}
+    result.flags = result.flags - {sfCompilerProc, sfExportc, sfImportc}
     result.loc.r = nil
 
 proc setMs(n: PNode, s: PSym): PNode =

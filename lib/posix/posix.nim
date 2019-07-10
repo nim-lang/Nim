@@ -32,6 +32,9 @@
 # error only if they actualy try to use the missing declaration
 {.deadCodeElim: on.}  # dce option deprecated
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?
 when false:
@@ -114,13 +117,13 @@ when StatHasNanoseconds:
     ## Second-granularity time of last status change.
     result = s.st_ctim.tv_sec
 else:
-  proc st_atim*(s: Stat): TimeSpec {.inline.} =
+  proc st_atim*(s: Stat): Timespec {.inline.} =
     ## Nanosecond-granularity time of last access.
     result.tv_sec = s.st_atime
-  proc st_mtim*(s: Stat): TimeSpec {.inline.} =
+  proc st_mtim*(s: Stat): Timespec {.inline.} =
     ## Nanosecond-granularity time of last data modification.
     result.tv_sec = s.st_mtime
-  proc st_ctim*(s: Stat): TimeSpec {.inline.} =
+  proc st_ctim*(s: Stat): Timespec {.inline.} =
     ## Nanosecond-granularity time of last data modification.
     result.tv_sec = s.st_ctime
 
@@ -269,45 +272,45 @@ proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 
 proc pthread_atfork*(a1, a2, a3: proc () {.noconv.}): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_destroy*(a1: ptr PthreadAttr): cint {.
+proc pthread_attr_destroy*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getdetachstate*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_getdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getguardsize*(a1: ptr PthreadAttr, a2: var cint): cint {.
+proc pthread_attr_getguardsize*(a1: ptr Pthread_attr, a2: var cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getinheritsched*(a1: ptr PthreadAttr,
+proc pthread_attr_getinheritsched*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getschedparam*(a1: ptr PthreadAttr,
+proc pthread_attr_getschedparam*(a1: ptr Pthread_attr,
           a2: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getschedpolicy*(a1: ptr PthreadAttr,
+proc pthread_attr_getschedpolicy*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getscope*(a1: ptr PthreadAttr,
+proc pthread_attr_getscope*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstack*(a1: ptr PthreadAttr,
+proc pthread_attr_getstack*(a1: ptr Pthread_attr,
          a2: var pointer, a3: var int): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstackaddr*(a1: ptr PthreadAttr,
+proc pthread_attr_getstackaddr*(a1: ptr Pthread_attr,
           a2: var pointer): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstacksize*(a1: ptr PthreadAttr,
+proc pthread_attr_getstacksize*(a1: ptr Pthread_attr,
           a2: var int): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_init*(a1: ptr PthreadAttr): cint {.
+proc pthread_attr_init*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setdetachstate*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_setdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setguardsize*(a1: ptr PthreadAttr, a2: int): cint {.
+proc pthread_attr_setguardsize*(a1: ptr Pthread_attr, a2: int): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setinheritsched*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_setinheritsched*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setschedparam*(a1: ptr PthreadAttr,
+proc pthread_attr_setschedparam*(a1: ptr Pthread_attr,
           a2: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_setschedpolicy*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_setschedpolicy*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setscope*(a1: ptr PthreadAttr, a2: cint): cint {.importc,
+proc pthread_attr_setscope*(a1: ptr Pthread_attr, a2: cint): cint {.importc,
   header: "<pthread.h>".}
-proc pthread_attr_setstack*(a1: ptr PthreadAttr, a2: pointer, a3: int): cint {.
+proc pthread_attr_setstack*(a1: ptr Pthread_attr, a2: pointer, a3: int): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setstackaddr*(a1: ptr PthreadAttr, a2: pointer): cint {.
+proc pthread_attr_setstackaddr*(a1: ptr Pthread_attr, a2: pointer): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setstacksize*(a1: ptr PthreadAttr, a2: int): cint {.
+proc pthread_attr_setstacksize*(a1: ptr Pthread_attr, a2: int): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_barrier_destroy*(a1: ptr Pthread_barrier): cint {.
   importc, header: "<pthread.h>".}
@@ -350,7 +353,7 @@ proc pthread_condattr_init*(a1: ptr Pthread_condattr): cint {.importc, header: "
 proc pthread_condattr_setclock*(a1: ptr Pthread_condattr,a2: ClockId): cint {.importc, header: "<pthread.h>".}
 proc pthread_condattr_setpshared*(a1: ptr Pthread_condattr, a2: cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_create*(a1: ptr Pthread, a2: ptr PthreadAttr,
+proc pthread_create*(a1: ptr Pthread, a2: ptr Pthread_attr,
           a3: proc (x: pointer): pointer {.noconv.}, a4: pointer): cint {.importc, header: "<pthread.h>".}
 proc pthread_detach*(a1: Pthread): cint {.importc, header: "<pthread.h>".}
 proc pthread_equal*(a1, a2: Pthread): cint {.importc, header: "<pthread.h>".}
@@ -1068,3 +1071,6 @@ proc setrlimit*(resource: cint, rlp: var RLimit): cint
 proc getrlimit*(resource: cint, rlp: var RLimit): cint
       {.importc: "getrlimit",header: "<sys/resource.h>".}
   ## The getrlimit() system call gets resource limits.
+
+when defined(nimHasStyleChecks):
+  {.pop.} # {.push styleChecks: off.}

@@ -456,7 +456,7 @@ var
   threadLocalMarkers {.exportc.}: array[0..3499, GlobalMarkerProc]
   gHeapidGenerator: int
 
-proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
+proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerproc.} =
   if globalMarkersLen <= high(globalMarkers):
     globalMarkers[globalMarkersLen] = markerProc
     inc globalMarkersLen
@@ -464,7 +464,7 @@ proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
     cstderr.rawWrite("[GC] cannot register global variable; too many global variables")
     quit 1
 
-proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
+proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerproc.} =
   if threadLocalMarkersLen <= high(threadLocalMarkers):
     threadLocalMarkers[threadLocalMarkersLen] = markerProc
     inc threadLocalMarkersLen

@@ -268,7 +268,7 @@ proc genLineDir(p: BProc, t: PNode) =
               [line, makeCString(toFilename(p.config, t.info))])
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
+      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
     if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               [line, quotedFilename(p.config, t.info)])
@@ -296,13 +296,13 @@ proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     result = rdLoc(a) & ".len"
   else:
     result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
 proc dataField(p: BProc): Rope =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     result = rope".p->data"
   else:
     result = rope"->data"
@@ -380,10 +380,10 @@ proc isComplexValueType(t: PType): bool {.inline.} =
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc resetLoc(p: BProc, loc: var TLoc) =
-  let containsGcRef = p.config.selectedGc != gcDestructors and containsGarbageCollectedRef(loc.t)
+  let containsGcRef = p.config.selectedGC != gcDestructors and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
-  if p.config.selectedGc == gcDestructors and typ.kind in {tyString, tySequence}:
+  if p.config.selectedGC == gcDestructors and typ.kind in {tyString, tySequence}:
     assert rdLoc(loc) != nil
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
@@ -414,7 +414,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if p.config.selectedGc == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+  if p.config.selectedGC == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
@@ -1774,7 +1774,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
-  let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
+  let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCfilePath(g.config, filename), "ndi")
                 else: AbsoluteFile""
   open(result.ndi, ndiName, g.config)
 
@@ -1805,7 +1805,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
     let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
             else: graph.config.projectFull
     g.generatedHeader = rawNewModule(g, module,
-      changeFileExt(completeCFilePath(graph.config, f), hExt))
+      changeFileExt(completeCfilePath(graph.config, f), hExt))
     incl g.generatedHeader.flags, isHeaderFile
 
 proc writeHeader(m: BModule) =
@@ -1838,9 +1838,9 @@ proc writeHeader(m: BModule) =
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
-      elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".nim.m"
+      elif m.config.cmd == cmdCompileToOC or sfCompileToObjc in m.module.flags: ".nim.m"
       else: ".nim.c"
-  result = changeFileExt(completeCFilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
+  result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
 when false:
   proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
@@ -1920,7 +1920,7 @@ proc writeModule(m: BModule, pending: bool) =
       generateThreadVarsSize(m)
 
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     var code = genModule(m, cf)
     if code != nil:
       when hasTinyCBackend:
@@ -1932,7 +1932,7 @@ proc writeModule(m: BModule, pending: bool) =
       addFileToCompile(m.config, cf)
   elif pending and mergeRequired(m) and sfMainModule notin m.module.flags:
     let cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     mergeFiles(cfile, m)
     genInitCode(m)
     finishTypeDescriptions(m)
@@ -1946,7 +1946,7 @@ proc writeModule(m: BModule, pending: bool) =
     # ``system.c`` but then compilation fails due to an error. This means
     # that ``system.o`` is missing, so we need to call the C compiler for it:
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   close(m.ndi)
@@ -1954,7 +1954,7 @@ proc writeModule(m: BModule, pending: bool) =
 proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
   var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                 obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                 obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
 
   if mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)

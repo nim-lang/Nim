@@ -1007,7 +1007,7 @@ template instantiateForRegion(allocator: untyped) =
     dealloc(allocator, p)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    result = realloc(allocator, p, newSize)
+    result = realloc(allocator, p, newsize)
 
   when false:
     proc countFreeMem(): int =
@@ -1060,7 +1060,7 @@ template instantiateForRegion(allocator: untyped) =
       result = realloc(sharedHeap, p, newsize)
       releaseSys(heapLock)
     else:
-      result = realloc(p, newSize)
+      result = realloc(p, newsize)
 
   when hasThreadSupport:
     template sharedMemStatsShared(v: int) =
