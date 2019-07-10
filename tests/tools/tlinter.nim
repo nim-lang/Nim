@@ -8,11 +8,11 @@ tlinter.nim(25, 1) Hint: 'tyPE' should be: 'type' [Name]
 tlinter.nim(23, 1) Hint: 'foO' should be: 'foo' [Name]
 tlinter.nim(27, 14) Hint: 'Foo_bar' should be: 'FooBar' [Name]
 tlinter.nim(29, 6) Hint: 'someVAR' should be: 'someVar' [Name]
+tlinter.nim(32, 7) Hint: 'i_fool' should be: 'iFool' [Name]
+tlinter.nim(39, 5) Hint: 'meh_field' should be: 'mehField' [Name]
 '''
   action: "compile"
 """
-
-
 
 
 
@@ -27,4 +27,14 @@ tyPE FooBar = string
 var someVar: Foo_bar = "a"
 
 echo someVAR
+
+proc main =
+  var i_fool = 34
+  echo i_fool
+
+main()
+
+type
+  Foo = object
+    meh_field: int
 

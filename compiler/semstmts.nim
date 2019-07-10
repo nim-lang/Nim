@@ -320,6 +320,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     result = semIdentWithPragma(c, kind, n, {})
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
+  result.options = c.config.options
 
   proc getLineInfo(n: PNode): TLineInfo =
     case n.kind

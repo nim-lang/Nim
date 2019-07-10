@@ -590,7 +590,7 @@ proc rawFindFile2(conf: ConfigRef; f: RelativeFile): AbsoluteFile =
     result = it / f
     if fileExists(result):
       # bring to front
-      for j in countdown(i,1):
+      for j in countdown(i, 1):
         swap(conf.lazyPaths[j], conf.lazyPaths[j-1])
 
       return canonicalizePath(conf, result)
