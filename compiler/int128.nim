@@ -74,22 +74,76 @@ proc toInt64*(arg: Int128): int64 =
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
-proc toInt*(arg: Int128): int =
+proc toInt32*(arg: Int128): int32 =
   if isNegative(arg):
     assert(arg.sdata(3) == -1, "out of range")
     assert(arg.sdata(2) == -1, "out of range")
-    when sizeof(int) == 4:
-      assert(arg.sdata(1) == -1, "out of range")
+    assert(arg.sdata(1) == -1, "out of range")
   else:
     assert(arg.sdata(3) == 0, "out of range")
     assert(arg.sdata(2) == 0, "out of range")
-    when sizeof(int) == 4:
-      assert(arg.sdata(1) == 0, "out of range")
+    assert(arg.sdata(1) == 0, "out of range")
 
-  when sizeof(int) == 4:
-    cast[int](arg.udata[0])
+  arg.sdata(0)
+
+proc toInt16*(arg: Int128): int16 =
+  if isNegative(arg):
+    assert(arg.sdata(3) == -1, "out of range")
+    assert(arg.sdata(2) == -1, "out of range")
+    assert(arg.sdata(1) == -1, "out of range")
   else:
-    cast[int](bitconcat(arg.udata[1], arg.udata[0]))
+    assert(arg.sdata(3) == 0, "out of range")
+    assert(arg.sdata(2) == 0, "out of range")
+    assert(arg.sdata(1) == 0, "out of range")
+
+  int16(arg.sdata(0))
+
+proc toInt8*(arg: Int128): int8 =
+  if isNegative(arg):
+    assert(arg.sdata(3) == -1, "out of range")
+    assert(arg.sdata(2) == -1, "out of range")
+    assert(arg.sdata(1) == -1, "out of range")
+  else:
+    assert(arg.sdata(3) == 0, "out of range")
+    assert(arg.sdata(2) == 0, "out of range")
+    assert(arg.sdata(1) == 0, "out of range")
+
+  int8(arg.sdata(0))
+
+proc toInt*(arg: Int128): int =
+  when sizeof(int) == 4:
+    cast[int](toInt32(arg))
+  else:
+    cast[int](toInt64(arg))
+
+proc toUInt64*(arg: Int128): uint64 =
+  assert(arg.udata[3] == 0)
+  assert(arg.udata[2] == 0)
+  bitconcat(arg.udata[1], arg.udata[0])
+
+proc toUInt32*(arg: Int128): uint32 =
+  assert(arg.udata[3] == 0)
+  assert(arg.udata[2] == 0)
+  assert(arg.udata[1] == 0)
+  arg.udata[0]
+
+proc toUInt16*(arg: Int128): uint16 =
+  assert(arg.udata[3] == 0)
+  assert(arg.udata[2] == 0)
+  assert(arg.udata[1] == 0)
+  uint16(arg.udata[0])
+
+proc toUInt8*(arg: Int128): uint8 =
+  assert(arg.udata[3] == 0)
+  assert(arg.udata[2] == 0)
+  assert(arg.udata[1] == 0)
+  uint8(arg.udata[0])
+
+proc toUInt*(arg: Int128): uint =
+  when sizeof(int) == 4:
+    cast[uint](toInt32(arg))
+  else:
+    cast[uint](toInt64(arg))
 
 proc castToInt64*(arg: Int128): int64 =
   ## Conversion to int64 without range check.
@@ -98,11 +152,6 @@ proc castToInt64*(arg: Int128): int64 =
 proc castToUInt64*(arg: Int128): uint64 =
   ## Conversion to uint64 without range check.
   cast[uint64](bitconcat(arg.udata[1], arg.udata[0]))
-
-proc toUInt64*(arg: Int128): uint64 =
-  assert(arg.udata[3] == 0)
-  assert(arg.udata[2] == 0)
-  bitconcat(arg.udata[1], arg.udata[0])
 
 proc addToHex(result: var string; arg: uint32) =
   for i in 0 ..< 8:

@@ -104,7 +104,7 @@ proc foldModU*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   if b != 0'i64:
     result = newIntNodeT(a %% b, n, g)
 
-proc foldDiv*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
+proc foldDiv*(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
   if b != 0'i64 and (a != firstOrd(g.config, n.typ) or b != -1'i64):
     result = newIntNodeT(a div b, n, g)
 
@@ -210,7 +210,7 @@ proc fitLiteral(c: ConfigRef, n: PNode): PNode =
 
   let typ = n.typ.skipTypes(abstractRange)
   if typ.kind in tyUInt..tyUint32:
-    result.intVal = result.intVal and lastOrd64(c, typ, fixedUnsigned=true)
+    result.intVal = result.intVal and castToInt64(lastOrd(c, typ))
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   template doAndFit(op: untyped): untyped =
@@ -226,7 +226,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mNot: result = newIntNodeT(1 - getInt64(a), n, g)
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
   of mBitnotI: result = doAndFit(newIntNodeT(not getInt64(a), n, g))
-  of mLengthArray: result = newIntNodeT(lengthOrd64(g.config, a.typ), n, g)
+  of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
   of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
     if a.kind == nkNilLit:
       result = newIntNodeT(0, n, g)
@@ -255,17 +255,24 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     else: result = newIntNodeT(getInt64(b), n, g)
   of mShlI:
     case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result = newIntNodeT(int8(getInt64(a)) shl getInt64(b), n, g)
-    of tyInt16: result = newIntNodeT(int16(getInt64(a)) shl getInt64(b), n, g)
-    of tyInt32: result = newIntNodeT(int32(getInt64(a)) shl getInt64(b), n, g)
-    of tyInt64: result = newIntNodeT(getInt64(a) shl getInt64(b), n, g)
+    of tyInt8: result = newIntNodeT(toInt8(getInt(a)) shl getInt64(b), n, g)
+    of tyInt16: result = newIntNodeT(toInt16(getInt(a)) shl getInt64(b), n, g)
+    of tyInt32: result = newIntNodeT(toInt32(getInt(a)) shl getInt64(b), n, g)
+    of tyInt64: result = newIntNodeT(toInt64(getInt(a)) shl getInt64(b), n, g)
     of tyInt:
       if g.config.target.intSize == 4:
-        result = newIntNodeT(int32(getInt64(a)) shl getInt64(b), n, g)
+        result = newIntNodeT(toInt32(getInt(a)) shl getInt64(b), n, g)
       else:
-        result = newIntNodeT(getInt64(a) shl getInt64(b), n, g)
-    of tyUInt..tyUInt64:
-      result = doAndFit(newIntNodeT(`shl`(getInt64(a), getInt64(b)), n, g))
+        result = newIntNodeT(toInt64(getInt(a)) shl getInt64(b), n, g)
+    of tyUInt8: result = newIntNodeT(BiggestInt(toUInt8(getInt(a)) shl getInt64(b)), n, g)
+    of tyUInt16: result = newIntNodeT(BiggestInt(toUInt16(getInt(a)) shl getInt64(b)), n, g)
+    of tyUInt32: result = newIntNodeT(BiggestInt(toUInt32(getInt(a)) shl getInt64(b)), n, g)
+    of tyUInt64: result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl getInt64(b)), n, g)
+    of tyUInt:
+      if g.config.target.intSize == 4:
+        result = newIntNodeT(BiggestInt(toUInt32(getInt(a)) shl getInt64(b)), n, g)
+      else:
+        result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl getInt64(b)), n, g)
     else: internalError(g.config, n.info, "constant folding for shl")
   of mShrI:
     var a = cast[uint64](getInt(a))
@@ -295,7 +302,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     of tyInt64, tyInt:
       result = newIntNodeT(ashr(getInt64(a), getInt64(b)), n, g)
     else: internalError(g.config, n.info, "constant folding for ashr")
-  of mDivI: result = foldDiv(getInt64(a), getInt64(b), n, g)
+  of mDivI: result = foldDiv(getInt(a), getInt(b), n, g)
   of mModI: result = foldMod(getInt64(a), getInt64(b), n, g)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n, g)
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n, g)
