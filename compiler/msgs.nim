@@ -160,19 +160,25 @@ proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   if i >=% L: result = unknownLineInfo()
   else: result = conf.m.msgContext[i].info
 
+const
+  commandLineDesc = "command line"
+
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
-    "???"
+    (if fileIdx == commandLineIdx: commandLineDesc else: "???")
   else:
     conf.m.fileInfos[fileIdx.int32].shortName
 
 proc toProjPath*(conf: ConfigRef; fileIdx: FileIndex): string =
-  if fileIdx.int32 < 0 or conf == nil: "???"
+  if fileIdx.int32 < 0 or conf == nil:
+    (if fileIdx == commandLineIdx: commandLineDesc else: "???")
   else: conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
-  if fileIdx.int32 < 0 or conf == nil: result = "???"
-  else: result = conf.m.fileInfos[fileIdx.int32].fullPath.string
+  if fileIdx.int32 < 0 or conf == nil:
+    result = (if fileIdx == commandLineIdx: commandLineDesc else: "???")
+  else:
+    result = conf.m.fileInfos[fileIdx.int32].fullPath.string
 
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) =
   assert fileIdx.int32 >= 0
@@ -189,7 +195,7 @@ proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
 
 proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile =
   if fileIdx.int32 < 0:
-    result = AbsoluteFile"???"
+    result = AbsoluteFile(if fileIdx == commandLineIdx: commandLineDesc else: "???")
   elif not conf.m.fileInfos[fileIdx.int32].dirtyFile.isEmpty:
     result = conf.m.fileInfos[fileIdx.int32].dirtyFile
   else:
