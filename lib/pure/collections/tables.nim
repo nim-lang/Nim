@@ -322,6 +322,16 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
 
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
+  
+proc `%`*[A, B](pairs: openArray[(A, B)]) : Table[A, B] =
+  ## Creates a new hash table that contains the given ``pairs``.
+  ##
+  ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
+  ##
+  ## See also:
+  ## * `initTable proc<#initTable,int>`_
+  ## * `newTable proc<#newTable,openArray[]>`_ for a `TableRef` version
+  pairs.toTable()
 
 proc `[]`*[A, B](t: Table[A, B], key: A): B =
   ## Retrieves the value at ``t[key]``.
