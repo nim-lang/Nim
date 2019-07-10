@@ -287,7 +287,7 @@ proc `*`*(a: Int128, b: int32): Int128 =
 proc `*=`*(a: var Int128, b: int32): Int128 =
   result = result * b
 
-proc makeint128(high,low: uint64): Int128 =
+proc makeInt128(high,low: uint64): Int128 =
   result.udata[0] = cast[uint32](low)
   result.udata[1] = cast[uint32](low shr 32)
   result.udata[2] = cast[uint32](high)
@@ -321,7 +321,7 @@ proc `*`*(lhs,rhs: Int128): Int128 =
 
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result = result + toInt128(a32 * b00) shl 32
-  result = result + toint128(a00 * b32) shl 32
+  result = result + toInt128(a00 * b32) shl 32
 
   if isNegative != isNegative(result):
     echo result

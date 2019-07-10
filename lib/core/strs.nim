@@ -12,12 +12,12 @@
 when false:
   # these are to be implemented or changed in the code generator.
 
-  #proc rawNewStringNoInit(space: int): NimString {.compilerProc.}
+  #proc rawNewStringNoInit(space: int): NimString {.compilerproc.}
   # seems to be unused.
   proc copyDeepString(src: NimString): NimString {.inline.}
   # ----------------- sequences ----------------------------------------------
 
-  proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.}
+  proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.}
   proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
       compilerRtl.}
   proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
@@ -109,7 +109,7 @@ proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =
   s.p.data[s.len+1] = '\0'
   inc s.len
 
-proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerProc.} =
+proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
@@ -126,7 +126,7 @@ proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
   if str == nil: toNimStr(str, 0)
   else: toNimStr(str, str.len)
 
-proc nimToCStringConv(s: NimStringV2): cstring {.compilerProc, nonReloadable, inline.} =
+proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.} =
   if s.len == 0: result = cstring""
   else: result = cstring(unsafeAddr s.p.data)
 
@@ -141,7 +141,7 @@ proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   dest.p.data[dest.len+1] = '\0'
   inc dest.len
 
-proc rawNewString(space: int): NimStringV2 {.compilerProc.} =
+proc rawNewString(space: int): NimStringV2 {.compilerproc.} =
   # this is also 'system.newStringOfCap'.
   if space <= 0:
     result = NimStringV2(len: 0, p: nil)
@@ -152,7 +152,7 @@ proc rawNewString(space: int): NimStringV2 {.compilerProc.} =
     p.cap = space
     result = NimStringV2(len: 0, p: p)
 
-proc mnewString(len: int): NimStringV2 {.compilerProc.} =
+proc mnewString(len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:

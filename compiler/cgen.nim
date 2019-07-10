@@ -271,7 +271,7 @@ proc genLineDir(p: BProc, t: PNode) =
               [line, makeCString(toFilename(p.config, t.info))])
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
+      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
     if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               [line, quotedFilename(p.config, t.info)])
@@ -299,13 +299,13 @@ proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     result = rdLoc(a) & ".len"
   else:
     result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
 proc dataField(p: BProc): Rope =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     result = rope".p->data"
   else:
     result = rope"->data"
@@ -383,10 +383,10 @@ proc isComplexValueType(t: PType): bool {.inline.} =
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc resetLoc(p: BProc, loc: var TLoc) =
-  let containsGcRef = p.config.selectedGc != gcDestructors and containsGarbageCollectedRef(loc.t)
+  let containsGcRef = p.config.selectedGC != gcDestructors and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
-  if p.config.selectedGc == gcDestructors and typ.kind in {tyString, tySequence}:
+  if p.config.selectedGC == gcDestructors and typ.kind in {tyString, tySequence}:
     assert rdLoc(loc) != nil
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
@@ -417,7 +417,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if p.config.selectedGc == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+  if p.config.selectedGC == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
@@ -1477,20 +1477,20 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
     datInit = m.getDatInitName
 
   if m.hcrOn:
-    var hcr_module_meta = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
+    var hcrModuleMeta = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
     let systemModulePath = getModuleDllPath(m, g.modules[g.graph.config.m.systemFileIdx.int].module)
     let mainModulePath = getModuleDllPath(m, m.module)
     if sfMainModule in m.module.flags:
-      addf(hcr_module_meta, "\t$1,$n", [systemModulePath])
+      addf(hcrModuleMeta, "\t$1,$n", [systemModulePath])
     g.graph.importDeps.withValue(FileIndex(m.module.position), deps):
       for curr in deps[]:
-        addf(hcr_module_meta, "\t$1,$n", [getModuleDllPath(m, g.modules[curr.int].module)])
-    addf(hcr_module_meta, "\t\"\"};$n", [])
-    addf(hcr_module_meta, "$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
-    addf(hcr_module_meta, "$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
+        addf(hcrModuleMeta, "\t$1,$n", [getModuleDllPath(m, g.modules[curr.int].module)])
+    addf(hcrModuleMeta, "\t\"\"};$n", [])
+    addf(hcrModuleMeta, "$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
+    addf(hcrModuleMeta, "$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
                           [($sigHash(m.module)).rope])
     if sfMainModule in m.module.flags:
-      add(g.mainModProcs, hcr_module_meta)
+      add(g.mainModProcs, hcrModuleMeta)
       addf(g.mainModProcs, "static void* hcr_handle;$N", [])
       addf(g.mainModProcs, "N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [init])
       addf(g.mainModProcs, "N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [datInit])
@@ -1514,7 +1514,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       add(g.mainDatInit, "\t*cmd_count = cmdCount;\n")
       add(g.mainDatInit, "\t*cmd_line = cmdLine;\n")
     else:
-      add(m.s[cfsInitProc], hcr_module_meta)
+      add(m.s[cfsInitProc], hcrModuleMeta)
     return
 
   if m.s[cfsDatInitProc].len > 0:
@@ -1777,7 +1777,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
-  let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
+  let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCfilePath(g.config, filename), "ndi")
                 else: AbsoluteFile""
   open(result.ndi, ndiName, g.config)
 
@@ -1808,7 +1808,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
     let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
             else: graph.config.projectFull
     g.generatedHeader = rawNewModule(g, module,
-      changeFileExt(completeCFilePath(graph.config, f), hExt))
+      changeFileExt(completeCfilePath(graph.config, f), hExt))
     incl g.generatedHeader.flags, isHeaderFile
 
 proc writeHeader(m: BModule) =
@@ -1841,9 +1841,9 @@ proc writeHeader(m: BModule) =
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
-      elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".nim.m"
+      elif m.config.cmd == cmdCompileToOC or sfCompileToObjc in m.module.flags: ".nim.m"
       else: ".nim.c"
-  result = changeFileExt(completeCFilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
+  result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
 when false:
   proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
@@ -1879,11 +1879,11 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  let transformed_n = transformStmt(m.g.graph, m.module, n)
+  let transformedN = transformStmt(m.g.graph, m.module, n)
   if m.hcrOn:
-    addHcrInitGuards(m.initProc, transformed_n, m.inHcrInitGuard)
+    addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
-    genStmts(m.initProc, transformed_n)
+    genStmts(m.initProc, transformedN)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   result = true
@@ -1923,7 +1923,7 @@ proc writeModule(m: BModule, pending: bool) =
       generateThreadVarsSize(m)
 
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     var code = genModule(m, cf)
     if code != nil:
       when hasTinyCBackend:
@@ -1935,7 +1935,7 @@ proc writeModule(m: BModule, pending: bool) =
       addFileToCompile(m.config, cf)
   elif pending and mergeRequired(m) and sfMainModule notin m.module.flags:
     let cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     mergeFiles(cfile, m)
     genInitCode(m)
     finishTypeDescriptions(m)
@@ -1949,7 +1949,7 @@ proc writeModule(m: BModule, pending: bool) =
     # ``system.c`` but then compilation fails due to an error. This means
     # that ``system.o`` is missing, so we need to call the C compiler for it:
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   close(m.ndi)
@@ -1957,7 +1957,7 @@ proc writeModule(m: BModule, pending: bool) =
 proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
   var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                 obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+                 obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
 
   if mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)
@@ -2023,7 +2023,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     let disp = generateMethodDispatchers(graph)
     for x in disp: genProcAux(m, x.sym)
 
-  m.g.modules_closed.add m
+  m.g.modulesClosed.add m
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given

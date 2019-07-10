@@ -113,7 +113,7 @@ proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): CSighandlerT {.
 
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
-          incompletestruct.} = object
+          incompleteStruct.} = object
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
 var
@@ -142,7 +142,7 @@ proc c_realloc*(p: pointer, newsize: csize): pointer {.
 proc c_fwrite*(buf: pointer, size, n: csize, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
-proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable, inline.} =
+proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
   discard c_fwrite(s, 1, s.len, f)
 

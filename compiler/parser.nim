@@ -346,7 +346,7 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
           parMessage(p, errIdentifierExpected, p.tok)
         break
       of tkOpr, tkDot, tkDotDot, tkEquals, tkParLe..tkParDotRi:
-        let lineinfo = parLineinfo(p)
+        let lineinfo = parLineInfo(p)
         var accm = ""
         while p.tok.tokType in {tkOpr, tkDot, tkDotDot, tkEquals,
                                 tkParLe..tkParDotRi}:
@@ -981,7 +981,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
   while true:
     case p.tok.tokType
     of tkSymbol, tkAccent:
-      if withPragma in flags: a = identWithPragma(p, allowDot=withdot in flags)
+      if withPragma in flags: a = identWithPragma(p, allowDot=withDot in flags)
       else: a = parseSymbol(p)
       if a.kind == nkEmpty: return
     else: break
@@ -1090,7 +1090,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     getTok(p)
     optInd(p, result)
     result.sons[0] = parseTypeDesc(p)
-  elif not retColon and not hasParle:
+  elif not retColon and not hasParLe:
     # Mark as "not there" in order to mark for deprecation in the semantic pass:
     result = p.emptyNode
   when defined(nimpretty):

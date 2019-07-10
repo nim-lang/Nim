@@ -94,7 +94,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   let startpos = pos
   let newitem = heap[pos]
   # Bubble up the smaller child until hitting a leaf.
-  var childpos = 2*pos + 1    # leftmost child position
+  var childpos = 2*pos + 1 # leftmost child position
   while childpos < endpos:
     # Set childpos to index of smaller child.
     let rightpos = childpos + 1

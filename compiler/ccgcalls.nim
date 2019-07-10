@@ -156,7 +156,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call.sons[0]
     if callee.kind == nkSym and
-        {sfImportC, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportC} and
+        {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
       result = addrLoc(p.config, a)
     else:

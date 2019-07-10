@@ -143,17 +143,17 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
     result.align = 1 # maximum of all member alignments
     var offset = initialOffset
     for i, child in n.sons:
-      let (new_offset, align) = computeObjectOffsetsFoldFunction(conf, child, offset)
-      if new_offset == szIllegalRecursion:
+      let (newOffset, align) = computeObjectOffsetsFoldFunction(conf, child, offset)
+      if newOffset == szIllegalRecursion:
         result.offset = szIllegalRecursion
         result.align = szIllegalRecursion
         return
-      elif new_offset == szUnknownSize or offset == szUnknownSize:
+      elif newOffset == szUnknownSize or offset == szUnknownSize:
         # if anything is unknown, the rest becomes unknown as well
         offset = szUnknownSize
         result.align = szUnknownSize
       else:
-        offset = new_offset
+        offset = newOffset
         result.align = max(result.align, align)
     # final alignment
     if offset == szUnknownSize:

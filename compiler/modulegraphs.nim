@@ -29,7 +29,7 @@ import ast, intsets, tables, options, lineinfos, hashes, idents,
   incremental, btrees, md5
 
 type
-  SigHash* = distinct Md5Digest
+  SigHash* = distinct MD5Digest
 
   ModuleGraph* = ref object
     modules*: seq[PSym]  ## indexed by int32 fileIdx

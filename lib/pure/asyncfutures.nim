@@ -144,16 +144,32 @@ proc checkFinished[T](future: Future[T]) =
       raise err
 
 proc call(callbacks: var CallbackList) =
-  var current = callbacks
+  when not defined(nimV2):
+    # strictly speaking a little code duplication here, but we strive
+    # to minimize regressions and I'm not sure I got the 'nimV2' logic
+    # right:
+    var current = callbacks
+    while true:
+      if not current.function.isNil:
+        callSoon(current.function)
 
-  while true:
-    if not current.function.isNil:
-      callSoon(current.function)
+      if current.next.isNil:
+        break
+      else:
+        current = current.next[]
+  else:
+    var currentFunc = unown callbacks.function
+    var currentNext = unown callbacks.next
 
-    if current.next.isNil:
-      break
-    else:
-      current = current.next[]
+    while true:
+      if not currentFunc.isNil:
+        callSoon(currentFunc)
+
+      if currentNext.isNil:
+        break
+      else:
+        currentFunc = currentNext.function
+        currentNext = unown currentNext.next
 
   # callback will be called only once, let GC collect them now
   callbacks.next = nil
@@ -287,7 +303,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
   for entry in entries:
-    if entry.procName.isNil: continue
+    if entry.procname.isNil: continue
 
     let left = $entry.filename & $entry.line
     if left.len > longestLeft:
@@ -296,7 +312,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   var indent = 2
   # Format the entries.
   for entry in entries:
-    if entry.procName.isNil:
+    if entry.procname.isNil:
       if entry.line == -10:
         result.add(spaces(indent) & "#[\n")
         indent.inc(2)
@@ -309,7 +325,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
     result.add((spaces(indent) & "$#$# $#\n") % [
       left,
       spaces(longestLeft - left.len + 2),
-      $entry.procName
+      $entry.procname
     ])
     let hint = getHint(entry)
     if hint.len > 0:

@@ -59,7 +59,7 @@ import strutils
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
 
-proc loadLib*(path: string, global_symbols=false): LibHandle {.gcsafe.}
+proc loadLib*(path: string, globalSymbols=false): LibHandle {.gcsafe.}
   ## loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
@@ -96,14 +96,14 @@ proc libCandidates*(s: string, dest: var seq[string]) =
   else:
     add(dest, s)
 
-proc loadLibPattern*(pattern: string, global_symbols=false): LibHandle =
+proc loadLibPattern*(pattern: string, globalSymbols=false): LibHandle =
   ## loads a library with name matching `pattern`, similar to what `dlimport`
   ## pragma does. Returns nil if the library could not be loaded.
   ## Warning: this proc uses the GC and so cannot be used to load the GC.
   var candidates = newSeq[string]()
   libCandidates(pattern, candidates)
   for c in candidates:
-    result = loadLib(c, global_symbols)
+    result = loadLib(c, globalSymbols)
     if not result.isNil: break
 
 when defined(posix) and not defined(nintendoswitch):
@@ -117,9 +117,9 @@ when defined(posix) and not defined(nintendoswitch):
   #
   import posix
 
-  proc loadLib(path: string, global_symbols=false): LibHandle =
+  proc loadLib(path: string, globalSymbols=false): LibHandle =
     let flags =
-      if global_symbols: RTLD_NOW or RTLD_GLOBAL
+      if globalSymbols: RTLD_NOW or RTLD_GLOBAL
       else: RTLD_NOW
 
     dlopen(path, flags)
@@ -170,7 +170,7 @@ elif defined(windows) or defined(dos):
   proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc loadLib(path: string, global_symbols=false): LibHandle =
+  proc loadLib(path: string, globalSymbols=false): LibHandle =
     result = cast[LibHandle](winLoadLibrary(path))
   proc loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))

@@ -102,7 +102,7 @@ proc newHttpHeaders*(): HttpHeaders =
   result.table = newTable[string, seq[string]]()
 
 proc newHttpHeaders*(keyValuePairs:
-    openarray[tuple[key: string, val: string]]): HttpHeaders =
+    openArray[tuple[key: string, val: string]]): HttpHeaders =
   var pairs: seq[tuple[key: string, val: seq[string]]] = @[]
   for pair in keyValuePairs:
     pairs.add((pair.key.toLowerAscii(), @[pair.val]))

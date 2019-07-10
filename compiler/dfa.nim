@@ -119,10 +119,10 @@ use(x)
 
 Generates:
 
-L0: fork L1
+L0: fork lab1
   join L0  # patched.
   goto Louter
-L1:
+lab1:
   def x
   join L0
 Louter:
@@ -354,24 +354,24 @@ when true:
 else:
 
   proc genWhile(c: var Con; n: PNode) =
-    # L1:
+    # lab1:
     #   cond, tmp
-    #   fork tmp, L2
+    #   fork tmp, lab2
     #   body
-    #   jmp L1
-    # L2:
+    #   jmp lab1
+    # lab2:
     let oldForksLen = c.forks.len
-    let L1 = c.genLabel
+    let lab1 = c.genLabel
     withBlock(nil):
       if isTrue(n.sons[0]):
         c.gen(n.sons[1])
-        c.jmpBack(n, L1)
+        c.jmpBack(n, lab1)
       else:
         c.gen(n.sons[0])
-        let L2 = c.forkI(n)
+        let lab2 = c.forkI(n)
         c.gen(n.sons[1])
-        c.jmpBack(n, L1)
-        c.patch(L2)
+        c.jmpBack(n, lab1)
+        c.patch(lab2)
     setLen(c.forks, oldForksLen)
 
 proc genBlock(c: var Con; n: PNode) =
@@ -383,23 +383,23 @@ proc genJoins(c: var Con; n: PNode) =
 
 proc genBreak(c: var Con; n: PNode) =
   genJoins(c, n)
-  let L1 = c.gotoI(n)
+  let lab1 = c.gotoI(n)
   if n.sons[0].kind == nkSym:
     #echo cast[int](n.sons[0].sym)
     for i in countdown(c.blocks.len-1, 0):
       if c.blocks[i].label == n.sons[0].sym:
-        c.blocks[i].fixups.add L1
+        c.blocks[i].fixups.add lab1
         return
     #globalError(n.info, "VM problem: cannot find 'break' target")
   else:
-    c.blocks[c.blocks.high].fixups.add L1
+    c.blocks[c.blocks.high].fixups.add lab1
 
 template forkT(n, body) =
   let oldLen = c.forks.len
-  let L1 = c.forkI(n)
+  let lab1 = c.forkI(n)
   body
-  c.patch(L1)
-  c.joinI(L1, n)
+  c.patch(lab1)
+  c.joinI(lab1, n)
   setLen(c.forks, oldLen)
 
 proc genIf(c: var Con, n: PNode) =
@@ -415,15 +415,15 @@ proc genIf(c: var Con, n: PNode) =
     D
 
   cond
-  fork L1
+  fork lab1
   A
   goto Lend
-  L1:
+  lab1:
     condB
-    fork L2
+    fork lab2
     B
     goto Lend2
-  L2:
+  lab2:
     condC
     fork L3
     C
@@ -457,23 +457,23 @@ proc genIf(c: var Con, n: PNode) =
 
 proc genAndOr(c: var Con; n: PNode) =
   #   asgn dest, a
-  #   fork L1
+  #   fork lab1
   #   asgn dest, b
-  # L1:
+  # lab1:
   #   join F1
   c.gen(n.sons[1])
   forkT(n):
     c.gen(n.sons[2])
 
 proc genCase(c: var Con; n: PNode) =
-  #  if (!expr1) goto L1;
+  #  if (!expr1) goto lab1;
   #    thenPart
   #    goto LEnd
-  #  L1:
-  #  if (!expr2) goto L2;
+  #  lab1:
+  #  if (!expr2) goto lab2;
   #    thenPart2
   #    goto LEnd
-  #  L2:
+  #  lab2:
   #    elsePart
   #  Lend:
   let isExhaustive = skipTypes(n.sons[0].typ,
@@ -714,9 +714,9 @@ proc genCall(c: var Con; n: PNode) =
   # every call can potentially raise:
   if c.inTryStmt > 0 and canRaise(n[0]):
     # we generate the instruction sequence:
-    # fork L1
+    # fork lab1
     # goto exceptionHandler (except or finally)
-    # L1:
+    # lab1:
     # join F1
     let endGoto = c.forkI(n)
     c.tryStmtFixups.add c.gotoI(n)
@@ -780,7 +780,7 @@ proc gen(c: var Con; n: PNode) =
   of nkBreakStmt: genBreak(c, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(c, n)
   of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
-     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
+     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr, nkYieldStmt:
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
   of nkDiscardStmt, nkObjDownConv, nkObjUpConv: gen(c, n.sons[0])

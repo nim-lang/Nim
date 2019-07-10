@@ -31,10 +31,10 @@ template createCb(retFutureSym, iteratorNameSym,
   proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
-        var next = nameIterVar()
+        var next = unown nameIterVar()
         # Continue while the yielded future is already finished.
         while (not next.isNil) and next.finished:
-          next = nameIterVar()
+          next = unown nameIterVar()
           if nameIterVar.finished:
             break
 
@@ -310,7 +310,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     # -> createCb(retFuture)
     # NOTE: The "_continue" suffix is checked for in asyncfutures.nim to produce
     # friendlier stack traces:
-    var cbName = genSym(nskProc, prcName & "_continue")
+    var cbName = genSym(nskProc, prcName & "Continue")
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                          newStrLitNode(prcName),
                          cbName,

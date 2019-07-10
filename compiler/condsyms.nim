@@ -96,3 +96,4 @@ proc initDefines*(symbols: StringTableRef) =
     defineSymbol("nimHasHint" & s)
 
   defineSymbol("nimFixedOwned")
+  defineSymbol("nimHasStyleChecks")

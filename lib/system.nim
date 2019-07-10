@@ -212,7 +212,7 @@ when defined(nimNewTypedesc):
       ## The coercion ``type(x)`` can be used to obtain the type of the given
       ## expression ``x``.
 else:
-  proc `type`*(x: untyped): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
+  proc `type`*(x: untyped): typedesc {.magic: "TypeOf", noSideEffect, compileTime.} =
     ## Builtin `type` operator for accessing the type of an expression.
     ## Cannot be overloaded.
     discard
@@ -223,7 +223,7 @@ when defined(nimHasTypeof):
       typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
       typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-  proc typeof*(x: untyped; mode = typeOfIter): typeDesc {.
+  proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
     magic: "TypeOf", noSideEffect, compileTime.} =
     ## Builtin `typeof` operation for accessing the type of an expression.
     ## Since version 0.20.0.
@@ -264,8 +264,16 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
   ## **Note**: The `finalizer` refers to the type `T`, not to the object!
   ## This means that for each object of type `T` the finalizer will be called!
 
-proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
-  ## Resets an object `obj` to its initial (binary zero) value.
+when defined(nimV2):
+  proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
+    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
+    ##
+    ## New runtime target: An alias for `=destroy`.
+else:
+  proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
+    ##
+    ## New runtime target: An alias for `=destroy`.
 
 proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
@@ -312,7 +320,7 @@ proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
   ## .. code-block:: Nim
   ##  high(2) # => 9223372036854775807
 
-proc high*[T: Ordinal|enum|range](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "High", noSideEffect.}
   ## Returns the highest possible value of an ordinal or enum type.
   ##
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
@@ -347,7 +355,7 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ##  for i in low(arr)..high(arr):
   ##    echo arr[i]
 
-proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array type.
   ##
   ## See also:
@@ -383,7 +391,7 @@ proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
   ## .. code-block:: Nim
   ##  low(2) # => -9223372036854775808
 
-proc low*[T: Ordinal|enum|range](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+proc low*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible value of an ordinal or enum type.
   ##
   ## ``low(int)`` is Nim's way of writing `INT_MIN`:idx: or `MIN_INT`:idx:.
@@ -418,7 +426,7 @@ proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
   ##  for i in low(arr)..high(arr):
   ##    echo arr[i]
 
-proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
+proc low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array type.
   ##
   ## See also:
@@ -454,7 +462,7 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## and strings.
 
 when defined(nimArrIdx):
-  # :array|openarray|string|seq|cstring|tuple
+  # :array|openArray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
@@ -692,7 +700,7 @@ type
     ## is an `int` type ranging from one to the maximum value
     ## of an `int`. This type is often useful for documentation and debugging.
 
-  RootObj* {.compilerProc, inheritable.} =
+  RootObj* {.compilerproc, inheritable.} =
     object ## The root of Nim's object hierarchy.
            ##
            ## Objects should inherit from `RootObj` or one of its descendants.
@@ -1018,7 +1026,7 @@ when not defined(JS):
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
-  ## Returns the length of an openarray.
+  ## Returns the length of an openArray.
   ##
   ## .. code-block:: Nim
   ##   var s = [1, 1, 1, 1, 1]
@@ -1692,7 +1700,7 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
 when (defined(nimV2) and not defined(nimscript)) or defined(nimFixedOwned):
   type owned*{.magic: "BuiltinType".}[T] ## type constructor to mark a ref/ptr or a closure as `owned`.
 else:
-  template owned*(t: typeDesc): typedesc = t
+  template owned*(t: typedesc): typedesc = t
 
 when defined(nimV2) and not defined(nimscript):
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
@@ -1748,8 +1756,8 @@ template disarm*(x: typed) =
   ## experimental API!
   x = nil
 
-proc `of`*[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
-proc `of`*[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
+proc `of`*[T, S](x: typedesc[T], y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
+proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`.
   ##
@@ -1782,7 +1790,7 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## can differ between operating systems!
 
 proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-  magic: "ArrToSeq", nosideeffect.}
+  magic: "ArrToSeq", noSideEffect.}
   ## Turns an array into a sequence.
   ##
   ## This most often useful for constructing
@@ -1994,7 +2002,7 @@ else:
                                         ## turned on.
 
 when defined(profiler) and not defined(nimscript):
-  proc nimProfile() {.compilerProc, noinline.}
+  proc nimProfile() {.compilerproc, noinline.}
 when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
 else:
@@ -2074,7 +2082,7 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
 when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
-  proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
+  proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
 when not defined(gcDestructors):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -2543,7 +2551,7 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ##   assert b == 5
 
 when not defined(js) and not defined(booting) and defined(nimTrMacros):
-  template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openarray[ref], a, b: int) =
+  template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openArray[ref], a, b: int) =
     # Optimize swapping of array elements if they are refs. Default swap
     # implementation will cause unsureAsgnRef to be emitted which causes
     # unnecessary slow down in this case.
@@ -2911,7 +2919,7 @@ proc `==`*[I, T](x, y: array[I, T]): bool =
       return
   result = true
 
-proc `==`*[T](x, y: openarray[T]): bool =
+proc `==`*[T](x, y: openArray[T]): bool =
   if x.len != y.len:
     return false
 
@@ -2922,7 +2930,7 @@ proc `==`*[T](x, y: openarray[T]): bool =
   result = true
 
 proc `@`*[T](a: openArray[T]): seq[T] =
-  ## Turns an *openarray* into a sequence.
+  ## Turns an *openArray* into a sequence.
   ##
   ## This is not as efficient as turning a fixed length array into a sequence
   ## as it always copies every element of `a`.
@@ -2984,7 +2992,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
         return true
   else:
     when not defined(JS):
-      proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
+      proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
         when defined(gcDestructors):
           result = cast[NimSeqV2[T]](x).p
         else:
@@ -3073,9 +3081,9 @@ when not defined(js):
 
   when defined(nimV2):
     type
-      TNimNode {.compilerProc.} = object # to keep the code generator simple
+      TNimNode {.compilerproc.} = object # to keep the code generator simple
       DestructorProc = proc (p: pointer) {.nimcall, benign.}
-      TNimType {.compilerProc.} = object
+      TNimType {.compilerproc.} = object
         destructor: pointer
         size: int
         name: cstring
@@ -3391,14 +3399,14 @@ when defined(nimvarargstyped):
     ## Unlike other IO operations this is guaranteed to be thread-safe as
     ## ``echo`` is very often used for debugging convenience. If you want to use
     ## ``echo`` inside a `proc without side effects
-    ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
+    ## <manual.html#pragmas-noSideEffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
     ## instead.
 
   proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
                                             tags: [], raises: [].}
     ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
     ## pretends to be free of side effects, so that it can be used for debugging
-    ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
+    ## routines marked as `noSideEffect <manual.html#pragmas-noSideEffect-pragma>`_.
 else:
   proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
     benign, sideEffect.}
@@ -3419,7 +3427,7 @@ template newException*(exceptn: typedesc, message: string;
   e
 
 when hostOS == "standalone" and defined(nogc):
-  proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
+  proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
     else: result = cstring(addr s.data)
 
@@ -3456,8 +3464,8 @@ else:
 
 
 when not defined(JS):
-  proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, nosideeffect.}
-  proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, nosideeffect.}
+  proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
+  proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
 template likely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be true.
@@ -3836,7 +3844,7 @@ elif defined(JS):
       return 1
 
 
-proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
+proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
@@ -4476,21 +4484,21 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage) a
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
 when not defined(js):
-  proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
+  proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
+  proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openarray[T] {.
+  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
+  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*(x: string; first, last: int): openarray[char] {.
+  proc toOpenArray*(x: string; first, last: int): openArray[char] {.
     magic: "Slice".}
-  proc toOpenArrayByte*(x: string; first, last: int): openarray[byte] {.
+  proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
     magic: "Slice".}
 
 type
-  ForLoopStmt* {.compilerProc.} = object ## \
+  ForLoopStmt* {.compilerproc.} = object ## \
     ## A special type that marks a macro as a `for-loop macro`:idx:.
     ## See `"For Loop Macro" <manual.html#macros-for-loop-macro>`_.
 

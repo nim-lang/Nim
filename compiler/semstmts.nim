@@ -189,16 +189,16 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
   template semExceptBranchType(typeNode: PNode): bool =
     # returns true if exception type is imported type
     let typ = semTypeNode(c, typeNode, nil).toObject()
-    var is_imported = false
+    var isImported = false
     if isImportedException(typ, c.config):
-      is_imported = true
+      isImported = true
     elif not isException(typ):
       localError(c.config, typeNode.info, errExprCannotBeRaised)
 
     if containsOrIncl(check, typ.id):
       localError(c.config, typeNode.info, errExceptionAlreadyHandled)
     typeNode = newNodeIT(nkType, typeNode.info, typ)
-    is_imported
+    isImported
 
   result = n
   inc c.p.inTryStmt
@@ -223,9 +223,9 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
-        let is_imported = semExceptBranchType(a[0][1])
+        let isImported = semExceptBranchType(a[0][1])
         let symbol = newSymG(skLet, a[0][2], c)
-        symbol.typ = if is_imported: a[0][1].typ
+        symbol.typ = if isImported: a[0][1].typ
                      else: a[0][1].typ.toRef()
         addDecl(c, symbol)
         # Overwrite symbol in AST with the symbol in the symbol table.
@@ -241,13 +241,13 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
           # if ``except: body`` already encountered,
           # cannot be followed by a ``except KeyError, ... : body`` block
           inc catchAllExcepts
-        var is_native, is_imported: bool
+        var isNative, isImported: bool
         for j in 0..a.len-2:
           let tmp = semExceptBranchType(a[j])
-          if tmp: is_imported = true
-          else: is_native = true
+          if tmp: isImported = true
+          else: isNative = true
 
-        if is_native and is_imported:
+        if isNative and isImported:
           localError(c.config, a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
 
     elif a.kind == nkFinally:
@@ -320,6 +320,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     result = semIdentWithPragma(c, kind, n, {})
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
+  result.options = c.config.options
 
   proc getLineInfo(n: PNode): TLineInfo =
     case n.kind
@@ -333,7 +334,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   suggestSym(c.config, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
-  if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
+  if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and
       {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
     if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
@@ -1009,7 +1010,6 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         let typsym = pkg.tab.strTableGet(typName)
         if typsym.isNil:
           s = semIdentDef(c, name[1], skType)
-          styleCheckDef(c.config, s)
           onDef(name[1].info, s)
           s.typ = newTypeS(tyObject, c)
           s.typ.sym = s
@@ -1024,7 +1024,6 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
           s = typsym
     else:
       s = semIdentDef(c, name, skType)
-      styleCheckDef(c.config, s)
       onDef(name.info, s)
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s             # process pragmas:
@@ -1253,6 +1252,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue
     let name = typeSectionTypeName(c, a.sons[0])
     var s = name.sym
+    # check the style here after the pragmas have been processed:
+    styleCheckDef(c.config, s)
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty:
       var x = a[2]
@@ -1286,7 +1287,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
     of nkIncludeStmt:
       for i in 0..<n.len:
         var f = checkModuleName(c.config, n.sons[i])
-        if f != InvalidFileIDX:
+        if f != InvalidFileIdx:
           if containsOrIncl(c.includedFiles, f.int):
             localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
           else:
@@ -2021,7 +2022,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
 
 proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
   var f = checkModuleName(c.config, it)
-  if f != InvalidFileIDX:
+  if f != InvalidFileIdx:
     if containsOrIncl(c.includedFiles, f.int):
       localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
     else:

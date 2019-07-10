@@ -71,14 +71,14 @@ when defined(windows):
   type
     SHORT = int16
     COORD = object
-      X: SHORT
-      Y: SHORT
+      x: SHORT
+      y: SHORT
 
     SMALL_RECT = object
-      Left: SHORT
-      Top: SHORT
-      Right: SHORT
-      Bottom: SHORT
+      left: SHORT
+      top: SHORT
+      right: SHORT
+      bottom: SHORT
 
     CONSOLE_SCREEN_BUFFER_INFO = object
       dwSize: COORD
@@ -91,22 +91,22 @@ when defined(windows):
       dwSize: DWORD
       bVisible: WINBOOL
 
-  proc duplicateHandle(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
-                       hTargetProcessHandle: HANDLE, lpTargetHandle: ptr HANDLE,
+  proc duplicateHandle(hSourceProcessHandle: Handle, hSourceHandle: Handle,
+                       hTargetProcessHandle: Handle, lpTargetHandle: ptr Handle,
                        dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                        dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
       importc: "DuplicateHandle".}
-  proc getCurrentProcess(): HANDLE{.stdcall, dynlib: "kernel32",
+  proc getCurrentProcess(): Handle{.stdcall, dynlib: "kernel32",
                                      importc: "GetCurrentProcess".}
-  proc getConsoleScreenBufferInfo(hConsoleOutput: HANDLE,
+  proc getConsoleScreenBufferInfo(hConsoleOutput: Handle,
     lpConsoleScreenBufferInfo: ptr CONSOLE_SCREEN_BUFFER_INFO): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
 
-  proc getConsoleCursorInfo(hConsoleOutput: HANDLE,
+  proc getConsoleCursorInfo(hConsoleOutput: Handle,
       lpConsoleCursorInfo: ptr CONSOLE_CURSOR_INFO): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "GetConsoleCursorInfo".}
 
-  proc setConsoleCursorInfo(hConsoleOutput: HANDLE,
+  proc setConsoleCursorInfo(hConsoleOutput: Handle,
       lpConsoleCursorInfo: ptr CONSOLE_CURSOR_INFO): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "SetConsoleCursorInfo".}
 
@@ -114,14 +114,14 @@ when defined(windows):
     var csbi: CONSOLE_SCREEN_BUFFER_INFO
     for h in handles:
       if getConsoleScreenBufferInfo(h, addr csbi) != 0:
-        return int(csbi.srWindow.Right - csbi.srWindow.Left + 1)
+        return int(csbi.srWindow.right - csbi.srWindow.left + 1)
     return 0
 
   proc terminalHeightIoctl*(handles: openArray[Handle]): int =
     var csbi: CONSOLE_SCREEN_BUFFER_INFO
     for h in handles:
       if getConsoleScreenBufferInfo(h, addr csbi) != 0:
-        return int(csbi.srWindow.Bottom - csbi.srWindow.Top + 1)
+        return int(csbi.srWindow.bottom - csbi.srWindow.top + 1)
     return 0
 
   proc terminalWidth*(): int =
@@ -140,21 +140,21 @@ when defined(windows):
     if h > 0: return h
     return 0
 
-  proc setConsoleCursorPosition(hConsoleOutput: HANDLE,
+  proc setConsoleCursorPosition(hConsoleOutput: Handle,
                                 dwCursorPosition: COORD): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "SetConsoleCursorPosition".}
 
   proc fillConsoleOutputCharacter(hConsoleOutput: Handle, cCharacter: char,
-                                  nLength: DWORD, dwWriteCoord: Coord,
+                                  nLength: DWORD, dwWriteCoord: COORD,
                                   lpNumberOfCharsWritten: ptr DWORD): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterA".}
 
-  proc fillConsoleOutputAttribute(hConsoleOutput: HANDLE, wAttribute: int16,
+  proc fillConsoleOutputAttribute(hConsoleOutput: Handle, wAttribute: int16,
                                   nLength: DWORD, dwWriteCoord: COORD,
                                   lpNumberOfAttrsWritten: ptr DWORD): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "FillConsoleOutputAttribute".}
 
-  proc setConsoleTextAttribute(hConsoleOutput: HANDLE,
+  proc setConsoleTextAttribute(hConsoleOutput: Handle,
                                wAttributes: int16): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
 
@@ -165,20 +165,20 @@ when defined(windows):
       stdcall, dynlib: "kernel32", importc: "SetConsoleMode".}
 
   proc getCursorPos(h: Handle): tuple [x,y: int] =
-    var c: CONSOLESCREENBUFFERINFO
+    var c: CONSOLE_SCREEN_BUFFER_INFO
     if getConsoleScreenBufferInfo(h, addr(c)) == 0:
       raiseOSError(osLastError())
-    return (int(c.dwCursorPosition.X), int(c.dwCursorPosition.Y))
+    return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
   proc setCursorPos(h: Handle, x, y: int) =
     var c: COORD
-    c.X = int16(x)
-    c.Y = int16(y)
+    c.x = int16(x)
+    c.y = int16(y)
     if setConsoleCursorPosition(h, c) == 0:
       raiseOSError(osLastError())
 
   proc getAttributes(h: Handle): int16 =
-    var c: CONSOLESCREENBUFFERINFO
+    var c: CONSOLE_SCREEN_BUFFER_INFO
     # workaround Windows bugs: try several times
     if getConsoleScreenBufferInfo(h, addr(c)) != 0:
       return c.wAttributes
@@ -207,7 +207,7 @@ else:
 
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
-    discard fd.tcgetattr(addr mode)
+    discard fd.tcGetAttr(addr mode)
     mode.c_iflag = mode.c_iflag and not Cflag(BRKINT or ICRNL or INPCK or
       ISTRIP or IXON)
     mode.c_oflag = mode.c_oflag and not Cflag(OPOST)
@@ -215,7 +215,7 @@ else:
     mode.c_lflag = mode.c_lflag and not Cflag(ECHO or ICANON or IEXTEN or ISIG)
     mode.c_cc[VMIN] = 1.cuchar
     mode.c_cc[VTIME] = 0.cuchar
-    discard fd.tcsetattr(time, addr mode)
+    discard fd.tcSetAttr(time, addr mode)
 
   proc terminalWidthIoctl*(fds: openArray[int]): int =
     ## Returns terminal width from first fd that supports the ioctl.
@@ -315,11 +315,11 @@ proc setCursorXPos*(f: File, x: int) =
   ## The y position is not changed.
   when defined(windows):
     let h = conHandle(f)
-    var scrbuf: CONSOLESCREENBUFFERINFO
+    var scrbuf: CONSOLE_SCREEN_BUFFER_INFO
     if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
-    origin.X = int16(x)
+    origin.x = int16(x)
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
   else:
@@ -332,11 +332,11 @@ when defined(windows):
     ## **Warning**: This is not supported on UNIX!
     when defined(windows):
       let h = conHandle(f)
-      var scrbuf: CONSOLESCREENBUFFERINFO
+      var scrbuf: CONSOLE_SCREEN_BUFFER_INFO
       if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
         raiseOSError(osLastError())
       var origin = scrbuf.dwCursorPosition
-      origin.Y = int16(y)
+      origin.y = int16(y)
       if setConsoleCursorPosition(h, origin) == 0:
         raiseOSError(osLastError())
     else:
@@ -417,15 +417,15 @@ proc eraseLine*(f: File) =
   ## Erases the entire current line.
   when defined(windows):
     let h = conHandle(f)
-    var scrbuf: CONSOLESCREENBUFFERINFO
+    var scrbuf: CONSOLE_SCREEN_BUFFER_INFO
     var numwrote: DWORD
     if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
-    origin.X = 0'i16
+    origin.x = 0'i16
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
-    var wt: DWORD = scrbuf.dwSize.X - origin.X
+    var wt: DWORD = scrbuf.dwSize.x - origin.x
     if fillConsoleOutputCharacter(h, ' ', wt,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
@@ -440,13 +440,13 @@ proc eraseScreen*(f: File) =
   ## Erases the screen with the background colour and moves the cursor to home.
   when defined(windows):
     let h = conHandle(f)
-    var scrbuf: CONSOLESCREENBUFFERINFO
+    var scrbuf: CONSOLE_SCREEN_BUFFER_INFO
     var numwrote: DWORD
     var origin: COORD # is inititalized to 0, 0
 
     if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
-    let numChars = int32(scrbuf.dwSize.X)*int32(scrbuf.dwSize.Y)
+    let numChars = int32(scrbuf.dwSize.x)*int32(scrbuf.dwSize.y)
 
     if fillConsoleOutputCharacter(h, ' ', numChars,
                                   origin, addr(numwrote)) == 0:
@@ -759,10 +759,10 @@ proc getch*(): char =
   else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
-    discard fd.tcgetattr(addr oldMode)
+    discard fd.tcGetAttr(addr oldMode)
     fd.setRaw()
     result = stdin.readChar()
-    discard fd.tcsetattr(TCSADRAIN, addr oldMode)
+    discard fd.tcSetAttr(TCSADRAIN, addr oldMode)
 
 when defined(windows):
   from unicode import toUTF8, Rune, runeLenAt
@@ -803,14 +803,14 @@ else:
     password.string.setLen(0)
     let fd = stdin.getFileHandle()
     var cur, old: Termios
-    discard fd.tcgetattr(cur.addr)
+    discard fd.tcGetAttr(cur.addr)
     old = cur
     cur.c_lflag = cur.c_lflag and not Cflag(ECHO)
-    discard fd.tcsetattr(TCSADRAIN, cur.addr)
+    discard fd.tcSetAttr(TCSADRAIN, cur.addr)
     stdout.write prompt
     result = stdin.readLine(password)
     stdout.write "\n"
-    discard fd.tcsetattr(TCSADRAIN, old.addr)
+    discard fd.tcSetAttr(TCSADRAIN, old.addr)
 
 proc readPasswordFromStdin*(prompt = "password: "): TaintedString =
   ## Reads a password from stdin without printing it.

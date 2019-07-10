@@ -99,7 +99,7 @@ when not defined(nimV2):
     return true
 
   proc isObjWithCache(obj, subclass: PNimType;
-                      cache: var ObjCheckCache): bool {.compilerProc, inline.} =
+                      cache: var ObjCheckCache): bool {.compilerproc, inline.} =
     if obj == subclass: return true
     if obj.base == subclass: return true
     if cache[0] == obj: return false
@@ -116,6 +116,6 @@ when not defined(nimV2):
     return true
 
 when defined(nimV2):
-  proc nimFieldDiscriminantCheckV2(oldDiscVal, newDiscVal: uint8) {.compilerProc.} =
+  proc nimFieldDiscriminantCheckV2(oldDiscVal, newDiscVal: uint8) {.compilerproc.} =
     if oldDiscVal != newDiscVal:
       sysFatal(FieldError, "assignment to discriminant changes object branch")

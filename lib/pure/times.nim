@@ -222,9 +222,9 @@ elif defined(posix):
   type CTime = posix.Time
 
   var
-    realTimeClockId {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
+    realTimeClockId {.importc: "CLOCK_REALTIME", header: "<time.h>".}: ClockId
     cpuClockId
-      {.importc: "CLOCK_THREAD_CPUTIME_ID", header: "<time.h>".}: Clockid
+      {.importc: "CLOCK_THREAD_CPUTIME_ID", header: "<time.h>".}: ClockId
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
@@ -283,12 +283,20 @@ type
     dSat = "Saturday"
     dSun = "Sunday"
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
+type
   DateTimeLocale* = object
     MMM*: array[mJan..mDec, string]
     MMMM*: array[mJan..mDec, string]
     ddd*: array[dMon..dSun, string]
     dddd*: array[dMon..dSun, string]
 
+when defined(nimHasStyleChecks):
+  {.pop.}
+
+type
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
@@ -689,7 +697,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay
 
   assertValidDate monthday, month, year
   # 1970-01-01 is a Thursday, we adjust to the previous Monday
-  let days = toEpochday(monthday, month, year) - 3
+  let days = toEpochDay(monthday, month, year) - 3
   let weeks = floorDiv(days, 7)
   let wd = days - weeks * 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
@@ -930,7 +938,7 @@ proc abs*(a: Duration): Duration =
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a ``DateTime`` to a ``Time`` representing the same point in time.
-  let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
+  let epochDay = toEpochDay(dt.monthday, dt.month, dt.year)
   var seconds = epochDay * secondsInDay
   seconds.inc dt.hour * secondsInHour
   seconds.inc dt.minute * 60
@@ -950,7 +958,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   rem = rem - minute * secondsInMin
   let second = rem
 
-  let (d, m, y) = fromEpochday(epochday)
+  let (d, m, y) = fromEpochDay(epochday)
 
   DateTime(
     year: y,
@@ -1011,7 +1019,7 @@ proc zonedTimeFromTime*(zone: Timezone, time: Time): ZonedTime =
   ## Returns the ``ZonedTime`` for some point in time.
   zone.zonedTimeFromTimeImpl(time)
 
-proc zonedTimeFromAdjTime*(zone: TimeZone, adjTime: Time): ZonedTime =
+proc zonedTimeFromAdjTime*(zone: Timezone, adjTime: Time): ZonedTime =
   ## Returns the ``ZonedTime`` for some local time.
   ##
   ## Note that the ``Time`` argument does not represent a point in time, it
@@ -1047,7 +1055,7 @@ proc inZone*(dt: DateTime, zone: Timezone): DateTime
   dt.toTime.inZone(zone)
 
 proc toAdjTime(dt: DateTime): Time =
-  let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
+  let epochDay = toEpochDay(dt.monthday, dt.month, dt.year)
   var seconds = epochDay * secondsInDay
   seconds.inc dt.hour * secondsInHour
   seconds.inc dt.minute * secondsInMin
@@ -1081,7 +1089,7 @@ when defined(JS):
 
 else:
   proc toAdjUnix(tm: Tm): int64 =
-    let epochDay = toEpochday(tm.tm_mday, (tm.tm_mon + 1).Month,
+    let epochDay = toEpochDay(tm.tm_mday, (tm.tm_mon + 1).Month,
                               tm.tm_year.int + 1900)
     result = epochDay * secondsInDay
     result.inc tm.tm_hour * secondsInHour
@@ -1147,7 +1155,7 @@ proc utcTzInfo(time: Time): ZonedTime =
 var utcInstance {.threadvar.}: Timezone
 var localInstance {.threadvar.}: Timezone
 
-proc utc*(): TimeZone =
+proc utc*(): Timezone =
   ## Get the ``Timezone`` implementation for the UTC timezone.
   runnableExamples:
     doAssert now().utc.timezone == utc()
@@ -1156,7 +1164,7 @@ proc utc*(): TimeZone =
     utcInstance = newTimezone("Etc/UTC", utcTzInfo, utcTzInfo)
   result = utcInstance
 
-proc local*(): TimeZone =
+proc local*(): Timezone =
   ## Get the ``Timezone`` implementation for the local timezone.
   runnableExamples:
     doAssert now().timezone == local()
@@ -1389,7 +1397,7 @@ proc evaluateInterval(dt: DateTime, interval: TimeInterval):
   var curMonth = dt.month
   # Subtracting
   if months < 0:
-    for mth in countDown(-1 * months, 1):
+    for mth in countdown(-1 * months, 1):
       if curMonth == mJan:
         curMonth = mDec
         curYear.dec
@@ -2111,7 +2119,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     i.inc 1
   of tt:
     if input.substr(i, i+1).cmpIgnoreCase("AM") == 0:
-      parsed.amPm = apAM
+      parsed.amPm = apAm
       i.inc 2
     elif input.substr(i, i+1).cmpIgnoreCase("PM") == 0:
       parsed.amPm = apPm

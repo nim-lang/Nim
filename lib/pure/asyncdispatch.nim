@@ -232,7 +232,7 @@ when defined(windows) or defined(nimdoc):
 
     CompletionData* = object
       fd*: AsyncFD # TODO: Rename this.
-      cb*: owned(proc (fd: AsyncFD, bytesTransferred: Dword,
+      cb*: owned(proc (fd: AsyncFD, bytesTransferred: DWORD,
                 errcode: OSErrorCode) {.closure, gcsafe.})
       cell*: ForeignCell # we need this `cell` to protect our `cb` environment,
                          # when using RegisterWaitForSingleObject, because
@@ -328,7 +328,7 @@ when defined(windows) or defined(nimdoc):
       if at == -1: winlean.INFINITE
       else: at.int32
 
-    var lpNumberOfBytesTransferred: Dword
+    var lpNumberOfBytesTransferred: DWORD
     var lpCompletionKey: ULONG_PTR
     var customOverlapped: PCustomOverlapped
     let res = getQueuedCompletionStatus(p.ioPort,
@@ -379,10 +379,10 @@ when defined(windows) or defined(nimdoc):
 
   proc initPointer(s: SocketHandle, fun: var pointer, guid: var GUID): bool =
     # Ref: https://github.com/powdahound/twisted/blob/master/twisted/internet/iocpreactor/iocpsupport/winsock_pointers.c
-    var bytesRet: Dword
+    var bytesRet: DWORD
     fun = nil
     result = WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, addr guid,
-                      sizeof(GUID).Dword, addr fun, sizeof(pointer).Dword,
+                      sizeof(GUID).DWORD, addr fun, sizeof(pointer).DWORD,
                       addr bytesRet, nil, nil) == 0
 
   proc initAll() =
@@ -425,12 +425,12 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = cast[cstring](alloc0(size))
     dataBuf.len = size.ULONG
 
-    var bytesReceived: Dword
-    var flagsio = flags.toOSFlags().Dword
+    var bytesReceived: DWORD
+    var flagsio = flags.toOSFlags().DWORD
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
@@ -502,12 +502,12 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = cast[cstring](buf)
     dataBuf.len = size.ULONG
 
-    var bytesReceived: Dword
-    var flagsio = flags.toOSFlags().Dword
+    var bytesReceived: DWORD
+    var flagsio = flags.toOSFlags().DWORD
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete(bytesCount)
@@ -556,11 +556,11 @@ when defined(windows) or defined(nimdoc):
     dataBuf.buf = cast[cstring](buf)
     dataBuf.len = size.ULONG
 
-    var bytesReceived, lowFlags: Dword
+    var bytesReceived, lowFlags: DWORD
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -589,7 +589,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc sendTo*(socket: AsyncFD, data: pointer, size: int, saddr: ptr SockAddr,
-               saddrLen: Socklen,
+               saddrLen: SockLen,
                flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
     ## Sends ``data`` to specified destination ``saddr``, using
     ## socket ``socket``. The returned future will complete once all data
@@ -599,8 +599,8 @@ when defined(windows) or defined(nimdoc):
     var dataBuf: TWSABuf
     dataBuf.buf = cast[cstring](data)
     dataBuf.len = size.ULONG
-    var bytesSent = 0.Dword
-    var lowFlags = 0.Dword
+    var bytesSent = 0.DWORD
+    var lowFlags = 0.DWORD
 
     # we will preserve address in our stack
     var staddr: array[128, char] # SOCKADDR_STORAGE size is 128 bytes
@@ -611,7 +611,7 @@ when defined(windows) or defined(nimdoc):
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -647,13 +647,13 @@ when defined(windows) or defined(nimdoc):
 
     var dataBuf = TWSABuf(buf: cast[cstring](data), len: size.ULONG)
 
-    var bytesReceived = 0.Dword
-    var lowFlags = 0.Dword
+    var bytesReceived = 0.DWORD
+    var lowFlags = 0.DWORD
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount <= size
@@ -704,10 +704,10 @@ when defined(windows) or defined(nimdoc):
 
     const lpOutputLen = 1024
     var lpOutputBuf = newString(lpOutputLen)
-    var dwBytesReceived: Dword
-    let dwReceiveDataLength = 0.Dword # We don't want any data to be read.
-    let dwLocalAddressLength = Dword(sizeof(Sockaddr_in6) + 16)
-    let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in6) + 16)
+    var dwBytesReceived: DWORD
+    let dwReceiveDataLength = 0.DWORD # We don't want any data to be read.
+    let dwLocalAddressLength = DWORD(sizeof(Sockaddr_in6) + 16)
+    let dwRemoteAddressLength = DWORD(sizeof(Sockaddr_in6) + 16)
 
     template failAccept(errcode) =
       if flags.isDisconnectionError(errcode):
@@ -728,17 +728,17 @@ when defined(windows) or defined(nimdoc):
           sizeof(listenSock).SockLen)
       if setoptRet != 0:
         let errcode = osLastError()
-        discard clientSock.closeSocket()
+        discard clientSock.closesocket()
         failAccept(errcode)
       else:
         var localSockaddr, remoteSockaddr: ptr SockAddr
         var localLen, remoteLen: int32
-        getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
+        getAcceptExSockAddrs(addr lpOutputBuf[0], dwReceiveDataLength,
                              dwLocalAddressLength, dwRemoteAddressLength,
                              addr localSockaddr, addr localLen,
                              addr remoteSockaddr, addr remoteLen)
         try:
-          let address = getAddrString(remoteSockAddr)
+          let address = getAddrString(remoteSockaddr)
           register(clientSock.AsyncFD)
           retFuture.complete((address: address, client: clientSock.AsyncFD))
         except:
@@ -749,7 +749,7 @@ when defined(windows) or defined(nimdoc):
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
@@ -793,14 +793,14 @@ when defined(windows) or defined(nimdoc):
   proc waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL): void {.stdcall.} =
     var p = cast[PostCallbackDataPtr](param)
-    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.Dword,
+    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
                                        ULONG_PTR(p.handleFd),
                                        cast[pointer](p.ovl))
   {.pop.}
 
-  proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: Dword) =
+  proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: DWORD) =
     let p = getGlobalDispatcher()
-    var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).Dword
+    var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).DWORD
     var hEvent = wsaCreateEvent()
     if hEvent == 0:
       raiseOSError(osLastError())
@@ -811,7 +811,7 @@ when defined(windows) or defined(nimdoc):
     GC_ref(ol)
 
     ol.data = CompletionData(fd: fd, cb:
-      proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) {.gcsafe.} =
+      proc(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
         # we excluding our `fd` because cb(fd) can register own handler
         # for this `fd`
         p.handles.excl(fd)
@@ -934,7 +934,7 @@ when defined(windows) or defined(nimdoc):
     pcd.ovl = ol
     if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
-                                    cast[pointer](pcd), timeout.Dword, flags):
+                                    cast[pointer](pcd), timeout.DWORD, flags):
       let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
@@ -972,10 +972,10 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(osLastError())
 
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    var flags = WT_EXECUTEINWAITTHREAD.Dword
+    var flags = WT_EXECUTEINWAITTHREAD.DWORD
     if oneshot: flags = flags or WT_EXECUTEONLYONCE
 
-    proc timercb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    proc timercb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       let res = cb(fd)
       if res or oneshot:
         closeWaitable(hEvent)
@@ -993,14 +993,14 @@ when defined(windows) or defined(nimdoc):
     ## ``pid`` exited.
     let p = getGlobalDispatcher()
     let procFlags = SYNCHRONIZE
-    var hProcess = openProcess(procFlags, 0, pid.Dword)
+    var hProcess = openProcess(procFlags, 0, pid.DWORD)
     if hProcess == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    var flags = WT_EXECUTEINWAITTHREAD.Dword
+    var flags = WT_EXECUTEINWAITTHREAD.DWORD
 
-    proc proccb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    proc proccb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       closeWaitable(hProcess)
       discard cb(fd)
 
@@ -1052,9 +1052,9 @@ when defined(windows) or defined(nimdoc):
     let hEvent = ev.hEvent
 
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    var flags = WT_EXECUTEINWAITTHREAD.Dword
+    var flags = WT_EXECUTEINWAITTHREAD.DWORD
 
-    proc eventcb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    proc eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       if ev.hWaiter != 0:
         if cb(fd):
           # we need this check to avoid exception, if `unregister(event)` was
@@ -1140,7 +1140,7 @@ else:
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
 
-  proc contains*(disp: PDispatcher, fd: AsyncFd): bool =
+  proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
     return fd.SocketHandle in disp.selector
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
@@ -1474,7 +1474,7 @@ else:
     proc cb(sock: AsyncFD): bool =
       result = true
       var sockAddress: Sockaddr_storage
-      var addrLen = sizeof(sockAddress).Socklen
+      var addrLen = sizeof(sockAddress).SockLen
       var client = accept(sock.SocketHandle,
                           cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
       if client == osInvalidSocket:
@@ -1615,7 +1615,7 @@ when defined(windows) or defined(nimdoc):
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -1660,7 +1660,7 @@ else:
 
     let ret = connect(socket.SocketHandle,
                       addrInfo.ai_addr,
-                      addrInfo.ai_addrlen.Socklen)
+                      addrInfo.ai_addrlen.SockLen)
     if ret == 0:
       # Request to connect completed immediately.
       retFuture.complete()
@@ -1708,7 +1708,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
         curAddrInfo = curAddrInfo.ai_next
 
       if curAddrInfo == nil:
-        freeAddrInfo(addrInfo)
+        freeaddrinfo(addrInfo)
         when shouldCreateFd:
           closeUnusedFds()
         if lastException != nil:
@@ -1724,7 +1724,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
           try:
             curFd = createAsyncNativeSocket(domain, sockType, protocol)
           except:
-            freeAddrInfo(addrInfo)
+            freeaddrinfo(addrInfo)
             closeUnusedFds()
             raise getCurrentException()
           when defined(windows):
@@ -1734,7 +1734,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
       doConnect(curFd, curAddrInfo).callback = tryNextAddrInfo
       curAddrInfo = curAddrInfo.ai_next
     else:
-      freeAddrInfo(addrInfo)
+      freeaddrinfo(addrInfo)
       when shouldCreateFd:
         closeUnusedFds(ord(domain))
         retFuture.complete(curFd)

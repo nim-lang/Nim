@@ -170,14 +170,14 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:
     if newlen < s.len:
-      shrink(s, newLen)
+      shrink(s, newlen)
     else:
       let oldLen = s.len
-      if newLen <= oldLen: return
+      if newlen <= oldLen: return
       var xu = cast[ptr NimSeqV2[T]](addr s)
-      if xu.p == nil or xu.p.cap < newLen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
-      xu.len = newLen
+      if xu.p == nil or xu.p.cap < newlen:
+        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T)))
+      xu.len = newlen
 
 when false:
   proc resize[T](s: var NimSeqV2[T]) =

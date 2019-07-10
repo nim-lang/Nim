@@ -304,31 +304,31 @@ proc isTrue(n: PNode): bool =
     n.kind == nkIntLit and n.intVal != 0
 
 proc genWhile(c: PCtx; n: PNode) =
-  # L1:
+  # lab1:
   #   cond, tmp
-  #   fjmp tmp, L2
+  #   fjmp tmp, lab2
   #   body
-  #   jmp L1
-  # L2:
-  let L1 = c.genLabel
+  #   jmp lab1
+  # lab2:
+  let lab1 = c.genLabel
   withBlock(nil):
     if isTrue(n.sons[0]):
       c.gen(n.sons[1])
-      c.jmpBack(n, L1)
+      c.jmpBack(n, lab1)
     elif isNotOpr(n.sons[0]):
       var tmp = c.genx(n.sons[0].sons[1])
-      let L2 = c.xjmp(n, opcTJmp, tmp)
+      let lab2 = c.xjmp(n, opcTJmp, tmp)
       c.freeTemp(tmp)
       c.gen(n.sons[1])
-      c.jmpBack(n, L1)
-      c.patch(L2)
+      c.jmpBack(n, lab1)
+      c.patch(lab2)
     else:
       var tmp = c.genx(n.sons[0])
-      let L2 = c.xjmp(n, opcFJmp, tmp)
+      let lab2 = c.xjmp(n, opcFJmp, tmp)
       c.freeTemp(tmp)
       c.gen(n.sons[1])
-      c.jmpBack(n, L1)
-      c.patch(L2)
+      c.jmpBack(n, lab1)
+      c.patch(lab2)
 
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
   let oldRegisterCount = c.prc.maxSlots
@@ -342,26 +342,26 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
   c.clearDest(n, dest)
 
 proc genBreak(c: PCtx; n: PNode) =
-  let L1 = c.xjmp(n, opcJmp)
+  let lab1 = c.xjmp(n, opcJmp)
   if n.sons[0].kind == nkSym:
     #echo cast[int](n.sons[0].sym)
     for i in countdown(c.prc.blocks.len-1, 0):
       if c.prc.blocks[i].label == n.sons[0].sym:
-        c.prc.blocks[i].fixups.add L1
+        c.prc.blocks[i].fixups.add lab1
         return
     globalError(c.config, n.info, "VM problem: cannot find 'break' target")
   else:
-    c.prc.blocks[c.prc.blocks.high].fixups.add L1
+    c.prc.blocks[c.prc.blocks.high].fixups.add lab1
 
 proc genIf(c: PCtx, n: PNode; dest: var TDest) =
-  #  if (!expr1) goto L1;
+  #  if (!expr1) goto lab1;
   #    thenPart
   #    goto LEnd
-  #  L1:
-  #  if (!expr2) goto L2;
+  #  lab1:
+  #  if (!expr2) goto lab2;
   #    thenPart2
   #    goto LEnd
-  #  L2:
+  #  lab2:
   #    elsePart
   #  Lend:
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
@@ -393,18 +393,18 @@ proc isTemp(c: PCtx; dest: TDest): bool =
 
 proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   #   asgn dest, a
-  #   tjmp|fjmp L1
+  #   tjmp|fjmp lab1
   #   asgn dest, b
-  # L1:
+  # lab1:
   let copyBack = dest < 0 or not isTemp(c, dest)
   let tmp = if copyBack:
               getTemp(c, n.typ)
             else:
               TRegister dest
   c.gen(n.sons[1], tmp)
-  let L1 = c.xjmp(n, opc, tmp)
+  let lab1 = c.xjmp(n, opc, tmp)
   c.gen(n.sons[2], tmp)
-  c.patch(L1)
+  c.patch(lab1)
   if dest < 0:
     dest = tmp
   elif copyBack:
@@ -452,14 +452,14 @@ proc unused(c: PCtx; n: PNode; x: TDest) {.inline.} =
     globalError(c.config, n.info, "not unused")
 
 proc genCase(c: PCtx; n: PNode; dest: var TDest) =
-  #  if (!expr1) goto L1;
+  #  if (!expr1) goto lab1;
   #    thenPart
   #    goto LEnd
-  #  L1:
-  #  if (!expr2) goto L2;
+  #  lab1:
+  #  if (!expr2) goto lab2;
   #    thenPart2
   #    goto LEnd
-  #  L2:
+  #  lab2:
   #    elsePart
   #  Lend:
   if not isEmptyType(n.typ):
@@ -559,6 +559,8 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   #if n.typ != nil and n.typ.sym != nil and n.typ.sym.magic == mPNimrodNode:
   #  genLit(c, n, dest)
   #  return
+  # bug #10901: do not produce code for wrong call expressions:
+  if n.len == 0 or n[0].typ.isNil: return
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   let x = c.getTempRange(n.len, slotTempUnknown)
   # varargs need 'opcSetType' for the FFI support:
@@ -818,25 +820,25 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   var unsignedIntegers = {tyUInt..tyUInt64, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
-  let src_size = getSize(c.config, src)
-  let dst_size = getSize(c.config, dst)
+  let srcSize = getSize(c.config, src)
+  let dstSize = getSize(c.config, dst)
   if src.kind in allowedIntegers and dst.kind in allowedIntegers:
     let tmp = c.genx(n.sons[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     c.gABC(n, opcAsgnInt, dest, tmp)
-    if dst_size != sizeof(BiggestInt): # don't do anything on biggest int types
+    if dstSize != sizeof(BiggestInt): # don't do anything on biggest int types
       if dst.kind in signedIntegers: # we need to do sign extensions
-        if dst_size <= src_size:
+        if dstSize <= srcSize:
           # Sign extension can be omitted when the size increases.
-          c.gABC(n, opcSignExtend, dest, TRegister(dst_size*8))
+          c.gABC(n, opcSignExtend, dest, TRegister(dstSize*8))
       elif dst.kind in unsignedIntegers:
-        if src.kind in signedIntegers or dst_size < src_size:
+        if src.kind in signedIntegers or dstSize < srcSize:
           # Cast from signed to unsigned always needs narrowing. Cast
           # from unsigned to unsigned only needs narrowing when target
           # is smaller than source.
-          c.gABC(n, opcNarrowU, dest, TRegister(dst_size*8))
+          c.gABC(n, opcNarrowU, dest, TRegister(dstSize*8))
     c.freeTemp(tmp)
-  elif src_size == dst_size and src.kind in allowedIntegers and
+  elif srcSize == dstSize and src.kind in allowedIntegers and
                            dst.kind in {tyFloat, tyFloat32, tyFloat64}:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
@@ -846,7 +848,7 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcAsgnFloat64FromInt, dest, tmp)
     c.freeTemp(tmp)
 
-  elif src_size == dst_size and src.kind in {tyFloat, tyFloat32, tyFloat64} and
+  elif srcSize == dstSize and src.kind in {tyFloat, tyFloat32, tyFloat64} and
                            dst.kind in allowedIntegers:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
@@ -1680,11 +1682,11 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   c.gABC(n, opcContainsSet, rs, setLit, discVal)
   c.freeTemp(setLit)
   # If the check fails let the user know
-  let L1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
+  let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
   c.freeTemp(rs)
   # Not ideal but will do for the moment
   c.gABC(n, opcQuit)
-  c.patch(L1)
+  c.patch(lab1)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   var objR: TDest = -1

@@ -35,7 +35,7 @@ proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", 
 
 proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   case classify(f)
-  of fcNaN:
+  of fcNan:
     result = "NAN"
   of fcNegZero:
     result = "-0.0" & literalPostfix

@@ -720,6 +720,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       suggestSym(c.config, n.sons[i].info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
+      f.options = c.config.options
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
          not hasCaseFields and f.loc.r == nil:
@@ -1614,8 +1615,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
         result = semTypeof(c, n[1], prev)
-      elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeof:
-        result = semTypeOf2(c, n, prev)
+      elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
+        result = semTypeof2(c, n, prev)
       elif op.s == "owned" and optNimV2 notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
@@ -1640,7 +1641,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq:
-      if c.config.selectedGc == gcDestructors and optNimV2 notin c.config.globalOptions:
+      if c.config.selectedGC == gcDestructors and optNimV2 notin c.config.globalOptions:
         let s = c.graph.sysTypes[tySequence]
         assert s != nil
         assert prev == nil
@@ -1658,7 +1659,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
             c.typesWithOps.add((result, result))
       else:
         result = semContainer(c, n, tySequence, "seq", prev)
-        if c.config.selectedGc == gcDestructors:
+        if c.config.selectedGC == gcDestructors:
           incl result.flags, tfHasAsgn
     of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
@@ -1842,7 +1843,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mString:
     setMagicType(c.config, m, tyString, szUncomputedSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
-    if c.config.selectedGc == gcDestructors:
+    if c.config.selectedGC == gcDestructors:
       incl m.typ.flags, tfHasAsgn
   of mCstring:
     setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
@@ -1883,7 +1884,7 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyUncheckedArray, szUncomputedSize)
   of mSeq:
     setMagicType(c.config, m, tySequence, szUncomputedSize)
-    if c.config.selectedGc == gcDestructors:
+    if c.config.selectedGC == gcDestructors:
       incl m.typ.flags, tfHasAsgn
     assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ

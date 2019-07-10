@@ -11,12 +11,12 @@ proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
 proc `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.
-  info.fileName & "(" & $info.line & ", " & $(info.column+1) & ")"
+  info.filename & "(" & $info.line & ", " & $(info.column+1) & ")"
 
 # ---------------------------------------------------------------------------
 
 
-proc raiseAssert*(msg: string) {.noinline, noReturn.} =
+proc raiseAssert*(msg: string) {.noinline, noreturn.} =
   sysFatal(AssertionError, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =

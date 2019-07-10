@@ -169,7 +169,7 @@ template hashImpl(result: Hash, x: typed, start, stop: int) =
     var n = 0
     when nimvm:
       # we cannot cast in VM, so we do it manually
-      for j in countdown(stepsize-1, 0):
+      for j in countdown(stepSize-1, 0):
         n = (n shl (8*elementSize)) or ord(x[i+j])
     else:
       n = cast[ptr Hash](unsafeAddr x[i])[]

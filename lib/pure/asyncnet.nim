@@ -625,10 +625,10 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
         "Unknown socket address family and no address specified to bindAddr")
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
-  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
-    freeAddrInfo(aiList)
+  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
+    freeaddrinfo(aiList)
     raiseOSError(osLastError())
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
 
 when defined(posix):
 
@@ -652,7 +652,7 @@ when defined(posix):
 
       var socketAddr = makeUnixAddr(path)
       let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                       (sizeof(socketAddr.sun_family) + path.len).Socklen)
+                       (sizeof(socketAddr.sun_family) + path.len).SockLen)
       if ret == 0:
         # Request to connect completed immediately.
         retFuture.complete()
@@ -670,7 +670,7 @@ when defined(posix):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
+                            (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 elif defined(nimdoc):

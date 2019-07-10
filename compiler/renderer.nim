@@ -897,10 +897,10 @@ proc accentedName(g: var TSrcGen, n: PNode) =
 proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   if i < 1 and i > 2: return
   var needsParenthesis = false
-  let n_next = n[i].skipHiddenNodes
-  if n_next.kind == nkInfix:
-    if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
-      let nextId = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
+  let nNext = n[i].skipHiddenNodes
+  if nNext.kind == nkInfix:
+    if nNext[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
+      let nextId = if nNext[0].kind == nkSym: nNext[0].sym.name else: nNext[0].ident
       let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident
       if i == 1:
         if getPrecedence(nextId) < getPrecedence(nnId):
@@ -1144,10 +1144,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
                 elif n[0].kind == nkSym: n[0].sym.name
                 elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
-      let n_next = skipHiddenNodes(n[1])
-      if n_next.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
+      let nNext = skipHiddenNodes(n[1])
+      if nNext.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
-      if n_next.kind == nkInfix:
+      if nNext.kind == nkInfix:
         put(g, tkParLe, "(")
         gsub(g, n.sons[1])
         put(g, tkParRi, ")")

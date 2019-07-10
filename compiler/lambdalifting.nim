@@ -344,7 +344,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
   # This seems to be generally correct but since it's a bit risky it's only
   # enabled for gcDestructors.
-  let fieldType = if c.graph.config.selectedGc == gcDestructors:
+  let fieldType = if c.graph.config.selectedGC == gcDestructors:
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)
@@ -535,7 +535,7 @@ proc setupEnvVar(owner: PSym; d: DetectionPass;
                  c: var LiftingPass; info: TLineInfo): PNode =
   if owner.isIterator:
     return getHiddenParam(d.graph, owner).newSymNode
-  result = c.envvars.getOrDefault(owner.id)
+  result = c.envVars.getOrDefault(owner.id)
   if result.isNil:
     let envVarType = d.ownerToType.getOrDefault(owner.id)
     if envVarType.isNil:
@@ -710,7 +710,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         c.inContainer = 0
         var body = transformBody(d.graph, s)
         body = liftCapturedVars(body, s, d, c)
-        if c.envvars.getOrDefault(s.id).isNil:
+        if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
         else:
           s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
@@ -851,7 +851,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
       var c = initLiftingPass(fn)
       result = liftCapturedVars(body, fn, d, c)
       # echo renderTree(result, {renderIds})
-      if c.envvars.getOrDefault(fn.id) != nil:
+      if c.envVars.getOrDefault(fn.id) != nil:
         result = newTree(nkStmtList, rawClosureCreation(fn, d, c, body.info), result)
         finishClosureCreation(fn, d, c, body.info, result)
     else:

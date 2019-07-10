@@ -108,7 +108,7 @@ const
     hintPath: "added path: '$1'",
     hintConditionAlwaysTrue: "condition is always true: '$1'",
     hintConditionAlwaysFalse: "condition is always false: '$1'",
-    hintName: "name should be: '$1'",
+    hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
     hintLinking: "",
@@ -193,7 +193,7 @@ type
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
-    dirtyfile*: AbsoluteFile   # the file that is actually read into memory
+    dirtyFile*: AbsoluteFile   # the file that is actually read into memory
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
@@ -229,12 +229,12 @@ proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)
 
 const
-  InvalidFileIDX* = FileIndex(-1)
+  InvalidFileIdx* = FileIndex(-1)
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = uint16(0)
   result.col = int16(-1)
-  result.fileIndex = InvalidFileIDX
+  result.fileIndex = InvalidFileIdx
 
 type
   Severity* {.pure.} = enum ## VS Code only supports these three

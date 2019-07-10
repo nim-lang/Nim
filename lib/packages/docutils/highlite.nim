@@ -865,7 +865,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
       inc(pos)
       while g.buf[pos] in {'0'..'9', '+', '-'}: inc(pos)
     of '0'..'9': yamlPossibleNumber(g, pos)
-    of '\0': g.kind = gtEOF
+    of '\0': g.kind = gtEof
     else: yamlPlainStrLit(g, pos)
   else:
     # outside document
@@ -883,7 +883,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
     of '#':
       g.kind = gtComment
       while g.buf[pos] notin {'\0', '\x0A', '\x0D'}: inc(pos)
-    of '\0': g.kind = gtEOF
+    of '\0': g.kind = gtEof
     else:
       g.kind = gtNone
       g.state = gtOther

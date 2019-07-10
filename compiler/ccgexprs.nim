@@ -79,7 +79,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
       # with the new semantics for 'nil' strings, we can map "" to nil and
       # save tons of allocations:
       if n.strVal.len == 0 and optNilSeqs notin p.options and
-          p.config.selectedGc != gcDestructors:
+          p.config.selectedGC != gcDestructors:
         result = genNilStringLiteral(p.module, n.info)
       else:
         result = genStringLiteral(p.module, n)
@@ -1068,7 +1068,7 @@ proc gcUsage(conf: ConfigRef; n: PNode) =
   if conf.selectedGC == gcNone: message(conf, n.info, warnGcMem, n.renderTree)
 
 proc strLoc(p: BProc; d: TLoc): Rope =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     result = byRefLoc(p, d)
   else:
     result = rdLoc(d)
@@ -1660,7 +1660,7 @@ proc makeAddr(n: PNode): PNode =
     result.typ = makePtrType(n.typ)
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     e.sons[1] = makeAddr(e[1])
     genCall(p, e, d)
     return
@@ -1689,7 +1689,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   gcUsage(p.config, e)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     binaryStmtAddr(p, e, d, "setLengthStrV2")
   else:
     var a, b, call: TLoc
@@ -1903,7 +1903,7 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     if srcTyp.kind in {tyPtr, tyPointer} and etyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) (ptrdiff_t) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
-    elif p.config.selectedGc == gcDestructors and etyp.kind in {tySequence, tyString}:
+    elif p.config.selectedGC == gcDestructors and etyp.kind in {tySequence, tyString}:
       putIntoDest(p, d, e, "(*($1*) (&$2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
     else:
@@ -2137,7 +2137,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genAssignment(p, dest, call, {})
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem:
-    if p.config.selectedGc == gcDestructors:
+    if p.config.selectedGC == gcDestructors:
       e.sons[1] = makeAddr(e[1])
       genCall(p, e, d)
     else:
@@ -2776,7 +2776,7 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode,
     inc count
   getNullValueAux(p, t, obj, cons, result, count)
   # do not emit '{}' as that is not valid C:
-  if oldcount == count: result = oldres
+  if oldcount == count: result = oldRes
   elif not p.module.compileToCpp: result.add "}"
 
 proc genConstObjConstr(p: BProc; n: PNode): Rope =
@@ -2850,7 +2850,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkBracket, nkPar, nkTupleConstr, nkClosure:
     var t = skipTypes(n.typ, abstractInstOwned)
     if t.kind == tySequence:
-      if p.config.selectedGc == gcDestructors:
+      if p.config.selectedGC == gcDestructors:
         result = genConstSeqV2(p, n, n.typ)
       else:
         result = genConstSeq(p, n, n.typ)
@@ -2874,7 +2874,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkObjConstr:
     result = genConstObjConstr(p, n)
   of nkStrLit..nkTripleStrLit:
-    if p.config.selectedGc == gcDestructors:
+    if p.config.selectedGC == gcDestructors:
       result = genStringLiteralV2Const(p.module, n)
     else:
       var d: TLoc

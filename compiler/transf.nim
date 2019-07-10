@@ -803,7 +803,6 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
       result = s.PTransNode
 
 proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
-  result = transformSons(c, n)
   if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
     let excTypeNode = n[0][1]
     let actions = newTransNode(nkStmtListExpr, n[1], 2)
@@ -825,12 +824,14 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
     letSection[0] = identDefs
     # Place the let statement and body of the 'except' branch into new stmtList.
     actions[0] = letSection
-    actions[1] = transformSons(c, n[1])
+    actions[1] = transform(c, n[1])
     # Overwrite 'except' branch body with our stmtList.
-    result[1] = actions
-
+    result = newTransNode(nkExceptBranch, n[1].info, 2)
     # Replace the `Exception as foobar` with just `Exception`.
-    result[0] = result[0][1]
+    result[0] = transform(c, n[0][1])
+    result[1] = actions
+  else:
+    result = transformSons(c, n)
 
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be

@@ -440,7 +440,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   dec(s.count)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var
     tv: Timespec
     resTable: array[MAX_KQUEUE_EVENTS, KEvent]

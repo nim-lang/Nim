@@ -219,7 +219,7 @@ proc fillToken(L: var TToken) =
 proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
-  lex.fileIdx = fileidx
+  lex.fileIdx = fileIdx
   lex.indentAhead = -1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
@@ -565,7 +565,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       case result.tokType
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
-      of tkUint64Lit:
+      of tkUInt64Lit:
         var iNumber: uint64
         var len: int
         try:
@@ -878,6 +878,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
   var h: Hash = 0
   var pos = L.bufpos
   tokenBegin(tok, pos)
+  var suspicious = false
   while true:
     var c = L.buf[pos]
     case c
@@ -888,21 +889,26 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
       h = h !& ord(c)
       inc(pos)
+      suspicious = true
     of '_':
       if L.buf[pos+1] notin SymChars:
         lexMessage(L, errGenerated, "invalid token: trailing underscore")
         break
       inc(pos)
+      suspicious = true
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
   tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
-  L.bufpos = pos
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
     tok.tokType = tkSymbol
   else:
     tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
+    if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
+      lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
+  L.bufpos = pos
+
 
 proc endOperator(L: var TLexer, tok: var TToken, pos: int,
                  hash: Hash) {.inline.} =

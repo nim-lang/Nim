@@ -108,7 +108,7 @@ proc newLineInfo*(conf: ConfigRef; filename: AbsoluteFile, line, col: int): TLin
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
 
-proc concat(strings: openarray[string]): string =
+proc concat(strings: openArray[string]): string =
   var totalLen = 0
   for s in strings: totalLen += s.len
   result = newStringOfCap totalLen
@@ -542,7 +542,7 @@ proc localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
 proc localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing)
 
-proc localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openarray[string]) =
+proc localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
   localError(conf, info, format % params)
 
 proc message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
@@ -588,3 +588,10 @@ proc listHints*(conf: ConfigRef) =
       if hint in conf.notes: "x" else: " ",
       lineinfos.HintsToStr[ord(hint) - ord(hintMin)]
     ])
+
+proc lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
+  let m = "'$2' should be: '$1'" % [beau, got]
+  if optStyleError in conf.globalOptions:
+    localError(conf, info, m)
+  else:
+    message(conf, info, hintName, m)

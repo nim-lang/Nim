@@ -253,8 +253,8 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and not defined(android) and not defined(haiku):
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
-  let socket_port = if sockType == SOCK_RAW: "" else: $port
-  var gaiResult = getaddrinfo(address, socket_port, addr(hints), result)
+  let socketPort = if sockType == SOCK_RAW: "" else: $port
+  var gaiResult = getaddrinfo(address, socketPort, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
       raiseOSError(osLastError())
@@ -337,7 +337,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
         posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
                             cint(posix.AF_INET))
       else:
-        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
+        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).SockLen,
                             cint(posix.AF_INET))
     if s == nil:
       raiseOSError(osLastError(), $hstrerror(h_errno))
@@ -354,11 +354,11 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
   if result.addrtype == AF_INET:
-    result.addrlist = @[]
+    result.addrList = @[]
     var i = 0
-    while not isNil(s.h_addrlist[i]):
-      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+    while not isNil(s.h_addr_list[i]):
+      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrList.add($inet_ntoa(inaddrPtr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
@@ -383,11 +383,11 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
   if result.addrtype == AF_INET:
-    result.addrlist = @[]
+    result.addrList = @[]
     var i = 0
-    while not isNil(s.h_addrlist[i]):
-      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+    while not isNil(s.h_addr_list[i]):
+      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrList.add($inet_ntoa(inaddrPtr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
@@ -400,10 +400,10 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   const size = 64
   result = newString(size)
   when useWinVersion:
-    let success = winlean.getHostname(result, size)
+    let success = winlean.gethostname(result, size)
   else:
     # Posix
-    let success = posix.getHostname(result, size)
+    let success = posix.gethostname(result, size)
   if success != 0.cint:
     raiseOSError(osLastError())
   let x = len(cstring(result))
@@ -613,7 +613,7 @@ proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
+  var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var rd: TFdSet
   var m = 0
@@ -635,7 +635,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
+  var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var wr: TFdSet
   var m = 0
