@@ -75,7 +75,7 @@ proc newSelector*[T](): Selector[T] =
   # Retrieve the maximum fd count (for current OS) via getrlimit()
   var a = RLimit()
   if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
-    raiseOsError(osLastError())
+    raiseOSError(osLastError())
   var maxFD = int(a.rlim_max)
   doAssert(maxFD > 0)
   # Start with a reasonable size, checkFd() will grow this on demand
@@ -83,7 +83,7 @@ proc newSelector*[T](): Selector[T] =
 
   var epollFD = epoll_create(MAX_EPOLL_EVENTS)
   if epollFD < 0:
-    raiseOsError(osLastError())
+    raiseOSError(osLastError())
 
   when hasThreadSupport:
     result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
@@ -369,7 +369,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   inc(s.count)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var
     resTable: array[MAX_EPOLL_EVENTS, EpollEvent]
     maxres = MAX_EPOLL_EVENTS

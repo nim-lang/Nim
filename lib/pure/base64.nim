@@ -110,7 +110,7 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
     #assert(r == result.len)
     discard
 
-proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine=""): string =
+proc encode*[T:SomeInteger|char](s: openArray[T], lineLen = 75, newLine=""): string =
   ## Encodes ``s`` into base64 representation. After ``lineLen`` characters, a
   ## ``newline`` is added.
   ##

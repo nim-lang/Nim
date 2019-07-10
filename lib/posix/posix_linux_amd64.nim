@@ -416,7 +416,7 @@ when hasSpawnH:
 const Sockaddr_un_path_length* = 108
 
 type
-  Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
+  SockLen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
@@ -450,7 +450,7 @@ type
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
-    msg_namelen*: Socklen  ## Size of address.
+    msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
     msg_iovlen*: csize   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
@@ -551,7 +551,7 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: Socklen   ## Length of socket address.
+    ai_addrlen*: SockLen   ## Length of socket address.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_next*: ptr AddrInfo ## Pointer to next in list.

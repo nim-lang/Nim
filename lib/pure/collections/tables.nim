@@ -788,7 +788,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 # -------------------------------------------------------------------
 
 
-proc newTable*[A, B](initialsize = defaultInitialSize): <//>TableRef[A, B] =
+proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
