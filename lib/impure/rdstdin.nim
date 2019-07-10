@@ -43,7 +43,7 @@ when defined(Windows):
 
   type
     KEY_EVENT_RECORD = object
-      bKeyDown: WinBool
+      bKeyDown: WINBOOL
       wRepeatCount: uint16
       wVirtualKeyCode: uint16
       wVirtualScanCode: uint16
@@ -55,7 +55,7 @@ when defined(Windows):
       event*: KEY_EVENT_RECORD
       safetyBuffer: array[0..5, DWORD]
 
-  proc readConsoleInputW*(hConsoleInput: HANDLE, lpBuffer: var INPUTRECORD,
+  proc readConsoleInputW*(hConsoleInput: Handle, lpBuffer: var INPUT_RECORD,
                           nLength: uint32,
                           lpNumberOfEventsRead: var uint32): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}

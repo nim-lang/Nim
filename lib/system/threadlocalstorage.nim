@@ -225,7 +225,7 @@ when emulatedThreadVars:
   proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
     result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
 
-  proc initThreadVarsEmulation() {.compilerProc, inline.} =
+  proc initThreadVarsEmulation() {.compilerproc, inline.} =
     when not defined(useNimRtl):
       globalsSlot = threadVarAlloc()
       when declared(mainThread):
