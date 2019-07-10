@@ -1232,15 +1232,12 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         if kind notin {skParam, skResult}: result = t
         else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
-    if kind == skConst and t.callConv == ccClosure:
-      result = t
-    else:
-      let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
-      for i in 1 ..< sonsLen(t):
-        result = typeAllowedAux(marker, t.sons[i], skParam, f)
-        if result != nil: break
-      if result.isNil and t.sons[0] != nil:
-        result = typeAllowedAux(marker, t.sons[0], skResult, flags)
+    let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
+    for i in 1 ..< sonsLen(t):
+      result = typeAllowedAux(marker, t.sons[i], skParam, f)
+      if result != nil: break
+    if result.isNil and t.sons[0] != nil:
+      result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:
     # XXX: This is still a horrible idea...
     result = nil
