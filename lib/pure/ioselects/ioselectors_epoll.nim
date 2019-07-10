@@ -267,8 +267,8 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
 proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                        data: T): int {.discardable.} =
   var
-    new_ts: Itimerspec
-    old_ts: Itimerspec
+    newTs: Itimerspec
+    oldTs: Itimerspec
   let fdi = timerfd_create(CLOCK_MONOTONIC, 0).int
   if fdi == -1:
     raiseIOSelectorsError(osLastError())
@@ -282,19 +282,19 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   epv.data.u64 = fdi.uint
 
   if oneshot:
-    new_ts.it_interval.tv_sec = posix.Time(0)
-    new_ts.it_interval.tv_nsec = 0
-    new_ts.it_value.tv_sec = posix.Time(timeout div 1_000)
-    new_ts.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
+    newTs.it_interval.tv_sec = posix.Time(0)
+    newTs.it_interval.tv_nsec = 0
+    newTs.it_value.tv_sec = posix.Time(timeout div 1_000)
+    newTs.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
     incl(events, Event.Oneshot)
     epv.events = epv.events or EPOLLONESHOT
   else:
-    new_ts.it_interval.tv_sec = posix.Time(timeout div 1000)
-    new_ts.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
-    new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
-    new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec
+    newTs.it_interval.tv_sec = posix.Time(timeout div 1000)
+    newTs.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
+    newTs.it_value.tv_sec = newTs.it_interval.tv_sec
+    newTs.it_value.tv_nsec = newTs.it_interval.tv_nsec
 
-  if timerfd_settime(fdi.cint, cint(0), new_ts, old_ts) != 0:
+  if timerfd_settime(fdi.cint, cint(0), newTs, oldTs) != 0:
     raiseIOSelectorsError(osLastError())
   if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
     raiseIOSelectorsError(osLastError())

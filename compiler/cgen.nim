@@ -1474,20 +1474,20 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
     datInit = m.getDatInitName
 
   if m.hcrOn:
-    var hcr_module_meta = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
+    var hcrModuleMeta = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
     let systemModulePath = getModuleDllPath(m, g.modules[g.graph.config.m.systemFileIdx.int].module)
     let mainModulePath = getModuleDllPath(m, m.module)
     if sfMainModule in m.module.flags:
-      addf(hcr_module_meta, "\t$1,$n", [systemModulePath])
+      addf(hcrModuleMeta, "\t$1,$n", [systemModulePath])
     g.graph.importDeps.withValue(FileIndex(m.module.position), deps):
       for curr in deps[]:
-        addf(hcr_module_meta, "\t$1,$n", [getModuleDllPath(m, g.modules[curr.int].module)])
-    addf(hcr_module_meta, "\t\"\"};$n", [])
-    addf(hcr_module_meta, "$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
-    addf(hcr_module_meta, "$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
+        addf(hcrModuleMeta, "\t$1,$n", [getModuleDllPath(m, g.modules[curr.int].module)])
+    addf(hcrModuleMeta, "\t\"\"};$n", [])
+    addf(hcrModuleMeta, "$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
+    addf(hcrModuleMeta, "$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
                           [($sigHash(m.module)).rope])
     if sfMainModule in m.module.flags:
-      add(g.mainModProcs, hcr_module_meta)
+      add(g.mainModProcs, hcrModuleMeta)
       addf(g.mainModProcs, "static void* hcr_handle;$N", [])
       addf(g.mainModProcs, "N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [init])
       addf(g.mainModProcs, "N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [datInit])
@@ -1511,7 +1511,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       add(g.mainDatInit, "\t*cmd_count = cmdCount;\n")
       add(g.mainDatInit, "\t*cmd_line = cmdLine;\n")
     else:
-      add(m.s[cfsInitProc], hcr_module_meta)
+      add(m.s[cfsInitProc], hcrModuleMeta)
     return
 
   if m.s[cfsDatInitProc].len > 0:
@@ -1876,11 +1876,11 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  let transformed_n = transformStmt(m.g.graph, m.module, n)
+  let transformedN = transformStmt(m.g.graph, m.module, n)
   if m.hcrOn:
-    addHcrInitGuards(m.initProc, transformed_n, m.inHcrInitGuard)
+    addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
-    genStmts(m.initProc, transformed_n)
+    genStmts(m.initProc, transformedN)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   result = true
@@ -2020,7 +2020,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     let disp = generateMethodDispatchers(graph)
     for x in disp: genProcAux(m, x.sym)
 
-  m.g.modules_closed.add m
+  m.g.modulesClosed.add m
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given

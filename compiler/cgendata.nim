@@ -114,7 +114,7 @@ type
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
-    modules_closed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
+    modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
     breakPointId*: int
@@ -196,6 +196,6 @@ proc newModuleList*(g: ModuleGraph): BModuleList =
     config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
-  for m in g.modules_closed:
+  for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m
