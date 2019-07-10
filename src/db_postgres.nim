@@ -381,6 +381,10 @@ proc `[]`*(row: InstantRow; col: int): string {.inline.} =
   ## returns text for given column of the row
   $pqgetvalue(row.res, int32(row.line), int32(col))
 
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  pqgetvalue(row.res, int32(row.line), int32(index))
+
 proc len*(row: InstantRow): int {.inline.} =
   ## returns number of columns in the row
   int(pqNfields(row.res))
