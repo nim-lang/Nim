@@ -778,7 +778,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     let k = whichKeyword(ident)
     if k in validPragmas:
       if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
-        checkPragmaUse(c.config, key.info, ident.s)
+        checkPragmaUse(c.config, key.info, k, ident.s)
       case k
       of wExportc:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
