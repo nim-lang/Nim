@@ -1140,7 +1140,7 @@ else:
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
 
-  proc contains*(disp: PDispatcher, fd: AsyncFd): bool =
+  proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
     return fd.SocketHandle in disp.selector
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
@@ -1474,7 +1474,7 @@ else:
     proc cb(sock: AsyncFD): bool =
       result = true
       var sockAddress: Sockaddr_storage
-      var addrLen = sizeof(sockAddress).Socklen
+      var addrLen = sizeof(sockAddress).SockLen
       var client = accept(sock.SocketHandle,
                           cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
       if client == osInvalidSocket:
@@ -1660,7 +1660,7 @@ else:
 
     let ret = connect(socket.SocketHandle,
                       addrInfo.ai_addr,
-                      addrInfo.ai_addrlen.Socklen)
+                      addrInfo.ai_addrlen.SockLen)
     if ret == 0:
       # Request to connect completed immediately.
       retFuture.complete()

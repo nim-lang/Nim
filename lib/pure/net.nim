@@ -399,7 +399,7 @@ proc isIpAddress*(addressStr: string): bool {.tags: [].} =
 
 proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
                  sl: var SockLen) =
-  ## Converts `IpAddress` and `Port` to `SockAddr` and `Socklen`
+  ## Converts `IpAddress` and `Port` to `SockAddr` and `SockLen`
   let port = htons(uint16(port))
   case address.family
   of IpAddressFamily.IPv4:
@@ -437,7 +437,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
 
 proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
-  ## Converts `SockAddr` and `Socklen` to `IpAddress` and `Port`. Raises
+  ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
   fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
@@ -949,7 +949,7 @@ when defined(posix) or defined(nimdoc):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                           (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
+                           (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
   proc bindUnix*(socket: Socket, path: string) =
@@ -958,7 +958,7 @@ when defined(posix) or defined(nimdoc):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
+                            (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 when defined(ssl):

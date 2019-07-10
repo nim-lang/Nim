@@ -86,15 +86,15 @@ type
     address*: string
     port*: Port
     jobInProgress*: bool
-    job*: FTPJob
+    job*: FtpJob
     dsockConnected*: bool
 
-  FTPJobType* = enum
+  FtpJobType* = enum
     JRetrText, JRetr, JStore
 
   FtpJob = ref object
     prc: proc (ftp: AsyncFtpClient, async: bool): bool {.nimcall, gcsafe.}
-    case typ*: FTPJobType
+    case typ*: FtpJobType
     of JRetrText:
       lines: string
     of JRetr, JStore:
@@ -106,12 +106,12 @@ type
       lastProgressReport: float # Time
       toStore: string # Data left to upload (Only used with async)
 
-  FTPEventType* = enum
+  FtpEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore
 
-  FTPEvent* = object ## Event
+  FtpEvent* = object ## Event
     filename*: string
-    case typ*: FTPEventType
+    case typ*: FtpEventType
     of EvLines:
       lines*: string ## Lines that have been transferred.
     of EvRetr, EvStore: ## Retr/Store operation finished.
@@ -120,7 +120,7 @@ type
       bytesTotal*: BiggestInt     ## Bytes total.
       bytesFinished*: BiggestInt  ## Bytes transferred.
       speed*: BiggestInt          ## Speed in bytes/s
-      currentJob*: FTPJobType     ## The current job being performed.
+      currentJob*: FtpJobType     ## The current job being performed.
 
   ReplyError* = object of IOError
 
@@ -398,8 +398,8 @@ proc store*(ftp: AsyncFtpClient, file, dest: string,
 proc rename*(ftp: AsyncFtpClient, nameFrom: string, nameTo: string) {.async.} =
   ## Rename a file or directory on the remote FTP Server from current name
   ## ``name_from`` to new name ``name_to``
-  assertReply(await ftp.send("RNFR " & name_from), "350")
-  assertReply(await ftp.send("RNTO " & name_to), "250")
+  assertReply(await ftp.send("RNFR " & nameFrom), "350")
+  assertReply(await ftp.send("RNTO " & nameTo), "250")
 
 proc removeFile*(ftp: AsyncFtpClient, filename: string) {.async.} =
   ## Delete a file ``filename`` on the remote FTP server

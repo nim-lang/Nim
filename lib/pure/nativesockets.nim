@@ -337,7 +337,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
         posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
                             cint(posix.AF_INET))
       else:
-        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
+        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).SockLen,
                             cint(posix.AF_INET))
     if s == nil:
       raiseOSError(osLastError(), $hstrerror(h_errno))
@@ -403,7 +403,7 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
     let success = winlean.gethostname(result, size)
   else:
     # Posix
-    let success = posix.getHostname(result, size)
+    let success = posix.gethostname(result, size)
   if success != 0.cint:
     raiseOSError(osLastError())
   let x = len(cstring(result))

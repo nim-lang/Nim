@@ -250,7 +250,7 @@ type
     url*: Uri
     auth*: string
 
-  MultipartEntries* = openarray[tuple[name, content: string]]
+  MultipartEntries* = openArray[tuple[name, content: string]]
   MultipartData* = ref object
     content: seq[string]
 
@@ -323,7 +323,7 @@ proc parseBody(s: Socket, headers: HttpHeaders, httpVersion: string, timeout: in
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
     var contentLengthHeader = headers.getOrDefault"Content-Length"
     if contentLengthHeader != "":
-      var length = contentLengthHeader.parseint()
+      var length = contentLengthHeader.parseInt()
       if length > 0:
         result = newString(length)
         var received = 0
@@ -403,14 +403,14 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
 
 when not defined(ssl):
   type SSLContext = ref object
-var defaultSSLContext {.threadvar.}: SSLContext
+var defaultSslContext {.threadvar.}: SSLContext
 
 proc getDefaultSSL(): SSLContext =
   result = defaultSslContext
   when defined(ssl):
     if result == nil:
-      defaultSSLContext = newContext(verifyMode = CVerifyNone)
-      result = defaultSSLContext
+      defaultSslContext = newContext(verifyMode = CVerifyNone)
+      result = defaultSslContext
       doAssert result != nil, "failure to initialize the SSL context"
 
 proc newProxy*(url: string, auth = ""): Proxy =
@@ -463,7 +463,7 @@ proc newMultipartData*(xs: MultipartEntries): MultipartData =
   result = MultipartData(content: @[])
   result.add(xs)
 
-proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
+proc addFiles*(p: var MultipartData, xs: openArray[tuple[name, file: string]]):
               MultipartData {.discardable.} =
   ## Add files to a multipart data object. The file will be opened from your
   ## disk, read and sent with the automatically determined MIME type. Raises an
@@ -796,7 +796,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
     var contentLengthHeader = headers.getOrDefault"Content-Length"
     if contentLengthHeader != "":
-      var length = contentLengthHeader.parseint()
+      var length = contentLengthHeader.parseInt()
       client.contentTotal = length
       if length > 0:
         let recvLen = await client.recvFull(length, client.timeout, true)
@@ -1036,7 +1036,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
 
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
-              httpMethod = HttpGET, body = "",
+              httpMethod = HttpGet, body = "",
               headers: HttpHeaders = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
@@ -1065,14 +1065,14 @@ proc head*(client: HttpClient | AsyncHttpClient,
   ## Connects to the hostname specified by the URL and performs a HEAD request.
   ##
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
-  result = await client.request(url, HttpHEAD)
+  result = await client.request(url, HttpHead)
 
 proc get*(client: HttpClient | AsyncHttpClient,
           url: string): Future[Response | AsyncResponse] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a GET request.
   ##
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
-  result = await client.request(url, HttpGET)
+  result = await client.request(url, HttpGet)
 
 proc getContent*(client: HttpClient | AsyncHttpClient,
                  url: string): Future[string] {.multisync.} =
@@ -1084,7 +1084,7 @@ proc delete*(client: HttpClient | AsyncHttpClient,
           url: string): Future[Response | AsyncResponse] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a DELETE request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
-  result = await client.request(url, HttpDELETE)
+  result = await client.request(url, HttpDelete)
 
 proc deleteContent*(client: HttpClient | AsyncHttpClient,
                  url: string): Future[string] {.multisync.} =
@@ -1113,7 +1113,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## Connects to the hostname specified by the URL and performs a POST request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
-  result = await client.request(url, $HttpPOST, xb, headers)
+  result = await client.request(url, $HttpPost, xb, headers)
 
 proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
                   body = "",
@@ -1129,7 +1129,7 @@ proc put*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## Connects to the hostname specified by the URL and performs a PUT request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
-  result = await client.request(url, $HttpPUT, xb, headers)
+  result = await client.request(url, $HttpPut, xb, headers)
 
 proc putContent*(client: HttpClient | AsyncHttpClient, url: string,
                   body = "",
@@ -1145,7 +1145,7 @@ proc patch*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## Connects to the hostname specified by the URL and performs a PATCH request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
-  result = await client.request(url, $HttpPATCH, xb, headers)
+  result = await client.request(url, $HttpPatch, xb, headers)
 
 proc patchContent*(client: HttpClient | AsyncHttpClient, url: string,
                   body = "",

@@ -880,21 +880,21 @@ const
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
-proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): SocketHandle {.
+proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>".}
 
-proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: Socklen): cint {.
+proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
   ## is Posix's ``bind``, because ``bind`` is a reserved word
 
-proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: Socklen): cint {.
+proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getpeername*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): cint {.
+proc getpeername*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getsockname*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): cint {.
+proc getsockname*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): cint {.
   importc, header: "<sys/socket.h>".}
 
-proc getsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: ptr Socklen): cint {.
+proc getsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: ptr SockLen): cint {.
   importc, header: "<sys/socket.h>".}
 
 proc listen*(a1: SocketHandle, a2: cint): cint {.
@@ -902,7 +902,7 @@ proc listen*(a1: SocketHandle, a2: cint): cint {.
 proc recv*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
   importc, header: "<sys/socket.h>".}
 proc recvfrom*(a1: SocketHandle, a2: pointer, a3: int, a4: cint,
-        a5: ptr SockAddr, a6: ptr Socklen): int {.
+        a5: ptr SockAddr, a6: ptr SockLen): int {.
   importc, header: "<sys/socket.h>".}
 proc recvmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
@@ -911,9 +911,9 @@ proc send*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
 proc sendmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
 proc sendto*(a1: SocketHandle, a2: pointer, a3: int, a4: cint, a5: ptr SockAddr,
-             a6: Socklen): int {.
+             a6: SockLen): int {.
   importc, header: "<sys/socket.h>".}
-proc setsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: Socklen): cint {.
+proc setsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
 proc shutdown*(a1: SocketHandle, a2: cint): cint {.
   importc, header: "<sys/socket.h>".}
@@ -979,7 +979,7 @@ proc getaddrinfo*(a1, a2: cstring, a3: ptr AddrInfo,
                   a4: var ptr AddrInfo): cint {.importc, header: "<netdb.h>".}
 
 when not defined(android4):
-  proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
+  proc gethostbyaddr*(a1: pointer, a2: SockLen, a3: cint): ptr Hostent {.
                       importc, header: "<netdb.h>".}
 else:
   proc gethostbyaddr*(a1: cstring, a2: cint, a3: cint): ptr Hostent {.
@@ -987,9 +987,9 @@ else:
 proc gethostbyname*(a1: cstring): ptr Hostent {.importc, header: "<netdb.h>".}
 proc gethostent*(): ptr Hostent {.importc, header: "<netdb.h>".}
 
-proc getnameinfo*(a1: ptr SockAddr, a2: Socklen,
-                  a3: cstring, a4: Socklen, a5: cstring,
-                  a6: Socklen, a7: cint): cint {.importc, header: "<netdb.h>".}
+proc getnameinfo*(a1: ptr SockAddr, a2: SockLen,
+                  a3: cstring, a4: SockLen, a5: cstring,
+                  a6: SockLen, a7: cint): cint {.importc, header: "<netdb.h>".}
 
 proc getnetbyaddr*(a1: int32, a2: cint): ptr Tnetent {.importc, header: "<netdb.h>".}
 proc getnetbyname*(a1: cstring): ptr Tnetent {.importc, header: "<netdb.h>".}
