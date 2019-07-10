@@ -22,6 +22,7 @@ type
     preferGenericArg,
     preferTypeName,
     preferResolved, # fully resolved symbols
+    preferMixed, # show symbol + resolved symbols if it differs, eg: seq[cint{int32}, float]
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 template `$`*(typ: PType): string = typeToString(typ)
@@ -437,7 +438,8 @@ const
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
     "void"]
 
-const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo, preferGenericArg, preferResolved}
+const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
+  preferGenericArg, preferResolved, preferMixed}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.sons.add concrete
@@ -458,8 +460,8 @@ proc addTypeFlags(name: var string, typ: PType) {.inline.} =
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   let preferToplevel = prefer
   proc getPrefer(prefer: TPreferedDesc): TPreferedDesc =
-    if preferToplevel == preferResolved:
-      preferResolved # preferResolved is sticky
+    if preferToplevel in {preferResolved, preferMixed}:
+      preferToplevel # sticky option
     else:
       prefer
 
@@ -474,7 +476,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
       elif t.kind == tyAlias and t.sons[0].kind != tyAlias:
         result = typeToString(t.sons[0])
-      elif prefer == preferResolved:
+      elif prefer in {preferResolved, preferMixed}:
         case t.kind
         of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCString}:
           result = typeToStr[t.kind]
@@ -485,6 +487,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = typeToString(t.lastSon.lastSon)
         else:
           result = t.sym.name.s
+        if prefer == preferMixed and result != t.sym.name.s:
+          result = t.sym.name.s & "{" & result & "}"
       elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
         # note: should probably be: {preferName, preferTypeName, preferGenericArg}
         result = t.sym.name.s

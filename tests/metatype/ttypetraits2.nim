@@ -37,3 +37,9 @@ block: # typeToString
   doAssert C4[MyInt].name2 == "C4[int]"
   when BiggestFloat is float and cint is int:
     doAssert C2b[cint, BiggestFloat].name2 == "C3[int, C3[float, int32]]"
+
+  template name3(T): string = typeToString(T, "preferMixed")
+  doAssert MyInt.name3 == "MyInt{int}"
+  doAssert (tuple[a: MyInt, b: float]).name3 == "tuple[a: MyInt{int}, b: float]"
+  doAssert (tuple[a: C2b[MyInt, C4[cstring]], b: cint, c: float]).name3 ==
+    "tuple[a: C2b{C}[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
