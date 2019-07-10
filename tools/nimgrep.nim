@@ -89,14 +89,14 @@ proc countLines(s: string, first, last: int): int =
 proc beforePattern(s: string, first: int): int =
   result = first-1
   while result >= 0:
-    if s[result] in NewLines: break
+    if s[result] in Newlines: break
     dec(result)
   inc(result)
 
 proc afterPattern(s: string, last: int): int =
   result = last+1
   while result < s.len:
-    if s[result] in NewLines: break
+    if s[result] in Newlines: break
     inc(result)
   dec(result)
 
@@ -280,7 +280,7 @@ for kind, key, val in getopt():
       replacement = key
     else:
       filenames.add(key)
-  of cmdLongoption, cmdShortOption:
+  of cmdLongOption, cmdShortOption:
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "r": incl(options, optReplace)
