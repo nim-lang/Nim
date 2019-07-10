@@ -40,11 +40,11 @@ from endians import bigEndian32, bigEndian64
 const Sha1DigestSize = 20
 
 type
-  Sha1Digest = array[0 .. Sha1DigestSize-1, uint8]
+  Sha1Digest* = array[0 .. Sha1DigestSize-1, uint8]
   SecureHash* = distinct Sha1Digest
 
 type
-  Sha1State = object
+  Sha1State* = object
     count: int
     state: array[5, uint32]
     buf:   array[64, byte]
