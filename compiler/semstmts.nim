@@ -189,16 +189,16 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
   template semExceptBranchType(typeNode: PNode): bool =
     # returns true if exception type is imported type
     let typ = semTypeNode(c, typeNode, nil).toObject()
-    var is_imported = false
+    var isImported = false
     if isImportedException(typ, c.config):
-      is_imported = true
+      isImported = true
     elif not isException(typ):
       localError(c.config, typeNode.info, errExprCannotBeRaised)
 
     if containsOrIncl(check, typ.id):
       localError(c.config, typeNode.info, errExceptionAlreadyHandled)
     typeNode = newNodeIT(nkType, typeNode.info, typ)
-    is_imported
+    isImported
 
   result = n
   inc c.p.inTryStmt
@@ -223,9 +223,9 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
-        let is_imported = semExceptBranchType(a[0][1])
+        let isImported = semExceptBranchType(a[0][1])
         let symbol = newSymG(skLet, a[0][2], c)
-        symbol.typ = if is_imported: a[0][1].typ
+        symbol.typ = if isImported: a[0][1].typ
                      else: a[0][1].typ.toRef()
         addDecl(c, symbol)
         # Overwrite symbol in AST with the symbol in the symbol table.
@@ -241,13 +241,13 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
           # if ``except: body`` already encountered,
           # cannot be followed by a ``except KeyError, ... : body`` block
           inc catchAllExcepts
-        var is_native, is_imported: bool
+        var isNative, isImported: bool
         for j in 0..a.len-2:
           let tmp = semExceptBranchType(a[j])
-          if tmp: is_imported = true
-          else: is_native = true
+          if tmp: isImported = true
+          else: isNative = true
 
-        if is_native and is_imported:
+        if isNative and isImported:
           localError(c.config, a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
 
     elif a.kind == nkFinally:

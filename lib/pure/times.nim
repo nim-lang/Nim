@@ -283,12 +283,20 @@ type
     dSat = "Saturday"
     dSun = "Sunday"
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
+type
   DateTimeLocale* = object
     MMM*: array[mJan..mDec, string]
     MMMM*: array[mJan..mDec, string]
     ddd*: array[dMon..dSun, string]
     dddd*: array[dMon..dSun, string]
 
+when defined(nimHasStyleChecks):
+  {.pop.}
+
+type
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
