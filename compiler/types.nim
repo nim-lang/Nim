@@ -450,208 +450,210 @@ proc addTypeFlags(name: var string, typ: PType) {.inline.} =
   if tfNotNil in typ.flags: name.add(" not nil")
 
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
-  var t = typ
-  result = ""
-  if t == nil: return
-  if prefer in preferToResolveSymbols and t.sym != nil and
-       sfAnon notin t.sym.flags and t.kind != tySequence:
-    if t.kind == tyInt and isIntLit(t):
-      result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    elif t.kind == tyAlias and t.sons[0].kind != tyAlias:
-      result = typeToString(t.sons[0])
-    elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
-      result = t.sym.name.s
-      if t.kind == tyGenericParam and t.sonsLen > 0:
-        result.add ": "
-        var first = true
-        for son in t.sons:
-          if not first: result.add " or "
-          result.add son.typeToString
-          first = false
-    else:
-      result = t.sym.owner.name.s & '.' & t.sym.name.s
-    result.addTypeFlags(t)
-    return
-  case t.kind
-  of tyInt:
-    if not isIntLit(t) or prefer == preferExported:
-      result = typeToStr[t.kind]
-    else:
-      if prefer == preferGenericArg:
-        result = $t.n.intVal
+  proc typeToString(typ: PType): string =
+    var t = typ
+    result = ""
+    if t == nil: return
+    if prefer in preferToResolveSymbols and t.sym != nil and
+         sfAnon notin t.sym.flags and t.kind != tySequence:
+      if t.kind == tyInt and isIntLit(t):
+        result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
+      elif t.kind == tyAlias and t.sons[0].kind != tyAlias:
+        result = typeToString(t.sons[0])
+      elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
+        result = t.sym.name.s
+        if t.kind == tyGenericParam and t.sonsLen > 0:
+          result.add ": "
+          var first = true
+          for son in t.sons:
+            if not first: result.add " or "
+            result.add son.typeToString
+            first = false
       else:
-        result = "int literal(" & $t.n.intVal & ")"
-  of tyGenericInst, tyGenericInvocation:
-    result = typeToString(t.sons[0]) & '['
-    for i in 1 ..< sonsLen(t)-ord(t.kind != tyGenericInvocation):
-      if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i], preferGenericArg))
-    add(result, ']')
-  of tyGenericBody:
-    result = typeToString(t.lastSon) & '['
-    for i in 0 .. sonsLen(t)-2:
-      if i > 0: add(result, ", ")
-      add(result, typeToString(t.sons[i], preferTypeName))
-    add(result, ']')
-  of tyTypeDesc:
-    if t.sons[0].kind == tyNone: result = "typedesc"
-    else: result = "type " & typeToString(t.sons[0])
-  of tyStatic:
-    if prefer == preferGenericArg and t.n != nil:
-      result = t.n.renderTree
-    else:
-      result = "static[" & (if t.len > 0: typeToString(t.sons[0]) else: "") & "]"
-      if t.n != nil: result.add "(" & renderTree(t.n) & ")"
-  of tyUserTypeClass:
-    if t.sym != nil and t.sym.owner != nil:
-      if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
-      return t.sym.owner.name.s
-    else:
-      result = "<invalid tyUserTypeClass>"
-  of tyBuiltInTypeClass:
-    result = case t.base.kind:
-      of tyVar: "var"
-      of tyRef: "ref"
-      of tyPtr: "ptr"
-      of tySequence: "seq"
-      of tyArray: "array"
-      of tySet: "set"
-      of tyRange: "range"
-      of tyDistinct: "distinct"
-      of tyProc: "proc"
-      of tyObject: "object"
-      of tyTuple: "tuple"
-      of tyOpenArray: "openarray"
-      else: typeToStr[t.base.kind]
-  of tyInferred:
-    let concrete = t.previouslyInferred
-    if concrete != nil: result = typeToString(concrete)
-    else: result = "inferred[" & typeToString(t.base) & "]"
-  of tyUserTypeClassInst:
-    let body = t.base
-    result = body.sym.name.s & "["
-    for i in 1 .. sonsLen(t) - 2:
-      if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i]))
-    result.add "]"
-  of tyAnd:
-    for i, son in t.sons:
-      result.add(typeToString(son))
-      if i < t.sons.high:
-        result.add(" and ")
-  of tyOr:
-    for i, son in t.sons:
-      result.add(typeToString(son))
-      if i < t.sons.high:
-        result.add(" or ")
-  of tyNot:
-    result = "not " & typeToString(t.sons[0])
-  of tyUntyped:
-    #internalAssert t.len == 0
-    result = "untyped"
-  of tyFromExpr:
-    if t.n == nil:
-      result = "unknown"
-    else:
-      result = "type(" & renderTree(t.n) & ")"
-  of tyArray:
-    if t.sons[0].kind == tyRange:
-      result = "array[" & rangeToStr(t.sons[0].n) & ", " &
-          typeToString(t.sons[1]) & ']'
-    else:
-      result = "array[" & typeToString(t.sons[0]) & ", " &
-          typeToString(t.sons[1]) & ']'
-  of tyUncheckedArray:
-    result = "UncheckedArray[" & typeToString(t.sons[0]) & ']'
-  of tySequence:
-    result = "seq[" & typeToString(t.sons[0]) & ']'
-  of tyOpt:
-    result = "opt[" & typeToString(t.sons[0]) & ']'
-  of tyOrdinal:
-    result = "ordinal[" & typeToString(t.sons[0]) & ']'
-  of tySet:
-    result = "set[" & typeToString(t.sons[0]) & ']'
-  of tyOpenArray:
-    result = "openarray[" & typeToString(t.sons[0]) & ']'
-  of tyDistinct:
-    result = "distinct " & typeToString(t.sons[0],
-      if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
-  of tyTuple:
-    # we iterate over t.sons here, because t.n may be nil
-    if t.n != nil:
-      result = "tuple["
-      assert(sonsLen(t.n) == sonsLen(t))
-      for i in 0 ..< sonsLen(t.n):
-        assert(t.n.sons[i].kind == nkSym)
-        add(result, t.n.sons[i].sym.name.s & ": " & typeToString(t.sons[i]))
-        if i < sonsLen(t.n) - 1: add(result, ", ")
+        result = t.sym.owner.name.s & '.' & t.sym.name.s
+      result.addTypeFlags(t)
+      return
+    case t.kind
+    of tyInt:
+      if not isIntLit(t) or prefer == preferExported:
+        result = typeToStr[t.kind]
+      else:
+        if prefer == preferGenericArg:
+          result = $t.n.intVal
+        else:
+          result = "int literal(" & $t.n.intVal & ")"
+    of tyGenericInst, tyGenericInvocation:
+      result = typeToString(t.sons[0]) & '['
+      for i in 1 ..< sonsLen(t)-ord(t.kind != tyGenericInvocation):
+        if i > 1: add(result, ", ")
+        add(result, typeToString(t.sons[i], preferGenericArg))
       add(result, ']')
-    elif sonsLen(t) == 0:
-      result = "tuple[]"
-    else:
-      if prefer == preferTypeName: result = "("
-      else: result = "tuple of ("
-      for i in 0 ..< sonsLen(t):
+    of tyGenericBody:
+      result = typeToString(t.lastSon) & '['
+      for i in 0 .. sonsLen(t)-2:
+        if i > 0: add(result, ", ")
+        add(result, typeToString(t.sons[i], preferTypeName))
+      add(result, ']')
+    of tyTypeDesc:
+      if t.sons[0].kind == tyNone: result = "typedesc"
+      else: result = "type " & typeToString(t.sons[0])
+    of tyStatic:
+      if prefer == preferGenericArg and t.n != nil:
+        result = t.n.renderTree
+      else:
+        result = "static[" & (if t.len > 0: typeToString(t.sons[0]) else: "") & "]"
+        if t.n != nil: result.add "(" & renderTree(t.n) & ")"
+    of tyUserTypeClass:
+      if t.sym != nil and t.sym.owner != nil:
+        if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
+        return t.sym.owner.name.s
+      else:
+        result = "<invalid tyUserTypeClass>"
+    of tyBuiltInTypeClass:
+      result = case t.base.kind:
+        of tyVar: "var"
+        of tyRef: "ref"
+        of tyPtr: "ptr"
+        of tySequence: "seq"
+        of tyArray: "array"
+        of tySet: "set"
+        of tyRange: "range"
+        of tyDistinct: "distinct"
+        of tyProc: "proc"
+        of tyObject: "object"
+        of tyTuple: "tuple"
+        of tyOpenArray: "openarray"
+        else: typeToStr[t.base.kind]
+    of tyInferred:
+      let concrete = t.previouslyInferred
+      if concrete != nil: result = typeToString(concrete)
+      else: result = "inferred[" & typeToString(t.base) & "]"
+    of tyUserTypeClassInst:
+      let body = t.base
+      result = body.sym.name.s & "["
+      for i in 1 .. sonsLen(t) - 2:
+        if i > 1: add(result, ", ")
+        add(result, typeToString(t.sons[i]))
+      result.add "]"
+    of tyAnd:
+      for i, son in t.sons:
+        result.add(typeToString(son))
+        if i < t.sons.high:
+          result.add(" and ")
+    of tyOr:
+      for i, son in t.sons:
+        result.add(typeToString(son))
+        if i < t.sons.high:
+          result.add(" or ")
+    of tyNot:
+      result = "not " & typeToString(t.sons[0])
+    of tyUntyped:
+      #internalAssert t.len == 0
+      result = "untyped"
+    of tyFromExpr:
+      if t.n == nil:
+        result = "unknown"
+      else:
+        result = "type(" & renderTree(t.n) & ")"
+    of tyArray:
+      if t.sons[0].kind == tyRange:
+        result = "array[" & rangeToStr(t.sons[0].n) & ", " &
+            typeToString(t.sons[1]) & ']'
+      else:
+        result = "array[" & typeToString(t.sons[0]) & ", " &
+            typeToString(t.sons[1]) & ']'
+    of tyUncheckedArray:
+      result = "UncheckedArray[" & typeToString(t.sons[0]) & ']'
+    of tySequence:
+      result = "seq[" & typeToString(t.sons[0]) & ']'
+    of tyOpt:
+      result = "opt[" & typeToString(t.sons[0]) & ']'
+    of tyOrdinal:
+      result = "ordinal[" & typeToString(t.sons[0]) & ']'
+    of tySet:
+      result = "set[" & typeToString(t.sons[0]) & ']'
+    of tyOpenArray:
+      result = "openarray[" & typeToString(t.sons[0]) & ']'
+    of tyDistinct:
+      result = "distinct " & typeToString(t.sons[0],
+        if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
+    of tyTuple:
+      # we iterate over t.sons here, because t.n may be nil
+      if t.n != nil:
+        result = "tuple["
+        assert(sonsLen(t.n) == sonsLen(t))
+        for i in 0 ..< sonsLen(t.n):
+          assert(t.n.sons[i].kind == nkSym)
+          add(result, t.n.sons[i].sym.name.s & ": " & typeToString(t.sons[i]))
+          if i < sonsLen(t.n) - 1: add(result, ", ")
+        add(result, ']')
+      elif sonsLen(t) == 0:
+        result = "tuple[]"
+      else:
+        if prefer == preferTypeName: result = "("
+        else: result = "tuple of ("
+        for i in 0 ..< sonsLen(t):
+          add(result, typeToString(t.sons[i]))
+          if i < sonsLen(t) - 1: add(result, ", ")
+        add(result, ')')
+    of tyPtr, tyRef, tyVar, tyLent:
+      result = typeToStr[t.kind]
+      if t.len >= 2:
+        setLen(result, result.len-1)
+        result.add '['
+        for i in 0 ..< sonsLen(t):
+          add(result, typeToString(t.sons[i]))
+          if i < sonsLen(t) - 1: add(result, ", ")
+        result.add ']'
+      else:
+        result.add typeToString(t.sons[0])
+    of tyRange:
+      result = "range "
+      if t.n != nil and t.n.kind == nkRange:
+        result.add rangeToStr(t.n)
+      if prefer != preferExported:
+        result.add("(" & typeToString(t.sons[0]) & ")")
+    of tyProc:
+      result = if tfIterator in t.flags: "iterator "
+               elif t.owner != nil:
+                 case t.owner.kind
+                 of skTemplate: "template "
+                 of skMacro: "macro "
+                 of skConverter: "converter "
+                 else: "proc "
+              else:
+                "proc "
+      if tfUnresolved in t.flags: result.add "[*missing parameters*]"
+      result.add "("
+      for i in 1 ..< sonsLen(t):
+        if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
+          add(result, t.n[i].sym.name.s)
+          add(result, ": ")
         add(result, typeToString(t.sons[i]))
         if i < sonsLen(t) - 1: add(result, ", ")
       add(result, ')')
-  of tyPtr, tyRef, tyVar, tyLent:
-    result = typeToStr[t.kind]
-    if t.len >= 2:
-      setLen(result, result.len-1)
-      result.add '['
-      for i in 0 ..< sonsLen(t):
-        add(result, typeToString(t.sons[i]))
-        if i < sonsLen(t) - 1: add(result, ", ")
-      result.add ']'
+      if t.len > 0 and t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
+      var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
+      if tfNoSideEffect in t.flags:
+        addSep(prag)
+        add(prag, "noSideEffect")
+      if tfThread in t.flags:
+        addSep(prag)
+        add(prag, "gcsafe")
+      if t.lockLevel.ord != UnspecifiedLockLevel.ord:
+        addSep(prag)
+        add(prag, "locks: " & $t.lockLevel)
+      if len(prag) != 0: add(result, "{." & prag & ".}")
+    of tyVarargs:
+      result = typeToStr[t.kind] % typeToString(t.sons[0])
+    of tySink:
+      result = "sink " & typeToString(t.sons[0])
+    of tyOwned:
+      result = "owned " & typeToString(t.sons[0])
     else:
-      result.add typeToString(t.sons[0])
-  of tyRange:
-    result = "range "
-    if t.n != nil and t.n.kind == nkRange:
-      result.add rangeToStr(t.n)
-    if prefer != preferExported:
-      result.add("(" & typeToString(t.sons[0]) & ")")
-  of tyProc:
-    result = if tfIterator in t.flags: "iterator "
-             elif t.owner != nil:
-               case t.owner.kind
-               of skTemplate: "template "
-               of skMacro: "macro "
-               of skConverter: "converter "
-               else: "proc "
-            else:
-              "proc "
-    if tfUnresolved in t.flags: result.add "[*missing parameters*]"
-    result.add "("
-    for i in 1 ..< sonsLen(t):
-      if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
-        add(result, t.n[i].sym.name.s)
-        add(result, ": ")
-      add(result, typeToString(t.sons[i]))
-      if i < sonsLen(t) - 1: add(result, ", ")
-    add(result, ')')
-    if t.len > 0 and t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
-    var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
-    if tfNoSideEffect in t.flags:
-      addSep(prag)
-      add(prag, "noSideEffect")
-    if tfThread in t.flags:
-      addSep(prag)
-      add(prag, "gcsafe")
-    if t.lockLevel.ord != UnspecifiedLockLevel.ord:
-      addSep(prag)
-      add(prag, "locks: " & $t.lockLevel)
-    if len(prag) != 0: add(result, "{." & prag & ".}")
-  of tyVarargs:
-    result = typeToStr[t.kind] % typeToString(t.sons[0])
-  of tySink:
-    result = "sink " & typeToString(t.sons[0])
-  of tyOwned:
-    result = "owned " & typeToString(t.sons[0])
-  else:
-    result = typeToStr[t.kind]
-  result.addTypeFlags(t)
+      result = typeToStr[t.kind]
+    result.addTypeFlags(t)
+  result = typeToString(typ)
 
 proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
