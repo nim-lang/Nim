@@ -13,7 +13,7 @@ import
   strutils, os, intsets, strtabs
 
 import options, ast, astalgo, msgs, semdata, ropes, idents,
-  lineinfos, pathutils
+  lineinfos, pathutils, wordrecg
 
 const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
@@ -21,28 +21,6 @@ const
 proc identLen*(line: string, start: int): int =
   while start+result < line.len and line[start+result] in Letters:
     inc result
-
-type
-  StyleCheck* {.pure.} = enum None, Warn, Auto
-
-proc overwriteFiles*(conf: ConfigRef) =
-  let doStrip = options.getConfigVar(conf, "pretty.strip").normalize == "on"
-  for i in 0 .. high(conf.m.fileInfos):
-    if conf.m.fileInfos[i].dirty and
-        (FileIndex(i) == conf.projectMainIdx):
-      let newFile = if false: conf.m.fileInfos[i].fullpath
-                    else: conf.m.fileInfos[i].fullpath.changeFileExt(".pretty.nim")
-      try:
-        var f = open(newFile.string, fmWrite)
-        for line in conf.m.fileInfos[i].lines:
-          if doStrip:
-            f.write line.strip(leading = false, trailing = true)
-          else:
-            f.write line
-          f.write(conf.m.fileInfos[i], "\L")
-        f.close
-      except IOError:
-        rawMessage(conf, errGenerated, "cannot open file: " & newFile.string)
 
 proc `=~`(s: string, a: openArray[string]): bool =
   for x in a:
@@ -95,7 +73,7 @@ proc beautifyName(s: string, k: TSymKind): string =
 
 proc differ*(line: string, a, b: int, x: string): string =
   let y = line[a..b]
-  if cmpIgnoreStyle(y, x) == 0 and y != x:
+  if y != x and cmpIgnoreStyle(y, x) == 0:
     result = y
   else:
     result = ""
@@ -125,8 +103,6 @@ proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
 template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   if {optStyleHint, optStyleError} * conf.globalOptions != {}:
     nep1CheckDefImpl(conf, info, s, k)
-  when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, cache, info, s, k)
 
 template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym) =
   styleCheckDef(conf, info, s, s.kind)
@@ -159,32 +135,7 @@ proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if oldName.len > 0:
     lintReport(conf, info, newName, oldName)
 
-proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; pragmaName: string) =
-  const inMixedCase = [
-    "noSideEffect", "importCompilerProc", "incompleteStruct", "requiresInit",
-    "sideEffect", "compilerProc", "lineDir", "stackTrace", "lineTrace",
-    "rangeChecks", "boundChecks",
-    "overflowChecks", "nilChecks",
-    "floatChecks", "nanChecks", "infChecks", "moveChecks",
-    "nonReloadable", "executeOnReload",
-    "deadCodeElim",
-    "compileTime", "noInit", "fieldChecks",
-    "linearScanEnd",
-    "computedGoto", "injectStmt",
-    "asmNoStackframe", "implicitStatic", "codegenDecl", "liftLocals"
-  ]
-  let name = pragmaName.normalize
-  for x in inMixedCase:
-    if x.normalize == name:
-      if pragmaName != x:
-        lintReport(conf, info, x, pragmaName)
-      return
-
-  let wanted = pragmaName.toLowerAscii.replace("_", "")
+proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
+  let wanted = canonPragmaSpelling(w)
   if pragmaName != wanted:
     lintReport(conf, info, wanted, pragmaName)
-
-
-template styleCheckUse*(info: TLineInfo; s: PSym) =
-  when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, info, s)
