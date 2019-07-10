@@ -2260,8 +2260,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  let transformed_body = transformBody(oldProc.module.graph, prc, cache = false)
-  p.nested: genStmt(p, transformed_body)
+  let transformedBody = transformBody(oldProc.module.graph, prc, cache = false)
+  p.nested: genStmt(p, transformedBody)
 
   var def: Rope
   if not prc.constraint.isNil:
@@ -2541,7 +2541,7 @@ proc genModule(p: PProc, n: PNode) =
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
-  let n_transformed = transformStmt(p.module.graph, p.module.module, n)
+  let transformedN = transformStmt(p.module.graph, p.module.module, n)
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
@@ -2549,7 +2549,7 @@ proc genModule(p: PProc, n: PNode) =
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 
-    addHcrInitGuards(p, n_transformed, moduleLoadedVar, inGuardedBlock)
+    addHcrInitGuards(p, transformedN, moduleLoadedVar, inGuardedBlock)
 
     if inGuardedBlock:
       dec p.extraIndent
@@ -2557,7 +2557,7 @@ proc genModule(p: PProc, n: PNode) =
 
     lineF(p, "$1 = true;$n", [moduleLoadedVar])
   else:
-    genStmt(p, n_transformed)
+    genStmt(p, transformedN)
 
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))

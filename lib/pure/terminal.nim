@@ -71,14 +71,14 @@ when defined(windows):
   type
     SHORT = int16
     COORD = object
-      X: SHORT
-      Y: SHORT
+      x: SHORT
+      y: SHORT
 
     SMALL_RECT = object
-      Left: SHORT
-      Top: SHORT
-      Right: SHORT
-      Bottom: SHORT
+      left: SHORT
+      top: SHORT
+      right: SHORT
+      bottom: SHORT
 
     CONSOLE_SCREEN_BUFFER_INFO = object
       dwSize: COORD
@@ -114,14 +114,14 @@ when defined(windows):
     var csbi: CONSOLE_SCREEN_BUFFER_INFO
     for h in handles:
       if getConsoleScreenBufferInfo(h, addr csbi) != 0:
-        return int(csbi.srWindow.Right - csbi.srWindow.Left + 1)
+        return int(csbi.srWindow.right - csbi.srWindow.left + 1)
     return 0
 
   proc terminalHeightIoctl*(handles: openArray[Handle]): int =
     var csbi: CONSOLE_SCREEN_BUFFER_INFO
     for h in handles:
       if getConsoleScreenBufferInfo(h, addr csbi) != 0:
-        return int(csbi.srWindow.Bottom - csbi.srWindow.Top + 1)
+        return int(csbi.srWindow.bottom - csbi.srWindow.top + 1)
     return 0
 
   proc terminalWidth*(): int =
@@ -168,12 +168,12 @@ when defined(windows):
     var c: CONSOLE_SCREEN_BUFFER_INFO
     if getConsoleScreenBufferInfo(h, addr(c)) == 0:
       raiseOSError(osLastError())
-    return (int(c.dwCursorPosition.X), int(c.dwCursorPosition.Y))
+    return (int(c.dwCursorPosition.x), int(c.dwCursorPosition.y))
 
   proc setCursorPos(h: Handle, x, y: int) =
     var c: COORD
-    c.X = int16(x)
-    c.Y = int16(y)
+    c.x = int16(x)
+    c.y = int16(y)
     if setConsoleCursorPosition(h, c) == 0:
       raiseOSError(osLastError())
 
@@ -319,7 +319,7 @@ proc setCursorXPos*(f: File, x: int) =
     if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
-    origin.X = int16(x)
+    origin.x = int16(x)
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
   else:
@@ -336,7 +336,7 @@ when defined(windows):
       if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
         raiseOSError(osLastError())
       var origin = scrbuf.dwCursorPosition
-      origin.Y = int16(y)
+      origin.y = int16(y)
       if setConsoleCursorPosition(h, origin) == 0:
         raiseOSError(osLastError())
     else:
@@ -422,10 +422,10 @@ proc eraseLine*(f: File) =
     if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
-    origin.X = 0'i16
+    origin.x = 0'i16
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
-    var wt: DWORD = scrbuf.dwSize.X - origin.X
+    var wt: DWORD = scrbuf.dwSize.x - origin.x
     if fillConsoleOutputCharacter(h, ' ', wt,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
@@ -446,7 +446,7 @@ proc eraseScreen*(f: File) =
 
     if getConsoleScreenBufferInfo(h, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
-    let numChars = int32(scrbuf.dwSize.X)*int32(scrbuf.dwSize.Y)
+    let numChars = int32(scrbuf.dwSize.x)*int32(scrbuf.dwSize.y)
 
     if fillConsoleOutputCharacter(h, ' ', numChars,
                                   origin, addr(numwrote)) == 0:

@@ -253,8 +253,8 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and not defined(android) and not defined(haiku):
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
-  let socket_port = if sockType == SOCK_RAW: "" else: $port
-  var gaiResult = getaddrinfo(address, socket_port, addr(hints), result)
+  let socketPort = if sockType == SOCK_RAW: "" else: $port
+  var gaiResult = getaddrinfo(address, socketPort, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
       raiseOSError(osLastError())
@@ -357,8 +357,8 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     result.addrList = @[]
     var i = 0
     while not isNil(s.h_addr_list[i]):
-      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrList.add($inet_ntoa(inaddr_ptr[]))
+      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrList.add($inet_ntoa(inaddrPtr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
@@ -386,8 +386,8 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     result.addrList = @[]
     var i = 0
     while not isNil(s.h_addr_list[i]):
-      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrList.add($inet_ntoa(inaddr_ptr[]))
+      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrList.add($inet_ntoa(inaddrPtr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
