@@ -100,7 +100,7 @@ type
   TypeCache* = Table[SigHash, Rope]
   TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
 
-  Codegenflag* = enum
+  CodegenFlag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
     usesThreadVars,     # true if the module uses a thread var
     frameDeclared,      # hack for ROD support so that we don't declare
@@ -137,7 +137,7 @@ type
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
-    flags*: set[Codegenflag]
+    flags*: set[CodegenFlag]
     module*: PSym
     filename*: AbsoluteFile
     cfilename*: AbsoluteFile  # filename of the module (including path,

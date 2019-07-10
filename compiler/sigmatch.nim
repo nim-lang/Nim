@@ -1494,7 +1494,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # Workaround for regression #4589
           if f.sons[i].kind != tyTypeDesc: return
       result = isGeneric
-    elif x.kind == tyGenericInst and isGenericSubType(c, x, f, depth, f) and
+    elif x.kind == tyGenericInst and isGenericSubtype(c, x, f, depth, f) and
           (sonsLen(x) - 1 == sonsLen(f)):
       # do not recurse here in order to not K bind twice for this code:
       #
@@ -1545,7 +1545,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # Here object inheriting from generic/specialized generic object
         # crossing path with metatypes/aliases, so we need to separate them
         # by checking sym.id
-        let genericSubtype = isGenericSubType(c, x, f, depth, f)
+        let genericSubtype = isGenericSubtype(c, x, f, depth, f)
         if not (genericSubtype and aobj.sym.id != fobj.sym.id) and aOrig.kind != tyGenericBody:
           depth = -1
 

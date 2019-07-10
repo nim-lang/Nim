@@ -333,7 +333,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   suggestSym(c.config, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
-  if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
+  if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and
       {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
     if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
@@ -1009,7 +1009,6 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         let typsym = pkg.tab.strTableGet(typName)
         if typsym.isNil:
           s = semIdentDef(c, name[1], skType)
-          styleCheckDef(c.config, s)
           onDef(name[1].info, s)
           s.typ = newTypeS(tyObject, c)
           s.typ.sym = s
@@ -1024,7 +1023,6 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
           s = typsym
     else:
       s = semIdentDef(c, name, skType)
-      styleCheckDef(c.config, s)
       onDef(name.info, s)
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s             # process pragmas:
@@ -1253,6 +1251,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue
     let name = typeSectionTypeName(c, a.sons[0])
     var s = name.sym
+    # check the style here after the pragmas have been processed:
+    styleCheckDef(c.config, s)
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty:
       var x = a[2]
@@ -1286,7 +1286,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
     of nkIncludeStmt:
       for i in 0..<n.len:
         var f = checkModuleName(c.config, n.sons[i])
-        if f != InvalidFileIDX:
+        if f != InvalidFileIdx:
           if containsOrIncl(c.includedFiles, f.int):
             localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
           else:
@@ -2021,7 +2021,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
 
 proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
   var f = checkModuleName(c.config, it)
-  if f != InvalidFileIDX:
+  if f != InvalidFileIdx:
     if containsOrIncl(c.includedFiles, f.int):
       localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
     else:

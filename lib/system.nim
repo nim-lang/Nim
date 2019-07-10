@@ -462,7 +462,7 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## and strings.
 
 when defined(nimArrIdx):
-  # :array|openarray|string|seq|cstring|tuple
+  # :array|openArray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
@@ -700,7 +700,7 @@ type
     ## is an `int` type ranging from one to the maximum value
     ## of an `int`. This type is often useful for documentation and debugging.
 
-  RootObj* {.compilerProc, inheritable.} =
+  RootObj* {.compilerproc, inheritable.} =
     object ## The root of Nim's object hierarchy.
            ##
            ## Objects should inherit from `RootObj` or one of its descendants.
@@ -1026,7 +1026,7 @@ when not defined(JS):
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
-  ## Returns the length of an openarray.
+  ## Returns the length of an openArray.
   ##
   ## .. code-block:: Nim
   ##   var s = [1, 1, 1, 1, 1]
@@ -2002,7 +2002,7 @@ else:
                                         ## turned on.
 
 when defined(profiler) and not defined(nimscript):
-  proc nimProfile() {.compilerProc, noinline.}
+  proc nimProfile() {.compilerproc, noinline.}
 when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
 else:
@@ -2082,7 +2082,7 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
 when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
-  proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
+  proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
 when not defined(gcDestructors):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -2551,7 +2551,7 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ##   assert b == 5
 
 when not defined(js) and not defined(booting) and defined(nimTrMacros):
-  template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openarray[ref], a, b: int) =
+  template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openArray[ref], a, b: int) =
     # Optimize swapping of array elements if they are refs. Default swap
     # implementation will cause unsureAsgnRef to be emitted which causes
     # unnecessary slow down in this case.
@@ -2919,7 +2919,7 @@ proc `==`*[I, T](x, y: array[I, T]): bool =
       return
   result = true
 
-proc `==`*[T](x, y: openarray[T]): bool =
+proc `==`*[T](x, y: openArray[T]): bool =
   if x.len != y.len:
     return false
 
@@ -2930,7 +2930,7 @@ proc `==`*[T](x, y: openarray[T]): bool =
   result = true
 
 proc `@`*[T](a: openArray[T]): seq[T] =
-  ## Turns an *openarray* into a sequence.
+  ## Turns an *openArray* into a sequence.
   ##
   ## This is not as efficient as turning a fixed length array into a sequence
   ## as it always copies every element of `a`.
@@ -3081,9 +3081,9 @@ when not defined(js):
 
   when defined(nimV2):
     type
-      TNimNode {.compilerProc.} = object # to keep the code generator simple
+      TNimNode {.compilerproc.} = object # to keep the code generator simple
       DestructorProc = proc (p: pointer) {.nimcall, benign.}
-      TNimType {.compilerProc.} = object
+      TNimType {.compilerproc.} = object
         destructor: pointer
         size: int
         name: cstring
@@ -3427,7 +3427,7 @@ template newException*(exceptn: typedesc, message: string;
   e
 
 when hostOS == "standalone" and defined(nogc):
-  proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
+  proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
     else: result = cstring(addr s.data)
 
@@ -3844,7 +3844,7 @@ elif defined(JS):
       return 1
 
 
-proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
+proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
@@ -4484,21 +4484,21 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage) a
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
 when not defined(js):
-  proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
+  proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
+  proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openarray[T] {.
+  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
+  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*(x: string; first, last: int): openarray[char] {.
+  proc toOpenArray*(x: string; first, last: int): openArray[char] {.
     magic: "Slice".}
-  proc toOpenArrayByte*(x: string; first, last: int): openarray[byte] {.
+  proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
     magic: "Slice".}
 
 type
-  ForLoopStmt* {.compilerProc.} = object ## \
+  ForLoopStmt* {.compilerproc.} = object ## \
     ## A special type that marks a macro as a `for-loop macro`:idx:.
     ## See `"For Loop Macro" <manual.html#macros-for-loop-macro>`_.
 

@@ -398,35 +398,35 @@ proc isIpAddress*(addressStr: string): bool {.tags: [].} =
   return true
 
 proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
-                 sl: var Socklen) =
+                 sl: var SockLen) =
   ## Converts `IpAddress` and `Port` to `SockAddr` and `Socklen`
   let port = htons(uint16(port))
   case address.family
   of IpAddressFamily.IPv4:
-    sl = sizeof(Sockaddr_in).Socklen
+    sl = sizeof(Sockaddr_in).SockLen
     let s = cast[ptr Sockaddr_in](addr sa)
     s.sin_family = type(s.sin_family)(toInt(AF_INET))
     s.sin_port = port
     copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
             sizeof(s.sin_addr))
   of IpAddressFamily.IPv6:
-    sl = sizeof(Sockaddr_in6).Socklen
+    sl = sizeof(Sockaddr_in6).SockLen
     let s = cast[ptr Sockaddr_in6](addr sa)
     s.sin6_family = type(s.sin6_family)(toInt(AF_INET6))
     s.sin6_port = port
     copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
             sizeof(s.sin6_addr))
 
-proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen,
+proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
                      address: var IpAddress, port: var Port) =
-  if sa.ss_family.cint == toInt(AF_INET) and sl == sizeof(Sockaddr_in).Socklen:
+  if sa.ss_family.cint == toInt(AF_INET) and sl == sizeof(Sockaddr_in).SockLen:
     address = IpAddress(family: IpAddressFamily.IPv4)
     let s = cast[ptr Sockaddr_in](sa)
     copyMem(addr address.address_v4[0], addr s.sin_addr,
             sizeof(address.address_v4))
     port = ntohs(s.sin_port).Port
   elif sa.ss_family.cint == toInt(AF_INET6) and
-       sl == sizeof(Sockaddr_in6).Socklen:
+       sl == sizeof(Sockaddr_in6).SockLen:
     address = IpAddress(family: IpAddressFamily.IPv6)
     let s = cast[ptr Sockaddr_in6](sa)
     copyMem(addr address.address_v6[0], addr s.sin6_addr,
@@ -436,7 +436,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen,
     raise newException(ValueError, "Neither IPv4 nor IPv6")
 
 proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
-    sl: Socklen, address: var IpAddress, port: var Port) {.inline.} =
+    sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `Socklen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
   fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
@@ -762,9 +762,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-    freeAddrInfo(aiList)
+    freeaddrinfo(aiList)
     raiseOSError(osLastError())
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
                  flags = {SocketFlag.SafeDisconn}) {.
@@ -1378,7 +1378,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
     it = it.ai_next
 
   let osError = osLastError()
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
 
   if not success:
     raiseOSError(osError)
@@ -1404,6 +1404,9 @@ proc isSsl*(socket: Socket): bool =
 
 proc getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
+
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 proc IPv4_any*(): IpAddress =
   ## Returns the IPv4 any address, which can be used to listen on all available
@@ -1436,6 +1439,9 @@ proc IPv6_loopback*(): IpAddress =
   result = IpAddress(
     family: IpAddressFamily.IPv6,
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+
+when defined(nimHasStyleChecks):
+  {.pop.}
 
 proc `==`*(lhs, rhs: IpAddress): bool =
   ## Compares two IpAddresses for Equality. Returns true if the addresses are equal
@@ -1547,7 +1553,7 @@ proc dial*(address: string, port: Port,
         # network system problem (e.g. not enough FDs), and not an unreachable
         # address.
         let err = osLastError()
-        freeAddrInfo(aiList)
+        freeaddrinfo(aiList)
         closeUnusedFds()
         raiseOSError(err)
       fdPerDomain[ord(domain)] = lastFd
@@ -1556,7 +1562,7 @@ proc dial*(address: string, port: Port,
       break
     lastError = osLastError()
     it = it.ai_next
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
   closeUnusedFds(ord(domain))
 
   if success:
@@ -1586,7 +1592,7 @@ proc connect*(socket: Socket, address: string,
     else: lastError = osLastError()
     it = it.ai_next
 
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
   if not success: raiseOSError(lastError)
 
   when defineSsl:
@@ -1634,7 +1640,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
 
     it = it.ai_next
 
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
   if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0),

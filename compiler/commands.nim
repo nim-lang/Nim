@@ -277,7 +277,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "rangechecks": result = contains(conf.options, optRangeCheck)
   of "boundchecks": result = contains(conf.options, optBoundsCheck)
   of "overflowchecks": result = contains(conf.options, optOverflowCheck)
-  of "movechecks": result = contains(conf.options, optMoveCheck)
+  of "stylechecks": result = contains(conf.options, optStyleCheck)
   of "linedir": result = contains(conf.options, optLineDir)
   of "assertions", "a": result = contains(conf.options, optAssert)
   of "run", "r": result = contains(conf.globalOptions, optRun)
@@ -531,7 +531,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "rangechecks": processOnOffSwitch(conf, {optRangeCheck}, arg, pass, info)
   of "boundchecks": processOnOffSwitch(conf, {optBoundsCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch(conf, {optOverflowCheck}, arg, pass, info)
-  of "movechecks": processOnOffSwitch(conf, {optMoveCheck}, arg, pass, info)
+  of "stylechecks": processOnOffSwitch(conf, {optStyleCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
   of "deadcodeelim": discard # deprecated, dead code elim always on
@@ -807,7 +807,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int; config: ConfigRef): bool =
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
-    if p.key.endswith(".nims"):
+    if p.key.endsWith(".nims"):
       config.command = "e"
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)

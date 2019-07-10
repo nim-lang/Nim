@@ -505,7 +505,7 @@ proc formatValue*(result: var string; value: string; specifier: string) =
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
   if spec.precision != -1:
-    if spec.precision < runelen(value):
+    if spec.precision < runeLen(value):
       setLen(value, runeOffset(value, spec.precision))
   result.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 

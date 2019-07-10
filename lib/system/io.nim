@@ -12,7 +12,7 @@ include inclrtl
 # ----------------- IO Part ------------------------------------------------
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
-          incompletestruct.} = object
+          incompleteStruct.} = object
   File* = ptr CFile ## The type representing a file handle.
 
   FileMode* = enum           ## The file mode when opening a file.
@@ -420,7 +420,7 @@ when defined(windows) and not defined(useWinAnsi):
     result = wfreopen(f, m, stream)
 
 else:
-  proc fopen(filename, mode: cstring): pointer {.importc: "fopen", noDecl.}
+  proc fopen(filename, mode: cstring): pointer {.importc: "fopen", nodecl.}
   proc freopen(filename, mode: cstring, stream: File): File {.
     importc: "freopen", nodecl.}
 
@@ -442,7 +442,7 @@ when defined(posix) and not defined(nimscript):
         st_mode: Mode        ## Mode of file
         filler_2: array[144 - 24 - 4, char]
 
-    proc S_ISDIR(m: Mode): bool =
+    proc modeIsDir(m: Mode): bool =
       ## Test for a directory.
       (m and 0o170000) == 0o40000
 
@@ -454,7 +454,7 @@ when defined(posix) and not defined(nimscript):
                header: "<sys/stat.h>", final, pure.} = object ## struct stat
         st_mode: Mode        ## Mode of file
 
-    proc S_ISDIR(m: Mode): bool {.importc, header: "<sys/stat.h>".}
+    proc modeIsDir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
       ## Test for a directory.
 
   proc c_fstat(a1: cint, a2: var Stat): cint {.
@@ -476,7 +476,7 @@ proc open*(f: var File, filename: string,
       # be opened.
       var f2 = cast[File](p)
       var res: Stat
-      if c_fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
+      if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
         close(f2)
         return false
     result = true
@@ -550,11 +550,11 @@ when declared(stdout):
     var echoLock: SysLock
     initSysLock echoLock
 
-  proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     # flockfile deadlocks some versions of Android 5.x.x
     when not defined(windows) and not defined(android) and not defined(nintendoswitch):
-      proc flockfile(f: File) {.importc, noDecl.}
-      proc funlockfile(f: File) {.importc, noDecl.}
+      proc flockfile(f: File) {.importc, nodecl.}
+      proc funlockfile(f: File) {.importc, nodecl.}
       flockfile(stdout)
     when defined(windows) and compileOption("threads"):
       acquireSys echoLock

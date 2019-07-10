@@ -20,38 +20,38 @@ const
 
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
-    wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
+    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
     wCompilerProc, wNonReloadable, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wConstructor, wExportNims, wUsed, wLiftLocals, wStacktrace, wLinetrace, wNoDestroy}
+    wConstructor, wExportNims, wUsed, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy}
   converterPragmas* = procPragmas - {wNoDestroy}
   methodPragmas* = procPragmas+{wBase}-{wImportCpp, wNoDestroy}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
   macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc,
-    wNodecl, wMagic, wNosideeffect, wCompilerProc, wNonReloadable, wCore, wDeprecated, wExtern,
+    wNodecl, wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
     wExportNims, wUsed}
-  iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
+  iteratorPragmas* = {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wLocks, wGcSafe, wExportNims, wUsed}
-  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNosideeffect}
-  stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
-    wBoundchecks, wOverflowchecks, wNilchecks, wMovechecks, wAssertions,
+  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
+  stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
+    wBoundChecks, wOverflowChecks, wNilChecks, wStyleChecks, wAssertions,
     wWarnings, wHints,
-    wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
+    wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wBreakpoint, wWatchPoint, wPassl, wPassc,
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
-    wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
+    wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
-    wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
+    wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wGcSafe, wCodegenDecl}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl,
@@ -69,7 +69,7 @@ const
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
     wIntDefine, wStrDefine, wBoolDefine, wUsed, wCompilerProc, wCore}
   letPragmas* = varPragmas
-  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
+  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
   forVarPragmas* = {wInject, wGensym}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
@@ -161,7 +161,7 @@ proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   incl(s.flags, sfNamedParamCall)
   excl(s.flags, sfForward)
   let m = s.getModule()
-  incl(m.flags, sfCompileToObjC)
+  incl(m.flags, sfCompileToObjc)
 
 proc newEmptyStrNode(c: PContext; n: PNode): PNode {.noinline.} =
   result = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
@@ -331,20 +331,20 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wChecks: ChecksOptions
   of wObjChecks: {optObjCheck}
   of wFieldChecks: {optFieldCheck}
-  of wRangechecks: {optRangeCheck}
-  of wBoundchecks: {optBoundsCheck}
-  of wOverflowchecks: {optOverflowCheck}
-  of wNilchecks: {optNilCheck}
-  of wFloatchecks: {optNaNCheck, optInfCheck}
+  of wRangeChecks: {optRangeCheck}
+  of wBoundChecks: {optBoundsCheck}
+  of wOverflowChecks: {optOverflowCheck}
+  of wNilChecks: {optNilCheck}
+  of wFloatChecks: {optNaNCheck, optInfCheck}
   of wNanChecks: {optNaNCheck}
   of wInfChecks: {optInfCheck}
-  of wMovechecks: {optMoveCheck}
+  of wStyleChecks: {optStyleCheck}
   of wAssertions: {optAssert}
   of wWarnings: {optWarns}
   of wHints: {optHints}
-  of wLinedir: {optLineDir}
-  of wStacktrace: {optStackTrace}
-  of wLinetrace: {optLineTrace}
+  of wLineDir: {optLineDir}
+  of wStackTrace: {optStackTrace}
+  of wLineTrace: {optLineTrace}
   of wDebugger: {optEndb}
   of wProfiler: {optProfiler, optMemTracker}
   of wMemTracker: {optMemTracker}
@@ -491,7 +491,7 @@ proc processCompile(c: PContext, n: PNode) =
     let dest = getStrLit(c, it, 1)
     var found = parentDir(toFullPath(c.config, n.info)) / s
     for f in os.walkFiles(found):
-      let obj = completeCFilePath(c.config, AbsoluteFile(dest % extractFilename(f)))
+      let obj = completeCfilePath(c.config, AbsoluteFile(dest % extractFilename(f)))
       docompile(c, it, AbsoluteFile f, obj)
   else:
     let s = expectStrLit(c, n)
@@ -501,7 +501,7 @@ proc processCompile(c: PContext, n: PNode) =
       else:
         found = findFile(c.config, s)
         if found.isEmpty: found = AbsoluteFile s
-    let obj = toObjFile(c.config, completeCFilePath(c.config, found, false))
+    let obj = toObjFile(c.config, completeCfilePath(c.config, found, false))
     docompile(c, it, found, obj)
 
 proc processLink(c: PContext, n: PNode) =
@@ -863,12 +863,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
         if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
-      of wNosideeffect:
+      of wNoSideEffect:
         noVal(c, it)
         if sym != nil:
           incl(sym.flags, sfNoSideEffect)
           if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
-      of wSideeffect:
+      of wSideEffect:
         noVal(c, it)
         incl(sym.flags, sfSideEffect)
       of wNoreturn:
@@ -1011,12 +1011,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym != nil: incl(sym.flags, sfNoInit)
       of wCodegenDecl: processCodegenDecl(c, it, sym)
-      of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks,
-         wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
-         wLinedir, wOptimization, wMovechecks, wCallconv, wDebugger, wProfiler,
-         wFloatchecks, wNanChecks, wInfChecks, wPatterns, wTrMacros:
+      of wChecks, wObjChecks, wFieldChecks, wRangeChecks, wBoundChecks,
+         wOverflowChecks, wNilChecks, wAssertions, wWarnings, wHints,
+         wLineDir, wOptimization, wStyleChecks, wCallconv, wDebugger, wProfiler,
+         wFloatChecks, wNanChecks, wInfChecks, wPatterns, wTrMacros:
         processOption(c, it, c.config.options)
-      of wStacktrace, wLinetrace:
+      of wStackTrace, wLineTrace:
         if sym.kind in {skProc, skMethod, skConverter}:
           processOption(c, it, sym.options)
         else:

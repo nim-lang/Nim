@@ -107,10 +107,10 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   else:
     copyMem(dest, src, mt.size) # copy raw bits
 
-proc genericAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+proc genericAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   genericAssignAux(dest, src, mt, false)
 
-proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   genericAssignAux(dest, src, mt, true)
 
 when false:
@@ -142,7 +142,7 @@ when false:
     cprintf("%s %ld\n", k, t.size)
     debugNimType(t.base)
 
-proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   var src = src # ugly, but I like to stress the parser sometimes :-)
   genericAssign(dest, addr(src), mt)
 
@@ -155,7 +155,7 @@ proc genericAssignOpenArray(dest, src: pointer, len: int,
     genericAssign(cast[pointer](d +% i *% mt.base.size),
                   cast[pointer](s +% i *% mt.base.size), mt.base)
 
-proc objectInit(dest: pointer, typ: PNimType) {.compilerProc, benign.}
+proc objectInit(dest: pointer, typ: PNimType) {.compilerproc, benign.}
 proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
   var d = cast[ByteAddress](dest)
   case n.kind
@@ -188,7 +188,7 @@ proc objectInit(dest: pointer, typ: PNimType) =
 
 # ---------------------- assign zero -----------------------------------------
 
-proc genericReset(dest: pointer, mt: PNimType) {.compilerProc, benign.}
+proc genericReset(dest: pointer, mt: PNimType) {.compilerproc, benign.}
 proc genericResetAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[ByteAddress](dest)
   case n.kind
@@ -229,7 +229,7 @@ proc selectBranch(discVal, L: int,
 
 proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
                             a: ptr array[0x7fff, ptr TNimNode],
-                            L: int) {.compilerProc.} =
+                            L: int) {.compilerproc.} =
   let oldBranch = selectBranch(oldDiscVal, L, a)
   let newBranch = selectBranch(newDiscVal, L, a)
   when defined(nimOldCaseObjects):

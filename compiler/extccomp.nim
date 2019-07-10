@@ -416,7 +416,7 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
     localError(conf, info, "unknown C compiler: '$1'. Available options are: $2" % [ccname, ccList])
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
-  conf.ccompilerpath = getConfigVar(conf, conf.cCompiler, ".path")
+  conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
   for i in low(CC) .. high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
@@ -443,10 +443,10 @@ proc initVars*(conf: ConfigRef) =
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
-  if len(conf.ccompilerpath) == 0:
-    conf.ccompilerpath = getConfigVar(conf, conf.cCompiler, ".path")
+  if len(conf.cCompilerPath) == 0:
+    conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
 
-proc completeCFilePath*(conf: ConfigRef; cfile: AbsoluteFile,
+proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
                         createSubDir: bool = true): AbsoluteFile =
   result = completeGeneratedFilePath(conf, cfile, createSubDir)
 
@@ -591,7 +591,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
-    compilePattern = joinPath(conf.ccompilerpath, exe)
+    compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
     includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
@@ -606,7 +606,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
       if not cfile.flags.contains(CfileFlag.External) or noAbsolutePaths(conf):
         toObjFile(conf, cf).string
       else:
-        completeCFilePath(conf, toObjFile(conf, cf)).string
+        completeCfilePath(conf, toObjFile(conf, cf)).string
     elif noAbsolutePaths(conf):
       extractFilename(cfile.obj.string)
     else:
@@ -666,11 +666,11 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
   var c = Cfile(nimname: splitFile(filename).name, cname: filename,
-    obj: toObjFile(conf, completeCFilePath(conf, filename, false)),
+    obj: toObjFile(conf, completeCfilePath(conf, filename, false)),
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
-proc compileCFiles(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var TStringSeq,
+proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
   var currIdx = 0
   for it in list:
@@ -704,7 +704,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
-    else: result = joinPath(conf.cCompilerpath, linkerExe)
+    else: result = joinPath(conf.cCompilerPath, linkerExe)
     let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
                      CC[conf.cCompiler].buildGui
                    else:
@@ -856,7 +856,7 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   finally:
     removeFile(linkerArgs)
 
-proc getObjFilePath(conf: ConfigRef, f: CFile): string =
+proc getObjFilePath(conf: ConfigRef, f: Cfile): string =
   if noAbsolutePaths(conf): f.obj.extractFilename
   else: f.obj.string
 
@@ -1041,7 +1041,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
       echo getCurrentException().getStackTrace()
     quit "error evaluating JSON file: " & jsonFile.string
 
-proc genMappingFiles(conf: ConfigRef; list: CFileList): Rope =
+proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:
     addf(result, "--file:r\"$1\"$N", [rope(it.cname.string)])
 

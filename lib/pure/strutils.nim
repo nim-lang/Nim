@@ -115,7 +115,7 @@ const
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
-  NewLines* = {'\13', '\10'}
+  Newlines* = {'\13', '\10'}
     ## the set of characters a newline terminator can start with (carriage
     ## return, line feed)
 
@@ -2360,7 +2360,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,
       # but nothing else is possible:
-      if buf[i] in {'.', ','}: result[i] = decimalsep
+      if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
     when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
@@ -2447,7 +2447,7 @@ proc formatSize*(bytes: int64,
   var
     xb: int64 = bytes
     fbytes: float
-    last_xb: int64 = bytes
+    lastXb: int64 = bytes
     matchedIndex: int
     prefixes: array[9, string]
   if prefix == bpColloquial:
@@ -2458,11 +2458,11 @@ proc formatSize*(bytes: int64,
   # Iterate through prefixes seeing if value will be greater than
   # 0 in each case
   for index in 1..<prefixes.len:
-    last_xb = xb
+    lastXb = xb
     xb = bytes div (1'i64 shl (index*10))
     matchedIndex = index
     if xb == 0:
-      xb = last_xb
+      xb = lastXb
       matchedIndex = index - 1
       break
   # xb has the integer number for the latest value; index should be correct
@@ -2902,7 +2902,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   for i in 1 .. len1 - 1:
     var char1 = a[i + s - 1]
     var char2p: int
-    var D, x: int
+    var diff, x: int
     var p: int
     if i >= len1 - half:
       # skip the upper triangle:
@@ -2913,33 +2913,33 @@ proc editDistance*(a, b: string): int {.noSideEffect,
       inc(p)
       inc(char2p)
       x = row[p] + 1
-      D = x
+      diff = x
       if x > c3: x = c3
       row[p] = x
       inc(p)
     else:
       p = 1
       char2p = 0
-      D = i
+      diff = i
       x = i
     if i <= half + 1:
       # skip the lower triangle:
       e = len2 + i - half - 2
     # main:
     while p <= e:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
+      dec(diff)
+      var c3 = diff + ord(char1 != b[char2p + s])
       inc(char2p)
       inc(x)
       if x > c3: x = c3
-      D = row[p] + 1
-      if x > D: x = D
+      diff = row[p] + 1
+      if x > diff: x = diff
       row[p] = x
       inc(p)
     # lower triangle sentinel:
     if i <= half:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
+      dec(diff)
+      var c3 = diff + ord(char1 != b[char2p + s])
       inc(x)
       if x > c3: x = c3
       row[p] = x

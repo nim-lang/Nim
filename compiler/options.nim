@@ -26,7 +26,7 @@ type                          # please make sure we have under 32 options
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optNilCheck,
-    optNaNCheck, optInfCheck, optMoveCheck,
+    optNaNCheck, optInfCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
@@ -149,7 +149,7 @@ type
   Cfile* = object
     nimname*: string
     cname*, obj*: AbsoluteFile
-    flags*: set[CFileFlag]
+    flags*: set[CfileFlag]
   CfileList* = seq[Cfile]
 
   Suggest* = ref object
@@ -246,7 +246,7 @@ type
     compileOptionsCmd*: seq[string]
     linkOptions*: string          # (*)
     compileOptions*: string       # (*)
-    ccompilerpath*: string
+    cCompilerPath*: string
     toCompile*: CfileList         # (*)
     suggestionResultHook*: proc (result: Suggest) {.closure.}
     suggestVersion*: int
@@ -270,12 +270,12 @@ const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, par
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
-    optMoveCheck}
+    optStyleCheck}
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns,
     optHints, optStackTrace, optLineTrace,
-    optTrMacros, optNilCheck, optMoveCheck}
+    optTrMacros, optNilCheck, optStyleCheck}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -498,7 +498,7 @@ proc setDefaultLibpath*(conf: ConfigRef) =
     # Find out if $nim/../../lib/system.nim exists.
     let parentNimLibPath = realNimPath.parentDir.parentDir / "lib"
     if not fileExists(conf.libpath.string / "system.nim") and
-        fileExists(parentNimlibPath / "system.nim"):
+        fileExists(parentNimLibPath / "system.nim"):
       conf.libpath = AbsoluteDir parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
@@ -590,7 +590,7 @@ proc rawFindFile2(conf: ConfigRef; f: RelativeFile): AbsoluteFile =
     result = it / f
     if fileExists(result):
       # bring to front
-      for j in countDown(i,1):
+      for j in countdown(i,1):
         swap(conf.lazyPaths[j], conf.lazyPaths[j-1])
 
       return canonicalizePath(conf, result)

@@ -286,7 +286,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
 # ------------------------------ Table ------------------------------
 # -------------------------------------------------------------------
 
-proc initTable*[A, B](initialsize = defaultInitialSize): Table[A, B] =
+proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -1263,7 +1263,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 
 # ----------------------------------------------------------------------
 
-proc initOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTable[A, B] =
+proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -2185,7 +2185,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1)
 
 # ----------------------------------------------------------------------
 
-proc initCountTable*[A](initialsize = defaultInitialSize): CountTable[A] =
+proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## Creates a new count table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).

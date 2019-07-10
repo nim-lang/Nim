@@ -303,7 +303,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
   for entry in entries:
-    if entry.procName.isNil: continue
+    if entry.procname.isNil: continue
 
     let left = $entry.filename & $entry.line
     if left.len > longestLeft:
@@ -312,7 +312,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   var indent = 2
   # Format the entries.
   for entry in entries:
-    if entry.procName.isNil:
+    if entry.procname.isNil:
       if entry.line == -10:
         result.add(spaces(indent) & "#[\n")
         indent.inc(2)
@@ -325,7 +325,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
     result.add((spaces(indent) & "$#$# $#\n") % [
       left,
       spaces(longestLeft - left.len + 2),
-      $entry.procName
+      $entry.procname
     ])
     let hint = getHint(entry)
     if hint.len > 0:

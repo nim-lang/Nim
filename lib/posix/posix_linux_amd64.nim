@@ -19,7 +19,10 @@ const
 # On Linux:
 # timer_{create,delete,settime,gettime},
 # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
-{.passL: "-lrt".}
+{.passl: "-lrt".}
+
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 # Types
 
@@ -32,7 +35,7 @@ type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
 # not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
-const SIG_HOLD* = cast[SigHandler](2)
+const SIG_HOLD* = cast[Sighandler](2)
 
 type
   Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
@@ -296,7 +299,7 @@ type
     sigev_signo*: cint            ## Signal number.
     sigev_notify*: cint           ## Notification type.
     sigev_notify_function*: proc (x: SigVal) {.noconv.} ## Notification func.
-    sigev_notify_attributes*: ptr PthreadAttr ## Notification attributes.
+    sigev_notify_attributes*: ptr Pthread_attr ## Notification attributes.
     abi: array[12, int]
 
   SigVal* {.importc: "union sigval",
@@ -579,4 +582,7 @@ proc WSTOPSIG*(s:cint): cint = WEXITSTATUS(s)
 proc WIFEXITED*(s:cint) : bool = WTERMSIG(s) == 0
 proc WIFSIGNALED*(s:cint) : bool = (cast[int8]((s and 0x7f) + 1) shr 1) > 0
 proc WIFSTOPPED*(s:cint) : bool = (s and 0xff) == 0x7f
-proc WIFCONTINUED*(s:cint) : bool = s == W_CONTINUED
+proc WIFCONTINUED*(s:cint) : bool = s == WCONTINUED
+
+when defined(nimHasStyleChecks):
+  {.pop.} # {.push styleChecks: off.}

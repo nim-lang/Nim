@@ -14,8 +14,10 @@
 
 import dynlib
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
-{.passC: "-DWIN32_LEAN_AND_MEAN".}
+{.passc: "-DWIN32_LEAN_AND_MEAN".}
 
 const
   useWinUnicode* = not defined(useWinAnsi)
@@ -136,11 +138,11 @@ proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion".}
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
 
-proc readFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToRead: int32,
+proc readFile*(hFile: Handle, buffer: pointer, nNumberOfBytesToRead: int32,
                lpNumberOfBytesRead: ptr int32, lpOverlapped: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadFile".}
 
-proc writeFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToWrite: int32,
+proc writeFile*(hFile: Handle, buffer: pointer, nNumberOfBytesToWrite: int32,
                 lpNumberOfBytesWritten: ptr int32,
                 lpOverlapped: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteFile".}
@@ -215,13 +217,13 @@ when useWinUnicode:
   proc formatMessageW*(dwFlags: int32, lpSource: pointer,
                       dwMessageId, dwLanguageId: int32,
                       lpBuffer: pointer, nSize: int32,
-                      Arguments: pointer): int32 {.
+                      arguments: pointer): int32 {.
                       importc: "FormatMessageW", stdcall, dynlib: "kernel32".}
 else:
   proc formatMessageA*(dwFlags: int32, lpSource: pointer,
                     dwMessageId, dwLanguageId: int32,
                     lpBuffer: pointer, nSize: int32,
-                    Arguments: pointer): int32 {.
+                    arguments: pointer): int32 {.
                     importc: "FormatMessageA", stdcall, dynlib: "kernel32".}
 
 proc localFree*(p: pointer) {.
@@ -414,13 +416,13 @@ proc sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
                                     importc: "Sleep".}
 
 when useWinUnicode:
-  proc shellExecuteW*(HWND: Handle, lpOperation, lpFile,
+  proc shellExecuteW*(hwnd: Handle, lpOperation, lpFile,
                      lpParameters, lpDirectory: WideCString,
                      nShowCmd: int32): Handle{.
       stdcall, dynlib: "shell32.dll", importc: "ShellExecuteW".}
 
 else:
-  proc shellExecuteA*(HWND: Handle, lpOperation, lpFile,
+  proc shellExecuteA*(hwnd: Handle, lpOperation, lpFile,
                      lpParameters, lpDirectory: cstring,
                      nShowCmd: int32): Handle{.
       stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
@@ -481,12 +483,6 @@ type
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
     sin6_scope_id*: int32 # unsigned
-
-  Sockaddr_in6_old* = object
-    sin6_family*: uint16
-    sin6_port*: int16 # unsigned
-    sin6_flowinfo*: int32 # unsigned
-    sin6_addr*: In6_addr
 
   Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
                       header: "winsock2.h".} = object
@@ -707,18 +703,18 @@ const
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
 
-proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
-                      hTargetProcessHandle: HANDLE,
-                      lpTargetHandle: ptr HANDLE,
+proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
+                      hTargetProcessHandle: Handle,
+                      lpTargetHandle: ptr Handle,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
 
-proc setHandleInformation*(hObject: HANDLE, dwMask: DWORD,
+proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
                            dwFlags: DWORD): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "SetHandleInformation".}
 
-proc getCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
+proc getCurrentProcess*(): Handle{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
 when useWinUnicode:
@@ -1004,7 +1000,7 @@ const
 type
   WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32): void {.stdcall.}
 
-proc postQueuedCompletionStatus*(CompletionPort: HANDLE,
+proc postQueuedCompletionStatus*(CompletionPort: Handle,
                                 dwNumberOfBytesTransferred: DWORD,
                                 dwCompletionKey: ULONG_PTR,
                                 lpOverlapped: pointer): bool
@@ -1017,7 +1013,7 @@ proc registerWaitForSingleObject*(phNewWaitObject: ptr Handle, hObject: Handle,
                                  dwFlags: ULONG): bool
      {.stdcall, dynlib: "kernel32", importc: "RegisterWaitForSingleObject".}
 
-proc unregisterWait*(WaitHandle: HANDLE): DWORD
+proc unregisterWait*(WaitHandle: Handle): DWORD
      {.stdcall, dynlib: "kernel32", importc: "UnregisterWait".}
 
 proc openProcess*(dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
@@ -1104,6 +1100,9 @@ proc toFILETIME*(t: int64): FILETIME =
 type
   LPFILETIME* = ptr FILETIME
 
-proc setFileTime*(hFile: HANDLE, lpCreationTime: LPFILETIME,
+proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
                  lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
+
+when defined(nimHasStyleChecks):
+  {.pop.} # {.push styleChecks: off.}

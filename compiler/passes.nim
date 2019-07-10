@@ -90,7 +90,7 @@ proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray)
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
   if fullPath.isEmpty:
-    result = InvalidFileIDX
+    result = InvalidFileIdx
   else:
     result = fileInfoIdx(conf, fullPath)
 

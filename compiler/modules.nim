@@ -133,12 +133,12 @@ proc wantMainModule*(conf: ConfigRef) =
         "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
-proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
+proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
   let systemFileIdx = fileInfoIdx(conf, conf.libpath / RelativeFile"system.nim")
-  let projectFile = if projectFileIdx == InvalidFileIDX: conf.projectMainIdx else: projectFileIdx
+  let projectFile = if projectFileIdx == InvalidFileIdx: conf.projectMainIdx else: projectFileIdx
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:
     discard graph.compileModule(projectFile, {sfMainModule, sfSystemModule})

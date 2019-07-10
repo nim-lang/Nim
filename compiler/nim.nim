@@ -47,7 +47,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       if p.key == " ":
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break

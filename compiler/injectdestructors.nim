@@ -540,7 +540,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result.add p(arg[0], c)
       for i in 1..<arg.len:
         var branch: PNode
-        if arg[i].kind == nkOfbranch:
+        if arg[i].kind == nkOfBranch:
           branch = arg[i] # of branch conditions are constants
           branch[^1] = pArgIfTyped(arg[i][^1])
         elif arg[i].kind in {nkElifBranch, nkElifExpr}:
@@ -620,7 +620,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     result.add p(ri[0], c)
     for i in 1..<ri.len:
       var branch: PNode
-      if ri[i].kind == nkOfbranch:
+      if ri[i].kind == nkOfBranch:
         branch = ri[i] # of branch conditions are constants
         branch[^1] = moveOrCopyIfTyped(ri[i][^1])
       elif ri[i].kind in {nkElifBranch, nkElifExpr}:
