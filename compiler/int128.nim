@@ -472,6 +472,8 @@ proc toFloat64*(arg: Int128): float64 =
   let b = float64(bitconcat(arg.udata[3], arg.udata[2]))
 
   result = a + 18446744073709551616'f64 * b # a + 2^64 * b
+  if isNegative:
+    result = -result
 
 when isMainModule:
   let (a,b) = divMod(Ten,Ten)
