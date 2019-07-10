@@ -405,9 +405,9 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
         m.typeCache[sig] = result
         #echo "adding ", sig, " ", typeToString(t), " ", m.module.name.s
         appcg(m, m.s[cfsTypes],
-          "struct $1 {$n" &
-          "  NI len; $1_Content* p;$n" &
-          "};$n", [result])
+          "struct $1 {$N" &
+          "  NI len; $1_Content* p;$N" &
+          "};$N", [result])
     else:
       result = getTypeForward(m, t, sig) & seqStar(m)
     pushType(m, t)
@@ -427,11 +427,11 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   else:
     # little hack for now to prevent multiple definitions of the same
     # Seq_Content:
-    appcg(m, m.s[cfsTypes], """
+    appcg(m, m.s[cfsTypes], """$N
 $3ifndef $2_Content_PP
 $3define $2_Content_PP
 struct $2_Content { NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];};
-$3endif
+$3endif$N
       """, [getTypeDescAux(m, t.skipTypes(abstractInst).sons[0], check), result, rope"#"])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
