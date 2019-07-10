@@ -19,7 +19,10 @@
 
 - Enable Oid usage in hashtables. (#11472)
 
+- Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
+
 - Make public `Sha1Digest` and `Sha1State` types and `newSha1State`, `update` and `finalize` procedures from `sha1` module. (#11694)
+
 
 ## Language additions
 

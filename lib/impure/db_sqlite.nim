@@ -359,6 +359,14 @@ proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ##   example code
   $column_text(row, col)
 
+proc unsafeColumnAt*(row: InstantRow, index: int32): cstring {.inline.} =
+  ## Returns cstring for given column of the row.
+  ##
+  ## See also:
+  ## * `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_
+  ##   example code
+  column_text(row, index)
+
 proc len*(row: InstantRow): int32 {.inline.} =
   ## Returns number of columns in a row.
   ##
