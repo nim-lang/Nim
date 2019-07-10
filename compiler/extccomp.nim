@@ -1031,6 +1031,27 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "\L}\L"
     close(f)
 
+proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
+  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+  if not fileExists(jsonFile): return true
+  result = false
+  try:
+    let data = json.parseFile(jsonFile.string)
+    let nimfilesPairs = data["nimfiles"]
+    doAssert nimfilesPairs.kind == JArray
+    for p in nimfilesPairs:
+      doAssert p.kind == JArray
+      # >= 2 for forwards compatibility with potential later .json files:
+      doAssert p.len >= 2
+      let nimFilename = p[0].getStr
+      let oldHashValue = p[1].getStr
+      let newHashValue = $secureHashFile(nimFilename)
+      if oldHashValue != newHashValue:
+        result = true
+  except IOError, OSError, ValueError:
+    echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
+    result = true
+
 proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")
   try:
