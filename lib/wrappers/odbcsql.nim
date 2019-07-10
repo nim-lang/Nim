@@ -20,6 +20,9 @@ else:
   {.push callconv: cdecl.}
   const odbclib = "libodbc.so"
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
 # DATA TYPES CORRESPONDENCE
 #   BDE fields  ODBC types
 #   ----------  ------------------
@@ -834,3 +837,5 @@ proc SQLErr*(henv: SqlHEnv, hdbc: SqlHDBC, hstmt: SqlHStmt,
                     dynlib: odbclib, importc: "SQLError".}
 
 {.pop.}
+when defined(nimHasStyleChecks):
+  {.pop.}

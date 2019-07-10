@@ -70,7 +70,7 @@ proc main =
     case kind
     of cmdArgument:
       infile = key.addFileExt(".nim")
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key)
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()

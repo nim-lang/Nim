@@ -53,7 +53,7 @@ type
 
 proc openEmitter*(em: var Emitter, cache: IdentCache;
                   config: ConfigRef, fileIdx: FileIndex) =
-  let fullPath = Absolutefile config.toFullPath(fileIdx)
+  let fullPath = AbsoluteFile config.toFullPath(fileIdx)
   if em.indWidth == 0:
     em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
                                 cache, config)
@@ -285,7 +285,7 @@ const
               tkBracketRi, tkCurlyDotRi,
               tkCurlyRi}
 
-  splitters = openPars + {tkComma, tkSemicolon} # do not add 'tkColon' here!
+  splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
@@ -458,7 +458,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkColon:
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     wrSpace em
-  of tkSemicolon, tkComma:
+  of tkSemiColon, tkComma:
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitComma)
     wrSpace em

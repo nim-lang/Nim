@@ -8,6 +8,10 @@
 #
 
 {.deadCodeElim: on.}  # dce option deprecated
+
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
 when defined(windows):
   when defined(nimOldDlls):
     const Lib = "sqlite3.dll"
@@ -362,3 +366,6 @@ proc libversion_number*(): int32{.cdecl, dynlib: Lib,
   #function sqlite3_expired(_para1:Psqlite3_stmt):longint;cdecl; external Sqlite3Lib name 'sqlite3_expired';
   #function sqlite3_global_recover:longint;cdecl; external Sqlite3Lib name 'sqlite3_global_recover';
 # implementation
+
+when defined(nimHasStyleChecks):
+  {.pop.}
