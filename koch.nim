@@ -287,7 +287,7 @@ proc boot(args: string) =
   # default to use the 'c' command:
   let useCpp = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
-                      hostOs & "_" & hostCpu
+                      hostOS & "_" & hostCPU
 
   let nimStart = findStartNim()
   for i in 0..2:
