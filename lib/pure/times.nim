@@ -221,11 +221,6 @@ elif defined(posix):
 
   type CTime = posix.Time
 
-  let realTimeClockId = CLOCK_REALTIME.ClockId
-
-  when declared(CLOCK_THREAD_CPUTIME_ID):
-    let cpuClockId = CLOCK_THREAD_CPUTIME_ID.ClockId
-
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
     when not defined(valgrind_workaround_10121):
@@ -1205,7 +1200,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
                       convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
     var ts: Timespec
-    discard clock_gettime(realTimeClockId, ts)
+    discard clock_gettime(CLOCK_REALTIME, ts)
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
   elif defined(windows):
     var f: FILETIME
@@ -2509,11 +2504,11 @@ when not defined(JS):
         fib.add(fib[^1] + fib[^2])
       echo "CPU time [s] ", cpuTime() - t0
       echo "Fib is [s] ", fib
-    when defined(posix) and not defined(osx) and declared(cpuClockId):
+    when defined(posix) and not defined(osx) and declared(CLOCK_THREAD_CPUTIME_ID):
       # 'clocksPerSec' is a compile-time constant, possibly a
       # rather awful one, so use clock_gettime instead
       var ts: Timespec
-      discard clock_gettime(cpuClockId, ts)
+      discard clock_gettime(CLOCK_THREAD_CPUTIME_ID, ts)
       result = toFloat(ts.tv_sec.int) +
         toFloat(ts.tv_nsec.int) / 1_000_000_000
     else:
@@ -2531,7 +2526,7 @@ when not defined(JS):
       result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(a.tv_usec)*0.00_0001
     elif defined(posix):
       var ts: Timespec
-      discard clock_gettime(realTimeClockId, ts)
+      discard clock_gettime(CLOCK_REALTIME, ts)
       result = toBiggestFloat(ts.tv_sec.int64) +
         toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
     elif defined(windows):
