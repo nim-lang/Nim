@@ -1034,6 +1034,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")
   if not fileExists(jsonFile): return true
+  if not fileExists(conf.absOutFile): return true
   result = false
   try:
     let data = json.parseFile(jsonFile.string)
