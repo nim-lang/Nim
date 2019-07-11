@@ -240,8 +240,10 @@ type
   Severity* {.pure.} = enum ## VS Code only supports these three
     Hint, Warning, Error
 
-const trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
-                                   # are produced within comments and string literals
+const
+  trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
+                                          # are produced within comments and string literals
+  commandLineIdx* = FileIndex(-3)
 
 type
   MsgConfig* = object ## does not need to be stored in the incremental cache

@@ -87,6 +87,15 @@ proc commandCompileToC(graph: ModuleGraph) =
   semanticPasses(graph)
   registerPass(graph, cgenPass)
 
+  if {optRun, optForceFullMake} * conf.globalOptions == {optRun}:
+    let proj = changeFileExt(conf.projectFull, "")
+    if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      # nothing changed
+      # Little hack here in order to not lose our precious
+      # hintSuccessX message:
+      conf.notes.incl hintSuccessX
+      return
+
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
