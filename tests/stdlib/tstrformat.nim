@@ -115,3 +115,32 @@ proc print_object(animalAddr: AnimalRef) =
   echo fmt"Received {animalAddr[]}"
 
 print_object(AnimalRef(name: "Foo", species: "Bar"))
+
+block:
+  let
+    testInt = 123
+    testStr = "foobar"
+    testFlt = 3.141592
+  doAssert ">><<".fmt('<', '>') == "><"
+  doAssert " >> << ".fmt('<', '>') == " > < "
+  doAssert "<<>>".fmt('<', '>') == "<>"
+  doAssert " << >> ".fmt('<', '>') == " < > "
+  doAssert "''".fmt('\'') == "'"
+  doAssert "''''".fmt('\'') == "''"
+  doAssert "'' ''".fmt('\'') == "' '"
+  doAssert "<testInt>".fmt('<', '>') == "123"
+  doAssert "<testInt>".fmt('<', '>') == "123"
+  doAssert "'testFlt:1.2f'".fmt('\'') == "3.14"
+  doAssert "<testInt><testStr>".fmt('<', '>') == "123foobar"
+  doAssert """ ""{"123+123"}"" """.fmt('"') == " \"{246}\" "
+  doAssert "(((testFlt:1.2f)))((111))".fmt('(', ')') == "(3.14)(111)"
+  doAssert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
+  doAssert "{}abc`testStr' `testFlt:1.2f' `1+1' ``".fmt('`', '\'') == "{}abcfoobar 3.14 2 `"
+  doAssert """x = '"foo" & "bar"'
+              y = '123 + 111'
+              z = '3 in {2..7}'
+           """.fmt('\'') ==
+           """x = foobar
+              y = 234
+              z = true
+           """
