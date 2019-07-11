@@ -519,10 +519,12 @@ template formatValue(result: var string; value: char; specifier: string) =
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
-macro `&`*(pattern: string): untyped =
+proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
   ## For a specification of the ``&`` macro, see the module level documentation.
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
     error "string formatting (fmt(), &) only works with string literals", pattern
+  if openChar == ':' or closeChar == ':':
+    error "openChar and closeChar must not be ':'"
   let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
@@ -534,18 +536,18 @@ macro `&`*(pattern: string): untyped =
   result.add newVarStmt(res, newCall(bindSym"newStringOfCap", newLit(f.len + expectedGrowth)))
   var strlit = ""
   while i < f.len:
-    if f[i] == '{':
+    if f[i] == openChar:
       inc i
-      if f[i] == '{':
+      if f[i] == openChar:
         inc i
-        strlit.add '{'
+        strlit.add openChar
       else:
         if strlit.len > 0:
           result.add newCall(bindSym"add", res, newLit(strlit))
           strlit = ""
 
         var subexpr = ""
-        while i < f.len and f[i] != '}' and f[i] != ':':
+        while i < f.len and f[i] != closeChar and f[i] != ':':
           subexpr.add f[i]
           inc i
         var x: NimNode
@@ -561,17 +563,17 @@ macro `&`*(pattern: string): untyped =
         var options = ""
         if f[i] == ':':
           inc i
-          while i < f.len and f[i] != '}':
+          while i < f.len and f[i] != closeChar:
             options.add f[i]
             inc i
-        if f[i] == '}':
+        if f[i] == closeChar:
           inc i
         else:
           doAssert false, "invalid format string: missing '}'"
         result.add newCall(formatSym, res, x, newLit(options))
-    elif f[i] == '}':
-      if f[i+1] == '}':
-        strlit.add '}'
+    elif f[i] == closeChar:
+      if f[i+1] == closeChar:
+        strlit.add closeChar
         inc i, 2
       else:
         doAssert false, "invalid format string: '}' instead of '}}'"
@@ -585,10 +587,26 @@ macro `&`*(pattern: string): untyped =
   when defined(debugFmtDsl):
     echo repr result
 
-template fmt*(pattern: string): untyped =
-  ## An alias for ``&``.
-  bind `&`
-  &pattern
+macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+
+macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+
+macro fmt*(pattern: string; openCloseChar: char): untyped =
+  ## Use ``openCloseChar`` character instead of '{' and '}'.
+  runnableExamples:
+    let testFlt = 3.141592
+    doAssert "'testFlt:1.2f'".fmt('\'') == "3.14"
+    doAssert """ ""{"123+123"}"" """.fmt('"') == " \"{246}\" "
+  let c = openCloseChar.intVal.char
+  strformatImpl(pattern, c, c)
+
+macro fmt*(pattern: string; openChar, closeChar: char): untyped =
+  ## Use ``openChar`` instead of '{' and ``closeChar`` instead of '}'
+  runnableExamples:
+    let testInt = 123
+    doAssert "<testInt>".fmt('<', '>') == "123"
+    doAssert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
+  strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
 
 when isMainModule:
   template check(actual, expected: string) =
