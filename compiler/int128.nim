@@ -393,7 +393,8 @@ proc fastLog2*(a: Int128): int =
 
 proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
   assert(divisor != Zero)
-  let isNegative = isNegative(dividend) xor isNegative(divisor)
+  let isNegativeA = isNegative(dividend)
+  let isNegativeB = isNegative(divisor)
 
   var dividend = abs(dividend)
   let divisor = abs(divisor)
@@ -425,8 +426,14 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
     denominator = denominator shr 1
 
-  result.quotient = quotient
-  result.remainder = dividend
+  if isNegativeA xor isNegativeB:
+    result.quotient = -quotient
+  else:
+    result.quotient = quotient
+  if isNegativeB:
+    result.remainder = -dividend
+  else:
+    result.remainder = dividend
 
 proc `div`*(a,b: Int128): Int128 =
   let (a,b) = divMod(a,b)
