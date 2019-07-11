@@ -31,6 +31,10 @@ when not defined(release):
   var currentID = 0
 
 const isFutureLoggingEnabled* = defined(futureLogging)
+
+const
+  NimAsyncContinueSuffix* = "NimAsyncContinue" ## For internal usage. Do not use.
+
 when isFutureLoggingEnabled:
   import hashes
   type
@@ -294,7 +298,7 @@ proc getHint(entry: StackTraceEntry): string =
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
 
-  if entry.procname.endsWith("_continue"):
+  if entry.procname.endsWith(NimAsyncContinueSuffix):
     if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
       return "Resumes an async procedure"
 
