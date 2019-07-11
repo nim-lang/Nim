@@ -186,6 +186,10 @@
   day has passed. The ``Duration`` type on the other hand normalizes everything
   to seconds, and will therefore say that 90000 seconds has passed, which is
   the same as 25 hours.
+
+  See also
+  ========
+  * `monotimes module <monotimes.html>`_
 ]##
 
 import strutils, math, options
