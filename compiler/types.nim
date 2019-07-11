@@ -86,6 +86,7 @@ proc getOrdValue*(n: PNode): Int128 =
   of nkNilLit:
     int128.Zero
   of nkHiddenStdConv: getOrdValue(n.sons[1])
+  else:
     # The idea behind the introduction of int128 was to finally have
     # all calculations numerically far away from any overflows. This
     # command just introduces such overflows and should therefore
