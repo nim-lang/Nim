@@ -105,12 +105,26 @@ proc findNewline(em: Emitter; p, lineLen: var int) =
     inc lineLen, em.tokens[p].len
     inc p
 
+proc countNewlines(s: string): int =
+  result = 0
+  for i in 0..<s.len:
+    if s[i] == '\L': inc result
+
+proc calcCol(em: var Emitter; s: string) =
+  var i = s.len-1
+  em.col = 0
+  while i >= 0 and s[i] != '\L':
+    dec i
+    inc em.col
+
 proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
   let ourIndent = em.tokens[pos].len
   var p = pos+1
   var lineLen = 0
   em.findNewline(p, lineLen)
-  if em.kinds[p-1] == ltComment and currentLen+lineLen < MaxLineLen+MinLineLen:
+  if p == pos+1: # optionalNewline followed by another newline
+    result = false
+  elif em.kinds[p-1] == ltComment and currentLen+lineLen < MaxLineLen+MinLineLen:
     result = false
   elif p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
       em.kinds[p-1] == ltOptionalNewline:
@@ -182,8 +196,7 @@ proc closeEmitter*(em: var Emitter) =
       lineBegin = i+1
     of ltOptionalNewline:
       let totalLineLen = lineLen + lenOfNextTokens(em, i)
-      if totalLineLen > MaxLineLen + MinLineLen or
-         totalLineLen > MaxLineLen and optionalIsGood(em, i, lineLen):
+      if totalLineLen > MaxLineLen and optionalIsGood(em, i, lineLen):
         if i-1 >= 0 and em.kinds[i-1] == ltSpaces:
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
@@ -194,6 +207,14 @@ proc closeEmitter*(em: var Emitter) =
         if i+1 < em.kinds.len and em.kinds[i+1] == ltSpaces:
           # inhibit extra spaces at the start of a new line
           inc i
+    of ltLit:
+      let lineSpan = countNewlines(em.tokens[i])
+      if lineSpan > 0:
+        em.calcCol(em.tokens[i])
+        lineLen = em.col
+      else:
+        inc lineLen, em.tokens[i].len
+      content.add em.tokens[i]
     else:
       content.add em.tokens[i]
       inc lineLen, em.tokens[i].len
@@ -208,18 +229,6 @@ proc closeEmitter*(em: var Emitter) =
     return
   f.llStreamWrite content
   llStreamClose(f)
-
-proc countNewlines(s: string): int =
-  result = 0
-  for i in 0..<s.len:
-    if s[i] == '\L': inc result
-
-proc calcCol(em: var Emitter; s: string) =
-  var i = s.len-1
-  em.col = 0
-  while i >= 0 and s[i] != '\L':
-    dec i
-    inc em.col
 
 proc wr(em: var Emitter; x: string; lt: LayoutToken) =
   em.tokens.add x
