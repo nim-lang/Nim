@@ -521,9 +521,6 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
           branch = copyNode(arg[i])
           branch.add pArgIfTyped(arg[i][0])
         result.add branch
-    elif isAnalysableFieldAccess(arg, c.owner) and isLastRead(arg, c):
-      # rule (move-optimization)
-      result = destructiveMoveVar(arg, c)
     else:
       # rule (copy-to-sink)
       result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
