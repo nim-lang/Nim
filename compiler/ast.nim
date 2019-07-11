@@ -1613,8 +1613,13 @@ proc getInt*(a: PNode): Int128 =
   case a.kind
   of nkCharLit, nkUintLit..nkUInt64Lit:
     result = toInt128(cast[uint64](a.intVal))
-  of nkIntLit..nkInt64Lit:
+  of nkInt8Lit..nkInt64Lit:
     result = toInt128(a.intVal)
+  of nkIntLit:
+    if a.typ != nil and a.typ.kind in {tyChar, tyUint..tyUInt64}:
+      result = toInt128(cast[uint64](a.intVal))
+    else:
+      result = toInt128(a.intVal)
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")
 
