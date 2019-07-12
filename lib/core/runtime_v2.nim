@@ -52,17 +52,30 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     result = orig +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
-  inc allocs
+  when hasThreadSupport:
+    atomicInc allocs
+  else:
+    inc allocs
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
-  dec head(p).rc
+  when hasThreadSupport:
+    atomicDec head(p).rc
+  else:
+    dec head(p).rc
 
 proc nimIncWeakRef(p: pointer) {.compilerRtl.} =
-  inc head(p).rc
+  when hasThreadSupport:
+    atomicInc head(p).rc
+  else:
+    inc head(p).rc
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
-    if head(p).rc != 0:
+    when hasThreadSupport:
+      let hasDanglingRefs = atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) != 0
+    else:
+      let hasDanglingRefs = head(p).rc != 0
+    if hasDanglingRefs:
       cstderr.rawWrite "[FATAL] dangling references exist\n"
       quit 1
     when defined(useMalloc):
@@ -70,7 +83,10 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
     else:
       dealloc(p -! sizeof(RefHeader))
     if allocs > 0:
-      dec allocs
+      when hasThreadSupport:
+        atomicDec allocs
+      else:
+        dec allocs
     else:
       cstderr.rawWrite "[FATAL] unpaired dealloc\n"
       quit 1
