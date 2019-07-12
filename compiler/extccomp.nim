@@ -1024,6 +1024,8 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     str getLinkCmd(conf, conf.absOutFile, objfiles)
 
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
+      lit ",\L\"cmdline\": "
+      str conf.commandLine
       lit ",\L\"nimfiles\":[\L"
       nimfiles(conf, f)
       lit "]\L"
@@ -1038,6 +1040,11 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
   result = false
   try:
     let data = json.parseFile(jsonFile.string)
+    if not data.hasKey("nimfiles") or not data.hasKey("cmdline"):
+      return true
+    let oldCmdLine = data["cmdline"].getStr
+    if conf.commandLine != oldCmdLine:
+      return true
     let nimfilesPairs = data["nimfiles"]
     doAssert nimfilesPairs.kind == JArray
     for p in nimfilesPairs:
@@ -1048,7 +1055,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
       let oldHashValue = p[1].getStr
       let newHashValue = $secureHashFile(nimFilename)
       if oldHashValue != newHashValue:
-        result = true
+        return true
   except IOError, OSError, ValueError:
     echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
     result = true

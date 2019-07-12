@@ -48,12 +48,20 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     case p.kind
     of cmdEnd: break
     of cmdLongOption, cmdShortOption:
+      config.commandLine.add " "
+      config.commandLine.add p.key
+      if p.val.len > 0:
+        config.commandLine.add ':'
+        config.commandLine.add p.val
+
       if p.key == " ":
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
         processSwitch(pass, p, config)
     of cmdArgument:
+      config.commandLine.add " "
+      config.commandLine.add p.key
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
