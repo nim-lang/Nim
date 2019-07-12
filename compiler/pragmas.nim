@@ -434,6 +434,8 @@ proc processPush(c: PContext, n: PNode, start: int) =
   # If stacktrace is disabled globally we should not enable it
   if optStackTrace notin c.optionStack[0].options:
     c.config.options.excl(optStackTrace)
+  when defined(debugOptions):
+    echo c.config $ n.info, " PUSH config is now ", c.config.options
 
 proc processPop(c: PContext, n: PNode) =
   if c.optionStack.len <= 1:
@@ -443,6 +445,8 @@ proc processPop(c: PContext, n: PNode) =
     c.config.notes = c.optionStack[^1].notes
     c.features = c.optionStack[^1].features
     c.optionStack.setLen(c.optionStack.len - 1)
+  when defined(debugOptions):
+    echo c.config $ n.info, " POP config is now ", c.config.options
 
 proc processDefine(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
