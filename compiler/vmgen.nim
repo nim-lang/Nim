@@ -1719,19 +1719,24 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   else:
     genArrAccess2(c, n, dest, opcLdArr, flags)
 
-proc getNullValueAux(obj: PNode, result: PNode; conf: ConfigRef) =
+proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
+  if t != nil and t.len > 0 and t.sons[0] != nil:
+    let b = skipTypes(t.sons[0], skipPtrs)
+    getNullValueAux(b, b.n, result, conf, currPosition)
   case obj.kind
   of nkRecList:
-    for i in 0 ..< sonsLen(obj): getNullValueAux(obj.sons[i], result, conf)
+    for i in 0 ..< sonsLen(obj): getNullValueAux(nil, obj.sons[i], result, conf, currPosition)
   of nkRecCase:
-    getNullValueAux(obj.sons[0], result, conf)
+    getNullValueAux(nil, obj.sons[0], result, conf, currPosition)
     for i in 1 ..< sonsLen(obj):
-      getNullValueAux(lastSon(obj.sons[i]), result, conf)
+      getNullValueAux(nil, lastSon(obj.sons[i]), result, conf, currPosition)
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info)
     field.add(obj)
     field.add(getNullValue(obj.sym.typ, result.info, conf))
     addSon(result, field)
+    doAssert obj.sym.position == currPosition
+    inc currPosition
   else: globalError(conf, result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
@@ -1759,13 +1764,9 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
   of tyObject:
     result = newNodeIT(nkObjConstr, info, t)
     result.add(newNodeIT(nkEmpty, info, t))
-    # initialize inherited fields:
-    var base = t.sons[0]
-    while base != nil:
-      let b = skipTypes(base, skipPtrs)
-      getNullValueAux(b.n, result, conf)
-      base = b.sons[0]
-    getNullValueAux(t.n, result, conf)
+    # initialize inherited fields, and all in the correct order:
+    var currPosition = 0
+    getNullValueAux(t, t.n, result, conf, currPosition)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
     for i in 0 ..< int(lengthOrd(conf, t)):
