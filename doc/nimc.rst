@@ -144,6 +144,9 @@ to override symbols during build time.
 Compile time symbols are completely **case insensitive** and underscores are
 ignored too. ``--define:FOO`` and ``--define:foo`` are identical.
 
+Compile time symbols starting with the ``nim`` prefix are reserved for the
+implementation and should not be used elsewhere.
+
 
 Configuration files
 -------------------
