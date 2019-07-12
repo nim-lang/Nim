@@ -4484,18 +4484,19 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage) a
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
 when not defined(js):
-  proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
-    magic: "Slice".}
-  proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
-    magic: "Slice".}
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
-    magic: "Slice".}
-  proc toOpenArray*(x: string; first, last: int): openArray[char] {.
-    magic: "Slice".}
-  proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
-    magic: "Slice".}
+
+proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*(x: string; first, last: int): openArray[char] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
+  magic: "Slice".}
 
 type
   ForLoopStmt* {.compilerproc.} = object ## \
