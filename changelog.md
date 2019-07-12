@@ -55,6 +55,8 @@
 
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 
+- Added `macros.genAst` that fixes all issues with `quote do` (#11722)
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
@@ -74,7 +76,6 @@
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
   instead of a hardcoded empty `newHttpHeader()`.
 
-
 ## Language additions
 
 - An `align` pragma can now be used for variables and object fields, similar
@@ -82,7 +83,6 @@
 
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
-
 
 ## Language changes
 
@@ -106,6 +106,11 @@
   pass specific compiler options to the C(++) backend for the C(++) file
   that was produced from the current Nim module.
 
+- VM FFI now works with {.importc, dynlib.}, when using -d:nimHasLibFFI (#11635)
+
+- importc procs with a body are now executed in the VM as if importc wasn't specified,
+  this allows using {.rtl.} procs at CT, making -d:useNimRtl work in more cases,
+  e.g. compiling nim itself (#11635)
 
 ## Bugfixes
 
