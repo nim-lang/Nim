@@ -87,7 +87,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   semanticPasses(graph)
   registerPass(graph, cgenPass)
 
-  if {optRun, optForceFullMake} * conf.globalOptions == {optRun}:
+  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
     let proj = changeFileExt(conf.projectFull, "")
     if not changeDetectedViaJsonBuildInstructions(conf, proj):
       # nothing changed

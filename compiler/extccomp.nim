@@ -1023,7 +1023,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "],\L\"linkcmd\": "
     str getLinkCmd(conf, conf.absOutFile, objfiles)
 
-    if optRun in conf.globalOptions:
+    if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"nimfiles\":[\L"
       nimfiles(conf, f)
       lit "]\L"

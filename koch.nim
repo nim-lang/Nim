@@ -443,10 +443,12 @@ proc temp(args: string) =
   var finalDest = d / "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current commit.
   var (bootArgs, programArgs) = splitArgs(args)
-  if "doc" notin programArgs and "threads" notin programArgs and "js" notin programArgs:
+  if "doc" notin programArgs and
+      "threads" notin programArgs and
+      "js" notin programArgs:
     bootArgs.add " -d:leanCompiler"
   let nimexec = findNim()
-  exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " " & (d / "compiler" / "nim"), 125)
+  exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
   setCurrentDir(origDir)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
