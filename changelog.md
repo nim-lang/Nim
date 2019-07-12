@@ -40,6 +40,9 @@
 - Added `BackwardsIndex` overload for `JsonNode`.
 
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
+- Added `macros.genAst` that fixes all issues with `quote do` (#11722)
+
+## Library changes
 
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
@@ -51,6 +54,7 @@
 
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
+## Language additions
 
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
@@ -327,6 +331,11 @@
 
 
 ## Tool changes
+- VM FFI now works with {.importc, dynlib.}, when using -d:nimHasLibFFI (#11635)
+
+- importc procs with a body are now executed in the VM as if importc wasn't specified,
+  this allows using {.rtl.} procs at CT, making -d:useNimRtl work in more cases,
+  e.g. compiling nim itself (#11635)
 
 - The rst parser now supports markdown table syntax.
   Known limitations:
