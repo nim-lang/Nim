@@ -1379,8 +1379,11 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if tx.isNil or isTupleRecursive(tx):
     localError(c.config, n.info, "illegal recursion in type '$1'" % typeToString(result[0]))
     return errorType(c)
-  if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
-    semObjectTypeForInheritedGenericInst(c, n, tx)
+  if tx != result and tx.kind == tyObject:
+    if tx.sons[0] != nil:
+      semObjectTypeForInheritedGenericInst(c, n, tx)
+    var position = 0
+    recomputeFieldPositions(tx, tx.n, position)
 
 proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
   if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward} and prev != nil:
