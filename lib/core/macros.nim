@@ -539,6 +539,7 @@ proc parseStmt*(s: string): NimNode {.noSideEffect.} =
 
 proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
+  ## See also `genAst`.
   ## Example:
   ##
   ## .. code-block:: nim
@@ -547,6 +548,9 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
   ##     var ast = getAst(BarTemplate())
 
 proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
+  ## .. warning:: `quote` has many caveats, see https://github.com/nim-lang/RFCs/issues/122
+  ##   Consider using the new `genAst` instead, which fixes the issues with `quote`.
+  ##
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate NimNode expressions
@@ -1418,6 +1422,57 @@ proc expectIdent*(n: NimNode, name: string) {.since: (1,1).} =
   ## for writing macros that check the AST that is passed to them.
   if not eqIdent(n, name):
     error("Expected identifier to be `" & name & "` here", n)
+
+macro genAst*(args: varargs[untyped]): untyped =
+  ## Accepts a list of captured `variables = value` and a block and returns the
+  ## AST that represents it. Only the captured variables are interpolated.
+  runnableExamples:
+    type Foo = enum kfoo0, kfoo1, kfoo2, kfoo3, kfoo4
+    macro bar(x0: static Foo, x1: Foo, x2: Foo, xignored: Foo): untyped =
+      let s0 = "not captured!" ## does not override `s0` from caller scope
+      let s1 = "not captured!" ## does not override `s1=2`
+      let xignoredLocal = kfoo4
+      let x3 = newLit kfoo4
+      result = genAst(s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3) do:
+        ## only captures variables from `genAst` argument list
+        ## uncaptured variables will be set from caller scope (Eg `s0`)
+        ## `x2` is shortcut for the common `x2=x2`
+        doAssert not declared(xignored)      # not in param list!
+        doAssert not declared(xignoredLocal) # ditto
+        (s1, s2, s0, x0, x1, x2, x3)
+    let s0 = "caller scope!"
+    doAssert bar(kfoo1, kfoo2, kfoo3, kfoo4) ==
+      (2, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
+
+  let params = newTree(nnkFormalParams, newEmptyNode())
+  let name = genSym(nskTemplate, "fun")
+  let call = newCall(name)
+  for a in args[0..^2]:
+    var varName: NimNode
+    var varVal: NimNode
+    case a.kind
+    of nnkExprEqExpr:
+      varName = a[0]
+      varVal = a[1]
+    of nnkIdent:
+      varName = a
+      varVal = a
+    else: error("invalid argument kind: " & $a.kind, a)
+
+    params.add newTree(nnkIdentDefs, [varName, newEmptyNode(), newEmptyNode()])
+    call.add varVal
+
+  result = newStmtList()
+  result.add nnkTemplateDef.newTree(
+      name,
+      newEmptyNode(),
+      newEmptyNode(),
+      params,
+      nnkPragma.newTree(ident"dirty"),
+        # dirty is needed to allow binding to caller scope
+      newEmptyNode(),
+      args[^1])
+  result.add newCall(bindSym"getAst", call)
 
 proc hasArgOfName*(params: NimNode; name: string): bool=
   ## Search `nnkFormalParams` for an argument.
