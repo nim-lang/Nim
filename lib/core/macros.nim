@@ -1389,6 +1389,7 @@ macro genAst*(args: varargs[untyped]): untyped =
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       let x3 = newLit kfoo4
+      ## use `result = genAst do` if there are 0 captures
       result = genAst(s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3) do:
         ## only captures variables from `genAst` argument list
         ## uncaptured variables will be set from caller scope (Eg `s0`)
