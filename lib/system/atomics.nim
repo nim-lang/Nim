@@ -8,7 +8,7 @@
 #
 
 # Atomic operations for Nim.
-{.push stackTrace:off.}
+{.push stackTrace:off, profiler:off.}
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
 
