@@ -741,3 +741,23 @@ proc `==` *(a, b: Color): bool
 proc `==` *(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
+
+
+var rows1 = await pool.rows(sql"""
+    SELECT STUFF
+    WHERE fffffffffffffffffffffffffffffff
+  """,
+  @[
+    "AAAA",
+    "BBBB"
+  ]
+)
+
+var rows2 = await pool.rows(sql"""
+    SELECT STUFF
+    WHERE fffffffffffffffffffffffffffffffgggggggggggggggggggggggggghhhhhhhhhhhhhhhheeeeeeiiiijklm""",
+  @[
+    "AAAA",
+    "BBBB"
+  ]
+)
