@@ -15,7 +15,6 @@ from os import changeFileExt
 from sequtils import delete
 
 const
-  MaxLineLen = 80
   MinLineLen = 15
 
 type
@@ -50,6 +49,7 @@ type
     indentStack: seq[int]
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
+    maxLineLen*: int
 
 proc openEmitter*(em: var Emitter, cache: IdentCache;
                   config: ConfigRef, fileIdx: FileIndex) =
@@ -77,7 +77,7 @@ proc computeMax(em: Emitter; pos: int): int =
     var foundTab = false
     while p < em.tokens.len and em.kinds[p] != ltEndSection:
       if em.kinds[p] in {ltCrucialNewline, ltSplittingNewline}:
-        if foundTab and lineLen <= MaxLineLen:
+        if foundTab and lineLen <= em.maxLineLen:
           result = max(result, lhs + extraSpace)
         inc p
         break
@@ -124,7 +124,7 @@ proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
   em.findNewline(p, lineLen)
   if p == pos+1: # optionalNewline followed by another newline
     result = false
-  elif em.kinds[p-1] == ltComment and currentLen+lineLen < MaxLineLen+MinLineLen:
+  elif em.kinds[p-1] == ltComment and currentLen+lineLen < em.maxLineLen+MinLineLen:
     result = false
   elif p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
       em.kinds[p-1] == ltOptionalNewline:
@@ -183,7 +183,7 @@ proc closeEmitter*(em: var Emitter) =
       else:
         # pick the shorter indentation token:
         var spaces = maxLhs - lineLen
-        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= MaxLineLen+MinLineLen:
+        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= em.maxLineLen+MinLineLen:
           if spaces <= 0 and content[^1] notin {' ', '\L'}: spaces = 1
           for j in 1..spaces: content.add ' '
           inc lineLen, spaces
@@ -196,7 +196,7 @@ proc closeEmitter*(em: var Emitter) =
       lineBegin = i+1
     of ltOptionalNewline:
       let totalLineLen = lineLen + lenOfNextTokens(em, i)
-      if totalLineLen > MaxLineLen and optionalIsGood(em, i, lineLen):
+      if totalLineLen > em.maxLineLen and optionalIsGood(em, i, lineLen):
         if i-1 >= 0 and em.kinds[i-1] == ltSpaces:
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
@@ -298,7 +298,7 @@ const
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
-template goodCol(col): bool = col >= MaxLineLen div 2
+template goodCol(col): bool = col >= em.maxLineLen div 2
 
 template moreIndent(em): int =
   if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth
