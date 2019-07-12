@@ -154,7 +154,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = "" # "server_continue"
+const toDebug = "" # "serverNimAsyncContinue"
 
 template dbg(body) =
   when toDebug.len > 0:
