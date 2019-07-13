@@ -151,11 +151,11 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = ""
+const toDebug = ["main", "add"]
 
 template dbg(body) =
   when toDebug.len > 0:
-    if c.owner.name.s == toDebug or toDebug == "always":
+    if toDebug.contains c.owner.name.s:
       body
 
 proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
@@ -389,15 +389,6 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result.add(newSymNode(createMagic(c.graph, "default", mDefault)))
   result.typ = t
 
-proc destructiveMoveVar(n: PNode; c: var Con): PNode =
-  # XXX: Strictly speaking we can only move if there is a ``=move`` defined
-  # or if no ``=move`` is defined and also no assignment.
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  let tmp = getTemp(c, n.typ, n.info)
-  result.add tmp
-  result.add genMove(c, n.typ, tmp, n, n)
-  result.add tmp
-
 proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
   assert s.kind == nkSym and s.sym.kind == skParam
   if not isLastRead(s, c):
@@ -481,11 +472,10 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # rule (move-optimization)
       # reset the memory to disable the destructor which we have not elided
       sinkParamIsLastReadCheck(c, arg)
-      result = destructiveMoveVar(arg, c)
+      result = arg
     elif isAnalysableFieldAccess(arg, c.owner) and isLastRead(arg, c):
       # rule (move-optimization)
-      # reset the memory to disable the destructor which we have not elided
-      result = destructiveMoveVar(arg, c)
+      result = arg
     elif arg.kind in {nkBlockExpr, nkBlockStmt}:
       result = copyNode(arg)
       result.add arg[0]

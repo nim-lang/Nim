@@ -200,7 +200,7 @@ proc considerMove(c: var TLiftCtx; t: PType; body, x, y: PNode;
       #else:
       #  markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
-      body.add newAsgnCall(c.g, op, x, y)
+      body.add newMoveCall(c.g, op, x, y)
       result = true
   elif tfHasAsgn in t.flags:
     var op: PSym
@@ -397,13 +397,15 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     body.add genBuiltin(c.g, mDestroy, "destroy", x)
 
-proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+proc weakRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedMove:
     # we should 'nil' y out afterwards so we *need* to take over its reference
     # count value:
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
+    let nilLit = newNodeIT(nkNilLit, c.info, y.typ)
+    body.add newAsgnStmt(y, nilLit)
   of attachedAsgn:
     body.add genIf(c, y, callCodegenProc(c.g, "nimIncWeakRef", c.info, y))
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
@@ -433,11 +435,19 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
 
   case c.kind
-  of attachedMove, attachedAsgn:
+  of attachedAsgn:
+    #assert(false, "cannot happen")
     body.add genIf(c, x, actions)
     body.add newAsgnStmt(x, y)
+  of attachedMove:
+    body.add genIf(c, x, actions)
+    body.add newAsgnStmt(x, y)
+    let nilLit = newNodeIT(nkNilLit, c.info, y.typ)
+    body.add newAsgnStmt(y, nilLit)
   of attachedDestructor:
     body.add genIf(c, x, actions)
+    let nilLit = newNodeIT(nkNilLit, c.info, x.typ)
+    body.add newAsgnStmt(x, nilLit)
   of attachedDeepCopy: assert(false, "cannot happen")
 
 proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =

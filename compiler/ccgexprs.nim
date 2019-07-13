@@ -2016,7 +2016,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     genStmts(p, n[3])
     linefmt(p, cpsStmts, "$n$1.len = $2.len; $1.p = $2.p;$n", [rdLoc(a), rdLoc(src)])
     resetLoc(p, src)
-    linefmt(p, cpsStmts, "}", [rdLoc(a), rdLoc(src)])
+    linefmt(p, cpsStmts, "}$n", [rdLoc(a), rdLoc(src)])
   else:
     if d.k == locNone: getTemp(p, n.typ, d)
     genAssignment(p, d, a, {})
@@ -2031,14 +2031,18 @@ proc genDestroy(p: BProc; n: PNode) =
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*)); }$n",
+        " $1.p->allocator->dealloc($1.p->allocator, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*));$n",
         [rdLoc(a)])
+      resetLoc(p, a)
+      linefmt(p, cpsStmts, "}$n", [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*)); }$n",
+        " $1.p->allocator->dealloc($1.p->allocator, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*));$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
+      resetLoc(p, a)
+      linefmt(p, cpsStmts, "}$n", [rdLoc(a)])
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
