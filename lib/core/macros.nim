@@ -1402,7 +1402,8 @@ macro genAst*(args: varargs[untyped]): untyped =
       (2, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
 
   let params = newTree(nnkFormalParams, newEmptyNode())
-  let name = genSym(nskTemplate, "fun")
+  # using `_` as workaround, see https://github.com/nim-lang/Nim/issues/2465#issuecomment-511076669
+  let name = genSym(nskTemplate, "_fun")
   let call = newCall(name)
   for a in args[0..^2]:
     var varName: NimNode
