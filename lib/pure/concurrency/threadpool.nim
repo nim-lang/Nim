@@ -7,7 +7,38 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
+## Implements Nim's `spawn <manual_experimental.html#parallel-amp-spawn>`_.
+##
+## You most likely want the ``spawn`` procedure from this module.
+## ``spawn`` creates a new task to be executed on another thread.
+## You may synchronously block while the spawned task completes
+## using the blocking apis described in this file, and then retrieve
+## the result using the `^` operator.
+## 
+## Example:
+##
+##   .. code-block::nim
+##      proc my_thread_task(s: string) : string =
+##        return "hello" + s 
+##
+##      let a = spawn my_thread_task("world")
+##      sync()
+##      let result = ^a
+##
+## or you can use ``spawn`` in conjunction
+## with the `asyncdispatch module <asyncdispatch.html>`_
+## to asynchronously wait for the task to complete.
+##
+## Example:
+##
+##   .. code-block::nim
+##      proc my_thread_task(s: string) : string =
+##        return "hello" + s 
+##
+##      proc myAsyncProc() Future[string] {.async.} =
+##        let res = await spawn my_thread_task("async world")
+##        # do other async operations 
+##        result = res 
 ##
 ## **See also:**
 ## * `threads module <threads.html>`_
@@ -18,7 +49,7 @@
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}
 
-import cpuinfo, cpuload, locks, os
+import cpuinfo, cpuload, locks, os, asyncdispatch
 
 {.push stackTrace:off.}
 
@@ -100,7 +131,7 @@ type
     idx: int
 
   FlowVarBase* = ref FlowVarBaseObj ## Untyped base class for ``FlowVar[T]``.
-  FlowVarBaseObj = object of RootObj
+  FlowVarBaseObj = object of FutureBase
     ready, usesSemaphore, awaited: bool
     cv: Semaphore  # for 'blockUntilAny' support
     ai: ptr AwaitInfo
@@ -108,12 +139,14 @@ type
     data: pointer  # we incRef and unref it to keep it alive; note this MUST NOT
                    # be RootRef here otherwise the wrong GC keeps track of it!
     owner: pointer # ptr Worker
+    event*: AsyncEvent # makes Flowvar work with async
 
   FlowVarObj[T] = object of FlowVarBaseObj
     blob: T
 
   FlowVar*{.compilerProc.}[T] = ref FlowVarObj[T] ## A data flow variable.
-
+                                                  ## Compatible with `Future[T] from asyncdispatch <asyncdispatch.html>`_
+ 
   ToFreeQueue = object
     len: int
     lock: Lock
@@ -183,7 +216,7 @@ proc attach(fv: FlowVarBase; i: int): bool =
     result = false
   release(fv.cv.L)
 
-proc finished(fv: FlowVarBase) =
+proc finito(fv: FlowVarBase) =
   doAssert fv.ai.isNil, "flowVar is still attached to an 'blockUntilAny'"
   # we have to protect against the rare cases where the owner of the flowVar
   # simply disregards the flowVar and yet the "flowVar" has not yet written
@@ -206,14 +239,16 @@ proc finished(fv: FlowVarBase) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
+proc fvFinalizer[T](fv: FlowVar[T]) = finito(fv)
 
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
   new(result, fvFinalizer)
 
 proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
   fv.cv.initSemaphore()
+  fv.event = newAsyncEvent()
   fv.usesSemaphore = true
+  addEvent(fv.event, proc(fd: AsyncFD): bool {.gcsafe.} = fv.complete(); true)
 
 proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
   if fv.ai != nil:
@@ -224,6 +259,7 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
     signal(fv.ai.cv.c)
   if fv.usesSemaphore:
     signal(fv.cv)
+  fv.event.trigger()
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## Blocks until the ``fv`` is available and then passes its value
@@ -239,20 +275,20 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     {.error: "'awaitAndThen' not available for FlowVar[ref]".}
   else:
     action(fv.blob)
-  finished(fv)
+  finito(fv)
 
 proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
   ## Blocks until the value is available and then returns this value.
   blockUntil(fv)
   result = cast[ptr T](fv.data)
-  finished(fv)
+  finito(fv)
 
 proc `^`*[T](fv: FlowVar[ref T]): ref T =
   ## Blocks until the value is available and then returns this value.
   blockUntil(fv)
   let src = cast[ref T](fv.data)
   deepCopy result, src
-  finished(fv)
+  finito(fv)
 
 proc `^`*[T](fv: FlowVar[T]): T =
   ## Blocks until the value is available and then returns this value.
@@ -262,7 +298,12 @@ proc `^`*[T](fv: FlowVar[T]): T =
     deepCopy result, src
   else:
     result = fv.blob
-  finished(fv)
+  finito(fv)
+
+proc read*[T](future: FlowVar[T]): T =
+  ## Implement just enough of the Future api to make FlowVar compatible with the async macro.
+  ## Returns the value of the future.
+  ^future
 
 proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
   ## Awaits any of the given ``flowVars``. Returns the index of one ``flowVar``
@@ -345,7 +386,7 @@ proc slave(w: ptr Worker) {.thread.} =
         if w.data != nil:
           sleep(threadpoolWaitMs)
         else:
-          # The flowvar finalizer ("finished()") set w.data to nil, so we can
+          # The flowvar finalizer ("finito()") set w.data to nil, so we can
           # safely terminate the thread.
           #
           # TODO: look for scenarios in which the flowvar is never finalized, so
@@ -455,6 +496,9 @@ proc spawn*(call: typed): void {.magic: "Spawn".}
   ##
   ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
   ## return type that is either ``void`` or compatible with ``FlowVar[T]``.
+  ##
+  ## spawn is compatible with `async <asyncdispatch.html>`_.
+  ## You can ``await`` a spawn just like a normal async procedure or Future[T].
 
 proc pinnedSpawn*(id: ThreadId; call: typed): void {.magic: "Spawn".}
   ## Always spawns a new task on the worker thread with ``id``, so that

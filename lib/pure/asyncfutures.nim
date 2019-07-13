@@ -196,6 +196,15 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
         last = last.next
       last.next = newCallback
 
+proc complete*(future: FutureBase) =
+  ## Completes a base ``future``.
+  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  #checkFinished(future)
+  assert(future.error == nil)
+  future.finished = true
+  future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
+
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
