@@ -87,3 +87,17 @@ block:
     result = genAst(a, b = a.len) do: # shows 2 ways to get a.len
       (a.len, b)
   doAssert foo() == (5, 5)
+
+block:
+  # fix https://github.com/nim-lang/Nim/issues/9607
+  proc fun1(info:LineInfo): string = "bar1"
+  proc fun2(info:int): string = "bar2"
+  macro bar(args: varargs[untyped]): untyped =
+    let info = args.lineInfoObj
+    let fun1 = bindSym"fun1"
+    let fun2 = bindSym"fun2"
+    result = genAst(info = newLit info) do:
+      (fun1(info), fun2(info.line))
+  doAssert bar() == ("bar1", "bar2")
+
+
