@@ -26,9 +26,6 @@ when not defined(leanCompiler):
 
 from magicsys import resetSysTypes
 
-proc codegenPass(g: ModuleGraph) =
-  registerPass g, cgenPass
-
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
