@@ -1379,29 +1379,64 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for `copyNimTree<#copyNimTree,NimNode>`_.
   return node.copyNimTree()
 
-macro genAst*(args: varargs[untyped]): untyped =
+type GenAstOpt* = enum
+  kNoExposeLocalInjects,
+    # when unset, inject'd symbols (including implicit ones such as local procs
+    # in scope) are exposed implicitly;
+    # gensym'd symbols will generate a CT internal error: `environment misses:`
+    # when set, local symbols are not exposed unless captured explicitly in
+    # `genAst` argument list. The default is unset, to avoid surprising hijacking
+    # of local symbols by symbols in caller scope.
+
+macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): untyped =
   ## Accepts a list of captured `variables = value` and a block and returns the
-  ## AST that represents it. Only the captured variables are interpolated.
+  ## AST that represents it. Local `{.inject.}` symbols are captured (eg
+  ## local procs) unless `kNoExposeLocalInjects in options`; additional variables
+  ## are captured as subsequent parameters.
   runnableExamples:
     type Foo = enum kfoo0, kfoo1, kfoo2, kfoo3, kfoo4
-    macro bar(x0: static Foo, x1: Foo, x2: Foo, xignored: Foo): untyped =
+
+    macro bar1(x0: static Foo, x1: Foo, x2: Foo, xignored: Foo): untyped =
+      let s0 = "not captured!" ## does not override `s0` from caller scope
+      let s1 = "not captured!" ## does not override `s1=2`
+      let xignoredLocal = kfoo4
+      proc localExposed(): auto = kfoo4 # implicitly captured
+      let x3 = newLit kfoo4
+      result = genAst({}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3) do:
+        # echo xignored # would give: Error: undeclared identifier
+        # echo s0 # would give: Error: internal error: expr: var not init s0_237159
+        (s1, s2, x0, x1, x2, x3, localExposed())
+
+    macro bar2(x0: static Foo, x1: Foo, x2: Foo, xignored: Foo): untyped =
       let s0 = "not captured!" ## does not override `s0` from caller scope
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       let x3 = newLit kfoo4
-      ## use `result = genAst do` if there are 0 captures
-      result = genAst(s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3) do:
+      result = genAst({kNoExposeLocalInjects}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3) do:
         ## only captures variables from `genAst` argument list
         ## uncaptured variables will be set from caller scope (Eg `s0`)
         ## `x2` is shortcut for the common `x2=x2`
         doAssert not declared(xignored)      # not in param list!
         doAssert not declared(xignoredLocal) # ditto
         (s1, s2, s0, x0, x1, x2, x3)
-    let s0 = "caller scope!"
-    doAssert bar(kfoo1, kfoo2, kfoo3, kfoo4) ==
-      (2, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
+
+    block:
+      let s0 = "caller scope!"
+      doAssert bar1(kfoo1, kfoo2, kfoo3, kfoo4) ==
+        (2, "asdf", kfoo1, kfoo2, kfoo3, kfoo4, kfoo4)
+
+    block:
+      let s0 = "caller scope!"
+      doAssert bar2(kfoo1, kfoo2, kfoo3, kfoo4) ==
+        (2, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
 
   let params = newTree(nnkFormalParams, newEmptyNode())
+  let pragmas =
+    if kNoExposeLocalInjects in options:
+      nnkPragma.newTree(ident"dirty")
+    else:
+      newEmptyNode()
+
   # using `_` as workaround, see https://github.com/nim-lang/Nim/issues/2465#issuecomment-511076669
   let name = genSym(nskTemplate, "_fun")
   let call = newCall(name)
@@ -1426,8 +1461,7 @@ macro genAst*(args: varargs[untyped]): untyped =
       newEmptyNode(),
       newEmptyNode(),
       params,
-      nnkPragma.newTree(ident"dirty"),
-        # dirty is needed to allow binding to caller scope
+      pragmas,
       newEmptyNode(),
       args[^1])
   result.add newCall(bindSym"getAst", call)
