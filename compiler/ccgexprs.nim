@@ -151,6 +151,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     of tyVar, tyLent, tySink: result = OnUnknown
     of tyPtr: result = OnStack
     of tyRef: result = OnHeap
+    of tyOwned: result = OnHeap #XXX: Is this correct?
     else: doAssert(false, "getStorageLoc")
   of nkBracketExpr, nkDotExpr, nkObjDownConv, nkObjUpConv:
     result = getStorageLoc(n.sons[0])
@@ -271,7 +272,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # little HACK to support the new 'var T' as return type:
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
     return
-  let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses + {tyStatic})
+  let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses + {tyStatic}) #XXX: skip tySink and tyOwned here?
   case ty.kind
   of tyRef:
     genRefAssign(p, dest, src)
@@ -360,7 +361,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
-     tyInt..tyUInt64, tyRange, tyVar, tyLent, tySink, tyNil:
+     tyInt..tyUInt64, tyRange, tyVar, tyLent, tyNil:
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: internalError(p.config, "genAssignment: " & $ty.kind)
 
@@ -382,7 +383,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
     else:
       addrLoc(p.config, a)
 
-  var ty = skipTypes(dest.t, abstractVarRange + {tyStatic})
+  var ty = skipTypes(dest.t, abstractVarRange + {tyStatic}) #XXX: skip tyOwned and tySink here?
   case ty.kind
   of tyPtr, tyRef, tyProc, tyTuple, tyObject, tyArray:
     # XXX optimize this
@@ -405,7 +406,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyPointer, tyChar, tyBool, tyEnum, tyCString,
-     tyInt..tyUInt64, tyRange, tyVar, tyLent, tySink:
+     tyInt..tyUInt64, tyRange, tyVar, tyLent:
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: internalError(p.config, "genDeepCopy: " & $ty.kind)
 
@@ -705,7 +706,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       case typ.kind
       of tyRef:
         d.storage = OnHeap
-      of tyVar, tyLent, tySink:
+      of tyVar, tyLent, tySink: #tyOwned?
         d.storage = OnUnknown
         if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
             e.kind == nkHiddenDeref:
@@ -1514,7 +1515,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var dest = skipTypes(typ, typedescPtrs)
   var r = rdLoc(a)
   var nilCheck: Rope = nil
-  var t = skipTypes(a.t, abstractInstOwned)
+  var t = skipTypes(a.t, abstractInstOwned) #XXX: skip tyOwned here?
   while t.kind in {tyVar, tyLent, tySink, tyPtr, tyRef}:
     if t.kind notin {tyVar, tyLent, tySink}: nilCheck = r
     if t.kind notin {tyVar, tyLent, tySink} or not p.module.compileToCpp:
@@ -2414,9 +2415,9 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var r = rdLoc(a)
     var nilCheck: Rope = nil
     var t = skipTypes(a.t, abstractInst)
-    while t.kind in {tyVar, tyLent, tySink, tyPtr, tyRef}:
-      if t.kind notin {tyVar, tyLent, tySink}: nilCheck = r
-      if t.kind notin {tyVar, tyLent, tySink} or not p.module.compileToCpp:
+    while t.kind in {tyVar, tyLent, tySink, tyOwned, tyPtr, tyRef}:
+      if t.kind notin {tyVar, tyLent, tySink, tyOwned}: nilCheck = r
+      if t.kind notin {tyVar, tyLent, tySink, tyOwned} or not p.module.compileToCpp:
         r = "(*$1)" % [r]
       t = skipTypes(t.lastSon, abstractInst)
     discard getTypeDesc(p.module, t)
@@ -2456,7 +2457,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, arg, a)
     var r = rdLoc(a)
-    let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent, tySink}
+    let isRef = skipTypes(arg.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent, tySink, tyOwned}
     if isRef:
       add(r, "->Sup")
     else:
@@ -2468,7 +2469,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       # (see bug #837). However sometimes using a temporary is not correct:
       # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
       # this by ensuring the destination is also a pointer:
-      if d.k == locNone and skipTypes(n.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent, tySink}:
+      if d.k == locNone and skipTypes(n.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent, tySink, tyOwned}:
         getTemp(p, n.typ, d)
         linefmt(p, cpsStmts, "$1 = &$2;$n", [rdLoc(d), r])
       else:
