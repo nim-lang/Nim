@@ -2147,18 +2147,22 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result.sons[1] = semStmt(c, x, {})
     dec c.inParallelStmt
   of mSpawn:
-    result = setMs(n, s)
-    for i in 1 ..< n.len:
-      result.sons[i] = semExpr(c, n.sons[i])
-    let typ = result[^1].typ
-    if not typ.isEmptyType:
-      if spawnResult(typ, c.inParallelStmt > 0) == srFlowVar:
-        result.typ = createFlowVar(c, typ, n.info)
-      else:
-        result.typ = typ
-      result.add instantiateCreateFlowVarCall(c, typ, n.info).newSymNode
+    when defined(leanCompiler):
+      localError(c.config, n.info, "compiler was built without 'spawn' support")
+      result = n
     else:
-      result.add c.graph.emptyNode
+      result = setMs(n, s)
+      for i in 1 ..< n.len:
+        result.sons[i] = semExpr(c, n.sons[i])
+      let typ = result[^1].typ
+      if not typ.isEmptyType:
+        if spawnResult(typ, c.inParallelStmt > 0) == srFlowVar:
+          result.typ = createFlowVar(c, typ, n.info)
+        else:
+          result.typ = typ
+        result.add instantiateCreateFlowVarCall(c, typ, n.info).newSymNode
+      else:
+        result.add c.graph.emptyNode
   of mProcCall:
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
