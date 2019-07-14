@@ -23,7 +23,7 @@
 
 import
   ast, astalgo, idents, lowerings, magicsys, guards, sempass2, msgs,
-  renderer, types, modulegraphs, options
+  renderer, types, modulegraphs, options, spawn
 
 from trees import getMagic
 from strutils import `%`
