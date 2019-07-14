@@ -2461,7 +2461,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             # we end up here if the argument can be converted into the varargs
             # formal (eg. seq[T] -> varargs[T]) but we have already instantiated
             # a container
-            assert arg.kind == nkHiddenStdConv
+            #assert arg.kind == nkHiddenStdConv # for 'nim check'
+            # this assertion can be off
             localError(c.config, n.sons[a].info, "cannot convert $1 to $2" % [
               typeToString(n.sons[a].typ), typeToString(formal.typ) ])
             m.state = csNoMatch

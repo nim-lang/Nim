@@ -77,12 +77,12 @@ proc isPureObject*(typ: PType): bool =
     t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getOrdValue*(n: PNode): BiggestInt =
+proc getOrdValue*(n: PNode; onError = high(BiggestInt)): BiggestInt =
   case n.kind
   of nkCharLit..nkUInt64Lit: n.intVal
   of nkNilLit: 0
-  of nkHiddenStdConv: getOrdValue(n.sons[1])
-  else: high(BiggestInt)
+  of nkHiddenStdConv: getOrdValue(n.sons[1], onError)
+  else: onError
 
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
