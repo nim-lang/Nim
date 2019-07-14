@@ -72,11 +72,20 @@ proc beautifyName(s: string, k: TSymKind): string =
     inc i
 
 proc differ*(line: string, a, b: int, x: string): string =
-  let y = line[a..b]
-  if y != x and cmpIgnoreStyle(y, x) == 0:
-    result = y
-  else:
-    result = ""
+  proc substrEq(s: string, pos, last: int, substr: string): bool =
+    var i = 0
+    var length = substr.len
+    while i < length and pos+i <= last and s[pos+i] == substr[i]:
+      inc i
+    return i == length
+
+  let last = min(b, line.len)
+
+  result = ""
+  if not substrEq(line, a, b, x):
+    let y = line[a..b]
+    if cmpIgnoreStyle(y, x) == 0:
+      result = y
 
 proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
