@@ -121,7 +121,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##   # Put here the normal code
 
 when defined(nimHasRunnableExamples):
-  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(topLevel = false, body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
@@ -143,6 +143,15 @@ when defined(nimHasRunnableExamples):
     ##       assert double(21) == 42
     ##
     ##     result = 2 * x
+    ##
+    ##   proc fun2*(): auto =
+    ##     runnableExamples(topLevel=true):
+    ##       # `topLevel=true` will put the generated code at module scope
+    ##       proc fun0*() = discard
+    ##       fun0()
+    ##
+    ##     discard
+    ##
 else:
   template runnableExamples*(body: untyped) =
     discard
