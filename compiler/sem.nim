@@ -24,7 +24,7 @@ when defined(nimfix):
   import nimfix/prettybase
 
 when not defined(leanCompiler):
-  import semparallel
+  import spawn, semparallel
 
 # implementation
 
