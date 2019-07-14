@@ -44,6 +44,8 @@ proc timerfd_settime(ufd: cint, flags: cint,
 proc eventfd(count: cuint, flags: cint): cint
      {.cdecl, importc: "eventfd", header: "<sys/eventfd.h>".}
 
+const EFD_SEMAPHORE = 1
+
 when not defined(android):
   proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
        {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
@@ -110,7 +112,7 @@ proc close*[T](s: Selector[T]) =
     raiseIOSelectorsError(osLastError())
 
 proc newSelectEvent*(): SelectEvent =
-  let fdci = eventfd(0, 0)
+  let fdci = eventfd(0, EFD_SEMAPHORE)
   if fdci == -1:
     raiseIOSelectorsError(osLastError())
   setNonBlocking(fdci)
