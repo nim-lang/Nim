@@ -1402,7 +1402,7 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
       let xignoredLocal = kfoo4
       proc localExposed(): auto = kfoo4 # implicitly captured
       let x3 = newLit kfoo4
-      result = genAst({}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3) do:
+      result = genAst({}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3):
         # echo xignored # would give: Error: undeclared identifier
         # echo s0 # would give: Error: internal error: expr: var not init s0_237159
         (s1, s2, x0, x1, x2, x3, localExposed())
@@ -1412,7 +1412,7 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       let x3 = newLit kfoo4
-      result = genAst({kNoExposeLocalInjects}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3) do:
+      result = genAst({kNoExposeLocalInjects}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3):
         ## only captures variables from `genAst` argument list
         ## uncaptured variables will be set from caller scope (Eg `s0`)
         ## `x2` is shortcut for the common `x2=x2`
