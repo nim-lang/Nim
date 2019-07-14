@@ -44,12 +44,6 @@ proc fun*() =
     doAssert declared(isAlphaAscii)
     echo "foo6"
 
-proc fun2*(): auto =
-  runnableExamples(topLevel=true):
-    proc fun0*() = discard
-    fun0()
-  discard
-
 # also check for runnableExamples at module scope
 runnableExamples:
   defer: echo "foo7"
