@@ -2061,13 +2061,21 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   for i in 0 ..< gp.len:
     let genericParam = gp[i].sym
     let posInCall = macroSym.typ.len + i
-    yield (genericParam, call[posInCall])
+    if posInCall < call.len:
+      yield (genericParam, call[posInCall])
 
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
 
+proc errorNode(owner: PSym, n: PNode): PNode =
+  result = newNodeI(nkEmpty, n.info)
+  result.typ = newType(tyError, owner)
+  result.typ.flags.incl tfCheckedForDestructor
+
 proc evalMacroCall*(module: PSym; g: ModuleGraph;
                     n, nOrig: PNode, sym: PSym): PNode =
+  if g.config.errorCounter > 0: return errorNode(module, n)
+
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(g.config.evalMacroCounter)
   if g.config.evalMacroCounter > evalMacroLimit:
