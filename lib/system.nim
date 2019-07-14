@@ -2057,7 +2057,7 @@ elif defined(genode):
     importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
 
   proc quit*(errorcode: int = QuitSuccess) =
-    systemEnv.quit(errorCode)
+    systemEnv.quit(errorcode)
 
 
 
