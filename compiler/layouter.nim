@@ -44,6 +44,7 @@ type
     col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
     keepIndents*: int
     doIndentMore*: int
+    parIndent: bool
     kinds: seq[LayoutToken]
     tokens: seq[string]
     indentStack: seq[int]
@@ -201,8 +202,9 @@ proc closeEmitter*(em: var Emitter) =
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
         content.add "\L"
-        content.add em.tokens[i]
-        lineLen = em.tokens[i].len
+        let j = if em.tokens[i] == "\L": i-1 else: i
+        content.add em.tokens[j]
+        lineLen = em.tokens[j].len
         lineBegin = i+1
         if i+1 < em.kinds.len and em.kinds[i+1] == ltSpaces:
           # inhibit extra spaces at the start of a new line
@@ -301,14 +303,15 @@ const
 template goodCol(col): bool = col >= em.maxLineLen div 2
 
 template moreIndent(em): int =
-  if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth
+  if em.parIndent: 0
+  elif em.doIndentMore > 0: em.indWidth*2
+  else: em.indWidth
 
 template rememberSplit(kind) =
   if goodCol(em.col) and not em.inquote:
-    let spaces = em.indentLevel+moreIndent(em)
+    let spaces = em.indentLevel + moreIndent(em)
     if spaces < em.col and spaces > 0:
       wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
-    #em.altSplitPos[kind] = em.tokens.len
 
 proc emitMultilineComment(em: var Emitter, lit: string, col: int; dontIndent: bool) =
   # re-align every line in the multi-line comment:
@@ -418,6 +421,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       em.indentLevel = tok.indent
     elif (em.lastTok in (splitters + oprSet) and tok.tokType notin closedPars):
       # aka: we are in an expression context:
+      if em.lastTok in openPars: # keep user's indent
+        em.parIndent = true
       let alignment = max(tok.indent - em.indentStack[^1], 0)
       em.indentLevel = alignment + em.indentStack.high * em.indWidth
       newlineKind = ltSplittingNewline
@@ -471,19 +476,14 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitComma)
     wrSpace em
-  of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
-     tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
+  of openPars:
     if tok.strongSpaceA > 0 and not em.endsInWhite and not em.wasExportMarker:
       wrSpace em
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitParLe)
-  of tkParRi,
-     tkBracketRi, tkCurlyRi,
-     tkBracketDotRi,
-     tkCurlyDotRi,
-     tkParDotRi,
-     tkColonColon:
+  of closedPars + {tkBracketDotRi, tkColonColon}:
     wr(em, TokTypeToStr[tok.tokType], ltOther)
+    em.parIndent = false
   of tkDot:
     lastTokWasTerse = true
     wr(em, TokTypeToStr[tok.tokType], ltOther)

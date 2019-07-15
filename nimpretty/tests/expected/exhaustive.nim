@@ -686,8 +686,7 @@ block:
 proc newRecordGen(ctx: Context; typ: TypRef): PNode =
   result = nkTypeDef.t(
     newId(typ.optSym.name, true, pragmas = [id(
-        if typ.isUnion: "cUnion" else: "cStruct")]),
-    empty(),
+    if typ.isUnion: "cUnion" else: "cStruct")]), empty(),
     nkObjectTy.t(
       empty(),
       empty(),
@@ -769,3 +768,22 @@ var rows2 = await pool.rows(sql"""
     "BBBB"
   ]
 )
+
+
+let keywords1 = @[
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5",
+  "bar5", "foo6", "bar6", "foo7", "zzz", "ggg", "ddd",
+]
+
+let keywords2 = @[
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5",
+  "bar5", "foo6", "bar6", "foo7", "foo1", "bar1", "foo2", "bar2", "foo3",
+  "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+  "zzz", "ggg", "ddd",
+]
+
+if true:
+  let keywords3 = @[
+    "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5",
+    "bar5", "foo6", "bar6", "foo7", "zzz", "ggg", "ddd",
+  ]
