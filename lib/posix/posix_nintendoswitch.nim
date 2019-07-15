@@ -17,7 +17,7 @@ type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
 
-const SIG_HOLD* = cast[SigHandler](2)
+const SIG_HOLD* = cast[Sighandler](2)
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
@@ -218,7 +218,7 @@ type
     st_blocks*: Blkcnt     ## Number of blocks allocated for this object.
     reserved: array[2, clong]
 
-  
+
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
               final, pure.} = object ## struct statvfs
