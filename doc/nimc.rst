@@ -345,6 +345,27 @@ correctly is by including the following line in your source code:
 .. code-block:: Nim
   when defined(unix): {.passL: "-Wl,-rpath='$ORIGIN'"}
 
+``nimrtl``
+----------
+
+The ``nimrtl`` libarary contains both Nim's memory manager as well as the full
+standard libary. To generate the ``nimrtl`` library, first, create a file named
+``build_nimrtl.nim``, and fill it with the following:
+
+.. code-block:: Nim
+  include nimrtl
+
+Then, use the command::
+
+  nim c -d:release -d:createNimRtl --app:lib --out:nimrtl build_nimrtl.nim
+
+Rename ``nimrtl`` to ``nimrtl.dll`` (for Windows) or ``libnimrtl.so`` (for UNIX)
+accordingly to your platform.
+
+To link against ``nimrtl`` use the command::
+
+  nim c -d:useNimRtl myprog.nim
+
 **Note**: Currently the creation of ``nimrtl.dll`` with thread support has
 never been tested and is unlikely to work!
 
