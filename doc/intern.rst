@@ -184,7 +184,7 @@ How the RTL is compiled
 
 The ``system`` module contains the part of the RTL which needs support by
 compiler magic (and the stuff that needs to be in it because the spec
-says so). The C code generator generates the C code for it's just like any other
+says so). The C code generator generates the C code for it, just like any other
 module. However, calls to some procedures like ``addInt`` are inserted by
 the CCG. Therefore the module ``magicsys`` contains a table (``compilerprocs``)
 with all symbols that are marked as ``compilerproc``. ``compilerprocs`` are
