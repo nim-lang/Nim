@@ -23,6 +23,7 @@
 
 - Make public `Sha1Digest` and `Sha1State` types and `newSha1State`, `update` and `finalize` procedures from `sha1` module. (#11694)
 
+- Added the `std/monotimes` module which implements monotonic timestamps.
 
 ## Language additions
 

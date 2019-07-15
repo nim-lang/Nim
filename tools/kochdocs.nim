@@ -158,6 +158,7 @@ lib/windows/winlean.nim
 lib/pure/random.nim
 lib/pure/complex.nim
 lib/pure/times.nim
+lib/std/monotimes.nim
 lib/pure/osproc.nim
 lib/pure/pegs.nim
 lib/pure/dynlib.nim
