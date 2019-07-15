@@ -1,5 +1,6 @@
 discard """
 cmd: "nim doc $file"
+action: "compile"
 nimout: '''
 foo1
 foo2
