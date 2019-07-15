@@ -326,20 +326,27 @@ They are:
 DLL generation
 ==============
 
-Nim supports the generation of DLLs. However, there must be only one
-instance of the GC per process/address space. This instance is contained in
-``nimrtl.dll``. This means that every generated Nim DLL depends
-on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command::
+Nim supports the generation of dynamic libraries. However, there must be only
+one instance of the GC per process/address space, meaning that if multiple Nim
+DLLs are used by the same binary, the DLLs must link to the ``nimrtl`` dynamic 
+library.
 
-  nim c -d:release lib/nimrtl.nim
+**Note for UNIX**: If any Nim DLL (including ``libnimrtl.so`` and
+``libnimchr.so``) is to be directly included with your application in the same
+folder as the app binary, the app's ``rpath`` variable should be set to
+``$ORIGIN``. The reason for this is because the dynamic libary linker for
+UNIX-like systems *does not* search for dynamic libaries in the same folder
+(unlike Windows), unless the ``rpath`` variable is set otherwise in the binary
+to search for in the app directory.
 
-To link against ``nimrtl.dll`` use the command::
+For an app binary built in Nim, an easy way to set the ``rpath`` variable
+correctly is by including the following line in your source code:
 
-  nim c -d:useNimRtl myprog.nim
+.. code-block:: Nim
+  when defined(unix): {.passL: "-Wl,-rpath='$ORIGIN'"}
 
 **Note**: Currently the creation of ``nimrtl.dll`` with thread support has
 never been tested and is unlikely to work!
-
 
 Additional compilation switches
 ===============================
