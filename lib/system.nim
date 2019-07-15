@@ -121,17 +121,19 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##   # Put here the normal code
 
 when defined(nimHasRunnableExamples):
-  proc runnableExamples*(topLevel = false, body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(topLevel: bool, body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
     ##   a ``runnableExamples`` section is ignored.
     ## - The documentation generator is aware of these examples and considers them
     ##   part of the ``##`` doc comment. As the last step of documentation
-    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   generation each runnableExample is put in its own file ``$file_examples$i.nim``,
     ##   compiled and tested. The collected examples are
     ##   put into their own module to ensure the examples do not refer to
-    ##   non-exported symbols.
+    ##   non-exported symbols. By default `body` is at module scope, but `topLevel=false`
+    ##   will put it inside a `block:`.
     ##
     ## Usage:
     ##
@@ -145,15 +147,15 @@ when defined(nimHasRunnableExamples):
     ##     result = 2 * x
     ##
     ##   proc fun2*(): auto =
-    ##     runnableExamples(topLevel=true):
-    ##       # `topLevel=true` will put the generated code at module scope
-    ##       proc fun0*() = discard
-    ##       fun0()
+    ##     runnableExamples(topLevel=false):
+    ##       defer: echo "done" # cannot be at module scope
     ##
     ##     discard
     ##
 else:
   template runnableExamples*(body: untyped) =
+    discard
+  template runnableExamples*(topLevel: bool, body: untyped) =
     discard
 
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
