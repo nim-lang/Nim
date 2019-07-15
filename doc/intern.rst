@@ -184,7 +184,7 @@ How the RTL is compiled
 
 The ``system`` module contains the part of the RTL which needs support by
 compiler magic (and the stuff that needs to be in it because the spec
-says so). The C code generator generates the C code for it just like any other
+says so). The C code generator generates the C code for it's just like any other
 module. However, calls to some procedures like ``addInt`` are inserted by
 the CCG. Therefore the module ``magicsys`` contains a table (``compilerprocs``)
 with all symbols that are marked as ``compilerproc``. ``compilerprocs`` are
@@ -246,14 +246,14 @@ The symbol's ``ast`` field is loaded lazily, on demand. This is where most
 savings come from, only the shallow outer AST is reconstructed immediately.
 
 It is also important that the replay involves the ``import`` statement so
-that the dependencies are resolved properly.
+that dependencies are resolved properly.
 
 
 Shared global compiletime state
 -------------------------------
 
 Nim allows ``.global, compiletime`` variables that can be filled by macro
-invokations across different modules. This feature breaks modularity in a
+invocations across different modules. This feature breaks modularity in a
 severe way. Plenty of different solutions have been proposed:
 
 - Restrict the types of global compiletime variables to ``Set[T]`` or
@@ -286,7 +286,7 @@ We only know the root is ``someGlobal`` but the concrete path to the data
 is unknown as is the value that is added. We could compute a "diff" between
 the global states and use that to compute a symbol patchset, but this is
 quite some work, expensive to do at runtime (it would need to run after
-every module has been compiled) and also would break for hash tables.
+every module has been compiled) and would also break for hash tables.
 
 We need an API that hides the complex aliasing problems by not relying
 on Nim's global variables. The obvious solution is to use string keys
