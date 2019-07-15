@@ -33,5 +33,5 @@ const
     "C": action3,
     "D": action4}.toTable
 
-# actionTable1["C"]("arg")
+actionTable1["C"]("arg")
 actionTable2["C"]("arg")
