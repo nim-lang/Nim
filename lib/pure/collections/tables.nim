@@ -1741,7 +1741,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
-proc newOrderedTable*[A, B](initialsize = defaultInitialSize): <//>OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -2502,7 +2502,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
-proc newCountTable*[A](initialsize = defaultInitialSize): <//>CountTableRef[A] =
+proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).

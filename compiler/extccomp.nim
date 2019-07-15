@@ -947,7 +947,7 @@ proc callCCompiler*(conf: ConfigRef) =
     generateScript(conf, script)
 
 #from json import escapeJson
-import json
+import json, std / sha1
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: untyped) = f.write x
@@ -960,17 +960,17 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       f.write escapeJson(x)
 
   proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
-    var pastStart = false
+    var i = 0
     for it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(conf, it)
-      if pastStart: lit "],\L"
+      if i > 0: lit ",\L"
       lit "["
       str it.cname.string
       lit ", "
       str compileCmd
-      pastStart = true
-    lit "]\L"
+      lit "]"
+      inc i
 
   proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
                  llist: seq[string]) =
@@ -994,6 +994,19 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       pastStart = true
     lit "\L"
 
+  proc nimfiles(conf: ConfigRef; f: File) =
+    var i = 0
+    for it in conf.m.fileInfos:
+      if isAbsolute(it.fullPath.string):
+        if i > 0: lit "],\L"
+        lit "["
+        str it.fullPath.string
+        lit ", "
+        str $secureHashFile(it.fullPath.string)
+        inc i
+    lit "]\L"
+
+
   var buf = newStringOfCap(50)
 
   let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
@@ -1009,8 +1022,43 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(conf, conf.absOutFile, objfiles)
+
+    if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
+      lit ",\L\"cmdline\": "
+      str conf.commandLine
+      lit ",\L\"nimfiles\":[\L"
+      nimfiles(conf, f)
+      lit "]\L"
+
     lit "\L}\L"
     close(f)
+
+proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
+  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+  if not fileExists(jsonFile): return true
+  if not fileExists(conf.absOutFile): return true
+  result = false
+  try:
+    let data = json.parseFile(jsonFile.string)
+    if not data.hasKey("nimfiles") or not data.hasKey("cmdline"):
+      return true
+    let oldCmdLine = data["cmdline"].getStr
+    if conf.commandLine != oldCmdLine:
+      return true
+    let nimfilesPairs = data["nimfiles"]
+    doAssert nimfilesPairs.kind == JArray
+    for p in nimfilesPairs:
+      doAssert p.kind == JArray
+      # >= 2 for forwards compatibility with potential later .json files:
+      doAssert p.len >= 2
+      let nimFilename = p[0].getStr
+      let oldHashValue = p[1].getStr
+      let newHashValue = $secureHashFile(nimFilename)
+      if oldHashValue != newHashValue:
+        return true
+  except IOError, OSError, ValueError:
+    echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
+    result = true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")

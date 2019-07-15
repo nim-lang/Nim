@@ -562,7 +562,7 @@ proc writeConfig*(dict: Config, filename: string) =
 
 proc getSectionValue*(dict: Config, section, key: string): string =
   ## Gets the Key value of the specified Section.
-  if dict.haskey(section):
+  if dict.hasKey(section):
     if dict[section].hasKey(key):
       result = dict[section][key]
     else:
@@ -584,9 +584,9 @@ proc delSection*(dict: var Config, section: string) =
 
 proc delSectionKey*(dict: var Config, section, key: string) =
   ## Delete the key of the specified section.
-  if dict.haskey(section):
+  if dict.hasKey(section):
     if dict[section].hasKey(key):
-      if dict[section].len() == 1:
+      if dict[section].len == 1:
         dict.del(section)
       else:
         dict[section].del(key)

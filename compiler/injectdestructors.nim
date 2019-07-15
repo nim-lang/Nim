@@ -154,7 +154,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = "" # "server_continue"
+const toDebug = "" # "server" # "serverNimAsyncContinue"
 
 template dbg(body) =
   when toDebug.len > 0:
@@ -311,6 +311,8 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
       m.add "; try to make "
       m.add renderTree(ri)
       m.add " a 'sink' parameter"
+  m.add "; routine: "
+  m.add c.owner.name.s
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: Con, baseType: PType): PType =

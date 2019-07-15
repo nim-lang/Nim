@@ -26,6 +26,7 @@
 
 ## Library additions
 
+- `toOpenArray` is now available for the JS target.
 
 ## Library changes
 

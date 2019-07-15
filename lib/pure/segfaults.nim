@@ -17,7 +17,7 @@
 var se: ref NilAccessError
 new(se)
 se.name = "NilAccessError"
-se.msg = ""
+se.msg = "Could not access value because it is nil."
 
 when defined(windows):
   include "../system/ansi_c"

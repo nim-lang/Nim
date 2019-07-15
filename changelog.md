@@ -32,6 +32,9 @@
 
 ### Tool changes
 
+- The Nim compiler now does not recompile the Nim project via ``nim c -r`` if
+  no dependent Nim file changed. This feature can be overridden by
+  the ``--forceBuild`` command line option.
 
 ### Compiler changes
 

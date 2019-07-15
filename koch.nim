@@ -287,7 +287,7 @@ proc boot(args: string) =
   # default to use the 'c' command:
   let useCpp = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
-                      hostOs & "_" & hostCpu
+                      hostOS & "_" & hostCPU
 
   let nimStart = findStartNim()
   for i in 0..2:
@@ -308,8 +308,14 @@ proc boot(args: string) =
         extraOption.add " -d:nimBoostrapCsources0_19_0"
         # remove this when csources get updated
 
-    exec "$# $# $# $# --nimcache:$# compiler" / "nim.nim" %
+    # in order to use less memory, we split the build into two steps:
+    # --compileOnly produces a $project.json file and does not run GCC/Clang.
+    # jsonbuild then uses the $project.json file to build the Nim binary.
+    exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
       [nimi, bootOptions, extraOption, args, smartNimcache]
+    exec "$# jsonscript --nimcache:$# compiler" / "nim.nim" %
+      [nimi, smartNimcache]
+
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -435,13 +441,14 @@ proc temp(args: string) =
   let d = getAppDir()
   var output = d / "compiler" / "nim".exe
   var finalDest = d / "bin" / "nim_temp".exe
-  # 125 is the magic number to tell git bisect to skip the current
-  # commit.
+  # 125 is the magic number to tell git bisect to skip the current commit.
   var (bootArgs, programArgs) = splitArgs(args)
-  if "doc" notin programArgs and "threads" notin programArgs:
+  if "doc" notin programArgs and
+      "threads" notin programArgs and
+      "js" notin programArgs:
     bootArgs.add " -d:leanCompiler"
   let nimexec = findNim()
-  exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " " & (d / "compiler" / "nim"), 125)
+  exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
   setCurrentDir(origDir)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
