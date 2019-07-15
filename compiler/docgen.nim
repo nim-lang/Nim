@@ -431,7 +431,7 @@ proc prepareExamples(d: PDoc; n: PNode) =
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
 
-  var topLevel = false
+  var topLevel = true
   if n.len > 2:
     let arg = n[1]
     doAssert arg.kind == nkExprEqExpr

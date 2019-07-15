@@ -2,8 +2,9 @@ discard """
 cmd: "nim doc $file"
 action: "compile"
 nimout: '''
-foo1
 foo2
+foo3
+foo4
 foo3
 foo4
 foo5
@@ -15,15 +16,18 @@ joinable: false
 """
 
 proc fun*() =
-  runnableExamples:
-    # `defer` only allowed inside a block
-    defer: echo "foo1"
-
   runnableExamples(topLevel=false):
+    # `defer` only allowed inside a block
     defer: echo "foo2"
 
   runnableExamples(topLevel=true):
     # `fun*` only allowed at top level
+    proc fun*()=echo "foo3"
+    fun()
+    block:
+      defer: echo "foo4"
+
+  runnableExamples():
     proc fun*()=echo "foo3"
     fun()
     block:
@@ -46,10 +50,10 @@ proc fun*() =
     echo "foo6"
 
 # also check for runnableExamples at module scope
-runnableExamples:
+runnableExamples(topLevel=false):
   defer: echo "foo7"
 
-runnableExamples(topLevel=true):
+runnableExamples():
   proc fun*()=echo "foo8"
   fun()
 

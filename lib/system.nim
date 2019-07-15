@@ -121,7 +121,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##   # Put here the normal code
 
 when defined(nimHasRunnableExamples):
-  proc runnableExamples*(topLevel = false, body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(topLevel = true, body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
@@ -153,6 +153,7 @@ when defined(nimHasRunnableExamples):
     ##     discard
     ##
 else:
+  # TODO: remove this old branch
   template runnableExamples*(body: untyped) =
     discard
 
