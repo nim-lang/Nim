@@ -369,6 +369,24 @@ To link against ``nimrtl`` use the command::
 **Note**: Currently the creation of ``nimrtl.dll`` with thread support has
 never been tested and is unlikely to work!
 
+``nimhcr``
+----------
+Nim's hot-code-reloading support requires the app binary to link to both
+``nimrtl`` as well as another library, ``nimchr``. Similarly to how ``nimrtl``
+was built, you can generate this library by create a file named
+``build_nimhcr.nim``, filling it with the following:
+
+.. code-block:: Nim
+  include nimhcr
+
+Compiling with the command::
+
+  nim c -d:release -d:createNimHcr --app:lib --out:nimrtl build_nimrtl.nim
+
+Likewise, rename ``nimhcr`` to ``nimhcr.dll`` (for Windows) or ``libnimhcr.so``
+(for UNIX). Application binaries intended to be code-reloadable should be
+compiled with the ``--hotcodereloading`` option.
+
 Additional compilation switches
 ===============================
 
