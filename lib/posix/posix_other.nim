@@ -20,10 +20,10 @@ when defined(linux) and not defined(android):
   # On Linux:
   # timer_{create,delete,settime,gettime},
   # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
-  {.passL: "-lrt".}
+  {.passl: "-lrt".}
 when defined(solaris):
   # On Solaris hstrerror lives in libresolv
-  {.passL: "-lresolv".}
+  {.passl: "-lresolv".}
 
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
