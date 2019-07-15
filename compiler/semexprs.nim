@@ -1411,7 +1411,8 @@ proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n.sons[0] = semExprWithType(c, n.sons[0])
   result = n
-  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
+  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias,
+                                    tySink, tyOwned, tyTypeDesc})
   case t.kind
   of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
