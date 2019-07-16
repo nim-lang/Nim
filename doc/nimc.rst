@@ -381,7 +381,7 @@ was built, you can generate this library by create a file named
 
 Compiling with the command::
 
-  nim c -d:release -d:createNimHcr --app:lib --out:nimrtl build_nimrtl.nim
+  nim c -d:release -d:createNimHcr --app:lib --out:nimhcr build_nimhcr.nim
 
 Likewise, rename ``nimhcr`` to ``nimhcr.dll`` (for Windows) or ``libnimhcr.so``
 (for UNIX). Application binaries intended to be code-reloadable should be
