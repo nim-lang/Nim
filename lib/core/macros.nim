@@ -476,24 +476,35 @@ type
                          ## if not ambiguous (this cannot be achieved with
                          ## any other means in the language currently)
 
-proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
-              magic: "NBindSym", noSideEffect.}
-  ## Ceates a node that binds `ident` to a symbol node. The bound symbol
-  ## may be an overloaded symbol.
-  ## if `ident` is a NimNode, it must have ``nnkIdent`` kind.
-  ## If ``rule == brClosed`` either an ``nnkClosedSymChoice`` tree is
-  ## returned or ``nnkSym`` if the symbol is not ambiguous.
-  ## If ``rule == brOpen`` either an ``nnkOpenSymChoice`` tree is
-  ## returned or ``nnkSym`` if the symbol is not ambiguous.
-  ## If ``rule == brForceOpen`` always an ``nnkOpenSymChoice`` tree is
-  ## returned even if the symbol is not ambiguous.
-  ##
-  ## Experimental feature:
-  ## use {.experimental: "dynamicBindSym".} to activate it.
-  ## If called from template / regular code, `ident` and `rule` must be
-  ## constant expression / literal value.
-  ## If called from macros / compile time procs / static blocks,
-  ## `ident` and `rule` can be VM computed value.
+  NimScope* = distinct ByteAddress ## scope in which to resolve `bindSym`
+
+proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.magic: "NBindSym", noSideEffect.}
+
+when defined(nimHasGetCurrentScope):
+  proc getCurrentScope*(): NimScope {. magic: "GetCurrentScope", noSideEffect.}
+    ## return opaque pointer to current scope, allowing `bindSym` to
+    ## resolve relatively to it
+  proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed, scope: NimScope): NimNode {.magic: "NBindSym", noSideEffect.}
+    ## Ceates a node that binds `ident` to a symbol node. The bound symbol
+    ## may be an overloaded symbol.
+    ## if `ident` is a NimNode, it must have ``nnkIdent`` kind.
+    ## If ``rule == brClosed`` either an ``nnkClosedSymChoice`` tree is
+    ## returned or ``nnkSym`` if the symbol is not ambiguous.
+    ## If ``rule == brOpen`` either an ``nnkOpenSymChoice`` tree is
+    ## returned or ``nnkSym`` if the symbol is not ambiguous.
+    ## If ``rule == brForceOpen`` always an ``nnkOpenSymChoice`` tree is
+    ## returned even if the symbol is not ambiguous.
+    ##
+    ## Experimental feature:
+    ## use {.experimental: "dynamicBindSym".} to activate it.
+    ## If called from template / regular code, `ident` and `rule` must be
+    ## constant expression / literal value.
+    ## If called from macros / compile time procs / static blocks,
+    ## `ident` and `rule` can be VM computed value.
+    ##
+    ## `scope` can be obtained via `getCurrentScope` to bind to another scope
+else:
+  proc getCurrentScope*(): NimScope = NimScope.default
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}

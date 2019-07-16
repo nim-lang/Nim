@@ -282,6 +282,11 @@ proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode):
       else: n.strVal)
   c.currentScope = tmpScope
 
+proc semGetCurrentScope(c: PContext, n: PNode): PNode =
+  let val = cast[ByteAddress](c.currentScope)
+  result = newIntTypeNode(nkIntLit, val, n.typ)
+  result.info = n.info
+
 proc semDynamicBindSym(c: PContext, n: PNode): PNode =
   # inside regular code, bindSym resolves to the sym-choice
   # nodes (see tinspectsymbol)
@@ -305,8 +310,21 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
     # param description:
     #   0. ident, a string literal / computed string / or ident node
     #   1. bindSym rule
-    #   2. info node
-    a.setResult opBindSym(c, scope, a.getNode(0), a.getInt(1).int, a.getNode(2))
+    #   2. scope
+    #   3. info node
+    var info: PNode
+    var scope2 = scope
+    let numParam = n[0].typ.n.len
+    if numParam == 4:
+      info = a.getNode(3)
+      let scopePtr = a.getInt(2).int
+      if scopePtr == 0: scope2 = scope
+      else: scope2 = cast[PScope](scopePtr)
+    elif numParam == 3:
+      info = a.getNode(2)
+    else:
+      assert false, $numParam
+    a.setResult opBindSym(c, scope2, a.getNode(0), a.getInt(1).int, info)
 
   let
     # although we use VM callback here, it is not
@@ -490,6 +508,8 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mOf: result = semOf(c, n)
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
+  of mGetCurrentScope:
+    result = semGetCurrentScope(c, n)
   of mNBindSym:
     if dynamicBindSym notin c.features:
       result = semBindSym(c, n)
