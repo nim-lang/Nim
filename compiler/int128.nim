@@ -1,4 +1,4 @@
-
+from math import trunc
 
 type
   Int128* = object
@@ -280,7 +280,6 @@ proc `shl`*(a: Int128, b: int): Int128 =
     result.udata[2] = 0
     result.udata[3] = a.udata[0] shl (b and 31)
 
-
 proc `+`*(a,b: Int128): Int128 =
   let tmp0 = uint64(a.udata[0]) + uint64(b.udata[0])
   result.udata[0] = cast[uint32](tmp0)
@@ -530,6 +529,67 @@ proc toFloat64*(arg: Int128): float64 =
   result = a + 18446744073709551616'f64 * b # a + 2^64 * b
   if isNegative:
     result = -result
+
+proc ldexp(x: float64, exp: cint): float64 {.importc: "ldexp", header: "<math.h>".}
+
+template bitor(a,b,c: Int128): Int128 = bitor(bitor(a,b), c)
+
+proc toInt128*(arg: float64): Int128 =
+  let isNegative = arg < 0
+  assert(arg <  0x47E0000000000000'f64, "out of range")
+  assert(arg >= 0xC7E0000000000000'f64, "out of range")
+  let v0 = ldexp(abs(arg), -100)
+  let w0 = uint64(trunc(v0))
+  let v1 = ldexp(v0 - float64(w0), 50)
+  let w1 = uint64(trunc(v1))
+  let v2 = ldexp(v1 - float64(w1), 50)
+  let w2 = uint64(trunc(v2))
+
+  let res = bitor(toInt128(w0) shl 100, toInt128(w1) shl 50, toInt128(w2))
+  if isNegative:
+    return -res
+  else:
+    return res
+
+proc maskUInt64*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0]
+  result.udata[1] = arg.udata[1]
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskUint32*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0]
+  result.udata[1] = 0
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskUint16*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0] and 0xffff
+  result.udata[1] = 0
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskUint8*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0] and 0xff
+  result.udata[1] = 0
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskBytes*(arg: Int128, numbytes: int): Int128 {.noinit.} =
+  case numbytes
+  of 1:
+    return maskUint8(arg)
+  of 2:
+    return maskUint16(arg)
+  of 4:
+    return maskUint32(arg)
+  of 8:
+    return maskUint64(arg)
+  else:
+    assert(false, "masking only implemented for 1, 2, 4 and 8 bytes")
+
+
+
 
 when isMainModule:
   let (a,b) = divMod(Ten,Ten)

@@ -77,20 +77,25 @@ proc isPureObject*(typ: PType): bool =
     t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
+proc isUnsigned*(t: PType): bool =
+  t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
+
 proc getOrdValue*(n: PNode): Int128 =
   case n.kind
   of nkCharLit, nkUintLit..nkUint64Lit:
+    assert isUnsigned(n.typ), $n.typ
     toInt128(cast[uint64](n.intVal))
   of nkIntLit..nkInt64Lit:
+    assert not isUnsigned(n.typ), $n.typ.kind
     toInt128(n.intVal)
   of nkNilLit:
     int128.Zero
   of nkHiddenStdConv: getOrdValue(n.sons[1])
   else:
-    # The idea behind the introduction of int128 was to finally have
-    # all calculations numerically far away from any overflows. This
-    # command just introduces such overflows and should therefore
-    # really be revisited.
+    # XXX: The idea behind the introduction of int128 was to finally
+    # have all calculations numerically far away from any
+    # overflows. This command just introduces such overflows and
+    # should therefore really be revisited.
     high(Int128)
 
 proc getOrdValue64*(n: PNode): BiggestInt {.deprecated: "use getOrdvalue".} =
