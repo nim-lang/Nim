@@ -334,8 +334,8 @@ library.
 **Note for UNIX**: If any Nim DLL (including ``libnimrtl.so`` and
 ``libnimchr.so``) is to be directly included with your application in the same
 folder as the app binary, the app's ``rpath`` variable should be set to
-``$ORIGIN``. The reason for this is because the dynamic libary linker for
-UNIX-like systems *does not* search for dynamic libaries in the same folder
+``$ORIGIN``. The reason for this is because the dynamic library linker for
+UNIX-like systems *does not* search for dynamic libraries in the same folder
 (unlike Windows), unless the ``rpath`` variable is set otherwise in the binary
 to search for in the app directory.
 
@@ -348,8 +348,8 @@ correctly is by including the following line in your source code:
 ``nimrtl``
 ----------
 
-The ``nimrtl`` libarary contains both Nim's memory manager as well as the full
-standard libary. To generate the ``nimrtl`` library, first, create a file named
+The ``nimrtl`` library contains both Nim's memory manager as well as the full
+standard library. To generate the ``nimrtl`` library, first, create a file named
 ``build_nimrtl.nim``, and fill it with the following:
 
 .. code-block:: Nim
