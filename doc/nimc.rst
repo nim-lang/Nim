@@ -348,8 +348,9 @@ correctly is by including the following line in your source code:
 ``nimrtl``
 ----------
 
-The ``nimrtl`` library contains both Nim's memory manager as well as the full
-standard library. To generate the ``nimrtl`` library, first, create a file named
+The ``nimrtl`` library contains both Nim's memory manager as well as significant
+section of the standard library (containing commonly used utilities). To
+generate the ``nimrtl`` library, first, create a file named
 ``build_nimrtl.nim``, and fill it with the following:
 
 .. code-block:: Nim
@@ -372,7 +373,7 @@ never been tested and is unlikely to work!
 ``nimhcr``
 ----------
 Nim's hot-code-reloading support requires the app binary to link to both
-``nimrtl`` as well as another library, ``nimchr``. Similarly to how ``nimrtl``
+``nimrtl`` as well as another library, ``nimhcr``. Similarly to how ``nimrtl``
 was built, you can generate this library by create a file named
 ``build_nimhcr.nim``, filling it with the following:
 
