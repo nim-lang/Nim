@@ -143,3 +143,11 @@ block:
     template fun5(a1: int, a2: int): untyped = discard
     doAssert arity(fun5) == 2
 
+block:
+  # example from [optional params before `untyped` body - Nim forum](https://forum.nim-lang.org/t/4970)
+  template foo(a1 = 10, a2 = "ba", body: untyped): untyped = (a1, a2, astToStr(body))
+  let ret = dispatch foo:
+    for a in 0..<3:
+      echo a
+    echo 10
+  doAssert ret == (10, "ba", "\nfor a in 0 ..< 3:\n  echo a\necho 10")
