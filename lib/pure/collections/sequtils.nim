@@ -609,18 +609,18 @@ template anyIt*(s, pred: untyped): bool =
 
 template toSeq1(s: not iterator): untyped =
   # overload for typed but not iterator
-  type outType = type(items(s))
+  type OutType = type(items(s))
   when compiles(s.len):
     block:
       evalOnceAs(s2, s, compiles((let _ = s)))
       var i = 0
-      var result = newSeq[outType](s2.len)
+      var result = newSeq[OutType](s2.len)
       for it in s2:
         result[i] = it
         i += 1
       result
   else:
-    var result: seq[outType] = @[]
+    var result: seq[OutType] = @[]
     for it in s:
       result.add(it)
     result
@@ -636,8 +636,8 @@ template toSeq2(iter: iterator): untyped =
       inc i
     result
   else:
-    type outType = type(iter2())
-    var result: seq[outType] = @[]
+    type OutType = type(iter2())
+    var result: seq[OutType] = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
       let iter3 = iter4()
@@ -819,12 +819,12 @@ template mapIt*(s: typed, op: untyped): untyped =
     assert strings == @["4", "8", "12", "16"]
 
   when defined(nimHasTypeof):
-    type outType = typeof((
+    type OutType = typeof((
       block:
         var it{.inject.}: typeof(items(s), typeOfIter);
         op), typeOfProc)
   else:
-    type outType = type((
+    type OutType = type((
       block:
         var it{.inject.}: type(items(s));
         op))
@@ -836,13 +836,13 @@ template mapIt*(s: typed, op: untyped): untyped =
       evalOnceAs(s2, s, compiles((let _ = s)))
 
       var i = 0
-      var result = newSeq[outType](s2.len)
+      var result = newSeq[OutType](s2.len)
       for it {.inject.} in s2:
         result[i] = op
         i += 1
       result
   else:
-    var result: seq[outType] = @[]
+    var result: seq[OutType] = @[]
     for it {.inject.} in s:
       result.add(op)
     result
