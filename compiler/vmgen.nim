@@ -820,12 +820,12 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
-  let src_size = getSize(c.config, src)
-  let dst_size = getSize(c.config, dst)
+  let srcSize = getSize(c.config, src)
+  let dstSize = getSize(c.config, dst)
   if c.config.target.intSize < 8:
     signedIntegers.incl(tyInt)
     unsignedIntegers.incl(tyUInt)
-  if src_size == dst_size and src.kind in allowedIntegers and
+  if srcSize == dstSize and src.kind in allowedIntegers and
                                  dst.kind in allowedIntegers:
     let tmp = c.genx(n.sons[1])
     var tmp2 = c.getTemp(n.sons[1].typ)
@@ -836,25 +836,25 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     if src.kind in unsignedIntegers and dst.kind in signedIntegers:
       # cast unsigned to signed integer of same size
       # signedVal = (unsignedVal xor offset) -% offset
-      let offset = 1 shl (src_size * 8 - 1)
+      let offset = 1 shl (srcSize * 8 - 1)
       c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
       c.gABC(n, opcBitxorInt, tmp3, tmp, tmp2)
       c.gABC(n, opcSubInt, dest, tmp3, tmp2)
     elif src.kind in signedIntegers and dst.kind in unsignedIntegers:
       # cast signed to unsigned integer of same size
       # unsignedVal = (offset +% signedVal +% 1) and offset
-      let offset = (1 shl (src_size * 8)) - 1
+      let offset = (1 shl (srcSize * 8)) - 1
       c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
       c.gABx(n, opcLdConst, dest, mkIntLit(offset+1))
       c.gABC(n, opcAddu, tmp3, tmp, dest)
-      c.gABC(n, opcNarrowU, tmp3, TRegister(src_size*8))
+      c.gABC(n, opcNarrowU, tmp3, TRegister(srcSize*8))
       c.gABC(n, opcBitandInt, dest, tmp3, tmp2)
     else:
       c.gABC(n, opcAsgnInt, dest, tmp)
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
     c.freeTemp(tmp3)
-  elif src_size == dst_size and src.kind in allowedIntegers and
+  elif srcSize == dstSize and src.kind in allowedIntegers and
                            dst.kind in {tyFloat, tyFloat32, tyFloat64}:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
