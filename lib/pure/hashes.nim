@@ -130,8 +130,9 @@ proc hash*(x: pointer): Hash {.inline.} =
       }
     """
   else:
-    # bugfix #11764: s/cast[Hash]/hash/
-    result = hash(cast[uint](x) shr 3) # skip the alignment
+    # 2 bug fixes: s/cast[Hash]()/hash()/ (#11764); and also s/uint/BiggestInt/
+    # note that we can't use unsigned because nimscript doesn't have `$`(uint)
+    result = hash(cast[ByteAddress](x) shr 3) # skip the alignment
       # CHECKME: why? isn't that responsability of caller if he needs this behavior?
 
 when not defined(booting):
