@@ -332,7 +332,7 @@ DLLs are used by the same binary, the DLLs must link to the ``nimrtl`` dynamic
 library.
 
 **Note for UNIX**: If any Nim DLL (including ``libnimrtl.so`` and
-``libnimchr.so``) is to be directly included with your application in the same
+``libnimhcr.so``) is to be directly included with your application in the same
 folder as the app binary, the app's ``rpath`` variable should be set to
 ``$ORIGIN``. The reason for this is because the dynamic library linker for
 UNIX-like systems *does not* search for dynamic libraries in the same folder
@@ -349,44 +349,30 @@ correctly is by including the following line in your source code:
 ----------
 
 The ``nimrtl`` library contains both Nim's memory manager as well as significant
-section of the standard library (containing commonly used utilities). To
-generate the ``nimrtl`` library, first, create a file named
-``build_nimrtl.nim``, and fill it with the following:
+section of the standard library (containing commonly used utilities). The
+``nimrtl`` library can be generated with the command::
 
-.. code-block:: Nim
-  include nimrtl
-
-Then, use the command::
-
-  nim c -d:release -d:createNimRtl --app:lib --out:nimrtl build_nimrtl.nim
-
-Rename ``nimrtl`` to ``nimrtl.dll`` (for Windows) or ``libnimrtl.so`` (for UNIX)
-accordingly to your platform.
+  nim c --genRedist nimrtl.nim
 
 To link against ``nimrtl`` use the command::
 
   nim c -d:useNimRtl myprog.nim
 
-**Note**: Currently the creation of ``nimrtl.dll`` with thread support has
-never been tested and is unlikely to work!
+**Note**: Currently the creation of ``nimrtl`` with thread support has never
+been tested and is unlikely to work!
 
 ``nimhcr``
 ----------
+   `See here <hcr.html>`_ for further information on hot-code-reloading.
+
 Nim's hot-code-reloading support requires the app binary to link to both
 ``nimrtl`` as well as another library, ``nimhcr``. Similarly to how ``nimrtl``
-was built, you can generate this library by create a file named
-``build_nimhcr.nim``, filling it with the following:
+was built, you can generate this library via the following command::
 
-.. code-block:: Nim
-  include nimhcr
+  nim c --genRedist nimhcr.nim
 
-Compiling with the command::
-
-  nim c -d:release -d:createNimHcr --app:lib --out:nimhcr build_nimhcr.nim
-
-Likewise, rename ``nimhcr`` to ``nimhcr.dll`` (for Windows) or ``libnimhcr.so``
-(for UNIX). Application binaries intended to be code-reloadable should be
-compiled with the ``--hotcodereloading`` option.
+Application binaries intended to be code-reloadable should be compiled with the
+``--hotcodereloading`` option.
 
 Additional compilation switches
 ===============================

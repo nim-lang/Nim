@@ -2,13 +2,12 @@
       Hot code reloading
 ===================================
 
-The `hotCodeReloading`:idx: option enables special compilation mode where
-changes in the code can be applied automatically to a running program.
-The code reloading happens at the granularity of an individual module.
-When a module is reloaded, any newly added global variables will be
-initialized, but all other top-level code appearing in the module won't
-be re-executed and the state of all existing global variables will be
-preserved.
+The `hotCodeReloading`:idx: option enables a special compilation mode where
+changes in the code can be applied automatically to a running program. The code
+reloading happens at the granularity of an individual module. When a module is
+reloaded, any newly added global variables will be initialized, but all other
+top-level code appearing in the module won't be re-executed and the state of all
+existing global variables will be preserved.
 
 
 Basic workflow
