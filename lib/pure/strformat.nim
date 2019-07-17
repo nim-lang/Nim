@@ -524,7 +524,6 @@ template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
 proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
-  ## For a specification of the ``&`` macro, see the module level documentation.
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
     error "string formatting (fmt(), &) only works with string literals", pattern
   if openChar == ':' or closeChar == ':':
@@ -593,8 +592,10 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
     echo repr result
 
 macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+  ## For a specification of the ``&`` macro, see the module level documentation.
 
 macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+  ## An alias for ``&``.
 
 macro fmt*(pattern: string; openCloseChar: char): untyped =
   ## Use ``openCloseChar`` character instead of '{' and '}'.
