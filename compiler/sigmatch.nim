@@ -2296,7 +2296,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     arg: PNode # current prepared argument
     formal: PSym # current routine parameter
 
-  defer:
+  template noMatch() =
+    m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
 
@@ -2306,19 +2307,19 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         # better match over other routines with no such restriction:
         inc(m.genericMatches, 100)
       else:
-        m.state = csNoMatch
+        noMatch()
         return
 
     if formal.typ.kind == tyVar:
       let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
       if argConverter.kind == nkHiddenCallConv:
         if argConverter.typ.kind != tyVar:
-          m.state = csNoMatch
           m.firstMismatch.kind = kVarNeeded
+          noMatch()
           return
       elif not n.isLValue:
-        m.state = csNoMatch
         m.firstMismatch.kind = kVarNeeded
+        noMatch()
         return
 
   m.state = csMatch # until proven otherwise
@@ -2354,12 +2355,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       prepareNamedParam(n.sons[a], c)
       if n.sons[a].sons[0].kind != nkIdent:
         localError(c.config, n.sons[a].info, "named parameter has to be an identifier")
-        m.state = csNoMatch
+        noMatch()
         return
       formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
       if formal == nil:
         # no error message!
-        m.state = csNoMatch
+        noMatch()
         return
       if containsOrIncl(marker, formal.position):
         m.firstMismatch.kind = kAlreadyGiven
@@ -2368,7 +2369,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         # bug #3836 of why that is not sound (other overload with
         # different parameter names could match later on):
         when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
-        m.state = csNoMatch
+        noMatch()
         return
       m.baseTypeMatch = false
       m.typedescMatched = false
@@ -2378,7 +2379,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
                                 n.sons[a].sons[1], n.sons[a].sons[1])
       m.firstMismatch.kind = kTypeMismatch
       if arg == nil:
-        m.state = csNoMatch
+        noMatch()
         return
       checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch:
@@ -2419,15 +2420,16 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             incrIndexType(container.typ)
             checkConstraint(n.sons[a])
           else:
-            m.state = csNoMatch
+            noMatch()
             return
         else:
           m.firstMismatch.kind = kExtraArg
-          m.state = csNoMatch
+          noMatch()
           return
       else:
         if m.callee.n.sons[f].kind != nkSym:
           internalError(c.config, n.sons[a].info, "matches")
+          noMatch()
           return
         formal = m.callee.n.sons[f].sym
         m.firstMismatch.kind = kTypeMismatch
@@ -2435,7 +2437,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.firstMismatch.kind = kAlreadyGiven
           # already in namedParams: (see above remark)
           when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
-          m.state = csNoMatch
+          noMatch()
           return
 
         if formal.typ.isVarargsUntyped:
@@ -2452,7 +2454,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
           if arg == nil:
-            m.state = csNoMatch
+            noMatch()
             return
           if m.baseTypeMatch:
             assert formal.typ.kind == tyVarargs
@@ -2481,10 +2483,13 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             # this assertion can be off
             localError(c.config, n.sons[a].info, "cannot convert $1 to $2" % [
               typeToString(n.sons[a].typ), typeToString(formal.typ) ])
-            m.state = csNoMatch
+            noMatch()
             return
         checkConstraint(n.sons[a])
     inc(a)
+  # for some edge cases (see tdont_return_unowned_from_owned test case)
+  m.firstMismatch.arg = a
+  m.firstMismatch.formal = formal
 
 proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every
