@@ -8,7 +8,7 @@
 #
 
 import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
-  pathutils, nimblecmd
+  pathutils
 
 when false:
   const

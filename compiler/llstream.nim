@@ -10,7 +10,7 @@
 ## Low-level streams for high performance.
 
 import
-  strutils, pathutils
+  pathutils
 
 # support '-d:useGnuReadline' for backwards compatibility:
 when not defined(windows) and (defined(useGnuReadline) or defined(useLinenoise)):

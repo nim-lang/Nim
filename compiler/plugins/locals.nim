@@ -9,7 +9,7 @@
 
 ## The builtin 'system.locals' implemented as a plugin.
 
-import ".." / [pluginsupport, ast, astalgo,
+import ".." / [ast, astalgo,
   magicsys, lookups, semdata, lowerings]
 
 proc semLocals*(c: PContext, n: PNode): PNode =

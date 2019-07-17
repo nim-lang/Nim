@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, json, xmltree, cgi, trees, types,
-  typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
+  typesrenderer, astalgo, modulepaths, lineinfos, intsets,
   pathutils, trees
 
 const

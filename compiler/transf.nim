@@ -19,9 +19,9 @@
 # * transforms 'defer' into a 'try finally' statement
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, lookups,
+  options, ast, astalgo, trees, msgs,
   idents, renderer, types, passes, semfold, magicsys, cgmeth,
-  sempass2, lowerings, injectdestructors, liftlocals,
+  lowerings, injectdestructors, liftlocals,
   modulegraphs, lineinfos
 
 proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;

@@ -12,7 +12,7 @@
 # id. This module is essential for the compiler's performance.
 
 import
-  hashes, strutils, wordrecg
+  hashes, wordrecg
 
 type
   TIdObj* = object of RootObj

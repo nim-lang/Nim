@@ -10,7 +10,7 @@
 ## Implements the dispatcher for the different parsers.
 
 import
-  strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser,
+  strutils, llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
 type

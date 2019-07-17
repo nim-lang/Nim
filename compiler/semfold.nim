@@ -11,8 +11,8 @@
 # and evaluation phase
 
 import
-  strutils, options, ast, astalgo, trees, treetab, nimsets,
-  nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
+  strutils, options, ast, trees, nimsets,
+  platform, math, msgs, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
 proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =

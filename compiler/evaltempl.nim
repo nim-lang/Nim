@@ -10,8 +10,7 @@
 ## Template evaluation engine. Now hygienic.
 
 import
-  strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer,
-  lineinfos
+  strutils, options, ast, astalgo, msgs, renderer, lineinfos
 
 type
   TemplCtx = object

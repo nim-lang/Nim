@@ -134,7 +134,7 @@ to do it.
 ]#
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
+  intsets, ast, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes
 

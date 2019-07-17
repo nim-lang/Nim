@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import renderer, strutils, ast, msgs, types, astalgo
+import renderer, strutils, ast, types
 
 const defaultParamSeparator* = ","
 
