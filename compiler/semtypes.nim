@@ -353,7 +353,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     if result.isNil:
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
-      markUsed(c.config, n.info, result, c.graph.usageSym)
+      markUsed(c, n.info, result, c.graph.usageSym)
       onUse(n.info, result)
 
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
@@ -1063,7 +1063,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), false))
 
   of tyGenericParam:
-    markUsed(c.config, paramType.sym.info, paramType.sym, c.graph.usageSym)
+    markUsed(c, paramType.sym.info, paramType.sym, c.graph.usageSym)
     onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
@@ -1751,7 +1751,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         assignType(prev, t)
         result = prev
-      markUsed(c.config, n.info, n.sym, c.graph.usageSym)
+      markUsed(c, n.info, n.sym, c.graph.usageSym)
       onUse(n.info, n.sym)
     else:
       if s.kind != skError:

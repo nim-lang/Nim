@@ -38,7 +38,8 @@ type
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnCaseTransition, warnUser,
     hintSuccess, hintSuccessX, hintCC,
-    hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
+    hintLineTooLong, hintXDeclaredButNotUsed, hintUnusedModuleX,
+    hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
@@ -97,6 +98,7 @@ const
     hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
+    hintUnusedModuleX: "unused module: '$1'",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
     hintConvFromXtoItselfNotNeeded: "conversion from $1 to itself is pointless",
     hintExprAlwaysX: "expression evaluates always to '$1'",
@@ -140,7 +142,8 @@ const
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",
-    "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
+    "XDeclaredButNotUsed", "UnusedModule",
+    "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",

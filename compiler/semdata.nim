@@ -74,7 +74,8 @@ type
   TExprFlags* = set[TExprFlag]
 
   PContext* = ref TContext
-  TContext* = object of TPassContext # a context represents a module
+  TContext* = object of TPassContext # a context represents the module
+                                     # that is currently being compiled
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
@@ -139,6 +140,7 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
+    unusedImports*: seq[(PSym, TLineInfo)]
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
