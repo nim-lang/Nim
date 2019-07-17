@@ -135,6 +135,9 @@ doAssert fmt"{nat:3x}" == " 40"
 doAssert fmt"{nat:3X}" == " 40"
 
 block:
+  template fmt(pattern: string; openCloseChar: char): untyped =
+    fmt(pattern, openCloseChar, openCloseChar)
+
   let
     testInt = 123
     testStr = "foobar"

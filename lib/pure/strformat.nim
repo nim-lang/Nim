@@ -597,21 +597,13 @@ macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
 macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
   ## An alias for ``&``.
 
-macro fmt*(pattern: string; openCloseChar: char): untyped =
-  ## Use ``openCloseChar`` character instead of '{' and '}'.
-  runnableExamples:
-    let testFlt = 3.141592
-    doAssert "'testFlt:1.2f'".fmt('\'') == "3.14"
-    doAssert """ ""{"123+123"}"" """.fmt('"') == " \"{246}\" "
-  let c = openCloseChar.intVal.char
-  strformatImpl(pattern, c, c)
-
 macro fmt*(pattern: string; openChar, closeChar: char): untyped =
   ## Use ``openChar`` instead of '{' and ``closeChar`` instead of '}'
   runnableExamples:
     let testInt = 123
     doAssert "<testInt>".fmt('<', '>') == "123"
     doAssert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
+    doAssert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
   strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
 
 when isMainModule:
