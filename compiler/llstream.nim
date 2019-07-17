@@ -97,7 +97,7 @@ proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
 
 proc countTriples(s: string): int =
   var i = 0
-  while i < s.len:
+  while i+2 < s.len:
     if s[i] == '"' and s[i+1] == '"' and s[i+2] == '"':
       inc result
       inc i, 2
