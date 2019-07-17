@@ -1281,7 +1281,7 @@ when isMainModule:
     compared = (someString == $someRunes)
   doAssert compared == true
 
-  proc test_replacements(word: string): string =
+  proc testReplacements(word: string): string =
     case word
     of "two":
       return "2"
@@ -1294,8 +1294,8 @@ when isMainModule:
     else:
       return "12345"
 
-  doAssert translate("two not alpha foo βeta", test_replacements) == "2 12345 αlpha BAR beta"
-  doAssert translate("  two not foo βeta  ", test_replacements) == "  2 12345 BAR beta  "
+  doAssert translate("two not alpha foo βeta", testReplacements) == "2 12345 αlpha BAR beta"
+  doAssert translate("  two not foo βeta  ", testReplacements) == "  2 12345 BAR beta  "
 
   doAssert title("foo bar") == "Foo Bar"
   doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
