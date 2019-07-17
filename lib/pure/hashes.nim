@@ -56,6 +56,26 @@ type
 const
   IntSize = sizeof(int)
 
+proc preferStringHash*(T: typedesc): bool =
+  ## whether hashing is more efficient using `hash($x)`
+  # when string hashing is more efficient, see #11764
+  # exported so user defined hash can use this too
+  T.sizeof >= 4
+
+proc hash*(x: string): Hash
+
+proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
+  ## Efficient hashing of numbers, ordinals (eg enum), char.
+  # fix #11764
+  when preferStringHash(T):
+    when T is SomeFloat:
+      # needed otherwise finite precision can cause hash duplicate
+      let x = cast[BiggestInt](x)
+    hash($x)
+  else:
+    # more efficient for small types
+    ord(x)
+
 proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
@@ -110,7 +130,9 @@ proc hash*(x: pointer): Hash {.inline.} =
       }
     """
   else:
-    result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
+    # bugfix #11764: s/cast[Hash]/hash/
+    result = hash(cast[uint](x) shr 3) # skip the alignment
+      # CHECKME: why? isn't that responsability of caller if he needs this behavior?
 
 when not defined(booting):
   proc hash*[T: proc](x: T): Hash {.inline.} =
@@ -119,36 +141,6 @@ when not defined(booting):
       result = hash(rawProc(x)) !& hash(rawEnv(x))
     else:
       result = hash(pointer(x))
-
-proc hash*(x: int): Hash {.inline.} =
-  ## Efficient hashing of integers.
-  result = x
-
-proc hash*(x: int64): Hash {.inline.} =
-  ## Efficient hashing of `int64` integers.
-  result = toU32(x)
-
-proc hash*(x: uint): Hash {.inline.} =
-  ## Efficient hashing of unsigned integers.
-  result = cast[int](x)
-
-proc hash*(x: uint64): Hash {.inline.} =
-  ## Efficient hashing of `uint64` integers.
-  result = toU32(cast[int](x))
-
-proc hash*(x: char): Hash {.inline.} =
-  ## Efficient hashing of characters.
-  result = ord(x)
-
-proc hash*[T: Ordinal](x: T): Hash {.inline.} =
-  ## Efficient hashing of other ordinal types (e.g. enums).
-  result = ord(x)
-
-proc hash*(x: float): Hash {.inline.} =
-  ## Efficient hashing of floats.
-  var y = x + 1.0
-  result = cast[ptr Hash](addr(y))[]
-
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
