@@ -80,8 +80,6 @@ type                          # please make sure we have under 32 options
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths          # use full paths in toMsgFilename
     optGenRedist              # generate redists (e.g. nimrtl/hcr)
-    optGenRedistNimRtl
-    optGenRedistNimHcr
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll
