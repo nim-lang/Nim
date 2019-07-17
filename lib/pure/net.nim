@@ -65,7 +65,8 @@
 ##     echo("Client connected from: ", address)
 
 {.deadCodeElim: on.}  # dce option deprecated
-import nativesockets, os, strutils, parseutils, times, sets, options
+import nativesockets, os, strutils, parseutils, times, sets, options,
+  std/monotimes
 export Port, `$`, `==`
 export Domain, SockType, Protocol
 
@@ -1077,7 +1078,7 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [ReadIOEffect]
       # Save the error in case it gets reset.
       socket.lastError = osLastError()
 
-proc waitFor(socket: Socket, waited: var float, timeout, size: int,
+proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
              funcName: string): int {.tags: [TimeEffect].} =
   ## determines the amount of characters that can be read. Result will never
   ## be larger than ``size``. For unbuffered sockets this will be ``1``.
@@ -1092,7 +1093,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
     result = socket.bufLen - socket.currPos
     result = min(result, size)
   else:
-    if timeout - int(waited * 1000.0) < 1:
+    if timeout - waited.inMilliseconds < 1:
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
 
     when defineSsl:
@@ -1104,17 +1105,17 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
         if sslPending != 0:
           return min(sslPending, size)
 
-    var startTime = epochTime()
-    let selRet = select(socket, timeout - int(waited * 1000.0))
+    var startTime = getMonoTime()
+    let selRet = select(socket, (timeout - waited.inMilliseconds).int)
     if selRet < 0: raiseOSError(osLastError())
     if selRet != 1:
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
-    waited += (epochTime() - startTime)
+    waited += (getMonoTIme() - startTime)
 
 proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## overload with a ``timeout`` parameter in milliseconds.
-  var waited = 0.0 # number of seconds already waited
+  var waited: Duration # duration already waited
 
   var read = 0
   while read < size:
@@ -1223,7 +1224,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
     if flags.isDisconnectionError(lastError): setLen(line.string, 0); return
     socket.socketError(n, lastError = lastError)
 
-  var waited = 0.0
+  var waited: Duration
 
   setLen(line.string, 0)
   while true:
@@ -1307,7 +1308,7 @@ proc skip*(socket: Socket, size: int, timeout = -1) =
   ## bytes takes longer than specified a TimeoutError exception will be raised.
   ##
   ## Returns the number of skipped bytes.
-  var waited = 0.0
+  var waited: Duration
   var dummy = alloc(size)
   var bytesSkipped = 0
   while bytesSkipped != size:
