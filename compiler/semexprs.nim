@@ -1414,6 +1414,9 @@ proc semDeref(c: PContext, n: PNode): PNode =
   var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
   of tyRef, tyPtr: n.typ = t.lastSon
+  of tyTypeDesc:
+    # typeof(x[]) is still a typedesc:
+    n.typ = makeTypeDesc(c, t.lastSon.lastSon)
   else: result = nil
   #GlobalError(n.sons[0].info, errCircumNeedsPointer)
 
