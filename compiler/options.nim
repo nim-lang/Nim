@@ -79,6 +79,9 @@ type                          # please make sure we have under 32 options
     optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths          # use full paths in toMsgFilename
+    optGenRedist              # generate redists (e.g. nimrtl/hcr)
+    optGenRedistNimRtl
+    optGenRedistNimHcr
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll

@@ -508,6 +508,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else:
       undefSymbol(conf.symbols, "hotcodereloading")
       undefSymbol(conf.symbols, "useNimRtl")
+  of "genredist":
+    incl(conf.globalOptions, {optGenRedist, optGenDynLib})
+    excl(conf.globalOptions, optGenGuiApp)
+    defineSymbol(conf.symbols, "library")
+    defineSymbol(conf.symbols, "dll")
   of "oldnewlines":
     case arg.normalize
     of "","on":
