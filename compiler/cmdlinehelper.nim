@@ -43,6 +43,14 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
 
+proc processGenRedist*(conf: ConfigRef) =
+  case conf.projectName
+  of "nimrtl": defineSymbol(conf.symbols, "createNimRtl")
+  of "nimhcr": defineSymbol(conf.symbols, "createNimHcr")
+  else: rawMessage(conf, errGenerated, "invalid input for genRedist")
+  conf.projectFull = canonicalizePath(
+    conf, AbsoluteFile (conf.libpath / (RelativeDir conf.projectFull)))
+
 proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef): bool =
   loadConfigs(DefaultConfig, cache, conf) # load all config files
   if self.suggestMode:
@@ -86,6 +94,8 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   self.processCmdLine(passCmd2, "", conf)
   if conf.command == "":
     rawMessage(conf, errGenerated, "command missing")
+  if optGenRedist in conf.globalOptions:
+    processGenRedist(conf)
 
   let graph = newModuleGraph(cache, conf)
   graph.suggestMode = self.suggestMode
