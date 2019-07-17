@@ -293,8 +293,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.cache, "[]"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
-    withBracketExpr ctx, n.sons[0]:
-      result = semGenericStmt(c, result, flags, ctx)
+    result = semGenericStmt(c, result, flags, ctx)
   of nkAsgn, nkFastAsgn:
     checkSonsLen(n, 2, c.config)
     let a = n.sons[0]
@@ -313,8 +312,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       result.add newIdentNode(getIdent(c.cache, "[]="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
-      withBracketExpr ctx, a.sons[0]:
-        result = semGenericStmt(c, result, flags, ctx)
+      result = semGenericStmt(c, result, flags, ctx)
     else:
       for i in 0 ..< sonsLen(n):
         result.sons[i] = semGenericStmt(c, n.sons[i], flags, ctx)

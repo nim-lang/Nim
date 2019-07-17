@@ -119,9 +119,7 @@ type
     owner: PSym
     cursorInBody: bool # only for nimsuggest
     scopeN: int
-
-template withBracketExpr(ctx, x, body: untyped) =
-  body
+    inInnerTempl: int
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
@@ -169,7 +167,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result.sons[i] = onlyReplaceParams(c, n.sons[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), nil, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -216,7 +214,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       # We need to ensure that both 'a' produce the same gensym'ed symbol.
       # So we need only check the *current* scope.
       let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
-      if s != nil and s.owner == c.owner and sfGenSym in s.flags:
+      if s != nil and s.owner == nil and sfGenSym in s.flags:
         onUse(n.info, s)
         replaceIdentBySym(c.c, n, newSymNode(s, n.info))
       elif not (n.kind == nkSym and sfGenSym in n.sym.flags):
@@ -252,7 +250,8 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   if n.kind == nkIdent:
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
+      if (s.owner == c.owner and s.kind == skParam) or
+         (s.owner == nil and sfGenSym in s.flags):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
@@ -330,7 +329,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = symChoice(c.c, n, s, scClosed)
       elif contains(c.toMixin, s.name.id):
         result = symChoice(c.c, n, s, scForceOpen)
-      elif s.owner == c.owner and sfGenSym in s.flags:
+      elif s.owner == nil and sfGenSym in s.flags:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
         incl(s.flags, sfUsed)
@@ -460,7 +459,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkIteratorDef:
     result = semRoutineInTemplBody(c, n, skIterator)
   of nkTemplateDef:
+    inc c.inInnerTempl
     result = semRoutineInTemplBody(c, n, skTemplate)
+    dec c.inInnerTempl
   of nkMacroDef:
     result = semRoutineInTemplBody(c, n, skMacro)
   of nkConverterDef:
@@ -477,9 +478,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
-    let n0 = semTemplBody(c, n.sons[0])
-    withBracketExpr c, n0:
-      result = semTemplBodySons(c, result)
+    result = semTemplBodySons(c, result)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
@@ -497,9 +496,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
-      let a0 = semTemplBody(c, a.sons[0])
-      withBracketExpr c, a0:
-        result = semTemplBodySons(c, result)
+      result = semTemplBodySons(c, result)
     of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
       result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)

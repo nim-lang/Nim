@@ -207,12 +207,12 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     if result.kind notin {kind, skTemp}:
       localError(c.config, n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
-    when false:
-      if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
-        # declarative context, so produce a fresh gensym:
-        result = copySym(result)
-        result.ast = n.sym.ast
-        put(c.p, n.sym, result)
+
+    if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
+      # declarative context, so produce a fresh gensym:
+      result = copySym(result)
+      result.ast = n.sym.ast
+      put(c.p, n.sym, result)
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909

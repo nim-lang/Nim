@@ -21,12 +21,14 @@ type
     mapping: TIdTable # every gensym'ed symbol needs to be mapped to some
                       # new symbol
     config: ConfigRef
+    inWhenStmt: int
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
   if ctx.instLines: result.info = b.info
 
-proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
+proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode;
+                     isFreshSym = false) =
   template handleParam(param) =
     let x = param
     if x.kind == nkArgList:
@@ -36,24 +38,26 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
 
   case templ.kind
   of nkSym:
-    var s = templ.sym
-    if (s.owner == nil and s.kind == skParam) or s.owner == c.owner:
+    let s = templ.sym
+    if s.owner == nil:
+      internalAssert c.config, sfGenSym in s.flags or s.kind == skType
+      var x = PSym(idTableGet(c.mapping, s))
+      if x == nil: #or isFreshSym:
+        x = copySym(s)
+        # sem'check needs to set the owner properly later, see bug #9476
+        x.owner = nil # c.genSymOwner
+        #if x.kind == skParam and x.owner.kind == skModule:
+        #  internalAssert c.config, false
+        idTablePut(c.mapping, s, x)
+      result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
+    elif s.owner == c.owner:
       if s.kind == skParam and sfGenSym notin s.flags:
         handleParam actual.sons[s.position]
       elif (s.owner != nil) and (s.kind == skGenericParam or
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
         handleParam actual.sons[s.owner.typ.len + s.position - 1]
       else:
-        internalAssert c.config, sfGenSym in s.flags or s.kind == skType
-        var x = PSym(idTableGet(c.mapping, s))
-        if x == nil:
-          x = copySym(s)
-          # sem'check needs to set the owner properly later, see bug #9476
-          x.owner = nil # c.genSymOwner
-          #if x.kind == skParam and x.owner.kind == skModule:
-          #  internalAssert c.config, false
-          idTablePut(c.mapping, s, x)
-        result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
+        result.add copyNode(c, templ, actual)
     else:
       result.add copyNode(c, templ, actual)
   of nkNone..nkIdent, nkType..nkNilLit: # atom
@@ -69,19 +73,31 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       result.add res
     else:
       result.add newNodeI(nkEmpty, templ.info)
+  of nkIdentDefs:
+    var res = copyNode(c, templ, actual)
+    for i in 0 .. templ.len-3:
+      evalTemplateAux(templ.sons[i], actual, c, res, isFreshSym = (c.inWhenStmt == 0))
+    for i in templ.len-2 .. templ.len-1:
+      evalTemplateAux(templ.sons[i], actual, c, res)
+    result.add res
   else:
     var isDeclarative = false
+    var isWhenStmt = false
     if templ.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
                       nkMacroDef, nkTemplateDef, nkConverterDef, nkTypeSection,
                       nkVarSection, nkLetSection, nkConstSection} and
         not c.isDeclarative:
       c.isDeclarative = true
       isDeclarative = true
+    elif templ.kind == nkWhenStmt:
+      isWhenStmt = true
+      inc c.inWhenStmt
     var res = copyNode(c, templ, actual)
     for i in 0 ..< sonsLen(templ):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
     if isDeclarative: c.isDeclarative = false
+    if isWhenStmt: dec c.inWhenStmt
 
 const
   errWrongNumberOfArguments = "wrong number of arguments"

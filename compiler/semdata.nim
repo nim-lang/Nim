@@ -191,19 +191,21 @@ proc getGenSym*(c: PContext; s: PSym): PSym =
   while it != nil:
     result = get(it, s)
     if result != nil:
+      doAssert s.typ == nil or result.typ != nil
       #echo "got from table ", result.name.s, " ", result.info
       return result
     it = it.next
   result = s
 
 proc considerGenSyms*(c: PContext; n: PNode) =
-  if n.kind == nkSym:
-    let s = getGenSym(c, n.sym)
-    if n.sym != s:
-      n.sym = s
-  else:
-    for i in 0..<n.safeLen:
-      considerGenSyms(c, n.sons[i])
+  when false:
+    if n.kind == nkSym:
+      let s = getGenSym(c, n.sym)
+      if n.sym != s:
+        n.sym = s
+    else:
+      for i in 0..<n.safeLen:
+        considerGenSyms(c, n.sons[i])
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
