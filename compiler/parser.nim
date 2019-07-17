@@ -27,7 +27,7 @@ when isMainModule:
   outp.close
 
 import
-  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos,
+  llstream, lexer, idents, strutils, ast, msgs, options, lineinfos,
   pathutils
 
 when defined(nimpretty):

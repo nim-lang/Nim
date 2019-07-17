@@ -11,9 +11,10 @@
 ## language.
 
 import
-  ast, modules, idents, passes, passaux, condsyms,
-  options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos, pathutils
+  ast, modules, idents, passes, condsyms,
+  options, sem, llstream, vm, vmdef, commands, msgs,
+  os, times, osproc, wordrecg, strtabs, modulegraphs,
+  lineinfos, pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains

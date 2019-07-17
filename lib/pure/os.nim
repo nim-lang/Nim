@@ -1849,7 +1849,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
           break
     # getFullPathName doesn't do case corrections, so we have to use this convoluted
     # way of retrieving the true filename
-    for x in walkFiles(result.string):
+    for x in walkFiles(result):
       result = x
     if not existsFile(result) and not existsDir(result):
       raise newException(OSError, "file '" & result & "' does not exist")

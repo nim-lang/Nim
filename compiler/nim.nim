@@ -19,9 +19,9 @@ when defined(i386) and defined(windows) and defined(vcc):
   {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt,
-  scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
+  commands, options, msgs,
+  extccomp, strutils, os, main, parseopt,
+  idents, lineinfos, cmdlinehelper,
   pathutils
 
 include nodejs

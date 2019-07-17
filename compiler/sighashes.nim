@@ -11,9 +11,7 @@
 
 import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
-from astalgo import debug
 import types
-from strutils import startsWith, contains
 
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)

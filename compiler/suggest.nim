@@ -32,11 +32,11 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, lineinfos, pathutils, parseutils, linter
+import algorithm, prefixmatches, lineinfos, parseutils, linter
 from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
-  import passes, tables # importer
+  import passes, tables, pathutils # importer
 
 const
   sep = '\t'

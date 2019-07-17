@@ -10,7 +10,7 @@
 ## This module implements the pattern matching features for term rewriting
 ## macro support.
 
-import strutils, ast, astalgo, types, msgs, idents, renderer, wordrecg, trees,
+import strutils, ast, types, msgs, idents, renderer, wordrecg, trees,
   options
 
 # we precompile the pattern here for efficiency into some internal

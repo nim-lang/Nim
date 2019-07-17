@@ -10,7 +10,7 @@
 ## Implements type sanity checking for ASTs resulting from macros. Lots of
 ## room for improvement here.
 
-import ast, astalgo, msgs, types, options
+import ast, msgs, types, options
 
 proc ithField(n: PNode, field: var int): PSym =
   result = nil
