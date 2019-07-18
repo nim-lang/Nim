@@ -528,7 +528,21 @@ proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
         return
   localError(conf, info, "usage of '$1' is a user-defined error" % s.name.s)
 
-proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
+proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
+  var module = s
+  while module != nil and module.kind != skModule:
+    module = module.owner
+  if module != nil and module != c.module:
+    var i = 0
+    while i <= high(c.unusedImports):
+      if c.unusedImports[i][0] == module:
+        # mark it as used:
+        c.unusedImports.del(i)
+      else:
+        inc i
+
+proc markUsed(c: PContext; info: TLineInfo; s: PSym; usageSym: var PSym) =
+  let conf = c.config
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
@@ -541,6 +555,7 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
     suggestSym(conf, info, s, usageSym, false)
   if {optStyleHint, optStyleError} * conf.globalOptions != {}:
     styleCheckUse(conf, info, s)
+  markOwnerModuleAsUsed(c, s)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!
