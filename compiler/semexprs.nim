@@ -1410,15 +1410,14 @@ proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
 proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n.sons[0] = semExprWithType(c, n.sons[0])
-  result = n
-  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
-  case t.kind
-  of tyRef, tyPtr: n.typ = t.lastSon
-  of tyTypeDesc:
+  let t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
+  if t.kind in {tyRef, tyPtr}:
+    result = n
+    result.typ = t.lastSon
+  elif t.kind == tyTypeDesc and t.lastSon.kind in {tyRef, tyPtr}:
     # typeof(x[]) is still a typedesc:
-    n.typ = makeTypeDesc(c, t.lastSon.lastSon)
-  else: result = nil
-  #GlobalError(n.sons[0].info, errCircumNeedsPointer)
+    result = n
+    result.typ = makeTypeDesc(c, t.lastSon.lastSon)
 
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
