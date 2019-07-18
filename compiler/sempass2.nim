@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, lowerings, sigmatch, tables
+  modulegraphs
 
 when not defined(leanCompiler):
   import writetracking

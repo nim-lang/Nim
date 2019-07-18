@@ -44,10 +44,6 @@
 ## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
 ## * `tables module <tables.html>`_ for hash tables
 
-
-import
-  strutils
-
 type
   Hash* = int  ## A hash value. Hash tables using these values should
                ## always have a size of a power of two and can use the ``and``

@@ -14,7 +14,6 @@ const
 
 import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
   lineinfos
-from trees import getMagic
 
 proc newDeref*(n: PNode): PNode {.inline.} =
   result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])

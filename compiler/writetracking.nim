@@ -15,8 +15,7 @@
 ##   * Computing an aliasing relation based on the assignments. This relation
 ##     is then used to compute the 'writes' and 'escapes' effects.
 
-import intsets, idents, ast, astalgo, trees, renderer, msgs, types, options,
-  lineinfos
+import intsets, idents, ast, trees, msgs, types, options, lineinfos
 
 const
   debug = false
