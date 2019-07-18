@@ -153,8 +153,15 @@ proc lenOfNextTokens(em: Emitter; pos: int): int =
     if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
     inc result, em.tokens[pos+i].len
 
-proc lacksGuidingInd(em: Emitter; pos: int): bool =
-  result = true
+proc guidingInd(em: Emitter; pos: int): int =
+  var i = pos - 1
+  while i >= 0 and em.kinds[i] != ltSomeParLe:
+    dec i
+  while i+1 <= em.kinds.high and em.kinds[i] != ltSomeParRi:
+    if em.kinds[i] == ltSplittingNewline and em.kinds[i+1] == ltSpaces:
+      return em.tokens[i+1].len
+    inc i
+  result = -1
 
 proc closeEmitter*(em: var Emitter) =
   template defaultCase() =
@@ -209,11 +216,13 @@ proc closeEmitter*(em: var Emitter) =
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
         content.add "\L"
-        content.add em.tokens[i]
-        lineLen = em.tokens[i].len
-        if false: # openPars == 0 or lacksGuidingInd(em, i):
-          content.add repeat(' ', em.indWidth*2)
-          lineLen += em.indWidth*2
+        let guide = if openPars > 0: guidingInd(em, i) else: -1
+        if guide >= 0:
+          content.add repeat(' ', guide)
+          lineLen = guide
+        else:
+          content.add em.tokens[i]
+          lineLen = em.tokens[i].len
         lineBegin = i+1
         if i+1 < em.kinds.len and em.kinds[i+1] == ltSpaces:
           # inhibit extra spaces at the start of a new line
