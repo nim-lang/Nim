@@ -1056,7 +1056,7 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 when defined(useNodeIds):
-  const nodeIdToDebug* = -1 # 299750 # 300761 #300863 # 300879
+  const nodeIdToDebug* = 2322967# 2322968
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =
@@ -1238,9 +1238,43 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
-  result = newIntNode(kind, intVal)
+proc lastSon*(n: PType): PType = n.sons[^1]
+
+proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## Used throughout the compiler code to test whether a type tree contains or
+  ## doesn't contain a specific type/types - it is often the case that only the
+  ## last child nodes of a type tree need to be searched. This is a really hot
+  ## path within the compiler!
+  result = t
+  while result.kind in kinds: result = lastSon(result)
+
+proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
+
+  # this is dirty. abstractVarRange isn't defined yet and therefor it
+  # is duplicated here.
+  const abstractVarRange = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  case skipTypes(typ, abstractVarRange).kind
+  of tyInt:     result = newNode(nkIntLit)
+  of tyInt8:    result = newNode(nkInt8Lit)
+  of tyInt16:   result = newNode(nkInt16Lit)
+  of tyInt32:   result = newNode(nkInt32Lit)
+  of tyInt64:   result = newNode(nkInt64Lit)
+  of tyChar:    result = newNode(nkCharLit)
+  of tyUInt:    result = newNode(nkUIntLit)
+  of tyUInt8:   result = newNode(nkUInt8Lit)
+  of tyUInt16:  result = newNode(nkUInt16Lit)
+  of tyUInt32:  result = newNode(nkUInt32Lit)
+  of tyUInt64:  result = newNode(nkUInt64Lit)
+  else: # tyBool, tyEnum
+    # XXX: does this really need to be the kind nkIntLit?
+    result = newNode(nkIntLit)
+  result.intVal = intVal
   result.typ = typ
+
+proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =
+  # XXX: introduce range check
+  newIntTypeNode(castToInt64(intVal), typ)
 
 proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
   result = newNode(kind)
@@ -1330,7 +1364,6 @@ proc sonsLen*(n: PType): int = n.sons.len
 proc len*(n: PType): int = n.sons.len
 proc sonsLen*(n: PNode): int = n.sons.len
 proc lastSon*(n: PNode): PNode = n.sons[^1]
-proc lastSon*(n: PType): PType = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1425,14 +1458,6 @@ proc initIdNodeTable*(x: var TIdNodeTable) =
 proc initNodeTable*(x: var TNodeTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
-
-proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
-  ## Used throughout the compiler code to test whether a type tree contains or
-  ## doesn't contain a specific type/types - it is often the case that only the
-  ## last child nodes of a type tree need to be searched. This is a really hot
-  ## path within the compiler!
-  result = t
-  while result.kind in kinds: result = lastSon(result)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t
@@ -1616,7 +1641,8 @@ proc getInt*(a: PNode): Int128 =
   of nkInt8Lit..nkInt64Lit:
     result = toInt128(a.intVal)
   of nkIntLit:
-    assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
+    # XXX: enable this assert
+    # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
     result = toInt128(a.intVal)
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")

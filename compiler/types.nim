@@ -83,10 +83,12 @@ proc isUnsigned*(t: PType): bool =
 proc getOrdValue*(n: PNode): Int128 =
   case n.kind
   of nkCharLit, nkUintLit..nkUint64Lit:
-    assert isUnsigned(n.typ), $n.typ
+    # XXX: enable this assert
+    #assert n.typ == nil or isUnsigned(n.typ), $n.typ
     toInt128(cast[uint64](n.intVal))
   of nkIntLit..nkInt64Lit:
-    assert not isUnsigned(n.typ), $n.typ.kind
+    # XXX: enable this assert
+    #assert n.typ == nil or not isUnsigned(n.typ), $n.typ.kind
     toInt128(n.intVal)
   of nkNilLit:
     int128.Zero

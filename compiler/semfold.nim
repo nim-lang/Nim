@@ -41,34 +41,13 @@ proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode {.depreca
   result.info = n.info
 
 proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
-  let intVal = castToInt64(intVal) # not sure if this is correct. Range checks?
-  case skipTypes(n.typ, abstractVarRange).kind
-  of tyInt:
-    result = newNode(nkIntLit)
-    # See bug #6989. 'pred' et al only produce an int literal type if the
-    # original type was 'int', not a distinct int etc.
-    if n.typ.kind == tyInt:
-      # access cache for the int lit type
-      result.typ = getIntLitType(g, result)
-  of tyInt8:    result = newNode(nkInt8Lit)
-  of tyInt16:   result = newNode(nkInt16Lit)
-  of tyInt32:   result = newNode(nkInt32Lit)
-  of tyInt64:   result = newNode(nkInt64Lit)
-  of tyChar:    result = newNode(nkCharLit)
-  of tyUInt:    result = newNode(nkUIntLit)
-  of tyUInt8:   result = newNode(nkUInt8Lit)
-  of tyUInt16:  result = newNode(nkUInt16Lit)
-  of tyUInt32:  result = newNode(nkUInt32Lit)
-  of tyUInt64:  result = newNode(nkUInt64Lit)
-  else: # tyBool, tyEnum
-    # XXX: does this really need to be the kind nkIntLit?
-    result = newNode(nkIntLit)
-
-  result.intVal = intVal
-  if result.typ == nil:
-    result.typ = n.typ
+  result = newIntTypeNode(intVal, n.typ)
+  # See bug #6989. 'pred' et al only produce an int literal type if the
+  # original type was 'int', not a distinct int etc.
+  if n.typ.kind == tyInt:
+    # access cache for the int lit type
+    result.typ = getIntLitType(g, result)
   result.info = n.info
-
 
 proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode; g: ModuleGraph): PNode =
   result = newFloatNode(nkFloatLit, floatVal)
@@ -307,12 +286,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mDivI:
     let argA = getInt(a)
     let argB = getInt(b)
-    if argB != int128.Zero:
+    if argB != int128.Zero and (argA != firstOrd(g.config, n.typ) or argB != int128.NegOne):
       result = newIntNodeT(argA div argB, n, g)
   of mModI:
     let argA = getInt(a)
     let argB = getInt(b)
-    if argB != int128.Zero:
+    if argB != int128.Zero and (argA != firstOrd(g.config, n.typ) or argB != int128.NegOne):
       result = newIntNodeT(argA mod argB, n, g)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n, g)
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n, g)

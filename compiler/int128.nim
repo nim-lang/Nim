@@ -24,6 +24,7 @@ const
   Ten* = Int128(udata: [10'u32,0,0,0])
   Min = Int128(udata: [0'u32,0,0,0x80000000'u32])
   Max = Int128(udata: [high(uint32),high(uint32),high(uint32),uint32(high(int32))])
+  NegOne* = Int128(udata: [0xffffffff'u32,0xffffffff'u32,0xffffffff'u32,0xffffffff'u32])
 
 template low*(t: typedesc[Int128]): Int128 = Min
 template high*(t: typedesc[Int128]): Int128 = Max
