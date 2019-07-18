@@ -799,3 +799,39 @@ if true:
     "bar5", "foo6", "bar6", "foo7",
     "zzz", "ggg", "ddd",
   ]
+
+const b = true
+let fooB =
+  if true:
+    if b: 7 else: 8
+  else: ord(b)
+
+let foo = if cond:
+            if b: T else: F
+          else: b
+
+let a =
+  [[aaadsfas, bbb],
+   [ccc, ddd]]
+
+let b = [
+  [aaa, bbb],
+  [ccc, ddd]
+]
+
+# bug #11616
+proc newRecordGen(ctx: Context; typ: TypRef): PNode =
+  result = nkTypeDef.t(
+    newId(typ.optSym.name, true, pragmas = [id(if typ.isUnion: "cUnion"
+                                               else: "cStruct")]),
+    empty(),
+    nkObjectTy.t(
+      empty(),
+      empty(),
+      nkRecList.t(
+        typ.recFields.map(newRecFieldGen))))
+
+proc f =
+  # doesn't break the code, but leaving indentation as is would be nice.
+  let x = if true: callingProcWhatever()
+          else: callingADifferentProc()

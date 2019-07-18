@@ -1203,6 +1203,13 @@ proc parseFor(p: var TParser): PNode =
   colcom(p, result)
   addSon(result, parseStmt(p))
 
+template nimprettyDontTouch(body) =
+  when defined(nimpretty):
+    inc p.em.keepIndents
+  body
+  when defined(nimpretty):
+    dec p.em.keepIndents
+
 proc parseExpr(p: var TParser): PNode =
   #| expr = (blockExpr
   #|       | ifExpr
@@ -1212,12 +1219,26 @@ proc parseExpr(p: var TParser): PNode =
   #|       | tryExpr)
   #|       / simpleExpr
   case p.tok.tokType:
-  of tkBlock: result = parseBlock(p)
-  of tkIf: result = parseIfExpr(p, nkIfExpr)
-  of tkFor: result = parseFor(p)
-  of tkWhen: result = parseIfExpr(p, nkWhenExpr)
-  of tkCase: result = parseCase(p)
-  of tkTry: result = parseTry(p, isExpr=true)
+  of tkBlock:
+    nimprettyDontTouch:
+      result = parseBlock(p)
+  of tkIf:
+    nimprettyDontTouch:
+      result = parseIfExpr(p, nkIfExpr)
+  of tkFor:
+    nimprettyDontTouch:
+      result = parseFor(p)
+  of tkWhen:
+    nimprettyDontTouch:
+      result = parseIfExpr(p, nkWhenExpr)
+  of tkCase:
+    # Currently we think nimpretty is good enough with case expressions,
+    # so it is allowed to touch them:
+    #nimprettyDontTouch:
+    result = parseCase(p)
+  of tkTry:
+    nimprettyDontTouch:
+      result = parseTry(p, isExpr=true)
   else: result = simpleExpr(p)
 
 proc parseEnum(p: var TParser): PNode
