@@ -136,7 +136,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
 
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
   var a: TLoc
-  initLocExpr(p, n.sons[0], a)
+  initLocExpr(p, n[0], a)
   result = ropecg(p.module, "#nimToCStringConv($1)", [a.rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
@@ -144,23 +144,30 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   if n.kind == nkStringToCString:
     result = genArgStringToCString(p, n)
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
-    var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
+    var n = if n.kind != nkHiddenAddr: n else: n[0]
     result = openArrayLoc(p, n)
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     result = addrLoc(p.config, a)
   elif p.module.compileToCpp and param.typ.kind == tyVar and
       n.kind == nkHiddenAddr:
-    initLocExprSingleUse(p, n.sons[0], a)
+    initLocExprSingleUse(p, n[0], a)
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
-    let callee = call.sons[0]
+    let callee = call[0]
     if callee.kind == nkSym and
         {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
       result = addrLoc(p.config, a)
     else:
       result = rdLoc(a)
+  elif param.typ.kind == tyVar and n.kind == nkHiddenAddr and
+       n[0].typ.kind in {tySink, tyOwned} and n[0].kind == nkSym and n[0].sym.kind == skParam:
+    # When passing a sink/owned param to a proc as a var param, like in =move,
+    # we do not want additional addr, or derefs so we eliminate those here
+    initLocExprSingleUse(p, n[0], a)
+    a.flags.excl lfIndirect #We already resolved the indirection manually
+    result = rdLoc(a)
   else:
     initLocExprSingleUse(p, n, a)
     result = rdLoc(a)

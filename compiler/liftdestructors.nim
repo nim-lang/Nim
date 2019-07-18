@@ -507,7 +507,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyRef:
     if optNimV2 in c.g.config.globalOptions and
         optRefCheck in c.g.config.options:
-      weakrefOp(c, t, body, x, y)
+      weakRefOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyProc:
