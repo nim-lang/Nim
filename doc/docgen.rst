@@ -220,7 +220,7 @@ Source URLs are generated as `href="${url}/tree/${commit}/${path}#L${line}"` by 
 You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value with a hyperlink to your own code repository.
 
 In the case of Nim's own documentation, the ``commit`` value is just a commit
-hash to append to a formatted URL to https://github.com/Araq/Nim. The
+hash to append to a formatted URL to https://github.com/nim-lang/Nim. The
 ``tools/nimweb.nim`` helper queries the current git commit hash during doc
 generation, but since you might be working on an unpublished repository, it
 also allows specifying a ``githash`` value in ``web/website.ini`` to force a

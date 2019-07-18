@@ -427,12 +427,8 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
       stillForwarded.add s
   swap w.forwardedSyms, stillForwarded
   transitiveClosure(g)
-  var nimid = 0
   for x in items(g.config.m.fileInfos):
-    # don't store the "command line" entry:
-    if nimid != 0:
-      storeFilename(g, x.fullPath, FileIndex(nimid))
-    inc nimid
+    storeFilename(g, x.fullPath, FileIndex(nimid))
 
 # ---------------- decoder -----------------------------------
 

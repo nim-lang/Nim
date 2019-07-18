@@ -1636,7 +1636,7 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
 
 proc getInt*(a: PNode): Int128 =
   case a.kind
-  of nkCharLit, nkUintLit..nkUInt64Lit:
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
     result = toInt128(cast[uint64](a.intVal))
   of nkInt8Lit..nkInt64Lit:
     result = toInt128(a.intVal)
@@ -1649,7 +1649,7 @@ proc getInt*(a: PNode): Int128 =
 
 proc getInt64*(a: PNode): int64 {.deprecated: "use getInt".} =
   case a.kind
-  of nkCharLit, nkUintLit..nkUInt64Lit, nkIntLit..nkInt64Lit:
+  of nkCharLit, nkUIntLit..nkUInt64Lit, nkIntLit..nkInt64Lit:
     result = a.intVal
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")

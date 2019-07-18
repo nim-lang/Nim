@@ -65,8 +65,8 @@ proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
   bitSetInit(b, int(getSize(conf, s.typ)))
   for i in 0 ..< sonsLen(s):
     if s.sons[i].kind == nkRange:
-      j = getOrdValue(s.sons[i].sons[0])
-      while j <= getOrdValue(s.sons[i].sons[1]):
+      j = getOrdValue(s.sons[i].sons[0], first)
+      while j <= getOrdValue(s.sons[i].sons[1], first):
         bitSetIncl(b, toInt64(j - first))
         inc(j)
     else:

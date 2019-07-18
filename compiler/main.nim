@@ -26,9 +26,6 @@ when not defined(leanCompiler):
 
 from magicsys import resetSysTypes
 
-proc codegenPass(g: ModuleGraph) =
-  registerPass g, cgenPass
-
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
@@ -86,6 +83,15 @@ proc commandCompileToC(graph: ModuleGraph) =
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
+
+  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+    let proj = changeFileExt(conf.projectFull, "")
+    if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      # nothing changed
+      # Little hack here in order to not lose our precious
+      # hintSuccessX message:
+      conf.notes.incl hintSuccessX
+      return
 
   compileProject(graph)
   if graph.config.errorCounter > 0:

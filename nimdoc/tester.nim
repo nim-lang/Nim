@@ -14,6 +14,10 @@ type
     doc: seq[string]
     buildIndex: seq[string]
 
+proc exec(cmd: string) =
+  if execShellCmd(cmd) != 0:
+    quit("FAILURE: " & cmd)
+
 proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
   let
     nimDocSwitches = switches.doc.join(" ")
@@ -22,12 +26,10 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
   putEnv("SOURCE_DATE_EPOCH", "100000")
 
   if nimDocSwitches != "":
-    if execShellCmd("nim doc $1" % [nimDocSwitches]) != 0:
-      quit("FAILURE: nim doc failed")
+    exec("nim doc $1" % [nimDocSwitches])
 
   if nimBuildIndexSwitches != "":
-    if execShellCmd("nim buildIndex $1" % [nimBuildIndexSwitches]) != 0:
-      quit("FAILURE: nim buildIndex failed")
+    exec("nim buildIndex $1" % [nimBuildIndexSwitches])
 
   for expected in walkDirRec(prjDir / "expected/"):
     let produced = expected.replace('\\', '/').replace("/expected/", "/$1/" % [docsDir])

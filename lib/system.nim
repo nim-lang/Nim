@@ -2057,7 +2057,7 @@ elif defined(genode):
     importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
 
   proc quit*(errorcode: int = QuitSuccess) =
-    systemEnv.quit(errorCode)
+    systemEnv.quit(errorcode)
 
 
 
@@ -3098,6 +3098,21 @@ when not defined(js):
 when not declared(sysFatal):
   include "system/fatal"
 
+when not defined(JS) and not defined(nimscript):
+  {.push stackTrace: off, profiler:off.}
+
+  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
+    discardable, benign.}
+    ## Atomic increment of `memLoc`. Returns the value after the operation.
+
+  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
+    discardable, benign.}
+    ## Atomic decrement of `memLoc`. Returns the value after the operation.
+
+  include "system/atomics"
+
+  {.pop.}
+
 when defined(nimV2):
   include core/runtime_v2
 
@@ -3643,16 +3658,6 @@ when not defined(JS): #and not defined(nimscript):
       dealloc(a)
 
   when not defined(nimscript):
-    proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
-      discardable, benign.}
-      ## Atomic increment of `memLoc`. Returns the value after the operation.
-
-    proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
-      discardable, benign.}
-      ## Atomic decrement of `memLoc`. Returns the value after the operation.
-
-    include "system/atomics"
-
     type
       PSafePoint = ptr TSafePoint
       TSafePoint {.compilerproc, final.} = object
@@ -3692,7 +3697,7 @@ when not defined(JS): #and not defined(nimscript):
         ## Gets the stack trace associated with `e`, which is the stack that
         ## lead to the ``raise`` statement. This only works for debug builds.
 
-    {.push stack_trace: off, profiler:off.}
+    {.push stackTrace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
 
@@ -4484,18 +4489,19 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage) a
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
 when not defined(js):
-  proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
-    magic: "Slice".}
-  proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
-    magic: "Slice".}
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
-  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
-    magic: "Slice".}
-  proc toOpenArray*(x: string; first, last: int): openArray[char] {.
-    magic: "Slice".}
-  proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
-    magic: "Slice".}
+
+proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*(x: string; first, last: int): openArray[char] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
+  magic: "Slice".}
 
 type
   ForLoopStmt* {.compilerproc.} = object ## \

@@ -70,15 +70,18 @@ b failure
 Async traceback:
   tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
   asyncmacro\.nim\(\d+?\)\s+?a
-  asyncmacro\.nim\(\d+?\)\s+?aContinue
+  asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
+    ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?aIter
   asyncmacro\.nim\(\d+?\)\s+?b
-  asyncmacro\.nim\(\d+?\)\s+?bContinue
+  asyncmacro\.nim\(\d+?\)\s+?bNimAsyncContinue
+    ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?bIter
   #\[
     tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
     asyncmacro\.nim\(\d+?\)\s+?a
-    asyncmacro\.nim\(\d+?\)\s+?aContinue
+    asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
+      ## Resumes an async procedure
     tasync_traceback\.nim\(\d+?\)\s+?aIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
@@ -94,7 +97,8 @@ Async traceback:
   asyncdispatch\.nim\(\d+?\)\s+?runOnce
   asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
     ## Executes pending callbacks
-  asyncmacro\.nim\(\d+?\)\s+?barContinue
+  asyncmacro\.nim\(\d+?\)\s+?barNimAsyncContinue
+    ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?barIter
   #\[
     tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
@@ -104,7 +108,8 @@ Async traceback:
     asyncdispatch\.nim\(\d+?\)\s+?runOnce
     asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
       ## Executes pending callbacks
-    asyncmacro\.nim\(\d+?\)\s+?fooContinue
+    asyncmacro\.nim\(\d+?\)\s+?fooNimAsyncContinue
+      ## Resumes an async procedure
     tasync_traceback\.nim\(\d+?\)\s+?fooIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#

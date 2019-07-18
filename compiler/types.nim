@@ -80,9 +80,9 @@ proc isPureObject*(typ: PType): bool =
 proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
-proc getOrdValue*(n: PNode): Int128 =
+proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
   case n.kind
-  of nkCharLit, nkUintLit..nkUint64Lit:
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or isUnsigned(n.typ), $n.typ
     toInt128(cast[uint64](n.intVal))
@@ -92,13 +92,13 @@ proc getOrdValue*(n: PNode): Int128 =
     toInt128(n.intVal)
   of nkNilLit:
     int128.Zero
-  of nkHiddenStdConv: getOrdValue(n.sons[1])
+  of nkHiddenStdConv: getOrdValue(n.sons[1], onError)
   else:
     # XXX: The idea behind the introduction of int128 was to finally
     # have all calculations numerically far away from any
     # overflows. This command just introduces such overflows and
     # should therefore really be revisited.
-    high(Int128)
+    onError
 
 proc getOrdValue64*(n: PNode): BiggestInt {.deprecated: "use getOrdvalue".} =
   case n.kind

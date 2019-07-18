@@ -25,9 +25,9 @@ proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
+  let retFutUnown = unown retFutureSym
 
   var nameIterVar = iteratorNameSym
-  #{.push stackTrace: off.}
   proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
@@ -39,7 +39,7 @@ template createCb(retFutureSym, iteratorNameSym,
             break
 
         if next == nil:
-          if not retFutureSym.finished:
+          if not retFutUnown.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
                     "`nil` Future?"
             raise newException(AssertionError, msg % strName)
@@ -50,16 +50,13 @@ template createCb(retFutureSym, iteratorNameSym,
             {.pop.}
     except:
       futureVarCompletions
-
-      if retFutureSym.finished:
+      if retFutUnown.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
         # That test explains it better than I can here.
         raise
       else:
-        retFutureSym.fail(getCurrentException())
-
+        retFutUnown.fail(getCurrentException())
   identName()
-  #{.pop.}
 
 template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
                 rootReceiver: untyped, fromNode: NimNode) =
@@ -308,9 +305,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     outerProcBody.add(closureIterator)
 
     # -> createCb(retFuture)
-    # NOTE: The "_continue" suffix is checked for in asyncfutures.nim to produce
+    # NOTE: The NimAsyncContinueSuffix is checked for in asyncfutures.nim to produce
     # friendlier stack traces:
-    var cbName = genSym(nskProc, prcName & "Continue")
+    var cbName = genSym(nskProc, prcName & NimAsyncContinueSuffix)
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                          newStrLitNode(prcName),
                          cbName,

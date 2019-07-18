@@ -25,7 +25,7 @@ type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
-    optOverflowCheck, optNilCheck,
+    optOverflowCheck, optNilCheck, optRefCheck,
     optNaNCheck, optInfCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
@@ -229,6 +229,7 @@ type
     projectMainIdx*: FileIndex # the canonical path id of the main module
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
+    commandLine*: string
     keepComments*: bool # whether the parser needs to keep comments
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
@@ -270,10 +271,10 @@ const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, par
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
-    optStyleCheck}
+    optStyleCheck, optRefCheck}
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
-    optBoundsCheck, optOverflowCheck, optAssert, optWarns,
+    optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace,
     optTrMacros, optNilCheck, optStyleCheck}
   DefaultGlobalOptions* = {optThreadAnalysis,
@@ -335,6 +336,7 @@ proc newConfigRef*(): ConfigRef =
     projectMainIdx: FileIndex(0'i32), # the canonical path id of the main module
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
+    commandLine: "",
     keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included

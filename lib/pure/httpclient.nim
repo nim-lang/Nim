@@ -176,7 +176,7 @@
 ##
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
-  math, random, httpcore, times, tables, streams
+  math, random, httpcore, times, tables, streams, std/monotimes
 import asyncnet, asyncdispatch, asyncfile
 import nativesockets
 
@@ -610,7 +610,7 @@ type
     contentTotal: BiggestInt
     contentProgress: BiggestInt
     oneSecondProgress: BiggestInt
-    lastProgressReport: float
+    lastProgressReport: MonoTime
     when SocketType is AsyncSocket:
       bodyStream: FutureStream[string]
       parseBodyFut: Future[void]
@@ -706,13 +706,13 @@ proc reportProgress(client: HttpClient | AsyncHttpClient,
                     progress: BiggestInt) {.multisync.} =
   client.contentProgress += progress
   client.oneSecondProgress += progress
-  if epochTime() - client.lastProgressReport >= 1.0:
+  if (getMonoTime() - client.lastProgressReport).inSeconds > 1:
     if not client.onProgressChanged.isNil:
       await client.onProgressChanged(client.contentTotal,
                                      client.contentProgress,
                                      client.oneSecondProgress)
       client.oneSecondProgress = 0
-      client.lastProgressReport = epochTime()
+      client.lastProgressReport = getMonoTime()
 
 proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
               keep: bool): Future[int] {.multisync.} =
@@ -784,7 +784,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
   client.contentTotal = 0
   client.contentProgress = 0
   client.oneSecondProgress = 0
-  client.lastProgressReport = 0
+  client.lastProgressReport = MonoTime()
 
   when client is AsyncHttpClient:
     assert(not client.bodyStream.finished)

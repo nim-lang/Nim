@@ -558,19 +558,19 @@ proc maskUInt64*(arg: Int128): Int128 {.noinit, inline.} =
   result.udata[2] = 0
   result.udata[3] = 0
 
-proc maskUint32*(arg: Int128): Int128 {.noinit, inline.} =
+proc maskUInt32*(arg: Int128): Int128 {.noinit, inline.} =
   result.udata[0] = arg.udata[0]
   result.udata[1] = 0
   result.udata[2] = 0
   result.udata[3] = 0
 
-proc maskUint16*(arg: Int128): Int128 {.noinit, inline.} =
+proc maskUInt16*(arg: Int128): Int128 {.noinit, inline.} =
   result.udata[0] = arg.udata[0] and 0xffff
   result.udata[1] = 0
   result.udata[2] = 0
   result.udata[3] = 0
 
-proc maskUint8*(arg: Int128): Int128 {.noinit, inline.} =
+proc maskUInt8*(arg: Int128): Int128 {.noinit, inline.} =
   result.udata[0] = arg.udata[0] and 0xff
   result.udata[1] = 0
   result.udata[2] = 0
@@ -579,13 +579,13 @@ proc maskUint8*(arg: Int128): Int128 {.noinit, inline.} =
 proc maskBytes*(arg: Int128, numbytes: int): Int128 {.noinit.} =
   case numbytes
   of 1:
-    return maskUint8(arg)
+    return maskUInt8(arg)
   of 2:
-    return maskUint16(arg)
+    return maskUInt16(arg)
   of 4:
-    return maskUint32(arg)
+    return maskUInt32(arg)
   of 8:
-    return maskUint64(arg)
+    return maskUInt64(arg)
   else:
     assert(false, "masking only implemented for 1, 2, 4 and 8 bytes")
 

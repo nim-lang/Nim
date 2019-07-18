@@ -5149,57 +5149,6 @@ Currently for loop macros must be enabled explicitly
 via ``{.experimental: "forLoopMacros".}``.
 
 
-Case statement macros
----------------------
-
-A macro that needs to be called `match`:idx: can be used to rewrite
-``case`` statements in order to implement `pattern matching`:idx: for
-certain types. The following example implements a simplistic form of
-pattern matching for tuples, leveraging the existing equality operator
-for tuples (as provided in ``system.==``):
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  {.experimental: "caseStmtMacros".}
-
-  import macros
-
-  macro match(n: tuple): untyped =
-    result = newTree(nnkIfStmt)
-    let selector = n[0]
-    for i in 1 ..< n.len:
-      let it = n[i]
-      case it.kind
-      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
-        result.add it
-      of nnkOfBranch:
-        for j in 0..it.len-2:
-          let cond = newCall("==", selector, it[j])
-          result.add newTree(nnkElifBranch, cond, it[^1])
-      else:
-        error "'match' cannot handle this node", it
-    echo repr result
-
-  case ("foo", 78)
-  of ("foo", 78): echo "yes"
-  of ("bar", 88): echo "no"
-  else: discard
-
-
-Currently case statement macros must be enabled explicitly
-via ``{.experimental: "caseStmtMacros".}``.
-
-``match`` macros are subject to overload resolution. First the
-``case``'s selector expression is used to determine which ``match``
-macro to call. To this macro is then passed the complete ``case``
-statement body and the macro is evaluated.
-
-In other words, the macro needs to transform the full ``case`` statement
-but only the statement's selector expression is used to determine which
-macro to call.
-
-
 Special Types
 =============
 
@@ -6399,7 +6348,7 @@ prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 ImportCpp pragma
 ----------------
 
-**Note**: `c2nim <https://nim-lang.org/docs/c2nim.html>`_ can parse a large subset of C++ and knows
+**Note**: `c2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_ can parse a large subset of C++ and knows
 about the ``importcpp`` pragma pattern language. It is not necessary
 to know all the details described here.
 

@@ -482,7 +482,7 @@ template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
     a, tmp = x.rdLoc
     b, tmp2 = y.rdLoc
   when "$3" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
-  when "$4" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
+  when "$4" in frmt: (b, tmp2) = maybeMakeTemp(p, n[2], y)
 
   r.res = frmt % [a, b, tmp, tmp2]
   r.kind = resExpr
@@ -2040,8 +2040,14 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mParseBiggestFloat:
     useMagic(p, "nimParseBiggestFloat")
     genCall(p, n, r)
-  of mArray:
-    genCall(p, n, r)
+  of mSlice:
+    # arr.slice([begin[, end]]): 'end' is exclusive
+    var x, y, z: TCompRes
+    gen(p, n.sons[1], x)
+    gen(p, n.sons[2], y)
+    gen(p, n.sons[3], z)
+    r.res = "($1.slice($2, $3+1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
+    r.kind = resExpr
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);

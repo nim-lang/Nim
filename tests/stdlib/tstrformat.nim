@@ -115,3 +115,21 @@ proc print_object(animalAddr: AnimalRef) =
   echo fmt"Received {animalAddr[]}"
 
 print_object(AnimalRef(name: "Foo", species: "Bar"))
+
+# bug #11723
+
+let pos: Positive = 64
+doAssert fmt"{pos:3}" == " 64"
+doAssert fmt"{pos:3b}" == "1000000"
+doAssert fmt"{pos:3d}" == " 64"
+doAssert fmt"{pos:3o}" == "100"
+doAssert fmt"{pos:3x}" == " 40"
+doAssert fmt"{pos:3X}" == " 40"
+
+let nat: Natural = 64
+doAssert fmt"{nat:3}" == " 64"
+doAssert fmt"{nat:3b}" == "1000000"
+doAssert fmt"{nat:3d}" == " 64"
+doAssert fmt"{nat:3o}" == "100"
+doAssert fmt"{nat:3x}" == " 40"
+doAssert fmt"{nat:3X}" == " 40"

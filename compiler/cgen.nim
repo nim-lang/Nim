@@ -17,7 +17,7 @@ import
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr
 
 when not defined(leanCompiler):
-  import semparallel
+  import spawn, semparallel
 
 import strutils except `%` # collides with ropes.`%`
 

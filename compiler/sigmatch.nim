@@ -19,12 +19,22 @@ when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
   import docgen
 
 type
+  MismatchKind* = enum
+    kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
+    kMissingParam, kExtraArg
+
+  MismatchInfo* = object
+    kind*: MismatchKind # reason for mismatch
+    arg*: int           # position of provided arguments that mismatches
+    formal*: PSym       # parameter that mismatches against provided argument
+                        # its position can differ from `arg` because of varargs
+
   TCandidateState* = enum
     csEmpty, csMatch, csNoMatch
 
   CandidateError* = object
     sym*: PSym
-    unmatchedVarParam*, firstMismatch*: int
+    firstMismatch*: MismatchInfo
     diagnostics*: seq[string]
     enabled*: bool
 
@@ -56,7 +66,6 @@ type
                              # a distrinct type
     typedescMatched*: bool
     isNoCall*: bool          # misused for generic type instantiations C[T]
-    mutabilityProblem*: uint8 # tyVar mismatch
     inferredTypes: seq[PType] # inferred types during the current signature
                               # matching. they will be reset if the matching
                               # is not successful. may replace the bindings
@@ -70,8 +79,7 @@ type
                               # triggered with an idetools command in the
                               # future.
     inheritancePenalty: int   # to prefer closest father object type
-    firstMismatch*: int       # position of the first type mismatch for
-                              # better error messages
+    firstMismatch*: MismatchInfo # mismatch info for better error messages
     diagnosticsEnabled*: bool
 
   TTypeRelFlag* = enum
@@ -112,6 +120,7 @@ proc initCandidateAux(ctx: PContext,
   c.intConvMatches = 0
   c.genericMatches = 0
   c.state = csEmpty
+  c.firstMismatch = MismatchInfo()
   c.callee = callee
   c.call = nil
   c.baseTypeMatch = false
@@ -1293,7 +1302,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           inc(c.inheritancePenalty, depth)
           result = isSubtype
   of tyDistinct:
-    skipOwned(a)
+    a = a.skipTypes({tyOwned, tyGenericInst, tyRange})
     if a.kind == tyDistinct:
       if sameDistinctTypes(f, a): result = isEqual
       #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
@@ -2280,42 +2289,47 @@ template isVarargsUntyped(x): untyped =
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =
+  var
+    a = 1 # iterates over the actual given arguments
+    f = if m.callee.kind != tyGenericBody: 1
+        else: 0 # iterates over formal parameters
+    arg: PNode # current prepared argument
+    formal: PSym # current routine parameter
+
+  template noMatch() =
+    m.state = csNoMatch
+    m.firstMismatch.arg = a
+    m.firstMismatch.formal = formal
+
   template checkConstraint(n: untyped) {.dirty.} =
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
         # better match over other routines with no such restriction:
         inc(m.genericMatches, 100)
       else:
-        m.state = csNoMatch
+        noMatch()
         return
 
     if formal.typ.kind == tyVar:
       let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
       if argConverter.kind == nkHiddenCallConv:
         if argConverter.typ.kind != tyVar:
-          m.state = csNoMatch
-          m.mutabilityProblem = uint8(f-1)
+          m.firstMismatch.kind = kVarNeeded
+          noMatch()
           return
       elif not n.isLValue:
-        m.state = csNoMatch
-        m.mutabilityProblem = uint8(f-1)
+        m.firstMismatch.kind = kVarNeeded
+        noMatch()
         return
 
-  var
-    # iterates over formal parameters
-    f = if m.callee.kind != tyGenericBody: 1
-        else: 0
-    # iterates over the actual given arguments
-    a = 1
-    arg: PNode # current prepared argument
-
   m.state = csMatch # until proven otherwise
+  m.firstMismatch = MismatchInfo()
   m.call = newNodeI(n.kind, n.info)
   m.call.typ = base(m.callee) # may be nil
   var formalLen = m.callee.n.len
   addSon(m.call, copyTree(n.sons[0]))
   var container: PNode = nil # constructed container
-  var formal: PSym = if formalLen > 1: m.callee.n.sons[1].sym else: nil
+  formal = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
   while a < n.len:
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
@@ -2336,26 +2350,26 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         addSon(container, n.sons[a])
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
+      m.firstMismatch.kind = kUnknownNamedParam
       # check if m.callee has such a param:
       prepareNamedParam(n.sons[a], c)
       if n.sons[a].sons[0].kind != nkIdent:
         localError(c.config, n.sons[a].info, "named parameter has to be an identifier")
-        m.state = csNoMatch
-        m.firstMismatch = -a
+        noMatch()
         return
       formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
       if formal == nil:
         # no error message!
-        m.state = csNoMatch
-        m.firstMismatch = -a
+        noMatch()
         return
       if containsOrIncl(marker, formal.position):
+        m.firstMismatch.kind = kAlreadyGiven
         # already in namedParams, so no match
         # we used to produce 'errCannotBindXTwice' here but see
         # bug #3836 of why that is not sound (other overload with
         # different parameter names could match later on):
         when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
-        m.state = csNoMatch
+        noMatch()
         return
       m.baseTypeMatch = false
       m.typedescMatched = false
@@ -2363,9 +2377,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       n.sons[a].typ = n.sons[a].sons[1].typ
       arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                 n.sons[a].sons[1], n.sons[a].sons[1])
+      m.firstMismatch.kind = kTypeMismatch
       if arg == nil:
-        m.state = csNoMatch
-        m.firstMismatch = a
+        noMatch()
         return
       checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch:
@@ -2392,6 +2406,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           else:
             addSon(m.call, copyTree(n.sons[a]))
         elif formal != nil and formal.typ.kind == tyVarargs:
+          m.firstMismatch.kind = kTypeMismatch
           # beware of the side-effects in 'prepareOperand'! So only do it for
           # varargs matching. See tests/metatype/tstatic_overloading.
           m.baseTypeMatch = false
@@ -2405,20 +2420,24 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             incrIndexType(container.typ)
             checkConstraint(n.sons[a])
           else:
-            m.state = csNoMatch
+            noMatch()
             return
         else:
-          m.state = csNoMatch
+          m.firstMismatch.kind = kExtraArg
+          noMatch()
           return
       else:
         if m.callee.n.sons[f].kind != nkSym:
           internalError(c.config, n.sons[a].info, "matches")
+          noMatch()
           return
         formal = m.callee.n.sons[f].sym
+        m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
+          m.firstMismatch.kind = kAlreadyGiven
           # already in namedParams: (see above remark)
           when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
-          m.state = csNoMatch
+          noMatch()
           return
 
         if formal.typ.isVarargsUntyped:
@@ -2435,8 +2454,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
           if arg == nil:
-            m.state = csNoMatch
-            m.firstMismatch = f
+            noMatch()
             return
           if m.baseTypeMatch:
             assert formal.typ.kind == tyVarargs
@@ -2461,13 +2479,17 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             # we end up here if the argument can be converted into the varargs
             # formal (eg. seq[T] -> varargs[T]) but we have already instantiated
             # a container
-            assert arg.kind == nkHiddenStdConv
+            #assert arg.kind == nkHiddenStdConv # for 'nim check'
+            # this assertion can be off
             localError(c.config, n.sons[a].info, "cannot convert $1 to $2" % [
               typeToString(n.sons[a].typ), typeToString(formal.typ) ])
-            m.state = csNoMatch
+            noMatch()
             return
         checkConstraint(n.sons[a])
     inc(a)
+  # for some edge cases (see tdont_return_unowned_from_owned test case)
+  m.firstMismatch.arg = a
+  m.firstMismatch.formal = formal
 
 proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every
@@ -2509,7 +2531,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         else:
           # no default value
           m.state = csNoMatch
-          m.firstMismatch = f
+          m.firstMismatch.kind = kMissingParam
+          m.firstMismatch.formal = formal
           break
       else:
         if formal.ast.kind == nkEmpty:

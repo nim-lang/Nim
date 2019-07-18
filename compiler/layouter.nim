@@ -15,7 +15,6 @@ from os import changeFileExt
 from sequtils import delete
 
 const
-  MaxLineLen = 80
   MinLineLen = 15
 
 type
@@ -50,10 +49,11 @@ type
     indentStack: seq[int]
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
+    maxLineLen*: int
 
 proc openEmitter*(em: var Emitter, cache: IdentCache;
                   config: ConfigRef, fileIdx: FileIndex) =
-  let fullPath = Absolutefile config.toFullPath(fileIdx)
+  let fullPath = AbsoluteFile config.toFullPath(fileIdx)
   if em.indWidth == 0:
     em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
                                 cache, config)
@@ -77,7 +77,7 @@ proc computeMax(em: Emitter; pos: int): int =
     var foundTab = false
     while p < em.tokens.len and em.kinds[p] != ltEndSection:
       if em.kinds[p] in {ltCrucialNewline, ltSplittingNewline}:
-        if foundTab and lineLen <= MaxLineLen:
+        if foundTab and lineLen <= em.maxLineLen:
           result = max(result, lhs + extraSpace)
         inc p
         break
@@ -105,12 +105,26 @@ proc findNewline(em: Emitter; p, lineLen: var int) =
     inc lineLen, em.tokens[p].len
     inc p
 
+proc countNewlines(s: string): int =
+  result = 0
+  for i in 0..<s.len:
+    if s[i] == '\L': inc result
+
+proc calcCol(em: var Emitter; s: string) =
+  var i = s.len-1
+  em.col = 0
+  while i >= 0 and s[i] != '\L':
+    dec i
+    inc em.col
+
 proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
   let ourIndent = em.tokens[pos].len
   var p = pos+1
   var lineLen = 0
   em.findNewline(p, lineLen)
-  if em.kinds[p-1] == ltComment and currentLen+lineLen < MaxLineLen+MinLineLen:
+  if p == pos+1: # optionalNewline followed by another newline
+    result = false
+  elif em.kinds[p-1] == ltComment and currentLen+lineLen < em.maxLineLen+MinLineLen:
     result = false
   elif p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
       em.kinds[p-1] == ltOptionalNewline:
@@ -169,7 +183,7 @@ proc closeEmitter*(em: var Emitter) =
       else:
         # pick the shorter indentation token:
         var spaces = maxLhs - lineLen
-        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= MaxLineLen+MinLineLen:
+        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= em.maxLineLen+MinLineLen:
           if spaces <= 0 and content[^1] notin {' ', '\L'}: spaces = 1
           for j in 1..spaces: content.add ' '
           inc lineLen, spaces
@@ -182,8 +196,7 @@ proc closeEmitter*(em: var Emitter) =
       lineBegin = i+1
     of ltOptionalNewline:
       let totalLineLen = lineLen + lenOfNextTokens(em, i)
-      if totalLineLen > MaxLineLen + MinLineLen or
-         totalLineLen > MaxLineLen and optionalIsGood(em, i, lineLen):
+      if totalLineLen > em.maxLineLen and optionalIsGood(em, i, lineLen):
         if i-1 >= 0 and em.kinds[i-1] == ltSpaces:
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
@@ -194,6 +207,14 @@ proc closeEmitter*(em: var Emitter) =
         if i+1 < em.kinds.len and em.kinds[i+1] == ltSpaces:
           # inhibit extra spaces at the start of a new line
           inc i
+    of ltLit:
+      let lineSpan = countNewlines(em.tokens[i])
+      if lineSpan > 0:
+        em.calcCol(em.tokens[i])
+        lineLen = em.col
+      else:
+        inc lineLen, em.tokens[i].len
+      content.add em.tokens[i]
     else:
       content.add em.tokens[i]
       inc lineLen, em.tokens[i].len
@@ -208,18 +229,6 @@ proc closeEmitter*(em: var Emitter) =
     return
   f.llStreamWrite content
   llStreamClose(f)
-
-proc countNewlines(s: string): int =
-  result = 0
-  for i in 0..<s.len:
-    if s[i] == '\L': inc result
-
-proc calcCol(em: var Emitter; s: string) =
-  var i = s.len-1
-  em.col = 0
-  while i >= 0 and s[i] != '\L':
-    dec i
-    inc em.col
 
 proc wr(em: var Emitter; x: string; lt: LayoutToken) =
   em.tokens.add x
@@ -285,11 +294,11 @@ const
               tkBracketRi, tkCurlyDotRi,
               tkCurlyRi}
 
-  splitters = openPars + {tkComma, tkSemicolon} # do not add 'tkColon' here!
+  splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
-template goodCol(col): bool = col >= MaxLineLen div 2
+template goodCol(col): bool = col >= em.maxLineLen div 2
 
 template moreIndent(em): int =
   if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth
@@ -458,7 +467,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkColon:
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     wrSpace em
-  of tkSemicolon, tkComma:
+  of tkSemiColon, tkComma:
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitComma)
     wrSpace em

@@ -185,7 +185,7 @@ proc fitLiteral(c: ConfigRef, n: PNode): PNode {.deprecated: "no substitute".} =
   result = n
 
   let typ = n.typ.skipTypes(abstractRange)
-  if typ.kind in tyUInt..tyUint32:
+  if typ.kind in tyUInt..tyUInt32:
     result.intVal = result.intVal and castToInt64(lastOrd(c, typ))
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
