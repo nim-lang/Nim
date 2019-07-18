@@ -165,9 +165,10 @@ block tableconstr:
 block ttables2:
   proc TestHashIntInt() =
     var tab = initTable[int,int]()
-    for i in 1..1_000_000:
+    const n = 1_000_000 # bottleneck: 50 seconds on OSX in debug mode
+    for i in 1..n:
       tab[i] = i
-    for i in 1..1_000_000:
+    for i in 1..n:
       var x = tab[i]
       if x != i : echo "not found ", i
 
@@ -233,7 +234,7 @@ block tablesref:
       for y in 0..1:
         assert t[(x,y)] == $x & $y
     assert($t ==
-      "{(x: 0, y: 1): \"01\", (x: 0, y: 0): \"00\", (x: 1, y: 0): \"10\", (x: 1, y: 1): \"11\"}")
+      """{(x: 0, y: 1): "01", (x: 1, y: 0): "10", (x: 0, y: 0): "00", (x: 1, y: 1): "11"}""")
 
   block tableTest2:
     var t = newTable[string, float]()

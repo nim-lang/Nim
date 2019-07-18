@@ -56,38 +56,11 @@ type
 const
   IntSize = sizeof(int)
 
-proc preferStringHash*(T: typedesc): bool =
-  ## whether hashing is more efficient using `hash($x)`
-  # when string hashing is more efficient, see #11764
-  # exported so user defined hash can use this too
-  T.sizeof >= 4
-
-proc hash*(x: string): Hash
-
-proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
-  ## Efficient hashing of numbers, ordinals (eg enum), char.
-  when preferStringHash(T): # fix #11764
-    when T is SomeFloat:
-      # 0.0 vs -0.0 should map to same hash to avoid weird behavior.
-      # the only non nan value that can cause clash is 0 according to
-      # https://stackoverflow.com/questions/31087915/are-there-denormalized-floats-that-evaluate-to-the-same-value-apart-from-0-0
-      # bugfix: the previous code was using `x = x + 1.0` (presumably for
-      # handling negative 0), however this doesn't work well for small inputs
-      # because `x+1.0` can become 0 with floating point accuracy, which
-      # leads to hash collisions.
-      # Note: this hit this bug: #11775:
-      # `let x = if x == 0.0: 0.0 else: x`
-      var x = x
-      if x == 0: x = 0
-    hashData(cast[pointer](unsafeAddr x), T.sizeof)
-  else:
-    # more efficient for small types
-    ord(x)
-
 proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
+  ## Uses Jenkins hash: https://en.wikipedia.org/wiki/Jenkins_hash_function
   let h = cast[uint](h)
   let val = cast[uint](val)
   var res = h + val
@@ -123,6 +96,43 @@ proc hashData*(data: pointer, size: int): Hash =
     inc(i)
     dec(s)
   result = !$h
+
+proc hashBiggestIntVM(x: BiggestInt): Hash = discard # in vmops
+
+proc hashBiggestInt*(x: BiggestInt): Hash {.inline.} =
+  ## for internal use; user code should prefer `hash` overloads
+  when nimvm: hashBiggestIntVM(x)
+  else: hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
+
+proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
+  ## Efficient hashing of numbers, ordinals (eg enum), char.
+  when T.sizeof >= 4:
+    # fix #11764: `ord(x)`, `toU32(x)` or similar are up to 4X faster to compute
+    # compared to jenkins `hashData` but result in very poor hashes, leading to
+    # collisions; this can lead to several order magnitude (eg 1e3) slowdowns
+    # e.g. when used in hash tables, so we prefer to use slower to compute good
+    # hashes here. Murmur3 would improve speed of hash computation.
+    when T is SomeFloat:
+      # 0.0 vs -0.0 should map to same hash to avoid weird behavior.
+      # the only non nan value that can cause clash is 0 according to
+      # https://stackoverflow.com/questions/31087915/are-there-denormalized-floats-that-evaluate-to-the-same-value-apart-from-0-0
+      # bugfix: the previous code was using `x = x + 1.0` (presumably for
+      # handling negative 0), however this leads to collisions for small x due
+      # to FP finite precision.
+      let x: BiggestInt =
+        if x == 0: 0.BiggestInt
+        else:
+          when sizeof(BiggestInt) == sizeof(T):
+            cast[BiggestInt](x)
+          else: # for nimvm
+            cast[int32](x).BiggestInt
+    else:
+      let x = x.BiggestInt
+    hashBiggestInt(x)
+  else:
+    # empirically better for small types, the collision risk is limited anyway
+    # due to cardinality of at most 2^16=65536
+    ord(x)
 
 when defined(js):
   var objectID = 0

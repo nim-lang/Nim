@@ -16,6 +16,7 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 from md5 import getMD5
 from sighashes import symBodyDigest
+from std/hashes import hashBiggestInt
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -144,3 +145,6 @@ proc registerAdditionalOps*(c: PCtx) =
     let n = getNode(a, 0)
     if n.kind != nkSym: raise newException(ValueError, "node is not a symbol")
     setResult(a, $symBodyDigest(c.graph, n.sym))
+
+  registerCallback c, "stdlib.hashes.hashBiggestIntVM", proc (a: VmArgs) {.nimcall.} =
+    a.setResult hashBiggestInt(getInt(a, 0))
