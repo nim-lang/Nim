@@ -66,12 +66,20 @@ proc hash*(x: string): Hash
 
 proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
   ## Efficient hashing of numbers, ordinals (eg enum), char.
-  # fix #11764
-  when preferStringHash(T):
+  when preferStringHash(T): # fix #11764
     when T is SomeFloat:
-      # needed otherwise finite precision can cause hash duplicate
-      let x = cast[BiggestInt](x)
-    hash($x)
+      # 0.0 vs -0.0 should map to same hash to avoid weird behavior.
+      # the only non nan value that can cause clash is 0 according to
+      # https://stackoverflow.com/questions/31087915/are-there-denormalized-floats-that-evaluate-to-the-same-value-apart-from-0-0
+      # bugfix: the previous code was using `x = x + 1.0` (presumably for
+      # handling negative 0), however this doesn't work well for small inputs
+      # because `x+1.0` can become 0 with floating point accuracy, which
+      # leads to hash collisions.
+      # Note: this hit this bug: #11775:
+      # `let x = if x == 0.0: 0.0 else: x`
+      var x = x
+      if x == 0: x = 0
+    hashData(cast[pointer](unsafeAddr x), T.sizeof)
   else:
     # more efficient for small types
     ord(x)
@@ -99,6 +107,9 @@ proc `!$`*(h: Hash): Hash {.inline.} =
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
+  # this should probably be merged/refactored with
+  # `proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =` to avoid
+  # using 2 different algorithms
   var h: Hash = 0
   when defined(js):
     var p: cstring
