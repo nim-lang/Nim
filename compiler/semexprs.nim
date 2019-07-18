@@ -2450,7 +2450,7 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   var s = initTabIter(i, exported.tab)
   while s != nil:
     if s.kind in ExportableSymKinds+{skModule} and
-       s.name.id notin exceptSet:
+       s.name.id notin exceptSet and sfError notin s.flags:
       strTableAdd(c.module.tab, s)
       result.add newSymNode(s, n.info)
       markUsed(c, n.info, s, c.graph.usageSym)
@@ -2480,10 +2480,10 @@ proc semExport(c: PContext, n: PNode): PNode =
         if s.kind == skEnumField:
           localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a) &
             "; enum field cannot be exported individually")
-        if s.kind in ExportableSymKinds+{skModule}:
+        if s.kind in ExportableSymKinds+{skModule} and sfError notin s.flags:
           result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
-        markUsed(c, n.info, s, c.graph.usageSym)
+          markUsed(c, n.info, s, c.graph.usageSym)
         s = nextOverloadIter(o, c, a)
 
 proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
