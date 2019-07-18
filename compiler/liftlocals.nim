@@ -10,7 +10,7 @@
 ## This module implements the '.liftLocals' pragma.
 
 import
-  intsets, strutils, options, ast, astalgo, msgs,
+  strutils, options, ast, msgs,
   idents, renderer, types, lowerings, lineinfos
 
 from pragmas import getPragmaVal

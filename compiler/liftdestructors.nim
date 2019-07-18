@@ -13,8 +13,8 @@
 # Todo:
 # - use openArray instead of array to avoid over-specializations
 
-import modulegraphs, lineinfos, idents, ast, astalgo, renderer, semdata,
-  sighashes, lowerings, options, types, msgs, magicsys, tables, int128
+import modulegraphs, lineinfos, idents, ast, renderer, semdata,
+  sighashes, lowerings, options, types, msgs, magicsys, tables
 
 type
   TLiftCtx = object

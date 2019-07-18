@@ -10,11 +10,8 @@
 ## This module contains the data structures for the semantic checking phase.
 
 import
-  strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
-  wordrecg,
-  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, vmdef,
-  modulegraphs, lineinfos
+  intsets, options, ast, astalgo, msgs, idents, renderer,
+  magicsys, passes, vmdef, modulegraphs, lineinfos
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing

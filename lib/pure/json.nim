@@ -142,8 +142,8 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
-  typetraits, options
+  hashes, tables, strutils, lexbase, streams, macros, parsejson,
+  options
 
 export
   tables.`$`

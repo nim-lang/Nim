@@ -13,8 +13,7 @@ const
   genPrefix* = ":tmp"         # prefix for generated names
 
 import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
-  lineinfos, int128
-from trees import getMagic
+  lineinfos
 
 proc newDeref*(n: PNode): PNode {.inline.} =
   result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])

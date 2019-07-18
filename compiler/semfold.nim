@@ -11,9 +11,9 @@
 # and evaluation phase
 
 import
-  strutils, options, ast, astalgo, trees, treetab, nimsets,
-  nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
-  commands, magicsys, modulegraphs, strtabs, lineinfos, int128, semdata
+  strutils, options, ast, trees, nimsets,
+  platform, math, msgs, idents, renderer, types,
+  commands, magicsys, modulegraphs, strtabs, lineinfos
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
@@ -286,12 +286,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mDivI:
     let argA = getInt(a)
     let argB = getInt(b)
-    if argB != int128.Zero and (argA != firstOrd(g.config, n.typ) or argB != int128.NegOne):
+    if argB != Zero and (argA != firstOrd(g.config, n.typ) or argB != NegOne):
       result = newIntNodeT(argA div argB, n, g)
   of mModI:
     let argA = getInt(a)
     let argB = getInt(b)
-    if argB != int128.Zero and (argA != firstOrd(g.config, n.typ) or argB != int128.NegOne):
+    if argB != Zero and (argA != firstOrd(g.config, n.typ) or argB != NegOne):
       result = newIntNodeT(argA mod argB, n, g)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n, g)
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n, g)
@@ -337,12 +337,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mModU:
     let argA = maskBytes(getInt(a), int(a.typ.size))
     let argB = maskBytes(getInt(b), int(a.typ.size))
-    if argB != int128.Zero:
+    if argB != Zero:
       result = newIntNodeT(argA mod argB, n, g)
   of mDivU:
     let argA = maskBytes(getInt(a), int(a.typ.size))
     let argB = maskBytes(getInt(b), int(a.typ.size))
-    if argB != int128.Zero:
+    if argB != Zero:
       result = newIntNodeT(argA div argB, n, g)
   of mLeSet: result = newIntNodeT(ord(containsSets(g.config, a, b)), n, g)
   of mEqSet: result = newIntNodeT(ord(equalSets(g.config, a, b)), n, g)

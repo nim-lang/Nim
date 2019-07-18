@@ -9,11 +9,9 @@
 
 ## This module implements the style checker.
 
-import
-  strutils, os, intsets, strtabs
+import strutils
 
-import options, ast, astalgo, msgs, semdata, ropes, idents,
-  lineinfos, pathutils, wordrecg
+import options, ast, msgs, idents, lineinfos, wordrecg
 
 const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}

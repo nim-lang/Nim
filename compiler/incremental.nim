@@ -12,10 +12,10 @@
 
 const nimIncremental* = defined(nimIncremental)
 
-import options, lineinfos, pathutils
+import options, lineinfos
 
 when nimIncremental:
-  import ast, msgs, intsets, btrees, db_sqlite, std / sha1
+  import ast, msgs, intsets, btrees, db_sqlite, std / sha1, pathutils
   from strutils import parseInt
 
   type

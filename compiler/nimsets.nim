@@ -10,8 +10,7 @@
 # this unit handles Nim sets; it implements symbolic sets
 
 import
-  ast, astalgo, trees, nversion, lineinfos, platform, bitsets, types, renderer,
-  options, int128
+  ast, astalgo, lineinfos, bitsets, types, options
 
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly
