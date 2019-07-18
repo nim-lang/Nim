@@ -10,8 +10,8 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, std / sha1, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
+  ast, astalgo, magicsys, msgs, options,
+  idents, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
   lineinfos, pathutils, tables
 
 proc resetSystemArtifacts*(g: ModuleGraph) =

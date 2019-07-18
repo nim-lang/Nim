@@ -9,8 +9,8 @@
 
 ## This module implements threadpool's ``spawn``.
 
-import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
-  lineinfos, lowerings
+import ast, types, idents, magicsys, msgs, options, modulegraphs,
+  lowerings
 from trees import getMagic
 
 proc callProc(a: PNode): PNode =

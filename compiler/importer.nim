@@ -10,8 +10,8 @@
 ## This module implements the symbol importing mechanism.
 
 import
-  intsets, strutils, os, ast, astalgo, msgs, options, idents, lookups,
-  semdata, passes, renderer, modulepaths, sigmatch, lineinfos
+  intsets, ast, astalgo, msgs, options, idents, lookups,
+  semdata, modulepaths, sigmatch, lineinfos
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}

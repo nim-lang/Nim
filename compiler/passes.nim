@@ -11,9 +11,9 @@
 ## `TPass` interface.
 
 import
-  strutils, options, ast, astalgo, llstream, msgs, platform, os,
-  condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, idgen, modulegraphs, reorder, rod,
+  options, ast, llstream, msgs,
+  idents,
+  syntaxes, idgen, modulegraphs, reorder, rod,
   lineinfos, pathutils
 
 type

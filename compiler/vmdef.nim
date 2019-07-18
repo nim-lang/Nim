@@ -10,8 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets, options, modulegraphs, lineinfos,
-  tables, btrees
+import ast, passes, idents, intsets, options, modulegraphs, lineinfos
 
 const
   byteExcess* = 128 # we use excess-K for immediates

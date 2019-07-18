@@ -11,8 +11,7 @@
 ## macro support.
 
 import
-  ast, astalgo, types, semdata, sigmatch, msgs, idents, aliases, parampatterns,
-  trees
+  ast, types, semdata, sigmatch, idents, aliases, parampatterns, trees
 
 type
   TPatternContext = object

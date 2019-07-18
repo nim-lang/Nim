@@ -32,7 +32,7 @@ type
     ltTab,
     ltOptionalNewline, ## optional newline introduced by nimpretty
     ltComment, ltLit, ltKeyword, ltExportMarker, ltIdent,
-    ltOther, ltOpr,
+    ltOther, ltOpr, ltSomeParLe, ltSomeParRi,
     ltBeginSection, ltEndSection
 
   Emitter* = object
@@ -142,7 +142,7 @@ proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
       result = true
     elif em.tokens[p+1].len < ourIndent:
       result = isLongEnough(lineLen, pos, p)
-  elif em.kinds[pos+1] == ltOther: # note: pos+1, not p+1
+  elif em.kinds[pos+1] in {ltOther, ltSomeParLe, ltSomeParRi}: # note: pos+1, not p+1
     result = false
   else:
     result = isLongEnough(lineLen, pos, p)
@@ -153,13 +153,28 @@ proc lenOfNextTokens(em: Emitter; pos: int): int =
     if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
     inc result, em.tokens[pos+i].len
 
+proc guidingInd(em: Emitter; pos: int): int =
+  var i = pos - 1
+  while i >= 0 and em.kinds[i] != ltSomeParLe:
+    dec i
+  while i+1 <= em.kinds.high and em.kinds[i] != ltSomeParRi:
+    if em.kinds[i] == ltSplittingNewline and em.kinds[i+1] == ltSpaces:
+      return em.tokens[i+1].len
+    inc i
+  result = -1
+
 proc closeEmitter*(em: var Emitter) =
+  template defaultCase() =
+    content.add em.tokens[i]
+    inc lineLen, em.tokens[i].len
+
   let outFile = em.config.absOutFile
 
   var content = newStringOfCap(16_000)
   var maxLhs = 0
   var lineLen = 0
   var lineBegin = 0
+  var openPars = 0
   var i = 0
   while i <= em.tokens.high:
     when defined(debug):
@@ -201,8 +216,13 @@ proc closeEmitter*(em: var Emitter) =
           let spaces = em.tokens[i-1].len
           content.setLen(content.len - spaces)
         content.add "\L"
-        content.add em.tokens[i]
-        lineLen = em.tokens[i].len
+        let guide = if openPars > 0: guidingInd(em, i) else: -1
+        if guide >= 0:
+          content.add repeat(' ', guide)
+          lineLen = guide
+        else:
+          content.add em.tokens[i]
+          lineLen = em.tokens[i].len
         lineBegin = i+1
         if i+1 < em.kinds.len and em.kinds[i+1] == ltSpaces:
           # inhibit extra spaces at the start of a new line
@@ -215,9 +235,15 @@ proc closeEmitter*(em: var Emitter) =
       else:
         inc lineLen, em.tokens[i].len
       content.add em.tokens[i]
+    of ltSomeParLe:
+      inc openPars
+      defaultCase()
+    of ltSomeParRi:
+      doAssert openPars > 0
+      dec openPars
+      defaultCase()
     else:
-      content.add em.tokens[i]
-      inc lineLen, em.tokens[i].len
+      defaultCase()
     inc i
 
   if fileExists(outFile) and readFile(outFile.string) == content:
@@ -292,7 +318,7 @@ const
               tkCurlyLe}
   closedPars = {tkParRi, tkParDotRi,
               tkBracketRi, tkCurlyDotRi,
-              tkCurlyRi}
+              tkCurlyRi, tkBracketDotRi}
 
   splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
@@ -416,7 +442,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     var newlineKind = ltCrucialNewline
     if em.keepIndents > 0:
       em.indentLevel = tok.indent
-    elif (em.lastTok in (splitters + oprSet) and tok.tokType notin closedPars):
+    elif (em.lastTok in (splitters + oprSet) and
+        tok.tokType notin (closedPars - {tkBracketDotRi})):
       # aka: we are in an expression context:
       let alignment = max(tok.indent - em.indentStack[^1], 0)
       em.indentLevel = alignment + em.indentStack.high * em.indWidth
@@ -471,18 +498,14 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitComma)
     wrSpace em
-  of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
-     tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
+  of openPars:
     if tok.strongSpaceA > 0 and not em.endsInWhite and not em.wasExportMarker:
       wrSpace em
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, TokTypeToStr[tok.tokType], ltSomeParLe)
     rememberSplit(splitParLe)
-  of tkParRi,
-     tkBracketRi, tkCurlyRi,
-     tkBracketDotRi,
-     tkCurlyDotRi,
-     tkParDotRi,
-     tkColonColon:
+  of closedPars:
+    wr(em, TokTypeToStr[tok.tokType], ltSomeParRi)
+  of tkColonColon:
     wr(em, TokTypeToStr[tok.tokType], ltOther)
   of tkDot:
     lastTokWasTerse = true

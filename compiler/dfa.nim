@@ -29,7 +29,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, astalgo, types, intsets, tables, msgs, options, lineinfos, renderer
+import ast, types, intsets, lineinfos, renderer
 
 from patterns import sameTrees
 

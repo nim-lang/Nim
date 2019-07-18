@@ -10,13 +10,13 @@
 # This module implements the semantic checking pass.
 
 import
-  ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
-  wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
-  magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
+  ast, strutils, options, astalgo, trees,
+  wordrecg, ropes, msgs, idents, renderer, types, platform, math,
+  magicsys, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, pluginsupport, plugins/active, rod, lineinfos, strtabs, int128
+  lowerings, plugins/active, rod, lineinfos, strtabs, int128
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
