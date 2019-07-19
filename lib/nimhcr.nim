@@ -120,10 +120,10 @@
 #       - state in static libs gets duplicated
 #       - linking is slow and therefore iteration time suffers
 #         - have just a single .dll for all .nim files and bulk reload?
-#   - think about the compile/link/passC/passL/emit/injectStmt pragmas
-#     - if a passC pragma is introduced (either written or dragged in by a new
+#   - think about the compile/link/passc/passl/emit/injectStmt pragmas
+#     - if a passc pragma is introduced (either written or dragged in by a new
 #       import) the whole command line for compilation changes - for example:
-#         winlean.nim: {.passC: "-DWIN32_LEAN_AND_MEAN".}
+#         winlean.nim: {.passc: "-DWIN32_LEAN_AND_MEAN".}
 #   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
 #   - everything thread-local related
 # - tests
