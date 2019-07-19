@@ -40,4 +40,4 @@ type
 
   MyRefType = ref MyType
 
-echo sizeof(MyRefType[])
+echo sizeof(default(MyRefType)[])
