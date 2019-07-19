@@ -129,6 +129,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
   result = realModule
+  c.unusedImports.add((realModule, n.info))
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n.sons[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")
@@ -167,7 +168,6 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
         message(c.config, n.info, warnDeprecated, result.name.s & " is deprecated")
     suggestSym(c.config, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
-    c.unusedImports.add((result, n.info))
     #newStrNode(toFullPath(c.config, f), n.info)
 
 proc transformImportAs(c: PContext; n: PNode): PNode =
