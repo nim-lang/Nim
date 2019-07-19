@@ -138,7 +138,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) =
   mixin `=destroy`
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
   when not supportsCopyMem(T):
-    for i in countdown(x.len - 1, newLen - 1):
+    for i in countdown(x.len - 1, newLen):
       `=destroy`(x[i])
   # XXX This is wrong for const seqs that were moved into 'x'!
   cast[ptr NimSeqV2[T]](addr x).len = newLen
