@@ -4060,7 +4060,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## `gorge <#gorge,string,string,string>`_ is an alias for ``staticExec``.
   ##
   ## Note that you can use this proc inside a pragma like
-  ## `passC <nimc.html#passc-pragma>`_ or `passL <nimc.html#passl-pragma>`_.
+  ## `passc <nimc.html#passc-pragma>`_ or `passl <nimc.html#passl-pragma>`_.
   ##
   ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
   ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
