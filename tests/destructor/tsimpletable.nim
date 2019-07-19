@@ -20,6 +20,14 @@ proc main =
 
 main()
 
+# bug #11745
+
+type
+  Foo = object
+    bar: seq[int]
+
+var x = [Foo()]
+
 # bug #11563
 type
   MyTypeType = enum
