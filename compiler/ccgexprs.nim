@@ -2709,9 +2709,14 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   of tyBool: result = rope"NIM_FALSE"
   of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result = rope"0"
   of tyFloat..tyFloat128: result = rope"0.0"
-  of tyCString, tyString, tyVar, tyLent, tyPointer, tyPtr, tySequence, tyUntyped,
+  of tyCString, tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
      tyTyped, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = rope"NIM_NIL"
+  of tyString, tySequence:
+    if p.config.selectedGC == gcDestructors:
+      result = rope"{0, NIM_NIL}"
+    else:
+      result = rope"NIM_NIL"
   of tyProc:
     if t.callConv != ccClosure:
       result = rope"NIM_NIL"
