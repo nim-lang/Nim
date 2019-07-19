@@ -215,7 +215,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add typeToString(got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates)
-      of kUnknown: internalAssert(c.config, false)
+      of kUnknown: discard "do not break 'nim check'"
       candidates.add "\n"
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
