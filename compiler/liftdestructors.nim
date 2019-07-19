@@ -191,7 +191,7 @@ proc considerAsgn(c: var TLiftCtx; t: PType; body, x, y: PNode;
     result = true
 
 proc considerMove(c: var TLiftCtx; t: PType; body, x, y: PNode;
-                        field: var PSym): bool = #Same as considerAsng but with newMoveCall
+                        field: var PSym): bool = #Same as considerAsgn but with newMoveCall
   if optNimV2 in c.g.config.globalOptions:
     let op = field
     if field != nil and sfOverriden in field.flags:
@@ -436,7 +436,6 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   case c.kind
   of attachedAsgn:
-    #assert(false, "cannot happen")
     body.add genIf(c, x, actions)
     body.add newAsgnStmt(x, y)
   of attachedMove:
@@ -605,6 +604,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   let src = newSym(skParam, getIdent(g.cache, "src"), result, info)
   dest.typ = makeVarType(typ.owner, typ)
   src.typ = if kind == attachedMove: makeVarType(typ.owner, typ)
+            elif typ.kind == tyOwned: typ.skipTypes({tyOwned}) #The src parameter of `=` is never owned, for efficiency reasons
             else: typ
 
   result.typ = newProcType(info, typ.owner)
