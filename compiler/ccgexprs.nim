@@ -2332,6 +2332,12 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
       rec.r = "$1.Field$2" % [rdLoc(d), rope(i)]
       rec.flags.incl(lfEnforceDeref)
       expr(p, it, rec)
+      if p.module.config.selectedGC == gcDestructors and it.typ.kind == tyOwned:
+        #If an owned ref is assigned to a field of the tuple-temp created here, we
+        #nil out the original location (a temp variable).
+        #XXX: To be entirely correct (and a tad bit more performant), we should
+        #directly move to respective field of the tuple-temp.
+        putIntoDest(p, it.sym.loc, it, rope"0")
 
 proc isConstClosure(n: PNode): bool {.inline.} =
   result = n.sons[0].kind == nkSym and isRoutine(n.sons[0].sym) and
