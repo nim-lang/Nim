@@ -112,7 +112,7 @@ type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
   Row* = seq[string]  ## A row of a dataset. `NULL` database values will be
                       ## converted to an empty string.
-  InstantRow* = Pstmt ## A handle that can be used to get a row's column
+  InstantRow* = PStmt ## A handle that can be used to get a row's column
                       ## text on demand.
 
 proc dbError*(db: DbConn) {.noreturn.} =
@@ -169,7 +169,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
   ##    db.close()
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
-  var stmt: sqlite3.Pstmt
+  var stmt: sqlite3.PStmt
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
     let x = step(stmt)
     if x in {SQLITE_DONE, SQLITE_ROW}:
@@ -198,12 +198,12 @@ proc newRow(L: int): Row =
   for i in 0..L-1: result[i] = ""
 
 proc setupQuery(db: DbConn, query: SqlQuery,
-                args: varargs[string]): Pstmt =
+                args: varargs[string]): PStmt =
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
-proc setRow(stmt: Pstmt, r: var Row, cols: cint) =
+proc setRow(stmt: PStmt, r: var Row, cols: cint) =
   for col in 0'i32..cols-1:
     setLen(r[col], column_bytes(stmt, col)) # set capacity
     setLen(r[col], 0)
@@ -514,7 +514,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   ##    db.close()
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
-  var stmt: sqlite3.Pstmt
+  var stmt: sqlite3.PStmt
   result = -1
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
     if step(stmt) == SQLITE_DONE:
