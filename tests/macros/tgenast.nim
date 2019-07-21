@@ -153,3 +153,16 @@ block:
       let bar = "Hello, World"
       &"Let's interpolate {bar} in the string"
   doAssert foo() == "Let's interpolate Hello, World in the string"
+
+
+block: # nested application of genAst
+  macro createMacro(name, obj, field: untyped): untyped =
+    result = genAst({}, obj = newDotExpr(obj, field), lit = newLit(10), name, field):
+      # can't reuse `result` here, would clash
+      macro name(arg: untyped): untyped =
+        genAst({}, arg2=arg): # somehow `arg2` rename is needed
+          (obj, astToStr(field), lit, arg2)
+
+  var x = @[1, 2, 3]
+  createMacro foo, x, len
+  doAssert (foo 20) == (3, "len", 10, 20)
