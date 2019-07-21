@@ -408,6 +408,7 @@ type
     maxWidth*: cstring
     minHeight*: cstring
     minWidth*: cstring
+    opacity*: cstring
     overflow*: cstring
     padding*: cstring
     paddingBottom*: cstring
@@ -416,6 +417,7 @@ type
     paddingTop*: cstring
     pageBreakAfter*: cstring
     pageBreakBefore*: cstring
+    opacity*: cstring
     pointerEvents*: cstring
     position*: cstring
     right*: cstring
