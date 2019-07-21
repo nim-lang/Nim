@@ -121,7 +121,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##   # Put here the normal code
 
 when defined(nimHasRunnableExamples):
-  proc runnableExamples*(topLevel = true, body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
@@ -131,30 +131,22 @@ when defined(nimHasRunnableExamples):
     ##   generation each runnableExample is put in its own file ``$file_examples$i.nim``,
     ##   compiled and tested. The collected examples are
     ##   put into their own module to ensure the examples do not refer to
-    ##   non-exported symbols. By default `body` is at module scope, but `topLevel=false`
-    ##   will put it inside a `block:`.
+    ##   non-exported symbols.
     ##
     ## Usage:
     ##
     ## .. code-block:: Nim
-    ##   proc double(x: int): int =
+    ##   proc double*(x: int): int =
     ##     ## This proc doubles a number.
     ##     runnableExamples:
+    ##       ## at module scope
     ##       assert double(5) == 10
-    ##       assert double(21) == 42
-    ##
+    ##       block: ## at block scope
+    ##         defer: echo "done"
+    ##   
     ##     result = 2 * x
-    ##
-    ##   proc fun2*(): auto =
-    ##     runnableExamples(topLevel=false):
-    ##       defer: echo "done" # cannot be at module scope
-    ##
-    ##     discard
-    ##
 else:
   template runnableExamples*(body: untyped) =
-    discard
-  template runnableExamples*(topLevel: bool, body: untyped) =
     discard
 
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}

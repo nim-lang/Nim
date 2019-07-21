@@ -415,12 +415,6 @@ proc runAllExamples(d: PDoc) =
     rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
     removeFile(outp.changeFileExt(ExeExt))
 
-proc extractImports(n: PNode; result: PNode) =
-  if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
-    result.add copyTree(n)
-    n.kind = nkEmpty
-    return
-  for i in 0..<n.safeLen: extractImports(n[i], result)
 
 proc prepareExamples(d: PDoc; n: PNode) =
   var docComment = newTree(nkCommentStmt)
@@ -430,26 +424,20 @@ proc prepareExamples(d: PDoc; n: PNode) =
       docComment,
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
-
-  var topLevel = true
-  if n.len > 2:
-    let arg = n[1]
-    doAssert arg.kind == nkExprEqExpr
-    doAssert arg[0].ident.s == "topLevel"
-    let val = $arg[1]
-    case val
-    of "true": topLevel  = true
-    of "false": topLevel  = false
-    else: doAssert(false, val)
-  if topLevel:
-    for a in n.lastSon: runnableExamples.add a
-  else:
+  for a in n.lastSon: runnableExamples.add a
+  testExample(d, runnableExamples)
+  when false:
+    proc extractImports(n: PNode; result: PNode) =
+      if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+        result.add copyTree(n)
+        n.kind = nkEmpty
+        return
+      for i in 0..<n.safeLen: extractImports(n[i], result)
     let imports = newTree(nkStmtList)
     var savedLastSon = copyTree n.lastSon
     extractImports(savedLastSon, imports)
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
-  testExample(d, runnableExamples)
 
 proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
   if n.info.fileIndex != orig.info.fileIndex: return

@@ -5,7 +5,6 @@ nimout: '''
 foo1
 foo2
 foo3
-foo4
 foo5
 foo6
 foo7
@@ -16,11 +15,11 @@ joinable: false
 """
 
 proc fun*() =
-  runnableExamples(topLevel=false):
-    # `defer` only allowed inside a block
-    defer: echo "foo1"
+  runnableExamples:
+    block: # `defer` only allowed inside a block
+      defer: echo "foo1"
 
-  runnableExamples(topLevel=true):
+  runnableExamples:
     # `fun*` only allowed at top level
     proc fun*()=echo "foo2"
     fun()
@@ -28,11 +27,6 @@ proc fun*() =
       defer: echo "foo3"
 
   runnableExamples:
-    # implicitly uses topLevel=true
-    proc fun*()=echo "foo4"
-    fun()
-
-  runnableExamples():
     # ditto
     proc fun*()=echo "foo5"
     fun()
@@ -54,12 +48,13 @@ proc fun*() =
     echo "foo7"
 
 # also check for runnableExamples at module scope
-runnableExamples(topLevel=false):
-  defer: echo "foo8"
+runnableExamples:
+  block:
+    defer: echo "foo8"
 
 runnableExamples:
   proc fun*()=echo "foo9"
   fun()
 
-# note: there are yet other examples where `topLevel=true` is needed,
-# for example when using an `include` before an `import`, etc.
+# note: there are yet other examples where putting runnableExamples at module
+# scope is needed, for example when using an `include` before an `import`, etc.
