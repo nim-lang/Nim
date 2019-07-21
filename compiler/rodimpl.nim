@@ -225,18 +225,13 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     add(result, '\15')
     encodeVInt(t.destructor.id, result)
     pushSym(w, t.destructor)
-  if t.deepCopy != nil:
+  for a in t.attachedOps:
     add(result, '\16')
-    encodeVInt(t.deepcopy.id, result)
-    pushSym(w, t.deepcopy)
-  if t.assignment != nil:
-    add(result, '\17')
-    encodeVInt(t.assignment.id, result)
-    pushSym(w, t.assignment)
-  if t.sink != nil:
-    add(result, '\18')
-    encodeVInt(t.sink.id, result)
-    pushSym(w, t.sink)
+    if a == nil:
+      encodeVInt(-1, result)
+    else:
+      encodeVInt(a.id, result)
+      pushSym(w, a)
   for i, s in items(t.methods):
     add(result, '\19')
     encodeVInt(i, result)
@@ -427,8 +422,10 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
       stillForwarded.add s
   swap w.forwardedSyms, stillForwarded
   transitiveClosure(g)
+  var nimid = 0
   for x in items(g.config.m.fileInfos):
     storeFilename(g, x.fullPath, FileIndex(nimid))
+    inc nimid
 
 # ---------------- decoder -----------------------------------
 
@@ -636,18 +633,13 @@ proc loadType(g; id: int; info: TLineInfo): PType =
   else:
     result.lockLevel = UnspecifiedLockLevel
 
-  if b.s[b.pos] == '\15':
-    inc(b.pos)
-    result.destructor = loadSym(g, decodeVInt(b.s, b.pos), info)
-  if b.s[b.pos] == '\16':
-    inc(b.pos)
-    result.deepCopy = loadSym(g, decodeVInt(b.s, b.pos), info)
-  if b.s[b.pos] == '\17':
-    inc(b.pos)
-    result.assignment = loadSym(g, decodeVInt(b.s, b.pos), info)
-  if b.s[b.pos] == '\18':
-    inc(b.pos)
-    result.sink = loadSym(g, decodeVInt(b.s, b.pos), info)
+  for a in low(result.attachedOps)..high(result.attachedOps):
+    if b.s[b.pos] == '\16':
+      inc(b.pos)
+      let id = decodeVInt(b.s, b.pos)
+      if id >= 0:
+        result.attachedOps[a] = loadSym(g, id, info)
+
   while b.s[b.pos] == '\19':
     inc(b.pos)
     let x = decodeVInt(b.s, b.pos)
@@ -842,7 +834,7 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       of "error": localError(g.config, n.info, errUser, n[1].strVal)
       of "compile":
         internalAssert g.config, n.len == 3 and n[2].kind == nkStrLit
-        let cname = AbsoluteFile n[1].strVal,
+        let cname = AbsoluteFile n[1].strVal
         var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
                        obj: AbsoluteFile n[2].strVal,
                        flags: {CfileFlag.External})
