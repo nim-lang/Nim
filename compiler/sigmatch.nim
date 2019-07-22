@@ -2286,7 +2286,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         # better match over other routines with no such restriction:
         inc(m.genericMatches, 100)
       else:
-        noMatch()
+        m.state = csNoMatch
         return
 
     if formal.typ.kind == tyVar:
@@ -2355,7 +2355,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         # bug #3836 of why that is not sound (other overload with
         # different parameter names could match later on):
         when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
-        noMatch()
+        m.state = csNoMatch
         return
       m.baseTypeMatch = false
       m.typedescMatched = false
@@ -2405,7 +2405,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             incrIndexType(container.typ)
             checkConstraint(n.sons[a])
           else:
-            noMatch()
+            m.state = csNoMatch
             return
         else:
           m.state = csNoMatch
@@ -2413,13 +2413,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       else:
         if m.callee.n.sons[f].kind != nkSym:
           internalError(c.config, n.sons[a].info, "matches")
-          noMatch()
           return
         formal = m.callee.n.sons[f].sym
         if containsOrIncl(marker, formal.position) and container.isNil:
           # already in namedParams: (see above remark)
           when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
-          noMatch()
+          m.state = csNoMatch
           return
 
         if formal.typ.isVarargsUntyped:
@@ -2466,13 +2465,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             # this assertion can be off
             localError(c.config, n.sons[a].info, "cannot convert $1 to $2" % [
               typeToString(n.sons[a].typ), typeToString(formal.typ) ])
-            noMatch()
+            m.state = csNoMatch
             return
         checkConstraint(n.sons[a])
     inc(a)
-  # for some edge cases (see tdont_return_unowned_from_owned test case)
-  m.firstMismatch.arg = a
-  m.firstMismatch.formal = formal
 
 proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every
