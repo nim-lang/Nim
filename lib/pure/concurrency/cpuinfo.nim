@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements procs to determine the number of CPUs / cores.
+## This module implements procs to query information about the CPU.
 
 include "system/inclrtl"
 
@@ -101,3 +101,22 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0
+
+when defined(x86):
+  proc cpuidX86(leaf: int32): tuple[eax, ebx, ecx, edx: int32] =
+    when defined(vcc):
+      # limited inline asm support in vcc, so intrinsics, here we go:
+      proc cpuidVcc(cpuInfo: ptr int32, functionID: int32)
+        {.cdecl, importc: "__cpuid", header: "intrin.h".}
+      var x: array[4, int32]
+      cpuidVcc(addr x[0], leaf)
+      (x[0], x[1], x[2], x[3])
+    else:
+      var (eaxr, ebxr, ecxr, edxr) = (0'i32, 0'i32, 0'i32, 0'i32)
+      # zero ecx register first!
+      asm """
+        xor %ecx, %ecx
+        cpuid
+        :"=a"(`eaxr`), "=b"(`ebxr`), "=c"(`ecxr`), "=d"(`edxr`)
+        :"a"(`leaf`) """
+      (eaxr, ebxr, ecxr, edxr)
