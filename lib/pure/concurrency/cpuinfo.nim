@@ -141,7 +141,7 @@ when onX86 or defined(nimdoc):
       Sgx, Gfni, Aes, Vaes, Vpclmulqdq, Pclmulqdq, NxBit, Float16c, Ssbd,
       SpecCtrl, Stibp, Sha, Clflush, ClflushOpt, Clwriteback, PrefetchWT1, Mpx
 
-when onARM or defined(nimdoc):
+when onArm or defined(nimdoc):
   type
     ArmFeature* {.pure.} = enum
       Neon, Vfp
@@ -225,11 +225,11 @@ proc checkCpuFeatures*(features: set[CpuFeature]): set[CpuFeature] =
       of Vpclmulqdq:
         leaf7.ecx.checkoff(10)
       of Avx512vnni:
-        leaf7.ecx.checkoff(10)
+        leaf7.ecx.checkoff(11)
       of Avx512bitalg:
-        leaf7.ecx.checkoff(10)
+        leaf7.ecx.checkoff(12)
       of Avx512vpopcntdq:
-        leaf7.ecx.checkoff(10)
+        leaf7.ecx.checkoff(14)
 
       # leaf 7, ebx
       of Sgx:
