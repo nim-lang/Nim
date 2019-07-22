@@ -417,7 +417,6 @@ type
     paddingTop*: cstring
     pageBreakAfter*: cstring
     pageBreakBefore*: cstring
-    opacity*: cstring
     pointerEvents*: cstring
     position*: cstring
     right*: cstring
