@@ -8,75 +8,73 @@ const
 
 const
   CurDir* =
+    when defined(macos): ':'
+    elif defined(genode): '/'
+    else: '.'
     ## The constant character used by the operating system to refer to the
     ## current directory.
     ##
     ## For example: `'.'` for POSIX or `':'` for the classic Macintosh.
-    when defined(macos): ':'
-    elif defined(genode): '/'
-    else: '.'
 
   ParDir* =
+    when defined(macos): "::"
+    else: ".."
     ## The constant string used by the operating system to refer to the
     ## parent directory.
     ##
     ## For example: `".."` for POSIX or `"::"` for the classic Macintosh.
-    when defined(macos): "::"
-    else: ".."
 
   DirSep* =
-    ## The character used by the operating system to separate pathname
-    ## components, for example: `'/'` for POSIX, `':'` for the classic
-    ## Macintosh, and `'\\'` on Windows.
     when defined(macos): ':'
     elif doslikeFileSystem or defined(vxworks): '\\'
     elif defined(RISCOS): '.'
     else: '/'
+    ## The character used by the operating system to separate pathname
+    ## components, for example: `'/'` for POSIX, `':'` for the classic
+    ## Macintosh, and `'\\'` on Windows.
 
   AltSep* =
+    when doslikeFileSystem: '/'
+    elif defined(macosx) or defined(haiku): ':'
+    else: DirSep
     ## An alternative character used by the operating system to separate
     ## pathname components, or the same as `DirSep <#DirSep>`_ if only one separator
     ## character exists. This is set to `'/'` on Windows systems
     ## where `DirSep <#DirSep>`_ is a backslash (`'\\'`).
-    when doslikeFileSystem: '/'
-    elif defined(macosx) or defined(haiku): ':'
-    else: DirSep
 
   PathSep* =
-    ## The character conventionally used by the operating system to separate
-    ## search patch components (as in PATH), such as `':'` for POSIX
-    ## or `';'` for Windows.
     when defined(macos) or defined(RISCOS): ','
     elif doslikeFileSystem or defined(vxworks): ';'
     elif defined(PalmOS) or defined(MorphOS): ':' # platform has ':' but osseps has ';'
     else: ':'
+    ## The character conventionally used by the operating system to separate
+    ## search patch components (as in PATH), such as `':'` for POSIX
+    ## or `';'` for Windows.
 
-  FileSystemCaseSensitive* = true
-    ## True if the file system is case sensitive, false otherwise. Used by
-    ## `cmpPaths proc <#cmpPaths,string,string>`_ to compare filenames properly.
+  FileSystemCaseSensitive* =
     when defined(macos) or doslikeFileSystem or defined(vxworks) or
          defined(PalmOS) or defined(MorphOS): false
     else: true
+    ## True if the file system is case sensitive, false otherwise. Used by
+    ## `cmpPaths proc <#cmpPaths,string,string>`_ to compare filenames properly.
 
-  ExeExt* = ""
-    ## The file extension of native executables. For example:
-    ## `""` for POSIX, `"exe"` on Windows (without a dot).
+  ExeExt* =
     when doslikeFileSystem: "exe"
     elif defined(atari): "tpp"
     elif defined(netware): "nlm"
     elif defined(vxworks): "vxe"
     elif defined(nintendoswitch): "elf"
     else: ""
+    ## The file extension of native executables. For example:
+    ## `""` for POSIX, `"exe"` on Windows (without a dot).
 
-  ScriptExt* = ""
-    ## The file extension of a script file. For example: `""` for POSIX,
-    ## `"bat"` on Windows.
+  ScriptExt* =
     when doslikeFileSystem: "bat"
     else: ""
+    ## The file extension of a script file. For example: `""` for POSIX,
+    ## `"bat"` on Windows.
 
-  DynlibFormat* = "lib$1.so"
-    ## The format string to turn a filename into a `DLL`:idx: file (also
-    ## called `shared object`:idx: on some operating systems).
+  DynlibFormat* =
     when defined(macos): "$1Lib"
     elif defined(macosx): "$1.dylib"
     elif doslikeFileSystem or defined(atari): "$1.dll"
@@ -86,6 +84,8 @@ const
     elif defined(netware): "$1.nlm"
     elif defined(amiga): "$1.Library"
     else: "lib$1.so"
+    ## The format string to turn a filename into a `DLL`:idx: file (also
+    ## called `shared object`:idx: on some operating systems).
 
   ExtSep* = '.'
     ## The character which separates the base filename from the extension;
