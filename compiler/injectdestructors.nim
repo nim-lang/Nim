@@ -151,10 +151,10 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = ["main", "add"]
+const toDebug = [""]
 
 template dbg(body) =
-  when toDebug.len > 0:
+  when toDebug[0].len > 0:
     if toDebug.contains c.owner.name.s:
       body
 
@@ -412,7 +412,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   let tmp = getTemp(c, n.typ, n.info)
   # # XXX This is only required if we are in a loop. Since we move temporaries
   # # out of loops we need to mark it as 'wasMoved'.
-  # result.add genWasMoved(tmp, c)
+  c.destroys.add genDestroy(c, tmp.typ, tmp)
   if hasDestructor(n.typ):
     var m = genCopy(c, n.typ, tmp, n)
     m.add p(n, c)
@@ -444,6 +444,15 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(n[i]): return true
   else: discard
 
+proc genMovableTemp(c: var Con, ri: PNode): PNode =
+  result = newNodeI(nkStmtList, ri.info)
+  let tmp = getTemp(c, ri.typ, ri.info)
+  var copy = genCopyNoCheck(c, tmp.typ, tmp, ri)
+  copy.add ri
+  result.add tmp
+  result.add copy
+  c.destroys.add genDestroy(c, tmp.typ, tmp)
+
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   template pArgIfTyped(argPart: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
@@ -468,6 +477,9 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkCharLit..nkTripleStrLit}:
       # object construction to sink parameter: nothing to do
       result = arg
+    #elif arg.kind == nkNilLit:
+    #  result = genMovableTemp(c, arg) #This uses genCopyNoCheck since we allow passing nil to owned ref parameters
+    #  result.add result[0]
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # rule (move-optimization)
       # reset the memory to disable the destructor which we have not elided
@@ -513,33 +525,9 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
         result.add branch
     else:
       # rule (copy-to-sink)
-      result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
-      let tmp = getTemp(c, arg.typ, arg.info)
-      # XXX This is only required if we are in a loop. Since we move temporaries
-      # out of loops we need to mark it as 'wasMoved'.
-      c.destroys.add genDestroy(c, tmp.typ, tmp)
-      if hasDestructor(arg.typ):
-        var m = genCopy(c, arg.typ, tmp, arg)
-        m.add p(arg, c)
-        result.add m
-        if isLValue(arg):
-          message(c.graph.config, arg.info, hintPerformance,
-            ("passing '$1' to a sink parameter introduces an implicit copy; " &
-            "use 'move($1)' to prevent it") % $arg)
-      else:
-        result.add newTree(nkAsgn, tmp, p(arg, c))
-      result.add tmp
+      result = passCopyToSink(arg, c)
   else:
     result = p(arg, c)
-
-proc moveUsingTemp(c: var Con; dest, ri: PNode): PNode =
-  result = newNodeI(nkStmtList, ri.info)
-  let tmp = getTemp(c, ri.typ, ri.info)
-  var copy = genCopyNoCheck(c, tmp.typ, tmp, ri)
-  copy.add ri
-  result.add tmp
-  result.add copy
-  result.add genMove(c, dest.typ, dest, tmp, tmp)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   # unfortunately, this needs to be kept consistent with the cases
@@ -564,7 +552,12 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2.add pArg(ri[i], c, i < L and isSinkTypeForParam(parameters[i]))
     #recurse(ri, ri2)
     # generate movable temporary (this is actually unneccessary on the C backend, see ccgcalls:67)
-    result = moveUsingTemp(c, dest, ri2)
+    # Don't do this for strings, since they use different semantics..
+    if ri.typ.kind == tyString:
+      result = genMove(c, dest.typ, dest, ri2, ri2)
+    else:
+      result = genMovableTemp(c, ri2)
+      result.add genMove(c, dest.typ, dest, result[0], result[0])
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
       # unpacking of tuple: move out the elements
@@ -643,7 +636,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkNilLit:
     # rule (move-optimization)
     # generate movable temporary
-    result = moveUsingTemp(c, dest, ri)
+    result = genMovableTemp(c, ri)
+    result.add genMove(c, dest.typ, dest, result[0], result[0])
   of nkSym:
     if isSinkParam(ri.sym):
       # rule (move-optimization)
@@ -765,6 +759,7 @@ proc p(n: PNode; c: var Con): PNode =
       n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
     if n.typ != nil and hasDestructor(n.typ):
       # var tmp; `=move`(tmp, f()); tmp
+      #XXX: Rework/Reassess the below, atm almost the same as genMovableTemp
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let tmp = getTemp(c, n.typ, n.info)
       var moveExpr = genMove(c, n.typ, tmp, n, n)
