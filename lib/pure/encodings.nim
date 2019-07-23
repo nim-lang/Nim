@@ -324,32 +324,33 @@ proc close*(c: EncodingConverter) =
     iconvClose(c)
 
 when defined(windows):
-  proc convert*(c: EncodingConverter, s: string): string =
-    ## converts `s` to `destEncoding` that was given to the converter `c`. It
-    ## assumed that `s` is in `srcEncoding`.
-
+  proc convertToWideString(codePage: CodePage, s: string): string =
     # special case: empty string: needed because MultiByteToWideChar
-    # return 0 in case of error:
+    # return 0 in case of error
     if s.len == 0: return ""
+
     # educated guess of capacity:
     var cap = s.len + s.len shr 2
     result = newString(cap*2)
     # convert to utf-16 LE
-    var m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
+    var m = multiByteToWideChar(codePage,
+                                dwFlags = 0'i32,
                                 lpMultiByteStr = cstring(s),
                                 cbMultiByte = cint(s.len),
                                 lpWideCharStr = cstring(result),
                                 cchWideChar = cint(cap))
     if m == 0:
       # try again; ask for capacity:
-      cap = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
+      cap = multiByteToWideChar(codePage,
+                                dwFlags = 0'i32,
                                 lpMultiByteStr = cstring(s),
                                 cbMultiByte = cint(s.len),
                                 lpWideCharStr = nil,
                                 cchWideChar = cint(0))
       # and do the conversion properly:
       result = newString(cap*2)
-      m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
+      m = multiByteToWideChar(codePage,
+                              dwFlags = 0'i32,
                               lpMultiByteStr = cstring(s),
                               cbMultiByte = cint(s.len),
                               lpWideCharStr = cstring(result),
@@ -361,45 +362,60 @@ when defined(windows):
     else:
       assert(false) # cannot happen
 
-    # if already utf-16 LE, no further need to do something:
-    if int(c.dest) == 1200: return
-    # otherwise the fun starts again:
-    cap = s.len + s.len shr 2
-    var res = newString(cap)
-    m = wideCharToMultiByte(
-      codePage = c.dest,
-      dwFlags = 0'i32,
-      lpWideCharStr = cstring(result),
-      cchWideChar = cint(result.len div 2),
-      lpMultiByteStr = cstring(res),
-      cbMultiByte = cap.cint)
+  proc convertFromWideString(codePage: CodePage, s: string): string =
+    let charCount = s.len div 2
+    var cap = s.len + s.len shr 2
+    result = newString(cap)
+    var m = wideCharToMultiByte(codePage,
+                                dwFlags = 0'i32,
+                                lpWideCharStr = cstring(s),
+                                cchWideChar = cint(charCount),
+                                lpMultiByteStr = cstring(result),
+                                cbMultiByte = cap.cint)
     if m == 0:
       # try again; ask for capacity:
-      cap = wideCharToMultiByte(
-        codePage = c.dest,
-        dwFlags = 0'i32,
-        lpWideCharStr = cstring(result),
-        cchWideChar = cint(result.len div 2),
-        lpMultiByteStr = nil,
-        cbMultiByte = cint(0))
+      cap = wideCharToMultiByte(codePage,
+                                dwFlags = 0'i32,
+                                lpWideCharStr = cstring(s),
+                                cchWideChar = cint(charCount),
+                                lpMultiByteStr = nil,
+                                cbMultiByte = cint(0))
       # and do the conversion properly:
-      res = newString(cap)
-      m = wideCharToMultiByte(
-        codePage = c.dest,
-        dwFlags = 0'i32,
-        lpWideCharStr = cstring(result),
-        cchWideChar = cint(result.len div 2),
-        lpMultiByteStr = cstring(res),
-        cbMultiByte = cap.cint)
+      result = newString(cap)
+      m = wideCharToMultiByte(codePage,
+                              dwFlags = 0'i32,
+                              lpWideCharStr = cstring(s),
+                              cchWideChar = cint(charCount),
+                              lpMultiByteStr = cstring(result),
+                              cbMultiByte = cap.cint)
       if m == 0: raiseOSError(osLastError())
-      setLen(res, m)
-      result = res
+      setLen(result, m)
     elif m <= cap:
-      setLen(res, m)
-      result = res
+      setLen(result, m)
     else:
       assert(false) # cannot happen
 
+  proc convertWin(codePageFrom: CodePage, codePageTo: CodePage, s: string): string =
+    # multiByteToWideChar does not support encoding from code pages below
+    let unsupported = [1201, 12000, 12001]
+
+    if int(codePageFrom) in unsupported:
+      let message = "encoding from " & codePageToName(codePageFrom) & " is not supported on windows"
+      raise newException(EncodingError, message)
+
+    if int(codePageTo) in unsupported:
+      let message = "encoding to " & codePageToName(codePageTo) & " is not supported on windows"
+      raise newException(EncodingError, message)
+
+    # in case it's already UTF-16 little endian - conversion can be simplified
+    let wideString = if int(codePageFrom) == 1200: s else: convertToWideString(codePageFrom, s)
+    return if int(codePageTo) == 1200: wideString else: convertFromWideString(codePageTo, wideString)
+
+  proc convert*(c: EncodingConverter, s: string): string =
+    ## converts `s` to `destEncoding` that was given to the converter `c`. It
+    ## assumed that `s` is in `srcEncoding`.
+    ## utf-16BE, utf-32 conversions not supported on windows
+    result = convertWin(c.src, c.dest, s)
 else:
   proc convert*(c: EncodingConverter, s: string): string =
     result = newString(s.len)
@@ -445,6 +461,7 @@ proc convert*(s: string, destEncoding = "UTF-8",
   ## converts `s` to `destEncoding`. It assumed that `s` is in `srcEncoding`.
   ## This opens a converter, uses it and closes it again and is thus more
   ## convienent but also likely less efficient than re-using a converter.
+  ## utf-16BE, utf-32 conversions not supported on windows
   var c = open(destEncoding, srcEncoding)
   try:
     result = convert(c, s)
@@ -461,3 +478,55 @@ when not defined(testing) and isMainModule:
   echo "Forced ibm850 encoding: ", ibm850
   echo "Current encoding: ", current
   echo "From ibm850 to current: ", convert(ibm850, current, "ibm850")
+
+when not defined(testing) and isMainModule and defined(windows):
+  block should_throw_on_unsupported_conversions:
+    let original = "some string"
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-8", "utf-32")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-8", "unicodeFFFE")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-8", "utf-32BE")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "unicodeFFFE", "utf-8")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-32", "utf-8")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-32BE", "utf-8")
+
+  block should_convert_from_utf16_to_utf8:
+    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
+    let result = convert(original, "utf-8", "utf-16")
+    doAssert(result == "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82")
+
+  block should_convert_from_utf16_to_win1251:
+    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
+    let result = convert(original, "windows-1251", "utf-16")
+    doAssert(result == "\xf2\xe5\xf1\xf2")
+  
+  block should_convert_from_win1251_to_koi8r:
+    let original = "\xf2\xe5\xf1\xf2" # win1251 test string "тест"
+    let result = convert(original, "koi8-r", "windows-1251")
+    doAssert(result == "\xd4\xc5\xd3\xd4")
+
+  block should_convert_from_koi8r_to_win1251:
+    let original = "\xd4\xc5\xd3\xd4" # koi8r test string "тест"
+    let result = convert(original, "windows-1251", "koi8-r")
+    doAssert(result == "\xf2\xe5\xf1\xf2")
+
+  block should_convert_from_utf8_to_win1251:
+    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
+    let result = convert(original, "windows-1251", "utf-8")
+    doAssert(result == "\xf2\xe5\xf1\xf2")
+
+  block should_convert_from_utf8_to_utf16:
+    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
+    let result = convert(original, "utf-16", "utf-8")
+    doAssert(result == "\x42\x04\x35\x04\x41\x04\x42\x04")
