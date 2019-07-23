@@ -15,7 +15,7 @@ discard """
 1 1 5
 1 2 6
 1 3 7
-after 6 6'''
+after 10 6'''
 joinable: false
 """
 
@@ -42,15 +42,11 @@ proc `=destroy`*[T](x: var myseq[T]) =
 
 proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
   if a.data == b.data: return
-  if a.data != nil:
-    `=destroy`(a)
-    #dealloc(a.data)
-    #inc deallocCount
-    #a.data = nil
+  `=destroy`(a)
   a.len = b.len
   a.cap = b.cap
   if b.data != nil:
-    a.data = cast[type(a.data)](alloc(a.cap * sizeof(T)))
+    a.data = cast[type(a.data)](alloc0(a.cap * sizeof(T)))
     inc allocCount
     when supportsCopyMem(T):
       copyMem(a.data, b.data, a.cap * sizeof(T))
@@ -59,12 +55,14 @@ proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
         a.data[i] = b.data[i]
 
 proc `=move`*[T](a, b: var myseq[T]) =
-  if a.data != nil and a.data != b.data:
-    dealloc(a.data)
-    inc deallocCount
+  if a.data == b.data: return
+  `=destroy`(a)
   a.len = b.len
   a.cap = b.cap
   a.data = b.data
+  b.data = nil
+  b.len = 0
+  b.cap = 0
 
 proc resize[T](s: var myseq[T]) =
   if s.cap == 0: s.cap = 8
@@ -118,8 +116,8 @@ template `[]=`*[T](x: myseq[T]; i: Natural; y: T) =
 proc createSeq*[T](elems: varargs[T]): myseq[T] =
   result.cap = elems.len
   result.len = elems.len
-  result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
-  inc allocCount
+  result.data = cast[type(result.data)](alloc0(result.cap * sizeof(T)))
+  inc allocCount #This increases the allocCount from 6 to 10
   when supportsCopyMem(T):
     copyMem(result.data, unsafeAddr(elems[0]), result.cap * sizeof(T))
   else:
