@@ -52,7 +52,7 @@ const
     ## or `';'` for Windows.
 
   FileSystemCaseSensitive* =
-    when defined(macos) or doslikeFileSystem or defined(vxworks) or
+    when defined(macos) or defined(macosx) or doslikeFileSystem or defined(vxworks) or
          defined(PalmOS) or defined(MorphOS): false
     else: true
     ## True if the file system is case sensitive, false otherwise. Used by
@@ -75,11 +75,11 @@ const
     ## `"bat"` on Windows.
 
   DynlibFormat* =
-    when defined(macos): "$1Lib"
-    elif defined(macosx): "$1.dylib"
+    when defined(macos): "$1.dylib" # platform has $1Lib
+    elif defined(macosx): "lib$1.dylib"
     elif doslikeFileSystem or defined(atari): "$1.dll"
     elif defined(MorphOS): "$1.prc"
-    elif defined(PalmOS): "lib$1.so" # platform has lib$1.so, but osseps has $1.prc
+    elif defined(PalmOS): "$1.prc" # platform has lib$1.so
     elif defined(genode): "$1.lib.so"
     elif defined(netware): "$1.nlm"
     elif defined(amiga): "$1.Library"
