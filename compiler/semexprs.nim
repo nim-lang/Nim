@@ -2125,8 +2125,33 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   n.typ = getSysType(c.graph, n.info, tyInt)
   result = foldSizeOf(c.config, n, n)
 
+proc semAlias(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
+  assert n.kind in {nkCall, nkCommand}
+  assert n.len == 3
+  let nodeAlias = n[1]
+  let nodeOrigin = n[2]
+  let sym = qualifiedLookUp(c, nodeOrigin, {checkUndeclared, checkModule})
+  if sym == nil:
+    globalError(c.config, n.info, errUser, "undeclared symbol:" & renderTree(nodeOrigin))
+  else:
+    let ident = considerQuotedIdent(c, nodeAlias)
+    let info = nodeAlias.info
+    let sc: PNode = symChoice(c, nodeOrigin, sym, scClosed)
+    case sc.kind
+    of nkSym:
+      let alias = newSym(skAlias, ident, sym, info, c.config.options)
+      addInterfaceDecl(c, alias)
+    of nkClosedSymChoice:
+      for nodei in sc:
+        let alias = newSym(skAlias, ident, nodei.sym, info, c.config.options)
+        addInterfaceOverloadableSymAt(c, c.currentScope, alias)
+    else:
+      assert false, $sc.kind
+    result = c.graph.emptyNode
+
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
+  # see also `magicsAfterOverloadResolution`
   result = n
   case s.magic # magics that need special treatment
   of mAddr:
@@ -2218,6 +2243,8 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = c.graph.emptyNode
   of mSizeOf: result =
     semSizeof(c, setMs(n, s))
+  of mAlias:
+    result = semAlias(c, n, s, flags)
   else:
     result = semDirectOp(c, n, flags)
 

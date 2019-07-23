@@ -81,15 +81,20 @@ iterator walkScopes*(scope: PScope): PScope =
     current = current.parent
 
 proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
-  if s == nil or s.kind != skAlias:
-    result = s
-  else:
-    result = s.owner
-    if conf.cmd == cmdPretty:
-      prettybase.replaceDeprecated(conf, n.info, s, result)
+  result = s
+  while true:
+    if result == nil: return result
+    elif result.kind == skAlias: result=result.owner
+    elif result.kind == skAliasDeprecated:
+      let old = result
+      result=result.owner
+      if conf.cmd == cmdPretty:
+        prettybase.replaceDeprecated(conf, n.info, old, result)
+      else:
+        message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
+                old.name.s & " is deprecated")
     else:
-      message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-              s.name.s & " is deprecated")
+      return result
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   result = strTableGet(c.currentScope.symbols, s)
@@ -213,11 +218,11 @@ proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   addInterfaceDeclAux(c, sym)
 
 proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
-  if fn.kind notin OverloadableSyms:
+  if skipAliasAux(fn).kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
   let check = strTableGet(scope.symbols, fn.name)
-  if check != nil and check.kind notin OverloadableSyms:
+  if check != nil and skipAliasAux(check).kind notin OverloadableSyms:
     wrongRedefinition(c, fn.info, fn.name.s, check.info)
   else:
     scope.addSym(fn)

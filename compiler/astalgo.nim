@@ -992,3 +992,10 @@ proc isAddrNode*(n: PNode): bool =
       if n[0].kind == nkSym and n[0].sym.magic == mAddr: true
       else: false
     else: false
+
+proc skipAliasAux*(s: PSym): PSym =
+  ## similar to `skipAlias` without extra error message processing
+  result = s
+  while true:
+    if result.kind in {skAlias, skAliasDeprecated}: result=result.owner
+    else: return result

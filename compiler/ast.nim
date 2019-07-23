@@ -571,7 +571,9 @@ type
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
-    skAlias               # an alias (needs to be resolved immediately)
+    skAlias,              # an alias (needs to be resolved immediately)
+    skAliasDeprecated,    # an skAlias for a deprecated symbol
+
   TSymKinds* = set[TSymKind]
 
 const
@@ -665,7 +667,8 @@ type
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf
+    mSymIsInstantiationOf,
+    mAlias,
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -977,8 +980,8 @@ const
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
     tyProc, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
-    skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
+    skIterator, skMacro, skTemplate, skConverter, skEnumField, skLet, skStub,
+    skAlias, skAliasDeprecated}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfPreventCg, nfLL,
