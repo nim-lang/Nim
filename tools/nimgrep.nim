@@ -342,7 +342,7 @@ else:
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:
-      pattern = r"\b (:?" & pattern & r") \b"
+      pattern = r"\b(:?" & pattern & r")\b"
     if {optIgnoreCase, optIgnoreStyle} * options != {}:
       reflags.incl reIgnoreCase
     let rep = re(pattern, reflags)
