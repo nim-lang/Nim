@@ -12,7 +12,7 @@ block:
     let x3 = newLit kfoo4
     let x3b = kfoo4
 
-    result = genAstOpt({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3, x3b):
+    result = genAstOpt({kDirtyTemplate}, s1=true, s2="asdf", x0, x1=x1, x2, x3, x3b):
       doAssert not declared(xignored)
       doAssert not declared(xignoredLocal)
       (s1, s2, s0, x0, x1, x2, x3, x3b)
@@ -94,7 +94,7 @@ block:
     let info = args.lineInfoObj
     let fun1 = bindSym"fun1"
     let fun2 = bindSym"fun2"
-    result = genAstOpt({kNoExposeLocalInjects}, info):
+    result = genAstOpt({kDirtyTemplate}, info):
       (fun1(info), fun2(info.line))
   doAssert bar() == ("bar1", "bar2")
 
@@ -125,7 +125,7 @@ block:
     result = genAst(x1, x2, x3, x4):
       # local x1 overrides remote x1
       when false:
-        # one advantage of using `kNoExposeLocalInjects` is that these would hold:
+        # one advantage of using `kDirtyTemplate` is that these would hold:
         doAssert not declared xLocal
         doAssert not compiles(echo xLocal)
         # however, even without it, we at least correctly generate CT error
@@ -135,7 +135,7 @@ block:
 
       proc foo1(): auto =
         # note that `funLocal` is captured implicitly, according to hygienic
-        # template rules; with `kNoExposeLocalInjects` it would not unless
+        # template rules; with `kDirtyTemplate` it would not unless
         # captured in `genAst` capture list explicitly
         (a0: xRemote, a1: x1, a2: x2, a3: x3, a4: x4, a5: funLocal())
 
@@ -152,8 +152,8 @@ block:
 block:
   # fix https://github.com/nim-lang/Nim/issues/8220
   macro foo(): untyped =
-    # kNoExposeLocalInjects needed here
-    result = genAstOpt({kNoExposeLocalInjects}):
+    # kDirtyTemplate needed here
+    result = genAstOpt({kDirtyTemplate}):
       let bar = "Hello, World"
       &"Let's interpolate {bar} in the string"
   doAssert foo() == "Let's interpolate Hello, World in the string"
