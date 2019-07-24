@@ -152,7 +152,7 @@ block:
 block:
   # fix https://github.com/nim-lang/Nim/issues/8220
   macro foo(): untyped =
-    # kDirtyTemplate needed here
+    # kDirtyTemplate needed here, see https://nim-lang.github.io/Nim/strformat.html#limitations
     result = genAstOpt({kDirtyTemplate}):
       let bar = "Hello, World"
       &"Let's interpolate {bar} in the string"
