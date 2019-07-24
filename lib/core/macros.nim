@@ -1381,12 +1381,11 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
 
 type GenAstOpt* = enum
   kDirtyTemplate,
-    # when unset, inject'd symbols (including implicit ones such as local procs
-    # in scope) are exposed implicitly;
-    # gensym'd symbols will generate a CT internal error: `environment misses:`
-    # when set, local symbols are not exposed unless captured explicitly in
-    # `genAst` argument list. The default is unset, to avoid surprising hijacking
-    # of local symbols by symbols in caller scope.
+    # When set, uses a dirty template in implementation of `genAst`. This
+    # is occasionally useful as workaround for issues such as #8220, see
+    # `strformat limitations <strformat.html#limitations>`_ for details.
+    # Default is unset, to avoid surprising hijacking of local symbols by
+    # symbols in caller scope.
   kNoAutoNewLit,
     # don't call call newLit automatically in `genAst` capture parameters
 
