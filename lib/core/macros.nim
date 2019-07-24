@@ -1390,7 +1390,7 @@ type GenAstOpt* = enum
   kNoAutoNewLit,
     # don't call call newLit automatically in `genAst` capture parameters
 
-macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): untyped =
+macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untyped =
   ## Accepts a list of captured `variables = value` and a block and returns the
   ## AST that represents it. Local `{.inject.}` symbols are captured (eg
   ## local procs) unless `kNoExposeLocalInjects in options`; additional variables
@@ -1404,7 +1404,7 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       proc localExposed(): auto = kfoo4 # implicitly captured
-      result = genAst({}, s1=true, s2="asdf", x0, x1):
+      result = genAst(s1=true, s2="asdf", x0, x1):
         # echo xignored # would give: Error: undeclared identifier
         # echo s0 # would give: Error: internal error: expr: var not init s0_237159
         (s1, s2, x0, x1, localExposed())
@@ -1415,7 +1415,7 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       let x3 = newLit kfoo4
-      result = genAst({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3):
+      result = genAstOpt({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3):
         ## only captures variables from `genAst` argument list
         ## uncaptured variables will be set from caller scope (Eg `s0`)
         ## `x2` is shortcut for the common `x2=x2`
@@ -1473,6 +1473,10 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
       newEmptyNode(),
       args[^1])
   result.add newCall(bindSym"getAst", call)
+
+template genAst*(args: varargs[untyped]): untyped =
+  ## convenience wrapper around `genAstOpt`
+  genAstOpt({}, args)
 
 when defined(nimVmEqIdent):
   proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
