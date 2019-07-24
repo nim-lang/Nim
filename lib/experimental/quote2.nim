@@ -15,16 +15,23 @@ proc newTreeWithLineinfo*(kind: NimNodeKind; lineinfo: LineInfo; children: varar
 
 # TODO restrict unquote to nimnode expressions (error message)
 
-const forwardLineinfo = true
+const forwardLineinfo = false
 
-proc newTreeExpr(stmtList, exprNode, unquoteIdent: NimNode): NimNode {.compileTime.} =
+
+proc lookupSymbol(symbolTable, name: NimNode): NimNode =
+  # Expects `symbolTable` to be a list of ExprEqExpr, to use it like a `Table`.
+  for x in symbolTable:
+    if eqIdent(x[0], name):
+      return x[1]
+
+proc newTreeExpr(stmtList, exprNode, symbolTable: NimNode): NimNode {.compileTime.} =
   # stmtList is a buffer to generate statements
   if exprNode.kind in nnkLiterals:
     result = newCall(bindSym"newLit", exprNode)
   elif exprNode.kind == nnkIdent:
-    result = newCall(bindSym"ident", newLit(exprNode.strVal))
-  elif exprNode.kind in nnkCallKinds and exprNode.len == 2 and exprNode[0].eqIdent unquoteIdent:
-    result = newCall(bindSym"expectNimNode", exprNode[1])
+    result = lookupSymbol(symbolTable, exprNode) or newCall(bindSym"ident", newLit(exprNode.strVal))
+  #elif exprNode.kind in nnkCallKinds and exprNode.len == 2 and exprNode[0].eqIdent unquoteIdent:
+  #  result = newCall(bindSym"expectNimNode", exprNode[1])
   elif exprNode.kind == nnkSym:
     error("for quoting the ast needs to be untyped", exprNode)
   elif exprNode.kind == nnkCommentStmt:
@@ -38,26 +45,42 @@ proc newTreeExpr(stmtList, exprNode, unquoteIdent: NimNode): NimNode {.compileTi
     else:
       result = newCall(bindSym"newTree", newLit(exprNode.kind))
     for child in exprNode:
-      result.add newTreeExpr(stmtList, child, unquoteIdent)
+      result.add newTreeExpr(stmtList, child, symbolTable)
 
-macro quoteAst*(ast: untyped): untyped =
-  ## Substitute for ``quote do`` but with ``uq`` for unquoting instead of backticks.
-  result = newNimNode(nnkStmtListExpr)
-  result.add result.newTreeExpr(ast, ident"uq")
+# macro quoteAst*(ast: untyped): untyped =
+#   ## Substitute for ``quote do`` but with ``uq`` for unquoting instead of backticks.
+#   result = newNimNode(nnkStmtListExpr)
+#   result.add result.newTreeExpr(ast, ident"uq")
 
-  echo "quoteAst:"
-  echo result.repr
+#   echo "quoteAst:"
+#   echo result.repr
 
-macro quoteAst*(unquoteIdent, ast: untyped): untyped =
-  unquoteIdent.expectKind nnkIdent
+macro quoteAst*(args: varargs[untyped]): untyped =
+
+  let symbolTable = newStmtList()
+
+  for i in 0 ..< args.len-1:
+    expectKind(args[i], {nnkIdent, nnkExprEqExpr})
+    if args[i].kind == nnkExprEqExpr:
+      symbolTable.add args[i]
+    else:
+      symbolTable.add nnkExprEqExpr.newTree(args[i], args[i])
+
   result = newStmtList()
-  result.add newTreeExpr(result, ast, unquoteIdent)
+  result.add newTreeExpr(result, args[^1], symbolTable)
+
+  #echo "quoteAst:"
+  #echo "input: ", args[^1].treeRepr
+  #echo result.repr
 
 proc foo(arg1: int, arg2: string): string =
   "xxx"
 
 macro foobar(arg: untyped): untyped =
   # simple generation of source code:
+
+  #echo "foobar: ", arg.lispRepr
+
   result = quoteAst:
     echo "Hello world!"
 
@@ -65,24 +88,24 @@ macro foobar(arg: untyped): untyped =
 
   # inject subtrees from local scope, like `` in quote do:
   let world = newLit("world")
-  result = quoteAst:
-    echo "Hello ", uq(world), "!"
+  result = quoteAst(world):
+    echo "Hello ", world, "!"
 
   echo result.treeRepr
 
   # inject subtree from expression:
-  result = quoteAst:
-    echo "Hello ", uq(newLit("world")), "!"
+  result = quoteAst(world = newLit("world")):
+    echo "Hello ", world, "!"
 
   echo result.treeRepr
 
   # custom name for unquote in case `uq` should collide with anything.
   let x = newLit(123)
-  result = quoteAst myUnquote:
-    echo "abc ", myUnquote(x), " ", myUnquote(newLit("xyz")), " ", myUnquote(arg)
+  result = quoteAst(x, xyz = newLit("xyz"), arg):
+    echo "abc ", x, " ", xyz, " ", arg
 
-  #result = quoteAst:
-  #  echo uq(bindSym"foo")(123, "abc")
+  result = quoteAst(foo = bindSym"foo"):
+    echo foo(123, "abc")
 
   echo result.treeRepr
 
@@ -91,23 +114,32 @@ macro foobar(arg: untyped): untyped =
   #   for x in 0 ..< 100:
   #     tmp *= 3
 
+  echo "result: ", result.lispRepr
+
 let myVal = "Hallo Welt!"
 foobar(myVal)
 
 # example from #10326
 
+
+proc skipNodes(arg: NimNode, kinds: set[NimNodeKind]): NimNode =
+  result = arg
+  while result.kind in kinds:
+    result = result[0]
+
 template id*(val: int) {.pragma.}
 macro m1(): untyped =
    let x = newLit(10)
    let r1 = quote do:
-      type T1 {.id(`x`).} = object
+     type T1 {.id(`x`).} = object
 
-   let r2 = quoteAst:
-     type T1 {.id(uq(x)).} = object
+   let r2 = quoteAst(x):
+     type T1 {.id(x).} = object
 
    echo "from #10326:"
-   echo r1[0][0].treeRepr
-   echo r2[0][0].treeRepr
+   let n1 = r1.skipNodes({nnkStmtList, nnkTypeSection, nnkTypeDef})[1][0][1]
+   let n2 = r2.skipNodes({nnkStmtList, nnkTypeSection, nnkTypeDef})[1][0][1]
+   doAssert n1.lispRepr == n2.lispRepr
 
 m1()
 
@@ -129,54 +161,45 @@ macro works(b: static[int]): untyped =
   result = newStmtList()
 
 macro foo(): untyped =
-
   var b = newLit(false)
+  result = newStmtList()
 
   ## Fails
-  result = quote do:
-    fails(`b`)
+  let tmp1 = quoteAst(b):
+    fails(b)
+  result.add tmp1
 
   ## Works
-  # result = quote do:
-  #   works(`b`)
+  let tmp2 = quoteAst(b = newLit(123)):
+    works(b)
+  result.add tmp2
+
+  echo "foo 7375 "
+  echo result.treeRepr
 
 foo()
 
 
-# example from #9745  (does not work yet)
+# example from #9745
 # import macros
 
-# var
-#   typ {.compiletime.} = newLit("struct ABC")
-#   name {.compiletime.} = ident("ABC")
+var
+  typ {.compiletime.} = newLit("struct ABC")
+  name {.compiletime.} = ident("ABC")
 
-# macro abc(): untyped =
-#   result = newNimNode(nnkStmtList)
+macro abc(): untyped =
+  result = quoteAst(name,typ):
+    type
+      name {.importc: typ.} = object
 
-#   let x = quoteAst:
-#     type
-#       uq(name) {.importc: uq(typ).} = object
-
-#   echo result.repr
-
-# abc()
+abc()
 
 # example from #7889
 
-from streams import newStringStream, readData, writeData
-import macros
-
-macro bindme*(): untyped =
-  quoteAst:
-    var tst = "sometext"
-    var ss = uq(bindSym"newStringStream")("anothertext")
-    uq(bindSym"writeData")(ss, tst[0].addr, 2)
-    discard uq(bindSym"readData")(ss, tst[0].addr, 2) # <= comment this out to make compilation successful
-
 # test.nim
+
 # from binder import bindme
 # bindme()
-
 
 # example from #8220
 
@@ -201,20 +224,20 @@ import macros
 
 macro fooC(): untyped =
   let a = @[1, 2, 3, 4, 5]
-  result = quoteAst:
-    uq(newLit(a.len))
+  result = quoteAst(len = newLit(a.len)):
+    len
 
 macro fooD(): untyped =
   let a = @[1, 2, 3, 4, 5]
   let len = a.len
-  result = quoteAst:
-    uq(newLit(len))
+  result = quoteAst(len = newLit(len)):
+    len
 
 macro fooE(): untyped =
   let a = @[1, 2, 3, 4, 5]
   let len = a.len
-  result = quoteAst:
-    uq(newLit(a[2]))
+  result = quoteAst(x = newLit(a[2])):
+    x
 
 echo fooC() # Outputs 5
 echo fooD() # Outputs 5
