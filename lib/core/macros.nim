@@ -1380,7 +1380,7 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
   return node.copyNimTree()
 
 type GenAstOpt* = enum
-  kNoExposeLocalInjects,
+  kDirtyTemplate,
     # when unset, inject'd symbols (including implicit ones such as local procs
     # in scope) are exposed implicitly;
     # gensym'd symbols will generate a CT internal error: `environment misses:`
@@ -1393,7 +1393,7 @@ type GenAstOpt* = enum
 macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untyped =
   ## Accepts a list of captured `variables = value` and a block and returns the
   ## AST that represents it. Local `{.inject.}` symbols are captured (eg
-  ## local procs) unless `kNoExposeLocalInjects in options`; additional variables
+  ## local procs) unless `kDirtyTemplate in options`; additional variables
   ## are captured as subsequent parameters.
   runnableExamples:
     type Foo = enum kfoo0, kfoo1, kfoo2, kfoo3, kfoo4
@@ -1415,7 +1415,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       let x3 = newLit kfoo4
-      result = genAstOpt({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3):
+      result = genAstOpt({kDirtyTemplate}, s1=true, s2="asdf", x0, x1=x1, x2, x3):
         ## only captures variables from `genAst` argument list
         ## uncaptured variables will be set from caller scope (Eg `s0`)
         ## `x2` is shortcut for the common `x2=x2`
@@ -1435,7 +1435,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
 
   let params = newTree(nnkFormalParams, newEmptyNode())
   let pragmas =
-    if kNoExposeLocalInjects in options:
+    if kDirtyTemplate in options:
       nnkPragma.newTree(ident"dirty")
     else:
       newEmptyNode()

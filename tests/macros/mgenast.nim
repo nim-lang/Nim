@@ -11,17 +11,17 @@ macro bindme2*(): untyped =
   genAst: myLocalPriv()
 macro bindme3*(): untyped =
   ## myLocalPriv must be captured explicitly
-  genAstOpt({kNoExposeLocalInjects}, myLocalPriv): myLocalPriv()
+  genAstOpt({kDirtyTemplate}, myLocalPriv): myLocalPriv()
 
 macro bindme4*(): untyped =
   ## calling this won't compile because `myLocalPriv` isn't captured
-  genAstOpt({kNoExposeLocalInjects}): myLocalPriv()
+  genAstOpt({kDirtyTemplate}): myLocalPriv()
 
 macro bindme5UseExpose*(): untyped =
   genAst: myLocalPriv2()
 
 macro bindme5UseExposeFalse*(): untyped =
-  genAstOpt({kNoExposeLocalInjects}): myLocalPriv2()
+  genAstOpt({kDirtyTemplate}): myLocalPriv2()
 
 ## example from https://github.com/nim-lang/Nim/issues/7889
 from std/streams import newStringStream, readData, writeData
@@ -36,7 +36,7 @@ macro bindme6UseExpose*(): untyped =
 macro bindme6UseExposeFalse*(): untyped =
   ## without kexposeLocalInjects, requires passing all referenced symbols
   ## which can be tedious
-  genAstOpt({kNoExposeLocalInjects}, newStringStream, writeData, readData):
+  genAstOpt({kDirtyTemplate}, newStringStream, writeData, readData):
     var tst = "sometext"
     var ss = newStringStream("anothertext")
     writeData(ss, tst[0].addr, 2)
