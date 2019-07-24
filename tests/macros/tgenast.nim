@@ -12,7 +12,7 @@ block:
     let x3 = newLit kfoo4
     let x3b = kfoo4
 
-    result = genAst({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3, x3b):
+    result = genAstOpt({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3, x3b):
       doAssert not declared(xignored)
       doAssert not declared(xignoredLocal)
       (s1, s2, s0, x0, x1, x2, x3, x3b)
@@ -25,7 +25,7 @@ block:
 block:
   # doesn't have limitation mentioned in https://github.com/nim-lang/RFCs/issues/122#issue-401636535
   macro abc(name: untyped): untyped =
-    result = genAst({}, name):
+    result = genAst(name):
       type name = object
 
   abc(Bar)
@@ -40,7 +40,7 @@ block:
 
   macro m1(): untyped =
     # result = quote do: # Error: undeclared identifier: 'a1'
-    result = genAst({}):
+    result = genAst:
       template `a1=`(x: var Foo, val: int) =
         x.a = val
 
@@ -55,7 +55,7 @@ block:
     result = newStmtList()
   macro foo(c: bool): untyped =
     var b = false
-    result = genAst({}, b, c):
+    result = genAst(b, c):
       fun(b, c)
 
   foo(true)
@@ -65,7 +65,7 @@ block:
   # since `==` works with genAst, the problem goes away
   macro foo2(): untyped =
     # result = quote do: # Error: '==' cannot be passed to a procvar
-    result = genAst({}):
+    result = genAst:
       `==`(3,4)
   doAssert not foo2()
 
@@ -73,7 +73,7 @@ block:
   # fix https://github.com/nim-lang/Nim/issues/7726
   macro foo(): untyped =
     let a = @[1, 2, 3, 4, 5]
-    result = genAst({}, a, b = a.len): # shows 2 ways to get a.len
+    result = genAst(a, b = a.len): # shows 2 ways to get a.len
       (a.len, b)
   doAssert foo() == (5, 5)
 
@@ -86,7 +86,7 @@ block:
     let info = args.lineInfoObj
     let fun1 = bindSym"fun1" # optional; we can remove this and also the
     # capture of fun1
-    result = genAst({}, info, fun1):
+    result = genAst(info, fun1):
       (fun1(info), fun2(info.line))
   doAssert bar2() == ("bar1", "bar2")
 
@@ -94,7 +94,7 @@ block:
     let info = args.lineInfoObj
     let fun1 = bindSym"fun1"
     let fun2 = bindSym"fun2"
-    result = genAst({kNoExposeLocalInjects}, info):
+    result = genAstOpt({kNoExposeLocalInjects}, info):
       (fun1(info), fun2(info.line))
   doAssert bar() == ("bar1", "bar2")
 
@@ -122,7 +122,7 @@ block:
 
     proc funLocal(): auto = kfoo4
 
-    result = genAst({}, x1, x2, x3, x4):
+    result = genAst(x1, x2, x3, x4):
       # local x1 overrides remote x1
       when false:
         # one advantage of using `kNoExposeLocalInjects` is that these would hold:
@@ -153,7 +153,7 @@ block:
   # fix https://github.com/nim-lang/Nim/issues/8220
   macro foo(): untyped =
     # kNoExposeLocalInjects needed here
-    result = genAst({kNoExposeLocalInjects}):
+    result = genAstOpt({kNoExposeLocalInjects}):
       let bar = "Hello, World"
       &"Let's interpolate {bar} in the string"
   doAssert foo() == "Let's interpolate Hello, World in the string"
@@ -161,10 +161,10 @@ block:
 
 block: # nested application of genAst
   macro createMacro(name, obj, field: untyped): untyped =
-    result = genAst({}, obj = newDotExpr(obj, field), lit = 10, name, field):
+    result = genAst(obj = newDotExpr(obj, field), lit = 10, name, field):
       # can't reuse `result` here, would clash
       macro name(arg: untyped): untyped =
-        genAst({}, arg2=arg): # somehow `arg2` rename is needed
+        genAst(arg2=arg): # somehow `arg2` rename is needed
           (obj, astToStr(field), lit, arg2)
 
   var x = @[1, 2, 3]
@@ -176,5 +176,10 @@ block: # test with kNoAutoNewLit
     let s1 = true
     template boo(x): untyped =
       fun(x)
-    result = genAst({kNoAutoNewLit}, s1=newLit(s1), s1b=s1): (s1, s1b)
+    result = genAstOpt({kNoAutoNewLit}, s1=newLit(s1), s1b=s1): (s1, s1b)
   doAssert bar() == (true, 1)
+
+block: # sanity check: check passing `{}` also works
+  macro bar(): untyped =
+    result = genAstOpt({}, s1=true): s1
+  doAssert bar() == true
