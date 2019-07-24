@@ -1460,7 +1460,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
     else: error("invalid argument kind: " & $a.kind, a)
     if kNoAutoNewLit notin options: varVal = newCall(bindSym"newLitMaybe", varVal)
 
-    params.add newTree(nnkIdentDefs, [varName, newEmptyNode(), newEmptyNode()])
+    params.add newTree(nnkIdentDefs, varName, newEmptyNode(), newEmptyNode())
     call.add varVal
 
   result = newStmtList()
