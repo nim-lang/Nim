@@ -7,16 +7,20 @@ block:
     let s0 = "not captured!"
     let s1 = "not captured!"
     let xignoredLocal = kfoo4
+
+    # newLit optional:
     let x3 = newLit kfoo4
-    result = genAst({kNoExposeLocalInjects}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3):
+    let x3b = kfoo4
+
+    result = genAst({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3, x3b):
       doAssert not declared(xignored)
       doAssert not declared(xignoredLocal)
-      (s1, s2, s0, x0, x1, x2, x3)
+      (s1, s2, s0, x0, x1, x2, x3, x3b)
 
   let s0 = "caller scope!"
 
   doAssert bar(kfoo1, kfoo2, kfoo3, kfoo4) ==
-    (2, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
+    (true, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4, kfoo4)
 
 block:
   # doesn't have limitation mentioned in https://github.com/nim-lang/RFCs/issues/122#issue-401636535
@@ -51,7 +55,7 @@ block:
     result = newStmtList()
   macro foo(c: bool): untyped =
     var b = false
-    result = genAst({}, b = newLit b, c):
+    result = genAst({}, b, c):
       fun(b, c)
 
   foo(true)
@@ -82,7 +86,7 @@ block:
     let info = args.lineInfoObj
     let fun1 = bindSym"fun1" # optional; we can remove this and also the
     # capture of fun1
-    result = genAst({}, info = newLit info, fun1):
+    result = genAst({}, info, fun1):
       (fun1(info), fun2(info.line))
   doAssert bar2() == ("bar1", "bar2")
 
@@ -90,7 +94,7 @@ block:
     let info = args.lineInfoObj
     let fun1 = bindSym"fun1"
     let fun2 = bindSym"fun2"
-    result = genAst({kNoExposeLocalInjects}, info = newLit info):
+    result = genAst({kNoExposeLocalInjects}, info):
       (fun1(info), fun2(info.line))
   doAssert bar() == ("bar1", "bar2")
 
@@ -118,7 +122,7 @@ block:
 
     proc funLocal(): auto = kfoo4
 
-    result = genAst({}, x1=newLit x1, x2, x3, x4 = newLit x4):
+    result = genAst({}, x1, x2, x3, x4):
       # local x1 overrides remote x1
       when false:
         # one advantage of using `kNoExposeLocalInjects` is that these would hold:
@@ -157,7 +161,7 @@ block:
 
 block: # nested application of genAst
   macro createMacro(name, obj, field: untyped): untyped =
-    result = genAst({}, obj = newDotExpr(obj, field), lit = newLit(10), name, field):
+    result = genAst({}, obj = newDotExpr(obj, field), lit = 10, name, field):
       # can't reuse `result` here, would clash
       macro name(arg: untyped): untyped =
         genAst({}, arg2=arg): # somehow `arg2` rename is needed
@@ -166,3 +170,11 @@ block: # nested application of genAst
   var x = @[1, 2, 3]
   createMacro foo, x, len
   doAssert (foo 20) == (3, "len", 10, 20)
+
+block: # test with kNoAutoNewLit
+  macro bar(): untyped =
+    let s1 = true
+    template boo(x): untyped =
+      fun(x)
+    result = genAst({kNoAutoNewLit}, s1=newLit(s1), s1b=s1): (s1, s1b)
+  doAssert bar() == (true, 1)

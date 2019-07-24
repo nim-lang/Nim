@@ -1387,6 +1387,8 @@ type GenAstOpt* = enum
     # when set, local symbols are not exposed unless captured explicitly in
     # `genAst` argument list. The default is unset, to avoid surprising hijacking
     # of local symbols by symbols in caller scope.
+  kNoAutoNewLit,
+    # don't call call newLit automatically in `genAst` capture parameters
 
 macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): untyped =
   ## Accepts a list of captured `variables = value` and a block and returns the
@@ -1396,23 +1398,24 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
   runnableExamples:
     type Foo = enum kfoo0, kfoo1, kfoo2, kfoo3, kfoo4
 
-    macro bar1(x0: static Foo, x1: Foo, x2: Foo, xignored: Foo): untyped =
+    ## simple example
+    macro bar1(x0: static Foo, x1: Foo, xignored: Foo): untyped =
       let s0 = "not captured!" ## does not override `s0` from caller scope
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       proc localExposed(): auto = kfoo4 # implicitly captured
-      let x3 = newLit kfoo4
-      result = genAst({}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3):
+      result = genAst({}, s1=true, s2="asdf", x0, x1):
         # echo xignored # would give: Error: undeclared identifier
         # echo s0 # would give: Error: internal error: expr: var not init s0_237159
-        (s1, s2, x0, x1, x2, x3, localExposed())
+        (s1, s2, x0, x1, localExposed())
 
+    ## more complex example
     macro bar2(x0: static Foo, x1: Foo, x2: Foo, xignored: Foo): untyped =
       let s0 = "not captured!" ## does not override `s0` from caller scope
       let s1 = "not captured!" ## does not override `s1=2`
       let xignoredLocal = kfoo4
       let x3 = newLit kfoo4
-      result = genAst({kNoExposeLocalInjects}, s1=2, s2="asdf", x0=newLit x0, x1=x1, x2, x3):
+      result = genAst({kNoExposeLocalInjects}, s1=true, s2="asdf", x0, x1=x1, x2, x3):
         ## only captures variables from `genAst` argument list
         ## uncaptured variables will be set from caller scope (Eg `s0`)
         ## `x2` is shortcut for the common `x2=x2`
@@ -1422,13 +1425,13 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
 
     block:
       let s0 = "caller scope!"
-      doAssert bar1(kfoo1, kfoo2, kfoo3, kfoo4) ==
-        (2, "asdf", kfoo1, kfoo2, kfoo3, kfoo4, kfoo4)
+      doAssert bar1(kfoo1, kfoo2, kfoo4) ==
+        (true, "asdf", kfoo1, kfoo2, kfoo4)
 
     block:
       let s0 = "caller scope!"
       doAssert bar2(kfoo1, kfoo2, kfoo3, kfoo4) ==
-        (2, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
+        (true, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
 
   let params = newTree(nnkFormalParams, newEmptyNode())
   let pragmas =
@@ -1436,6 +1439,10 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
       nnkPragma.newTree(ident"dirty")
     else:
       newEmptyNode()
+
+  proc newLitMaybe[T](a: T): auto =
+    when compiles(newLit(a)): newLit(a)
+    else: a
 
   # using `_` as workaround, see https://github.com/nim-lang/Nim/issues/2465#issuecomment-511076669
   let name = genSym(nskTemplate, "_fun")
@@ -1451,6 +1458,7 @@ macro genAst*(options: static set[GenAstOpt] = {}, args: varargs[untyped]): unty
       varName = a
       varVal = a
     else: error("invalid argument kind: " & $a.kind, a)
+    if kNoAutoNewLit notin options: varVal = newCall(bindSym"newLitMaybe", varVal)
 
     params.add newTree(nnkIdentDefs, [varName, newEmptyNode(), newEmptyNode()])
     call.add varVal
