@@ -354,7 +354,12 @@ typedef NU8 NU;
 #  endif
 #endif
 
+// for now there isn't an easy way for C code to reach the program result
+// when hot code reloading is ON - users will have to:
+// load the nimhcr.dll, get the hcrGetGlobal proc from there and use it
+#ifndef NIM_HOT_CODE_RELOADING
 extern NI nim_program_result;
+#endif
 
 typedef float NF32;
 typedef double NF64;
@@ -388,8 +393,6 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
      TGenericSeq Sup;                      \
      NIM_CHAR data[(length) + 1];          \
   } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
-
-typedef struct TStringDesc* string;
 
 /* declared size of a sequence/variable length array: */
 #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
@@ -436,43 +439,19 @@ struct TFrame_ {
   NI16 calldepth;
 };
 
-#ifdef NIM_NEW_MANGLING_RULES
-  #define nimfr_(proc, file) \
-    TFrame FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; nimFrame(&FR_);
-
-  #define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; nimFrame((TFrame*)&FR_);
-
-  #define nimln_(n, file) \
-    FR_.line = n; FR_.filename = file;
-#else
-  #define nimfr(proc, file) \
-    TFrame FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
-
-  #define nimfrs(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
-
-  #define nimln(n, file) \
-    FR.line = n; FR.filename = file;
-#endif
-
 #define NIM_POSIX_INIT  __attribute__((constructor))
 
 #ifdef __GNUC__
-#  define likely(x) __builtin_expect(x, 1)
-#  define unlikely(x) __builtin_expect(x, 0)
+#  define NIM_LIKELY(x) __builtin_expect(x, 1)
+#  define NIM_UNLIKELY(x) __builtin_expect(x, 0)
 /* We need the following for the posix wrapper. In particular it will give us
    POSIX_SPAWN_USEVFORK: */
 #  ifndef _GNU_SOURCE
 #    define _GNU_SOURCE
 #  endif
 #else
-#  define likely(x) (x)
-#  define unlikely(x) (x)
+#  define NIM_LIKELY(x) (x)
+#  define NIM_UNLIKELY(x) (x)
 #endif
 
 #if 0 // defined(__GNUC__) || defined(__clang__)

@@ -17,8 +17,8 @@ type
     tyEmpty,
     tyArrayConstr,
     tyNil,
-    tyExpr,
-    tyStmt,
+    tyUntyped,
+    tyTyped,
     tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
@@ -56,7 +56,7 @@ type
     tyUInt16,
     tyUInt32,
     tyUInt64,
-    tyOptAsRef, tyUnused1, tyUnused2,
+    tyOwned, tyUnused1, tyUnused2,
     tyVarargsHidden,
     tyUncheckedArray,
     tyProxyHidden,
@@ -73,7 +73,7 @@ type
     tyVoidHidden
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
-  TNimNode {.compilerProc.} = object
+  TNimNode {.compilerproc.} = object
     kind: TNimNodeKind
     offset: int
     typ: ptr TNimType
@@ -86,7 +86,7 @@ type
     ntfAcyclic = 1,    # type cannot form a cycle
     ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
                        # version
-  TNimType {.compilerProc.} = object
+  TNimType {.compilerproc.} = object
     size: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
@@ -105,7 +105,7 @@ type
 when defined(nimTypeNames):
   # Declare this variable only once in system.nim
   when declared(ThisIsSystem):
-    var nimTypeRoot {.compilerProc.}: PNimType
+    var nimTypeRoot {.compilerproc.}: PNimType
   else:
     var nimTypeRoot {.importc.}: PNimType
 

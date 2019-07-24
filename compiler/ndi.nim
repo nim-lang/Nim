@@ -20,9 +20,9 @@ type
 
 proc doWrite(f: var NdiFile; s: PSym; conf: ConfigRef) =
   f.buf.setLen 0
-  f.buf.add s.info.line.int
+  f.buf.addInt s.info.line.int
   f.buf.add "\t"
-  f.buf.add s.info.col.int
+  f.buf.addInt s.info.col.int
   f.f.write(s.name.s, "\t")
   f.f.writeRope(s.loc.r)
   f.f.writeLine("\t", toFullPath(conf, s.info), "\t", f.buf)

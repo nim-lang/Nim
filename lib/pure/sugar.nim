@@ -123,11 +123,11 @@ macro `->`*(p, b: untyped): untyped =
   result = createProcType(p, b)
 
 type ListComprehension = object
-var lc*: ListComprehension
+var lc* {.deprecated.}: ListComprehension
 
-template `|`*(lc: ListComprehension, comp: untyped): untyped = lc
+template `|`*(lc: ListComprehension, comp: untyped): untyped {.deprecated.} = lc
 
-macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
+macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped {.deprecated.} =
   ## List comprehension, returns a sequence. `comp` is the actual list
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
   ## the type that will be stored inside the result seq.
@@ -139,6 +139,7 @@ macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
   ##   const n = 20
   ##   echo lc[(x,y,z) | (x <- 1..n, y <- x..n, z <- y..n, x*x + y*y == z*z),
   ##           tuple[a,b,c: int]]
+  ## **Deprecated since version 0.19.9**
 
   expectLen(comp, 3)
   expectKind(comp, nnkInfix)

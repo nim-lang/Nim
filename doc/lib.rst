@@ -67,6 +67,8 @@ Core
 * `lenientops <lenientops.html>`_
   Provides binary operators for mixed integer/float expressions for convenience.
 
+* `bitops <bitops.html>`_
+  Provides a series of low level methods for bit manipulation.
 
 
 Collections and algorithms
@@ -74,26 +76,38 @@ Collections and algorithms
 
 * `algorithm <algorithm.html>`_
   Implements some common generic algorithms like sort or binary search.
+
 * `tables <tables.html>`_
   Nim hash table support. Contains tables, ordered tables and count tables.
+
 * `sets <sets.html>`_
   Nim hash and bit set support.
+
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
   circular lists ("rings").
+
 * `deques <deques.html>`_
   Implementation of a double-ended queue.
   The underlying implementation uses a ``seq``.
+
+* `heapqueue <heapqueue.html>`_
+  Implementation of a heap data structure that can be used as a priority queue.
+
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
+
 * `critbits <critbits.html>`_
   This module implements a *crit bit tree* which is an efficient
   container for a sorted set of strings, or for a sorted mapping of strings.
+
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
+
 * `sharedtables <sharedtables.html>`_
   Nim shared hash table support. Contains shared tables.
+
 * `sharedlist <sharedlist.html>`_
   Nim shared linked list support. Contains shared singly linked list.
 
@@ -123,11 +137,17 @@ String handling
 * `strtabs <strtabs.html>`_
   The ``strtabs`` module implements an efficient hash table that is a mapping
   from strings to strings. Supports a case-sensitive, case-insensitive and
-  style-insensitive mode. An efficient string substitution operator ``%``
-  for the string table is also provided.
+  style-insensitive modes.
 
 * `unicode <unicode.html>`_
   This module provides support to handle the Unicode UTF-8 encoding.
+
+* `unidecode <unidecode.html>`_
+  It provides a single proc that does Unicode to ASCII transliterations.
+  Based on Python's Unidecode module.
+
+* `punycode <punycode.html>`_
+  Implements a representation of Unicode with the limited ASCII character subset.
 
 * `encodings <encodings.html>`_
   Converts between different character encodings. On UNIX, this uses
@@ -165,7 +185,10 @@ Generic Operating System Services
   Module for process communication beyond ``os.execShellCmd``.
 
 * `times <times.html>`_
-  The ``times`` module contains basic support for working with time.
+  The ``times`` module contains support for working with time.
+
+* `std/monotimes <monotimes.html>`_
+  The `monotimes` module implements monotonic timestamps.
 
 * `dynlib <dynlib.html>`_
   This module implements the ability to access symbols from shared libraries.
@@ -193,10 +216,19 @@ Generic Operating System Services
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
 
+* `asyncstreams <asyncstreams.html>`_
+  This module provides `FutureStream` - a future that acts as a queue.
+
 * `distros <distros.html>`_
-  This module implements the basics for OS distribution ("distro") detection and the OS's native package manager.
-  Its primary purpose is to produce output for Nimble packages, but it also contains the widely used **Distribution** enum
+  This module implements the basics for OS distribution ("distro") detection
+  and the OS's native package manager.
+  Its primary purpose is to produce output for Nimble packages,
+  but it also contains the widely used **Distribution** enum
   that is useful for writing platform specific code.
+
+* `volatile <volatile.html>`_
+  This module contains code for generating volatile loads and stores,
+  which are useful in embedded and systems programming.
 
 
 Math libraries
@@ -276,6 +308,7 @@ Internet Protocols and Support
   This module implements a selector API with backends specific to each OS.
   Currently epoll on Linux and select on other operating systems.
 
+
 Parsers
 -------
 
@@ -308,23 +341,23 @@ Parsers
   This is a low level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
 
-* `highlite <highlite.html>`_
+* `packages/docutils/highlite <highlite.html>`_
   Source highlighter for programming or markup languages.  Currently
   only few languages are supported, other languages may be added.
   The interface supports one language nested in another.
 
-* `rst <rst.html>`_
+* `packages/docutils/rst <rst.html>`_
   This module implements a reStructuredText parser. A large subset
   is implemented. Some features of the markdown wiki syntax are
   also supported.
 
-* `rstast <rstast.html>`_
+* `packages/docutils/rstast <rstast.html>`_
   This module implements an AST for the reStructuredText parser.
 
-* `rstgen <rstgen.html>`_
+* `packages/docutils/rstgen <rstgen.html>`_
   This module implements a generator of HTML/Latex from reStructuredText.
 
-* `sexp <sexp.html>`_
+* `packages/docutils/sexp <sexp.html>`_
   High performance sexp parser and generator, mainly for communication
   with emacs.
 
@@ -360,7 +393,7 @@ Cryptography and Hashing
 * `base64 <base64.html>`_
   This module implements a base64 encoder and decoder.
 
-* `sha1 <sha1.html>`_
+* `std/sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
 
 
@@ -402,6 +435,7 @@ Miscellaneous
 * `segfaults <segfaults.html>`_
   Turns access violations or segfaults into a ``NilAccessError`` exception.
 
+
 Modules for JS backend
 ----------------------
 
@@ -430,7 +464,6 @@ Regular expressions
   expressions. The current implementation uses PCRE.
 
 
-
 Database support
 ----------------
 
@@ -447,12 +480,12 @@ Database support
   for other databases too.
 
 
-
 Wrappers
 ========
 
 The generated HTML for some of these wrappers is so huge that it is
 not contained in the distribution. You can then find them on the website.
+
 
 Windows specific
 ----------------
@@ -509,5 +542,5 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_
+To see a list of Nimble's packages, check out `<https://nimble.directory/>`_
 or the `packages repo <https://github.com/nim-lang/packages>`_ on GitHub.

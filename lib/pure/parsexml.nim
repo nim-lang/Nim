@@ -345,11 +345,10 @@ proc markError(my: var XmlParser, kind: XmlErrorKind) {.inline.} =
 
 proc parseCDATA(my: var XmlParser) =
   var pos = my.bufpos + len("<![CDATA[")
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of ']':
-      if buf[pos+1] == ']' and buf[pos+2] == '>':
+      if my.buf[pos+1] == ']' and my.buf[pos+2] == '>':
         inc(pos, 3)
         break
       add(my.a, ']')
@@ -359,29 +358,25 @@ proc parseCDATA(my: var XmlParser) =
       break
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.a, '/')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos # store back
   my.kind = xmlCData
 
 proc parseComment(my: var XmlParser) =
   var pos = my.bufpos + len("<!--")
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '-':
-      if buf[pos+1] == '-' and buf[pos+2] == '>':
+      if my.buf[pos+1] == '-' and my.buf[pos+2] == '>':
         inc(pos, 3)
         break
       if my.options.contains(reportComments): add(my.a, '-')
@@ -391,38 +386,32 @@ proc parseComment(my: var XmlParser) =
       break
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       if my.options.contains(reportComments): add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       if my.options.contains(reportComments): add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       if my.options.contains(reportComments): add(my.a, '/')
     else:
-      if my.options.contains(reportComments): add(my.a, buf[pos])
+      if my.options.contains(reportComments): add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlComment
 
 proc parseWhitespace(my: var XmlParser, skip=false) =
   var pos = my.bufpos
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of ' ', '\t':
-      if not skip: add(my.a, buf[pos])
+      if not skip: add(my.a, my.buf[pos])
       inc(pos)
     of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       if not skip: add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       if not skip: add(my.a, '\L')
     else:
       break
@@ -434,53 +423,51 @@ const
 
 proc parseName(my: var XmlParser, dest: var string) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] in NameStartChar:
+  if my.buf[pos] in NameStartChar:
     while true:
-      add(dest, buf[pos])
+      add(dest, my.buf[pos])
       inc(pos)
-      if buf[pos] notin NameChar: break
+      if my.buf[pos] notin NameChar: break
     my.bufpos = pos
   else:
     markError(my, errNameExpected)
 
 proc parseEntity(my: var XmlParser, dest: var string) =
   var pos = my.bufpos+1
-  var buf = my.buf
   my.kind = xmlCharData
-  if buf[pos] == '#':
+  if my.buf[pos] == '#':
     var r: int
     inc(pos)
-    if buf[pos] == 'x':
+    if my.buf[pos] == 'x':
       inc(pos)
       while true:
-        case buf[pos]
-        of '0'..'9': r = (r shl 4) or (ord(buf[pos]) - ord('0'))
-        of 'a'..'f': r = (r shl 4) or (ord(buf[pos]) - ord('a') + 10)
-        of 'A'..'F': r = (r shl 4) or (ord(buf[pos]) - ord('A') + 10)
+        case my.buf[pos]
+        of '0'..'9': r = (r shl 4) or (ord(my.buf[pos]) - ord('0'))
+        of 'a'..'f': r = (r shl 4) or (ord(my.buf[pos]) - ord('a') + 10)
+        of 'A'..'F': r = (r shl 4) or (ord(my.buf[pos]) - ord('A') + 10)
         else: break
         inc(pos)
     else:
-      while buf[pos] in {'0'..'9'}:
-        r = r * 10 + (ord(buf[pos]) - ord('0'))
+      while my.buf[pos] in {'0'..'9'}:
+        r = r * 10 + (ord(my.buf[pos]) - ord('0'))
         inc(pos)
     add(dest, toUTF8(Rune(r)))
-  elif buf[pos] == 'l' and buf[pos+1] == 't' and buf[pos+2] == ';':
+  elif my.buf[pos] == 'l' and my.buf[pos+1] == 't' and my.buf[pos+2] == ';':
     add(dest, '<')
     inc(pos, 2)
-  elif buf[pos] == 'g' and buf[pos+1] == 't' and buf[pos+2] == ';':
+  elif my.buf[pos] == 'g' and my.buf[pos+1] == 't' and my.buf[pos+2] == ';':
     add(dest, '>')
     inc(pos, 2)
-  elif buf[pos] == 'a' and buf[pos+1] == 'm' and buf[pos+2] == 'p' and
-      buf[pos+3] == ';':
+  elif my.buf[pos] == 'a' and my.buf[pos+1] == 'm' and my.buf[pos+2] == 'p' and
+      my.buf[pos+3] == ';':
     add(dest, '&')
     inc(pos, 3)
-  elif buf[pos] == 'a' and buf[pos+1] == 'p' and buf[pos+2] == 'o' and
-      buf[pos+3] == 's' and buf[pos+4] == ';':
+  elif my.buf[pos] == 'a' and my.buf[pos+1] == 'p' and my.buf[pos+2] == 'o' and
+      my.buf[pos+3] == 's' and my.buf[pos+4] == ';':
     add(dest, '\'')
     inc(pos, 4)
-  elif buf[pos] == 'q' and buf[pos+1] == 'u' and buf[pos+2] == 'o' and
-      buf[pos+3] == 't' and buf[pos+4] == ';':
+  elif my.buf[pos] == 'q' and my.buf[pos+1] == 'u' and my.buf[pos+2] == 'o' and
+      my.buf[pos+3] == 't' and my.buf[pos+4] == ';':
     add(dest, '"')
     inc(pos, 4)
   else:
@@ -491,7 +478,7 @@ proc parseEntity(my: var XmlParser, dest: var string) =
       my.kind = xmlEntity
     else:
       add(dest, '&')
-  if buf[pos] == ';':
+  if my.buf[pos] == ';':
     inc(pos)
   else:
     markError(my, errSemicolonExpected)
@@ -501,15 +488,14 @@ proc parsePI(my: var XmlParser) =
   inc(my.bufpos, "<?".len)
   parseName(my, my.a)
   var pos = my.bufpos
-  var buf = my.buf
   setLen(my.b, 0)
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0':
       markError(my, errQmGtExpected)
       break
     of '?':
-      if buf[pos+1] == '>':
+      if my.buf[pos+1] == '>':
         inc(pos, 2)
         break
       add(my.b, '?')
@@ -517,18 +503,15 @@ proc parsePI(my: var XmlParser) =
     of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.b, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.b, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.b, '/')
     else:
-      add(my.b, buf[pos])
+      add(my.b, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlPI
@@ -536,10 +519,9 @@ proc parsePI(my: var XmlParser) =
 proc parseSpecial(my: var XmlParser) =
   # things that start with <!
   var pos = my.bufpos + 2
-  var buf = my.buf
   var opentags = 0
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0':
       markError(my, errGtExpected)
       break
@@ -556,18 +538,15 @@ proc parseSpecial(my: var XmlParser) =
       add(my.a, '>')
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.b, '/')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlSpecial
@@ -635,13 +614,12 @@ proc parseAttribute(my: var XmlParser) =
   parseWhitespace(my, skip=true)
 
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] in {'\'', '"'}:
-    var quote = buf[pos]
+  if my.buf[pos] in {'\'', '"'}:
+    var quote = my.buf[pos]
     var pendingSpace = false
     inc(pos)
     while true:
-      case buf[pos]
+      case my.buf[pos]
       of '\0':
         markError(my, errQuoteExpected)
         break
@@ -658,31 +636,28 @@ proc parseAttribute(my: var XmlParser) =
         inc(pos)
       of '\c':
         pos = lexbase.handleCR(my, pos)
-        buf = my.buf
         pendingSpace = true
       of '\L':
         pos = lexbase.handleLF(my, pos)
-        buf = my.buf
         pendingSpace = true
       of '/':
         pos = lexbase.handleRefillChar(my, pos)
-        buf = my.buf
         add(my.b, '/')
       else:
-        if buf[pos] == quote:
+        if my.buf[pos] == quote:
           inc(pos)
           break
         else:
           if pendingSpace:
             add(my.b, ' ')
             pendingSpace = false
-          add(my.b, buf[pos])
+          add(my.b, my.buf[pos])
           inc(pos)
   elif allowUnquotedAttribs in my.options:
     const disallowedChars = {'"', '\'', '`', '=', '<', '>', ' ',
                              '\0', '\t', '\L', '\F', '\f'}
     let startPos = pos
-    while (let c = buf[pos]; c notin disallowedChars):
+    while (let c = my.buf[pos]; c notin disallowedChars):
       if c == '&':
         my.bufpos = pos
         parseEntity(my, my.b)
@@ -696,33 +671,29 @@ proc parseAttribute(my: var XmlParser) =
   else:
     markError(my, errQuoteExpected)
     # error corrections: guess what was meant
-    while buf[pos] != '>' and buf[pos] > ' ':
-      add(my.b, buf[pos])
+    while my.buf[pos] != '>' and my.buf[pos] > ' ':
+      add(my.b, my.buf[pos])
       inc pos
   my.bufpos = pos
   parseWhitespace(my, skip=true)
 
 proc parseCharData(my: var XmlParser) =
   var pos = my.bufpos
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0', '<', '&': break
     of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.a, '/')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlCharData
@@ -731,18 +702,17 @@ proc rawGetTok(my: var XmlParser) =
   my.kind = xmlError
   setLen(my.a, 0)
   var pos = my.bufpos
-  var buf = my.buf
-  case buf[pos]
+  case my.buf[pos]
   of '<':
-    case buf[pos+1]
+    case my.buf[pos+1]
     of '/':
       parseEndTag(my)
     of '!':
-      if buf[pos+2] == '[' and buf[pos+3] == 'C' and buf[pos+4] == 'D' and
-          buf[pos+5] == 'A' and buf[pos+6] == 'T' and buf[pos+7] == 'A' and
-          buf[pos+8] == '[':
+      if my.buf[pos+2] == '[' and my.buf[pos+3] == 'C' and my.buf[pos+4] == 'D' and
+          my.buf[pos+5] == 'A' and my.buf[pos+6] == 'T' and my.buf[pos+7] == 'A' and
+          my.buf[pos+8] == '[':
         parseCDATA(my)
-      elif buf[pos+2] == '-' and buf[pos+3] == '-':
+      elif my.buf[pos+2] == '-' and my.buf[pos+3] == '-':
         parseComment(my)
       else:
         parseSpecial(my)
@@ -841,4 +811,3 @@ when not defined(testing) and isMainModule:
     of xmlSpecial:
       echo("SPECIAL: " & x.charData)
   close(x)
-

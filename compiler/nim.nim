@@ -19,10 +19,12 @@ when defined(i386) and defined(windows) and defined(vcc):
   {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt,
-  nodejs, scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
+  commands, options, msgs,
+  extccomp, strutils, os, main, parseopt,
+  idents, lineinfos, cmdlinehelper,
   pathutils
+
+include nodejs
 
 when hasTinyCBackend:
   import tccgen
@@ -45,13 +47,21 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
+      config.commandLine.add " "
+      config.commandLine.add p.key
+      if p.val.len > 0:
+        config.commandLine.add ':'
+        config.commandLine.add p.val
+
       if p.key == " ":
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
         processSwitch(pass, p, config)
     of cmdArgument:
+      config.commandLine.add " "
+      config.commandLine.add p.key
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
@@ -66,7 +76,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   )
   self.initDefinesProg(conf, "nim_compiler")
   if paramCount() == 0:
-    writeCommandLineUsage(conf, conf.helpWritten)
+    writeCommandLineUsage(conf)
     return
 
   self.processCmdLineAndProjectPath(conf)
@@ -78,23 +88,10 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     if conf.cmd == cmdRun:
       tccgen.run(conf.arguments)
   if optRun in conf.globalOptions:
+    var ex = quoteShell conf.absOutFile
     if conf.cmd == cmdCompileToJS:
-      var ex: string
-      if not conf.outFile.isEmpty:
-        ex = conf.outFile.prependCurDir.quoteShell
-      else:
-        ex = quoteShell(
-          completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
       execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
     else:
-      var binPath: AbsoluteFile
-      if not conf.outFile.isEmpty:
-        # If the user specified an outFile path, use that directly.
-        binPath = conf.outFile.prependCurDir
-      else:
-        # Figure out ourselves a valid binary name.
-        binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
-      var ex = quoteShell(binPath)
       execExternalProgram(conf, ex & ' ' & conf.arguments)
 
 when declared(GC_setMaxPause):

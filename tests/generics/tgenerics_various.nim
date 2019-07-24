@@ -194,7 +194,7 @@ block tproctypecache_falsepositive:
 block tptrinheritance:
   type NSPasteboardItem = ptr object
   type NSPasteboard = ptr object
-  type NSArrayAbstract = ptr object {.inheritable.}
+  type NSArrayAbstract {.inheritable.} = ptr object
   type NSMutableArrayAbstract = ptr object of NSArrayAbstract
   type NSArray[T] = ptr object of NSArrayAbstract
   type NSMutableArray[T] = ptr object of NSArray[T]
@@ -242,3 +242,14 @@ block tvarargs_vs_generics:
   withDirectType "string"
   withOpenArray "string"
   withVarargs "string"
+
+block:
+  type
+    Que[T] {.gcsafe.} = object
+      x: T
+
+  proc `=`[T](q: var Que[T]; x: Que[T]) =
+    discard
+
+  var x: Que[int]
+  doAssert(x.x == 0)

@@ -8,7 +8,7 @@
 #
 
 import
-  os, strutils, strtabs, osproc, sets, lineinfos, platform,
+  os, strutils, strtabs, sets, lineinfos, platform,
   prefixmatches, pathutils
 
 from terminal import isatty
@@ -18,15 +18,15 @@ const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   useWriteTracking* = false
-  hasFFI* = defined(useFFI)
-  copyrightYear* = "2018"
+  hasFFI* = defined(nimHasLibFFI)
+  copyrightYear* = "2019"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
-    optOverflowCheck, optNilCheck,
-    optNaNCheck, optInfCheck, optMoveCheck,
+    optOverflowCheck, optNilCheck, optRefCheck,
+    optNaNCheck, optInfCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
@@ -36,9 +36,8 @@ type                          # please make sure we have under 32 options
     optProfiler,              # profiler turned on
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
-    optPatterns,              # en/disable pattern matching
+    optTrMacros,              # en/disable pattern matching
     optMemTracker,
-    optHotCodeReloading,
     optLaxStrings,
     optNilSeqs,
     optOldAst
@@ -77,10 +76,14 @@ type                          # please make sure we have under 32 options
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
+    optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths          # use full paths in toMsgFilename, toFilename
+    optListFullPaths          # use full paths in toMsgFilename
     optNoNimblePath
+    optHotCodeReloading
     optDynlibOverrideAll
+    optNimV2
+    optMultiMethods
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -127,6 +130,10 @@ type
     forLoopMacros,
     caseStmtMacros,
     codeReordering,
+    compiletimeFFI,
+      ## This requires building nim with `-d:nimHasLibFFI`
+      ## which itself requires `nimble install libffi`, see #10150
+      ## Note: this feature can't be localized with {.push.}
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -140,8 +147,9 @@ type
     External   ## file was introduced via .compile pragma
 
   Cfile* = object
+    nimname*: string
     cname*, obj*: AbsoluteFile
-    flags*: set[CFileFlag]
+    flags*: set[CfileFlag]
   CfileList* = seq[Cfile]
 
   Suggest* = ref object
@@ -172,6 +180,7 @@ type
     linesCompiled*: int  # all lines that have been compiled
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
+    macrosToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -189,7 +198,6 @@ type
     features*: set[Feature]
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
-    helpWritten*: bool
     ideCmd*: IdeCmd
     oldNewlines*: bool
     cCompiler*: TSystemCC
@@ -210,7 +218,8 @@ type
     packageCache*: StringTableRef
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
-    outFile*: AbsoluteFile
+    outFile*: RelativeFile
+    outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*: StringTableRef
     projectName*: string # holds a name like 'nim'
@@ -220,6 +229,7 @@ type
     projectMainIdx*: FileIndex # the canonical path id of the main module
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
+    commandLine*: string
     keepComments*: bool # whether the parser needs to keep comments
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
@@ -237,16 +247,18 @@ type
     compileOptionsCmd*: seq[string]
     linkOptions*: string          # (*)
     compileOptions*: string       # (*)
-    ccompilerpath*: string
+    cCompilerPath*: string
     toCompile*: CfileList         # (*)
     suggestionResultHook*: proc (result: Suggest) {.closure.}
     suggestVersion*: int
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
-    writelnHook*: proc (output: string) {.closure.}
+    writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
-                                severity: Severity) {.closure.}
+                                severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+
+proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
 template depConfigFields*(fn) {.dirty.} =
   fn(target)
@@ -259,13 +271,14 @@ const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, par
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
-    optMoveCheck}
+    optStyleCheck, optRefCheck}
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
-    optBoundsCheck, optOverflowCheck, optAssert, optWarns,
+    optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace,
-    optPatterns, optNilCheck, optMoveCheck}
-  DefaultGlobalOptions* = {optThreadAnalysis}
+    optTrMacros, optNilCheck, optStyleCheck}
+  DefaultGlobalOptions* = {optThreadAnalysis,
+    optExcessiveStackTrace, optListFullPaths}
 
 proc getSrcTimestamp(): DateTime =
   try:
@@ -298,9 +311,10 @@ proc newConfigRef*(): ConfigRef =
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
+    macrosToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
-    cppDefines: initSet[string](),
+    cppDefines: initHashSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
@@ -309,7 +323,9 @@ proc newConfigRef*(): ConfigRef =
     packageCache: newPackageCache(),
     searchPaths: @[],
     lazyPaths: @[],
-    outFile: AbsoluteFile"", prefixDir: AbsoluteDir"",
+    outFile: RelativeFile"",
+    outDir: AbsoluteDir"",
+    prefixDir: AbsoluteDir"",
     libpath: AbsoluteDir"", nimcacheDir: AbsoluteDir"",
     dllOverrides: newStringTable(modeCaseInsensitive),
     moduleOverrides: newStringTable(modeStyleInsensitive),
@@ -320,6 +336,7 @@ proc newConfigRef*(): ConfigRef =
     projectMainIdx: FileIndex(0'i32), # the canonical path id of the main module
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
+    commandLine: "",
     keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
@@ -359,7 +376,7 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
-    result = conf.symbols[symbol] != "false"
+    result = true
   elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
     result = true
   elif cmpIgnoreStyle(symbol, platform.OS[conf.target.targetOS].name) == 0:
@@ -425,9 +442,6 @@ const
 
 const oKeepVariableNames* = true
 
-template compilingLib*(conf: ConfigRef): bool =
-  gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}
-
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
   ## which will work on the main project file unless
@@ -447,8 +461,15 @@ proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): AbsoluteFile =
-  if not conf.outFile.isEmpty: result = conf.outFile
-  else: result = conf.projectPath / changeFileExt(filename, ext)
+  conf.outDir / changeFileExt(filename, ext)
+
+proc absOutFile*(conf: ConfigRef): AbsoluteFile =
+  conf.outDir / conf.outFile
+
+proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
+  ## Create the output directory and returns a full path to the output file
+  createDir conf.outDir
+  return conf.outDir / conf.outFile
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
@@ -479,7 +500,7 @@ proc setDefaultLibpath*(conf: ConfigRef) =
     # Find out if $nim/../../lib/system.nim exists.
     let parentNimLibPath = realNimPath.parentDir.parentDir / "lib"
     if not fileExists(conf.libpath.string / "system.nim") and
-        fileExists(parentNimlibPath / "system.nim"):
+        fileExists(parentNimLibPath / "system.nim"):
       conf.libpath = AbsoluteDir parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
@@ -522,7 +543,7 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
              conf.projectPath / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               (if isDefined(conf, "release"): "_r" else: "_d"))
+               (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -571,7 +592,7 @@ proc rawFindFile2(conf: ConfigRef; f: RelativeFile): AbsoluteFile =
     result = it / f
     if fileExists(result):
       # bring to front
-      for j in countDown(i,1):
+      for j in countdown(i, 1):
         swap(conf.lazyPaths[j], conf.lazyPaths[j-1])
 
       return canonicalizePath(conf, result)

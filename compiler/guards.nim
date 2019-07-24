@@ -443,7 +443,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkEmpty, nkNilLit: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
@@ -981,9 +981,10 @@ proc buildElse(n: PNode; o: Operators): PNode =
   var s = newNodeIT(nkCurly, n.info, settype(n.sons[0]))
   for i in 1..n.len-2:
     let branch = n.sons[i]
-    assert branch.kind == nkOfBranch
-    for j in 0..branch.len-2:
-      s.add(branch.sons[j])
+    assert branch.kind != nkElse
+    if branch.kind == nkOfBranch:
+      for j in 0..branch.len-2:
+        s.add(branch.sons[j])
   result = newNodeI(nkCall, n.info, 3)
   result.sons[0] = newSymNode(o.opContains)
   result.sons[1] = s

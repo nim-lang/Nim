@@ -1,4 +1,4 @@
-import strutils, strtabs, os, osproc, vcvarsall, vccenv
+import strutils, strtabs, os, osproc, vcvarsall, vccenv, vccvswhere
 
 type
   VccVersion* = enum ## VCC compiler backend versions
@@ -18,7 +18,11 @@ proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
   ##
   ## Returns `nil` if the VCC compiler backend discovery failed.
 
-  # TODO: Attempt discovery using vswhere utility.
+  # Attempt discovery using vswhere utility (VS 2017 and later) if no version specified.
+  if version == vccUndefined:
+    result = vccVswhereVcVarsAllPath()
+    if result.len > 0:
+      return
 
   # Attempt discovery through VccEnv
   # (Trying Visual Studio Common Tools Environment Variables)
@@ -46,6 +50,8 @@ const
   sdktypeSepIdx = sdktypePrefix.len
   sdkversionSepIdx = sdkversionPrefix.len
   
+  vcvarsallDefaultPath = "vcvarsall.bat"
+
   helpText = """
 +-----------------------------------------------------------------+
 |         Microsoft C/C++ compiler wrapper for Nim                |
@@ -158,6 +164,10 @@ when isMainModule:
     vccversionValue = vccUndefined
     vcvarsallArg = discoverVccVcVarsAllPath()
 
+  if vcvarsallArg == "":
+    # Assume that default executable is in current directory or in PATH
+    vcvarsallArg = findExe(vcvarsallDefaultPath)
+
   if printPathArg:
     var head = $vccversionValue
     if head.len < 1:
@@ -180,9 +190,16 @@ when isMainModule:
 
   if not noCommandArg:
     # Run VCC command with the VCC process environment
-    let vccProcess = startProcess(
-        commandArg,
-        args = clArgs,
-        options = vccOptions
-      )
-    quit vccProcess.waitForExit()
+    try:
+      let vccProcess = startProcess(
+          commandArg,
+          args = clArgs,
+          options = vccOptions
+        )
+      quit vccProcess.waitForExit()
+    except:
+      if vcvarsallArg.len != 0:
+        echo "Hint: using " & vcvarsallArg
+      else:
+        echo "Hint: vcvarsall.bat was not found"
+      raise

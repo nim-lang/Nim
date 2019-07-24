@@ -10,16 +10,15 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos, pathutils
-
-from modulegraphs import ModuleGraph, PPassContext
+  ast, ropes, passes, options, intsets,
+  tables, ndi, lineinfos, pathutils, modulegraphs
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
     cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
+    cfsFrameDefines           # section for nim frame macros
     cfsForwardTypes,          # section for C forward typedefs
     cfsTypes,                 # section for C typedefs
     cfsSeqTypes,              # section for sequence types only
@@ -71,6 +70,7 @@ type
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     hasCurFramePointer*: bool # true if _nimCurFrame var needed to recover after
                               # exception is generated
+    noSafePoints*: bool       # the proc doesn't use safe points in exception handling
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
     nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
@@ -98,8 +98,9 @@ type
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
+  TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
 
-  Codegenflag* = enum
+  CodegenFlag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
     usesThreadVars,     # true if the module uses a thread var
     frameDeclared,      # hack for ROD support so that we don't declare
@@ -113,12 +114,12 @@ type
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
-    modules_closed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
+    modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
     breakPointId*: int
     breakpoints*: Rope # later the breakpoints are inserted into the main proc
-    typeInfoMarker*: TypeCache
+    typeInfoMarker*: TypeCacheWithOwner
     config*: ConfigRef
     graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
@@ -136,7 +137,7 @@ type
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
-    flags*: set[Codegenflag]
+    flags*: set[CodegenFlag]
     module*: PSym
     filename*: AbsoluteFile
     cfilename*: AbsoluteFile  # filename of the module (including path,
@@ -150,13 +151,15 @@ type
     typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
+    hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
+    inHcrInitGuard*: bool     # We are currently withing a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: Rope # used for type info generation
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
-                                              # OpenGL wrapper
+                                             # OpenGL wrapper
     injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
@@ -189,10 +192,10 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.sigConflicts = initCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
-  BModuleList(typeInfoMarker: initTable[SigHash, Rope](), config: g.config,
-    graph: g, nimtvDeclared: initIntSet())
+  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
+    config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
-  for m in g.modules_closed:
+  for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m

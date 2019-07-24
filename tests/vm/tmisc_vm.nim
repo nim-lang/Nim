@@ -3,7 +3,10 @@ discard """
 [127, 127, 0, 255]
 '''
 
-  nimout: '''caught Exception'''
+  nimout: '''caught Exception
+main:begin
+main:end
+'''
 """
 
 #bug #1009
@@ -24,7 +27,7 @@ template `B=`*(self: TAggRgba8, val: byte) =
 template `A=`*(self: TAggRgba8, val: byte) =
   self[3] = val
 
-proc ABGR*(val: int| int64): TAggRgba8 =
+proc ABGR*(val: int | int64): TAggRgba8 =
   var V = val
   result.R = byte(V and 0xFF)
   V = V shr 8
@@ -49,3 +52,32 @@ static:
     echo "caught Defect"
   except ValueError:
     echo "caught ValueError"
+
+# bug #10538
+
+block:
+  proc fun1(): seq[int] =
+    try:
+      try:
+        result.add(1)
+        return
+      except:
+        result.add(-1)
+      finally:
+        result.add(2)
+    finally:
+      result.add(3)
+    result.add(4)
+
+  let x1 = fun1()
+  const x2 = fun1()
+  doAssert(x1 == x2)
+
+# bug #11610
+proc simpleTryFinally()=
+  try:
+    echo "main:begin"
+  finally:
+    echo "main:end"
+
+static: simpleTryFinally()

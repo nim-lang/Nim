@@ -13,12 +13,12 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
-  os, condsyms, times,
-  wordrecg, sem, semdata, idents, passes, extccomp,
+  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  condsyms, times,
+  sem, idents, passes, extccomp,
   cgen, json, nversion,
-  platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  parser, modules, ccgutils, sigmatch, ropes,
+  platform, nimconf, passaux, depends, vm, idgen,
+  parser, modules,
   modulegraphs, tables, rod, lineinfos, pathutils
 
 when not defined(leanCompiler):
@@ -26,15 +26,13 @@ when not defined(leanCompiler):
 
 from magicsys import resetSysTypes
 
-proc codegenPass(g: ModuleGraph) =
-  registerPass g, cgenPass
-
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
 
-proc writeDepsFile(g: ModuleGraph; project: AbsoluteFile) =
-  let f = open(changeFileExt(project, "deps").string, fmWrite)
+proc writeDepsFile(g: ModuleGraph) =
+  let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
+  let f = open(fname.string, fmWrite)
   for m in g.modules:
     if m != nil:
       f.writeLine(toFullPath(g.config, m.position.FileIndex))
@@ -48,7 +46,7 @@ proc commandGenDepend(graph: ModuleGraph) =
   registerPass(graph, gendependPass)
   compileProject(graph)
   let project = graph.config.projectFull
-  writeDepsFile(graph, project)
+  writeDepsFile(graph)
   generateDot(graph, project)
   execExternalProgram(graph.config, "dot -Tpng -o" &
       changeFileExt(project, "png").string &
@@ -62,6 +60,7 @@ proc commandCheck(graph: ModuleGraph) =
 
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; json: bool) =
+    handleDocOutputOptions graph.config
     graph.config.errorMax = high(int)  # do not stop after first error
     semanticPasses(graph)
     if json: registerPass(graph, docgen2JsonPass)
@@ -71,20 +70,40 @@ when not defined(leanCompiler):
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
+
+  if conf.outDir.isEmpty:
+    conf.outDir = conf.projectPath
+  if conf.outFile.isEmpty:
+    let targetName = if optGenDynLib in conf.globalOptions:
+      platform.OS[conf.target.targetOS].dllFrmt % conf.projectName
+    else:
+      conf.projectName & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
+
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
+
+  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+    let proj = changeFileExt(conf.projectFull, "")
+    if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      # nothing changed
+      # Little hack here in order to not lose our precious
+      # hintSuccessX message:
+      conf.notes.incl hintSuccessX
+      return
 
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
   cgenWriteModules(graph.backend, conf)
   if conf.cmd != cmdRun:
-    let proj = changeFileExt(conf.projectFull, "")
-    extccomp.callCCompiler(conf, proj)
-    extccomp.writeJsonBuildInstructions(conf, proj)
+    extccomp.callCCompiler(conf)
+    # for now we do not support writing out a .json file with the build instructions when HCR is on
+    if not conf.hcrOn:
+      extccomp.writeJsonBuildInstructions(conf)
     if optGenScript in graph.config.globalOptions:
-      writeDepsFile(graph, toGeneratedFile(conf, proj, ""))
+      writeDepsFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
   let proj = changeFileExt(graph.config.projectFull, "")
@@ -93,6 +112,12 @@ proc commandJsonScript(graph: ModuleGraph) =
 when not defined(leanCompiler):
   proc commandCompileToJS(graph: ModuleGraph) =
     let conf = graph.config
+
+    if conf.outDir.isEmpty:
+      conf.outDir = conf.projectPath
+    if conf.outFile.isEmpty:
+      conf.outFile = RelativeFile(conf.projectName & ".js")
+
     #incl(gGlobalOptions, optSafeCode)
     setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
@@ -102,11 +127,12 @@ when not defined(leanCompiler):
     registerPass(graph, JSgenPass)
     compileProject(graph)
     if optGenScript in graph.config.globalOptions:
-      writeDepsFile(graph, toGeneratedFile(conf, conf.projectFull, ""))
+      writeDepsFile(graph)
 
 proc interactivePasses(graph: ModuleGraph) =
   initDefines(graph.config.symbols)
   defineSymbol(graph.config.symbols, "nimscript")
+  # note: seems redundant with -d:nimHasLibFFI
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
   registerPass(graph, verbosePass)
   registerPass(graph, semPass)
@@ -192,6 +218,12 @@ proc mainCommand*(graph: ModuleGraph) =
       quit "compiler wasn't built with JS code generator"
     else:
       conf.cmd = cmdCompileToJS
+      if conf.hcrOn:
+        # XXX: At the moment, system.nim cannot be compiled in JS mode
+        # with "-d:useNimRtl". The HCR option has been processed earlier
+        # and it has added this define implictly, so we must undo that here.
+        # A better solution might be to fix system.nim
+        undefSymbol(conf.symbols, "useNimRtl")
       commandCompileToJS(graph)
   of "doc0":
     when defined(leanCompiler):
@@ -286,6 +318,7 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),
         (key: "hints", val: hints),
@@ -336,7 +369,8 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
                formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
                usedMem,
-               if isDefined(conf, "release"): "Release Build"
+               if isDefined(conf, "danger"): "Dangerous Release Build"
+               elif isDefined(conf, "release"): "Release Build"
                else: "Debug Build"])
 
   when PrintRopeCacheStats:

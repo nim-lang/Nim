@@ -38,7 +38,7 @@ macro importImpl_forward(name, returns: untyped): untyped =
   decls.add res
   echo(repr(res))
 
-macro importImpl(name, returns, body: untyped): typed =
+macro importImpl(name, returns, body: untyped) =
   #var res = getAST(importImpl_forward(name, returns))
   discard getAST(importImpl_forward(name, returns))
   var res = copyNimTree(decls[decls.high])
@@ -46,7 +46,7 @@ macro importImpl(name, returns, body: untyped): typed =
   echo repr(res)
   impls.add res
 
-macro okayy: typed =
+macro okayy() =
   result = newNimNode(nnkStmtList)
   for node in decls: result.add node
   for node in impls: result.add node

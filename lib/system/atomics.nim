@@ -8,7 +8,7 @@
 #
 
 # Atomic operations for Nim.
-{.push stackTrace:off.}
+{.push stackTrace:off, profiler:off.}
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
 
@@ -171,7 +171,7 @@ elif defined(vcc) and hasThreadSupport:
         header: "<intrin.h>".}
     else:
       proc addAndFetch*(p: ptr int, val: int): int {.
-        importcpp: "_InterlockedExchangeAdd(reinterpret_cast<LONG volatile *>(#), static_cast<LONG>(#))",
+        importcpp: "_InterlockedExchangeAdd(reinterpret_cast<long volatile *>(#), static_cast<long>(#))",
         header: "<intrin.h>".}
   else:
     when sizeof(int) == 8:
@@ -190,7 +190,7 @@ else:
 
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
-    result = atomic_add_fetch(memLoc.addr, x, ATOMIC_RELAXED)
+    result = atomicAddFetch(memLoc.addr, x, ATOMIC_RELAXED)
   elif defined(vcc) and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
     inc(result, x)
@@ -200,10 +200,10 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
 
 proc atomicDec*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
-    when declared(atomic_sub_fetch):
-      result = atomic_sub_fetch(memLoc.addr, x, ATOMIC_RELAXED)
+    when declared(atomicSubFetch):
+      result = atomicSubFetch(memLoc.addr, x, ATOMIC_RELAXED)
     else:
-      result = atomic_add_fetch(memLoc.addr, -x, ATOMIC_RELAXED)
+      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_RELAXED)
   elif defined(vcc) and hasThreadSupport:
     result = addAndFetch(memLoc.addr, -x)
     dec(result, x)
@@ -285,6 +285,9 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
     {.importc: "__tcc_cas", nodecl.}
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     tcc_cas(cast[ptr int](p), cast[int](oldValue), cast[int](newValue))
+elif declared(atomicCompareExchangeN):
+  proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
+    atomicCompareExchangeN(p, oldValue.unsafeAddr, newValue, false, ATOMIC_SEQ_CST, ATOMIC_SEQ_CST)
 else:
   # this is valid for GCC and Intel C++
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool

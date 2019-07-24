@@ -37,3 +37,8 @@ f(m)
 
 var a: TYourObj = m
 var b: TMyObj = a
+
+# bug #10195
+type
+  InheritableFoo {.inheritable.} = ref object
+  InheritableBar = ref object of InheritableFoo # ERROR.

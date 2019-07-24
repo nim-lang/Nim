@@ -11,10 +11,8 @@
 
 include "system/inclrtl"
 
-import strutils, os
-
 when not defined(windows):
-  import posix
+  import strutils, posix, os
 
 when defined(linux):
   import linux

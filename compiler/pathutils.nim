@@ -10,7 +10,7 @@
 ## Path handling utilities for Nim. Strictly typed code in order
 ## to avoid the never ending time sink in getting path handling right.
 
-import os, strutils, pathnorm
+import os, pathnorm
 
 type
   AbsoluteFile* = distinct string
@@ -41,6 +41,10 @@ proc quoteShell*(x: AbsoluteDir): string {.borrow.}
 proc cmpPaths*(x, y: AbsoluteDir): int {.borrow.}
 
 proc createDir*(x: AbsoluteDir) {.borrow.}
+
+proc toAbsoluteDir*(path: string): AbsoluteDir =
+  result = if path.isAbsolute: AbsoluteDir(path)
+           else: AbsoluteDir(getCurrentDir() / path)
 
 proc `$`*(x: AnyPath): string = x.string
 

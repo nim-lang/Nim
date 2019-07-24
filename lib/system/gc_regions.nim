@@ -195,6 +195,19 @@ proc runFinalizers(c: Chunk) =
       (cast[Finalizer](it.typ.finalizer))(it+!sizeof(ObjHeader))
     it = it.nextFinal
 
+proc runFinalizers(c: Chunk; newbump: pointer) =
+  var it = c.head
+  var prev: ptr ObjHeader = nil
+  while it != nil:
+    let nxt = it.nextFinal
+    if it >= newbump:
+      if it.typ != nil and it.typ.finalizer != nil:
+        (cast[Finalizer](it.typ.finalizer))(it+!sizeof(ObjHeader))
+    elif prev != nil:
+      prev.nextFinal = nil
+    prev = it
+    it = nxt
+
 proc dealloc(r: var MemRegion; p: pointer; size: int) =
   let it = cast[ptr ObjHeader](p-!sizeof(ObjHeader))
   if it.typ != nil and it.typ.finalizer != nil:
@@ -237,16 +250,15 @@ template computeRemaining(r): untyped =
 
 proc setObstackPtr*(r: var MemRegion; sp: StackPtr) =
   # free everything after 'sp':
-  if sp.current.next != nil:
+  if sp.current != nil and sp.current.next != nil:
     deallocAll(r, sp.current.next)
     sp.current.next = nil
     when false:
       # better leak this memory than be sorry:
       for i in 0..high(r.freeLists): r.freeLists[i] = nil
       r.holes = nil
-  #else:
-  #  deallocAll(r, r.head)
-  #  r.head = nil
+  if r.tail != nil: runFinalizers(r.tail, sp.bump)
+
   r.bump = sp.bump
   r.tail = sp.current
   r.remaining = sp.remaining
@@ -257,14 +269,14 @@ proc deallocAll*() = tlRegion.deallocAll()
 
 proc deallocOsPages(r: var MemRegion) = r.deallocAll()
 
-template withScratchRegion*(body: untyped) =
+when false:
   let obs = obstackPtr()
   try:
     body
   finally:
     setObstackPtr(obs)
 
-when false:
+template withScratchRegion*(body: untyped) =
   var scratch: MemRegion
   let oldRegion = tlRegion
   tlRegion = scratch

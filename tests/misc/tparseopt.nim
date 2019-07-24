@@ -21,14 +21,8 @@ kind: cmdShortOption	key:val  --  r:1
 kind: cmdShortOption	key:val  --  r:0
 kind: cmdShortOption	key:val  --  l:
 kind: cmdShortOption	key:val  --  r:4
-parseopt2
-first round
-kind: cmdLongOption	key:val  --  left:
-second round
-kind: cmdLongOption	key:val  --  left:
-kind: cmdLongOption	key:val  --  debug:3
-kind: cmdShortOption	key:val  --  l:4
-kind: cmdShortOption	key:val  --  r:2'''
+kind: cmdLongOption	key:val  --  debug:
+'''
 joinable: false
 """
 
@@ -42,7 +36,6 @@ when defined(testament_tparseopt):
   main()
 else:
   from parseopt import nil
-  from parseopt2 import nil
 
   block:
     echo "parseopt"
@@ -70,34 +63,17 @@ else:
   block:
     echo "parseoptNoVal"
     # test NoVal mode with custom cmdline arguments
-    var argv = "--left --debug:3 -l -r:2 --debug 2 --debug=1 -r1 -r=0 -lr4"
+    var argv = "--left --debug:3 -l -r:2 --debug 2 --debug=1 -r1 -r=0 -lr4 --debug:"
     var p = parseopt.initOptParser(argv,
                                     shortNoVal = {'l'}, longNoVal = @["left"])
     for kind, key, val in parseopt.getopt(p):
-      echo "kind: ", kind, "\tkey:val  --  ", key, ":", val
-
-  block:
-    echo "parseopt2"
-    for kind, key, val in parseopt2.getopt():
-      echo "kind: ", kind, "\tkey:val  --  ", key, ":", val
-
-    # pass custom cmdline arguments
-    echo "first round"
-    var argv: seq[string] = @["--left", "--debug:3", "-l=4", "-r:2"]
-    var p = parseopt2.initOptParser(argv)
-    for kind, key, val in parseopt2.getopt(p):
-      echo "kind: ", kind, "\tkey:val  --  ", key, ":", val
-      break
-    # reset getopt iterator and check arguments are returned correctly.
-    echo "second round"
-    for kind, key, val in parseopt2.getopt(p):
       echo "kind: ", kind, "\tkey:val  --  ", key, ":", val
 
   import osproc, os, strutils
   from stdtest/specialpaths import buildDir
   import "../.." / compiler/unittest_light
 
-  block: # fix #9951 (and make it work for parseopt and parseopt2)
+  block: # fix #9951
     template runTest(parseoptCustom) =
       var p = parseoptCustom.initOptParser(@["echo \"quoted\""])
       let expected = when defined(windows):
@@ -117,7 +93,6 @@ else:
       doAssert "a5'b" == "a5\'b"
       assertEquals parseoptCustom.cmdLineRest(p2), expected2
     runTest(parseopt)
-    runTest(parseopt2)
 
   block: # fix #9842
     let exe = buildDir / "D20190112T145450".addFileExt(ExeExt)

@@ -1,8 +1,9 @@
 discard """
 disabled: "windows"
 joinable: false
+disabled: 32bit
 """
-
+# no point to test this on system with smaller address space
 # appveyor is "out of memory"
 
 const

@@ -12,10 +12,10 @@
 ## Windows ``LoadLibrary``.
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Loading a simple C function
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ---------------------------
 ##
 ## The following example demonstrates loading a function called 'greet'
 ## from a library that is determined at runtime based upon a language choice.
@@ -59,7 +59,7 @@ import strutils
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
 
-proc loadLib*(path: string, global_symbols=false): LibHandle {.gcsafe.}
+proc loadLib*(path: string, globalSymbols=false): LibHandle {.gcsafe.}
   ## loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
@@ -72,10 +72,7 @@ proc unloadLib*(lib: LibHandle) {.gcsafe.}
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
   ## raises an `EInvalidLibrary` exception.
-  var e: ref LibraryError
-  new(e)
-  e.msg = "could not find symbol: " & $name
-  raise e
+  raise newException(LibraryError, "could not find symbol: " & $name)
 
 proc symAddr*(lib: LibHandle, name: cstring): pointer {.gcsafe.}
   ## retrieves the address of a procedure/variable from `lib`. Returns nil
@@ -99,17 +96,17 @@ proc libCandidates*(s: string, dest: var seq[string]) =
   else:
     add(dest, s)
 
-proc loadLibPattern*(pattern: string, global_symbols=false): LibHandle =
+proc loadLibPattern*(pattern: string, globalSymbols=false): LibHandle =
   ## loads a library with name matching `pattern`, similar to what `dlimport`
   ## pragma does. Returns nil if the library could not be loaded.
   ## Warning: this proc uses the GC and so cannot be used to load the GC.
   var candidates = newSeq[string]()
   libCandidates(pattern, candidates)
   for c in candidates:
-    result = loadLib(c, global_symbols)
+    result = loadLib(c, globalSymbols)
     if not result.isNil: break
 
-when defined(posix):
+when defined(posix) and not defined(nintendoswitch):
   #
   # =========================================================================
   # This is an implementation based on the dlfcn interface.
@@ -118,24 +115,18 @@ when defined(posix):
   # as an emulation layer on top of native functions.
   # =========================================================================
   #
-  var
-    RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
-    RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
+  import posix
 
-  proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: cstring, mode: int): LibHandle {.
-      importc, header: "<dlfcn.h>".}
-  proc dlsym(lib: LibHandle, name: cstring): pointer {.
-      importc, header: "<dlfcn.h>".}
+  proc loadLib(path: string, globalSymbols=false): LibHandle =
+    let flags =
+      if globalSymbols: RTLD_NOW or RTLD_GLOBAL
+      else: RTLD_NOW
 
-  proc loadLib(path: string, global_symbols=false): LibHandle =
-    var flags = RTLD_NOW
-    if global_symbols: flags = flags or RTLD_GLOBAL
-    return dlopen(path, flags)
-  proc loadLib(): LibHandle = return dlopen(nil, RTLD_NOW)
-  proc unloadLib(lib: LibHandle) = dlclose(lib)
-  proc symAddr(lib: LibHandle, name: cstring): pointer =
-    return dlsym(lib, name)
+    dlopen(path, flags)
+
+  proc loadLib(): LibHandle = dlopen(nil, RTLD_NOW)
+  proc unloadLib(lib: LibHandle) = discard dlclose(lib)
+  proc symAddr(lib: LibHandle, name: cstring): pointer = dlsym(lib, name)
 
 elif defined(nintendoswitch):
   #
@@ -179,7 +170,7 @@ elif defined(windows) or defined(dos):
   proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc loadLib(path: string, global_symbols=false): LibHandle =
+  proc loadLib(path: string, globalSymbols=false): LibHandle =
     result = cast[LibHandle](winLoadLibrary(path))
   proc loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))

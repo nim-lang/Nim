@@ -1,5 +1,10 @@
 discard """
-  output: "OK"
+  output: '''
+body executed
+body executed
+OK
+macros api OK
+'''
 """
 
 type
@@ -138,15 +143,41 @@ type
     ValueA
     ValueB
 
-template testinstance(body: untyped): untyped =
-  block:
-    {.pragma: objectconfig.}
-    body
 
-  block:
-    {.pragma: objectconfig, packed.}
-    body
+proc transformObjectconfigPacked(arg: NimNode): NimNode =
+  let debug = arg.kind == nnkPragmaExpr
 
+  if arg.eqIdent("objectconfig"):
+    result = ident"packed"
+  else:
+    result = copyNimNode(arg)
+    for child in arg:
+      result.add transformObjectconfigPacked(child)
+
+proc removeObjectconfig(arg: NimNode): NimNode =
+  if arg.kind == nnkPragmaExpr and arg[1][0].eqIdent "objectconfig":
+    result = arg[0]
+  else:
+    result = copyNimNode(arg)
+    for child in arg:
+      result.add removeObjectconfig(child)
+
+macro testinstance(body: untyped): untyped =
+  let bodyPure = removeObjectconfig(body)
+  let bodyPacked = transformObjectconfigPacked(body)
+
+  result = quote do:
+    proc pureblock(): void =
+      const usePacked {.inject.} = false
+      `bodyPure`
+
+    pureblock()
+
+    proc packedblock(): void =
+      const usePacked {.inject.} = true
+      `bodyPacked`
+
+    packedblock()
 
 proc testPrimitiveTypes(): void =
   testAlign(pointer)
@@ -279,12 +310,10 @@ testinstance:
     InheritanceC {.objectconfig.} = object of InheritanceB
       c: char
 
-    #Float128Test = object
-    #  a: byte
-    #  b: float128
-
-    #Bazang = object of RootObj
-    #  a: float128
+    # from issue 4763
+    GenericObject[T] = object
+      a: int32
+      b: T
 
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
@@ -298,6 +327,7 @@ testinstance:
     var f : PaddingAfterBranch
     var g : RecursiveStuff
     var ro : RootObj
+    var go : GenericObject[int64]
 
     var
       e1: Enum1
@@ -308,10 +338,15 @@ testinstance:
       eoa: EnumObjectA
       eob: EnumObjectB
 
-
     testAlign(SimpleAlignment)
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
+    # sanity check to ensure both branches are actually executed
+    when usePacked:
+      doAssert sizeof(SimpleAlignment) == 10
+    else:
+      doAssert sizeof(SimpleAlignment) > 10
+
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go, e1, e2, e4, e8, eoa, eob)
 
     when not defined(cpp):
       type
@@ -374,6 +409,9 @@ testinstance:
     testOffsetOf(RecursiveStuff, d1)
     testOffsetOf(RecursiveStuff, d2)
 
+    echo "body executed" # sanity check to ensure this logic isn't skipped entirely
+
+
   main()
 
 {.emit: """/*TYPESECTION*/
@@ -395,7 +433,7 @@ assert sizeof(Bar) == 12
 type
   A = int8        # change to int16 and get sizeof(C)==6
   B = int16
-  C = object {.packed.}
+  C {.packed.} = object
     d {.bitsize:  1.}: A
     e {.bitsize:  7.}: A
     f {.bitsize: 16.}: B
@@ -404,7 +442,7 @@ assert sizeof(C) == 3
 
 
 type
-  MixedBitsize = object {.packed.}
+  MixedBitsize {.packed.} = object
     a: uint32
     b {.bitsize:  8.}: uint8
     c {.bitsize:  1.}: uint8
@@ -414,7 +452,184 @@ type
 
 doAssert sizeof(MixedBitsize) == 12
 
+
+type
+  MyUnionType {.union.} = object
+    a: int32
+    b: float32
+
+doAssert sizeof(MyUnionType) == 4
+
+##########################################
+# bug #9794
+##########################################
+
+type
+  imported_double {.importc: "double".} = object
+
+  Pod = object
+    v* : imported_double
+    seed*: int32
+
+  Pod2 = tuple[v: imported_double, seed: int32]
+
+proc foobar() =
+  testAlign(Pod)
+  testSize(Pod)
+  testAlign(Pod2)
+  testSize(Pod2)
+  doAssert sizeof(Pod) == sizeof(Pod2)
+  doAssert alignof(Pod) == alignof(Pod2)
+foobar()
+
 if failed:
   quit("FAIL")
 else:
   echo "OK"
+
+##########################################
+# sizeof macros API
+##########################################
+
+import macros
+
+type
+  Vec2f = object
+    x,y: float32
+
+  Vec4f = object
+    x,y,z,w: float32
+
+  # this type is constructed to have no platform depended alignment.
+  ParticleDataA = object
+    pos, vel: Vec2f
+    birthday: float32
+    padding: float32
+    moreStuff: Vec4f
+
+const expected = [
+  # name size align offset
+  ("pos", 8, 4, 0),
+  ("vel", 8, 4, 8),
+  ("birthday", 4, 4, 16),
+  ("padding", 4, 4, 20),
+  ("moreStuff", 16, 4, 24)
+]
+
+macro typeProcessing(arg: typed): untyped =
+  let recList = arg.getTypeImpl[2]
+  recList.expectKind nnkRecList
+  for i, identDefs in recList:
+    identDefs.expectKind nnkIdentDefs
+    identDefs.expectLen 3
+    let sym = identDefs[0]
+    sym.expectKind nnkSym
+    doAssert expected[i][0] == sym.strVal
+    doAssert expected[i][1] == getSize(sym)
+    doAssert expected[i][2] == getAlign(sym)
+    doAssert expected[i][3] == getOffset(sym)
+
+  result = newCall(bindSym"echo", newLit("macros api OK"))
+
+proc main() =
+  var mylocal: ParticleDataA
+  typeProcessing(mylocal)
+
+main()
+
+# issue #11320 use UncheckedArray
+
+type
+  Payload = object
+    something: int8
+    vals: UncheckedArray[int32]
+
+proc payloadCheck() =
+  doAssert offsetOf(Payload, vals) == 4
+  doAssert sizeOf(Payload) == 4
+
+payloadCheck()
+
+# offsetof tuple types
+
+type
+  MyTupleType = tuple
+    a: float64
+    b: float64
+    c: float64
+
+  MyOtherTupleType = tuple
+    a: float64
+    b: imported_double
+    c: float64
+
+  MyCaseObject = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+doAssert offsetof(MyTupleType, a) == 0
+doAssert offsetof(MyTupleType, b) == 8
+doAssert offsetof(MyTupleType, c) == 16
+
+doAssert offsetof(MyOtherTupleType, a) == 0
+doAssert offsetof(MyOtherTupleType, b) == 8
+
+# The following expression can only work if the offsetof expression is
+# properly forwarded for the C code generator.
+doAssert offsetof(MyOtherTupleType, c) == 16
+doAssert offsetof(Bar, foo) == 4
+doAssert offsetof(MyCaseObject, val1) == 0
+doAssert offsetof(MyCaseObject, kind) == 8
+doAssert offsetof(MyCaseObject, val2) == 12
+doAssert offsetof(MyCaseObject, val3) == 16
+doAssert offsetof(MyCaseObject, val4) == 12
+doAssert offsetof(MyCaseObject, val5) == 16
+
+template reject(e) =
+  static: assert(not compiles(e))
+
+reject:
+  const off1 = offsetof(MyOtherTupleType, c)
+
+reject:
+  const off2 = offsetof(MyOtherTupleType, b)
+
+reject:
+  const off3 = offsetof(MyCaseObject, kind)
+
+
+type
+  MyPackedCaseObject {.packed.} = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+# packed case object
+
+doAssert offsetof(MyPackedCaseObject, val1) == 0
+doAssert offsetof(MyPackedCaseObject, val2) == 9
+doAssert offsetof(MyPackedCaseObject, val3) == 13
+doAssert offsetof(MyPackedCaseObject, val4) == 9
+doAssert offsetof(MyPackedCaseObject, val5) == 13
+
+reject:
+  const off4 = offsetof(MyPackedCaseObject, val1)
+
+reject:
+  const off5 = offsetof(MyPackedCaseObject, val2)
+
+reject:
+  const off6 = offsetof(MyPackedCaseObject, val3)
+
+reject:
+  const off7 = offsetof(MyPackedCaseObject, val4)
+
+reject:
+  const off8 = offsetof(MyPackedCaseObject, val5)

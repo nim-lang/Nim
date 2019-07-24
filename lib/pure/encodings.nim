@@ -217,14 +217,14 @@ when defined(windows):
     proc getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
 
-  proc nameToCodePage(name: string): CodePage =
+  proc nameToCodePage*(name: string): CodePage =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1
     for no, na in items(winEncodings):
       if no == nameAsInt or eqEncodingNames(na, name): return CodePage(no)
     result = CodePage(-1)
 
-  proc codePageToName(c: CodePage): string =
+  proc codePageToName*(c: CodePage): string =
     for no, na in items(winEncodings):
       if no == int(c):
         return if na.len != 0: na else: $no

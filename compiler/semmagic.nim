@@ -10,15 +10,18 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
-proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
-  result = newNodeI(nkAddr, n.info)
+proc semAddrArg(c: PContext; n: PNode; isUnsafeAddr = false): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
-    localError(c.config, n.info, errExprHasNoAddress)
-  result.add x
-  result.typ = makePtrType(c, x.typ)
+    # Do not suggest the use of unsafeAddr if this expression already is a
+    # unsafeAddr
+    if isUnsafeAddr:
+      localError(c.config, n.info, errExprHasNoAddress)
+    else:
+      localError(c.config, n.info, errExprHasNoAddress & "; maybe use 'unsafeAddr'")
+  result = x
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   var m = BiggestInt 1 # typeOfIter
@@ -90,9 +93,10 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   line.intVal = toLinenumber(info)
   var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
   column.intVal = toColumn(info)
-  result.add(filename)
-  result.add(line)
-  result.add(column)
+  # filename: string, line: int, column: int
+  result.add(newTree(nkExprColonExpr, n.typ.n[0], filename))
+  result.add(newTree(nkExprColonExpr, n.typ.n[1], line))
+  result.add(newTree(nkExprColonExpr, n.typ.n[2], column))
 
 proc toNode(t: PType, i: TLineInfo): PNode =
   result = newNodeIT(nkType, i, t)
@@ -319,6 +323,41 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(c.graph, n.info, tyBool)
   result = n
 
+proc semUnown(c: PContext; n: PNode): PNode =
+  proc unownedType(c: PContext; t: PType): PType =
+    case t.kind
+    of tyTuple:
+      var elems = newSeq[PType](t.len)
+      var someChange = false
+      for i in 0..<t.len:
+        elems[i] = unownedType(c, t[i])
+        if elems[i] != t[i]: someChange = true
+      if someChange:
+        result = newType(tyTuple, t.owner)
+        # we have to use 'rawAddSon' here so that type flags are
+        # properly computed:
+        for e in elems: result.rawAddSon(e)
+      else:
+        result = t
+    of tyOwned: result = t.sons[0]
+    of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyLent,
+       tyGenericInst, tyAlias:
+      let L = t.len-1
+      let b = unownedType(c, t[L])
+      if b != t[L]:
+        result = copyType(t, t.owner, keepId = false)
+        result[L] = b
+        result.flags.excl tfHasOwned
+      else:
+        result = t
+    else:
+      result = t
+
+  result = copyTree(n[1])
+  result.typ = unownedType(c, result.typ)
+  # little hack for injectdestructors.nim (see bug #11350):
+  #result.sons[0].typ = nil
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -330,48 +369,17 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
+    result = n
+    result[1] = semAddrArg(c, n[1], n[0].sym.name.s == "unsafeAddr")
+    result.typ = makePtrType(c, result[1].typ)
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:
-    # TODO there is no proper way to find out if a type cannot be queried for the size.
-    let size = getSize(c.config, n[1].typ)
-    # We just assume here that the type might come from the c backend
-    if size == szUnknownSize:
-      # Forward to the c code generation to emit a `sizeof` in the C code.
-      result = n
-    elif size >= 0:
-      result = newIntNode(nkIntLit, size)
-      result.info = n.info
-      result.typ = n.typ
-    else:
-      localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely, type: " & n[1].typ.typeToString)
-      result = n
+    result = foldSizeOf(c.config, n, n)
   of mAlignOf:
-    result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
-    result.info = n.info
-    result.typ = n.typ
+    result = foldAlignOf(c.config, n, n)
   of mOffsetOf:
-    var dotExpr: PNode
-
-    block findDotExpr:
-      if n[1].kind == nkDotExpr:
-        dotExpr = n[1]
-      elif n[1].kind == nkCheckedFieldExpr:
-        dotExpr = n[1][0]
-      else:
-        illFormedAst(n, c.config)
-
-    assert dotExpr != nil
-
-    let value = dotExpr[0]
-    let member = dotExpr[1]
-
-    discard computeSize(c.config, value.typ)
-
-    result = newIntNode(nkIntLit, member.sym.offset)
-    result.info = n.info
-    result.typ = n.typ
+    result = foldOffsetOf(c.config, n, n)
   of mArrGet:
     result = semArrGet(c, n, flags)
   of mArrPut:
@@ -415,4 +423,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a procedure")
     result = n
+  of mDestroy:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    if t.destructor != nil:
+      result.sons[0] = newSymNode(t.destructor)
+  of mUnown:
+    result = semUnown(c, n)
   else: result = n

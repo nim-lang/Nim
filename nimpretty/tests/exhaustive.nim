@@ -122,7 +122,7 @@ type
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
 
-proc openEmitter*[T, S](em: var Emitter; config: ConfigRef, fileIdx: FileIndex) {.pragmaHereWrongCurlyEnd} =
+proc openEmitter*[T, S](em: var Emitter; config: ConfigRef; fileIdx: FileIndex) {.pragmaHereWrongCurlyEnd} =
   let outfile = changeFileExt(config.toFullPath(fileIdx), ".pretty.nim")
   em.f = llStreamOpen(outfile, fmWrite)
   em.config = config
@@ -360,3 +360,465 @@ foobar
 
 # bug #9673
 discard `* `(1, 2)
+
+proc fun4() =
+  var a = "asdf"
+  var i = 0
+  while i<a.len and i<a.len:
+    return
+
+
+# bug #10295
+
+import osproc
+let res = execProcess(
+    "echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
+
+let res = execProcess("echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates")
+
+
+# bug #10177
+
+proc foo  *  () =
+  discard
+
+proc foo* [T]() =
+  discard
+
+
+# bug #10159
+
+proc fun() =
+  discard
+
+proc main() =
+    echo "foo"; echo "bar";
+    discard
+
+main()
+
+type
+  TCallingConvention* = enum
+    ccDefault,                # proc has no explicit calling convention
+    ccStdCall,    # procedure is stdcall
+    ccCDecl,                  # cdecl
+    ccSafeCall,               # safecall
+    ccSysCall, # system call
+    ccInline,                 # proc should be inlined
+    ccNoInline,               # proc should not be inlined
+    ccFastCall,               # fastcall (pass parameters in registers)
+    ccClosure,        # proc has a closure
+    ccNoConvention       # needed for generating proper C procs sometimes
+
+
+proc isValid1*[A](s: HashSet[A]): bool {.deprecated:
+    "Deprecated since v0.20; sets are initialized by default".} =
+  ## Returns `true` if the set has been initialized (with `initHashSet proc
+  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  result = s.data.len > 0
+  # bug #11468
+
+assert $type(a) == "Option[system.int]"
+foo(a, $type(b), c)
+foo(type(b), c) # this is ok
+
+proc `<`*[A](s, t: A): bool = discard
+proc `==`*[A](s, t: HashSet[A]): bool = discard
+proc `<=`*[A](s, t: HashSet[A]): bool = discard
+
+# these are ok:
+proc `$`*[A](s: HashSet[A]): string = discard
+proc `*`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} = discard
+proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} = discard
+
+# bug #11470
+
+
+# bug #11467
+
+type
+  FirstEnum = enum ## doc comment here
+    first,  ## this is first
+    second, ## second doc
+    third,  ## third one
+    fourth  ## the last one
+
+
+type
+  SecondEnum = enum ## doc comment here
+    first,  ## this is first
+    second, ## second doc
+    third,  ## third one
+    fourth, ## the last one
+
+
+type
+  ThirdEnum = enum ## doc comment here
+    first    ## this is first
+    second   ## second doc
+    third    ## third one
+    fourth   ## the last one
+
+
+type
+  HttpMethod* = enum  ## the requested HttpMethod
+    HttpHead,         ## Asks for the response identical to the one that would
+                      ## correspond to a GET request, but without the response
+                      ## body.
+    HttpGet,          ## Retrieves the specified resource.
+    HttpPost,         ## Submits data to be processed to the identified
+                      ## resource. The data is included in the body of the
+                      ## request.
+    HttpPut,          ## Uploads a representation of the specified resource.
+    HttpDelete,       ## Deletes the specified resource.
+    HttpTrace,        ## Echoes back the received request, so that a client
+                      ## can see what intermediate servers are adding or
+                      ## changing in the request.
+    HttpOptions,      ## Returns the HTTP methods that the server supports
+                      ## for specified address.
+    HttpConnect,      ## Converts the request connection to a transparent
+                      ## TCP/IP tunnel, usually used for proxies.
+    HttpPatch         ## Applies partial modifications to a resource.
+
+type
+  HtmlTag* = enum  ## list of all supported HTML tags; order will always be
+                   ## alphabetically
+    tagUnknown,    ## unknown HTML element
+    tagA,          ## the HTML ``a`` element
+    tagAbbr,       ## the deprecated HTML ``abbr`` element
+    tagAcronym,    ## the HTML ``acronym`` element
+    tagAddress,    ## the HTML ``address`` element
+    tagApplet,     ## the deprecated HTML ``applet`` element
+    tagArea,       ## the HTML ``area`` element
+    tagArticle,    ## the HTML ``article`` element
+    tagAside,      ## the HTML ``aside`` element
+    tagAudio,      ## the HTML ``audio`` element
+    tagB,          ## the HTML ``b`` element
+    tagBase,       ## the HTML ``base`` element
+    tagBdi,        ## the HTML ``bdi`` element
+    tagBdo,        ## the deprecated HTML ``dbo`` element
+    tagBasefont,   ## the deprecated HTML ``basefont`` element
+    tagBig,        ## the HTML ``big`` element
+    tagBlockquote, ## the HTML ``blockquote`` element
+    tagBody,       ## the HTML ``body`` element
+    tagBr,         ## the HTML ``br`` element
+    tagButton,     ## the HTML ``button`` element
+    tagCanvas,     ## the HTML ``canvas`` element
+    tagCaption,    ## the HTML ``caption`` element
+    tagCenter,     ## the deprecated HTML ``center`` element
+    tagCite,       ## the HTML ``cite`` element
+    tagCode,       ## the HTML ``code`` element
+    tagCol,        ## the HTML ``col`` element
+    tagColgroup,   ## the HTML ``colgroup`` element
+    tagCommand,    ## the HTML ``command`` element
+    tagDatalist,   ## the HTML ``datalist`` element
+    tagDd,         ## the HTML ``dd`` element
+    tagDel,        ## the HTML ``del`` element
+    tagDetails,    ## the HTML ``details`` element
+    tagDfn,        ## the HTML ``dfn`` element
+    tagDialog,     ## the HTML ``dialog`` element
+    tagDiv,        ## the HTML ``div`` element
+    tagDir,        ## the deprecated HTLM ``dir`` element
+    tagDl,         ## the HTML ``dl`` element
+    tagDt,         ## the HTML ``dt`` element
+    tagEm,         ## the HTML ``em`` element
+    tagEmbed,      ## the HTML ``embed`` element
+    tagFieldset,   ## the HTML ``fieldset`` element
+    tagFigcaption, ## the HTML ``figcaption`` element
+    tagFigure,     ## the HTML ``figure`` element
+    tagFont,       ## the deprecated HTML ``font`` element
+    tagFooter,     ## the HTML ``footer`` element
+    tagForm,       ## the HTML ``form`` element
+    tagFrame,      ## the HTML ``frame`` element
+    tagFrameset,   ## the deprecated HTML ``frameset`` element
+    tagH1,         ## the HTML ``h1`` element
+    tagH2,         ## the HTML ``h2`` element
+    tagH3,         ## the HTML ``h3`` element
+    tagH4,         ## the HTML ``h4`` element
+    tagH5,         ## the HTML ``h5`` element
+    tagH6,         ## the HTML ``h6`` element
+    tagHead,       ## the HTML ``head`` element
+    tagHeader,     ## the HTML ``header`` element
+    tagHgroup,     ## the HTML ``hgroup`` element
+    tagHtml,       ## the HTML ``html`` element
+    tagHr,         ## the HTML ``hr`` element
+    tagI,          ## the HTML ``i`` element
+    tagIframe,     ## the deprecated HTML ``iframe`` element
+    tagImg,        ## the HTML ``img`` element
+    tagInput,      ## the HTML ``input`` element
+    tagIns,        ## the HTML ``ins`` element
+    tagIsindex,    ## the deprecated HTML ``isindex`` element
+    tagKbd,        ## the HTML ``kbd`` element
+    tagKeygen,     ## the HTML ``keygen`` element
+    tagLabel,      ## the HTML ``label`` element
+    tagLegend,     ## the HTML ``legend`` element
+    tagLi,         ## the HTML ``li`` element
+    tagLink,       ## the HTML ``link`` element
+    tagMap,        ## the HTML ``map`` element
+    tagMark,       ## the HTML ``mark`` element
+    tagMenu,       ## the deprecated HTML ``menu`` element
+    tagMeta,       ## the HTML ``meta`` element
+    tagMeter,      ## the HTML ``meter`` element
+    tagNav,        ## the HTML ``nav`` element
+    tagNobr,       ## the deprecated HTML ``nobr`` element
+    tagNoframes,   ## the deprecated HTML ``noframes`` element
+    tagNoscript,   ## the HTML ``noscript`` element
+    tagObject,     ## the HTML ``object`` element
+    tagOl,         ## the HTML ``ol`` element
+    tagOptgroup,   ## the HTML ``optgroup`` element
+    tagOption,     ## the HTML ``option`` element
+    tagOutput,     ## the HTML ``output`` element
+    tagP,          ## the HTML ``p`` element
+    tagParam,      ## the HTML ``param`` element
+    tagPre,        ## the HTML ``pre`` element
+    tagProgress,   ## the HTML ``progress`` element
+    tagQ,          ## the HTML ``q`` element
+    tagRp,         ## the HTML ``rp`` element
+    tagRt,         ## the HTML ``rt`` element
+    tagRuby,       ## the HTML ``ruby`` element
+    tagS,          ## the deprecated HTML ``s`` element
+    tagSamp,       ## the HTML ``samp`` element
+    tagScript,     ## the HTML ``script`` element
+    tagSection,    ## the HTML ``section`` element
+    tagSelect,     ## the HTML ``select`` element
+    tagSmall,      ## the HTML ``small`` element
+    tagSource,     ## the HTML ``source`` element
+    tagSpan,       ## the HTML ``span`` element
+    tagStrike,     ## the deprecated HTML ``strike`` element
+    tagStrong,     ## the HTML ``strong`` element
+    tagStyle,      ## the HTML ``style`` element
+    tagSub,        ## the HTML ``sub`` element
+    tagSummary,    ## the HTML ``summary`` element
+    tagSup,        ## the HTML ``sup`` element
+    tagTable,      ## the HTML ``table`` element
+    tagTbody,      ## the HTML ``tbody`` element
+    tagTd,         ## the HTML ``td`` element
+    tagTextarea,   ## the HTML ``textarea`` element
+    tagTfoot,      ## the HTML ``tfoot`` element
+    tagTh,         ## the HTML ``th`` element
+    tagThead,      ## the HTML ``thead`` element
+    tagTime,       ## the HTML ``time`` element
+    tagTitle,      ## the HTML ``title`` element
+    tagTr,         ## the HTML ``tr`` element
+    tagTrack,      ## the HTML ``track`` element
+    tagTt,         ## the HTML ``tt`` element
+    tagU,          ## the deprecated HTML ``u`` element
+    tagUl,         ## the HTML ``ul`` element
+    tagVar,        ## the HTML ``var`` element
+    tagVideo,      ## the HTML ``video`` element
+    tagWbr         ## the HTML ``wbr`` element
+
+
+# bug #11469
+const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 16, 17,
+    25, 17, 4, 8, 31, 27, 13, 23]
+
+veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1], futureValue1,
+    futureValue2, node)
+
+veryLongVariableName.createVar("future" & $node[1][0].toStrLit, node[1], futureValue1,
+                               futureValue2, node)
+
+type
+  CmdLineKind* = enum         ## The detected command line token.
+    cmdEnd,                   ## End of command line reached
+    cmdArgument,              ## An argument such as a filename
+    cmdLongOption,            ## A long option such as --option
+    cmdShortOption            ## A short option such as -c
+  OptParser* = object of RootObj ## \
+    ## Implementation of the command line parser. Here is even more text yad.
+    ##
+    ## To initialize it, use the
+    ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+    pos*: int
+    inShortState: bool
+    allowWhitespaceAfterColon: bool
+    shortNoVal: set[char]
+    longNoVal: seq[string]
+    cmds: seq[string]
+    idx: int
+    kind*: CmdLineKind        ## The detected command line token
+    key*, val*: TaintedString ## Key and value pair; the key is the option
+                              ## or the argument, and the value is not "" if
+                              ## the option was given a value
+
+  OptParserDifferently* = object of RootObj ## Implementation of the command line parser.
+    ##
+    ## To initialize it, use the
+    ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+    pos*: int
+    inShortState: bool
+    allowWhitespaceAfterColon: bool
+    shortNoVal: set[char]
+    longNoVal: seq[string]
+    cmds: seq[string]
+    idx: int
+    kind*: CmdLineKind        ## The detected command line token
+    key*, val*: TaintedString ## Key and value pair; the key is the option
+                              ## or the argument, and the value is not "" if
+                              ## the option was given a value
+
+block:
+  var t = 3
+
+## This MUST be a multiline comment,
+## single line comment would be ok.
+block:
+  var x = 7
+
+
+block:
+  var t = 3
+  ## another
+  ## multi
+
+## This MUST be a multiline comment,
+## single line comment would be ok.
+block:
+  var x = 7
+
+
+proc newRecordGen(ctx: Context; typ: TypRef): PNode =
+  result = nkTypeDef.t(
+    newId(typ.optSym.name, true, pragmas = [id(if typ.isUnion: "cUnion" else: "cStruct")]),
+    empty(),
+    nkObjectTy.t(
+      empty(),
+      empty(),
+      nkRecList.t(
+        typ.recFields.map(newRecFieldGen))))
+
+
+##[
+String `interpolation`:idx: / `format`:idx: inspired by
+Python's ``f``-strings.
+
+.. code-block:: nim
+
+    import strformat
+    let msg = "hello"
+    doAssert fmt"{msg}\n" == "hello\\n"
+
+Because the literal is a raw string literal, the ``\n`` is not interpreted as
+an escape sequence.
+
+
+=================        ====================================================
+  Sign                   Meaning
+=================        ====================================================
+``+``                    Indicates that a sign should be used for both
+                         positive as well as negative numbers.
+``-``                    Indicates that a sign should be used only for
+                         negative numbers (this is the default behavior).
+(space)                  Indicates that a leading space should be used on
+                         positive numbers.
+=================        ====================================================
+
+]##
+
+
+let
+  lla = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is an okayish comment
+  llb = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is a very long comment which should be split
+  llc = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 3429424 + 4239489 - 42399
+  lld = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 342949924 + 423948999 - 42399
+
+type
+  MyLongEnum = enum ## doc comment here
+    first, ## this is a long comment here, but please align it
+    secondWithAVeryLongNameMightBreak, ## this is a short one
+    thirdOne ## it's ok
+
+if true: # just one space before comment
+  echo 7
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool
+  ## Compares two colors.
+  ##
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool {.borrow.}
+  ## Compares two colors.
+  ##
+
+
+var rows1 = await pool.rows(sql"""
+    SELECT STUFF
+    WHERE fffffffffffffffffffffffffffffff
+  """,
+  @[
+    "AAAA",
+    "BBBB"
+  ]
+)
+
+var rows2 = await pool.rows(sql"""
+    SELECT STUFF
+    WHERE fffffffffffffffffffffffffffffffgggggggggggggggggggggggggghhhhhhhhhhhhhhhheeeeeeiiiijklm""",
+  @[
+    "AAAA",
+    "BBBB"
+  ]
+)
+
+
+# bug #11699
+
+const keywords = @[
+  "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar",
+  "zzz", "ggg", "ddd",
+]
+
+let keywords1 = @[
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+  "zzz", "ggg", "ddd",
+]
+
+let keywords2 = @[
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+  "zzz", "ggg", "ddd",
+]
+
+if true:
+  let keywords3 = @[
+    "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+    "zzz", "ggg", "ddd",
+  ]
+
+const b = true
+let fooB =
+  if true:
+    if b: 7 else: 8
+  else: ord(b)
+
+let foo = if cond:
+            if b: T else: F
+          else: b
+
+let a =
+  [[aaadsfas, bbb],
+   [ccc, ddd]]
+
+let b = [
+  [aaa, bbb],
+  [ccc, ddd]
+]
+
+# bug #11616
+proc newRecordGen(ctx: Context; typ: TypRef): PNode =
+  result = nkTypeDef.t(
+    newId(typ.optSym.name, true, pragmas = [id(if typ.isUnion: "cUnion"
+                                               else: "cStruct")]),
+    empty(),
+    nkObjectTy.t(
+      empty(),
+      empty(),
+      nkRecList.t(
+        typ.recFields.map(newRecFieldGen))))
+
+proc f =
+  # doesn't break the code, but leaving indentation as is would be nice.
+  let x = if true: callingProcWhatever()
+          else: callingADifferentProc()

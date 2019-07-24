@@ -9,15 +9,27 @@ Advanced commands:
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
-  //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
                           module dependency graph
   //dump                    dump all defined conditionals and search paths
-                            see also: --dump.format:json (useful with: ` | jq`)
+                          see also: --dump.format:json (useful with: ` | jq`)
   //check                   checks the project for syntax and semantic
+
+Runtime checks (see -x):
+  --objChecks:on|off        turn obj conversion checks on|off
+  --fieldChecks:on|off      turn case variant field checks on|off
+  --rangeChecks:on|off      turn range checks on|off
+  --boundChecks:on|off      turn bound checks on|off
+  --overflowChecks:on|off   turn int over-/underflow checks on|off
+  --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
+  --nanChecks:on|off        turn NaN checks on|off
+  --infChecks:on|off        turn Inf checks on|off
+  --nilChecks:on|off        turn nil checks on|off
+  --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
+  --outdir:DIR              set the path where the output file will be written
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
@@ -37,8 +49,6 @@ Advanced options:
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
-  --header:FILE             the compiler should produce a .h file (FILE
-                            is optional)
   -c, --compileOnly:on|off  compile Nim files only; do not assemble or link
   --noLinking:on|off        compile Nim and generated files but do not link
   --noMain:on|off           do not generate a main procedure
@@ -58,6 +68,7 @@ Advanced options:
   --project                 document the whole project (doc2)
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
+  --docInternal             also generate documentation for non-exported symbols
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc:on|off         embeds the original source code as comments
                             in the generated output
@@ -65,7 +76,8 @@ Advanced options:
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
-  --patterns:on|off         turn pattern matching on|off
+  --trmacros:on|off         turn term rewriting macros on|off
+  --multimethods:on|off     turn multi-methods on|off
   --memTracker:on|off       turn memory tracker on|off
   --hotCodeReloading:on|off
                             turn support for hot code reloading on|off
@@ -91,6 +103,7 @@ Advanced options:
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used
+  --expandMacro:MACRO       dump every generated AST from MACRO
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
@@ -107,7 +120,8 @@ Advanced options:
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --experimental:$1
                             enable experimental language feature
-  -v, --version             show detailed version information
-  --profiler:on|off         Enable profiling; requires `import nimprof`, and
+  --newruntime              use an alternative runtime that uses destructors
+                            and that uses a shared heap via -d:useMalloc
+  --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html

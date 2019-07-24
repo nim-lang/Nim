@@ -6,18 +6,6 @@
 #    distribution, for details about the copyright.
 #
 
-
-from pcre import nil
-import nre/private/util
-import tables
-from strutils import `%`
-from math import ceil
-import options
-from unicode import runeLenAt
-
-export options
-
-
 ## What is NRE?
 ## ============
 ##
@@ -67,6 +55,15 @@ runnableExamples:
     let matchBounds = firstVowel.get().captureBounds[-1]
     doAssert matchBounds.a == 1
 
+from pcre import nil
+import nre/private/util
+import tables
+from strutils import `%`
+from math import ceil
+import options
+from unicode import runeLenAt
+
+export options
 
 # Type definitions {{{
 type
@@ -443,7 +440,6 @@ proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: 
 
 proc destroyRegex(pattern: Regex) =
   pcre.free_substring(cast[cstring](pattern.pcreObj))
-  pattern.pcreObj = nil
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
 

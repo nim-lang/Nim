@@ -16,6 +16,8 @@
 #
 
 {.deadCodeElim: on.}  # dce option deprecated
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 when defined(windows):
   const
@@ -114,7 +116,7 @@ type
   PPGVerbosity* = ptr PGVerbosity
   PGVerbosity* = enum
     PQERRORS_TERSE, PQERRORS_DEFAULT, PQERRORS_VERBOSE
-  PpgNotify* = ptr pgNotify
+  PPGNotify* = ptr pgNotify
   pgNotify*{.pure, final.} = object
     relname*: cstring
     be_pid*: int32
@@ -124,7 +126,7 @@ type
   PQnoticeProcessor* = proc (arg: pointer, message: cstring){.cdecl.}
   Ppqbool* = ptr pqbool
   pqbool* = char
-  P_PQprintOpt* = ptr PQprintOpt
+  PPQprintOpt* = ptr PQprintOpt
   PQprintOpt*{.pure, final.} = object
     header*: pqbool
     align*: pqbool
@@ -137,7 +139,7 @@ type
     caption*: cstring
     fieldName*: ptr cstring
 
-  P_PQconninfoOption* = ptr PQconninfoOption
+  PPQconninfoOption* = ptr PQconninfoOption
   PQconninfoOption*{.pure, final.} = object
     keyword*: cstring
     envvar*: cstring
@@ -153,6 +155,8 @@ type
     isint*: int32
     p*: pointer
 
+proc pqinitOpenSSL*(do_ssl: int32, do_crypto: int32) {.cdecl, dynlib: dllName,
+    importc: "PQinitOpenSSL".}
 proc pqconnectStart*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName,
     importc: "PQconnectStart".}
 proc pqconnectPoll*(conn: PPGconn): PostgresPollingStatusType{.cdecl,
@@ -162,7 +166,7 @@ proc pqconnectdb*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName,
 proc pqsetdbLogin*(pghost: cstring, pgport: cstring, pgoptions: cstring,
                    pgtty: cstring, dbName: cstring, login: cstring, pwd: cstring): PPGconn{.
     cdecl, dynlib: dllName, importc: "PQsetdbLogin".}
-proc pqsetdb*(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): Ppgconn
+proc pqsetdb*(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): PPGconn
 proc pqfinish*(conn: PPGconn){.cdecl, dynlib: dllName, importc: "PQfinish".}
 proc pqconndefaults*(): PPQconninfoOption{.cdecl, dynlib: dllName,
     importc: "PQconndefaults".}
@@ -245,7 +249,7 @@ proc pqisBusy*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
                                       importc: "PQisBusy".}
 proc pqconsumeInput*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
     importc: "PQconsumeInput".}
-proc pqnotifies*(conn: PPGconn): PPGnotify{.cdecl, dynlib: dllName,
+proc pqnotifies*(conn: PPGconn): PPGNotify{.cdecl, dynlib: dllName,
     importc: "PQnotifies".}
 proc pqputCopyData*(conn: PPGconn, buffer: cstring, nbytes: int32): int32{.
     cdecl, dynlib: dllName, importc: "PQputCopyData".}
@@ -356,5 +360,8 @@ proc lo_export*(conn: PPGconn, lobjId: Oid, filename: cstring): int32{.cdecl,
 proc pqmblen*(s: cstring, encoding: int32): int32{.cdecl, dynlib: dllName,
     importc: "PQmblen".}
 proc pqenv2encoding*(): int32{.cdecl, dynlib: dllName, importc: "PQenv2encoding".}
-proc pqsetdb(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): PPgConn =
-  result = pqSetdbLogin(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME, "", "")
+proc pqsetdb(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME: cstring): PPGconn =
+  result = pqsetdbLogin(M_PGHOST, M_PGPORT, M_PGOPT, M_PGTTY, M_DBNAME, "", "")
+
+when defined(nimHasStyleChecks):
+  {.pop.}

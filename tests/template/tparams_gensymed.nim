@@ -110,3 +110,23 @@ implementUnary(): x*x
 
 registerInstantiation(int)
 registerInstantiation(float)
+
+# bug #10192
+template nest(body) {.dirty.} =
+  template p1(b1: untyped) {.dirty, used.} =
+    template implp1: untyped {.dirty.} = b1
+  template p2(b2: untyped) {.dirty, used.} =
+    template implp2: untyped {.dirty.} = b2
+
+  body
+  implp1
+  implp2
+
+template test() =
+  nest:
+    p1:
+      var foo = "bar"
+    p2:
+      doAssert(foo.len == 3)
+
+test()

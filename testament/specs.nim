@@ -7,12 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-import parseutils, strutils, os, osproc, streams, parsecfg
+import sequtils, parseutils, strutils, os, osproc, streams, parsecfg
 
-var compilerPrefix* = "compiler" / "nim"  ## built via ./koch tests
+var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
+
+var skips*: seq[string]
 
 type
   TTestAction* = enum
@@ -76,7 +78,7 @@ proc getCmd*(s: TSpec): string =
     result = s.cmd
 
 const
-  targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
+  targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
 
 when not declared(parseCfgBool):
@@ -206,6 +208,9 @@ proc parseSpec*(filename: string): TSpec =
           if isTravis: result.err = reDisabled
         of "appveyor":
           if isAppVeyor: result.err = reDisabled
+        of "32bit":
+          if sizeof(int) == 4:
+            result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
@@ -242,3 +247,6 @@ proc parseSpec*(filename: string): TSpec =
     of cfgEof:
       break
   close(p)
+
+  if skips.anyIt(it in result.file):
+    result.err = reDisabled

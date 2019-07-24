@@ -38,7 +38,7 @@ type
   Trunk = object
     next: PTrunk         # all nodes are connected with this pointer
     key: int             # start address at bit 0
-    bits: array[0..IntsPerTrunk-1, int] # a bit vector
+    bits: array[0..IntsPerTrunk-1, uint] # a bit vector
 
   TrunkBuckets = array[0..255, PTrunk]
   IntSet = object
@@ -224,10 +224,6 @@ proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   setBit(sl, a.slBitmap[fl])
   setBit(fl, a.flBitmap)
 
-{.push stack_trace: off.}
-proc initAllocator() = discard "nothing to do anymore"
-{.pop.}
-
 proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   inc(a.currMem, bytes)
 
@@ -336,21 +332,21 @@ proc contains(s: IntSet, key: int): bool =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
-    result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
+    result = (t.bits[u shr IntShift] and (uint(1) shl (u and IntMask))) != 0
   else:
     result = false
 
 proc incl(a: var MemRegion, s: var IntSet, key: int) =
   var t = intSetPut(a, s, key shr TrunkShift)
   var u = key and TrunkMask
-  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
+  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (uint(1) shl (u and IntMask))
 
 proc excl(s: var IntSet, key: int) =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
     t.bits[u shr IntShift] = t.bits[u shr IntShift] and not
-        (1 shl (u and IntMask))
+        (uint(1) shl (u and IntMask))
 
 iterator elements(t: IntSet): int {.inline.} =
   # while traversing it is forbidden to change the set!
@@ -1011,7 +1007,7 @@ template instantiateForRegion(allocator: untyped) =
     dealloc(allocator, p)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    result = realloc(allocator, p, newSize)
+    result = realloc(allocator, p, newsize)
 
   when false:
     proc countFreeMem(): int =
@@ -1064,11 +1060,10 @@ template instantiateForRegion(allocator: untyped) =
       result = realloc(sharedHeap, p, newsize)
       releaseSys(heapLock)
     else:
-      result = realloc(p, newSize)
+      result = realloc(p, newsize)
 
   when hasThreadSupport:
-
-    template sharedMemStatsShared(v: int) {.immediate.} =
+    template sharedMemStatsShared(v: int) =
       acquireSys(heapLock)
       result = v
       releaseSys(heapLock)

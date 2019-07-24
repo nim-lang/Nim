@@ -10,8 +10,7 @@
 ## Template evaluation engine. Now hygienic.
 
 import
-  strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer,
-  lineinfos
+  strutils, options, ast, astalgo, msgs, renderer, lineinfos
 
 type
   TemplCtx = object
@@ -37,7 +36,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   case templ.kind
   of nkSym:
     var s = templ.sym
-    if s.owner == nil or s.owner.id == c.owner.id:
+    if (s.owner == nil and s.kind == skParam) or s.owner == c.owner:
       if s.kind == skParam and sfGenSym notin s.flags:
         handleParam actual.sons[s.position]
       elif (s.owner != nil) and (s.kind == skGenericParam or
@@ -64,7 +63,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in countup(0, sonsLen(templ) - 1):
+      for i in 0 ..< sonsLen(templ):
         evalTemplateAux(templ.sons[i], actual, c, res)
       result.add res
     else:
@@ -78,7 +77,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       c.isDeclarative = true
       isDeclarative = true
     var res = copyNode(c, templ, actual)
-    for i in countup(0, sonsLen(templ) - 1):
+    for i in 0 ..< sonsLen(templ):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
     if isDeclarative: c.isDeclarative = false
@@ -104,7 +103,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
     # their bodies. We could try to fix this, but it may be
     # wiser to just deprecate immediate templates and macros
     # now that we have working untyped parameters.
-    genericParams = if sfImmediate in s.flags or fromHlo: 0
+    genericParams = if fromHlo: 0
                     else: s.ast[genericParamsPos].len
     expectedRegularParams = s.typ.len-1
     givenRegularParams = totalParams - genericParams
@@ -186,14 +185,13 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)
-    #ctx.instLines = body.kind notin {nkStmtList, nkStmtListExpr,
-    #                                 nkBlockStmt, nkBlockExpr}
-    #if ctx.instLines: result.info = n.info
-    for i in countup(0, safeLen(body) - 1):
+    ctx.instLines = sfCallsite in tmpl.flags
+    if ctx.instLines:
+      result.info = n.info
+    for i in 0 ..< safeLen(body):
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
-

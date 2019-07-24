@@ -20,6 +20,7 @@ type
     powerpc64,                 ## 64 bit PowerPC
     powerpc64el,               ## Little Endian 64 bit PowerPC
     sparc,                     ## Sparc based processor
+    sparc64,                   ## 64-bit Sparc based processor
     ia64,                      ## Intel Itanium
     amd64,                     ## x86_64 (AMD64); 64 bit x86 compatible CPU
     mips,                      ## Mips based processor
@@ -32,6 +33,7 @@ type
     avr,                       ## AVR based processor
     msp430,                    ## TI MSP430 microcontroller
     riscv64                    ## RISC-V 64-bit processor
+    wasm32                     ## WASM, 32-bit
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
@@ -75,6 +77,7 @@ const
                elif defined(powerpc64): CpuPlatform.powerpc64
                elif defined(powerpc64el): CpuPlatform.powerpc64el
                elif defined(sparc): CpuPlatform.sparc
+               elif defined(sparc64): CpuPlatform.sparc64
                elif defined(ia64): CpuPlatform.ia64
                elif defined(amd64): CpuPlatform.amd64
                elif defined(mips): CpuPlatform.mips
@@ -87,5 +90,6 @@ const
                elif defined(avr): CpuPlatform.avr
                elif defined(msp430): CpuPlatform.msp430
                elif defined(riscv64): CpuPlatform.riscv64
+               elif defined(wasm32): CpuPlatform.wasm32
                else: CpuPlatform.none
     ## the CPU this program will run on.

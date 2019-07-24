@@ -136,9 +136,6 @@ proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
   result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
 
-proc canBeCycleRoot(c: PCell): bool {.inline.} =
-  result = ntfAcyclic notin c.typ.flags
-
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
   result = usrToCell(c).typ
@@ -196,12 +193,12 @@ proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   markAsEscaped(cell)
   add(gch.additionalRoots, cell)
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -213,10 +210,10 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
       break
     dec(i)
 
-proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} =
   discard "can we do some freeing here?"
 
-proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefRC1(p: pointer) {.compilerproc, inline.} =
   discard "can we do some freeing here?"
 
 template markGrey(x: PCell) =
@@ -228,7 +225,7 @@ template markGrey(x: PCell) =
     x.setColor(rcGrey)
     add(gch.greyStack, x)
 
-proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
@@ -241,7 +238,7 @@ proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
 proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
   deprecated: "old compiler compat".} = asgnRef(dest, src)
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc.} =
   # unsureAsgnRef marks 'src' as grey only if dest is not on the
   # stack. It is used by the code generator if it cannot decide wether a
   # reference is in the stack or not (this can happen for var parameters).
@@ -268,7 +265,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
-    of tyRef, tyOptAsRef, tyString, tySequence: # leaf:
+    of tyRef, tyString, tySequence: # leaf:
       doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
@@ -281,13 +278,13 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
   gcAssert(isAllocatedPtr(gch.region, cell), "forAllChildren: 2")
   gcAssert(cell.typ != nil, "forAllChildren: 3")
-  gcAssert cell.typ.kind in {tyRef, tyOptAsRef, tySequence, tyString}, "forAllChildren: 4"
+  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 4"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
     case cell.typ.kind
-    of tyRef, tyOptAsRef: # common case
+    of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
       var d = cast[ByteAddress](cellToUsr(cell))
@@ -328,7 +325,7 @@ proc initGC() =
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   sysAssert(allocInv(gch.region), "rawNewObj begin")
-  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")

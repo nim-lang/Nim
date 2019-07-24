@@ -20,13 +20,13 @@
 
 
 import
-  hashes, math
+  hashes
 
 type
-  BitScalar = int
+  BitScalar = uint
 
 const
-  InitIntSetSize = 8         # must be a power of two!
+  InitIntSetSize = 8              # must be a power of two!
   TrunkShift = 9
   BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and
                                   # divisible by 64
@@ -38,13 +38,13 @@ const
 type
   PTrunk = ref Trunk
   Trunk = object
-    next: PTrunk             # all nodes are connected with this pointer
-    key: int                 # start address at bit 0
+    next: PTrunk                                # all nodes are connected with this pointer
+    key: int                                    # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
   TrunkSeq = seq[PTrunk]
-  IntSet* = object ## An efficient set of `int` implemented as a sparse bit set.
-    elems: int # only valid for small numbers
+  IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
+    elems: int           # only valid for small numbers
     counter, max: int
     head: PTrunk
     data: TrunkSeq
@@ -102,8 +102,8 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
 proc bitincl(s: var IntSet, key: int) {.inline.} =
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
-  t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-      `shl`(1, u and IntMask)
+  t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+      (BitScalar(1) shl (u and IntMask))
 
 proc exclImpl(s: var IntSet, key: int) =
   if s.elems <= s.a.len:
@@ -113,11 +113,11 @@ proc exclImpl(s: var IntSet, key: int) =
         dec s.elems
         return
   else:
-    var t = intSetGet(s, `shr`(key, TrunkShift))
+    var t = intSetGet(s, key shr TrunkShift)
     if t != nil:
       var u = key and TrunkMask
-      t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
-          not `shl`(1, u and IntMask)
+      t.bits[u shr IntShift] = t.bits[u shr IntShift] and
+          not(BitScalar(1) shl (u and IntMask))
 
 template dollarImpl(): untyped =
   result = "{"
@@ -137,12 +137,12 @@ iterator items*(s: IntSet): int {.inline.} =
     while r != nil:
       var i = 0
       while i <= high(r.bits):
-        var w = r.bits[i]
+        var w: uint = r.bits[i]
         # taking a copy of r.bits[i] here is correct, because
         # modifying operations are not allowed during traversation
         var j = 0
-        while w != 0:         # test all remaining bits for zero
-          if (w and 1) != 0:  # the bit is set!
+        while w != 0: # test all remaining bits for zero
+          if (w and 1) != 0: # the bit is set!
             yield (r.key shl TrunkShift) or (i shl IntShift +% j)
           inc(j)
           w = w shr 1
@@ -186,7 +186,8 @@ proc contains*(s: IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
+      result = (t.bits[u shr IntShift] and
+                (BitScalar(1) shl (u and IntMask))) != 0
     else:
       result = false
 
@@ -268,10 +269,10 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
+      result = (t.bits[u shr IntShift] and BitScalar(1) shl (u and IntMask)) != 0
       if not result:
-        t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-            `shl`(1, u and IntMask)
+        t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+            (BitScalar(1) shl (u and IntMask))
     else:
       incl(s, key)
       result = false
@@ -316,7 +317,7 @@ proc excl*(s: var IntSet, other: IntSet) =
 
   for item in other: excl(s, item)
 
-proc missingOrExcl*(s: var IntSet, key: int) : bool =
+proc missingOrExcl*(s: var IntSet, key: int): bool =
   ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
   ##
   ## The difference with regards to the `excl proc <#excl,IntSet,int>`_ is
@@ -363,7 +364,7 @@ proc isNil*(x: IntSet): bool {.inline.} = x.head.isNil and x.elems == 0
 
 proc assign*(dest: var IntSet, src: IntSet) =
   ## Copies `src` to `dest`.
-  ## `dest` does not need to be initialized by `initIntSet proc <#initIntSet,>`_.
+  ## `dest` does not need to be initialized by `initIntSet proc <#initIntSet>`_.
   runnableExamples:
     var
       a = initIntSet()

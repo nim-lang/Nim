@@ -17,6 +17,7 @@ template bootSwitch(name, expr, userString) =
   const name = if expr: " " & userString else: ""
 
 bootSwitch(usedRelease, defined(release), "-d:release")
+bootSwitch(usedDanger, defined(danger), "-d:danger")
 bootSwitch(usedGnuReadline, defined(useLinenoise), "-d:useLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
@@ -26,15 +27,15 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos,
-  pathutils
+  wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
+  pathutils, strtabs
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedNativeStacktrace,
   defined(nativeStackTrace) and nativeStackTraceSupported,
   "-d:nativeStackTrace")
-bootSwitch(usedFFI, hasFFI, "-d:useFFI")
+bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
 
 type
   TCmdLinePass* = enum
@@ -48,14 +49,14 @@ const
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 const
-  Usage = slurp"../doc/basicopt.txt".replace("//", "")
+  Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
   FeatureDesc = block:
     var x = ""
     for f in low(Feature)..high(Feature):
       if x.len > 0: x.add "|"
       x.add $f
     x
-  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "") % FeatureDesc
+  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % FeatureDesc
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
@@ -96,19 +97,17 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
     when gitHash.len == 40:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
-    msgWriteln(conf, "active boot switches:" & usedRelease &
+    msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & usedGnuReadline & usedNativeStacktrace &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
 
-proc writeCommandLineUsage*(conf: ConfigRef; helpWritten: var bool) =
-  if not helpWritten:
-    msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
-    helpWritten = true
+proc writeCommandLineUsage*(conf: ConfigRef) =
+  msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
 
 proc addPrefix(switch: string): string =
-  if len(switch) == 1: result = "-" & switch
+  if len(switch) <= 1: result = "-" & switch
   else: result = "--" & switch
 
 const
@@ -277,8 +276,9 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "fieldchecks": result = contains(conf.options, optFieldCheck)
   of "rangechecks": result = contains(conf.options, optRangeCheck)
   of "boundchecks": result = contains(conf.options, optBoundsCheck)
+  of "refchecks": result = contains(conf.options, optRefCheck)
   of "overflowchecks": result = contains(conf.options, optOverflowCheck)
-  of "movechecks": result = contains(conf.options, optMoveCheck)
+  of "stylechecks": result = contains(conf.options, optStyleCheck)
   of "linedir": result = contains(conf.options, optLineDir)
   of "assertions", "a": result = contains(conf.options, optAssert)
   of "run", "r": result = contains(conf.globalOptions, optRun)
@@ -288,7 +288,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "taintmode": result = contains(conf.globalOptions, optTaintMode)
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
-  of "patterns": result = contains(conf.options, optPatterns)
+  of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs": result = contains(conf.options, optNilSeqs)
   of "oldast": result = contains(conf.options, optOldAst)
@@ -387,7 +387,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.nimcacheDir = processPath(conf, arg, info, true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    conf.outFile = AbsoluteFile arg
+    let f = splitFile(arg.expandTilde)
+    conf.outFile = RelativeFile f.name & f.ext
+    conf.outDir = toAbsoluteDir f.dir
+  of "outdir":
+    expectArg(conf, switch, arg, pass, info)
+    conf.outDir = toAbsoluteDir arg.expandTilde
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
@@ -478,6 +483,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       undefSymbol(conf.symbols, "endb")
     else:
       localError(conf, info, "expected endb|gdb but found " & arg)
+  of "g": # alias for --debugger:native
+    incl(conf.globalOptions, optCDebug)
+    conf.options = conf.options + {optLineDir} - {optEndb}
+    #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
+    undefSymbol(conf.symbols, "endb")
   of "profiler":
     processOnOffSwitch(conf, {optProfiler}, arg, pass, info)
     if optProfiler in conf.options: defineSymbol(conf.symbols, "profiler")
@@ -487,9 +497,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if optMemTracker in conf.options: defineSymbol(conf.symbols, "memtracker")
     else: undefSymbol(conf.symbols, "memtracker")
   of "hotcodereloading":
-    processOnOffSwitch(conf, {optHotCodeReloading}, arg, pass, info)
-    if optHotCodeReloading in conf.options: defineSymbol(conf.symbols, "hotcodereloading")
-    else: undefSymbol(conf.symbols, "hotcodereloading")
+    processOnOffSwitchG(conf, {optHotCodeReloading}, arg, pass, info)
+    if conf.hcrOn:
+      defineSymbol(conf.symbols, "hotcodereloading")
+      defineSymbol(conf.symbols, "useNimRtl")
+      # hardcoded linking with dynamic runtime for MSVC for smaller binaries
+      # should do the same for all compilers (wherever applicable)
+      if isVSCompatible(conf):
+        extccomp.addCompileOptionCmd(conf, "/MD")
+    else:
+      undefSymbol(conf.symbols, "hotcodereloading")
+      undefSymbol(conf.symbols, "useNimRtl")
   of "oldnewlines":
     case arg.normalize
     of "","on":
@@ -513,8 +531,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "fieldchecks": processOnOffSwitch(conf, {optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch(conf, {optRangeCheck}, arg, pass, info)
   of "boundchecks": processOnOffSwitch(conf, {optBoundsCheck}, arg, pass, info)
+  of "refchecks": processOnOffSwitch(conf, {optRefCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch(conf, {optOverflowCheck}, arg, pass, info)
-  of "movechecks": processOnOffSwitch(conf, {optMoveCheck}, arg, pass, info)
+  of "stylechecks": processOnOffSwitch(conf, {optStyleCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
   of "deadcodeelim": discard # deprecated, dead code elim always on
@@ -525,8 +544,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "taintmode": processOnOffSwitchG(conf, {optTaintMode}, arg, pass, info)
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
-  of "patterns":
-    processOnOffSwitch(conf, {optPatterns}, arg, pass, info)
+  of "patterns", "trmacros":
+    processOnOffSwitch(conf, {optTrMacros}, arg, pass, info)
   of "opt":
     expectArg(conf, switch, arg, pass, info)
     case arg.normalize
@@ -599,14 +618,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
       let theOS = platform.nameToOS(arg)
-      if theOS == osNone: localError(conf, info, "unknown OS: '$1'" % arg)
+      if theOS == osNone:
+        let osList = platform.listOSnames().join(", ")
+        localError(conf, info, "unknown OS: '$1'. Available options are: $2" % [arg, $osList])
       elif theOS != conf.target.hostOS:
         setTarget(conf.target, theOS, conf.target.targetCPU)
   of "cpu":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
       let cpu = platform.nameToCPU(arg)
-      if cpu == cpuNone: localError(conf, info, "unknown CPU: '$1'" % arg)
+      if cpu == cpuNone:
+        let cpuList = platform.listCPUnames().join(", ")
+        localError(conf, info, "unknown CPU: '$1'. Available options are: $2" % [ arg, cpuList])
       elif cpu != conf.target.hostCPU:
         setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
@@ -729,9 +752,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.cppDefine(arg)
   of "newruntime":
     expectNoArg(conf, switch, arg, pass, info)
-    doAssert(conf != nil)
-    incl(conf.features, destructor)
-    defineSymbol(conf.symbols, "nimNewRuntime")
+    if pass in {passCmd2, passPP}:
+      doAssert(conf != nil)
+      incl(conf.features, destructor)
+      incl(conf.globalOptions, optNimV2)
+      defineSymbol(conf.symbols, "nimV2")
+      conf.selectedGC = gcDestructors
+      defineSymbol(conf.symbols, "gcdestructors")
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
@@ -746,11 +773,20 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else:
       conf.cppCustomNamespace = "Nim"
     defineSymbol(conf.symbols, "cppCompileToNamespace", conf.cppCustomNamespace)
+  of "docinternal":
+    processOnOffSwitchG(conf, {optDocInternal}, arg, pass, info)
+  of "multimethods":
+    processOnOffSwitchG(conf, {optMultiMethods}, arg, pass, info)
+  of "expandmacro":
+    expectArg(conf, switch, arg, pass, info)
+    conf.macrosToExpand[arg] = "T"
+  of "":
+    conf.projectName = "-"
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)
 
-template gCmdLineInfo*(): untyped = newLineInfo(config, AbsoluteFile"command line", 1, 1)
+template gCmdLineInfo*(): untyped = newLineInfo(commandLineIdx, 1, 1)
 
 proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
   var cmd, arg: string
@@ -773,7 +809,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int; config: ConfigRef): bool =
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
-    if p.key.endswith(".nims"):
+    if p.key.endsWith(".nims"):
       config.command = "e"
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
@@ -785,7 +821,8 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
       # support UNIX style filenames everywhere for portable build scripts:
-      config.projectName = unixToNativePath(p.key)
+      if config.projectName.len == 0:
+        config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
   inc argsCount

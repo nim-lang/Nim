@@ -11,7 +11,7 @@ type
   Bar[T] = object
     x: T
 
-proc deepCopy[T](b: ref Bar[T]): ref Bar[T] {.override.} =
+proc `=deepCopy`[T](b: ref Bar[T]): ref Bar[T] =
   result.new
   result.x = b.x
   when T is int:

@@ -8,7 +8,7 @@
 #
 
 import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
-  pathutils, nimblecmd
+  pathutils
 
 when false:
   const
@@ -114,7 +114,6 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     try:
       result =
         pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
-          .replace(" ")
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal
@@ -163,6 +162,6 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n
       localError(conf, n.info, "cannot open file: " & m)
-    result = InvalidFileIDX
+    result = InvalidFileIdx
   else:
     result = fileInfoIdx(conf, fullPath)

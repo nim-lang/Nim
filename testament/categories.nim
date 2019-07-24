@@ -10,6 +10,9 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+import important_packages
+import sequtils
+
 const
   specialCategories = [
     "assert",
@@ -24,9 +27,7 @@ const
     "lib",
     "longgc",
     "manyloc",
-    "nimble-all",
-    "nimble-core",
-    "nimble-extra",
+    "nimble-packages",
     "niminaction",
     "rodfiles",
     "threads",
@@ -127,32 +128,36 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  var test1 = makeTest("lib/nimrtl.nim", options & " --app:lib -d:createNimRtl --threads:on", cat)
+  var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
   test1.spec.action = actionCompile
   testSpec c, test1
-  var test2 = makeTest("tests/dll/server.nim", options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
+  var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
+  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" & rpath, cat)
+  test3.spec.action = actionCompile
+  testSpec c, test3
 
-  when defined(Windows):
-    # windows looks in the dir of the exe (yay!):
-    var nimrtlDll = DynlibFormat % "nimrtl"
-    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
-  else:
+  # windows looks in the dir of the exe (yay!):
+  when not defined(Windows):
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
-    const libpathenv = when defined(haiku):
-                         "LIBRARY_PATH"
-                       else:
-                         "LD_LIBRARY_PATH"
+    const libpathenv = when defined(haiku): "LIBRARY_PATH"
+                       else: "LD_LIBRARY_PATH"
     var libpath = getEnv(libpathenv).string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
-    var nimrtlDll = DynlibFormat % "nimrtl"
-    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
-                       cat)
+  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
+
+  if "boehm" notin options:
+    # force build required - see the comments in the .nim file for more details
+    var hcr_integration = makeTest("tests/dll/nimhcr_integration.nim",
+                                   options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
+    hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd, hcr_integration.name,
+                                           hcr_integration.options, getTestSpecTarget())
+    testSpec r, hcr_integration
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
@@ -437,18 +442,12 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
-type
-  PackageFilter = enum
-    pfCoreOnly
-    pfExtraOnly
-    pfAll
 
 var nimbleDir = getEnv("NIMBLE_DIR").string
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  #packageDir = nimbleDir / "pkgs" # not used
-  packageIndex = nimbleDir / "packages.json"
+  packageIndex = nimbleDir / "packages_official.json"
 
 proc waitForExitEx(p: Process): int =
   var outp = outputStream(p)
@@ -463,68 +462,97 @@ proc waitForExitEx(p: Process): int =
 
 proc getPackageDir(package: string): string =
   ## TODO - Replace this with dom's version comparison magic.
-  var commandOutput = execCmdEx("nimble path $#" % package)
+  let commandOutput = execCmdEx("nimble path $#" % package)
   if commandOutput.exitCode != QuitSuccess:
     return ""
   else:
     result = commandOutput[0].string
 
-iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
+iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
+  let defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
-  for package in packageList.items():
-    let
-      name = package["name"].str
-      url = package["url"].str
-      isCorePackage = "nim-lang" in normalize(url)
-    case filter:
-    of pfCoreOnly:
-      if isCorePackage:
-        yield (name, url)
-    of pfExtraOnly:
-      if not isCorePackage:
-        yield (name, url)
-    of pfAll:
-      yield (name, url)
+  for n, cmd, hasDeps, url in important_packages.packages.items:
+    let cmd = if cmd.len == 0: defaultCmd else: cmd
+    if url.len != 0:
+      yield (n, url, cmd, hasDeps)
+    else:
+      var found = false
+      for package in packageList.items:
+        let name = package["name"].str
+        if name == n:
+          found = true
+          let p_url = package["url"].str
+          yield (name, p_url, cmd, hasDeps)
+          break
+      if not found:
+        raise newException(ValueError, "Cannot find package '$#'." % n)
 
-proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
+proc makeSupTest(test, options: string, cat: Category): TTest =
+  result.cat = cat
+  result.name = test
+  result.options = options
+  result.startTime = epochTime()
+
+proc testNimblePackages(r: var TResults, cat: Category) =
   if nimbleExe == "":
-    echo("[Warning] - Cannot run nimble tests: Nimble binary not found.")
+    echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
-
   if execCmd("$# update" % nimbleExe) == QuitFailure:
-    echo("[Warning] - Cannot run nimble tests: Nimble update failed.")
+    echo "[Warning] - Cannot run nimble tests: Nimble update failed."
     return
 
-  let packageFileTest = makeTest("PackageFileParsed", "", cat)
+  let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
+  let packagesDir = "pkgstemp"
+  var errors = 0
   try:
-    for name, url in listPackages(filter):
-      var test = makeTest(name, "", cat)
-      echo(url)
-      let
-        installProcess = startProcess(nimbleExe, "", ["install", "-y", name])
-        installStatus = waitForExitEx(installProcess)
-      installProcess.close
-      if installStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "", reInstallFailed)
-        continue
+    for name, url, cmd, hasDep in listPackages():
+      inc r.total
+      var test = makeSupTest(url, "", cat)
+      let buildPath = packagesDir / name
+      if not existsDir(buildPath):
+        if hasDep:
+          let installName = if url.len != 0: url else: name
+          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
+          if nimbleStatus != QuitSuccess:
+            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
+            r.addResult(test, targetC, "", message, reInstallFailed)
+            continue
 
-      let
-        buildPath = getPackageDir(name).strip
-        buildProcess = startProcess(nimbleExe, buildPath, ["build"])
-        buildStatus = waitForExitEx(buildProcess)
-      buildProcess.close
+        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
+        if installStatus != QuitSuccess:
+          let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
+          r.addResult(test, targetC, "", message, reInstallFailed)
+          continue
+
+      let cmdArgs = parseCmdLine(cmd)
+
+      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
       if buildStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "", reBuildFailed)
-      r.addResult(test, targetC, "", "", reSuccess)
-    r.addResult(packageFileTest, targetC, "", "", reSuccess)
+        let message = "package test failed\n$ " & buildCmdLine & "\n" & buildOutput
+        r.addResult(test, targetC, "", message, reBuildFailed)
+      else:
+        inc r.passed
+        r.addResult(test, targetC, "", "", reSuccess)
+    errors = r.total - r.passed
+    if errors == 0:
+      r.addResult(packageFileTest, targetC, "", "", reSuccess)
+    else:
+      r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
+
   except JsonParsingError:
-    echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
+    echo "[Warning] - Cannot run nimble tests: Invalid package file."
+    r.addResult(packageFileTest, targetC, "", "Invalid package file", reBuildFailed)
+  except ValueError:
+    echo "[Warning] - $#" % getCurrentExceptionMsg()
+    r.addResult(packageFileTest, targetC, "", "Unknown package", reBuildFailed)
+  finally:
+    if errors == 0: removeDir(packagesDir)
 
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "megatest"]
+const AdditionalCategories = ["debugger", "examples", "lib"]
+const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -616,22 +644,23 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   writeFile("megatest.nim", megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
+              "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
   proc onStdout(line: string) = echo line
-  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
-    onStdout = if verboseMegatest: onStdout else: nil)
+  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
-    echo buf
+    echo "$ ", cmdLine
+    echo buf.string
     quit("megatest compilation failed")
 
   # Could also use onStdout here.
   (buf, exitCode) = execCmdEx("./megatest")
   if exitCode != 0:
-    echo buf
+    echo buf.string
     quit("megatest execution failed")
 
-  norm buf
-  writeFile("outputGotten.txt", buf)
+  norm buf.string
+  writeFile("outputGotten.txt", buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -639,7 +668,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     outputExpected.add '\n'
   norm outputExpected
 
-  if buf != outputExpected:
+  if buf.string != outputExpected:
     writeFile("outputExpected.txt", outputExpected)
     discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
     echo "output different!"
@@ -653,7 +682,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
 # ---------------------------------------------------------------------------
 
-proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
+proc processCategory(r: var TResults, cat: Category,
+                     options, testsDir: string,
                      runJoinableTests: bool) =
   case cat.string.normalize
   of "rodfiles":
@@ -692,12 +722,8 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble-core":
-    testNimblePackages(r, cat, pfCoreOnly)
-  of "nimble-extra":
-    testNimblePackages(r, cat, pfExtraOnly)
-  of "nimble-all":
-    testNimblePackages(r, cat, pfAll)
+  of "nimble-packages":
+    testNimblePackages(r, cat)
   of "niminaction":
     testNimInAction(r, cat, options)
   of "untestable":

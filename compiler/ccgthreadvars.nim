@@ -21,7 +21,7 @@ proc accessThreadLocalVar(p: BProc, s: PSym) =
     incl p.module.flags, usesThreadVars
     addf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV_;$n", [])
     add(p.procSec(cpsInit),
-      ropecg(p.module, "\tNimTV_ = (NimThreadVars*) #GetThreadLocalVars();$n"))
+      ropecg(p.module, "\tNimTV_ = (NimThreadVars*) #GetThreadLocalVars();$n", []))
 
 proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
   if emulatedThreadVars(m.config):

@@ -10,14 +10,13 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets, options, modulegraphs, lineinfos,
-  tables, btrees
+import ast, passes, idents, intsets, options, modulegraphs, lineinfos
 
 const
   byteExcess* = 128 # we use excess-K for immediates
   wordExcess* = 32768
 
-  MaxLoopIterations* = 3_000_000 # max iterations of all loops
+  MaxLoopIterations* = 10_000_000 # max iterations of all loops
 
 
 type
@@ -75,6 +74,7 @@ type
     opcSubStr, opcParseFloat, opcConv, opcCast,
     opcQuit,
     opcNarrowS, opcNarrowU,
+    opcSignExtend,
 
     opcAddStrCh,
     opcAddStrStr,
@@ -91,6 +91,8 @@ type
     opcNIdent,
     opcNGetType,
     opcNStrVal,
+    opcNSigHash,
+    opcNGetSize,
 
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
@@ -146,7 +148,6 @@ type
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
-    opcToNarrowInt,
     opcSymOwner,
     opcSymIsInstantiationOf
 
@@ -165,7 +166,6 @@ type
 
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
-    allowFFI,                 ## allow the FFI
     allowInfiniteLoops        ## allow endless loops
   TSandboxFlags* = set[TSandboxFlag]
 

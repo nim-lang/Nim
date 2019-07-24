@@ -28,6 +28,7 @@ true
 -1
 Meow
 '''
+joinable: false
 """
 
 import macros, typetraits, os, posix

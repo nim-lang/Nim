@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+## To learn about scripting in Nim see `NimScript<nims.html>`_
 
 # Nim's configuration system now uses Nim for scripting. This module provides
 # a few things that are required for this to work.
@@ -113,15 +114,19 @@ proc cmpic*(a, b: string): int =
   cmpIgnoreCase(a, b)
 
 proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
-  ## Retrieves the environment variable of name `key`.
+  ## Retrieves the environment variable of name ``key``.
   builtin
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
-  ## Checks for the existence of an environment variable named `key`.
+  ## Checks for the existence of an environment variable named ``key``.
   builtin
 
 proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
-  ## Sets the value of the environment variable named key to val.
+  ## Sets the value of the environment variable named ``key`` to ``val``.
+  builtin
+
+proc delEnv*(key: string) {.tags: [WriteIOEffect].} =
+  ## Deletes the environment variable named ``key``.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
