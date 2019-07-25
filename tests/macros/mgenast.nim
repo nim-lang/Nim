@@ -34,7 +34,7 @@ macro bindme6UseExpose*(): untyped =
     discard readData(ss, tst[0].addr, 2)
 
 macro bindme6UseExposeFalse*(): untyped =
-  ## without kexposeLocalInjects, requires passing all referenced symbols
+  ## with `kDirtyTemplate`, requires passing all referenced symbols
   ## which can be tedious
   genAstOpt({kDirtyTemplate}, newStringStream, writeData, readData):
     var tst = "sometext"
