@@ -99,7 +99,8 @@ proc main2() = # fixes #8935
   # const myPrint = echo # Error: invalid type for const: proc
   # let myPuts = system.echo # Error: invalid type: 'typed'
   myPrint:=echo # works
-  myPrint (1,2)
+  # myPrint (1,2)
+  doAssert compiles(myPrint (1,2))
   when false:
     const testForMe = assert
     testForMe(1 + 1 == 2)  # Error: VM problem: dest register is not set
@@ -108,7 +109,7 @@ proc main2() = # fixes #8935
   testForMe(1 + 1 == 2)
   doAssertRaises(AssertionError): testForMe(1 + 1 == 3)
 
-block:# somewhat related to #11047
+block: # somewhat related to #11047
   proc foo(): int {.compileTime.} = 100
   # var f {.compileTime.} = foo # would give: Undefined symbols error
   # let f {.compileTime.} = foo # would give: Undefined symbols error
@@ -116,6 +117,13 @@ block:# somewhat related to #11047
   f:=foo
   doAssert f() == 100
   static: doAssert f() == 100
+
+block: # fix https://forum.nim-lang.org/t/5015
+  proc getLength(i: int): int = sizeof(i)
+  proc getLength(s: string): int = s.len
+  # const length = getLength # Error: cannot generate VM code for getLength
+  length := getLength # works
+  doAssert length("alias") == 5
 
 main1()
 main2()
