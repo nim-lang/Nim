@@ -4,7 +4,7 @@ proc fun0(a: int): auto = $a
 template fun3(a: int): untyped = $a
 template fun3(a = 1.2): untyped = $a
 
-proc main() =
+proc main1() =
   proc fun0(a: float): auto = $a
   proc fun0(a: bool): auto = $a
 
@@ -108,5 +108,14 @@ proc main2() = # fixes #8935
   testForMe(1 + 1 == 2)
   doAssertRaises(AssertionError): testForMe(1 + 1 == 3)
 
-main()
+block:# somewhat related to #11047
+  proc foo(): int {.compileTime.} = 100
+  # var f {.compileTime.} = foo # would give: Undefined symbols error
+  # let f {.compileTime.} = foo # would give: Undefined symbols error
+  # const f = foo # this would work
+  f:=foo
+  doAssert f() == 100
+  static: doAssert f() == 100
+
+main1()
 main2()
