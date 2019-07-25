@@ -90,4 +90,23 @@ proc main() =
     for ai in fun4a(): s.add ai
     doAssert s == [10,3]
 
+  block: # works with generics
+    proc fun5[T](a: T): auto = a
+    fun5a := fun5
+    doAssert fun5a(3.2) == 3.2
+
+proc main2() = # fixes #8935
+  # const myPrint = echo # Error: invalid type for const: proc
+  # let myPuts = system.echo # Error: invalid type: 'typed'
+  myPrint:=echo # works
+  myPrint (1,2)
+  when false:
+    const testForMe = assert
+    testForMe(1 + 1 == 2)  # Error: VM problem: dest register is not set
+
+  testForMe:=assert
+  testForMe(1 + 1 == 2)
+  doAssertRaises(AssertionError): testForMe(1 + 1 == 3)
+
 main()
+main2()
