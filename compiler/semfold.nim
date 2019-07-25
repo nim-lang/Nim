@@ -64,49 +64,30 @@ proc getConstExpr*(m: PSym, n: PNode; g: ModuleGraph): PNode
   # expression
 proc evalOp*(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode
 
-proc checkInRange(conf: ConfigRef; n: PNode, res: BiggestInt): bool =
-  if toInt128(res) in firstOrd(conf, n.typ)..lastOrd(conf, n.typ):
-    result = true
+proc checkInRange(conf: ConfigRef; n: PNode, res: Int128): bool =
+  res in firstOrd(conf, n.typ)..lastOrd(conf, n.typ)
 
-proc foldAdd(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  let res = a +% b
-  if ((res xor a) >= 0'i64 or (res xor b) >= 0'i64) and
-      checkInRange(g.config, n, res):
+proc foldAdd(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  let res = a + b
+  if checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, g)
 
-proc foldSub*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  let res = a -% b
-  if ((res xor a) >= 0'i64 or (res xor not b) >= 0'i64) and
-      checkInRange(g.config, n, res):
+proc foldSub(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  let res = a - b
+  if checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, g)
 
-proc foldUnarySub(a: BiggestInt, n: PNode, g: ModuleGraph): PNode =
+proc foldUnarySub(a: Int128, n: PNode, g: ModuleGraph): PNode =
   if a != firstOrd(g.config, n.typ):
     result = newIntNodeT(-a, n, g)
 
-proc foldAbs*(a: BiggestInt, n: PNode; g: ModuleGraph): PNode =
+proc foldAbs(a: Int128, n: PNode; g: ModuleGraph): PNode =
   if a != firstOrd(g.config, n.typ):
     result = newIntNodeT(abs(a), n, g)
 
-proc foldMul*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
-  let res = a *% b
-  let floatProd = toBiggestFloat(a) * toBiggestFloat(b)
-  let resAsFloat = toBiggestFloat(res)
-
-  # Fast path for normal case: small multiplicands, and no info
-  # is lost in either method.
-  if resAsFloat == floatProd and checkInRange(g.config, n, res):
-    return newIntNodeT(res, n, g)
-
-  # Somebody somewhere lost info. Close enough, or way off? Note
-  # that a != 0 and b != 0 (else resAsFloat == floatProd == 0).
-  # The difference either is or isn't significant compared to the
-  # true value (of which floatProd is a good approximation).
-
-  # abs(diff)/abs(prod) <= 1/32 iff
-  #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
-  if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd) and
-      checkInRange(g.config, n, res):
+proc foldMul(a, b: Int128, n: PNode; g: ModuleGraph): PNode =
+  let res = a * b
+  if checkInRange(g.config, n, res):
     return newIntNodeT(res, n, g)
 
 proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
@@ -189,17 +170,14 @@ proc fitLiteral(c: ConfigRef, n: PNode): PNode {.deprecated: "no substitute".} =
     result.intVal = result.intVal and castToInt64(lastOrd(c, typ))
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
-  template doAndFit(op: untyped): untyped {.deprecated.} =
-    # Implements wrap-around behaviour for unsigned types
-    fitLiteral(g.config, op)
   # b and c may be nil
   result = nil
   case m
-  of mOrd: result = newIntNodeT(getOrdValue64(a), n, g)
-  of mChr: result = newIntNodeT(getInt64(a), n, g)
-  of mUnaryMinusI, mUnaryMinusI64: result = foldUnarySub(getInt64(a), n, g)
+  of mOrd: result = newIntNodeT(getOrdValue(a), n, g)
+  of mChr: result = newIntNodeT(getInt(a), n, g)
+  of mUnaryMinusI, mUnaryMinusI64: result = foldUnarySub(getInt(a), n, g)
   of mUnaryMinusF64: result = newFloatNodeT(- getFloat(a), n, g)
-  of mNot: result = newIntNodeT(1 - getInt64(a), n, g)
+  of mNot: result = newIntNodeT(One - getInt(a), n, g)
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
   of mBitnotI:
     if n.typ.isUnsigned:
@@ -209,24 +187,24 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
   of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
     if a.kind == nkNilLit:
-      result = newIntNodeT(0, n, g)
+      result = newIntNodeT(Zero, n, g)
     elif a.kind in {nkStrLit..nkTripleStrLit}:
-      result = newIntNodeT(len a.strVal, n, g)
+      result = newIntNodeT(toInt128(a.strVal.len), n, g)
     else:
-      result = newIntNodeT(sonsLen(a), n, g)
+      result = newIntNodeT(toInt128(sonsLen(a)), n, g)
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   of mToFloat, mToBiggestFloat:
-    result = newFloatNodeT(toFloat(int(getInt64(a))), n, g)
+    result = newFloatNodeT(toFloat64(getInt(a)), n, g)
   # XXX: Hides overflow/underflow
   of mToInt, mToBiggestInt: result = newIntNodeT(system.toInt(getFloat(a)), n, g)
   of mAbsF64: result = newFloatNodeT(abs(getFloat(a)), n, g)
-  of mAbsI: result = foldAbs(getInt64(a), n, g)
-  of mUnaryLt: result = doAndFit(foldSub(getOrdValue64(a), 1, n, g))
-  of mSucc: result = doAndFit(foldAdd(getOrdValue64(a), getInt64(b), n, g))
-  of mPred: result = doAndFit(foldSub(getOrdValue64(a), getInt64(b), n, g))
-  of mAddI: result = foldAdd(getInt64(a), getInt64(b), n, g)
-  of mSubI: result = foldSub(getInt64(a), getInt64(b), n, g)
-  of mMulI: result = foldMul(getInt64(a), getInt64(b), n, g)
+  of mAbsI: result = foldAbs(getInt(a), n, g)
+  of mUnaryLt: result = foldSub(getOrdValue(a), One, n, g)
+  of mSucc: result = foldAdd(getOrdValue(a), getInt(b), n, g)
+  of mPred: result = foldSub(getOrdValue(a), getInt(b), n, g)
+  of mAddI: result = foldAdd(getInt(a), getInt(b), n, g)
+  of mSubI: result = foldSub(getInt(a), getInt(b), n, g)
+  of mMulI: result = foldMul(getInt(a), getInt(b), n, g)
   of mMinI:
     if getInt(a) > getInt(b): result = newIntNodeT(getInt64(b), n, g)
     else: result = newIntNodeT(getInt64(a), n, g)
@@ -242,12 +220,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     of tyInt64: result = newIntNodeT(toInt64(getInt(a)) shl getInt64(b), n, g)
     of tyInt:
       if g.config.target.intSize == 4:
-        result = newIntNodeT(toInt32(getInt(a)) shl getInt64(b), n, g)
+        result = newIntNodeT(toInt128(toInt32(getInt(a)) shl getInt64(b)), n, g)
       else:
-        result = newIntNodeT(toInt64(getInt(a)) shl getInt64(b), n, g)
-    of tyUInt8: result = newIntNodeT(BiggestInt(toUInt8(getInt(a)) shl getInt64(b)), n, g)
-    of tyUInt16: result = newIntNodeT(BiggestInt(toUInt16(getInt(a)) shl getInt64(b)), n, g)
-    of tyUInt32: result = newIntNodeT(BiggestInt(toUInt32(getInt(a)) shl getInt64(b)), n, g)
+        result = newIntNodeT(toInt128(toInt64(getInt(a)) shl getInt64(b)), n, g)
+    of tyUInt8: result = newIntNodeT(toInt128(toUInt8(getInt(a)) shl getInt64(b)), n, g)
+    of tyUInt16: result = newIntNodeT(toInt128(toUInt16(getInt(a)) shl getInt64(b)), n, g)
+    of tyUInt32: result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl getInt64(b)), n, g)
     of tyUInt64: result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl getInt64(b)), n, g)
     of tyUInt:
       if g.config.target.intSize == 4:
