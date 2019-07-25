@@ -1110,7 +1110,7 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
     if selRet < 0: raiseOSError(osLastError())
     if selRet != 1:
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
-    waited += (getMonoTIme() - startTime)
+    waited += (getMonoTime() - startTime)
 
 proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
   tags: [ReadIOEffect, TimeEffect].} =

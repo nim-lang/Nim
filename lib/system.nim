@@ -128,7 +128,7 @@ when defined(nimHasRunnableExamples):
     ##   a ``runnableExamples`` section is ignored.
     ## - The documentation generator is aware of these examples and considers them
     ##   part of the ``##`` doc comment. As the last step of documentation
-    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   generation each runnableExample is put in its own file ``$file_examples$i.nim``,
     ##   compiled and tested. The collected examples are
     ##   put into their own module to ensure the examples do not refer to
     ##   non-exported symbols.
@@ -136,12 +136,14 @@ when defined(nimHasRunnableExamples):
     ## Usage:
     ##
     ## .. code-block:: Nim
-    ##   proc double(x: int): int =
+    ##   proc double*(x: int): int =
     ##     ## This proc doubles a number.
     ##     runnableExamples:
+    ##       ## at module scope
     ##       assert double(5) == 10
-    ##       assert double(21) == 42
-    ##
+    ##       block: ## at block scope
+    ##         defer: echo "done"
+    ##   
     ##     result = 2 * x
 else:
   template runnableExamples*(body: untyped) =
@@ -4060,7 +4062,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## `gorge <#gorge,string,string,string>`_ is an alias for ``staticExec``.
   ##
   ## Note that you can use this proc inside a pragma like
-  ## `passC <nimc.html#passc-pragma>`_ or `passL <nimc.html#passl-pragma>`_.
+  ## `passc <nimc.html#passc-pragma>`_ or `passl <nimc.html#passl-pragma>`_.
   ##
   ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
   ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching

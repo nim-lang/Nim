@@ -169,7 +169,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
       align = n.sym.typ.align.int
 
     result.align = align
-    if initialOffset == szUnknownSize or size == szUnknownSize:
+    if initialOffset == szUnknownSize or size == szUnknownSize or align == szUnknownSize:
       n.sym.offset = szUnknownSize
       result.offset = szUnknownSize
     else:

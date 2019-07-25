@@ -129,6 +129,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
   result = realModule
+  c.unusedImports.add((realModule, n.info))
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n.sons[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")

@@ -812,7 +812,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
                            errors, false)
   if r.state == csMatch:
     var match = r.calleeSym
-    markUsed(c.config, n[0].info, match, c.graph.usageSym)
+    markUsed(c, n[0].info, match, c.graph.usageSym)
     onUse(n[0].info, match)
 
     # but pass 'n' to the 'match' macro, not 'n[0]':
