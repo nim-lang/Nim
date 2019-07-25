@@ -337,9 +337,9 @@ proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and
       {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
     if v.astdef.isNil:
-      message(c.config, v.info, warnProveInit, v.name.s)
+      message(c, v.info, warnProveInit, v.name.s)
     elif tfNotNil in v.typ.flags and not v.astdef.typ.isNil and tfNotNil notin v.astdef.typ.flags:
-      message(c.config, v.info, warnProveInit, v.name.s)
+      message(c, v.info, warnProveInit, v.name.s)
 
 #include liftdestructors
 
@@ -511,7 +511,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       addToVarSection(c, result, n, b)
     elif tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
         a.kind == nkIdentDefs and a.len > 3:
-      message(c.config, a.info, warnEachIdentIsTuple)
+      message(c, a.info, warnEachIdentIsTuple)
 
     for j in 0 .. length-3:
       if a[j].kind == nkDotExpr:
@@ -533,7 +533,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           if shadowed != nil:
             shadowed.flags.incl(sfShadowed)
             if shadowed.kind == skResult and sfGenSym notin v.flags:
-              message(c.config, a.info, warnResultShadowed)
+              message(c, a.info, warnResultShadowed)
       if a.kind != nkVarTuple:
         if def.kind != nkEmpty:
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
@@ -576,7 +576,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addSon(x, result[i])
         vm.setupCompileTimeVar(c.module, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
-        message(c.config, v.info, hintGlobalVar)
+        message(c, v.info, hintGlobalVar)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -1714,7 +1714,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
           x.methods.add((col,s))
-    message(c.config, n.info, warnDeprecated, "generic methods are deprecated")
+    message(c, n.info, warnDeprecated, "generic methods are deprecated")
     #if not foundObj:
     #  message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
   else:

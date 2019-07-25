@@ -467,7 +467,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
   if c.config.macrosToExpand.hasKey(sym.name.s):
-    message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
+    message(c, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
 
@@ -620,7 +620,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
-    message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
+    message(c, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
 
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)

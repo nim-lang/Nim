@@ -221,33 +221,33 @@ else:
     if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
     markGcUnsafe(a, reason)
 
-proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
+proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; c: PContext) =
   let u = s.gcUnsafetyReason
   if u != nil and not cycleCheck.containsOrIncl(u.id):
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
     case u.kind
     of skLet, skVar:
-      message(conf, s.info, msgKind,
+      message(c, s.info, msgKind,
         ("'$#' is not GC-safe as it accesses '$#'" &
         " which is a global using GC'ed memory") % [s.name.s, u.name.s])
     of routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
-      listGcUnsafety(u, true, cycleCheck, conf)
-      message(conf, s.info, msgKind,
+      listGcUnsafety(u, true, cycleCheck, c)
+      message(c, s.info, msgKind,
         "'$#' is not GC-safe as it calls '$#'" %
         [s.name.s, u.name.s])
     of skParam, skForVar:
-      message(conf, s.info, msgKind,
+      message(c, s.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call via '$#'" %
         [s.name.s, u.name.s])
     else:
-      message(conf, u.info, msgKind,
+      message(c, u.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call here" % s.name.s)
 
-proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
+proc listGcUnsafety(s: PSym; onlyWarning: bool; c: PContext) =
   var cycleCheck = initIntSet()
-  listGcUnsafety(s, onlyWarning, cycleCheck, conf)
+  listGcUnsafety(s, onlyWarning, cycleCheck, c)
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -257,9 +257,9 @@ proc useVar(a: PEffects, n: PNode) =
       a.init.add s.id
     elif s.id notin a.init:
       if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
-        message(a.config, n.info, warnProveInit, s.name.s)
+        message(a.c, n.info, warnProveInit, s.name.s)
       else:
-        message(a.config, n.info, warnUninit, s.name.s)
+        message(a.c, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
@@ -983,7 +983,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:
-      message(g.config, body.info, warnProveInit, "result")
+      message(c, body.info, warnProveInit, "result")
   let p = s.ast.sons[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
@@ -1002,13 +1002,13 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
       #localError(s.info, "'$1' is not GC-safe" % s.name.s)
-      listGcUnsafety(s, onlyWarning=false, g.config)
+      listGcUnsafety(s, onlyWarning=false, c)
     else:
-      listGcUnsafety(s, onlyWarning=true, g.config)
+      listGcUnsafety(s, onlyWarning=true, c)
       #localError(s.info, warnGcUnsafe2, s.name.s)
   if sfNoSideEffect in s.flags and t.hasSideEffect:
     when false:
-      listGcUnsafety(s, onlyWarning=false, g.config)
+      listGcUnsafety(s, onlyWarning=false, c)
     else:
       localError(g.config, s.info, "'$1' can have side effects" % s.name.s)
   if not t.gcUnsafe:
@@ -1019,7 +1019,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     s.typ.lockLevel = t.maxLockLevel
   elif t.maxLockLevel > s.typ.lockLevel:
     #localError(s.info,
-    message(g.config, s.info, warnLockLevel,
+    message(c, s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
   when defined(useDfa):

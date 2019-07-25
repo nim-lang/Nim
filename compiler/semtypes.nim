@@ -853,9 +853,9 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
         let region = semTypeNode(c, ni, nil)
         if region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
               tyError, tyObject}:
-          message c.config, n[i].info, errGenerated, "region needs to be an object type"
+          message c, n[i].info, errGenerated, "region needs to be an object type"
         else:
-          message(c.config, n.info, warnDeprecated, "region for pointer types is deprecated")
+          message(c, n.info, warnDeprecated, "region for pointer types is deprecated")
         addSonSkipIntLit(result, region)
     addSonSkipIntLit(result, t)
     if tfPartial in result.flags:
@@ -1215,7 +1215,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                 "`void` or no return type declaration at all has the same " &
                 "meaning as the current meaning of `typed` as return type " &
                 "declaration."
-    message(c.config, info, warnDeprecated, msg)
+    message(c, info, warnDeprecated, msg)
     r = nil
 
   if r != nil:
