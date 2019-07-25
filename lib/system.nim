@@ -149,18 +149,6 @@ else:
   template runnableExamples*(body: untyped) =
     discard
 
-when defined(nimHasAlias):
-  proc aliasImpl[T1, T2](name: T1, expr: T2) {.magic: "Alias".}
-
-  template `:=`*(name, expr) =
-    ## Declares `a` as alias of `expr`, which must resolve to a symbol.
-    runnableExamples:
-      echo2:=system.echo
-      echo2 "hello"
-      declared2:=system.declared
-      doAssert declared2(echo2)
-    aliasImpl(name, expr)
-
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared. `x` has to be an identifier or a qualified identifier.

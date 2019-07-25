@@ -1,4 +1,7 @@
 import std/macros
+import std/sugar
+
+{.push experimental: "aliasSym".}
 
 proc fun0(a: int): auto = $a
 template fun3(a: int): untyped = $a

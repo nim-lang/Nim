@@ -238,3 +238,15 @@ macro distinctBase*(T: typedesc): untyped =
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
+
+when defined(nimHasAlias):
+  proc aliasImpl[T1, T2](name: T1, expr: T2) {.magic: "Alias".}
+
+  template `:=`*(name, expr) =
+    ## Declares `a` as alias of `expr`, which must resolve to a symbol.
+    runnableExamples:
+      echo2:=system.echo
+      echo2 "hello"
+      declared2:=system.declared
+      doAssert declared2(echo2)
+    aliasImpl(name, expr)

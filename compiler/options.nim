@@ -134,6 +134,8 @@ type
       ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
+    aliasSym,
+      ## enable `Alias` magic to alias symbols
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf

@@ -2244,7 +2244,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf: result =
     semSizeof(c, setMs(n, s))
   of mAlias:
-    result = semAlias(c, n, s, flags)
+    if aliasSym in c.features:
+      result = semAlias(c, n, s, flags)
+    else:
+      globalError(c.config, n.info, "requires --experimental:aliasSym")
   else:
     result = semDirectOp(c, n, flags)
 
