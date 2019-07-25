@@ -32,9 +32,9 @@ block:
   doAssert Bar.default == Bar()
 
 block:
-  # backticks parser limitations / ambiguities not an issue with `genAst`:
-  # fix https://github.com/nim-lang/Nim/issues/10326
-  # fix https://github.com/nim-lang/Nim/issues/9745
+  # backticks parser limitations / ambiguities not are an issue with `genAst`:
+  # (#10326 #9745 are fixed but `quote do` still has underlying ambiguity issue
+  # with backticks)
   type Foo = object
     a: int
 
@@ -71,6 +71,8 @@ block:
 
 block:
   # fix https://github.com/nim-lang/Nim/issues/7726
+  # expressions such as `a.len` are just passed as arguments to `genAst`, and
+  # caller scope is not polluted with definitions such as `let b = newLit a.len`
   macro foo(): untyped =
     let a = @[1, 2, 3, 4, 5]
     result = genAst(a, b = a.len): # shows 2 ways to get a.len
@@ -85,10 +87,16 @@ block:
   macro bar2(args: varargs[untyped]): untyped =
     let info = args.lineInfoObj
     let fun1 = bindSym"fun1" # optional; we can remove this and also the
-    # capture of fun1
+    # capture of fun1, as show in next example
     result = genAst(info, fun1):
       (fun1(info), fun2(info.line))
   doAssert bar2() == ("bar1", "bar2")
+
+  macro bar3(args: varargs[untyped]): untyped =
+    let info = args.lineInfoObj
+    result = genAst(info):
+      (fun1(info), fun2(info.line))
+  doAssert bar3() == ("bar1", "bar2")
 
   macro bar(args: varargs[untyped]): untyped =
     let info = args.lineInfoObj
@@ -99,16 +107,21 @@ block:
   doAssert bar() == ("bar1", "bar2")
 
 block:
-  # fix https://github.com/nim-lang/Nim/issues/7889
+  # example from https://github.com/nim-lang/Nim/issues/7889 works
+  # after changing method call syntax to regular call syntax; this is a
+  # limitation described in https://github.com/nim-lang/Nim/issues/7085
+  # note that `quote do` would also work after that change in this example.
   doAssert bindme2() == kfoo1
   doAssert bindme3() == kfoo1
   doAssert not compiles(bindme4()) # correctly gives Error: undeclared identifier: 'myLocalPriv'
   proc myLocalPriv2(): auto = kfoo2
-
   doAssert bindme5UseExpose() == kfoo1
+
+  # example showing hijacking behavior when using `kDirtyTemplate`
   doAssert bindme5UseExposeFalse() == kfoo2
-    # local `myLocalPriv2` hijacks symbol, probably not what user wants
-    # by default as it's surprising for the macro writer
+    # local `myLocalPriv2` hijacks symbol `mgenast.myLocalPriv2`. In most
+    # use cases this is probably not what macro writer intends as it's
+    # surprising; hence `kDirtyTemplate` is not the default.
 
   bindme6UseExpose()
   bindme6UseExposeFalse()
@@ -150,9 +163,10 @@ block:
   main()
 
 block:
-  # fix https://github.com/nim-lang/Nim/issues/8220
+  # With `kDirtyTemplate`, the example from #8220 works.
+  # See https://nim-lang.github.io/Nim/strformat.html#limitations for
+  # an explanation of why {.dirty.} is needed.
   macro foo(): untyped =
-    # kDirtyTemplate needed here, see https://nim-lang.github.io/Nim/strformat.html#limitations
     result = genAstOpt({kDirtyTemplate}):
       let bar = "Hello, World"
       &"Let's interpolate {bar} in the string"
