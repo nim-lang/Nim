@@ -526,7 +526,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     # this may be triggered, when the explain pragma is used
     if errors.len > 0:
       let (_, candidates) = presentFailedCandidates(c, n, errors)
-      message(c.config, n.info, hintUserRaw,
+      message(c, n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
     result = semResolvedCall(c, r, n, flags)

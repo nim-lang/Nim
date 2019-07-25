@@ -480,7 +480,8 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
            title &
            getMessageStr(msg, arg)
 
-proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
+proc liMessage(conf: ConfigRef; notes: TNoteKinds, options: TOptions,
+              info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
   var
     title: string
@@ -500,15 +501,16 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     conf.m.lastError = info
   of warnMin..warnMax:
     sev = Severity.Warning
-    ignoreMsg = optWarns notin conf.options or msg notin conf.notes
+    ignoreMsg = optWarns notin options or msg notin notes
     if not ignoreMsg: writeContext(conf, info)
     title = WarningTitle
     color = WarningColor
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(conf.warnCounter)
+
   of hintMin..hintMax:
     sev = Severity.Hint
-    ignoreMsg = optHints notin conf.options or msg notin conf.notes
+    ignoreMsg = optHints notin options or msg notin notes
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
@@ -534,30 +536,34 @@ proc fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   # this fixes bug #7080 so that it is at least obvious 'fatal'
   # was executed.
   conf.m.errorOutputs = {eStdOut, eStdErr}
-  liMessage(conf, info, msg, arg, doAbort)
+  liMessage(conf, conf.notes, conf.options, info, msg, arg, doAbort)
 
 proc globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  liMessage(conf, info, msg, arg, doRaise)
+  liMessage(conf, conf.notes, conf.options, info, msg, arg, doRaise)
 
 proc globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
-  liMessage(conf, info, errGenerated, arg, doRaise)
+  liMessage(conf, conf.notes, conf.options, info, errGenerated, arg, doRaise)
 
 proc localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  liMessage(conf, info, msg, arg, doNothing)
+  liMessage(conf, conf.notes, conf.options, info, msg, arg, doNothing)
 
 proc localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
-  liMessage(conf, info, errGenerated, arg, doNothing)
+  liMessage(conf, conf.notes, conf.options, info, errGenerated, arg, doNothing)
 
 proc localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
   localError(conf, info, format % params)
 
 proc message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  liMessage(conf, info, msg, arg, doNothing)
+  liMessage(conf, conf.notes, conf.options, info, msg, arg, doNothing)
+
+proc message*(conf: ConfigRef; notes: TNoteKinds, options: TOptions;
+              info: TLineInfo, msg: TMsgKind, arg = "") =
+  liMessage(conf, notes, options, info, msg, arg, doNothing)
 
 proc internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
   writeContext(conf, info)
-  liMessage(conf, info, errInternal, errMsg, doAbort)
+  liMessage(conf, conf.notes, conf.options, info, errInternal, errMsg, doAbort)
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
