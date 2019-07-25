@@ -131,178 +131,171 @@ when onX86:
 
 when onX86 or defined(nimdoc):
   type
-    X86Feature* {.pure.} = enum
-      HypervisorPresence, SimultaneousMultithreading, Vmx, X87fpu, Mmx, MmxExt,
-      F3DNow, F3DNowExt, F3DNowPf, Sse, Sse2, Sse3, Ssse3, Sse4a, Sse41, Sse42,
-      Avx, Avx2, Avx512f, Avx512dq, Avx512ifma, Avx512pf, Avx512er, Avx512cd,
-      Avx512bw, Avx512vl, Avx512vbmi, Avx512vbmi2, Avx512vpopcntdq, Avx512vnni,
-      Avx512vnniw4, Avx512fmaps4, Avx512bitalg, Rdrand, Rdseed, MovBigEndian,
-      Popcnt, Fma3, Fma4, Cas8B, Cas16B, Abm, Bmi1, Bmi2, TsxHle, TsxRtm, Adx,
-      Sgx, Gfni, Aes, Vaes, Vpclmulqdq, Pclmulqdq, NxBit, Float16c, Ssbd,
-      SpecCtrl, Stibp, Sha, Clflush, ClflushOpt, Clwriteback, PrefetchWT1, Mpx
+    X86Feature {.pure.} = enum
+      HypervisorPresence, SimultaneousMultithreading, IntelVtx, Amdv, X87fpu,
+      Mmx, MmxExt, F3DNow, F3DNowExt, F3DNowPf, Sse, Sse2, Sse3, Ssse3, Sse4a,
+      Sse41, Sse42, Avx, Avx2, Avx512f, Avx512dq, Avx512ifma, Avx512pf,
+      Avx512er, Avx512cd, Avx512bw, Avx512vl, Avx512vbmi, Avx512vbmi2,
+      Avx512vpopcntdq, Avx512vnni, Avx512vnniw4, Avx512fmaps4, Avx512bitalg,
+      Rdrand, Rdseed, MovBigEndian, Popcnt, Fma3, Fma4, Cas8B, Cas16B, Abm,
+      Bmi1, Bmi2, TsxHle, TsxRtm, Adx, Sgx, Gfni, Aes, Vaes, Vpclmulqdq,
+      Pclmulqdq, NxBit, Float16c, Ssbd, SpecCtrl, Stibp, Sha, Clflush,
+      ClflushOpt, Clwriteback, PrefetchWT1, Mpx
 
-when onArm or defined(nimdoc):
-  type
-    ArmFeature* {.pure.} = enum
-      Neon, Vfp
-
-type CpuFeature* = (when onX86: X86Feature elif onArm: ArmFeature)
-
-proc checkCpuFeatures*(features: set[CpuFeature]): set[CpuFeature] =
-  when onX86:
+  # The reason why we don't just evaluate these directly in the `let` variable
+  # list is so that we can internally organize features by their input (leaf)
+  # and output registers.
+  proc testX86Feature(features: X86Feature): bool =
     let
-      leaf1 = cpuidX86(leaf = 1)
-      leaf7 = cpuidX86(leaf = 7)
-      leaf8 = cpuidX86(leaf = 0x80000001'i32)
-    for feature in features:
-      template test(input, bit: int): bool =
-        ((1 shl bit) and input) != 0
-      template checkoff(input, bit: int): untyped =
-        if test(input, bit): result.incl(feature)
+      leaf1 {.global.} = cpuidX86(leaf = 1)
+      leaf7 {.global.} = cpuidX86(leaf = 7)
+      leaf8 {.global.} = cpuidX86(leaf = 0x80000001'i32)
 
-      # see: https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
+    template test(input, bit: int): bool =
+      ((1 shl bit) and input) != 0
 
-      case feature
+    # see: https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
+    case feature
+    # leaf 1, edx
+    of X87fpu:
+      leaf1.edx.test(0)
+    of Clflush:
+      leaf1.edx.test(19)
+    of Mmx:
+      leaf1.edx.test(23)
+    of Sse:
+      leaf1.edx.test(25)
+    of Sse2:
+      leaf1.edx.test(26)
+    of SimultaneousMultithreading:
+      leaf1.edx.test(28) or not leaf8.edx.test(1)
 
-      # leaf 1, edx
-      of X87fpu:
-        leaf1.edx.checkoff(0)
-      of Clflush:
-        leaf1.edx.checkoff(19)
-      of Mmx:
-        leaf1.edx.checkoff(23)
-      of Sse:
-        leaf1.edx.checkoff(25)
-      of Sse2:
-        leaf1.edx.checkoff(26)
-      of SimultaneousMultithreading:
-        if leaf1.edx.test(28) or not leaf8.edx.test(1):
-          result.incl(feature)
+    # leaf 1, ecx
+    of Sse3:
+      leaf1.ecx.test(0)
+    of Pclmulqdq:
+      leaf1.ecx.test(1)
+    of IntelVtx:
+      leaf1.ecx.test(5)
+    of Ssse3:
+      leaf1.ecx.test(9)
+    of Fma3:
+      leaf1.ecx.test(12)
+    of Cas16B:
+      leaf1.ecx.test(13)
+    of Sse41:
+      leaf1.ecx.test(19)
+    of Sse42:
+      leaf1.ecx.test(20)
+    of MovBigEndian:
+      leaf1.ecx.test(22)
+    of Popcnt:
+      leaf1.ecx.test(23)
+    of Aes:
+      leaf1.ecx.test(25)
+    of Avx:
+      leaf1.ecx.test(28)
+    of Float16c:
+      leaf1.ecx.test(29)
+    of Rdrand:
+      leaf1.ecx.test(30)
+    of HypervisorPresence:
+      leaf1.ecx.test(31)
 
-      # leaf 1, ecx
-      of Sse3:
-        leaf1.ecx.checkoff(0)
-      of Pclmulqdq:
-        leaf1.ecx.checkoff(1)
-      of Vmx:
-        leaf1.ecx.checkoff(5)
-      of Ssse3:
-        leaf1.ecx.checkoff(9)
-      of Fma3:
-        leaf1.ecx.checkoff(12)
-      of Cas16B:
-        leaf1.ecx.checkoff(13)
-      of Sse41:
-        leaf1.ecx.checkoff(19)
-      of Sse42:
-        leaf1.ecx.checkoff(20)
-      of MovBigEndian:
-        leaf1.ecx.checkoff(22)
-      of Popcnt:
-        leaf1.ecx.checkoff(23)
-      of Aes:
-        leaf1.ecx.checkoff(25)
-      of Avx:
-        leaf1.ecx.checkoff(28)
-      of Float16c:
-        leaf1.ecx.checkoff(29)
-      of Rdrand:
-        leaf1.ecx.checkoff(30)
-      of HypervisorPresence:
-        leaf1.ecx.checkoff(31)
+    # leaf 7, ecx
+    of PrefetchWT1:
+      leaf7.ecx.test(0)
+    of Avx512vbmi:
+      leaf7.ecx.test(1)
+    of Avx512vbmi2:
+      leaf7.ecx.test(6)
+    of Gfni:
+      leaf7.ecx.test(8)
+    of Vaes:
+      leaf7.ecx.test(9)
+    of Vpclmulqdq:
+      leaf7.ecx.test(10)
+    of Avx512vnni:
+      leaf7.ecx.test(11)
+    of Avx512bitalg:
+      leaf7.ecx.test(12)
+    of Avx512vpopcntdq:
+      leaf7.ecx.test(14)
 
-      # leaf 7, ecx
-      of PrefetchWT1:
-        leaf7.ecx.checkoff(0)
-      of Avx512vbmi:
-        leaf7.ecx.checkoff(1)
-      of Avx512vbmi2:
-        leaf7.ecx.checkoff(6)
-      of Gfni:
-        leaf7.ecx.checkoff(8)
-      of Vaes:
-        leaf7.ecx.checkoff(9)
-      of Vpclmulqdq:
-        leaf7.ecx.checkoff(10)
-      of Avx512vnni:
-        leaf7.ecx.checkoff(11)
-      of Avx512bitalg:
-        leaf7.ecx.checkoff(12)
-      of Avx512vpopcntdq:
-        leaf7.ecx.checkoff(14)
+    # leaf 7, ebx
+    of Sgx:
+      leaf7.ebx.test(2)
+    of Bmi1:
+      leaf7.ebx.test(3)
+    of TsxHle:
+      leaf7.ebx.test(4)
+    of Avx2:
+      leaf7.ebx.test(5)
+    of Bmi2:
+      leaf7.ebx.test(8)
+    of TsxRtm:
+      leaf7.ebx.test(11)
+    of Mpx:
+      leaf7.ebx.test(14)
+    of Avx512f:
+      leaf7.ebx.test(16)
+    of Avx512dq:
+      leaf7.ebx.test(17)
+    of Rdseed:
+      leaf7.ebx.test(18)
+    of Adx:
+      leaf7.ebx.test(19)
+    of Avx512ifma:
+      leaf7.ebx.test(21)
+    of ClflushOpt:
+      leaf7.ebx.test(23)
+    of Clwriteback:
+      leaf7.ebx.test(24)
+    of Avx512pf:
+      leaf7.ebx.test(26)
+    of Avx512er:
+      leaf7.ebx.test(27)
+    of Avx512cd:
+      leaf7.ebx.test(28)
+    of Sha:
+      leaf7.ebx.test(29)
+    of Avx512bw:
+      leaf7.ebx.test(30)
+    of Avx512vl:
+      leaf7.ebx.test(31)
 
-      # leaf 7, ebx
-      of Sgx:
-        leaf7.ebx.checkoff(2)
-      of Bmi1:
-        leaf7.ebx.checkoff(3)
-      of TsxHle:
-        leaf7.ebx.checkoff(4)
-      of Avx2:
-        leaf7.ebx.checkoff(5)
-      of Bmi2:
-        leaf7.ebx.checkoff(8)
-      of TsxRtm:
-        leaf7.ebx.checkoff(11)
-      of Mpx:
-        leaf7.ebx.checkoff(14)
-      of Avx512f:
-        leaf7.ebx.checkoff(16)
-      of Avx512dq:
-        leaf7.ebx.checkoff(17)
-      of Rdseed:
-        leaf7.ebx.checkoff(18)
-      of Adx:
-        leaf7.ebx.checkoff(19)
-      of Avx512ifma:
-        leaf7.ebx.checkoff(21)
-      of ClflushOpt:
-        leaf7.ebx.checkoff(23)
-      of Clwriteback:
-        leaf7.ebx.checkoff(24)
-      of Avx512pf:
-        leaf7.ebx.checkoff(26)
-      of Avx512er:
-        leaf7.ebx.checkoff(27)
-      of Avx512cd:
-        leaf7.ebx.checkoff(28)
-      of Sha:
-        leaf7.ebx.checkoff(29)
-      of Avx512bw:
-        leaf7.ebx.checkoff(30)
-      of Avx512vl:
-        leaf7.ebx.checkoff(31)
+    # leaf 7, edx
+    of Avx512vnniw4:
+      leaf7.edx.test(2)
+    of Avx512fmaps4:
+      leaf7.edx.test(3)
+    of SpecCtrl:
+      leaf7.edx.test(26)
+    of Stibp:
+      leaf7.edx.test(27)
+    of Ssbd:
+      leaf7.edx.test(31)
 
-      # leaf 7, edx
-      of Avx512vnniw4:
-        leaf7.edx.checkoff(2)
-      of Avx512fmaps4:
-        leaf7.edx.checkoff(3)
-      of SpecCtrl:
-        leaf7.edx.checkoff(26)
-      of Stibp:
-        leaf7.edx.checkoff(27)
-      of Ssbd:
-        leaf7.edx.checkoff(31)
+    # leaf 8, edx
+    of Cas8B:
+      leaf8.edx.test(8)
+    of NxBit:
+      leaf8.edx.test(20)
+    of MmxExt:
+      leaf8.edx.test(22)
+    of F3DNowExt:
+      leaf8.edx.test(30)
+    of F3DNow:
+      leaf8.edx.test(31)
 
-      # leaf 8, edx
-      of Cas8B:
-        leaf8.edx.checkoff(8)
-      of NxBit:
-        leaf8.edx.checkoff(20)
-      of MmxExt:
-        leaf8.edx.checkoff(22)
-      of F3DNowExt:
-        leaf8.edx.checkoff(30)
-      of F3DNow:
-        leaf8.edx.checkoff(31)
-
-      # leaf 8, ecx
-      of Abm:
-        leaf8.ecx.checkoff(5)
-      of Sse4a:
-        leaf8.ecx.checkoff(6)
-      of F3DNowPf:
-        leaf8.ecx.checkoff(8)
-      of Fma4:
-        leaf8.ecx.checkoff(16)
+    # leaf 8, ecx
+    of AmdV:
+      leaf8.ecx.test(2)
+    of Abm:
+      leaf8.ecx.test(5)
+    of Sse4a:
+      leaf8.ecx.test(6)
+    of F3DNowPf:
+      leaf8.ecx.test(8)
+    of Fma4:
+      leaf8.ecx.test(16)
