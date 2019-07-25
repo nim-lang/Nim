@@ -364,3 +364,37 @@ when (NimMajor, NimMinor) >= (1, 1):
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
+
+proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode] =
+  ## allows library constructs such as: `byRef: a2 = expr`
+  doAssert def.kind == nnkStmtList and def.len == 1
+  let def2 = def[0]
+  doAssert def2.kind == nnkAsgn
+  let lhs = def2[0]
+  let rhs = def2[1]
+  expectKind(lhs, nnkIdent)
+  return (lhs, rhs)
+
+macro byRef*(def: untyped): untyped =
+  ## Defines a ref alias for lvalue expressions. The expression is evaluated
+  ## only once, and any side effects will only be evaluated once, at declaration
+  ## time.
+  runnableExamples:
+    var x = @[1,2,3]
+    byRef: x1=x[1]
+    x1+=10
+    doAssert type(x1) is int and x == @[1,12,3]
+
+  let (name, exp) = splitDefinition(def)
+  result = quote do:
+    let myAddr = addr `exp`
+    template `name`: untyped = myAddr[]
+
+macro byPtr*(def: untyped): untyped =
+  ## Defines a ptr alias for expressions. Caution: this uses `unsafeAddr`, so
+  ## is unsafe to use in general, and `byRef` should be preferred when possible.
+  ## This can for example be used on `let` variables.
+  let (name, exp) = splitDefinition(def)
+  result = quote do:
+    let myAddr = unsafeAddr `exp`
+    template `name`: untyped = myAddr[]
