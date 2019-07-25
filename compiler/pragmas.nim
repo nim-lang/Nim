@@ -321,12 +321,8 @@ proc processNote(c: PContext, n: PNode) =
 
     let x = c.semConstBoolExpr(c, n[1])
     n.sons[1] = x
-    if x.kind == nkIntLit and x.intVal != 0:
-      incl(c.config.notes, nk)
-      incl(c.optionStack[^1].notes, nk)
-    else:
-      excl(c.config.notes, nk)
-      excl(c.optionStack[^1].notes, nk)
+    if x.kind == nkIntLit and x.intVal != 0: incl(c.config.notes, nk)
+    else: excl(c.config.notes, nk)
   else:
     invalidPragma(c, n)
 

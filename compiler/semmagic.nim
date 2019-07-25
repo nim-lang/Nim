@@ -305,7 +305,7 @@ proc semOf(c: PContext, n: PNode): PNode =
       # | returns: `maxint` iff `a` and `b` are not compatible at all
       if diff <= 0:
         # optimize to true:
-        message(c, n.info, hintConditionAlwaysTrue, renderTree(n))
+        message(c.config, n.info, hintConditionAlwaysTrue, renderTree(n))
         result = newIntNode(nkIntLit, 1)
         result.info = n.info
         result.typ = getSysType(c.graph, n.info, tyBool)
@@ -314,7 +314,7 @@ proc semOf(c: PContext, n: PNode): PNode =
         if commonSuperclass(a, b) == nil:
           localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
         else:
-          message(c, n.info, hintConditionAlwaysFalse, renderTree(n))
+          message(c.config, n.info, hintConditionAlwaysFalse, renderTree(n))
           result = newIntNode(nkIntLit, 0)
           result.info = n.info
           result.typ = getSysType(c.graph, n.info, tyBool)

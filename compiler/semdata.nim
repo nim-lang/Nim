@@ -171,9 +171,6 @@ proc popOwner*(c: PContext) =
 proc lastOptionEntry*(c: PContext): POptionEntry =
   result = c.optionStack[^1]
 
-proc message*(c: PContext, info: TLineInfo, msg: TMsgKind, arg = "") =
-  message(c.config, c.lastOptionEntry.notes, c.lastOptionEntry.options, info, msg, arg)
-
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
