@@ -1,6 +1,6 @@
 import std/macros
 
-## using a enum instead of, say, int, to make apparent potential bugs related to
+## Using a enum instead of, say, int, to make apparent potential bugs related to
 ## forgetting converting to NimNode via newLit, see https://github.com/nim-lang/Nim/issues/9607
 
 type Foo* = enum kfoo0, kfoo1, kfoo2, kfoo3, kfoo4
