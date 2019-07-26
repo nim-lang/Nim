@@ -768,7 +768,7 @@ when onX86 or defined(nimdoc):
       ## Carryless Multiplication) instructions.
 
     hasNxBit* {.global.} =
-      testX86Feature(Nxbit)
+      testX86Feature(NxBit)
       ## **(x86 Only)**
       ##
       ## Reports `true` if the hardware has support for NX-bit (No-eXecute)
