@@ -221,10 +221,6 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
   if t.lockLevel.ord != UnspecifiedLockLevel.ord:
     add(result, '\14')
     encodeVInt(t.lockLevel.int16, result)
-  if t.destructor != nil and t.destructor.id != 0:
-    add(result, '\15')
-    encodeVInt(t.destructor.id, result)
-    pushSym(w, t.destructor)
   for a in t.attachedOps:
     add(result, '\16')
     if a == nil:
