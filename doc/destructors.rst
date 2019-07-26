@@ -326,7 +326,9 @@ not destroyed at the scope exit, but at the proc exit.
 
   f(...)
   ------------------------    (function-call)
-  (let tmp = f(...); tmp)
+  (let tmp;
+  bitwiseCopy tmp, f(...);
+  tmp)
   finally: `=destroy`(tmp)
 
 
