@@ -617,15 +617,15 @@ when onX86 or defined(nimdoc):
       testX86Feature(Rdrand)
       ## **(x86 Only)**
       ##
-      ## Reports `true` if the hardware has support for the `RDRAND` instruction
-      ## - i.e. Intel on-CPU hardware random number generation.
+      ## Reports `true` if the hardware has support for the `RDRAND` instruction,
+      ## i.e. Intel on-CPU hardware random number generation.
 
     hasRdseed* {.global.} =
       testX86Feature(Rdseed)
       ## **(x86 Only)**
       ##
-      ## Reports `true` if the hardware has support for the `RDSEED` instruction
-      ## - i.e. Intel on-CPU hardware random number generation (used for seeding
+      ## Reports `true` if the hardware has support for the `RDSEED` instruction,
+      ## i.e. Intel on-CPU hardware random number generation (used for seeding
       ## other PRNGs).
 
     hasMovBigEndian* {.global.} =
