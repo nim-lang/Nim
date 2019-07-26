@@ -1,3 +1,8 @@
+discard """
+output: '''
+123
+'''
+"""
 
 # issue #11812
 
