@@ -64,9 +64,6 @@ let popPragmaExpr {.compileTime.} = nnkPragma.newTree(
   newIdentNode("pop")
 )
 
-dumpAstGen:
-  let x = 123
-
 macro quoteAst*(args: varargs[untyped]): untyped =
   let symbolTable = newStmtList()
 
