@@ -128,5 +128,13 @@ block: # fix https://forum.nim-lang.org/t/5015
   length := getLength # works
   doAssert length("alias") == 5
 
+block: # works with `result` variable too, as asked here:
+       # https://forum.nim-lang.org/t/5015#31650
+  proc foo(): string =
+    r:=result
+    r.add "ba"
+    r.add "bo"
+  doAssert foo() == "babo"
+
 main1()
 main2()
