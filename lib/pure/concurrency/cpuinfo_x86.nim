@@ -516,13 +516,13 @@ let
     ## Steamroller, and Excavator) and were phased out with the release of the
     ## Zen design.
 
-  hasCas8b* = testX86Feature(Cas8b)
+  hasCas8B* = testX86Feature(Cas8B)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the (`LOCK`-able)
     ## `CMPXCHG8B` 64-bit compare-and-swap instruction.
 
-  hasCas16b* = testX86Feature(Cas16b)
+  hasCas16B* = testX86Feature(Cas16B)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the (`LOCK`-able)
