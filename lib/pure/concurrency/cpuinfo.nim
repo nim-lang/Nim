@@ -140,7 +140,7 @@ when onX86 or defined(nimdoc):
       Avx512bfloat16, Avx512vp2intersect, Rdrand, Rdseed, MovBigEndian, Popcnt,
       Fma3, Fma4, Xop, Cas8B, Cas16B, Abm, Bmi1, Bmi2, TsxHle, TsxRtm, Adx, Sgx,
       Gfni, Aes, Vaes, Vpclmulqdq, Pclmulqdq, NxBit, Float16c, Sha, Clflush,
-      ClflushOpt, Clwriteback, PrefetchWT1, Mpx,
+      ClflushOpt, Clwb, PrefetchWT1, Mpx
 
   # The reason why we don't just evaluate these directly in the `let` variable
   # list is so that we can internally organize features by their input (leaf)
@@ -802,6 +802,14 @@ when onX86 or defined(nimdoc):
       ##
       ## Reports `true` if the hardware has support for the `CLFLUSHOPT`
       ## (Cache-line Flush Optimized) instruction.
+
+    hasClwb* {.global.} =
+      testX86Feature(Clwb)
+      ## **(x86 Only)**
+      ##
+      ## Reports `true` if the hardware has support for the `CLWB` (Cache-line
+      ## Write Back) instruction.
+
 
     hasPrefetchWT1* {.global.} =
       testX86Feature(PrefetchWT1)
