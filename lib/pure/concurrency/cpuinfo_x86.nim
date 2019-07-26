@@ -15,6 +15,13 @@ proc cpuidX86(leaf: int32): tuple[eax, ebx, ecx, edx: int32] =
       :"a"(`leaf`) """
     (eaxr, ebxr, ecxr, edxr)
 
+proc cpuNameX86(): string =
+  var leaves {.global.} = cast[array[48, char]]([
+    cpuidX86(leaf = 0x80000002'i32),
+    cpuidX86(leaf = 0x80000003'i32),
+    cpuidX86(leaf = 0x80000004'i32)])
+  result = $cast[cstring](addr leaves[0])
+
 type
   X86Feature {.pure.} = enum
     HypervisorPresence, Hyperthreading, NoSMT, IntelVtx, Amdv, X87fpu, Mmx,
@@ -192,36 +199,32 @@ proc testX86Feature(feature: X86Feature): bool =
       leaf8.ecx.test(16)
 
 let
-  isHypervisorPresent* {.global.} =
-    testX86Feature(HypervisorPresence)
+  isHypervisorPresent* = testX86Feature(HypervisorPresence)
     ## **(x86 Only)**
     ##
     ## Reports `true` if this application is running inside of a virtual
     ## machine (this is by no means foolproof).
 
-  hasSimultaneousMultithreading* {.global.} =
+  hasSimultaneousMultithreading* =
     testX86Feature(Hyperthreading) or not testX86Feature(NoSMT)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware is utilizing simultaneous multithreading
     ## (branded as *"hyperthreads"* on Intel processors).
 
-  hasIntelVtx* {.global.} =
-    testX86Feature(IntelVtx)
+  hasIntelVtx* = testX86Feature(IntelVtx)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the Intel virtualization extensions (VT-x) are
     ## available.
 
-  hasAmdv* {.global.} =
-    testX86Feature(Amdv)
+  hasAmdv* = testX86Feature(Amdv)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the AMD virtualization extensions (AMD-V) are
     ## available.
 
-  hasX87fpu* {.global.} =
-    testX86Feature(X87fpu)
+  hasX87fpu* = testX86Feature(X87fpu)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use x87 floating-point instructions
@@ -235,8 +238,7 @@ let
     ##
     ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
 
-  hasMmx* {.global.} =
-    testX86Feature(Mmx)
+  hasMmx* = testX86Feature(Mmx)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use MMX SIMD instructions.
@@ -248,8 +250,7 @@ let
     ##
     ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
 
-  hasMmxExt* {.global.} =
-    testX86Feature(MmxExt)
+  hasMmxExt* = testX86Feature(MmxExt)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use "Extended MMX" SIMD
@@ -262,8 +263,7 @@ let
     ##
     ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
 
-  has3DNow* {.global.} =
-    testX86Feature(F3DNow)
+  has3DNow* = testX86Feature(F3DNow)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use 3DNow! SIMD instructions.
@@ -277,8 +277,7 @@ let
     ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
     ## .. _`AMD Developer Central`: https://web.archive.org/web/20131109151245/http://developer.amd.com/community/blog/2010/08/18/3dnow-deprecated/
 
-  has3DNowEnhanced* {.global.} =
-    testX86Feature(F3DNowEnhanced)
+  has3DNowEnhanced* = testX86Feature(F3DNowEnhanced)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use "Enhanced 3DNow!" SIMD
@@ -293,8 +292,7 @@ let
     ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
     ## .. _`AMD Developer Central`: https://web.archive.org/web/20131109151245/http://developer.amd.com/community/blog/2010/08/18/3dnow-deprecated/
 
-  hasPrefetch* {.global.} =
-    testX86Feature(Prefetch) or testX86Feature(F3DNow)
+  hasPrefetch* = testX86Feature(Prefetch) or testX86Feature(F3DNow)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use the `PREFETCH` and `PREFETCHW`
@@ -302,8 +300,7 @@ let
     ## but potentially indepdendent from the rest of it due to changes in
     ## contemporary AMD processors (see above).
 
-  hasSse* {.global.} =
-    testX86Feature(Sse)
+  hasSse* = testX86Feature(Sse)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use the SSE (Streaming SIMD
@@ -313,8 +310,7 @@ let
     ## By virtue of SSE2 enforced compliance on AMD64 CPUs, this should always
     ## be `true` on 64-bit x86 processors.
 
-  hasSse2* {.global.} =
-    testX86Feature(Sse2)
+  hasSse2* = testX86Feature(Sse2)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use the SSE (Streaming SIMD
@@ -323,43 +319,37 @@ let
     ## By virtue of SSE2 enforced compliance on AMD64 CPUs, this should always
     ## be `true` on 64-bit x86 processors.
 
-  hasSse3* {.global.} =
-    testX86Feature(Sse3)
+  hasSse3* = testX86Feature(Sse3)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use SSE (Streaming SIMD
     ## Extensions) 3.0 instructions.
 
-  hasSsse3* {.global.} =
-    testX86Feature(Ssse3)
+  hasSsse3* = testX86Feature(Ssse3)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use Supplemental SSE (Streaming
     ## SIMD Extensions) 3.0 instructions.
 
-  hasSse4a* {.global.} =
-    testX86Feature(Sse4a)
+  hasSse4a* = testX86Feature(Sse4a)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use Supplemental SSE (Streaming
     ## SIMD Extensions) 4a instructions.
 
-  hasSse41* {.global.} =
-    testX86Feature(Sse41)
+  hasSse41* = testX86Feature(Sse41)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use Supplemental SSE (Streaming
     ## SIMD Extensions) 4.1 instructions.
 
-  hasSse42* {.global.} =
-    testX86Feature(Sse42)
+  hasSse42* = testX86Feature(Sse42)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use Supplemental SSE (Streaming
     ## SIMD Extensions) 4.2 instructions.
 
-  hasAvx* {.global.} =
-    testX86Feature(Avx)
+  hasAvx* = testX86Feature(Avx)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
@@ -367,182 +357,157 @@ let
     ## addded reencoded versions of prior 128-bit SSE instructions into the more
     ## code-dense and non-backward compatible VEX (Vector Extensions) format.
 
-  hasAvx2* {.global.} =
-    testX86Feature(Avx2)
+  hasAvx2* = testX86Feature(Avx2)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 2.0 instructions.
 
-  hasAvx512f* {.global.} =
-    testX86Feature(Avx512f)
+  hasAvx512f* = testX86Feature(Avx512f)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit F (Foundation) instructions.
 
-  hasAvx512dq* {.global.} =
-    testX86Feature(Avx512dq)
+  hasAvx512dq* = testX86Feature(Avx512dq)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit DQ (Doubleword + Quadword) instructions.
 
-  hasAvx512ifma* {.global.} =
-    testX86Feature(Avx512ifma)
+  hasAvx512ifma* = testX86Feature(Avx512ifma)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit IFMA (Integer Fused-Multiply-Accumulation) instructions.
 
-  hasAvx512pf* {.global.} =
-    testX86Feature(Avx512pf)
+  hasAvx512pf* = testX86Feature(Avx512pf)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit PF (Prefetch) instructions.
 
-  hasAvx512er* {.global.} =
-    testX86Feature(Avx512er)
+  hasAvx512er* = testX86Feature(Avx512er)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit ER (Exponential and Reciprocal) instructions.
 
-  hasAvx512cd* {.global.} =
-    testX86Feature(Avx512dq)
+  hasAvx512cd* = testX86Feature(Avx512dq)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit CD (Conflict Detection) instructions.
 
-  hasAvx512bw* {.global.} =
-    testX86Feature(Avx512bw)
+  hasAvx512bw* = testX86Feature(Avx512bw)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit BW (Byte and Word) instructions.
 
-  hasAvx512vl* {.global.} =
-    testX86Feature(Avx512vl)
+  hasAvx512vl* = testX86Feature(Avx512vl)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit VL (Vector Length) instructions.
 
-  hasAvx512vbmi* {.global.} =
-    testX86Feature(Avx512vbmi)
+  hasAvx512vbmi* = testX86Feature(Avx512vbmi)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit VBMI (Vector Byte Manipulation) 1.0 instructions.
 
-  hasAvx512vbmi2* {.global.} =
-    testX86Feature(Avx512vbmi2)
+  hasAvx512vbmi2* = testX86Feature(Avx512vbmi2)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit VBMI (Vector Byte Manipulation) 2.0 instructions.
 
-  hasAvx512vpopcntdq* {.global.} =
-    testX86Feature(Avx512vpopcntdq)
+  hasAvx512vpopcntdq* = testX86Feature(Avx512vpopcntdq)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use the AVX (Advanced Vector
     ## Extensions) 512-bit `VPOPCNTDQ` (population count, i.e. determine
     ## number of flipped bits) instruction.
 
-  hasAvx512vnni* {.global.} =
-    testX86Feature(Avx512vnni)
+  hasAvx512vnni* = testX86Feature(Avx512vnni)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit VNNI (Vector Neural Network) instructions.
 
-  hasAvx512vnniw4* {.global.} =
-    testX86Feature(Avx512vnniw4)
+  hasAvx512vnniw4* = testX86Feature(Avx512vnniw4)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit 4VNNIW (Vector Neural Network Word Variable Percision)
     ## instructions.
 
-  hasAvx512fmaps4* {.global.} =
-    testX86Feature(Avx512fmaps4)
+  hasAvx512fmaps4* = testX86Feature(Avx512fmaps4)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit 4FMAPS (Fused-Multiply-Accumulation Single-percision)
     ## instructions.
 
-  hasAvx512bitalg* {.global.} =
-    testX86Feature(Avx512bitalg)
+  hasAvx512bitalg* = testX86Feature(Avx512bitalg)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit BITALG (Bit Algorithms) instructions.
 
-  hasAvx512bfloat16* {.global.} =
-    testX86Feature(Avx512bfloat16)
+  hasAvx512bfloat16* = testX86Feature(Avx512bfloat16)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit BFLOAT16 (8-bit exponent, 7-bit mantissa) instructions
     ## used by Intel DL (Deep Learning) Boost.
 
-  hasAvx512vp2intersect* {.global.} =
-    testX86Feature(Avx512vp2intersect)
+  hasAvx512vp2intersect* = testX86Feature(Avx512vp2intersect)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
     ## 512-bit VP2INTERSECT (Compute Intersections between Dualwords +
     ## Quadwords) instructions.
 
-  hasRdrand* {.global.} =
-    testX86Feature(Rdrand)
+  hasRdrand* = testX86Feature(Rdrand)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `RDRAND` instruction,
     ## i.e. Intel on-CPU hardware random number generation.
 
-  hasRdseed* {.global.} =
-    testX86Feature(Rdseed)
+  hasRdseed* = testX86Feature(Rdseed)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `RDSEED` instruction,
     ## i.e. Intel on-CPU hardware random number generation (used for seeding
     ## other PRNGs).
 
-  hasMovBigEndian* {.global.} =
-    testX86Feature(MovBigEndian)
+  hasMovBigEndian* = testX86Feature(MovBigEndian)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `MOVBE` instruction
     ## for endianness/byte-order switching.
 
-  hasPopcnt* {.global.} =
-    testX86Feature(Popcnt)
+  hasPopcnt* = testX86Feature(Popcnt)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `POPCNT` (population
     ## count, i.e. determine number of flipped bits) instruction.
 
-  hasFma3* {.global.} =
-    testX86Feature(Fma3)
+  hasFma3* = testX86Feature(Fma3)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the FMA3
     ## (Fused-Multiply-Accumulation 3-operand) SIMD instructions.
 
-  hasFma4* {.global.} =
-    testX86Feature(Fma4)
+  hasFma4* = testX86Feature(Fma4)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the FMA4
     ## (Fused-Multiply-Accumulation 4-operand) SIMD instructions.
 
-  hasXop* {.global.} =
-    testX86Feature(Xop)
+  hasXop* = testX86Feature(Xop)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the XOP (eXtended
@@ -551,160 +516,138 @@ let
     ## Steamroller, and Excavator) and were phased out with the release of the
     ## Zen design.
 
-  hasCas8b* {.global.} =
-    testX86Feature(Cas8b)
+  hasCas8b* = testX86Feature(Cas8b)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the (`LOCK`-able)
     ## `CMPXCHG8B` 64-bit compare-and-swap instruction.
 
-  hasCas16b* {.global.} =
-    testX86Feature(Cas16b)
+  hasCas16b* = testX86Feature(Cas16b)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the (`LOCK`-able)
     ## `CMPXCHG16B` 128-bit compare-and-swap instruction.
 
-  hasAbm* {.global.} =
-    testX86Feature(Abm)
+  hasAbm* = testX86Feature(Abm)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for ABM (Advanced Bit
     ## Manipulation) insturctions (i.e. `POPCNT` and `LZCNT` for counting
     ## leading zeroes).
 
-  hasBmi1* {.global.} =
-    testX86Feature(Bmi1)
+  hasBmi1* = testX86Feature(Bmi1)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for BMI (Bit Manipulation)
     ## 1.0 instructions.
 
-  hasBmi2* {.global.} =
-    testX86Feature(Bmi2)
+  hasBmi2* = testX86Feature(Bmi2)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for BMI (Bit Manipulation)
     ## 2.0 instructions.
 
-  hasTsxHle* {.global.} =
-    testX86Feature(TsxHle)
+  hasTsxHle* = testX86Feature(TsxHle)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for HLE (Hardware Lock
     ## Elision) as part of Intel's TSX (Transactional Synchronization
     ## Extensions).
 
-  hasTsxRtm* {.global.} =
-    testX86Feature(TsxRtm)
+  hasTsxRtm* = testX86Feature(TsxRtm)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for RTM (Restricted
     ## Transactional Memory) as part of Intel's TSX (Transactional
     ## Synchronization Extensions).
 
-  hasAdx* {.global.} =
-    testX86Feature(TsxHle)
+  hasAdx* = testX86Feature(TsxHle)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for ADX (Multi-percision
     ## Add-Carry Extensions) insructions.
 
-  hasSgx* {.global.} =
-    testX86Feature(Sgx)
+  hasSgx* = testX86Feature(Sgx)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for SGX (Software Guard
     ## eXtensions) memory encryption technology.
 
-  hasGfni* {.global.} =
-    testX86Feature(Gfni)
+  hasGfni* = testX86Feature(Gfni)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for GFNI (Galois Field
     ## Affine Transformation) instructions.
 
-  hasAes* {.global.} =
-    testX86Feature(Aes)
+  hasAes* = testX86Feature(Aes)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for AESNI (Advanced
     ## Encryption Standard) instructions.
 
-  hasVaes* {.global.} =
-    testX86Feature(Vaes)
+  hasVaes* = testX86Feature(Vaes)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for VAES (Vectorized
     ## Advanced Encryption Standard) instructions.
 
-  hasVpclmulqdq* {.global.} =
-    testX86Feature(Vpclmulqdq)
+  hasVpclmulqdq* = testX86Feature(Vpclmulqdq)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for `VCLMULQDQ` (512 and
     ## 256-bit Carryless Multiplication) instructions.
 
-  hasPclmulqdq* {.global.} =
-    testX86Feature(VPclmulqdq)
+  hasPclmulqdq* = testX86Feature(VPclmulqdq)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for `PCLMULQDQ` (128-bit
     ## Carryless Multiplication) instructions.
 
-  hasNxBit* {.global.} =
-    testX86Feature(NxBit)
+  hasNxBit* = testX86Feature(NxBit)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for NX-bit (No-eXecute)
     ## technology for marking pages of memory as non-executable.
 
-  hasFloat16c* {.global.} =
-    testX86Feature(Float16c)
+  hasFloat16c* = testX86Feature(Float16c)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for F16C instructions, used
     ## for converting 16-bit "half-percision" floating-point values to and
     ## from single-percision floating-point values.
 
-  hasSha* {.global.} =
-    testX86Feature(Sha)
+  hasSha* = testX86Feature(Sha)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for SHA (Secure Hash
     ## Algorithm) instructions.
 
-  hasClflush* {.global.} =
-    testX86Feature(Clflush)
+  hasClflush* = testX86Feature(Clflush)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `CLFLUSH`
     ## (Cache-line Flush) instruction.
 
-  hasClflushOpt* {.global.} =
-    testX86Feature(ClflushOpt)
+  hasClflushOpt* = testX86Feature(ClflushOpt)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `CLFLUSHOPT`
     ## (Cache-line Flush Optimized) instruction.
 
-  hasClwb* {.global.} =
-    testX86Feature(Clwb)
+  hasClwb* = testX86Feature(Clwb)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `CLWB` (Cache-line
     ## Write Back) instruction.
 
 
-  hasPrefetchWT1* {.global.} =
-    testX86Feature(PrefetchWT1)
+  hasPrefetchWT1* = testX86Feature(PrefetchWT1)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for the `PREFECTHWT1`
     ## instruction.
 
-  hasMpx* {.global.} =
-    testX86Feature(Mpx)
+  hasMpx* = testX86Feature(Mpx)
     ## **(x86 Only)**
     ##
     ## Reports `true` if the hardware has support for MPX (Memory Protection
