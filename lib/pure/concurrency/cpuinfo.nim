@@ -293,7 +293,7 @@ when onX86 or defined(nimdoc):
         leaf8.edx.test(31)
 
       # leaf 8, ecx
-      of AmdV:
+      of Amdv:
         leaf8.ecx.test(2)
       of Abm:
         leaf8.ecx.test(5)
