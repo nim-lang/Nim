@@ -257,6 +257,7 @@ when defineSsl:
         if not fut.read():
           # Socket disconnected.
           if SocketFlag.SafeDisconn in flags:
+            opResult = 0.cint
             break
           else:
             raiseSSLError("Socket has been disconnected")
