@@ -198,6 +198,10 @@ const
   ## If a different format string is preferred, refer to the
   ## `documentation about format strings<#basic-usage-format-strings>`_
   ## for more information, including a list of available variables.
+  csvFmtStr* = "$levelid, $datetime, $appname, " ## \
+  ## CSV formatted verbose format. Parseable as valid RFC-4180 standard CSV.
+  ## You must remove new lines from log message to keep formatting (as any CSV)
+
 
 type
   Logger* = ref object of RootObj
@@ -369,7 +373,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       try:
         var handle = stdout
         if logger.useStderr:
-          handle = stderr 
+          handle = stderr
         writeLine(handle, ln)
         if level in {lvlError, lvlFatal}: flushFile(handle)
       except IOError:
