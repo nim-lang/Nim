@@ -75,6 +75,8 @@
 - `httpclient.maxredirects` changed from `int` to `Natural`, because negative values serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
   instead of a hardcoded empty `newHttpHeader()`.
+- Added `macros.genAst` that avoids the problems inherent with `quote do` and can
+  be used as a replacement (#11722)
 
 ## Language additions
 

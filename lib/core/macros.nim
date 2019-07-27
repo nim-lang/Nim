@@ -576,7 +576,7 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
 
 proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
   ## Caution: `quote` has many caveats, see https://github.com/nim-lang/RFCs/issues/122
-  ## Consider using the new `genAst` instead, which fixes all issues with `quote`
+  ## Consider using the new `genAst` instead, which avoids those issues.
   ##
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
@@ -1384,53 +1384,24 @@ type GenAstOpt* = enum
     # When set, uses a dirty template in implementation of `genAst`. This
     # is occasionally useful as workaround for issues such as #8220, see
     # `strformat limitations <strformat.html#limitations>`_ for details.
-    # Default is unset, to avoid surprising hijacking of local symbols by
+    # Default is unset, to avoid hijacking of uncaptured local symbols by
     # symbols in caller scope.
   kNoAutoNewLit,
     # don't call call newLit automatically in `genAst` capture parameters
 
 macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untyped =
-  ## Accepts a list of captured `variables = value` and a block and returns the
-  ## AST that represents it. Local `{.inject.}` symbols are captured (eg
-  ## local procs) unless `kDirtyTemplate in options`; additional variables
-  ## are captured as subsequent parameters.
+  ## Accepts a list of captured variables `a=b` or `a` and a block and returns the
+  ## AST that represents it. Local `{.inject.}` symbols (e.g. procs) are captured
+  ## unless `kDirtyTemplate in options`.
   runnableExamples:
-    type Foo = enum kfoo0, kfoo1, kfoo2, kfoo3, kfoo4
-
-    ## simple example
-    macro bar1(x0: static Foo, x1: Foo, xignored: Foo): untyped =
-      let s0 = "not captured!" ## does not override `s0` from caller scope
-      let s1 = "not captured!" ## does not override `s1=2`
-      let xignoredLocal = kfoo4
-      proc localExposed(): auto = kfoo4 # implicitly captured
-      result = genAst(s1=true, s2="asdf", x0, x1):
-        # echo xignored # would give: Error: undeclared identifier
-        # echo s0 # would give: Error: internal error: expr: var not init s0_237159
-        (s1, s2, x0, x1, localExposed())
-
-    ## more complex example
-    macro bar2(x0: static Foo, x1: Foo, x2: Foo, xignored: Foo): untyped =
-      let s0 = "not captured!" ## does not override `s0` from caller scope
-      let s1 = "not captured!" ## does not override `s1=2`
-      let xignoredLocal = kfoo4
-      let x3 = newLit kfoo4
-      result = genAstOpt({kDirtyTemplate}, s1=true, s2="asdf", x0, x1=x1, x2, x3):
-        ## only captures variables from `genAst` argument list
-        ## uncaptured variables will be set from caller scope (Eg `s0`)
-        ## `x2` is shortcut for the common `x2=x2`
-        doAssert not declared(xignored)      # not in param list!
-        doAssert not declared(xignoredLocal) # ditto
-        (s1, s2, s0, x0, x1, x2, x3)
-
-    block:
-      let s0 = "caller scope!"
-      doAssert bar1(kfoo1, kfoo2, kfoo4) ==
-        (true, "asdf", kfoo1, kfoo2, kfoo4)
-
-    block:
-      let s0 = "caller scope!"
-      doAssert bar2(kfoo1, kfoo2, kfoo3, kfoo4) ==
-        (true, "asdf", "caller scope!", kfoo1, kfoo2, kfoo3, kfoo4)
+    macro fun(a: bool, b: static bool): untyped =
+      let c = false # doesn't override parameter `c`
+      var d = 11 # var => gensym'd
+      proc localFun(): auto = 12 # proc => inject'd
+      genAst(a, b, c = true):
+        # echo d # not captured => gives `var not init`
+        (a, b, c, localFun())
+    doAssert fun(true, false) == (true, false, true, 12)
 
   let params = newTree(nnkFormalParams, newEmptyNode())
   let pragmas =
