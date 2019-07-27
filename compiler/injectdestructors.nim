@@ -445,12 +445,13 @@ proc containsConstSeq(n: PNode): bool =
   else: discard
 
 proc genMovableTemp(c: var Con, ri: PNode): PNode =
+  #This does a bitwise copy
+  #let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   result = newNodeI(nkStmtList, ri.info)
   let tmp = getTemp(c, ri.typ, ri.info)
-  var copy = genCopyNoCheck(c, tmp.typ, tmp, ri)
-  copy.add ri
+  let bitwiseCopy = newTree(nkFastAsgn, tmp, ri)
   result.add tmp
-  result.add copy
+  result.add bitwiseCopy
   c.destroys.add genDestroy(c, tmp.typ, tmp)
 
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
@@ -551,13 +552,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     for i in 1..<ri.len:
       ri2.add pArg(ri[i], c, i < L and isSinkTypeForParam(parameters[i]))
     #recurse(ri, ri2)
-    # generate movable temporary (this is actually unneccessary on the C backend, see ccgcalls:67)
-    # Don't do this for strings, since they use different semantics..
-    if ri.typ.kind == tyString:
-      result = genMove(c, dest.typ, dest, ri2, ri2)
-    else:
-      result = genMovableTemp(c, ri2)
-      result.add genMove(c, dest.typ, dest, result[0], result[0])
+    # generate movable temporary
+    result = genMovableTemp(c, ri2)
+    result.add genMove(c, dest.typ, dest, result[0], result[0])
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
       # unpacking of tuple: move out the elements

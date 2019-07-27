@@ -15,7 +15,7 @@ discard """
 1 1 5
 1 2 6
 1 3 7
-after 10 6'''
+after 6 6'''
 joinable: false
 """
 
@@ -117,7 +117,7 @@ proc createSeq*[T](elems: varargs[T]): myseq[T] =
   result.cap = elems.len
   result.len = elems.len
   result.data = cast[type(result.data)](alloc0(result.cap * sizeof(T)))
-  inc allocCount #This increases the allocCount from 6 to 10
+  inc allocCount
   when supportsCopyMem(T):
     copyMem(result.data, unsafeAddr(elems[0]), result.cap * sizeof(T))
   else:
