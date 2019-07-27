@@ -478,14 +478,13 @@ type
 
   NimScope* = distinct ByteAddress ## scope in which to resolve `bindSym`
 
-proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.magic: "NBindSym", noSideEffect.}
-
 when defined(nimHasGetCurrentScope):
   proc getCurrentScope*(): NimScope {. magic: "GetCurrentScope", noSideEffect.}
     ## return opaque pointer to current scope, allowing `bindSym` to
     ## resolve relatively to it
-  proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed, scope: NimScope): NimNode {.magic: "NBindSym", noSideEffect.}
-    ## Ceates a node that binds `ident` to a symbol node. The bound symbol
+
+  proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed, scope: NimScope = 0.NimScope): NimNode {.magic: "NBindSym", noSideEffect.}
+    ## Creates a node that binds `ident` to a symbol node. The bound symbol
     ## may be an overloaded symbol.
     ## if `ident` is a NimNode, it must have ``nnkIdent`` kind.
     ## If ``rule == brClosed`` either an ``nnkClosedSymChoice`` tree is
@@ -502,8 +501,10 @@ when defined(nimHasGetCurrentScope):
     ## If called from macros / compile time procs / static blocks,
     ## `ident` and `rule` can be VM computed value.
     ##
-    ## `scope` can be obtained via `getCurrentScope` to bind to another scope
+    ## `scope` can be obtained via `getCurrentScope` to bind to another scope,
+    ## use 0 for current scope.
 else:
+  proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.magic: "NBindSym", noSideEffect.}
   proc getCurrentScope*(): NimScope = NimScope.default
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
