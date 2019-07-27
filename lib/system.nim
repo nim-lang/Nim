@@ -4210,6 +4210,20 @@ when hasAlloc or defined(nimscript):
       x[j+i] = item[j]
       inc(j)
 
+  func insert*(x: var string, c: char, i = 0.Natural) =
+    ## Inserts character `c` into `x` at position `i`
+    ##
+    ## .. code-block:: Nim
+    ##   var a = "hllo"
+    ##   a.insert('e', 1) # a <- "Hello"
+    var xl = x.len
+    setLen(x, xl+1)
+    var j = xl-1
+    while j >= i:
+      shallowCopy(x[j+1], x[j])
+      dec(j)
+    x[i] = c
+
 when declared(initDebugger):
   initDebugger()
 

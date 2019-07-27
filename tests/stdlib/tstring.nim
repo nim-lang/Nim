@@ -74,5 +74,41 @@ proc test_string_cmp() =
   doAssert cmp(world, hello) > 0
   doAssert cmp(world, goodbye) > 0
 
+proc test_string_insert() =
+  var s: string
+
+  s = numbers
+  s.insert("ab", 0)
+  doAssert s == "ab1234567890"
+
+  s = numbers
+  s.insert("ab", 1)
+  doAssert s == "1ab234567890"
+
+  s = numbers
+  s.insert("ab", 10)
+  doAssert s == "1234567890ab"
+
+  s = numbers
+  s.insert('a', 0)
+  doAssert s == "a1234567890"
+
+  s = numbers
+  s.insert('a', 5)
+  doAssert s == "12345a67890"
+
+  s = numbers
+  s.insert('a', 10)
+  doAssert s == "1234567890a"
+
+  s = numbers
+  doAssertRaises(IndexError):
+    s.insert("ab", 11)
+
+  s = numbers
+  doAssertRaises(IndexError):
+    s.insert('a', 11)
+
 test_string_slice()
 test_string_cmp()
+test_string_insert()
