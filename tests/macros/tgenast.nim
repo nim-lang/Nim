@@ -50,7 +50,7 @@ block:
   doAssert x0 == Foo(a: 10)
 
 block:
-  # fix https://github.com/nim-lang/Nim/issues/7375
+  # avoids https://github.com/nim-lang/Nim/issues/7375
   macro fun(b: static[bool], b2: bool): untyped =
     result = newStmtList()
   macro foo(c: bool): untyped =
@@ -61,7 +61,7 @@ block:
   foo(true)
 
 block:
-  # fix https://github.com/nim-lang/Nim/issues/7589
+  # avoids https://github.com/nim-lang/Nim/issues/7589
   # since `==` works with genAst, the problem goes away
   macro foo2(): untyped =
     # result = quote do: # Error: '==' cannot be passed to a procvar
@@ -70,7 +70,7 @@ block:
   doAssert not foo2()
 
 block:
-  # fix https://github.com/nim-lang/Nim/issues/7726
+  # avoids https://github.com/nim-lang/Nim/issues/7726
   # expressions such as `a.len` are just passed as arguments to `genAst`, and
   # caller scope is not polluted with definitions such as `let b = newLit a.len`
   macro foo(): untyped =
@@ -80,7 +80,7 @@ block:
   doAssert foo() == (5, 5)
 
 block:
-  # fix https://github.com/nim-lang/Nim/issues/9607
+  # avoids https://github.com/nim-lang/Nim/issues/9607
   proc fun1(info:LineInfo): string = "bar1"
   proc fun2(info:int): string = "bar2"
 

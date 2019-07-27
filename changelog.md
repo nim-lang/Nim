@@ -46,6 +46,24 @@
 
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
+- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
+  and only returns once all pending async operations are guaranteed to have completed.
+- `asyncdispatch.drain` now consistently uses the passed timeout value for all
+  iterations of the event loop, and not just the first iteration.
+  This is more consistent with the other asyncdispatch apis, and allows
+  `asyncdispatch.drain` to be more efficient.
+- `base64.encode` and `base64.decode` was made faster by about 50%.
+- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
+  (ISO 40314).
+- `macros.eqIdent` is now invariant to export markers and backtick quotes.
+- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
+- `macros.basename` and `basename=` got support for `PragmaExpr`,
+  so that an expression like `MyEnum {.pure.}` is handled correctly.
+- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values serve no purpose whatsoever.
+- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
+  instead of a hardcoded empty `newHttpHeader()`.
+- Added `macros.genAst` that avoids the problems inherent with `quote do` and can
+  be used as a replacement (#11722)
 
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
