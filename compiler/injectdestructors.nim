@@ -349,14 +349,21 @@ proc canBeMoved(t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   result = t.kind != tyRef and t.attachedOps[attachedMove] != nil
 
-proc genMove(c: Con; t: PType; dest, ri, transfRi: PNode): PNode = #We need transfRi here, since we need to make it an addr depending on the situation...
+proc genMove(c: Con; t: PType; dest, ri: PNode): PNode = #We already add the ri parameter here
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  result = genOp(c, t, attachedMove, dest, ri)
-  result.add makeAddrExp(c, transfRi)
+  if t.attachedOps[attachedMove] != nil:
+    result = genOp(c, t, attachedMove, dest, ri)
+    result.add makeAddrExp(c, ri)
+  else:
+    result = newTree(nkFastAsgn, dest, ri)
 
 proc genCopyNoCheck(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  result = genOp(c, t, attachedAsgn, dest, ri)
+  if t.attachedOps[attachedAsgn] != nil:
+    result = genOp(c, t, attachedAsgn, dest, ri)
+  else:
+    assert(false)
+    result = newTree(nkFastAsgn, dest, ri)
 
 proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
   if tfHasOwned in t.flags: checkForErrorPragma(c, t, ri, "=")
@@ -364,10 +371,12 @@ proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
 
 proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  if t.attachedOps[attachedDestructor].isNil:
-    #XXX: check for trivial type?? maybe put this in genOp?
-    return c.emptyNode
-  result = genOp(c, t, attachedDestructor, dest, nil)
+  if t.attachedOps[attachedDestructor] != nil:
+    result = genOp(c, t, attachedDestructor, dest, nil)
+  elif hasDestructor(t):
+    assert(false)
+  else:
+    result = c.emptyNode
 
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
@@ -454,6 +463,17 @@ proc genMovableTemp(c: var Con, ri: PNode): PNode =
   result.add bitwiseCopy
   c.destroys.add genDestroy(c, tmp.typ, tmp)
 
+proc genMovableTempExpr(c: var Con, ri: PNode): PNode =
+  #This does a bitwise copy
+  #let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
+  result = newNodeIT(nkStmtListExpr, ri.info, ri.typ)
+  let tmp = getTemp(c, ri.typ, ri.info)
+  let bitwiseCopy = newTree(nkFastAsgn, tmp, ri)
+  result.add tmp
+  result.add bitwiseCopy
+  result.add tmp
+  c.destroys.add genDestroy(c, tmp.typ, tmp)
+
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   template pArgIfTyped(argPart: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
@@ -475,12 +495,11 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # sink parameter (bug #11524). Note that the string implemenation is
       # different and can deal with 'const string sunk into var'.
       result = passCopyToSink(arg, c)
-    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkCharLit..nkTripleStrLit}:
+    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr}:
       # object construction to sink parameter: nothing to do
       result = arg
-    #elif arg.kind == nkNilLit:
-    #  result = genMovableTemp(c, arg) #This uses genCopyNoCheck since we allow passing nil to owned ref parameters
-    #  result.add result[0]
+    elif arg.kind in {nkCharLit..nkNilLit}: #The previous case could also be handled like this
+      result = genMovableTempExpr(c, arg)
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # rule (move-optimization)
       # reset the memory to disable the destructor which we have not elided
@@ -554,14 +573,14 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     #recurse(ri, ri2)
     # generate movable temporary
     result = genMovableTemp(c, ri2)
-    result.add genMove(c, dest.typ, dest, result[0], result[0])
+    result.add genMove(c, dest.typ, dest, result[0])
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
       # unpacking of tuple: move out the elements
-      result = genMove(c, dest.typ, dest, ri, p(ri, c))
+      result = genMove(c, dest.typ, dest, p(ri, c))
     elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
       # rule (move-optimization)
-      result = genMove(c, dest.typ, dest, ri, ri)
+      result = genMove(c, dest.typ, dest, ri)
     else:
       # rule (copy)
       result = genCopy(c, dest.typ, dest, ri)
@@ -612,14 +631,14 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest.typ, dest, ri)
       result.add ri2
     else:
-      result = genMove(c, dest.typ, dest, ri, ri2)
+      result = genMove(c, dest.typ, dest, ri2)
   of nkObjConstr:
     let ri2 = copyTree(ri)
     for i in 1..<ri.len:
       # everything that is passed to an object constructor is consumed,
       # so these all act like 'sink' parameters:
       ri2[i][1] = pArg(ri[i][1], c, isSink = true)
-    result = genMove(c, dest.typ, dest, ri, ri2)
+    result = genMove(c, dest.typ, dest, ri2)
   of nkTupleConstr, nkClosure:
     let ri2 = copyTree(ri)
     for i in ord(ri.kind == nkClosure)..<ri.len:
@@ -629,20 +648,20 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         ri2[i][1] = pArg(ri[i][1], c, isSink = true)
       else:
         ri2[i] = pArg(ri[i], c, isSink = true)
-    result = genMove(c, dest.typ, dest, ri, ri2)
+    result = genMove(c, dest.typ, dest, ri2)
   of nkNilLit:
     # rule (move-optimization)
     # generate movable temporary
     result = genMovableTemp(c, ri)
-    result.add genMove(c, dest.typ, dest, result[0], result[0])
+    result.add genMove(c, dest.typ, dest, result[0])
   of nkSym:
     if isSinkParam(ri.sym):
       # rule (move-optimization)
       sinkParamIsLastReadCheck(c, ri)
-      result = genMove(c, dest.typ, dest, ri, ri)
+      result = genMove(c, dest.typ, dest, ri)
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and isLastRead(ri, c): #and canBeMoved(dest.typ)
       # rule (move-optimization)
-      result = genMove(c, dest.typ, dest, ri, ri)
+      result = genMove(c, dest.typ, dest, ri)
     else:
       # rule (copy)
       result = genCopy(c, dest.typ, dest, ri)
@@ -671,7 +690,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c): #and canBeMoved(dest.typ):
       # rule (move-optimization)
-      result = genMove(c, dest.typ, dest, ri, ri)
+      result = genMove(c, dest.typ, dest, ri)
     else:
       # XXX At least string literals can be moved?
       result = genCopy(c, dest.typ, dest, ri)
@@ -759,7 +778,7 @@ proc p(n: PNode; c: var Con): PNode =
       #XXX: Rework/Reassess the below, atm almost the same as genMovableTemp
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let tmp = getTemp(c, n.typ, n.info)
-      var moveExpr = genMove(c, n.typ, tmp, n, n)
+      var moveExpr = genMove(c, n.typ, tmp, n)
       result.add moveExpr
       result.add tmp
       c.destroys.add genDestroy(c, tmp.typ, tmp)
@@ -796,7 +815,7 @@ proc p(n: PNode; c: var Con): PNode =
       else:
         let t = n[0].typ
         let tmp = getTemp(c, t, n.info)
-        let m = genMove(c, t, tmp, n[0], p(n[0], c))
+        let m = genMove(c, t, tmp, p(n[0], c))
         result = newTree(nkStmtList, m)
         var toDisarm = n[0]
         if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
