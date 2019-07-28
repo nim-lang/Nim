@@ -453,17 +453,7 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(n[i]): return true
   else: discard
 
-proc genMovableTemp(c: var Con, ri: PNode): PNode =
-  #This does a bitwise copy
-  #let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  result = newNodeI(nkStmtList, ri.info)
-  let tmp = getTemp(c, ri.typ, ri.info)
-  let bitwiseCopy = newTree(nkFastAsgn, tmp, ri)
-  result.add tmp
-  result.add bitwiseCopy
-  c.destroys.add genDestroy(c, tmp.typ, tmp)
-
-proc genMovableTempExpr(c: var Con, ri: PNode): PNode =
+proc getMovableTemp(c: var Con, ri: PNode): PNode =
   #This does a bitwise copy
   #let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   result = newNodeIT(nkStmtListExpr, ri.info, ri.typ)
@@ -499,7 +489,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # object construction to sink parameter: nothing to do
       result = arg
     elif arg.kind in {nkCharLit..nkNilLit}: #The previous case could also be handled like this
-      result = genMovableTempExpr(c, arg)
+      result = getMovableTemp(c, arg)
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # rule (move-optimization)
       # reset the memory to disable the destructor which we have not elided
@@ -572,8 +562,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2.add pArg(ri[i], c, i < L and isSinkTypeForParam(parameters[i]))
     #recurse(ri, ri2)
     # generate movable temporary
-    result = genMovableTemp(c, ri2)
-    result.add genMove(c, dest.typ, dest, result[0])
+    result = genMove(c, dest.typ, dest, getMovableTemp(c, ri2))
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
       # unpacking of tuple: move out the elements
@@ -652,14 +641,13 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkNilLit:
     # rule (move-optimization)
     # generate movable temporary
-    result = genMovableTemp(c, ri)
-    result.add genMove(c, dest.typ, dest, result[0])
+    result = genMove(c, dest.typ, dest, getMovableTemp(c, ri))
   of nkSym:
     if isSinkParam(ri.sym):
       # rule (move-optimization)
       sinkParamIsLastReadCheck(c, ri)
       result = genMove(c, dest.typ, dest, ri)
-    elif ri.sym.kind != skParam and ri.sym.owner == c.owner and isLastRead(ri, c): #and canBeMoved(dest.typ)
+    elif ri.sym.kind != skParam and ri.sym.owner == c.owner and isLastRead(ri, c) and canBeMoved(dest.typ):
       # rule (move-optimization)
       result = genMove(c, dest.typ, dest, ri)
     else:
@@ -688,7 +676,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
   else:
-    if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c): #and canBeMoved(dest.typ):
+    if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and canBeMoved(dest.typ):
       # rule (move-optimization)
       result = genMove(c, dest.typ, dest, ri)
     else:
@@ -775,7 +763,7 @@ proc p(n: PNode; c: var Con): PNode =
       n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
     if n.typ != nil and hasDestructor(n.typ):
       # var tmp; `=move`(tmp, f()); tmp
-      #XXX: Rework/Reassess the below, atm almost the same as genMovableTemp
+      #XXX: Rework/Reassess the below, atm almost the same as getMovableTemp
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let tmp = getTemp(c, n.typ, n.info)
       var moveExpr = genMove(c, n.typ, tmp, n)
