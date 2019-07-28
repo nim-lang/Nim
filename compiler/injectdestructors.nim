@@ -456,13 +456,16 @@ proc containsConstSeq(n: PNode): bool =
 proc getMovableTemp(c: var Con, ri: PNode): PNode =
   #This does a bitwise copy
   #let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  result = newNodeIT(nkStmtListExpr, ri.info, ri.typ)
-  let tmp = getTemp(c, ri.typ, ri.info)
-  let bitwiseCopy = newTree(nkFastAsgn, tmp, ri)
-  result.add tmp
-  result.add bitwiseCopy
-  result.add tmp
-  c.destroys.add genDestroy(c, tmp.typ, tmp)
+  if hasDestructor(ri.typ):
+    result = newNodeIT(nkStmtListExpr, ri.info, ri.typ)
+    let tmp = getTemp(c, ri.typ, ri.info)
+    let bitwiseCopy = newTree(nkFastAsgn, tmp, ri)
+    result.add tmp
+    result.add bitwiseCopy
+    result.add tmp
+    c.destroys.add genDestroy(c, tmp.typ, tmp)
+  else:
+    result = ri
 
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   template pArgIfTyped(argPart: PNode): PNode =
@@ -483,7 +486,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     elif arg.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
       # sink parameter (bug #11524). Note that the string implemenation is
-      # different and can deal with 'const string sunk into var'.
+      # different and can deal with 'const string moved into var'.
       result = passCopyToSink(arg, c)
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr}:
       # object construction to sink parameter: nothing to do

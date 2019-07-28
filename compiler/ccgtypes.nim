@@ -249,10 +249,10 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(size)])
 
 proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
-  var pt = skipTypes(s.typ, typedescInst-{tySink, tyOwned})
+  var pt = s.typ.skipTypes(typedescInst-{tySink, tyOwned})
   assert skResult != s.kind
 
-  if pt.kind in {tySink, tyOwned}: return true
+  if pt.kind in {tySink, tyOwned} and hasDestructor(pt.skipTypes({tySink})): return true
   elif tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
   case pt.kind
