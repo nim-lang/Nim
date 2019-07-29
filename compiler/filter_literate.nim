@@ -153,7 +153,6 @@ iterator literateFree(input: PLLStream;
         if state == Began and line.startsWith("#?"):
           # a special hack if it looks like we are running on source code file
           # input with magic source code filter syntax in the first line
-          yield lineNum.validLine(line)
           state = Code
         else:
           case state:
