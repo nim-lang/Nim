@@ -373,7 +373,7 @@ proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported:
   let def2 = def[0]
   case def2.kind
   of nnkInfix:
-    doAssert $def2[0].ident == "*="
+    doAssert def2[0].strVal == "*="
     result.lhs = def2[1]
     result.rhs = def2[2]
     result.exported = true
@@ -394,19 +394,25 @@ macro byRef*(def: untyped): untyped =
     doAssert type(x1) is int and x == @[1,12,3]
 
   let (name, exp, exported) = splitDefinition(def)
-  result = quote do:
-    let myAddr = addr `exp`
-    template `name`: untyped = myAddr[]
   if exported:
-    result.add quote do: export `name`
+    result = quote do:
+      let myAddr = addr `exp`
+      template `name`*: untyped = myAddr[]
+  else:
+    result = quote do:
+      let myAddr = addr `exp`
+      template `name`: untyped = myAddr[]
 
 macro byPtr*(def: untyped): untyped =
   ## Same as `byRef` but uses uses `unsafeAddr` instead of `addr`; `byRef` is
   ## safer and should be preferred when possible.
   ## This can for example be used on `let` variables.
   let (name, exp, exported) = splitDefinition(def)
-  result = quote do:
-    let myAddr = unsafeAddr `exp`
-    template `name`: untyped = myAddr[]
   if exported:
-    result.add quote do: export `name`
+    result = quote do:
+      let myAddr = unsafeAddr `exp`
+      template `name`*: untyped = myAddr[]
+  else:
+    result = quote do:
+      let myAddr = unsafeAddr `exp`
+      template `name`: untyped = myAddr[]
