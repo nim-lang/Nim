@@ -365,15 +365,23 @@ when (NimMajor, NimMinor) >= (1, 1):
         else: d
     assert z == @["word", "word"]
 
-proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode] =
-  ## allows library constructs such as: `byRef: a2 = expr`
+proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported: bool] =
+  ## allows library constructs such as:
+  ## `byRef: a2=expr`
+  ## `byRef: a2*=expr` (to indicate `export`)
   doAssert def.kind == nnkStmtList and def.len == 1
   let def2 = def[0]
-  doAssert def2.kind == nnkAsgn
-  let lhs = def2[0]
-  let rhs = def2[1]
-  expectKind(lhs, nnkIdent)
-  return (lhs, rhs)
+  case def2.kind
+  of nnkInfix:
+    doAssert $def2[0].ident == "*="
+    result.lhs = def2[1]
+    result.rhs = def2[2]
+    result.exported = true
+  of nnkAsgn:
+    result.lhs = def2[0]
+    result.rhs = def2[1]
+  else: doAssert false, $def2.kind
+  expectKind(result.lhs, nnkIdent)
 
 macro byRef*(def: untyped): untyped =
   ## Defines a ref alias for lvalue expressions. The expression is evaluated
@@ -385,16 +393,20 @@ macro byRef*(def: untyped): untyped =
     x1+=10
     doAssert type(x1) is int and x == @[1,12,3]
 
-  let (name, exp) = splitDefinition(def)
+  let (name, exp, exported) = splitDefinition(def)
   result = quote do:
     let myAddr = addr `exp`
     template `name`: untyped = myAddr[]
+  if exported:
+    result.add quote do: export `name`
 
 macro byPtr*(def: untyped): untyped =
-  ## Defines a ptr alias for expressions. Caution: this uses `unsafeAddr`, so
-  ## is unsafe to use in general, and `byRef` should be preferred when possible.
+  ## Same as `byRef` but uses uses `unsafeAddr` instead of `addr`; `byRef` is
+  ## safer and should be preferred when possible.
   ## This can for example be used on `let` variables.
-  let (name, exp) = splitDefinition(def)
+  let (name, exp, exported) = splitDefinition(def)
   result = quote do:
     let myAddr = unsafeAddr `exp`
     template `name`: untyped = myAddr[]
+  if exported:
+    result.add quote do: export `name`

@@ -27,6 +27,16 @@ block distinctBase:
 
     doAssert Uint[128].distinctBase is UintImpl[uint64]
 
+# bug #7816
+import sequtils
+
+proc tester[T](x: T) =
+  let test = toSeq(0..4).map(i => newSeq[int]())
+  echo test
+
+tester(1)
+
+
 block byRefBlock:
   var count = 0
   proc identity(a: int): auto =
@@ -53,11 +63,7 @@ block byPtrfBlock:
   fun(foo)
   doAssert foo.x == "Xsdf"
 
-# bug #7816
-import sequtils
-
-proc tester[T](x: T) =
-  let test = toSeq(0..4).map(i => newSeq[int]())
-  echo test
-
-tester(1)
+# test byRef with export
+import ./msugar
+barx += 10
+doAssert $foo == "(bar: (x: 10))"
