@@ -97,7 +97,7 @@ proc main1() =
     alias: fun5a = fun5
     doAssert fun5a(3.2) == 3.2
 
-proc main2() = # using `alias` avoids all issues mentioned in #8935
+proc main2() = # using `alias` avoids the issues mentioned in #8935
   # const myPrint = echo # Error: invalid type for const: proc
   # let myPuts = system.echo # Error: invalid type: 'typed'
   alias: myPrint=echo # works
