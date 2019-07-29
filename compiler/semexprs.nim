@@ -2127,9 +2127,29 @@ proc semSizeof(c: PContext, n: PNode): PNode =
 
 proc semAlias(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   assert n.kind in {nkCall, nkCommand}
-  assert n.len == 3
-  let nodeAlias = n[1]
-  let nodeOrigin = n[2]
+  assert n.len == 2, $n.len
+  var def = n[1]
+  doAssert def.kind == nkStmtList, $def.kind
+  doAssert def.len == 1, $def.len
+  def = def[0]
+  var nodeAlias, nodeOrigin: PNode
+  var exported = false
+  case def.kind
+  of nkAsgn:
+    nodeAlias = def[0]
+    nodeOrigin = def[1]
+  of nkInFix:
+    if def[0].ident.s != "*=":
+      globalError(c.config, n.info, errUser, "expected `*=`, got " & renderTree(def))
+    nodeAlias = def[1]
+    nodeOrigin = def[2]
+    exported = true
+  else:
+    globalError(c.config, n.info, errUser, "expected " & ${nkAsgn, nkInFix} &  ", got " & $def.kind)
+
+  template maybeExport(alias) =
+    if exported: alias.flags.incl sfExported
+
   let sym = qualifiedLookUp(c, nodeOrigin, {checkUndeclared, checkModule})
   if sym == nil:
     globalError(c.config, n.info, errUser, "undeclared symbol:" & renderTree(nodeOrigin))
@@ -2140,10 +2160,12 @@ proc semAlias(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     case sc.kind
     of nkSym:
       let alias = newSym(skAlias, ident, sym, info, c.config.options)
+      maybeExport(alias)
       addInterfaceDecl(c, alias)
     of nkClosedSymChoice:
       for nodei in sc:
         let alias = newSym(skAlias, ident, nodei.sym, info, c.config.options)
+        maybeExport(alias)
         addInterfaceOverloadableSymAt(c, c.currentScope, alias)
     else:
       assert false, $sc.kind

@@ -240,15 +240,14 @@ macro distinctBase*(T: typedesc): untyped =
   typeSym.freshIdentNodes
 
 when defined(nimHasAlias):
-  proc aliasImpl[T1, T2](name: T1, expr: T2) {.magic: "Alias".}
-
-  template `:=`*(name, expr) =
+  proc alias*(aliasDef: untyped) {.magic: "Alias".} =
     ## Declares `name` as alias of `expr`, which must resolve to a symbol.
     ## Works with any symbol, e.g. iterator, template, macro, module, proc etc.
     runnableExamples:
       {.push experimental: "aliasSym".}
-      echo2:=echo
+      alias: echo2=echo
       echo2 "hello"
-      declared2:=system.declared
+      alias: declared2=system.declared
       doAssert declared2(echo2)
-    aliasImpl(name, expr)
+      alias: echoPub*=echo # would export `echoPub`
+    discard
