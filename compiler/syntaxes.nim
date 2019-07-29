@@ -11,11 +11,11 @@
 
 import
   strutils, llstream, ast, idents, lexer, options, msgs, parser,
-  filters, filter_tmpl, renderer, lineinfos, pathutils
+  filters, filter_tmpl, filter_literate, renderer, lineinfos, pathutils
 
 type
   TFilterKind* = enum
-    filtNone, filtTemplate, filtReplace, filtStrip
+    filtNone, filtTemplate, filtReplace, filtStrip, filtLiterate
   TParserKind* = enum
     skinStandard, skinEndX
 
@@ -23,7 +23,7 @@ const
   parserNames*: array[TParserKind, string] = ["standard",
                                               "endx"]
   filterNames*: array[TFilterKind, string] = ["none", "stdtmpl", "replace",
-                                              "strip"]
+                                              "strip", "literate"]
 
 type
   TParsers* = object
@@ -118,6 +118,8 @@ proc applyFilter(p: var TParsers, n: PNode, filename: AbsoluteFile,
     result = filterStrip(p.config, stdin, filename, n)
   of filtReplace:
     result = filterReplace(p.config, stdin, filename, n)
+  of filtLiterate:
+    result = filterLiterate(p.config, stdin, filename, n)
   if f != filtNone:
     assert p.config != nil
     if hintCodeBegin in p.config.notes:
