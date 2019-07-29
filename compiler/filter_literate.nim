@@ -15,34 +15,35 @@ type
     Documentation = "##"
     BlockComment = "#["
     LineComment = "#"
+  LiterateInput = enum EmptyLine, Literate, Source
   # results of examining an input line
-  LiteralForm = tuple[input: MarkdownState; valid: bool; indent: string]
+  LiterateForm = tuple[input: LiterateInput; valid: bool; indent: string]
   # results of examining an input line
-  LiteralChunk = tuple[lineNum: int; valid: bool; text: string]
+  LiterateChunk = tuple[lineNum: int; valid: bool; text: string]
 
-proc literally(line: string; spaces: var int): LiteralForm =
+proc literately(line: string; spaces: var int): LiterateForm =
   ## classify input lines and store the detected indent
   # (source code starts with a tab or 4+ spaces)
   if line == "":
-    return (input: Blank, valid: true, indent: "")
+    return (input: EmptyLine, valid: true, indent: "")
   if line.startsWith("\t"):
-    return (input: Code, valid: true, indent: "\t")
+    return (input: Source, valid: true, indent: "\t")
   # detect indent, grow it, or catch errors with this ugly mess
   if spaces < 4:
     if line.startsWith("    "):
       spaces = 4
       while line.high >= spaces and line[spaces] == ' ':
         spaces.inc
-      return (input: Code, valid: true, indent: line[line.low..spaces - 1])
+      return (input: Source, valid: true, indent: line[line.low..spaces - 1])
   elif line.startsWith(spaces.spaces):
-    return (input: Code, valid: true, indent: line[line.low..spaces - 1])
+    return (input: Source, valid: true, indent: line[line.low..spaces - 1])
   elif line.startsWith(4.spaces):
-    return (input: Code, valid: false, indent: spaces.spaces)
-  return (input: Markdown, valid: true, indent: "")
+    return (input: Source, valid: false, indent: spaces.spaces)
+  return (input: Literate, valid: true, indent: "")
 
-proc dedent(form: LiteralForm; line: string): string =
+proc dedent(form: LiterateForm; line: string): string =
   ## strip leading indent from a line of source code
-  result = if form.input == Markdown:
+  result = if form.input == Literate:
     line
   elif line.len > form.indent.len:
     line[form.indent.len..^1]
@@ -78,21 +79,21 @@ proc commentBody(style: MarkdownStyle; body: string): string =
   of NoComments: ""
   of Documentation, LineComment: $style & " " & body
 
-template validChunk(lineNum: int; s: string): LiteralChunk =
+template validChunk(lineNum: int; s: string): LiterateChunk =
   ## yield a dressed chunk of text that is acceptable source
   (lineNum: lineNum, valid: true, text: s)
 
-template validLine(lineNum: var int; s: string): LiteralChunk =
+template validLine(lineNum: var int; s: string): LiterateChunk =
   ## yield a dressed line of text that is acceptable source
   lineNum.inc
   (lineNum: lineNum, valid: true, text: s & "\n")
 
-template invalidLine(lineNum: var int; s: string): LiteralChunk =
+template invalidLine(lineNum: var int; s: string): LiterateChunk =
   ## bubble up a warning to the compiler than input is invalid
   (lineNum: lineNum, valid: false, text: "{.warning: \"" & s & "\".}\n")
 
-iterator literalFree(input: PLLStream;
-  render=OmitMarkdown; style=NoComments): LiteralChunk =
+iterator literateFree(input: PLLStream;
+  render=OmitMarkdown; style=NoComments): LiterateChunk =
   ## yield chunks of input stream which may be parsed as source code
   var
     lineNum = 0
@@ -117,17 +118,18 @@ iterator literalFree(input: PLLStream;
   while input.llStreamReadLine(line):
     # see what kind of line we're dealing with, and make sure the indent
     # hasn't magically shrunk due to invalid input
-    var form: LiteralForm = line.literally(spaces = numSpaces)
+    var form: LiterateForm = line.literately(spaces = numSpaces)
     if not form.valid:
         yield lineNum.invalidLine(
-          "Parse error with literal input; did your source indent change?")
+          "Parse error with literate input; did your source indent change?")
 
     case render:
     # first, trivially omitting markdown from the output
     of OmitMarkdown:
-      if form.input == Code:
+      case form.input:
+      of Source:
         yield lineNum.validLine(form.dedent(line))
-      else:
+      of EmptyLine, Literate:
         yield lineNum.validLine("")
 
     # we need to wrap our markdown with comments in the source, so we try to
@@ -135,9 +137,7 @@ iterator literalFree(input: PLLStream;
     # it's important that the input and output source line numbers match up!
     of WrapComments:
       case form.input:
-      of Began:
-        raise newException(Defect, "Nonsensical literal line format.")
-      of Blank:
+      of EmptyLine:
         # per above, empty lines demand special treatment
         case state:
         of Began, Code:
@@ -148,7 +148,7 @@ iterator literalFree(input: PLLStream;
           yield lineNum.validLine(style.closeCommentBlock)
         state = Blank
 
-      of Markdown:
+      of Literate:
         # the line is markdown (unindented), but first,
         if state == Began and line.startsWith("#?"):
           # a special hack if it looks like we are running on source code file
@@ -171,7 +171,7 @@ iterator literalFree(input: PLLStream;
             yield lineNum.validLine(style.commentBody(line))
           state = Markdown
 
-      of Code:
+      of Source:
         # the line is indented source code
         case state:
         of Began, Code, Blank:
@@ -199,7 +199,7 @@ proc filterLiterate*(conf: ConfigRef; stdin: PLLStream, filename: AbsoluteFile, 
       render = WrapComments
       break
   result = llStreamOpen("")
-  for chunk in stdin.literalFree(render, style):
+  for chunk in stdin.literateFree(render, style):
     # we might want to do something special when `not chunk.valid`...
     llStreamWrite(result, chunk.text)
   llStreamClose(stdin)
