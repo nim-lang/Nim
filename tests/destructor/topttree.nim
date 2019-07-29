@@ -48,6 +48,7 @@ proc `=move`*[T](a, b: var opt[T]) =
     dealloc(a.data)
     inc deallocCount
   a.data = b.data
+  b.data = nil
 
 proc createOpt*[T](x: T): opt[T] =
   result.data = cast[type(result.data)](alloc(sizeof(T)))

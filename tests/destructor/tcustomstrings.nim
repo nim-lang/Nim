@@ -34,6 +34,9 @@ proc `=move`*(a, b: var mystring) =
   a.len = b.len
   a.cap = b.cap
   a.data = b.data
+  b.data = nil
+  b.len = 0
+  b.cap = 0
 
 proc `=`*(a: var mystring; b: mystring) =
   if a.data != nil and a.data != b.data:
