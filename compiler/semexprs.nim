@@ -2138,14 +2138,14 @@ proc semAlias(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of nkAsgn:
     nodeAlias = def[0]
     nodeOrigin = def[1]
-  of nkInFix:
+  of nkInfix:
     if def[0].ident.s != "*=":
       globalError(c.config, n.info, errUser, "expected `*=`, got " & renderTree(def))
     nodeAlias = def[1]
     nodeOrigin = def[2]
     exported = true
   else:
-    globalError(c.config, n.info, errUser, "expected " & ${nkAsgn, nkInFix} &  ", got " & $def.kind)
+    globalError(c.config, n.info, errUser, "expected " & ${nkAsgn, nkInfix} &  ", got " & $def.kind)
 
   template maybeExport(alias) =
     if exported: alias.flags.incl sfExported
