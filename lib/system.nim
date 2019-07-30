@@ -4534,8 +4534,12 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-import system/io
-export io
+when defined(ioverride):
+  include "$projectpath/iooverride"
+  export ioverride as io
+else:
+  import system/io
+  export io
 
 when not defined(createNimHcr):
   include nimhcr

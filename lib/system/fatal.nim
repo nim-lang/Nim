@@ -1,5 +1,5 @@
 {.push profiler: off.}
-when hostOS == "standalone":
+when hostOS == "standalone" or defined(panicoverride):
   include "$projectpath/panicoverride"
 
   proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
