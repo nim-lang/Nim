@@ -361,8 +361,10 @@ proc genCopyNoCheck(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   if t.attachedOps[attachedAsgn] != nil:
     result = genOp(c, t, attachedAsgn, dest, ri)
-  else:
+  elif hasDestructor(t):
+    # What to do now?
     assert(false)
+  else:
     result = newTree(nkFastAsgn, dest, ri)
 
 proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
@@ -374,7 +376,8 @@ proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   if t.attachedOps[attachedDestructor] != nil:
     result = genOp(c, t, attachedDestructor, dest, nil)
   elif hasDestructor(t):
-    assert(false)
+    # What to do now?
+    result = c.emptyNode
   else:
     result = c.emptyNode
 
