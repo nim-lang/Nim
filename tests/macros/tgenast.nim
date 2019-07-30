@@ -197,3 +197,22 @@ block: # sanity check: check passing `{}` also works
   macro bar(): untyped =
     result = genAstOpt({}, s1=true): s1
   doAssert bar() == true
+
+block: # test passing function and type symbols
+  proc z1(): auto = 41
+  type Z4 = type(1'i8)
+  macro bar(Z1: typedesc): untyped =
+    proc z2(): auto = 42
+    proc z3[T](a: T): auto = 43
+    let Z2 = genAst():
+      type(true)
+    let z4 = genAst():
+      proc myfun(): auto = 44
+      myfun
+    type Z3 = type(1'u8)
+    result = genAst(z4, Z1, Z2):
+      # z1, z2, z3, Z3, Z4 are captured automatically
+      # z1, z2, z3 can optionally be specified in capture list
+      (z1(), z2(), z3('a'), z4(), $Z1, $Z2, $Z3, $Z4)
+  type Z1 = type('c')
+  doAssert bar(Z1) == (41, 42, 43, 44, "char", "bool", "uint8", "int8")
