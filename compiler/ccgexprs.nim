@@ -2463,7 +2463,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, arg, a)
     var r = rdLoc(a)
-    let isRef = skipTypes(arg.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent, tySink, tyOwned}
+    let isRef = skipTypes(arg.typ, abstractInst-{tySink, tyOwned}).kind in {tyRef, tyPtr, tyVar, tyLent, tySink, tyOwned}
     if isRef:
       add(r, "->Sup")
     else:
@@ -2473,9 +2473,11 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       # it can happen that we end up generating '&&x->Sup' here, so we pack
       # the '&x->Sup' into a temporary and then those address is taken
       # (see bug #837). However sometimes using a temporary is not correct:
-      # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
-      # this by ensuring the destination is also a pointer:
-      if d.k == locNone and skipTypes(n.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent, tySink, tyOwned}:
+      # init(TFigure(my)) # where it is passed to a 'var/sink/owned TFigure'.
+      # We then use a cast without a temporary
+      if n.typ.kind in {tyOwned, tySink} and hasDestructor(n.typ): #Could technically handle tyVar too
+        putIntoDest(p, d, n, "(*($1*) ($2))" % [getTypeDesc(p.module, n.typ), addrLoc(p.config, a)], a.storage)
+      elif d.k == locNone and skipTypes(n.typ, abstractInst-{tySink, tyOwned}).kind in {tyRef, tyPtr, tyVar, tyLent, tySink, tyOwned}:
         getTemp(p, n.typ, d)
         linefmt(p, cpsStmts, "$1 = &$2;$n", [rdLoc(d), r])
       else:
