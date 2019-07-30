@@ -309,7 +309,7 @@ else:
     when TArg isnot void: t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
-    var a {.noinit.}: PthreadAttr
+    var a {.noinit.}: Pthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
