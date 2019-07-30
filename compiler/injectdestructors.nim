@@ -351,7 +351,7 @@ proc canBeMoved(t: PType): bool {.inline.} =
 
 proc genMove(c: Con; t: PType; dest, ri: PNode): PNode = #We already add the ri parameter here
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  if t.attachedOps[attachedMove] != nil:
+  if hasDestructor(t):
     result = genOp(c, t, attachedMove, dest, ri)
     result.add makeAddrExp(c, ri)
   else:
@@ -359,11 +359,8 @@ proc genMove(c: Con; t: PType; dest, ri: PNode): PNode = #We already add the ri 
 
 proc genCopyNoCheck(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  if t.attachedOps[attachedAsgn] != nil:
+  if hasDestructor(t):
     result = genOp(c, t, attachedAsgn, dest, ri)
-  elif hasDestructor(t):
-    # What to do now?
-    assert(false)
   else:
     result = newTree(nkFastAsgn, dest, ri)
 
@@ -373,11 +370,8 @@ proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
 
 proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  if t.attachedOps[attachedDestructor] != nil:
+  if hasDestructor(t):
     result = genOp(c, t, attachedDestructor, dest, nil)
-  elif hasDestructor(t):
-    # What to do now?
-    result = c.emptyNode
   else:
     result = c.emptyNode
 
