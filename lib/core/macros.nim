@@ -1410,8 +1410,9 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
     else:
       newEmptyNode()
 
-  proc newLitMaybe[T](a: T): auto =
-    when compiles(newLit(a)): newLit(a)
+  template newLitMaybe(a): untyped =
+    when type(a) is NimNode: a
+    elif compiles(newLit(a)): newLit(a)
     else: a
 
   # using `_` as workaround, see https://github.com/nim-lang/Nim/issues/2465#issuecomment-511076669
