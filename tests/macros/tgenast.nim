@@ -185,12 +185,12 @@ block: # nested application of genAst
   createMacro foo, x, len
   doAssert (foo 20) == (3, "len", 10, 20)
 
-block: # test with kNoAutoNewLit
+block: # test with kNoNewLit
   macro bar(): untyped =
     let s1 = true
     template boo(x): untyped =
       fun(x)
-    result = genAstOpt({kNoAutoNewLit}, s1=newLit(s1), s1b=s1): (s1, s1b)
+    result = genAstOpt({kNoNewLit}, s1=newLit(s1), s1b=s1): (s1, s1b)
   doAssert bar() == (true, 1)
 
 block: # sanity check: check passing `{}` also works
