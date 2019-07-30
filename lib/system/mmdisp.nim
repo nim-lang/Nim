@@ -13,6 +13,9 @@
 #{.push checks:on, assertions:on.}
 {.push checks:off.}
 
+when hostOS == "standalone" or defined(panicoverride):
+  include "$projectpath/panicoverride"
+
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
@@ -62,8 +65,11 @@ const
 
 proc raiseOutOfMem() {.noinline.} =
   if outOfMemHook != nil: outOfMemHook()
-  cstderr.rawWrite("out of memory")
-  quit(1)
+  when hostOS == "standalone" or defined(panicoverride):
+    panic("out of memory")
+  else:
+    cstderr.rawWrite("out of memory")
+    quit(1)
 
 when defined(boehmgc):
   proc boehmGCinit {.importc: "GC_init", boehmGC.}
