@@ -1386,7 +1386,7 @@ type GenAstOpt* = enum
     # `strformat limitations <strformat.html#limitations>`_ for details.
     # Default is unset, to avoid hijacking of uncaptured local symbols by
     # symbols in caller scope.
-  kNoAutoNewLit,
+  kNoNewLit,
     # don't call call newLit automatically in `genAst` capture parameters
 
 macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untyped =
@@ -1428,7 +1428,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
       varName = a
       varVal = a
     else: error("invalid argument kind: " & $a.kind, a)
-    if kNoAutoNewLit notin options: varVal = newCall(bindSym"newLitMaybe", varVal)
+    if kNoNewLit notin options: varVal = newCall(bindSym"newLitMaybe", varVal)
 
     params.add newTree(nnkIdentDefs, varName, newEmptyNode(), newEmptyNode())
     call.add varVal
