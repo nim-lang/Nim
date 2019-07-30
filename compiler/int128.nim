@@ -1,3 +1,8 @@
+## This module is for compiler internal use only. For reliable error
+## messages and range checks, the compiler needs a data type that can
+## hold all from ``low(BiggestInt)`` to ``high(BiggestUInt)``, This
+## type is for that purpose.
+
 from math import trunc
 
 type
