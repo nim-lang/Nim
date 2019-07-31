@@ -447,7 +447,7 @@ const
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
-  pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
+  pushInfoContext(c.config, n.info, sym.detailedInfo)
 
   let info = getCallLineInfo(n)
   markUsed(c, info, sym)
@@ -467,8 +467,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
   if c.config.macrosToExpand.hasKey(sym.name.s):
-    message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
-  result = wrapInComesFrom(nOrig.info, sym, result)
+    message(c.config, n.info, hintExpandMacro, renderTree(result))
+  result = wrapInComesFrom(n.info, sym, result)
   popInfoContext(c.config)
 
 proc forceBool(c: PContext, n: PNode): PNode =

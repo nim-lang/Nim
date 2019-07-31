@@ -37,7 +37,6 @@ type Mapped[Input; predicate: static[string]] = object
   input: Input
 
 macro map(input, predicate: untyped): untyped =
-  let predicate = callsite()[2]
   newNimNode(nnkObjConstr).add(
     newNimNode(nnkBracketExpr).add(
       ident"Mapped",

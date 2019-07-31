@@ -899,7 +899,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
         setGenericParams(c, n[0])
         return semDirectOp(c, n, flags)
 
-  let nOrig = n.copyTree
+  let nOrig: PNode = if callsiteAccess in c.config.features: n.copyTree else: nil
   semOpAux(c, n)
   var t: PType = nil
   if n.sons[0].typ != nil:
@@ -943,7 +943,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # XXX: hmm, what kind of symbols will end up here?
       # do we really need to try the overload resolution?
       n.sons[0] = prc
-      nOrig.sons[0] = prc
+      if nOrig != nil: nOrig.sons[0] = prc
       n.flags.incl nfExprCall
       result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
       if result == nil: return errorNode(c, n)
@@ -960,7 +960,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this seems to be a hotspot in the compiler!
-  let nOrig = n.copyTree
+  let nOrig: PNode = if callsiteAccess in c.config.features: n.copyTree else: nil
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
@@ -1528,11 +1528,11 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
-  let aOrig = nOrig[0]
-  result = newNode(nkCall, n.info, sons = @[setterId, a[0],
-                                            semExprWithType(c, n[1])])
+  result = newNode(nkCall, n.info, sons = @[setterId, a[0], semExprWithType(c, n[1])])
   result.flags.incl nfDotSetter
-  let orig = newNode(nkCall, n.info, sons = @[setterId, aOrig[0], nOrig[1]])
+  var orig: PNode =
+    if nOrig != nil:  newNode(nkCall, n.info, sons = @[setterId, nOrig[0][0], nOrig[1]])
+    else:             nil
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
 
   if result != nil:
@@ -1634,7 +1634,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkDotExpr:
     # r.f = x
     # --> `f=` (r, x)
-    let nOrig = n.copyTree
+    let nOrig: PNode = if callsiteAccess in c.config.features: n.copyTree else: nil
+
     a = builtinFieldAccess(c, a, {efLValue})
     if a == nil:
       a = propertyWriteAccess(c, n, nOrig, n[0])
@@ -2200,7 +2201,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mPlugin:
     markUsed(c, n.info, s)
     # semDirectOp with conditional 'afterCallActions':
-    let nOrig = n.copyTree
+    let nOrig: PNode = if callsiteAccess in c.config.features: n.copyTree else: nil
     #semLazyOpAux(c, n)
     result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
     if result == nil:

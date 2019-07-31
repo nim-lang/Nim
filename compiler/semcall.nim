@@ -334,13 +334,13 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       var hiddenArg = newSymNode(c.p.selfSym)
       hiddenArg.typ = nil
       n.sons.insert(hiddenArg, 1)
-      orig.sons.insert(hiddenArg, 1)
+      if orig != nil: orig.sons.insert(hiddenArg, 1)
 
       pickBest(f)
 
       if result.state != csMatch:
         n.sons.delete(1)
-        orig.sons.delete(1)
+        if orig != nil: orig.sons.delete(1)
         excl n.flags, nfExprCall
       else: return
 
@@ -350,12 +350,12 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       # leave the op head symbol empty,
       # we are going to try multiple variants
       n.sons[0..1] = [nil, n[1], f]
-      orig.sons[0..1] = [nil, orig[1], f]
+      if orig != nil: orig.sons[0..1] = [nil, orig[1], f]
 
       template tryOp(x) =
         let op = newIdentNode(getIdent(c.cache, x), n.info)
         n.sons[0] = op
-        orig.sons[0] = op
+        if orig != nil: orig.sons[0] = op
         pickBest(op)
 
       if nfExplicitCall in n.flags:
@@ -369,7 +369,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..f.ident.s.len-2]), n.info)
       let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
-      orig.sons[0..1] = [callOp, orig[1], calleeName]
+      if orig != nil: orig.sons[0..1] = [callOp, orig[1], calleeName]
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:

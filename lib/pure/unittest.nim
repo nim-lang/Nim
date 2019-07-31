@@ -589,7 +589,7 @@ macro check*(conditions: untyped): untyped =
   ##  check:
   ##    "AKB48".toLowerAscii() == "akb48"
   ##    'C' in teams
-  let checked = callsite()[1]
+  let checked = conditions
 
   template asgn(a: untyped, value: typed) =
     var a = value # XXX: we need "var: var" here in order to
@@ -694,7 +694,6 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ##
   ##  expect IOError, OSError, ValueError, AssertionError:
   ##    defectiveRobot()
-  let exp = callsite()
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
@@ -706,13 +705,11 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
       fail()
 
-  var body = exp[exp.len - 1]
-
   var errorTypes = newNimNode(nnkBracket)
-  for i in countup(1, exp.len - 2):
-    errorTypes.add(exp[i])
+  for it in exceptions:
+    errorTypes.add it
 
-  result = getAst(expectBody(errorTypes, exp.lineInfo, body))
+  result = getAst(expectBody(errorTypes, body.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params

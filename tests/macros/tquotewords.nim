@@ -1,5 +1,6 @@
 discard """
   output: "thisanexample"
+cmd: "nim c --experimental:callsiteAccess $file"
 """
 # Test an idea I recently had:
 

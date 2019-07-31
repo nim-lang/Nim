@@ -2412,7 +2412,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           incl(marker, formal.position)
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
-                                    n.sons[a], nOrig.sons[a])
+                                    n.sons[a], if nOrig != nil: nOrig.sons[a] else: nil)
           if arg != nil and m.baseTypeMatch and container != nil:
             addSon(container, arg)
             incrIndexType(container.typ)
@@ -2450,7 +2450,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.typedescMatched = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
-                                    n.sons[a], nOrig.sons[a])
+                                    n.sons[a], if nOrig != nil: nOrig.sons[a] else: nil)
           if arg == nil:
             noMatch()
             return

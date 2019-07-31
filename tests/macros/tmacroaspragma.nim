@@ -1,7 +1,7 @@
 import macros
 
 macro foo(x: untyped): untyped =
-  echo treerepr(callsite())
+  echo treerepr(x)
   result = newNimNode(nnkStmtList)
 
 proc zoo() {.foo.} = echo "hi"

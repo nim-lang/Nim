@@ -10,7 +10,6 @@ macro call(e: untyped): untyped =
 
 macro dumpAST(n: untyped): untyped =
   # dump AST as a side-effect and return the inner node
-  let n = callsite()
   echo n.lispRepr
   echo n.treeRepr
 
@@ -30,4 +29,3 @@ dumpAST:
     return x + y
 
   proc sub(x, y: int): int = return x - y
-

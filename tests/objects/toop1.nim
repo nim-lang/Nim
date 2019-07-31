@@ -1,5 +1,6 @@
 discard """
-  output: "34[]o 5"
+output: "34[]o 5"
+cmd: "nim c --experimental:callsiteAccess $file"
 """
 # Test the stuff in the tutorial
 import macros

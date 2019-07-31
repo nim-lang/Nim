@@ -1,5 +1,6 @@
 discard """
-  output: "ta-da Your value sir: 'HE!!!!o Wor!!d'"
+output: "ta-da Your value sir: 'HE!!!!o Wor!!d'"
+cmd: "nim c --experimental:callsiteAccess $file"
 """
 
 import macros, strutils
@@ -24,5 +25,3 @@ macro mac(n: typed): string =
 const s = testBlock()
 const t = mac("HEllo World")
 echo s, " ", t
-
-

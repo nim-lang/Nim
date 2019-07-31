@@ -1605,8 +1605,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       c.errorFlag.setLen 0
     of opcCallSite:
       ensureKind(rkNode)
-      if c.callsite != nil: regs[ra].node = c.callsite
-      else: stackTrace(c, tos, pc, errFieldXNotFound & "callsite")
+      if callsiteAccess in c.config.features:
+        if c.callsite != nil: regs[ra].node = c.callsite
+        else: stackTrace(c, tos, pc, errFieldXNotFound & "callsite")
+      else:
+        stackTrace(c, tos, pc, "Access to callsite requires compilation flag `--experimental:callsiteAccess`.")
+
     of opcNGetLineInfo:
       decodeBImm(rkNode)
       let n = regs[rb].node

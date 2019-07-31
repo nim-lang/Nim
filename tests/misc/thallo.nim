@@ -1,5 +1,6 @@
 discard """
 action: compile
+cmd: "nim c --experimental:callsiteAccess $file"
 """
 
 # noted this seems to be an old test file designed for manual testing.

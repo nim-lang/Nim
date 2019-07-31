@@ -134,6 +134,8 @@ type
       ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
+    callsiteAccess,
+      ## This feature is on the way out of the laguage. Only use it for legacy code.
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

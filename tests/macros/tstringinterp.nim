@@ -1,5 +1,6 @@
 discard """
   output: "Hello Alice, 64 | Hello Bob, 10$"
+cmd: "nim c --experimental:callsiteAccess $file"
 """
 
 import macros, parseutils, strutils

@@ -23,7 +23,6 @@ proc dumpit(n: NimNode): string {.compileTime.} =
 
 macro dumpAST(n): untyped =
   # dump AST as a side-effect and return the inner node
-  let n = callsite()
   echo dumpit(n)
   result = n[1]
 
@@ -32,5 +31,3 @@ dumpAST:
     return x + y
 
   proc sub(x, y: int): int = return x - y
-
-

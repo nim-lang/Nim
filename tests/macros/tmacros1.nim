@@ -1,8 +1,11 @@
 discard """
-  output: '''Got: 'nnkCall' hi
+cmd: "nim c --experimental:callsiteAccess $file"
+output: '''
+Got: 'nnkCall' hi
 {a}
 {b}
-{a, b}'''
+{a, b}
+'''
 """
 
 import
