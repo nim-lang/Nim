@@ -1105,7 +1105,8 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     # a check for ``m.declaredThings``.
     if not containsOrIncl(m.declaredThings, prc.id):
       #if prc.loc.k == locNone:
-      # mangle the inline proc based on the module where it is defined - not on the first module that uses it
+      # mangle the inline proc based on the module where it is defined -
+      # not on the first module that uses it
       fillProcLoc(findPendingModule(m, prc), prc.ast[namePos])
       #elif {sfExportc, sfImportc} * prc.flags == {}:
       #  # reset name to restore consistency in case of hashing collisions:
@@ -1778,10 +1779,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
                 else: AbsoluteFile""
   open(result.ndi, ndiName, g.config)
 
-proc nullify[T](arr: var T) =
-  for i in low(arr)..high(arr):
-    arr[i] = Rope(nil)
-
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
@@ -1872,7 +1869,9 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil: return
   var m = BModule(b)
-  if passes.skipCodegen(m.config, n): return
+  if passes.skipCodegen(m.config, n) or
+      not moduleHasChanged(m.g.graph, m.module):
+    return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
@@ -1883,9 +1882,10 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
     genStmts(m.initProc, transformedN)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
-  result = true
   if optForceFullMake notin m.config.globalOptions:
-    if not equalsFile(code, cfile.cname):
+    if not moduleHasChanged(m.g.graph, m.module):
+      result = false
+    elif not equalsFile(code, cfile.cname):
       if false:
         #m.config.symbolFiles == readOnlySf: #isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
@@ -1895,12 +1895,15 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
           echo "new file ", cfile.cname.string
       if not writeRope(code, cfile.cname):
         rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
-      return
-    if fileExists(cfile.obj) and os.fileNewer(cfile.obj.string, cfile.cname.string):
+      result = true
+    elif fileExists(cfile.obj) and os.fileNewer(cfile.obj.string, cfile.cname.string):
       result = false
+    else:
+      result = true
   else:
     if not writeRope(code, cfile.cname):
       rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
+    result = true
 
 # We need 2 different logics here: pending modules (including
 # 'nim__dat') may require file merging for the combination of dead code
@@ -1923,7 +1926,7 @@ proc writeModule(m: BModule, pending: bool) =
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                    obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     var code = genModule(m, cf)
-    if code != nil:
+    if code != nil or m.config.symbolFiles != disabledSf:
       when hasTinyCBackend:
         if conf.cmd == cmdRun:
           tccgen.compileCCode($code)

@@ -17,7 +17,6 @@ import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
 ## - Dependency computation should use *signature* hashes in order to
 ##   avoid recompiling dependent modules.
 ## - Patch the rest of the compiler to do lazy loading of proc bodies.
-## - Patch the C codegen to cache proc bodies and maybe types.
 
 template db(): DbConn = g.incr.db
 
