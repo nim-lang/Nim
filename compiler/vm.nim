@@ -401,7 +401,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     else:
       internalError(c.config, "cannot convert to string " & desttyp.typeToString)
   else:
-    case skipTypes(desttyp, abstractRange).kind
+    case skipTypes(desttyp, abstractVarRange).kind
     of tyInt..tyInt64:
       if dest.kind != rkInt:
         myreset(dest); dest.kind = rkInt
@@ -439,7 +439,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       else:
         dest.floatVal = src.floatVal
     of tyObject:
-      if srctyp.skipTypes(abstractRange).kind != tyObject:
+      if srctyp.skipTypes(abstractVarRange).kind != tyObject:
         internalError(c.config, "invalid object-to-object conversion")
       # A object-to-object conversion is essentially a no-op
       moveConst(dest, src)
