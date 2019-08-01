@@ -12,13 +12,11 @@ import
 # disposal of resources.
 #
 macro autoClose(args: varargs[untyped]): untyped =
-  let e = callsite()
-  if e.len != 3:
+  if args.len != 2:
     error "Using statement: unexpected number of arguments. Got " &
-      $e.len & ", expected: 1 or more variable assignments and a block"
+      $args.len & ", expected: 1 or more variable assignments and a block"
 
-  var args = e
-  var body = e[2]
+  let body = args[^1]
 
   var
     variables : seq[NimNode]
@@ -27,7 +25,7 @@ macro autoClose(args: varargs[untyped]): untyped =
   newSeq(variables, 0)
   newSeq(closingCalls, 0)
 
-  for i in countup(1, args.len-2):
+  for i in countup(0, args.len-2):
     if args[i].kind == nnkExprEqExpr:
       var varName = args[i][0]
       var varValue = args[i][1]

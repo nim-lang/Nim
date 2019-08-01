@@ -2111,10 +2111,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       inc(m.genericMatches)
       m.fauxMatch = a.kind
       return arg
-    elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
+    elif a.kind == tyVoid and f.matchesVoidProc and arg.kind == nkStmtList:
       # lift do blocks without params to lambdas
       let p = c.graph
-      let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
+      let lifted = c.semExpr(c, newProcNode(nkDo, arg.info, body = arg,
           params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
           genericParams = p.emptyNode, pragmas = p.emptyNode, exceptions = p.emptyNode), {})
       if f.kind == tyBuiltInTypeClass:
