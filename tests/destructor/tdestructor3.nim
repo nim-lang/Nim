@@ -59,19 +59,20 @@ type
 
 proc `=destroy`*[T](p: var UniquePtr[T]) =
   mixin `=destroy`
-  echo "destroy"
   if p.val != nil:
+    echo "destroy"
     `=destroy`(p.val[])
     dealloc(p.val)
     p.val = nil
 
 proc `=`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
 
-proc `=sink`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.inline.} =
+proc `=move`*[T](dest, src: var UniquePtr[T]) {.inline.} =
   if dest.val != src.val:
     if dest.val != nil:
       `=destroy`(dest)
     dest.val = src.val
+    src.val = nil
 
 proc newUniquePtr*[T](val: sink T): UniquePtr[T] =
   result.val = create(T)
