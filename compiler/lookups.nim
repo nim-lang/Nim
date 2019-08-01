@@ -361,7 +361,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
-          result = strTableGet(m.tab, ident).skipAlias(n, c.config)
+          result = strTableGet(m.tabOpt, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
           fixSpelling(n[1], ident, searchInScopes)
           errorUndeclaredIdentifier(c, n[1].info, ident.s)
@@ -410,7 +410,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
                                  ident).skipAlias(n, c.config)
           o.mode = oimSelfModule
         else:
-          result = initIdentIter(o.it, o.m.tab, ident).skipAlias(n, c.config)
+          result = initIdentIter(o.it, o.m.tabOpt, ident).skipAlias(n, c.config)
       else:
         noidentError(c.config, n[1], n)
         result = errorSym(c, n[1])
@@ -452,7 +452,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimSelfModule:
     result = nextIdentIter(o.it, c.topLevelScope.symbols).skipAlias(n, c.config)
   of oimOtherModule:
-    result = nextIdentIter(o.it, o.m.tab).skipAlias(n, c.config)
+    result = nextIdentIter(o.it, o.m.tabOpt).skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
       result = n[o.symChoiceIndex].sym

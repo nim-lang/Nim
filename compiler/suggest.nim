@@ -257,6 +257,10 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
     if fmoduleId == module.id:
       result = true
       break
+  for module in c.friendModulesPrivateImport:
+    if fmoduleId == module.id:
+      result = true
+      break
 
 proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var Suggestions) =
   var pm: PrefixMatch

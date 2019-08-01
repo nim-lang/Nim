@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos, sets
+  semdata, modulepaths, sigmatch, lineinfos, sets, wordrecg
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -72,9 +72,20 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
+template getTab(c: PContext, fromMod: PSym): untyped =
+  # avoids doing a copy
+  let tab2 =
+    if fromMod in c.friendModulesPrivateImport:
+      # so that `privateImport` also works with `import foo` without `as`
+      # another option is to force `createModuleAlias` to remove this branch
+      fromMod.tabAll.addr
+    else:
+      fromMod.tabOpt.addr
+  tab2[]
+
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   let ident = lookups.considerQuotedIdent(c, n)
-  let s = strTableGet(fromMod.tab, ident)
+  let s = strTableGet(c.getTab(fromMod), ident)
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
@@ -85,19 +96,19 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
     if multiImport:
       # for a overloadable syms add all overloaded routines
       var it: TIdentIter
-      var e = initIdentIter(it, fromMod.tab, s.name)
+      var e = initIdentIter(it, c.getTab(fromMod), s.name)
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         if s.kind in ExportableSymKinds:
           rawImportSymbol(c, e, fromMod)
-        e = nextIdentIter(it, fromMod.tab)
+        e = nextIdentIter(it, c.getTab(fromMod))
     else:
       rawImportSymbol(c, s, fromMod)
     suggestSym(c.config, n.info, s, c.graph.usageSym, false)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   var i: TTabIter
-  var s = initTabIter(i, fromMod.tab)
+  var s = initTabIter(i, c.getTab(fromMod))
   while s != nil:
     if s.kind != skModule:
       if s.kind != skEnumField:
@@ -105,7 +116,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
           internalError(c.config, s.info, "importAllSymbols: " & $s.kind & " " & s.name.s)
         if exceptSet.isNil or s.name.id notin exceptSet:
           rawImportSymbol(c, s, fromMod)
-    s = nextIter(i, fromMod.tab)
+    s = nextIter(i, c.getTab(fromMod))
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   var exceptSet: IntSet
@@ -128,7 +139,12 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym) =
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod)
 
-proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
+type
+  ImportFlag = enum
+    ifPrivateImport
+  ImportFlags = set[ImportFlag]
+
+proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: ImportFlags): PSym =
   result = realModule
   c.unusedImports.add((realModule, n.info))
   if n.kind != nkImportAs: discard
@@ -138,8 +154,35 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, nextId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
+    if ifPrivateImport in importFlags: result.options.incl optPrivateImport
+  if ifPrivateImport in importFlags:
+    c.friendModulesPrivateImport.add realModule # `realModule` needed, not `result`
 
-proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
+proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
+  var ret: typeof(result)
+  proc processPragma(n2: PNode): PNode =
+    if n2.kind == nkPragmaExpr:
+      if n2.len == 2 and n2[1].kind == nkPragma and n2[1].len == 1 and n2[1][0].kind == nkIdent and whichKeyword(n2[1][0].ident) == wPrivateImport: discard
+      else:
+        globalError(c.config, n.info, "invalid import pragma, expected: " & wPrivateImport.canonPragmaSpelling)
+      if allowPrivateImport notin c.features:
+        globalError(c.config, n.info, "requires --experimental:" & $allowPrivateImport)
+      ret.importFlags.incl ifPrivateImport
+      result = n2[0]
+    else:
+      result = n2
+
+  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
+    ret.node = newNodeI(nkImportAs, n.info)
+    ret.node.add n[1].processPragma
+    ret.node.add n[2]
+  else:
+    ret.node = n.processPragma
+  return ret
+
+proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
+  var importFlags: ImportFlags
+  (n,importFlags) = transformImportAs(c, n)
   let f = checkModuleName(c.config, n)
   if f != InvalidFileIdx:
     let L = c.graph.importStack.len
@@ -155,7 +198,7 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
       c.recursiveDep = err
 
     discard pushOptionEntry(c)
-    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f))
+    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f), importFlags)
     popOptionEntry(c)
 
     #echo "set back to ", L
@@ -175,16 +218,8 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
 
-proc transformImportAs(c: PContext; n: PNode): PNode =
-  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
-    result = newNodeI(nkImportAs, n.info)
-    result.add n[1]
-    result.add n[2]
-  else:
-    result = n
-
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
-  let it = transformImportAs(c, it)
+  var it = it
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     # ``addDecl`` needs to be done before ``importAllSymbols``!
@@ -219,7 +254,6 @@ proc evalImport*(c: PContext, n: PNode): PNode =
 proc evalFrom*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n[0] = transformImportAs(c, n[0])
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)
@@ -231,7 +265,6 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n[0] = transformImportAs(c, n[0])
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)

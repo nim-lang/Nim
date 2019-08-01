@@ -843,7 +843,8 @@ type
       # No need, just leave it as skModule but set the owner accordingly and
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
-      tab*: TStrTable         # interface table for modules
+      tab*: TStrTable            # interface table for modules
+      tabAll*: TStrTable         # interface table for modules (all top-level)
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -1437,6 +1438,7 @@ proc copySym*(s: PSym; id: ItemId): PSym =
   result.magic = s.magic
   if s.kind == skModule:
     copyStrTable(result.tab, s.tab)
+    copyStrTable(result.tabAll, s.tabAll)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1455,6 +1457,7 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   #result.id = s.id # XXX figure out what to do with the ID.
   result.flags = s.flags
   system.shallowCopy(result.tab, s.tab)
+  system.shallowCopy(result.tabAll, s.tabAll)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1953,6 +1956,13 @@ proc canRaise*(fn: PNode): bool =
     result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
       (fn.typ.n[0][exceptionEffects] != nil and
       fn.typ.n[0][exceptionEffects].safeLen > 0))
+
+template tabOpt*(m: PSym): untyped =
+  # avoids doing a copy
+  let tab2 =
+    if optPrivateImport in m.options: m.tabAll.addr
+    else: m.tab.addr
+  tab2[]
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind

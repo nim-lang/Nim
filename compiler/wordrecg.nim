@@ -105,7 +105,9 @@ type
     wStdIn = "stdin", wStdOut = "stdout", wStdErr = "stderr",
 
     wInOut = "inout", wByCopy = "bycopy", wByRef = "byref", wOneWay = "oneway",
-    wBitsize = "bitsize"
+    wBitsize = "bitsize",
+    wPrivateImport = "privateImport",
+
 
   TSpecialWords* = set[TSpecialWord]
 
@@ -122,7 +124,6 @@ const
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
-
 
 const enumUtilsExist = compiles:
   import std/enumutils

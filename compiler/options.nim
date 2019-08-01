@@ -40,9 +40,9 @@ type                          # please make sure we have under 32 options
     optTrMacros,              # en/disable pattern matching
     optMemTracker,
     optNilSeqs,
-    optSinkInference          # 'sink T' inference
-    optCursorInference
-
+    optSinkInference,         # 'sink T' inference
+    optCursorInference,
+    optPrivateImport,
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -176,7 +176,8 @@ type
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
     strictFuncs,
-    views
+    views,
+    allowPrivateImport,
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
