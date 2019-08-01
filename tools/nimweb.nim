@@ -110,12 +110,10 @@ Compile_options:
 
 macro id(e: untyped): untyped =
   ## generates the rss xml ``id`` element.
-  let e = callsite()
   result = xmlCheckedTag(e, "id")
 
 macro updated(e: varargs[untyped]): untyped =
   ## generates the rss xml ``updated`` element.
-  let e = callsite()
   result = xmlCheckedTag(e, "updated")
 
 proc updatedDate(year, month, day: string): string =
@@ -126,12 +124,10 @@ proc updatedDate(year, month, day: string): string =
 
 macro entry(e: varargs[untyped]): untyped =
   ## generates the rss xml ``entry`` element.
-  let e = callsite()
   result = xmlCheckedTag(e, "entry")
 
 macro content(e: varargs[untyped]): untyped =
   ## generates the rss xml ``content`` element.
-  let e = callsite()
   result = xmlCheckedTag(e, "content", reqAttr = "type")
 
 proc parseCmdLine(c: var TConfigData) =
