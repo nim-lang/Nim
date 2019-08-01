@@ -2,11 +2,11 @@ discard """
   output: '''allocating
 allocating
 allocating
-deallocating
-deallocating
 55
 60
 99
+deallocating
+deallocating
 deallocating
 allocating
 deallocating
@@ -59,6 +59,7 @@ proc `=move`*[T](dest, src: var SharedPtr[T]) =
       deallocShared(s)
       echo "deallocating"
     dest.x = src.x
+    src.x = nil
 
 proc get*[T](s: SharedPtr[T]): lent T =
   s.x[]
@@ -136,6 +137,8 @@ proc `=move`*[T](m, m2: var MySeq[T]) {.inline.} =
       `=destroy`(m)
     m.len = m2.len
     m.data = m2.data
+    m2.len = 0
+    m2.data = nil
 
 proc len*[T](m: MySeq[T]): int {.inline.} = m.len
 
