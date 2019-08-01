@@ -1,11 +1,13 @@
-
 discard """
 output:  '''test created
+test destroyed 0
+test destroyed 0
 test destroyed 0
 1
 2
 3
 4
+Pony is dying!
 Pony is dying!'''
 joinable: false
 target: "C"
@@ -85,6 +87,8 @@ proc `=move`*(m, m2: var MySeqNonCopyable) {.inline.} =
       `=destroy`(m)
     m.len = m2.len
     m.data = m2.data
+    m2.len = 0
+    m2.data = nil
 
 proc len*(m: MySeqNonCopyable): int {.inline.} = m.len
 
