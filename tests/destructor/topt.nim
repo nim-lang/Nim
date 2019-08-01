@@ -1,4 +1,3 @@
-
 discard """
   output: '''5
 vseq destroy
@@ -47,6 +46,8 @@ proc `=move`*[T](m, m2: var VSeq[T]) {.inline.} =
     `=destroy`(m)
   m.len = m2.len
   m.data = m2.data
+  m2.len = 0
+  m2.data = nil
 
 proc newVSeq*[T](len: int): VSeq[T] =
   ## Only support sequence creation from scalar size because creation from
