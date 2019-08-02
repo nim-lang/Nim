@@ -4534,9 +4534,9 @@ when defined(genode):
 import system/widestrs
 export widestrs
 
-when defined(ioverride):
-  include "$projectpath/iooverride"
-  export ioverride as io
+when defined(iooverride):
+  include "$projectpath/iooverride" as io
+  export io
 else:
   import system/io
   export io
