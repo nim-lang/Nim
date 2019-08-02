@@ -4535,11 +4535,10 @@ import system/widestrs
 export widestrs
 
 when defined(iooverride):
-  include "$projectpath/iooverride" as io
-  export io
+  import "$projectpath/iooverride" as io
 else:
   import system/io
-  export io
+export io
 
 when not defined(createNimHcr):
   include nimhcr
