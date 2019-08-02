@@ -1915,13 +1915,14 @@ proc writeModule(m: BModule, pending: bool) =
   let cfile = getCFile(m)
 
   if true or optForceFullMake in m.config.globalOptions:
-    genInitCode(m)
-    finishTypeDescriptions(m)
-    if sfMainModule in m.module.flags:
-      # generate main file:
-      genMainProc(m)
-      add(m.s[cfsProcHeaders], m.g.mainModProcs)
-      generateThreadVarsSize(m)
+    if moduleHasChanged(m.g.graph, m.module):
+      genInitCode(m)
+      finishTypeDescriptions(m)
+      if sfMainModule in m.module.flags:
+        # generate main file:
+        genMainProc(m)
+        add(m.s[cfsProcHeaders], m.g.mainModProcs)
+        generateThreadVarsSize(m)
 
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                    obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
@@ -1983,46 +1984,47 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     for destructorCall in graph.globalDestructors:
       n.add destructorCall
   if passes.skipCodegen(m.config, n): return
-  # if the module is cached, we don't regenerate the main proc
-  # nor the dispatchers? But if the dispatchers changed?
-  # XXX emit the dispatchers into its own .c file?
-  if n != nil:
-    m.initProc.options = initProcOptions(m)
-    genStmts(m.initProc, n)
+  if moduleHasChanged(graph, m.module):
+    # if the module is cached, we don't regenerate the main proc
+    # nor the dispatchers? But if the dispatchers changed?
+    # XXX emit the dispatchers into its own .c file?
+    if n != nil:
+      m.initProc.options = initProcOptions(m)
+      genStmts(m.initProc, n)
 
-  if m.hcrOn:
-    # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
-    discard cgsym(m, "programResult")
-    if m.inHcrInitGuard:
-      endBlock(m.initProc)
-
-  if sfMainModule in m.module.flags:
     if m.hcrOn:
-      # pull ("define" since they are inline when HCR is on) these functions in the main file
-      # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
-      # will in turn pass it to the other modules it initializes so they can initialize the
-      # register/get procs so they don't have to have the definitions of these functions as well
-      discard cgsym(m, "nimLoadLibrary")
-      discard cgsym(m, "nimLoadLibraryError")
-      discard cgsym(m, "nimGetProcAddr")
-      discard cgsym(m, "procAddrError")
-      discard cgsym(m, "rawWrite")
+      # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
+      discard cgsym(m, "programResult")
+      if m.inHcrInitGuard:
+        endBlock(m.initProc)
 
-    # raise dependencies on behalf of genMainProc
-    if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
-      discard cgsym(m, "initStackBottomWith")
-    if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
-      discard cgsym(m, "initThreadVarsEmulation")
+    if sfMainModule in m.module.flags:
+      if m.hcrOn:
+        # pull ("define" since they are inline when HCR is on) these functions in the main file
+        # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
+        # will in turn pass it to the other modules it initializes so they can initialize the
+        # register/get procs so they don't have to have the definitions of these functions as well
+        discard cgsym(m, "nimLoadLibrary")
+        discard cgsym(m, "nimLoadLibraryError")
+        discard cgsym(m, "nimGetProcAddr")
+        discard cgsym(m, "procAddrError")
+        discard cgsym(m, "rawWrite")
 
-    if m.g.breakpoints != nil:
-      discard cgsym(m, "dbgRegisterBreakpoint")
-    if optEndb in m.config.options:
-      discard cgsym(m, "dbgRegisterFilename")
+      # raise dependencies on behalf of genMainProc
+      if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+        discard cgsym(m, "initStackBottomWith")
+      if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+        discard cgsym(m, "initThreadVarsEmulation")
 
-    if m.g.forwardedProcs.len == 0:
-      incl m.flags, objHasKidsValid
-    let disp = generateMethodDispatchers(graph)
-    for x in disp: genProcAux(m, x.sym)
+      if m.g.breakpoints != nil:
+        discard cgsym(m, "dbgRegisterBreakpoint")
+      if optEndb in m.config.options:
+        discard cgsym(m, "dbgRegisterFilename")
+
+      if m.g.forwardedProcs.len == 0:
+        incl m.flags, objHasKidsValid
+      let disp = generateMethodDispatchers(graph)
+      for x in disp: genProcAux(m, x.sym)
 
   m.g.modulesClosed.add m
 
