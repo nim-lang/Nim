@@ -24,6 +24,7 @@ const
     "gc",
     "io",
     "js",
+    "ic",
     "lib",
     "longgc",
     "manyloc",
@@ -54,6 +55,22 @@ proc delNimCache(filename, options: string) =
       removeDir(dir)
     except OSError:
       echo "[Warning] could not delete: ", dir
+
+proc icTests(r: var TResults, cat: Category, options: string) =
+  const
+    tests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+  for file in tests:
+    delNimCache(file, options)
+
+    let oldPassed = r.passed
+    var ta = makeTest(file, " --incremental:writeonly " & options, cat)
+    ta.spec.action = actionCompile
+    testSpec r, ta
+
+    if r.passed == oldPassed+1:
+      var tb = makeTest(file, " --incremental:readonly -d:nimMustCache " & options, cat)
+      tb.spec.action = actionCompile
+      testSpec r, tb
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: string, clearCacheFirst=false) =
@@ -551,7 +568,7 @@ proc testNimblePackages(r: var TResults, cat: Category) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib"]
+const AdditionalCategories = ["debugger", "examples", "lib", "ic"]
 const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
@@ -584,7 +601,6 @@ proc isJoinableSpec(spec: TSpec): bool =
     (spec.targets == {} or spec.targets == {targetC})
 
 proc norm(s: var string) =
-  # equivalent of s/\n+/\n/g (could use a single pass over input if needed)
   while true:
     let tmp = s.replace("\n\n", "\n")
     if tmp == s: break
@@ -690,6 +706,8 @@ proc processCategory(r: var TResults, cat: Category,
     when false:
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
+  of "ic":
+    icTests(r, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:
