@@ -15,7 +15,7 @@ block DGRAM_UDP:
   doAssert aiList.ai_next == nil
   freeAddrInfo aiList
 
-when defined(posix):
+when defined(posix) and not defined(haiku):
 
   block RAW_ICMP:
     # the port will be ignored
