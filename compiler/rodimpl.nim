@@ -66,14 +66,18 @@ proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): in
     db.exec(sql"insert into modules(fullpath, interfHash, fullHash, nimid) values (?, ?, ?, ?)",
       string fullpath, "", currentFullhash, result)
   else:
+    const nimMustCache = "nimMustCache"
     result = parseInt(module[2])
     if currentFullhash == module[1]:
       # not changed, so use the cached AST:
       doAssert(result != 0)
       var cycleCheck = initIntSet()
-      if not needsRecompile(g, fileIdx, fullpath, cycleCheck) and not g.incr.configChanged:
-        echo "cached successfully! ", string fullpath
-        return -result
+      if not needsRecompile(g, fileIdx, fullpath, cycleCheck):
+        if not g.incr.configChanged or isDefined(g.config, nimMustCache):
+          #echo "cached successfully! ", string fullpath
+          return -result
+      elif isDefined(g.config, nimMustCache):
+        internalError(g.config, "file needs to be recompiled: " & (string fullpath))
     db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
     db.exec(sql"delete from deps where module = ?", module[0])
     db.exec(sql"delete from types where module = ?", module[0])
@@ -755,6 +759,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
     if b.s[b.pos] == '\24':
       inc b.pos
       result.transformedBody = decodeNode(g, b, result.info)
+      #result.transformedBody = nil
   of skModule, skPackage:
     decodeInstantiations(g, b, result.info, result.usedGenerics)
   of skLet, skVar, skField, skForVar:
@@ -768,7 +773,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
 
   if b.s[b.pos] == '(':
     #if result.kind in routineKinds:
-    #  result.ast = decodeNodeLazyBody(b, result.info, result)
+    #  result.ast = nil
     #else:
     result.ast = decodeNode(g, b, result.info)
   if sfCompilerProc in result.flags:
