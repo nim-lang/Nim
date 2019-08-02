@@ -10,7 +10,7 @@
 ## Basic type definitions the module graph needs in order to support
 ## incremental compilations.
 
-const nimIncremental* = defined(nimIncremental)
+const nimIncremental* = true # defined(nimIncremental)
 
 import options, lineinfos
 
