@@ -59,18 +59,25 @@ proc delNimCache(filename, options: string) =
 proc icTests(r: var TResults, cat: Category, options: string) =
   const
     tests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    optB = "-d:nimBackendAssumesChange "
+    writeOnly = " --incremental:writeonly "
+    readOnly = " --incremental:readonly -d:nimMustCache "
   for file in tests:
     delNimCache(file, options)
 
     let oldPassed = r.passed
-    var ta = makeTest(file, " --incremental:writeonly " & options, cat)
+    var ta = makeTest(file, writeOnly & options, cat)
     ta.spec.action = actionCompile
     testSpec r, ta
 
     if r.passed == oldPassed+1:
-      var tb = makeTest(file, " --incremental:readonly -d:nimMustCache " & options, cat)
+      var tb = makeTest(file, readOnly & options, cat)
       tb.spec.action = actionCompile
       testSpec r, tb
+      if r.passed == oldPassed+2:
+        var tc = makeTest(file, readOnly & optB & options, cat)
+        tc.spec.action = actionCompile
+        testSpec r, tc
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: string, clearCacheFirst=false) =
