@@ -340,8 +340,6 @@ proc typeRel*(c: var TCandidate, f, aOrig: PType,
 
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   case t.kind
-  of tyNil:
-    result = nil              # what should it be?
   of tyTypeDesc:
     if c.isNoCall: result = t
     else: result = nil
