@@ -2356,7 +2356,7 @@ when not defined(nimscript) and not defined(JS):
 
 when not defined(nimscript):
   when hasAlloc:
-    proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+    proc alloc*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
       ## Allocates a new memory block with at least ``size`` bytes.
       ##
       ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
@@ -2384,7 +2384,7 @@ when not defined(nimscript):
       ## * `create <#create,typedesc>`_
       cast[ptr T](alloc(T.sizeof * size))
 
-    proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+    proc alloc0*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
       ## Allocates a new memory block with at least ``size`` bytes.
       ##
       ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
@@ -2406,7 +2406,7 @@ when not defined(nimscript):
       ## Use `createShared <#createShared,typedesc>`_ to allocate from a shared heap.
       cast[ptr T](alloc0(sizeof(T) * size))
 
-    proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
+    proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl,
                                                            benign, raises: [].}
       ## Grows or shrinks a given memory block.
       ##
@@ -2432,7 +2432,7 @@ when not defined(nimscript):
       ## from a shared heap.
       cast[ptr T](realloc(p, T.sizeof * newSize))
 
-    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
+    proc dealloc*(p: pointer) {.noconv, rtl, benign, raises: [].}
       ## Frees the memory allocated with ``alloc``, ``alloc0`` or
       ## ``realloc``.
       ##
