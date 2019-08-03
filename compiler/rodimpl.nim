@@ -889,6 +889,10 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       internalAssert g.config, imported.id < 0
   of nkStmtList, nkStmtListExpr:
     for x in n: replay(g, module, x)
+  of nkExportStmt:
+    for x in n:
+      doAssert x.kind == nkSym
+      strTableAdd(module.tab, x.sym)
   else: discard "nothing to do for this node"
 
 proc loadNode*(g: ModuleGraph; module: PSym): PNode =
