@@ -122,6 +122,9 @@ proc addLine*(self: var string; a,b: string) =
   self.add b
   self.add "\n"
 
+proc initSpec*(filename: string): TSpec =
+  result.file = filename
+
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
   let specStr = extractSpec(filename)

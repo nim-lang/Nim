@@ -10,6 +10,8 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+# included from tester.nim
+
 import important_packages
 import sequtils
 
@@ -42,7 +44,6 @@ const
     "dir with space"
   ]
 
-# included from tester.nim
 # ---------------- ROD file tests ---------------------------------------------
 
 const
@@ -62,22 +63,21 @@ proc icTests(r: var TResults, cat: Category, options: string) =
     optB = "-d:nimBackendAssumesChange "
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly -d:nimMustCache "
+
+  template test(x: untyped) =
+    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
+
   for file in tests:
-    delNimCache(file, options)
+    let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+    removeDir(nimcache)
 
     let oldPassed = r.passed
-    var ta = makeTest(file, writeOnly & options, cat)
-    ta.spec.action = actionCompile
-    testSpec r, ta
+    test writeOnly
 
     if r.passed == oldPassed+1:
-      var tb = makeTest(file, readOnly & options, cat)
-      tb.spec.action = actionCompile
-      testSpec r, tb
+      test readOnly
       if r.passed == oldPassed+2:
-        var tc = makeTest(file, readOnly & optB & options, cat)
-        tc.spec.action = actionCompile
-        testSpec r, tc
+        test readOnly & optB
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: string, clearCacheFirst=false) =
@@ -177,11 +177,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
 
   if "boehm" notin options:
     # force build required - see the comments in the .nim file for more details
-    var hcr_integration = makeTest("tests/dll/nimhcr_integration.nim",
+    var hcri = makeTest("tests/dll/nimhcr_integration.nim",
                                    options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
-    hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd, hcr_integration.name,
-                                           hcr_integration.options, getTestSpecTarget())
-    testSpec r, hcr_integration
+    let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
+    hcri.args = prepareTestArgs(hcri.spec.getCmd, hcri.name,
+                                hcri.options, nimcache, getTestSpecTarget())
+    testSpec r, hcri
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
@@ -505,8 +506,8 @@ iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
         let name = package["name"].str
         if name == n:
           found = true
-          let p_url = package["url"].str
-          yield (name, p_url, cmd, hasDeps)
+          let pUrl = package["url"].str
+          yield (name, pUrl, cmd, hasDeps)
           break
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
