@@ -62,7 +62,7 @@ proc icTests(r: var TResults, cat: Category, options: string) =
     tests = ["compiler/nim.nim", "tools/nimgrep.nim"]
     optB = "-d:nimBackendAssumesChange "
     writeOnly = " --incremental:writeonly "
-    readOnly = " --incremental:readonly -d:nimMustCache "
+    readOnly = " --incremental:readonly "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)

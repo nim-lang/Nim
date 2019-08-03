@@ -66,17 +66,16 @@ proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): in
     db.exec(sql"insert into modules(fullpath, interfHash, fullHash, nimid) values (?, ?, ?, ?)",
       string fullpath, "", currentFullhash, result)
   else:
-    const nimMustCache = "nimMustCache"
     result = parseInt(module[2])
     if currentFullhash == module[1]:
       # not changed, so use the cached AST:
       doAssert(result != 0)
       var cycleCheck = initIntSet()
       if not needsRecompile(g, fileIdx, fullpath, cycleCheck):
-        if not g.incr.configChanged or isDefined(g.config, nimMustCache):
+        if not g.incr.configChanged or g.config.symbolFiles == readOnlySf:
           #echo "cached successfully! ", string fullpath
           return -result
-      elif isDefined(g.config, nimMustCache):
+      elif g.config.symbolFiles == readOnlySf:
         internalError(g.config, "file needs to be recompiled: " & (string fullpath))
     db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
     db.exec(sql"delete from deps where module = ?", module[0])
