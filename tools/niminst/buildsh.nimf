@@ -155,6 +155,8 @@ case $ucpu in
     mycpu="powerpc64" ;;
   *power*|*ppc* )
     mycpu="powerpc" ;;
+  *ia64*)
+    mycpu="ia64" ;;
   *m68k*)
     mycpu="m68k" ;;
   *mips* )
