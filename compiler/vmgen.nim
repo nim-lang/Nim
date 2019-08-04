@@ -2176,7 +2176,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       var d = i + c.code[i].jmpDiff
       for iters in countdown(maxIterations, 0):
         case c.code[d].opcode
-        of opcJmp, opcJmpBack:
+        of opcJmp:
           d = d + c.code[d].jmpDiff
         of opcTJmp, opcFJmp:
           if c.code[d].regA != reg: break
