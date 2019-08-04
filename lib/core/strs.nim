@@ -193,14 +193,9 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
 
 proc nimMoveStrV2(a, b: var NimStringV2) {.compilerRtl.} =
   if a.p == b.p: return
-  if isLiteral(b):
-    # we can shallow copy literals:
-    frees(a)
-    a.len = b.len
-    a.p = b.p
-  else:
-    frees(a)
-    a.len = b.len
-    a.p = b.p
+  frees(a)
+  a.len = b.len
+  a.p = b.p
+  if not isLiteral(b):
     b.len = 0
     b.p = nil
