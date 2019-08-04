@@ -21,6 +21,11 @@ const
   errNamedExprNotAllowed = "named expression not allowed here"
   errFieldInitTwice = "field initialized twice: '$1'"
   errUndeclaredFieldX = "undeclared field: '$1'"
+  errCompileTimeRuntimeAccess = "compile time binding cannot be accessed directly at runtime\n" &
+    "Please assign it to a const, eg.:\n" &
+    "  let x {.compileTime.} = ...\n" &
+    "  const X = x\n" &
+    "  echo X"
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =

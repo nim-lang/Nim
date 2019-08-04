@@ -39,6 +39,24 @@ const
   errCannotAssignMacroSymbol = "cannot assign macro symbol to $1 here. Forgot to invoke the macro with '()'?"
   errInvalidTypeDescAssign = "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
   errInlineIteratorNotFirstClass = "inline iterators are not first-class / cannot be assigned to variables"
+  errAlreadyInStaticContext = "already in a static context, please remove the compileTime pragma"
+  errCompileTimeInMultipleBindings = "compileTime pragma found on $1 but may not be used with top level multiple bindings.\n" &
+    "For example, instead of:\n" &
+    "  let a,b {.compileTime.}, c = ...\n" &
+    "consider:\n" &
+    "  let \n" &
+    "    a,c = ...\n" &
+    "    b {.compileTime.} = ...\n"
+  errCompileTimeInTupleBinding = "compileTime pragma found on $1 but may not be used with top level tuple destructuring.\n" &
+    "For example, instead of:\n" &
+    "  var (a {.compileTime},b {.compileTime}) = ...\n" &
+    "consider:\n" &
+    "  var\n" &
+    "    ab {.compileTime.} = ..." &
+    "    a {.compileTime.} = ab[0]" &
+    "    b {.compileTime.} = ab[1]"
+
+
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
@@ -442,6 +460,59 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
     var length = sonsLen(a)
+
+    var enableCompileTime = false
+
+    template compileTimeIdents():seq[string] =
+      var idents: seq[string] = @[]
+      for i in 0 .. length-3:
+       let s = a.sons[i]
+       # don't check field access (eg. nkDotExpr, 'f.foo') or bracket
+       # expressions (eg. nkBracketExpr, 'f[0]'). We really should but pulling
+       # pragmas out of those types of expressions is a pain and really let/var
+       # bindings needs to be completely refactored anyway.
+       if not (s.kind == nkEmpty or s.kind == nkDotExpr or s.kind == nkBracketExpr):
+         if s.kind == nkPragmaExpr:
+           if not ((s.sons[0].kind == nkDotExpr) or (s.sons[0].kind == nkBracketExpr)):
+             if (hasPragma(s.sons[1],wCompileTime)):
+               let allowedFlags =
+                 if isTopLevel(c):
+                   {sfExported}
+                 else:
+                   {}
+               let sym = semIdentVis(c,symkind,s.sons[0],allowedFlags)
+               idents.add(sym.name.s)
+      idents
+
+    if c.inStaticContext == 0:
+      case a.kind
+      of nkIdentDefs, nkVarTuple:
+       let ctIds = compileTimeIdents()
+       # In the case of tuples, allow: let (a {.compileTime.}) = ... For now
+       # this case appears to be disallowed below but in just in 1-tuples make
+       # an appearance later it's good to be ready for it.
+       if not (ctIds.len == 0):
+         let
+           numBindings = length-2
+           onlyBinding = (numBindings == 1) and (ctIds.len == 1)
+         if onlyBinding:
+           let inStaticContext = c.inStaticContext > 0
+           if inStaticContext:
+             localError(c.config, a.info, errAlreadyInStaticContext)
+           else:
+             enableCompileTime = true
+         else:
+           let err =
+             if a.kind == nkIdentDefs:
+               errCompileTimeInMultipleBindings
+             else:
+               errCompileTimeInTupleBinding
+           localError(c.config, a.info, err % ctIds.join(", "))
+      else: discard
+
+    if enableCompileTime : inc c.inStaticContext
+    defer:
+      if enableCompileTime : dec c.inStaticContext
 
     var typ: PType = nil
     if a.sons[length-2].kind != nkEmpty:
@@ -1775,17 +1846,41 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     gp = setGenericParamsMisc(c, n)
   else:
     gp = newNodeI(nkGenericParams, n.info)
-  # process parameters:
-  if n.sons[paramsPos].kind != nkEmpty:
-    semParamList(c, n.sons[paramsPos], gp, s)
-    if sonsLen(gp) > 0:
-      if n.sons[genericParamsPos].kind == nkEmpty:
-        # we have a list of implicit type parameters:
-        n.sons[genericParamsPos] = gp
-        # check for semantics again:
-        # semParamList(c, n.sons[ParamsPos], nil, s)
-  else:
-    s.typ = newProcType(c, n.info)
+
+
+  # We need to know whether this proc is needs to be evaluated at compile time
+  # before processing the parameters because the proc parameters might contain
+  # default values like,
+  # proc g() {.compileTime.} = ...
+  # proc f(i = g()) {.compileTime.} = ...
+  # in which case those default values ('g()' in example above) need to be
+  # evaluated in the static context (i.e transformed to VM bytecode).
+  #
+  # Unfortunately we have to directly check for the pragma by name instead using
+  # the 'pragma' function which is the proper way because 'pragma' needs the type
+  # of this proc/iterator etc. which it can only know once it has processed the
+  # parameters.
+  let compileTimeParams =
+    hasPragma(n.sons[pragmasPos], wCompileTime) or (kind == skMacro)
+
+  if compileTimeParams: inc c.inStaticContext
+  block:
+    defer:
+      if compileTimeParams: dec c.inStaticContext
+    # process parameters:
+    if n.sons[paramsPos].kind != nkEmpty:
+     semParamList(c, n.sons[paramsPos], gp, s)
+     if sonsLen(gp) > 0:
+       if n.sons[genericParamsPos].kind == nkEmpty:
+         # we have a list of implicit type parameters:
+         n.sons[genericParamsPos] = gp
+         # check for semantics again:
+         # semParamList(c, n.sons[ParamsPos], nil, s)
+    else:
+      s.typ = newProcType(c, n.info)
+    if compileTimeParams and s.typ != nil:
+      s.typ.flags.incl(tfInferrableStatic)
+
   if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
@@ -1853,6 +1948,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     proto.ast = n             # needed for code generation
     popOwner(c)
     pushOwner(c, s)
+
+  # Now, unlike when we processed the proc parameters above, we can check for
+  # the compile time evaluation flag the proper way
+  let compileTime = sfCompileTime in s.flags or (kind == skMacro)
+  if compileTime: inc c.inStaticContext
+  defer:
+    if compileTime: dec c.inStaticContext
 
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:

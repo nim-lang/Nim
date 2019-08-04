@@ -216,6 +216,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates)
       of kUnknown: discard "do not break 'nim check'"
+      of kCompileTimeOnly: candidates.add("\n  can only be called at compile time")
+      of kCompileTimeArgument: candidates.add("\n  compile time argument passed to runtime parameter")
       candidates.add "\n"
     for diag in err.diagnostics:
       candidates.add(diag & "\n")

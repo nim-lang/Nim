@@ -21,7 +21,7 @@ when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
 type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
-    kMissingParam, kExtraArg
+    kMissingParam, kExtraArg, kCompileTimeOnly, kCompileTimeArgument
 
   MismatchInfo* = object
     kind*: MismatchKind # reason for mismatch
@@ -1964,6 +1964,20 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     arg = argSemantized
     a = a
     c = m.c
+
+  # a compile time let/var param should not match an argument
+  # in a runtime proc unless that argument is static or we are
+  # currently in a static block
+  if (argSemantized != nil and
+      m.calleeSym != nil and
+      (argSemantized.kind == nkSym) and
+      sfCompileTime in argSemantized.sym.flags and
+      m.calleeSym.kind == skProc and
+      not (m.c.inStaticContext > 0) and
+      not (tfHasStatic in fMaybeStatic.flags)):
+    m.state = csNoMatch
+    m.firstMismatch.kind = kCompileTimeArgument
+    return nil
 
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
