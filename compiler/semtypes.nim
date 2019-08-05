@@ -1812,14 +1812,11 @@ proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
   if conf.target.targetCPU == cpuI386 and size == 8:
     #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
-    if kind in {tyFloat64, tyFloat} and
-        conf.target.targetOS in {osLinux, osAndroid, osNetbsd, osFreebsd, osOpenbsd, osDragonfly}:
-      m.typ.align = 4
-    # on i386, all known compiler, 64bits ints are aligned to 4bytes (except with -malign-double)
-    elif kind in {tyInt, tyUInt, tyInt64, tyUInt64}:
-      m.typ.align = 4
-  else:
-    discard
+    if conf.target.targetOS != osWindows:
+      if kind in {tyFloat64, tyFloat, tyInt, tyUInt, tyInt64, tyUInt64}:
+        # on i386 for all known POSIX systems, 64bits ints are aligned
+        # to 4bytes (except with -malign-double)
+        m.typ.align = 4
 
 proc setMagicIntegral(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   setMagicType(conf, m, kind, size)
