@@ -1111,6 +1111,9 @@ proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ##   var a = {1, 3, 5, 7}
   ##   echo card(a) # => 4
 
+proc len*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
+  ## An alias for `card(x)`.
+
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
   ## Returns the internal `int` value of an ordinal value ``x``.
   ##
