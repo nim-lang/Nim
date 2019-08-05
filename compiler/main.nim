@@ -88,9 +88,7 @@ proc commandCompileToC(graph: ModuleGraph) =
     let proj = changeFileExt(conf.projectFull, "")
     if not changeDetectedViaJsonBuildInstructions(conf, proj):
       # nothing changed
-      # Little hack here in order to not lose our precious
-      # hintSuccessX message:
-      conf.notes.incl hintSuccessX
+      graph.config.notes = graph.config.mainPackageNotes
       return
 
   compileProject(graph)

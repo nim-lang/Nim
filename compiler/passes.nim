@@ -112,6 +112,17 @@ const
     nkMacroDef, nkConverterDef, nkIteratorDef, nkFuncDef, nkPragma,
     nkExportStmt, nkExportExceptStmt, nkFromStmt, nkImportStmt, nkImportExceptStmt}
 
+proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
+  # don't be verbose unless the module belongs to the main package:
+  if module.owner.id == graph.config.mainPackageId:
+    graph.config.notes = graph.config.mainPackageNotes
+  else:
+    if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
+    graph.config.notes = graph.config.foreignPackageNotes
+
+proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
+  result = module.id >= 0
+
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
@@ -119,7 +130,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
-  if module.id < 0:
+  prepareConfigNotes(graph, module)
+  if not moduleHasChanged(graph, module):
     # new module caching mechanism:
     for i in 0 ..< graph.passes.len:
       if not isNil(graph.passes[i].open) and not graph.passes[i].isFrontend:

@@ -79,6 +79,9 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
                else: a.currentException.sons[3].skipColon.strVal)
 
+proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
+  setResult(a, a.currentException)
+
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
   for k, f in walkDir(path, relative):
@@ -132,6 +135,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
+    systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     systemop gorgeEx

@@ -102,7 +102,8 @@ template stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, "unhandled exception: " &
-             c.currentExceptionA.sons[3].skipColon.strVal)
+             c.currentExceptionA.sons[3].skipColon.strVal &
+             " [" & c.currentExceptionA.sons[2].skipColon.strVal & "]")
 
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
@@ -401,7 +402,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     else:
       internalError(c.config, "cannot convert to string " & desttyp.typeToString)
   else:
-    case skipTypes(desttyp, abstractRange).kind
+    case skipTypes(desttyp, abstractVarRange).kind
     of tyInt..tyInt64:
       if dest.kind != rkInt:
         myreset(dest); dest.kind = rkInt
@@ -439,7 +440,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       else:
         dest.floatVal = src.floatVal
     of tyObject:
-      if srctyp.skipTypes(abstractRange).kind != tyObject:
+      if srctyp.skipTypes(abstractVarRange).kind != tyObject:
         internalError(c.config, "invalid object-to-object conversion")
       # A object-to-object conversion is essentially a no-op
       moveConst(dest, src)
@@ -1199,8 +1200,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           tos = savedFrame
           move(regs, tos.slots)
     of opcRaise:
-      let raised = regs[ra].node
+      let raised =
+        # Empty `raise` statement - reraise current exception
+        if regs[ra].kind == rkNone:
+          c.currentExceptionA
+        else:
+          regs[ra].node
       c.currentExceptionA = raised
+      # Set the `name` field of the exception
+      c.currentExceptionA.sons[2].skipColon.strVal = c.currentExceptionA.typ.sym.name.s
       c.exceptionInstr = pc
 
       var frame = tos

@@ -207,14 +207,14 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a1 = s1
 
 proc random*(max: int): int {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' istead".} =
+  "Deprecated since v0.18.0; use 'rand' instead".} =
   while true:
     let x = next(state)
     if x < randMax - (randMax mod ui(max)):
       return int(x mod uint64(max))
 
 proc random*(max: float): float {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' istead".} =
+  "Deprecated since v0.18.0; use 'rand' instead".} =
   let x = next(state)
   when defined(JS):
     result = (float(x) / float(high(uint32))) * max
@@ -318,10 +318,7 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
   ## state.
   ##
-  ## Allowed input types are:
-  ## * Integer
-  ## * Floats
-  ## * Enums without holes
+  ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
   ## See also:
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice and uses the
@@ -343,6 +340,8 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
+  ##
+  ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
@@ -401,7 +400,20 @@ proc rand*[T](a: openArray[T]): T {.deprecated:
   result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =
-  ## returns a random element from a set
+  ## Returns a random element from the set ``s`` using the given state.
+  ##
+  ## See also:
+  ## * `sample proc<#sample,set[T]>`_ that uses the default random number
+  ##   generator
+  ## * `sample proc<#sample,Rand,openArray[T]>`_ for openarrays
+  ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
+  ##   cumulative distribution function
+  runnableExamples:
+    var r = initRand(987)
+    let s = {1, 3, 5, 7, 9}
+    doAssert r.sample(s) == 5
+    doAssert r.sample(s) == 7
+    doAssert r.sample(s) == 1
   assert card(s) != 0
   var i = rand(r, card(s) - 1)
   for e in s:
@@ -409,7 +421,25 @@ proc sample*[T](r: var Rand; s: set[T]): T =
     dec(i)
 
 proc sample*[T](s: set[T]): T =
-  ## returns a random element from a set
+  ## Returns a random element from the set ``s``.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  ##
+  ## See also:
+  ## * `sample proc<#sample,Rand,set[T]>`_ that uses a provided state
+  ## * `sample proc<#sample,openArray[T]>`_ for openarrays
+  ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
+  ##   cumulative distribution function
+  runnableExamples:
+    randomize(987)
+    let s = {1, 3, 5, 7, 9}
+    doAssert sample(s) == 5
+    doAssert sample(s) == 7
+    doAssert sample(s) == 1
   sample(state, s)
 
 proc sample*[T](r: var Rand; a: openArray[T]): T =
@@ -420,6 +450,7 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   ##   random number generator
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
+  ## * `sample proc<#sample,Rand,set[T]>`_ for sets
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     var r = initRand(456)
@@ -441,6 +472,7 @@ proc sample*[T](a: openArray[T]): T =
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that uses a provided state
   ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
+  ## * `sample proc<#sample,set[T]>`_ for sets
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     randomize(456)
@@ -466,6 +498,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that also utilizes
   ##   a CDF but uses the default random number generator
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that does not use a CDF
+  ## * `sample proc<#sample,Rand,set[T]>`_ for sets
   runnableExamples:
     from math import cumsummed
 
@@ -502,6 +535,7 @@ proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that also utilizes
   ##   a CDF but uses a provided state
   ## * `sample proc<#sample,openArray[T]>`_ that does not use a CDF
+  ## * `sample proc<#sample,set[T]>`_ for sets
   runnableExamples:
     from math import cumsummed
 

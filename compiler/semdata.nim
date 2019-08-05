@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
-  magicsys, passes, vmdef, modulegraphs, lineinfos
+  magicsys, vmdef, modulegraphs, lineinfos
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
