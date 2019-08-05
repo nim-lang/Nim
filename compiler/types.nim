@@ -1238,7 +1238,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyTypeDesc:
     # XXX: This is still a horrible idea...
     result = nil
-  of tyUntyped, tyTyped, tyStatic:
+  of tyStatic:
+    if kind notin {skParam}: result = t
+  of tyUntyped, tyTyped:
     if kind notin {skParam, skResult}: result = t
   of tyVoid:
     if taField notin flags: result = t
