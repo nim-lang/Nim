@@ -48,15 +48,17 @@ const
       "Compiled at $4\n" &
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
-const
-  Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
-  FeatureDesc = block:
-    var x = ""
-    for f in low(Feature)..high(Feature):
+proc genFeatureDesc(obsolete: bool): string {.compileTime.} =
+  var x = ""
+  for f in low(Feature)..high(Feature):
+    if obsolete == (f in ObsoleteFeatures):
       if x.len > 0: x.add "|"
       x.add $f
-    x
-  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % FeatureDesc
+  x
+
+const
+  Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
+  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % [genFeatureDesc(false), genFeatureDesc(true)]
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
@@ -739,9 +741,23 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.features.incl oldExperimentalFeatures
     else:
       try:
+        let feature = parseEnum[Feature](arg)
+        if feature in ObsoleteFeatures:
+          localError(conf, info, "use --enableObsolete:" & $feature)
+        else:
+          conf.features.incl feature
         conf.features.incl parseEnum[Feature](arg)
       except ValueError:
         localError(conf, info, "unknown experimental feature")
+  of "enableobsolete":
+    try:
+      let feature = parseEnum[Feature](arg)
+      if feature in ObsoleteFeatures:
+        conf.features.incl feature
+      else:
+        localError(conf, info, "use --experimental:" & $feature)
+    except ValueError:
+      localError(conf, info, "unknown obsolete feature")
   of "nocppexceptions":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optNoCppExceptions)
