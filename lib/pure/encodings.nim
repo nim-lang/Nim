@@ -325,10 +325,6 @@ proc close*(c: EncodingConverter) =
 
 when defined(windows):
   proc convertToWideString(codePage: CodePage, s: string): string =
-    # special case: empty string: needed because MultiByteToWideChar
-    # return 0 in case of error
-    if s.len == 0: return ""
-
     # educated guess of capacity:
     var cap = s.len + s.len shr 2
     result = newString(cap*2)
@@ -396,6 +392,9 @@ when defined(windows):
       assert(false) # cannot happen
 
   proc convertWin(codePageFrom: CodePage, codePageTo: CodePage, s: string): string =
+    # special case: empty string: needed because MultiByteToWideChar, WideCharToMultiByte
+    # return 0 in case of error
+    if s.len == 0: return ""
     # multiByteToWideChar does not support encoding from code pages below
     let unsupported = [1201, 12000, 12001]
 
@@ -530,3 +529,12 @@ when not defined(testing) and isMainModule and defined(windows):
     let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
     let result = convert(original, "utf-16", "utf-8")
     doAssert(result == "\x42\x04\x35\x04\x41\x04\x42\x04")
+
+  block should_handle_empty_string_for_any_conversion:
+    let original = ""
+    var result = convert(original, "utf-16", "utf-8")
+    doAssert(result == "")
+    result = convert(original, "utf-8", "utf-16")
+    doAssert(result == "")
+    result = convert(original, "windows-1251", "koi8-r")
+    doAssert(result == "")
