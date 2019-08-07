@@ -532,12 +532,12 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.typ = newTypeS(tyArray, c)
   rawAddSon(result.typ, nil)     # index type
   var
-    firstIndex, lastIndex: BiggestInt = 0
+    firstIndex, lastIndex: Int128
     indexType = getSysType(c.graph, n.info, tyInt)
     lastValidIndex = lastOrd(c.config, indexType)
   if sonsLen(n) == 0:
     rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
-    lastIndex = -1
+    lastIndex = toInt128(-1)
   else:
     var x = n.sons[0]
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
@@ -558,7 +558,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     #var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal})
     for i in 1 ..< sonsLen(n):
       if lastIndex == lastValidIndex:
-        let validIndex = makeRangeType(c, firstIndex, lastValidIndex, n.info,
+        let validIndex = makeRangeType(c, toInt64(firstIndex), toInt64(lastValidIndex), n.info,
                                        indexType)
         localError(c.config, n.info, "size of array exceeds range of index " &
           "type '$1' by $2 elements" % [typeToString(validIndex), $(n.len-i)])
@@ -580,7 +580,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     addSonSkipIntLit(result.typ, typ)
     for i in 0 ..< result.len:
       result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
-  result.typ.sons[0] = makeRangeType(c, firstIndex, lastIndex, n.info,
+  result.typ.sons[0] = makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,
                                      indexType)
 
 proc fixAbstractType(c: PContext, n: PNode) =
@@ -1478,7 +1478,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal, tyAlias, tySink}).kind in
         {tyInt..tyInt64}:
       let idx = getOrdValue(n.sons[1])
-      if idx >= 0 and idx < len(arr): n.typ = arr.sons[int(idx)]
+      if idx >= 0 and idx < len(arr): n.typ = arr.sons[toInt(idx)]
       else: localError(c.config, n.info, "invalid index value for tuple subscript")
       result = n
     else:

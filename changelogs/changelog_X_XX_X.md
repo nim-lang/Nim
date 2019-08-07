@@ -13,7 +13,7 @@
 
 
 ## Library additions
-
+- `set[T].len` is now an alias for `set[T].card` (cardinality)
 
 ## Library changes
 

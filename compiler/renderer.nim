@@ -330,8 +330,7 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
-  else: result = $x
-  # XXX proper unsigned output!
+  else: result = $cast[BiggestUInt](x)
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):

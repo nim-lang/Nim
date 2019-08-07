@@ -1173,7 +1173,7 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b: TCompRes
-    first: BiggestInt
+    first: Int128
   r.typ = etyBaseIndex
   let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
   gen(p, m.sons[0], a)
@@ -1182,8 +1182,8 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   let (x, tmp) = maybeMakeTemp(p, m[0], a)
   r.address = x
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
-  if typ.kind == tyArray: first = firstOrd(p.config, typ.sons[0])
-  else: first = 0
+  if typ.kind == tyArray:
+    first = firstOrd(p.config, typ.sons[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     r.res = "chckIndx($1, $2, $3.length+$2-1)-$2" % [b.res, rope(first), tmp]
@@ -1612,7 +1612,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyBool:
     result = putToSeq("false", indirect)
   of tyArray:
-    let length = int(lengthOrd(p.config, t))
+    let length = toInt(lengthOrd(p.config, t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
     if jsTyp.len > 0:

@@ -143,7 +143,7 @@ when defined(nimHasRunnableExamples):
     ##       assert double(5) == 10
     ##       block: ## at block scope
     ##         defer: echo "done"
-    ##   
+    ##
     ##     result = 2 * x
 else:
   template runnableExamples*(body: untyped) =
@@ -1110,6 +1110,9 @@ proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ## .. code-block:: Nim
   ##   var a = {1, 3, 5, 7}
   ##   echo card(a) # => 4
+
+proc len*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
+  ## An alias for `card(x)`.
 
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
   ## Returns the internal `int` value of an ordinal value ``x``.
@@ -2113,6 +2116,13 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
+when defined(nimV2):
+  template movingCopy(a, b) =
+    a = move(b)
+else:
+  template movingCopy(a, b) =
+    shallowCopy(a, b)
+
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## Deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ##
@@ -2125,7 +2135,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##  var i = @[1, 2, 3, 4, 5]
   ##  i.del(2) # => @[1, 2, 5, 4]
   let xl = x.len - 1
-  shallowCopy(x[i], x[xl])
+  movingCopy(x[i], x[xl])
   setLen(x, xl)
 
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
@@ -2141,7 +2151,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##  i.delete(2) # => @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
-    for j in i.int..xl-2: shallowCopy(x[j], x[j+1])
+    for j in i.int..xl-2: movingCopy(x[j], x[j+1])
     setLen(x, xl-1)
 
   when nimvm:
@@ -2163,7 +2173,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
     setLen(x, xl+1)
     var j = xl-1
     while j >= i:
-      shallowCopy(x[j+1], x[j])
+      movingCopy(x[j+1], x[j])
       dec(j)
   when nimvm:
     defaultImpl()
@@ -3914,9 +3924,9 @@ template spliceImpl(s, a, L, b: untyped): untyped =
   if shift > 0:
     # enlarge:
     setLen(s, newLen)
-    for i in countdown(newLen-1, a+b.len): shallowCopy(s[i], s[i-shift])
+    for i in countdown(newLen-1, a+b.len): movingCopy(s[i], s[i-shift])
   else:
-    for i in countup(a+b.len, newLen-1): shallowCopy(s[i], s[i-shift])
+    for i in countup(a+b.len, newLen-1): movingCopy(s[i], s[i-shift])
     # cut down:
     setLen(s, newLen)
   # fill the hole:

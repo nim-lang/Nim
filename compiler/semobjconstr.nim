@@ -100,7 +100,7 @@ proc allPossibleValues(c: PContext, t: PType): IntSet =
     for field in t.n.sons:
       result.incl(field.sym.position)
   else:
-    for i in firstOrd(c.config, t) .. lastOrd(c.config, t):
+    for i in toInt64(firstOrd(c.config, t)) .. toInt64(lastOrd(c.config, t)):
       result.incl(i.int)
 
 proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,

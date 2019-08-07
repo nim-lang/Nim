@@ -174,7 +174,7 @@ proc newStateAssgn(ctx: var Ctx, toValue: PNode): PNode =
 proc newStateAssgn(ctx: var Ctx, stateNo: int = -2): PNode =
   # Creates state assignment:
   #   :state = stateNo
-  ctx.newStateAssgn(newIntTypeNode(nkIntLit, stateNo, ctx.g.getSysType(TLineInfo(), tyInt)))
+  ctx.newStateAssgn(newIntTypeNode(stateNo, ctx.g.getSysType(TLineInfo(), tyInt)))
 
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
   result = newSym(skVar, getIdent(ctx.g.cache, name), ctx.fn, ctx.fn.info)
@@ -359,7 +359,7 @@ proc addElseToExcept(ctx: var Ctx, n: PNode) =
     block: # :unrollFinally = true
       branchBody.add(newTree(nkAsgn,
         ctx.newUnrollFinallyAccess(n.info),
-        newIntTypeNode(nkIntLit, 1, ctx.g.getSysType(n.info, tyBool))))
+        newIntTypeNode(1, ctx.g.getSysType(n.info, tyBool))))
 
     block: # :curExc = getCurrentException()
       branchBody.add(newTree(nkAsgn,
@@ -832,7 +832,7 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
     block: # :unrollFinally = true
       let asgn = newNodeI(nkAsgn, n.info)
       asgn.add(ctx.newUnrollFinallyAccess(n.info))
-      asgn.add(newIntTypeNode(nkIntLit, 1, ctx.g.getSysType(n.info, tyBool)))
+      asgn.add(newIntTypeNode(1, ctx.g.getSysType(n.info, tyBool)))
       result.add(asgn)
 
     if n[0].kind != nkEmpty:
@@ -1162,7 +1162,7 @@ proc newCatchBody(ctx: var Ctx, info: TLineInfo): PNode {.inline.} =
     let cond = newTree(nkCall,
       ctx.g.getSysMagic(info, "==", mEqI).newSymNode(),
       ctx.newStateAccess(),
-      newIntTypeNode(nkIntLit, 0, intTyp))
+      newIntTypeNode(0, intTyp))
     cond.typ = boolTyp
 
     let raiseStmt = newTree(nkRaiseStmt, ctx.g.emptyNode)
@@ -1174,7 +1174,7 @@ proc newCatchBody(ctx: var Ctx, info: TLineInfo): PNode {.inline.} =
   block:
     let cond = newTree(nkCall,
       ctx.g.getSysMagic(info, "<", mLtI).newSymNode,
-      newIntTypeNode(nkIntLit, 0, intTyp),
+      newIntTypeNode(0, intTyp),
       ctx.newStateAccess())
     cond.typ = boolTyp
 
@@ -1186,7 +1186,7 @@ proc newCatchBody(ctx: var Ctx, info: TLineInfo): PNode {.inline.} =
     let cond = newTree(nkCall,
       ctx.g.getSysMagic(info, "<", mLtI).newSymNode,
       ctx.newStateAccess(),
-      newIntTypeNode(nkIntLit, 0, intTyp))
+      newIntTypeNode(0, intTyp))
     cond.typ = boolTyp
 
     let negateState = newTree(nkCall,
