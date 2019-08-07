@@ -2102,6 +2102,7 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
 
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
+  c.mode = emStaticStmt
   c.comesFromHeuristic.line = 0'u16
 
   c.callsite = nOrig
