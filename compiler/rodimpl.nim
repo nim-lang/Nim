@@ -298,7 +298,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
     pushSym(w, s.owner)
   if s.flags != {}:
     result.add('$')
-    encodeVInt(cast[int32](s.flags), result)
+    encodeVBiggestInt(cast[int64](s.flags), result)
   if s.magic != mNone:
     result.add('@')
     encodeVInt(ord(s.magic), result)
@@ -725,7 +725,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
     result.owner = loadSym(g, decodeVInt(b.s, b.pos), result.info)
   if b.s[b.pos] == '$':
     inc(b.pos)
-    result.flags = cast[TSymFlags](int32(decodeVInt(b.s, b.pos)))
+    result.flags = cast[TSymFlags](decodeVBiggestInt(b.s, b.pos))
   if b.s[b.pos] == '@':
     inc(b.pos)
     result.magic = TMagic(decodeVInt(b.s, b.pos))

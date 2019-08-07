@@ -490,6 +490,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       testSpecHelper(r, test, expected, target, nimcache)
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
+  if not checkDisabled(r, test): return
   for target in test.spec.targets:
     inc(r.total)
     testSpecHelper(r, test, test.spec, target, nimcache)
