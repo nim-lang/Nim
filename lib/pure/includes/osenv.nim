@@ -17,6 +17,11 @@ var
   envComputed {.threadvar.}: bool
   environment {.threadvar.}: seq[string]
 
+when defined(nimV2):
+  proc unpairedEnvAllocs*(): int =
+    result = environment.len
+    if result > 0: inc result
+
 when defined(windows) and not defined(nimscript):
   # because we support Windows GUI applications, things get really
   # messy here...

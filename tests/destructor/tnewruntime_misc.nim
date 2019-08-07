@@ -1,7 +1,8 @@
 discard """
   cmd: '''nim cpp --newruntime $file'''
   output: '''(field: "value")
-3 3  new: 0'''
+Indeed
+0  new: 0'''
 """
 
 import core / allocators
@@ -13,10 +14,15 @@ type
   Node = ref object
     field: string
 
+# bug #11807
+import os
+putEnv("HEAPTRASHING", "Indeed")
+
 proc main =
   var w = newTable[string, owned Node]()
   w["key"] = Node(field: "value")
   echo w["key"][]
+  echo getEnv("HEAPTRASHING")
 
 main()
 
@@ -41,4 +47,4 @@ type
 var t: MyType
 
 let (a, d) = allocCounters()
-discard cprintf("%ld %ld  new: %ld\n", a, d, allocs)
+discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)
