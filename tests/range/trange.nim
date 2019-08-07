@@ -118,3 +118,14 @@ block:
     x3 = R32(4)
 
   doAssert $x1 & $x2 & $x3 == "444"
+
+block:
+  var x1: range[0'f..1'f] = 1
+  const x2: range[0'f..1'f] = 1
+  var x5: range[0'f32..1'f32] = 1'f64
+  const x6: range[0'f32..1'f32] = 1'f64
+
+  reject:
+    const x: range[0'f..1'f] = 2'f
+  reject:
+    const x: range[0'f..1'f] = 2
