@@ -26,7 +26,7 @@ when true:
       test: int
       test2: string
       test3: bool
-      testNil: string
+      testNil: JsonNode
 
   var x = Replay(
     events: @[
@@ -39,7 +39,7 @@ when true:
     test: 18827361,
     test2: "hello world",
     test3: true,
-    testNil: "nil"
+    testNil: nil
   )
 
   let node = %x
@@ -52,7 +52,7 @@ when true:
   doAssert y.test == 18827361
   doAssert y.test2 == "hello world"
   doAssert y.test3
-  doAssert y.testNil == "nil"
+  doAssert y.testNil == newJNull()
 
   # Test for custom object variants (without an enum) and with an else branch.
   block:
@@ -517,7 +517,7 @@ when true:
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
 
-# TODO: when the issue with the limeted vm registers is solved, the
+# TODO: when the issue with the limited vm registers is solved, the
 # exact same test as above should be evaluated at compile time as
 # well, to ensure that the vm functionality won't diverge from the
 # runtime functionality. Until then, the following test should do it.
@@ -525,6 +525,7 @@ when true:
 static:
   var t = parseJson("""
     {
+      "null": null,
       "name":"Bongo",
       "email":"bongo@bingo.com",
       "list": [11,7,15],
@@ -539,6 +540,7 @@ static:
     }
   """)
 
+  doAssert t["null"].kind == JNull
   doAssert t["name"].getStr == "Bongo"
   doAssert t["email"].getStr == "bongo@bingo.com"
   doAssert t["list"][0].getInt == 11
