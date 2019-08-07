@@ -1,4 +1,9 @@
+## This module is for compiler internal use only. For reliable error
+## messages and range checks, the compiler needs a data type that can
+## hold all from ``low(BiggestInt)`` to ``high(BiggestUInt)``, This
+## type is for that purpose.
 
+from math import trunc
 
 type
   Int128* = object
@@ -24,6 +29,7 @@ const
   Ten* = Int128(udata: [10'u32,0,0,0])
   Min = Int128(udata: [0'u32,0,0,0x80000000'u32])
   Max = Int128(udata: [high(uint32),high(uint32),high(uint32),uint32(high(int32))])
+  NegOne* = Int128(udata: [0xffffffff'u32,0xffffffff'u32,0xffffffff'u32,0xffffffff'u32])
 
 template low*(t: typedesc[Int128]): Int128 = Min
 template high*(t: typedesc[Int128]): Int128 = Max
@@ -74,10 +80,84 @@ proc toInt64*(arg: Int128): int64 =
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
+proc toInt32*(arg: Int128): int32 =
+  if isNegative(arg):
+    assert(arg.sdata(3) == -1, "out of range")
+    assert(arg.sdata(2) == -1, "out of range")
+    assert(arg.sdata(1) == -1, "out of range")
+  else:
+    assert(arg.sdata(3) == 0, "out of range")
+    assert(arg.sdata(2) == 0, "out of range")
+    assert(arg.sdata(1) == 0, "out of range")
+
+  arg.sdata(0)
+
+proc toInt16*(arg: Int128): int16 =
+  if isNegative(arg):
+    assert(arg.sdata(3) == -1, "out of range")
+    assert(arg.sdata(2) == -1, "out of range")
+    assert(arg.sdata(1) == -1, "out of range")
+  else:
+    assert(arg.sdata(3) == 0, "out of range")
+    assert(arg.sdata(2) == 0, "out of range")
+    assert(arg.sdata(1) == 0, "out of range")
+
+  int16(arg.sdata(0))
+
+proc toInt8*(arg: Int128): int8 =
+  if isNegative(arg):
+    assert(arg.sdata(3) == -1, "out of range")
+    assert(arg.sdata(2) == -1, "out of range")
+    assert(arg.sdata(1) == -1, "out of range")
+  else:
+    assert(arg.sdata(3) == 0, "out of range")
+    assert(arg.sdata(2) == 0, "out of range")
+    assert(arg.sdata(1) == 0, "out of range")
+
+  int8(arg.sdata(0))
+
+proc toInt*(arg: Int128): int =
+  when sizeof(int) == 4:
+    cast[int](toInt32(arg))
+  else:
+    cast[int](toInt64(arg))
+
 proc toUInt64*(arg: Int128): uint64 =
   assert(arg.udata[3] == 0)
   assert(arg.udata[2] == 0)
   bitconcat(arg.udata[1], arg.udata[0])
+
+proc toUInt32*(arg: Int128): uint32 =
+  assert(arg.udata[3] == 0)
+  assert(arg.udata[2] == 0)
+  assert(arg.udata[1] == 0)
+  arg.udata[0]
+
+proc toUInt16*(arg: Int128): uint16 =
+  assert(arg.udata[3] == 0)
+  assert(arg.udata[2] == 0)
+  assert(arg.udata[1] == 0)
+  uint16(arg.udata[0])
+
+proc toUInt8*(arg: Int128): uint8 =
+  assert(arg.udata[3] == 0)
+  assert(arg.udata[2] == 0)
+  assert(arg.udata[1] == 0)
+  uint8(arg.udata[0])
+
+proc toUInt*(arg: Int128): uint =
+  when sizeof(int) == 4:
+    cast[uint](toInt32(arg))
+  else:
+    cast[uint](toInt64(arg))
+
+proc castToInt64*(arg: Int128): int64 =
+  ## Conversion to int64 without range check.
+  cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
+
+proc castToUInt64*(arg: Int128): uint64 =
+  ## Conversion to uint64 without range check.
+  cast[uint64](bitconcat(arg.udata[1], arg.udata[0]))
 
 proc addToHex(result: var string; arg: uint32) =
   for i in 0 ..< 8:
@@ -206,7 +286,6 @@ proc `shl`*(a: Int128, b: int): Int128 =
     result.udata[2] = 0
     result.udata[3] = a.udata[0] shl (b and 31)
 
-
 proc `+`*(a,b: Int128): Int128 =
   let tmp0 = uint64(a.udata[0]) + uint64(b.udata[0])
   result.udata[0] = cast[uint32](tmp0)
@@ -319,7 +398,8 @@ proc fastLog2*(a: Int128): int =
 
 proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
   assert(divisor != Zero)
-  let isNegative = isNegative(dividend) xor isNegative(divisor)
+  let isNegativeA = isNegative(dividend)
+  let isNegativeB = isNegative(divisor)
 
   var dividend = abs(dividend)
   let divisor = abs(divisor)
@@ -351,8 +431,14 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
     denominator = denominator shr 1
 
-  result.quotient = quotient
-  result.remainder = dividend
+  if isNegativeA xor isNegativeB:
+    result.quotient = -quotient
+  else:
+    result.quotient = quotient
+  if isNegativeB:
+    result.remainder = -dividend
+  else:
+    result.remainder = dividend
 
 proc `div`*(a,b: Int128): Int128 =
   let (a,b) = divMod(a,b)
@@ -362,27 +448,31 @@ proc `mod`*(a,b: Int128): Int128 =
   let (a,b) = divMod(a,b)
   return b
 
-proc `$`*(a: Int128): string =
-  if a == Zero:
-    result = "0"
-  elif a == low(Int128):
-    result = "-170141183460469231731687303715884105728"
+proc addInt128*(result: var string; value: Int128) =
+  let initialSize = result.len
+  if value == Zero:
+    result.add "0"
+  elif value == low(Int128):
+    result.add "-170141183460469231731687303715884105728"
   else:
-    let isNegative = isNegative(a)
-    var a = abs(a)
-    while a > Zero:
-      let (quot, rem) = divMod(a, Ten)
+    let isNegative = isNegative(value)
+    var value = abs(value)
+    while value > Zero:
+      let (quot, rem) = divMod(value, Ten)
       result.add "0123456789"[rem.toInt64]
-      a = quot
+      value = quot
     if isNegative:
       result.add '-'
 
-    var i = 0
+    var i = initialSize
     var j = high(result)
     while i < j:
       swap(result[i], result[j])
       i += 1
       j -= 1
+
+proc `$`*(a: Int128): string =
+  result.addInt128(a)
 
 proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
   assert(pos < arg.len)
@@ -434,6 +524,77 @@ proc `+`*(a: BiggestInt, b: Int128): Int128 =
 
 proc `+`*(a: Int128, b: BiggestInt): Int128 =
   a + toInt128(b)
+
+proc toFloat64*(arg: Int128): float64 =
+  let isNegative = isNegative(arg)
+  let arg = abs(arg)
+
+  let a = float64(bitconcat(arg.udata[1], arg.udata[0]))
+  let b = float64(bitconcat(arg.udata[3], arg.udata[2]))
+
+  result = a + 18446744073709551616'f64 * b # a + 2^64 * b
+  if isNegative:
+    result = -result
+
+proc ldexp(x: float64, exp: cint): float64 {.importc: "ldexp", header: "<math.h>".}
+
+template bitor(a,b,c: Int128): Int128 = bitor(bitor(a,b), c)
+
+proc toInt128*(arg: float64): Int128 =
+  let isNegative = arg < 0
+  assert(arg <  0x47E0000000000000'f64, "out of range")
+  assert(arg >= 0xC7E0000000000000'f64, "out of range")
+  let v0 = ldexp(abs(arg), -100)
+  let w0 = uint64(trunc(v0))
+  let v1 = ldexp(v0 - float64(w0), 50)
+  let w1 = uint64(trunc(v1))
+  let v2 = ldexp(v1 - float64(w1), 50)
+  let w2 = uint64(trunc(v2))
+
+  let res = bitor(toInt128(w0) shl 100, toInt128(w1) shl 50, toInt128(w2))
+  if isNegative:
+    return -res
+  else:
+    return res
+
+proc maskUInt64*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0]
+  result.udata[1] = arg.udata[1]
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskUInt32*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0]
+  result.udata[1] = 0
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskUInt16*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0] and 0xffff
+  result.udata[1] = 0
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskUInt8*(arg: Int128): Int128 {.noinit, inline.} =
+  result.udata[0] = arg.udata[0] and 0xff
+  result.udata[1] = 0
+  result.udata[2] = 0
+  result.udata[3] = 0
+
+proc maskBytes*(arg: Int128, numbytes: int): Int128 {.noinit.} =
+  case numbytes
+  of 1:
+    return maskUInt8(arg)
+  of 2:
+    return maskUInt16(arg)
+  of 4:
+    return maskUInt32(arg)
+  of 8:
+    return maskUInt64(arg)
+  else:
+    assert(false, "masking only implemented for 1, 2, 4 and 8 bytes")
+
+
 
 
 when isMainModule:

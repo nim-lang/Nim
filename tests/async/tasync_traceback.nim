@@ -122,8 +122,13 @@ let expLines = splitLines(expected.strip)
 
 if resLines.len != expLines.len:
   echo("Not matched! Wrong number of lines!")
-  echo()
-  echo(result)
+  echo expLines.len
+  echo resLines.len
+  echo("Expected: -----------")
+  echo expected
+  echo("Gotten: -------------")
+  echo result
+  echo("---------------------")
   quit(QuitFailure)
 
 var ok = true
