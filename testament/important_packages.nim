@@ -1,4 +1,3 @@
-import strutils
 
 template pkg(name: string; cmd = "nimble test"; hasDeps = false; url = ""): untyped =
   packages.add((name, cmd, hasDeps, url))

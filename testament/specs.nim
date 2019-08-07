@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import sequtils, parseutils, strutils, os, osproc, streams, parsecfg
+import sequtils, parseutils, strutils, os, streams, parsecfg
 
 var compilerPrefix* = findExe("nim")
 

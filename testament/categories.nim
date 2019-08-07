@@ -13,7 +13,6 @@
 # included from tester.nim
 
 import important_packages
-import sequtils
 
 const
   specialCategories = [
@@ -44,29 +43,42 @@ const
     "dir with space"
   ]
 
-# ---------------- ROD file tests ---------------------------------------------
+proc isTestFile*(file: string): bool =
+  let (_, name, ext) = splitFile(file)
+  result = ext == ".nim" and name.startsWith("t")
 
-const
-  rodfilesDir = "tests/rodfiles"
+# ---------------- IC tests ---------------------------------------------
 
-proc delNimCache(filename, options: string) =
-  for target in low(TTarget)..high(TTarget):
-    let dir = nimcacheDir(filename, options, target)
-    try:
-      removeDir(dir)
-    except OSError:
-      echo "[Warning] could not delete: ", dir
-
-proc icTests(r: var TResults, cat: Category, options: string) =
+proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
   const
-    tests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
+    incrementalOn = " --incremental:on "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
 
-  for file in tests:
+  template editedTest(x: untyped) =
+    var test = makeTest(file, x & options, cat)
+    test.spec.targets = {getTestSpecTarget()}
+    testSpecWithNimcache(r, test, nimcache)
+
+  const tempExt = "_temp.nim"
+  for it in walkDirRec(testsDir / "ic"):
+    if isTestFile(it) and not it.endsWith(tempExt):
+      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let content = readFile(it)
+      for fragment in content.split("#!EDIT!#"):
+        let file = it.replace(".nim", tempExt)
+        writeFile(file, fragment)
+        let oldPassed = r.passed
+        editedTest incrementalOn
+        if r.passed != oldPassed+1: break
+
+  for file in tooltests:
     let nimcache = nimcacheDir(file, options, getTestSpecTarget())
     removeDir(nimcache)
 
@@ -77,45 +89,6 @@ proc icTests(r: var TResults, cat: Category, options: string) =
       test readOnly
       if r.passed == oldPassed+2:
         test readOnly & "-d:nimBackendAssumesChange "
-
-proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: string, clearCacheFirst=false) =
-    if clearCacheFirst: delNimCache(filename, options)
-    testSpec r, makeTest(rodfilesDir / filename, options, cat)
-
-
-  # test basic recompilation scheme:
-  test "hallo", true
-  test "hallo"
-  when false:
-    # test incremental type information:
-    test "hallo2"
-
-  # test type converters:
-  test "aconv", true
-  test "bconv"
-
-  # test G, A, B example from the documentation; test init sections:
-  test "deada", true
-  test "deada2"
-
-  when false:
-    # test method generation:
-    test "bmethods", true
-    test "bmethods2"
-
-    # test generics:
-    test "tgeneric1", true
-    test "tgeneric2"
-
-proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped, clearCacheFirst=true) =
-    if clearCacheFirst: delNimCache(filename, options)
-    testSpec r, makeTest(rodfilesDir / filename, options, cat)
-
-  # test DLL interfacing:
-  test "gtkex1", true
-  test "gtkex2"
 
 # --------------------- flags tests -------------------------------------------
 
@@ -138,12 +111,6 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
   testExec r, makeTest(filename, " " & nimcache / "tgenscript", cat)
 
 # --------------------- DLL generation tests ----------------------------------
-
-proc safeCopyFile(src, dest: string) =
-  try:
-    copyFile(src, dest)
-  except OSError:
-    echo "[Warning] could not copy: ", src, " to ", dest
 
 proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   const rpath = when defined(macosx):
@@ -387,7 +354,8 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
   for i, test in tests:
     let filename = testsDir / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
-    doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed: " & $(i: i, testHash: testHash, refHash: refHashes[i])
+    doAssert testHash == refHashes[i], "Nim in Action test " & filename &
+        " was changed: " & $(i: i, testHash: testHash, refHash: refHashes[i])
   # Run the tests.
   for testfile in tests:
     test "tests/" & testfile & ".nim"
@@ -472,25 +440,6 @@ if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
   packageIndex = nimbleDir / "packages_official.json"
-
-proc waitForExitEx(p: Process): int =
-  var outp = outputStream(p)
-  var line = newStringOfCap(120).TaintedString
-  while true:
-    if outp.readLine(line):
-      discard
-    else:
-      result = peekExitCode(p)
-      if result != -1: break
-  close(p)
-
-proc getPackageDir(package: string): string =
-  ## TODO - Replace this with dom's version comparison magic.
-  let commandOutput = execCmdEx("nimble path $#" % package)
-  if commandOutput.exitCode != QuitSuccess:
-    return ""
-  else:
-    result = commandOutput[0].string
 
 iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
   let defaultCmd = "nimble test"
@@ -614,10 +563,6 @@ proc norm(s: var string) =
     s = tmp
   s = s.strip
 
-proc isTestFile*(file: string): bool =
-  let (_, name, ext) = splitFile(file)
-  result = ext == ".nim" and name.startsWith("t")
-
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
@@ -630,10 +575,10 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     let cat = dir[testsDir.len .. ^1]
     if kind == pcDir and cat notin specialCategories:
       for file in walkDirRec(testsDir / cat):
-        if not isTestFile(file): continue
-        let spec = parseSpec(file)
-        if isJoinableSpec(spec):
-          specs.add spec
+        if isTestFile(file):
+          let spec = parseSpec(file)
+          if isJoinableSpec(spec):
+            specs.add spec
 
   proc cmp(a: TSpec, b:TSpec): auto = cmp(a.file, b.file)
   sort(specs, cmp=cmp) # reproducible order
@@ -669,14 +614,13 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
               "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
-  proc onStdout(line: string) = echo line
+
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ ", cmdLine
     echo buf.string
     quit("megatest compilation failed")
 
-  # Could also use onStdout here.
   (buf, exitCode) = execCmdEx("./megatest")
   if exitCode != 0:
     echo buf.string
@@ -714,7 +658,7 @@ proc processCategory(r: var TResults, cat: Category,
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
   of "ic":
-    icTests(r, cat, options)
+    icTests(r, testsDir, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:

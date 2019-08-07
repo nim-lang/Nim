@@ -10,9 +10,9 @@
 ## This program verifies Nim against the testcases.
 
 import
-  parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
-  marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, sets, md5, sequtils
+  strutils, pegs, os, osproc, streams, json,
+  backend, parseopt, specs, htmlgen, browsers, terminal,
+  algorithm, times, md5, sequtils
 
 include compiler/nodejs
 
@@ -408,6 +408,62 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
+proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarget, nimcache: string) =
+  case expected.action
+  of actionCompile:
+    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
+          extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
+    compilerOutputTests(test, target, given, expected, r)
+  of actionRun:
+    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target)
+    if given.err != reSuccess:
+      r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
+    else:
+      let isJsTarget = target == targetJS
+      var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
+      if not existsFile(exeFile):
+        r.addResult(test, target, expected.output,
+                    "executable not found: " & exeFile, reExeNotFound)
+      else:
+        let nodejs = if isJsTarget: findNodeJs() else: ""
+        if isJsTarget and nodejs == "":
+          r.addResult(test, target, expected.output, "nodejs binary not in PATH",
+                      reExeNotFound)
+        else:
+          var exeCmd: string
+          var args = test.args
+          if isJsTarget:
+            exeCmd = nodejs
+            args = concat(@[exeFile], args)
+          else:
+            exeCmd = exeFile
+          var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+          # Treat all failure codes from nodejs as 1. Older versions of nodejs used
+          # to return other codes, but for us it is sufficient to know that it's not 0.
+          if exitCode != 0: exitCode = 1
+          let bufB =
+            if expected.sortoutput:
+              var x = splitLines(strip(buf.string))
+              sort(x, system.cmp)
+              join(x, "\n")
+            else:
+              strip(buf.string)
+          if exitCode != expected.exitCode:
+            r.addResult(test, target, "exitcode: " & $expected.exitCode,
+                              "exitcode: " & $exitCode & "\n\nOutput:\n" &
+                              bufB, reExitCodesDiffer)
+          elif (expected.outputCheck == ocEqual and expected.output != bufB) or
+              (expected.outputCheck == ocSubstr and expected.output notin bufB):
+            given.err = reOutputsDiffer
+            r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
+          else:
+            compilerOutputTests(test, target, given, expected, r)
+  of actionReject:
+    var given = callCompiler(expected.getCmd, test.name, test.options,
+                              nimcache, target)
+    cmpMsgs(r, expected, given, test, target)
+
+
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
   if expected.parseErrors.len > 0:
@@ -431,68 +487,12 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       echo "testSpec count: ", count, " expected: ", expected
     else:
       let nimcache = nimcacheDir(test.name, test.options, target)
-      case expected.action
-      of actionCompile:
-        var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
-              extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
-        compilerOutputTests(test, target, given, expected, r)
-      of actionRun:
-        # In this branch of code "early return" pattern is clearer than deep
-        # nested conditionals - the empty rows in between to clarify the "danger"
-        var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target)
-        if given.err != reSuccess:
-          r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
-        else:
-          let isJsTarget = target == targetJS
-          var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
-          if not existsFile(exeFile):
-            r.addResult(test, target, expected.output,
-                        "executable not found: " & exeFile, reExeNotFound)
-          else:
-            let nodejs = if isJsTarget: findNodeJs() else: ""
-            if isJsTarget and nodejs == "":
-              r.addResult(test, target, expected.output, "nodejs binary not in PATH",
-                          reExeNotFound)
-            else:
-              var exeCmd: string
-              var args = test.args
-              if isJsTarget:
-                exeCmd = nodejs
-                args = concat(@[exeFile], args)
-              else:
-                exeCmd = exeFile
-              var (cmdLine, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
-              # Treat all failure codes from nodejs as 1. Older versions of nodejs used
-              # to return other codes, but for us it is sufficient to know that it's not 0.
-              if exitCode != 0: exitCode = 1
-              let bufB =
-                if expected.sortoutput:
-                  var x = splitLines(strip(buf.string))
-                  sort(x, system.cmp)
-                  join(x, "\n")
-                else:
-                  strip(buf.string)
-              if exitCode != expected.exitCode:
-                r.addResult(test, target, "exitcode: " & $expected.exitCode,
-                                  "exitcode: " & $exitCode & "\n\nOutput:\n" &
-                                  bufB, reExitCodesDiffer)
-              elif (expected.outputCheck == ocEqual and expected.output != bufB) or
-                  (expected.outputCheck == ocSubstr and expected.output notin bufB):
-                given.err = reOutputsDiffer
-                r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
-              else:
-                compilerOutputTests(test, target, given, expected, r)
-      of actionReject:
-        var given = callCompiler(expected.getCmd, test.name, test.options,
-                                 nimcache, target)
-        cmpMsgs(r, expected, given, test, target)
+      testSpecHelper(r, test, expected, target, nimcache)
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
   for target in test.spec.targets:
     inc(r.total)
-    var given = callCompiler(test.spec.getCmd, test.name, test.options, nimcache, target,
-          extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
-    compilerOutputTests(test, target, given, test.spec, r)
+    testSpecHelper(r, test, test.spec, target, nimcache)
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
