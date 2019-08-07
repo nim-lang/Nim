@@ -12,21 +12,22 @@ proc newTreeWithLineinfo*(kind: NimNodeKind; lineinfo: LineInfo; children: varar
 
 # TODO restrict unquote to nimnode expressions (error message)
 
-const forwardLineinfo = true
+const forwardLineinfo = false
 
-
-proc lookupSymbol(symbolTable, name: NimNode): NimNode =
-  # Expects `symbolTable` to be a list of ExprEqExpr, to use it like a `Table`.
-  for x in symbolTable:
-    if eqIdent(x[0], name):
-      return x[1]
+proc containsSymbol(symbolList, name: NimNode): bool =
+  for x in symbolList:
+    if eqIdent(x, name):
+      return true
+  return false
 
 proc newTreeExpr(exprNode, symbolTable: NimNode): NimNode {.compileTime.} =
   # stmtList is a buffer to generate statements
   if exprNode.kind in nnkLiterals:
     result = newCall(bindSym"newLit", exprNode)
   elif exprNode.kind == nnkIdent:
-    result = lookupSymbol(symbolTable, exprNode) or newCall(bindSym"ident", newLit(exprNode.strVal))
+    result =
+      if containsSymbol(symbolTable, exprNode): exprNode
+      else: newCall(bindSym"ident", newLit(exprNode.strVal))
   elif exprNode.kind == nnkSym:
     error("for quoting the ast needs to be untyped", exprNode)
   elif exprNode.kind == nnkCommentStmt:
@@ -42,48 +43,16 @@ proc newTreeExpr(exprNode, symbolTable: NimNode): NimNode {.compileTime.} =
     for child in exprNode:
       result.add newTreeExpr(child, symbolTable)
 
-
-# macro quoteAst*(ast: untyped): untyped =
-#   ## Substitute for ``quote do`` but with ``uq`` for unquoting instead of backticks.
-#   result = newNimNode(nnkStmtListExpr)
-#   result.add result.newTreeExpr(ast, ident"uq")
-#   echo "quoteAst:"
-#   echo result.repr
-
-let pushPragmaExpr {.compileTime.} =  nnkPragma.newTree(
-  newIdentNode("push"),
-  nnkExprColonExpr.newTree(
-    nnkBracketExpr.newTree(
-      newIdentNode("hint"),
-      newIdentNode("ConvFromXtoItselfNotNeeded")
-    ),
-    newIdentNode("off")
-  )
-)
-let popPragmaExpr {.compileTime.} = nnkPragma.newTree(
-  newIdentNode("pop")
-)
-
 macro quoteAst*(args: varargs[untyped]): untyped =
-  let symbolTable = newStmtList()
+  let symbolList = nnkBracket.newTree()
 
   for i in 0 ..< args.len-1:
-    expectKind(args[i], {nnkIdent, nnkExprEqExpr})
-    var a,b: NimNode
-    if args[i].kind == nnkExprEqExpr:
-      a = args[i][0]
-      b = args[i][1]
+    expectKind(args[i], {nnkIdent, nnkAccQuoted})
+    if args[i].kind == nnkAccQuoted:
+      symbolList.add args[i][0]
     else:
-      a = args[i]
-      b = args[i]
+      symbolList.add args[i]
 
-    b = newCall(bindSym"expectNimnode", b)
-    if a.kind == nnkAccQuoted:
-      a = a[0]
+  result = newTreeExpr(args[^1], symbolList)
 
-    symbolTable.add nnkExprEqExpr.newTree(a, b)
-
-
-  result = newTreeExpr(args[^1], symbolTable)
-
-  # echo result.repr
+  echo result.repr

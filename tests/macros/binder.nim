@@ -4,7 +4,10 @@ from streams import newStringStream, readData, writeData
 import experimental/quote2
 
 macro bindme*(): untyped =
-  quoteAst(newStringStream = bindSym"newStringStream", writeData = bindSym"writeData", readData = bindSym"readData"):
+  let newStringStream = bindSym"newStringStream"
+  let writeData = bindSym"writeData"
+  let readData = bindSym"readData"
+  result = quoteAst(newStringStream, writeData, readData):
     var tst = "sometext"
     var ss = newStringStream("anothertext")
     writeData(ss, tst[0].addr, 2)

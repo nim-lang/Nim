@@ -2,7 +2,6 @@ discard """
 nimout: '''
 true
 5
-5
 3
 '''
 """
@@ -27,19 +26,15 @@ macro foobar(arg: untyped): untyped =
 
   doAssert result[0].lispRepr == """(Command (Ident "echo") (StrLit "Hello ") (StrLit "world") (StrLit "!"))"""
 
-  # named argument
-  result = quoteAst(world = newLit("world")):
-    echo "Hello ", world, "!"
-
-  doAssert result[0].lispRepr == """(Command (Ident "echo") (StrLit "Hello ") (StrLit "world") (StrLit "!"))"""
-
   # mixed usage
   let x = newLit(123)
-  result = quoteAst(x, xyz = newLit("xyz"), arg):
+  let xyz = newLit("xyz")
+  result = quoteAst(x, xyz, arg):
     echo "abc ", x, " ", xyz, " ", arg
 
   # usage of bindSym
-  result = quoteAst(foo = bindSym"foo"):
+  let foo = bindSym"foo"
+  result = quoteAst(foo):
     echo foo(123, "abc")
 
   doAssert result[0].lispRepr == """(Command (Ident "echo") (Call (Sym "foo") (IntLit 123) (StrLit "abc")))"""
@@ -106,7 +101,8 @@ macro foo(): untyped =
   result.add tmp1
 
   # Works
-  let tmp2 = quoteAst(b = newLit(123)):
+  b = newLit(123)
+  let tmp2 = quoteAst(b):
     works(b)
   result.add tmp2
 
@@ -149,7 +145,8 @@ doAssert fooA() == "Let's interpolate Hello, World in the string"
 
 macro fooB(): untyped =
   # test for backticked symbol.
-  result = quoteAst(`==` = bindSym"=="):
+  let `==` = bindSym"=="
+  result = quoteAst(`==`):
     echo 3 == 4
   doAssert result[0][1][0].kind == nnkClosedSymChoice
 
@@ -161,22 +158,17 @@ import macros
 
 macro fooC(): untyped =
   let a = @[1, 2, 3, 4, 5]
-  result = quoteAst(len = newLit(a.len)):
-    len
-
-macro fooD(): untyped =
-  let a = @[1, 2, 3, 4, 5]
-  let len = a.len
-  result = quoteAst(len = newLit(len)):
+  let len = newLit(a.len)
+  result = quoteAst(len):
     len
 
 macro fooE(): untyped =
   let a = @[1, 2, 3, 4, 5]
-  result = quoteAst(x = newLit(a[2])):
+  let x = newLit(a[2])
+  result = quoteAst(x):
     x
 
 echo fooC() # Outputs 5
-echo fooD() # Outputs 5
 echo fooE() # Outputs 3
 
 # example from #10430
