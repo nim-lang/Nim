@@ -246,10 +246,10 @@ proc genGotoState(p: BProc, n: PNode) =
   lineF(p, cpsStmts, " goto BeforeRet_;$n", [])
   var statesCounter = lastOrd(p.config, n.sons[0].typ)
   if n.len >= 2 and n[1].kind == nkIntLit:
-    statesCounter = n[1].intVal
+    statesCounter = getInt(n[1])
   let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
                else: rope"STATE"
-  for i in 0i64 .. statesCounter:
+  for i in 0i64 .. toInt64(statesCounter):
     lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
@@ -494,7 +494,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
       if aSize > 10_000:
         localError(p.config, it.info,
             "case statement has too many cases for computed goto"); return
-      arraySize = aSize.int
+      arraySize = toInt(aSize)
       if firstOrd(p.config, it.sons[0].typ) != 0:
         localError(p.config, it.info,
             "case statement has to start at 0 for computed goto"); return
@@ -527,7 +527,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
 
       let val = getOrdValue(it.sons[j])
-      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
+      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(toInt64(val)+id+1)])
 
     genStmts(p, it.lastSon)
 
@@ -1211,7 +1211,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
   discard genTypeInfo(p.module, t, a.lode.info)
-  var L = lengthOrd(p.config, field.typ)
+  var L = toInt64(lengthOrd(p.config, field.typ))
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])

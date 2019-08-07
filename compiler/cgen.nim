@@ -113,6 +113,9 @@ proc cgFormatValue(result: var string; value: string): void =
 proc cgFormatValue(result: var string; value: BiggestInt): void =
   result.addInt value
 
+proc cgFormatValue(result: var string; value: Int128): void =
+  result.addInt128 value
+
 # TODO: please document
 macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   args.expectKind nnkBracket

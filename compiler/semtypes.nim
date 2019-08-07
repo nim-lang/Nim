@@ -69,7 +69,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     base = semTypeNode(c, n.sons[0].sons[0], nil)
     if base.kind != tyEnum:
       localError(c.config, n.sons[0].info, "inheritance only works with an enum")
-    counter = lastOrd(c.config, base) + 1
+    counter = toInt64(lastOrd(c.config, base)) + 1
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
   var symbols: TStrTable
@@ -93,7 +93,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
           if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
             if not isOrdinalType(v.sons[0].typ, allowEnumWithHoles=true):
               localError(c.config, v.sons[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v.sons[0].typ, preferDesc))
-            x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
+            x = toInt64(getOrdValue(v.sons[0])) # first tuple part is the ordinal
           else:
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
@@ -104,7 +104,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       else:
         if not isOrdinalType(v.typ, allowEnumWithHoles=true):
           localError(c.config, v.info, errOrdinalTypeExpected & "; given: " & typeToString(v.typ, preferDesc))
-        x = getOrdValue(v)
+        x = toInt64(getOrdValue(v))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter:
@@ -507,7 +507,7 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var Int128): PNode =
   result.add(at)
   result.add(bt)
   if emptyRange(ac, bc): localError(c.config, b.info, "range is empty")
-  else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
+  else: covered = covered + getOrdValue(bc) + 1 - getOrdValue(ac)
 
 proc semCaseBranchRange(c: PContext, t, b: PNode,
                         covered: var Int128): PNode =
@@ -582,7 +582,7 @@ proc toCover(c: PContext, t: PType): Int128 =
     elif t.kind in {tyInt, tyUInt}:
       result = toInt128(1) shl (c.config.target.intSize * 8)
     else:
-      result = toInt128(lengthOrd(c.config, t))
+      result = lengthOrd(c.config, t)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
