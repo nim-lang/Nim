@@ -4406,7 +4406,21 @@ Procedures utilizing type classes in such manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
 combination of param types used within the program.
 
-Nim also allows for type classes and regular types to be specified
+Whilst the syntax of type classes appears to resemble that of algebraic data
+types in ML-like languages, it should be understood that type classes are static
+constraints to be enforced at type instantations. Type classes are not really
+types in themsleves, but are instead a system of providing generic "checks" that
+ultimately *resolve* to some singular type. Type classes do not allow for
+runtime type dynamicism, unlike object variants or multimethods.
+
+As an example, the following would not compile:
+
+.. code-block:: nim
+  type TypeClass = int | string
+  var foo: TypeClass = 2 # foo's type is resolved to an int here
+  foo = "this will fail" # error here, because foo is an int
+
+Nim allows for type classes and regular types to be specified
 as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nim
