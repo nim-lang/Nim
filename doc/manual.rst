@@ -1518,8 +1518,10 @@ For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 Object variants
 ---------------
-Often an object hierarchy is overkill in certain situations where simple
-variant types are needed.
+Often an object hierarchy is overkill in certain situations where simple variant
+types are needed. Object variants are tagged unions discriminated via a
+enumerated type used for runtime type flexibility, mirroring the concepts of
+*sum types* and *algebraic data types (ADTs)* as found in other languages.
 
 An example:
 
@@ -4406,12 +4408,12 @@ Procedures utilizing type classes in such manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
 combination of param types used within the program.
 
-Whilst the syntax of type classes appears to resemble that of algebraic data
+Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
 types in ML-like languages, it should be understood that type classes are static
 constraints to be enforced at type instantations. Type classes are not really
 types in themsleves, but are instead a system of providing generic "checks" that
 ultimately *resolve* to some singular type. Type classes do not allow for
-runtime type dynamicism, unlike object variants or multimethods.
+runtime type dynamism, unlike object variants or methods.
 
 As an example, the following would not compile:
 
