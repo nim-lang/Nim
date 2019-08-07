@@ -1392,7 +1392,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
-      if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.features:
+      if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif dest.kind in {nkEmpty..nkNilLit} or idx >=% dest.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
@@ -1401,7 +1401,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
-      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.features:
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
@@ -1412,7 +1412,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let x = regs[rc].node
       var u = regs[rb].node
-      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.features:
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
