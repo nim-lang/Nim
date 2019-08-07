@@ -10,6 +10,8 @@
 # this module does the semantic checking of type declarations
 # included from sem.nim
 
+import math
+
 const
   errStringOrIdentNodeExpected = "string or ident node expected"
   errStringLiteralExpected = "string literal expected"
@@ -235,6 +237,10 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
       result.flags.incl tfUnresolved
     else:
       result.n.addSon semConstExpr(c, range[i])
+
+  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[0].floatVal) == fcNan) or
+      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[1].floatVal) == fcNan):
+    localError(c.config, n.info, "NaN is not a valid start or end for a range")
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(c.config, n.info, "range is empty")
