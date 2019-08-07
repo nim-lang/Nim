@@ -54,5 +54,3 @@ macro quoteAst*(args: varargs[untyped]): untyped =
       symbolList.add args[i]
 
   result = newTreeExpr(args[^1], symbolList)
-
-  echo result.repr

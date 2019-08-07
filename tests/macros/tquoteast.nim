@@ -1,6 +1,6 @@
 discard """
 nimout: '''
-true
+false
 5
 3
 '''
