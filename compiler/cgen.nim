@@ -13,7 +13,7 @@ import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
-  condsyms, rodutils, renderer, cgendata, ccgmerge, aliases,
+  rodutils, renderer, cgendata, ccgmerge, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr
 
 when not defined(leanCompiler):

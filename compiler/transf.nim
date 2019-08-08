@@ -20,7 +20,7 @@
 
 import
   options, ast, astalgo, trees, msgs,
-  idents, renderer, types, passes, semfold, magicsys, cgmeth,
+  idents, renderer, types, semfold, magicsys, cgmeth,
   lowerings, injectdestructors, liftlocals,
   modulegraphs, lineinfos
 

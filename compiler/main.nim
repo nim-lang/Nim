@@ -24,8 +24,6 @@ import
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
 
-from magicsys import resetSysTypes
-
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
