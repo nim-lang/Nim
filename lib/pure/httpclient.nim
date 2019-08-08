@@ -340,7 +340,10 @@ proc parseBody(s: Socket, headers: HttpHeaders, httpVersion: string, timeout: in
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
+      let implicitConnectionClose =
+        httpVersion == "1.0" or
+        httpVersion == "1.1" # This doesn't match the HTTP spec, but it fixes issues for non-conforming servers.
+      if headers.getOrDefault"Connection" == "close" or implicitConnectionClose:
         var buf = ""
         while true:
           buf = newString(4000)
@@ -811,7 +814,10 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
+      let implicitConnectionClose =
+        httpVersion == "1.0" or
+        httpVersion == "1.1" # This doesn't match the HTTP spec, but it fixes issues for non-conforming servers.
+      if headers.getOrDefault"Connection" == "close" or implicitConnectionClose:
         while true:
           let recvLen = await client.recvFull(4000, client.timeout, true)
           if recvLen != 4000:
