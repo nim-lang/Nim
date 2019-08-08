@@ -17,7 +17,6 @@ import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
 ## - Dependency computation should use *signature* hashes in order to
 ##   avoid recompiling dependent modules.
 ## - Patch the rest of the compiler to do lazy loading of proc bodies.
-## - Patch the C codegen to cache proc bodies and maybe types.
 
 template db(): DbConn = g.incr.db
 
@@ -72,9 +71,12 @@ proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): in
       # not changed, so use the cached AST:
       doAssert(result != 0)
       var cycleCheck = initIntSet()
-      if not needsRecompile(g, fileIdx, fullpath, cycleCheck) and not g.incr.configChanged:
-        echo "cached successfully! ", string fullpath
-        return -result
+      if not needsRecompile(g, fileIdx, fullpath, cycleCheck):
+        if not g.incr.configChanged or g.config.symbolFiles == readOnlySf:
+          #echo "cached successfully! ", string fullpath
+          return -result
+      elif g.config.symbolFiles == readOnlySf:
+        internalError(g.config, "file needs to be recompiled: " & (string fullpath))
     db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
     db.exec(sql"delete from deps where module = ?", module[0])
     db.exec(sql"delete from types where module = ?", module[0])
@@ -296,7 +298,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
     pushSym(w, s.owner)
   if s.flags != {}:
     result.add('$')
-    encodeVInt(cast[int32](s.flags), result)
+    encodeVBiggestInt(cast[int64](s.flags), result)
   if s.magic != mNone:
     result.add('@')
     encodeVInt(ord(s.magic), result)
@@ -723,7 +725,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
     result.owner = loadSym(g, decodeVInt(b.s, b.pos), result.info)
   if b.s[b.pos] == '$':
     inc(b.pos)
-    result.flags = cast[TSymFlags](int32(decodeVInt(b.s, b.pos)))
+    result.flags = cast[TSymFlags](decodeVBiggestInt(b.s, b.pos))
   if b.s[b.pos] == '@':
     inc(b.pos)
     result.magic = TMagic(decodeVInt(b.s, b.pos))
@@ -756,6 +758,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
     if b.s[b.pos] == '\24':
       inc b.pos
       result.transformedBody = decodeNode(g, b, result.info)
+      #result.transformedBody = nil
   of skModule, skPackage:
     decodeInstantiations(g, b, result.info, result.usedGenerics)
   of skLet, skVar, skField, skForVar:
@@ -769,7 +772,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
 
   if b.s[b.pos] == '(':
     #if result.kind in routineKinds:
-    #  result.ast = decodeNodeLazyBody(b, result.info, result)
+    #  result.ast = nil
     #else:
     result.ast = decodeNode(g, b, result.info)
   if sfCompilerProc in result.flags:
@@ -886,6 +889,10 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       internalAssert g.config, imported.id < 0
   of nkStmtList, nkStmtListExpr:
     for x in n: replay(g, module, x)
+  of nkExportStmt:
+    for x in n:
+      doAssert x.kind == nkSym
+      strTableAdd(module.tab, x.sym)
   else: discard "nothing to do for this node"
 
 proc loadNode*(g: ModuleGraph; module: PSym): PNode =

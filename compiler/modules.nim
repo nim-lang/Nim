@@ -77,8 +77,6 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     if result == nil:
       result = newModule(graph, fileIdx)
       result.flags = result.flags + flags
-      if sfMainModule in result.flags:
-        graph.config.mainPackageId = result.owner.id
       result.id = id
       registerModule(graph, result)
     else:

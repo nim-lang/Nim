@@ -30,6 +30,8 @@ import
   wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
   pathutils, strtabs
 
+from incremental import nimIncremental
+
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedNativeStacktrace,
@@ -669,7 +671,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     helpOnError(conf, pass)
   of "symbolfiles": discard "ignore for backwards compat"
   of "incremental":
-    when not defined(nimIncremental):
+    when not nimIncremental:
       localError(conf, info, "the compiler was not built with " &
         "incremental compilation features; bootstrap with " &
         "-d:nimIncremental to enable")
