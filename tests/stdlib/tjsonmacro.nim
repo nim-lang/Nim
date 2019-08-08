@@ -559,7 +559,7 @@ block:
       User = object
         name: string
         age: int
-        uid {.noserialize.}: int
+        uid {.doNotSerialize.}: int
 
     let user = User(name: "Siri", age: 7, uid: 1234)
     let uJson = % user
@@ -573,10 +573,10 @@ block:
     type
       ReplayEvent2 = object
         time: float
-        anotherPos {.noserialize.}: Point[float]
+        anotherPos {.doNotSerialize.}: Point[float]
         case kind: ReplayEventKind
         of FoodEaten, FoodAppeared:
-          foodPos {.noserialize.}: Point[float]
+          foodPos {.doNotSerialize.}: Point[float]
         of DirectionChanged:
           playerPos: float
 
