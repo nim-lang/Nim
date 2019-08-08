@@ -535,7 +535,8 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
   if module != nil and module != c.module:
     var i = 0
     while i <= high(c.unusedImports):
-      if c.unusedImports[i][0] == module:
+      let candidate = c.unusedImports[i][0]
+      if candidate == module or c.exportIndirections.contains(idPairToInt(candidate.id, s.id)):
         # mark it as used:
         c.unusedImports.del(i)
       else:

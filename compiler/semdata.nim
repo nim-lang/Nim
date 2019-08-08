@@ -138,6 +138,9 @@ type
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
+    exportIndirections*: IntSet
+
+template idPairToInt*(a, b: int): int = a * 10_000_000 + b
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

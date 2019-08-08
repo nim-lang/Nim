@@ -2130,30 +2130,42 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   result = n
   case s.magic # magics that need special treatment
   of mAddr:
+    markUsed(c, n.info, s, c.graph.usageSym)
     checkSonsLen(n, 2, c.config)
     result[0] = newSymNode(s, n[0].info)
     result[1] = semAddrArg(c, n.sons[1], s.name.s == "unsafeAddr")
     result.typ = makePtrType(c, result[1].typ)
   of mTypeOf:
+    markUsed(c, n.info, s, c.graph.usageSym)
     result = semTypeOf(c, n)
-  #of mArrGet: result = semArrGet(c, n, flags)
-  #of mArrPut: result = semArrPut(c, n, flags)
-  #of mAsgn: result = semAsgnOpr(c, n)
-  of mDefined: result = semDefined(c, setMs(n, s), false)
-  of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
-  of mCompiles: result = semCompiles(c, setMs(n, s), flags)
-  #of mLow: result = semLowHigh(c, setMs(n, s), mLow)
-  #of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
-  of mIs: result = semIs(c, setMs(n, s), flags)
-  #of mOf: result = semOf(c, setMs(n, s))
-  of mShallowCopy: result = semShallowCopy(c, n, flags)
-  of mExpandToAst: result = semExpandToAst(c, n, s, flags)
-  of mQuoteAst: result = semQuoteAst(c, n)
+  of mDefined:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semDefined(c, setMs(n, s), false)
+  of mDefinedInScope:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semDefined(c, setMs(n, s), true)
+  of mCompiles:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semCompiles(c, setMs(n, s), flags)
+  of mIs:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semIs(c, setMs(n, s), flags)
+  of mShallowCopy:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semShallowCopy(c, n, flags)
+  of mExpandToAst:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semExpandToAst(c, n, s, flags)
+  of mQuoteAst:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semQuoteAst(c, n)
   of mAstToStr:
+    markUsed(c, n.info, s, c.graph.usageSym)
     checkSonsLen(n, 2, c.config)
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, c.graph)
     result.typ = getSysType(c.graph, n.info, tyString)
   of mParallel:
+    markUsed(c, n.info, s, c.graph.usageSym)
     if parallel notin c.features:
       localError(c.config, n.info, "use the {.experimental.} pragma to enable 'parallel'")
     result = setMs(n, s)
@@ -2163,6 +2175,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result.sons[1] = semStmt(c, x, {})
     dec c.inParallelStmt
   of mSpawn:
+    markUsed(c, n.info, s, c.graph.usageSym)
     when defined(leanCompiler):
       localError(c.config, n.info, "compiler was built without 'spawn' support")
       result = n
@@ -2180,10 +2193,12 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       else:
         result.add c.graph.emptyNode
   of mProcCall:
+    markUsed(c, n.info, s, c.graph.usageSym)
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
     result.typ = n[1].typ
   of mPlugin:
+    markUsed(c, n.info, s, c.graph.usageSym)
     # semDirectOp with conditional 'afterCallActions':
     let nOrig = n.copyTree
     #semLazyOpAux(c, n)
@@ -2200,6 +2215,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       if callee.magic != mNone:
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
+    markUsed(c, n.info, s, c.graph.usageSym)
     if c.config.cmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
       when false:
         # some of this dead code was moved to `prepareExamples`
@@ -2216,8 +2232,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = setMs(n, s)
     else:
       result = c.graph.emptyNode
-  of mSizeOf: result =
-    semSizeof(c, setMs(n, s))
+  of mSizeOf:
+    markUsed(c, n.info, s, c.graph.usageSym)
+    result = semSizeof(c, setMs(n, s))
   else:
     result = semDirectOp(c, n, flags)
 
