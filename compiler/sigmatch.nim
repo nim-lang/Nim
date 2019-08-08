@@ -2324,7 +2324,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   m.call = newNodeI(n.kind, n.info)
   m.call.typ = base(m.callee) # may be nil
   var formalLen = m.callee.n.len
-  addSon(m.call, copyTree(n.sons[0]))
+  addSon(m.call, n.sons[0])
   var container: PNode = nil # constructed container
   formal = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
