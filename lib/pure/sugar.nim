@@ -238,3 +238,84 @@ macro distinctBase*(T: typedesc): untyped =
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
+
+proc outparamImpl(result: NimNode, fun: NimNode) =
+  let sym = fun[0]
+  let name = case sym.kind
+  of nnkIdent: $sym
+  else: $sym[^1]
+  let params = fun[3]
+  let outName = "result" # consider customizing, via an extra macro argument
+  let ret = ident(outName)
+  let formatParams2 = nnkFormalParams.newTree()
+  var resultTyp: NimNode
+
+  let call2 = newCall ident($name)
+
+  var found = false
+  for i in 0..<params.len:
+    let pi = params[i] # eg: `a, b: Foo`
+    if i==0:
+      if pi.kind != nnkEmpty:
+        error("return type must be empty", pi)
+      formatParams2.add ident("untyped")
+      continue
+    assert pi.kind == nnkIdentDefs
+    let pi2 = newTree(nnkIdentDefs)
+    for j in 0..<pi.len-2:
+      let ai = pi[j] # eg: `a`
+      call2.add ai
+      if ai.strVal == outName:
+        found = true
+        let typ=pi[^2]
+        if typ.kind == nnkVarTy:
+          resultTyp = typ[0]
+        else:
+          error("expected `var` param", typ)
+      else:
+        pi2.add ai
+    if pi2.len > 0:
+      pi2.add pi[^2]
+      pi2.add pi[^1]
+      formatParams2.add pi2
+    else: discard
+      # we could handle the case where T can't be deduced from other params:
+      #    proc fun13[T](a: string, result: var T) {.outparam.}
+      # => template fun13(a: string, T: typedesc): untyped
+      # but probably best to do in another macro to avoid confusion
+
+  if not found:
+    error("expected some `var " & outName & "` param", params)
+
+  var body2 = quote do:
+    block:
+      var `ret`: `resultTyp`
+      `call2`
+      `ret`
+
+  result.add nnkTemplateDef.newTree(
+      sym,
+      newEmptyNode(),
+      fun[2],
+      formatParams2,
+      newEmptyNode(),
+      newEmptyNode(),
+      body2
+    )
+
+macro outparam*(body: untyped): untyped =
+  ## allow calling in-place a proc with a `var result` parameter
+  ## See unittests in $nim/tests/stdlib/toutparam.nim
+  runnableExamples:
+    proc fun1*(result: var string, b: int) {.outparam.} = result.add $b
+    ## generates `fun1` as well as this in-place overload:
+    ## template fun1*(b: int): untyped =
+    ##   block:
+    ##     var result: string
+    ##     fun1(result, b)
+    ##     result
+    doAssert fun1(12) == "12"
+
+  result = newStmtList()
+  result.add body
+  result.outparamImpl(body)
