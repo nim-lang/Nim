@@ -120,6 +120,9 @@ Advanced options:
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --experimental:$1
                             enable experimental language feature
+  --legacy:$2
+                            enable obsolete/legacy language feature
+                            legacy code.
   --newruntime              use an alternative runtime that uses destructors
                             and that uses a shared heap via -d:useMalloc
   --profiler:on|off         enable profiling; requires `import nimprof`, and
