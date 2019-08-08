@@ -542,7 +542,7 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
       else:
         inc i
 
-proc markUsed(c: PContext; info: TLineInfo; s: PSym; usageSym: var PSym) =
+proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
   let conf = c.config
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
@@ -553,7 +553,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym; usageSym: var PSym) =
     if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
     if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
-    suggestSym(conf, info, s, usageSym, false)
+    suggestSym(conf, info, s, c.graph.usageSym, false)
   if {optStyleHint, optStyleError} * conf.globalOptions != {}:
     styleCheckUse(conf, info, s)
   markOwnerModuleAsUsed(c, s)
