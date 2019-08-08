@@ -114,6 +114,8 @@ const
     nkExportStmt, nkExportExceptStmt, nkFromStmt, nkImportStmt, nkImportExceptStmt}
 
 proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
+  if sfMainModule in module.flags:
+    graph.config.mainPackageId = module.owner.id
   # don't be verbose unless the module belongs to the main package:
   if module.owner.id == graph.config.mainPackageId:
     graph.config.notes = graph.config.mainPackageNotes
@@ -122,7 +124,7 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
     graph.config.notes = graph.config.foreignPackageNotes
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
-  result = module.id >= 0
+  result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
 
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
@@ -132,7 +134,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     s: PLLStream
     fileIdx = module.fileIdx
   prepareConfigNotes(graph, module)
-  if not moduleHasChanged(graph, module):
+  if module.id < 0:
     # new module caching mechanism:
     for i in 0 ..< graph.passes.len:
       if not isNil(graph.passes[i].open) and not graph.passes[i].isFrontend:
