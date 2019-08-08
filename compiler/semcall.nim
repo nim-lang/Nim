@@ -196,6 +196,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       case err.firstMismatch.kind
       of kUnknownNamedParam: candidates.add("\n  unknown named parameter: " & $nArg[0])
       of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
+      of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
       of kExtraArg: candidates.add("\n  extra argument given")
       of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
       of kTypeMismatch, kVarNeeded:

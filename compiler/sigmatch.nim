@@ -21,7 +21,7 @@ when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
 type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
-    kMissingParam, kExtraArg
+    kMissingParam, kExtraArg, kPositionalAlreadyGiven
 
   MismatchInfo* = object
     kind*: MismatchKind # reason for mismatch
@@ -2432,8 +2432,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         formal = m.callee.n.sons[f].sym
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
-          m.firstMismatch.kind = kAlreadyGiven
-          # already in namedParams: (see above remark)
+          m.firstMismatch.kind = kPositionalAlreadyGiven
+          # positional param already in namedParams: (see above remark)
           when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           noMatch()
           return
