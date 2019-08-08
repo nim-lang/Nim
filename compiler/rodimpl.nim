@@ -9,7 +9,7 @@
 
 ## This module implements the new compilation cache.
 
-import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
+import strutils, intsets, tables, ropes, db_sqlite, msgs, options,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
   btrees, trees, condsyms, nversion, pathutils
 
