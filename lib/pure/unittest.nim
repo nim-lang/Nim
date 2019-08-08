@@ -565,7 +565,7 @@ template skip* =
   ##
   ## .. code-block:: nim
   ##
-  ##  if not isGLConextCreated():
+  ##  if not isGLContextCreated():
   ##    skip()
   bind checkpoints
 
