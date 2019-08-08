@@ -239,14 +239,19 @@ macro distinctBase*(T: typedesc): untyped =
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
 
-proc outparamImpl(result: NimNode, fun: NimNode) =
+
+type Dummy = object
+const dummy = default(Dummy)
+
+proc outparamImpl(result: NimNode, fun: NimNode, paramName: string) =
   let sym = fun[0]
   let name = case sym.kind
   of nnkIdent: $sym
   else: $sym[^1]
+  let generics = fun[2]
   let params = fun[3]
-  let outName = "result" # consider customizing, via an extra macro argument
-  let ret = ident(outName)
+  let ret = ident(paramName)
+  let ret2 = genSym(nskVar, "out")
   let formatParams2 = nnkFormalParams.newTree()
   var resultTyp: NimNode
 
@@ -256,66 +261,85 @@ proc outparamImpl(result: NimNode, fun: NimNode) =
   for i in 0..<params.len:
     let pi = params[i] # eg: `a, b: Foo`
     if i==0:
-      if pi.kind != nnkEmpty:
+      if pi.kind != nnkEmpty: # TODO: or void too
         error("return type must be empty", pi)
       formatParams2.add ident("untyped")
       continue
     assert pi.kind == nnkIdentDefs
-    let pi2 = newTree(nnkIdentDefs)
+    var pi2 = newTree(nnkIdentDefs)
+
+    template dumpParams() =
+      if pi2.len > 0: # `a, b, result, c: var string` => `a,b: var string`
+        pi2.add pi[^2]
+        pi2.add pi[^1]
+        formatParams2.add pi2.copyNimTree
+
     for j in 0..<pi.len-2:
       let ai = pi[j] # eg: `a`
-      call2.add ai
-      if ai.strVal == outName:
+      if ai.strVal == paramName:
+        call2.add ret2
         found = true
         let typ=pi[^2]
         if typ.kind == nnkVarTy:
           resultTyp = typ[0]
         else:
           error("expected `var` param", typ)
+        dumpParams()
+        # can't use this pending #11915 D20190808T035431, so need to resort
+        # to introducing `Dummy`
+        # pi2 = newTree(nnkIdentDefs, ret, newEmptyNode(), newCall(bindSym"default", resultTyp))
+        # we could also avoid this hack in some cases, eg when the proc isn't generic
+        let retType = quote do:
+          `resultTyp` | `Dummy`
+        pi2 = newTree(nnkIdentDefs, ret, retType, bindSym"dummy")
+        formatParams2.add pi2.copyNimTree
+        pi2 = newTree(nnkIdentDefs)
       else:
         pi2.add ai
-    if pi2.len > 0:
-      pi2.add pi[^2]
-      pi2.add pi[^1]
-      formatParams2.add pi2
-    else: discard
-      # we could handle the case where T can't be deduced from other params:
-      #    proc fun13[T](a: string, result: var T) {.outparam.}
-      # => template fun13(a: string, T: typedesc): untyped
-      # but probably best to do in another macro to avoid confusion
+        call2.add ai
+    dumpParams()
 
   if not found:
-    error("expected some `var " & outName & "` param", params)
+    error("expected some `var " & paramName & "` param", params)
 
   var body2 = quote do:
     block:
-      var `ret`: `resultTyp`
+      when type(`ret`) is Dummy:
+        var `ret2`: `resultTyp`
+      else:
+        var `ret2` = `ret`
       `call2`
-      `ret`
+      `ret2`
 
   result.add nnkTemplateDef.newTree(
       sym,
       newEmptyNode(),
-      fun[2],
+      generics,
       formatParams2,
       newEmptyNode(),
       newEmptyNode(),
       body2
     )
 
+macro outparamAs*(name: untyped, body: untyped): untyped =
+  ## same as `outparam` but allows specifying which parameter to lift.
+  result = newStmtList()
+  result.add body
+  result.outparamImpl(body, name.repr)
+
 macro outparam*(body: untyped): untyped =
   ## allow calling in-place a proc with a `var result` parameter
   ## See unittests in $nim/tests/stdlib/toutparam.nim
   runnableExamples:
     proc fun1*(result: var string, b: int) {.outparam.} = result.add $b
-    ## generates `fun1` as well as this in-place overload:
+    ## generates `fun1` as well as an in-place overload that behaves like this:
     ## template fun1*(b: int): untyped =
     ##   block:
     ##     var result: string
     ##     fun1(result, b)
     ##     result
-    doAssert fun1(12) == "12"
+    doAssert fun1(b=12) == "12"
 
   result = newStmtList()
   result.add body
-  result.outparamImpl(body)
+  result.outparamImpl(body, "result")
