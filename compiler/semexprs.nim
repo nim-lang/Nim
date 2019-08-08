@@ -2438,6 +2438,7 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
       strTableAdd(c.module.tab, s)
       result.add newSymNode(s, n.info)
     s = nextIter(i, exported.tab)
+  markUsed(c, n.info, exported)
 
 proc semExport(c: PContext, n: PNode): PNode =
   result = newNodeI(nkExportStmt, n.info)
