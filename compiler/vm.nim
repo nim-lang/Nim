@@ -1392,27 +1392,32 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
-      if dest.kind notin {nkEmpty..nkNilLit} and idx <% dest.len:
-        dest.sons[idx] = regs[rc].node
-      else:
+      if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif dest.kind in {nkEmpty..nkNilLit} or idx >=% dest.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
+      else:
+        dest.sons[idx] = regs[rc].node
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit}:
-        u.add(regs[rc].node)
-      else:
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+      else:
+        u.add(regs[rc].node)
       regs[ra].node = u
     of opcNAddMultiple:
       decodeBC(rkNode)
       let x = regs[rc].node
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit}:
-        # XXX can be optimized:
-        for i in 0..<x.len: u.add(x.sons[i])
-      else:
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+      else:
+        for i in 0 ..< x.len: u.add(x.sons[i])
       regs[ra].node = u
     of opcNKind:
       decodeB(rkInt)
