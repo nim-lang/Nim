@@ -508,32 +508,23 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     assert name == ""
     assert ext == ""
 
-  if path.len == 0:
-    result = ("", "", "")
-  elif path[^1] in {DirSep, AltSep}:
-    if path.len == 1:
-      # issue #8255
-      result = ($path[0], "", "")
-    else:
-      result = (path[0 ..< ^1], "", "")
-  else:
-    var sepPos = -1
-    var dotPos = path.len
-    for i in countdown(len(path)-1, 0):
-      if path[i] == ExtSep:
-        if dotPos == path.len and i > 0 and
-            path[i-1] notin {DirSep, AltSep, ExtSep}: dotPos = i
-      elif path[i] in {DirSep, AltSep}:
-        sepPos = i
-        break
-    if sepPos-1 >= 0:
-      result.dir = substr(path, 0, sepPos-1)
-    elif path[0] in {DirSep, AltSep}:
-      # issue #8255
-      result.dir = $path[0]
-
-    result.name = substr(path, sepPos+1, dotPos-1)
-    result.ext = substr(path, dotPos)
+  var namePos = 0
+  var dotPos = 0
+  for i in countdown(len(path) - 1, 0):
+    if path[i] in {DirSep, AltSep} or i == 0:
+      if path[i] in {DirSep, AltSep}:
+        result.dir = substr(path, 0, max(0, i - 1))
+        namePos = i + 1
+      if dotPos > i:
+        result.name = substr(path, namePos, dotPos - 1)
+        result.ext = substr(path, dotPos)
+      else:
+        result.name = substr(path, namePos)
+      break
+    elif path[i] == ExtSep and i > 0 and i < len(path) - 1 and
+         path[i - 1] notin {DirSep, AltSep} and
+         path[i + 1] != ExtSep and dotPos == 0:
+      dotPos = i
 
 proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
