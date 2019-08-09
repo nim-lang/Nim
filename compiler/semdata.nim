@@ -140,7 +140,7 @@ type
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: IntSet
 
-template idPairToInt*(a, b: int): int = a * 10_000_000 + b
+template idPairToInt*(a, b: int): int = a * 1_000_000 + b
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
