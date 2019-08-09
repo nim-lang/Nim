@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos
+  magicsys, vmdef, modulegraphs, lineinfos, sets
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -138,9 +138,7 @@ type
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
-    exportIndirections*: IntSet
-
-template idPairToInt*(a, b: int): int = a * 1_000_000 + b
+    exportIndirections*: HashSet[(int, int)]
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

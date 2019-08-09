@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos
+  semdata, modulepaths, sigmatch, lineinfos, sets
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -70,7 +70,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
     if s.kind == skConverter: addConverter(c, s)
     if hasPattern(s): addPattern(c, s)
   if s.owner != origin:
-    c.exportIndirections.incl(idPairToInt(origin.id, s.id))
+    c.exportIndirections.incl((origin.id, s.id))
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   let ident = lookups.considerQuotedIdent(c, n)
