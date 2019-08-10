@@ -759,7 +759,9 @@ type
     lfImportCompilerProc,     # ``importc`` of a compilerproc
     lfSingleUse               # no location yet and will only be used once
     lfEnforceDeref            # a copyMem is required to dereference if this a
-      # ptr array due to C array limitations. See #1181, #6422, #11171
+                              # ptr array due to C array limitations.
+                              # See #1181, #6422, #11171
+    lfPrepareForMutation      # string location is about to be mutated (V2)
   TStorageLoc* = enum
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section

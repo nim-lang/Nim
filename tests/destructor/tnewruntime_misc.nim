@@ -2,6 +2,7 @@ discard """
   cmd: '''nim cpp --newruntime $file'''
   output: '''(field: "value")
 Indeed
+axc
 0  new: 0'''
 """
 
@@ -23,6 +24,11 @@ proc main =
   w["key"] = Node(field: "value")
   echo w["key"][]
   echo getEnv("HEAPTRASHING")
+
+  # bug #11891
+  var x = "abc"
+  x[1] = 'x'
+  echo x
 
 main()
 
