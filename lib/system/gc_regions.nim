@@ -277,14 +277,13 @@ when false:
     setObstackPtr(obs)
 
 template withScratchRegion*(body: untyped) =
-  var scratch: MemRegion
   let oldRegion = tlRegion
-  tlRegion = scratch
+  tlRegion = MemRegion()
   try:
     body
   finally:
+    deallocAll()
     tlRegion = oldRegion
-    deallocAll(scratch)
 
 when false:
   proc joinRegion*(dest: var MemRegion; src: MemRegion) =
