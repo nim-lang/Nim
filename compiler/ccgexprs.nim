@@ -941,6 +941,10 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", [a.r])
+
+  if lfPrepareForMutation in d.flags and ty.kind == tyString and
+      p.config.selectedGC == gcDestructors:
+    linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   putIntoDest(p, d, n,
               ropecg(p.module, "$1$3[$2]", [rdLoc(a), rdCharLoc(b), dataField(p)]), a.storage)
 

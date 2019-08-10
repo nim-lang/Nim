@@ -189,3 +189,13 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
       a.p.cap = b.len
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
+
+proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl.} =
+  if s.p != nil and s.p.allocator == nil:
+    let oldP = s.p
+    # can't mutate a literal, so we need a fresh copy here:
+    let allocator = getLocalAllocator()
+    s.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(s.len)))
+    s.p.allocator = allocator
+    s.p.cap = s.len
+    copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
