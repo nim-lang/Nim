@@ -102,13 +102,13 @@ var
   tlRegion {.threadVar.}: MemRegion
 #  tempStrRegion {.threadVar.}: MemRegion  # not yet used
 
-template withRegion*(r: MemRegion; body: untyped) =
+template withRegion*(r: var MemRegion; body: untyped) =
   let oldRegion = tlRegion
   tlRegion = r
   try:
     body
   finally:
-    #r = tlRegion
+    r = tlRegion
     tlRegion = oldRegion
 
 template inc(p: pointer, s: int) =
