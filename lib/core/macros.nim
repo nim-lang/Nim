@@ -1619,7 +1619,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): bool =
   of nnkTypeOfExpr:
     var typeSym = n.getTypeInst
     # dealing with shitty typedesc that sneasks into everything
-    while typeSym.kind == nnkBracketEXpr and typeSym[0].eqIdent "typeDesc":
+    while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
       typeSym = typeSym[1]
     case typeSym.kind:
     of nnkSym:
@@ -1662,7 +1662,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
     else:
       var typeSym = n.getTypeInst
       # dealing with shitty typedesc that sneasks into everything
-      while typeSym.kind == nnkBracketEXpr and typeSym[0].eqIdent "typeDesc":
+      while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
         typeSym = typeSym[1]
       case typeSym.kind:
       of nnkSym:
