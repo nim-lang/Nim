@@ -796,7 +796,11 @@ proc p(n: PNode; c: var Con): PNode =
       result = n
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
-      result = moveOrCopy(n[0], n[1], c)
+      # rule (self-assignment-removal):
+      if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
+        result = newNodeI(nkEmpty, n.info)
+      else:
+        result = moveOrCopy(n[0], n[1], c)
     else:
       result = copyNode(n)
       recurse(n, result)
