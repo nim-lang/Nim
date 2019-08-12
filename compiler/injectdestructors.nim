@@ -532,7 +532,6 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     ri2.add ri[0]
     for i in 1..<ri.len:
       ri2.add pArg(ri[i], c, i < L and isSinkTypeForParam(parameters[i]))
-    #recurse(ri, ri2)
     result.add ri2
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
