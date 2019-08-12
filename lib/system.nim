@@ -2938,7 +2938,7 @@ proc `==`*[T](x, y: openArray[T]): bool =
 
   result = true
 
-proc `@`*[T](a: sink openArray[T]): seq[T] =
+proc `@`*[T](a: openArray[T]): seq[T] =
   ## Turns an *openArray* into a sequence.
   ##
   ## This is not as efficient as turning a fixed length array into a sequence
