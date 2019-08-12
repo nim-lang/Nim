@@ -503,6 +503,11 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
       result = passCopyToSink(arg, c)
+  elif arg.kind == nkBracket:
+    # Treat `f([...])` like `f(...)`
+    result = copyNode(arg)
+    for son in arg:
+      result.add pArg(son, c, isSinkTypeForParam(son.typ))
   else:
     result = p(arg, c)
 
@@ -792,10 +797,6 @@ proc p(n: PNode; c: var Con): PNode =
     result = copyNode(n)
     recurse(n, result)
     dec c.inLoop
-  of nkBracket:
-    result = copyNode(n)
-    for son in n:
-      result.add pArg(son, c, isSink = true)
   else:
     result = copyNode(n)
     recurse(n, result)
@@ -828,8 +829,9 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     if c.g[i].kind in {goto, fork}:
       c.jumpTargets.incl(i+c.g[i].dest)
   dbg:
-    echo "\n### ", owner.name.s, ":\n", n
+    echo "\n### ", owner.name.s, ":\nCFG:"
     echoCfg(c.g)
+    echo n
   if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:
     let params = owner.typ.n
     for i in 1..<params.len:
