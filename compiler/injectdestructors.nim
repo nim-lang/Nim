@@ -437,17 +437,6 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc isSinkTypeForParam(t: PType): bool =
-  # a parameter like 'seq[owned T]' must not be used only once, but its
-  # elements must, so we detect this case here:
-  result = t.skipTypes({tyGenericInst, tyAlias}).kind in {tySink, tyOwned}
-  when false:
-    if isSinkType(t):
-      if t.skipTypes({tyGenericInst, tyAlias}).kind in {tyArray, tyVarargs, tyOpenArray, tySequence}:
-        result = false
-      else:
-        result = true
-
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)

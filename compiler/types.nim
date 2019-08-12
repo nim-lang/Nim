@@ -1579,3 +1579,14 @@ proc isException*(t: PType): bool =
     if t.sons[0] == nil: break
     t = skipTypes(t.sons[0], abstractPtrs)
   return false
+
+proc isSinkTypeForParam*(t: PType): bool =
+  # a parameter like 'seq[owned T]' must not be used only once, but its
+  # elements must, so we detect this case here:
+  result = t.skipTypes({tyGenericInst, tyAlias}).kind in {tySink, tyOwned}
+  when false:
+    if isSinkType(t):
+      if t.skipTypes({tyGenericInst, tyAlias}).kind in {tyArray, tyVarargs, tyOpenArray, tySequence}:
+        result = false
+      else:
+        result = true

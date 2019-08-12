@@ -52,5 +52,11 @@ type
       x*: int
 var t: MyType
 
+# bug #11254
+proc test(p: owned proc()) =
+  let x = (proc())p
+
+test(proc() = discard)
+
 let (a, d) = allocCounters()
 discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)
