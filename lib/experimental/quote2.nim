@@ -49,11 +49,31 @@ proc newTreeExpr(exprNode, symbolTable: NimNode): NimNode {.compileTime.} =
 macro quoteAst*(args: varargs[untyped]): untyped =
   let symbolList = nnkBracket.newTree()
 
-  for i in 0 ..< args.len-1:
-    expectKind(args[i], {nnkIdent, nnkAccQuoted})
-    if args[i].kind == nnkAccQuoted:
-      symbolList.add args[i][0]
-    else:
-      symbolList.add args[i]
+  let templateSym = genSym(nskTemplate)
 
-  result = newTreeExpr(args[^1], symbolList)
+  let formalParams = nnkFormalParams.newTree(ident"untyped")
+  for i in 0 ..< args.len-1:
+    formalParams.add nnkIdentDefs.newTree(
+      args[i], ident"untyped", newEmptyNode()
+    )
+
+  let templateDef = nnkTemplateDef.newTree(
+    templateSym,
+    newEmptyNode(),
+    newEmptyNode(),
+    formalParams,
+    nnkPragma.newTree(ident"dirty"),
+    newEmptyNode(),
+    nnkStmtList.newTree(
+      args[^1]
+    )
+  )
+
+  let templateCall = newCall(templateSym)
+  for i in 0 ..< args.len-1:
+    templateCall.add newCall(bindSym"expectNimNode", args[i])
+  let getAstCall = newCall(bindSym"getAst", templateCall)
+
+  result = newStmtList(templateDef, getAstCall)
+
+  echo result.repr
