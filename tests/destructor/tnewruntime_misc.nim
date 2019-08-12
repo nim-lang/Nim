@@ -3,6 +3,7 @@ discard """
   output: '''(field: "value")
 Indeed
 axc
+(v: 10)
 0  new: 0'''
 """
 
@@ -57,6 +58,22 @@ proc test(p: owned proc()) =
   let x = (proc())p
 
 test(proc() = discard)
+
+# bug #10689
+
+type
+  O = object
+    v: int
+
+proc `=sink`(d: var O, s: O) =
+  d.v = s.v
+
+proc selfAssign =
+  var o = O(v: 10)
+  o = o
+  echo o
+
+selfAssign()
 
 let (a, d) = allocCounters()
 discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)
