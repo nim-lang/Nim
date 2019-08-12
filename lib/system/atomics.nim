@@ -12,6 +12,10 @@
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
 
+type
+  AtomType* = SomeNumber|pointer|ptr|char|bool
+    ## Type Class representing valid types for use with atomic procs
+
 when someGcc and hasThreadSupport:
   type AtomMemModel* = distinct cint
 
@@ -36,10 +40,6 @@ when someGcc and hasThreadSupport:
     ## Full barrier in both directions and synchronizes
     ## with acquire loads
     ## and release stores in all threads.
-
-  type
-    AtomType* = SomeNumber|pointer|ptr|char|bool
-      ## Type Class representing valid types for use with atomic procs
 
   proc atomicLoadN*[T: AtomType](p: ptr T, mem: AtomMemModel): T {.
     importc: "__atomic_load_n", nodecl.}
@@ -164,6 +164,34 @@ when someGcc and hasThreadSupport:
 
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
 elif defined(vcc) and hasThreadSupport:
+  type AtomMemModel* = distinct cint
+
+  const
+    ATOMIC_RELAXED = 0.AtomMemModel
+    ATOMIC_CONSUME = 1.AtomMemModel
+    ATOMIC_ACQUIRE = 2.AtomMemModel
+    ATOMIC_RELEASE = 3.AtomMemModel
+    ATOMIC_ACQ_REL = 4.AtomMemModel
+    ATOMIC_SEQ_CST = 5.AtomMemModel
+
+  proc `==`(x1, x2: AtomMemModel): bool {.borrow.}
+
+  proc readBarrier() {.importc: "_ReadBarrier",  header: "<intrin.h>".}
+  proc writeBarrier() {.importc: "_WriteBarrier",  header: "<intrin.h>".}
+  proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
+
+  template barrier(mem: AtomMemModel) =
+    when mem == ATOMIC_RELAXED: discard
+    elif mem == ATOMIC_CONSUME: readBarrier()
+    elif mem == ATOMIC_ACQUIRE: writeBarrier()
+    elif mem == ATOMIC_RELEASE: fence()
+    elif mem == ATOMIC_ACQ_REL: fence()
+    elif mem == ATOMIC_SEQ_CST: fence()
+
+  proc atomicLoadN*[T: AtomType](p: ptr T, mem: static[AtomMemModel]): T =
+    result = p[]
+    barrier(mem)
+
   when defined(cpp):
     when sizeof(int) == 8:
       proc addAndFetch*(p: ptr int, val: int): int {.
@@ -180,8 +208,6 @@ elif defined(vcc) and hasThreadSupport:
     else:
       proc addAndFetch*(p: ptr int, val: int): int {.
         importc: "_InterlockedExchangeAdd", header: "<intrin.h>".}
-
-  proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
 
 else:
   proc addAndFetch*(p: ptr int, val: int): int {.inline.} =
