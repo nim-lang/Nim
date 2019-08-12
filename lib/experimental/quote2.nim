@@ -2,6 +2,9 @@ import macros
 export macros
 
 template expectNimNode(arg: untyped): NimNode = arg
+  ## This template is here just to insert the type check. When the
+  ## typecheck to ``NimNode`` fails the user will get a nice error
+  ## message.
 
 proc newTreeWithLineinfo*(kind: NimNodeKind; lineinfo: LineInfo; children: varargs[NimNode]): NimNode {.compileTime.} =
   ## like ``macros.newTree``, just that the first argument is a node to take lineinfo from.
@@ -12,7 +15,7 @@ proc newTreeWithLineinfo*(kind: NimNodeKind; lineinfo: LineInfo; children: varar
 
 # TODO restrict unquote to nimnode expressions (error message)
 
-const forwardLineinfo = false
+const forwardLineinfo = true
 
 proc containsSymbol(symbolList, name: NimNode): bool =
   for x in symbolList:
@@ -26,7 +29,7 @@ proc newTreeExpr(exprNode, symbolTable: NimNode): NimNode {.compileTime.} =
     result = newCall(bindSym"newLit", exprNode)
   elif exprNode.kind == nnkIdent:
     result =
-      if containsSymbol(symbolTable, exprNode): exprNode
+      if containsSymbol(symbolTable, exprNode): newCall(bindSym"expectNimnode", exprNode)
       else: newCall(bindSym"ident", newLit(exprNode.strVal))
   elif exprNode.kind == nnkSym:
     error("for quoting the ast needs to be untyped", exprNode)

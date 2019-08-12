@@ -1,5 +1,9 @@
 discard """
 nimout: '''
+true
+123
+'''
+output: '''
 false
 5
 3
