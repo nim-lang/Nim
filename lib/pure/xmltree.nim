@@ -392,7 +392,7 @@ proc clear*(n: var XmlNode) =
 
 
 iterator items*(n: XmlNode): XmlNode {.inline.} =
-  ## Iterates over any child of `n`.
+  ## Iterates over all immediate children of `n`.
   ##
   ## **Examples:**
   ##
@@ -417,7 +417,7 @@ iterator items*(n: XmlNode): XmlNode {.inline.} =
   for i in 0 .. n.len-1: yield n[i]
 
 iterator mitems*(n: var XmlNode): var XmlNode {.inline.} =
-  ## Iterates over any child of `n` so that it can be modified.
+  ## Iterates over all immediate children of `n` so that they can be modified.
   assert n.k == xnElement
   for i in 0 .. n.len-1: yield n[i]
 
