@@ -7,6 +7,7 @@
 #
 ## code owner: Arne Döring
 ## e-mail: arne.doering@gmx.net
+## included from types.nim
 
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
@@ -289,8 +290,6 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   typ.size = szIllegalRecursion
   typ.align = szIllegalRecursion
 
-  var maxAlign, sizeAccum, length: BiggestInt
-
   var tk = typ.kind
   case tk
   of tyProc:
@@ -345,7 +344,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = 4              # use signed int32
       typ.align = 4
     else:
-      length = toInt64(lastOrd(conf, typ))   # BUGFIX: use lastOrd!
+      let length = toInt64(lastOrd(conf, typ))   # BUGFIX: use lastOrd!
       if length + 1 < `shl`(1, 8):
         typ.size = 1
         typ.align = 1
@@ -363,7 +362,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize # in original version this was 1
     else:
-      length = toInt64(lengthOrd(conf, typ.sons[0]))
+      let length = toInt64(lengthOrd(conf, typ.sons[0]))
       if length <= 8:
         typ.size = 1
       elif length <= 16:
@@ -399,64 +398,66 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szIllegalRecursion
       typ.align = szIllegalRecursion
   of tyObject:
-    var headerSize: BiggestInt
-    var headerAlign: int16
-    if typ.sons[0] != nil:
-      # compute header size
-      if conf.cmd == cmdCompileToCpp:
-        # if the target is C++ the members of this type are written
-        # into the padding byets at the end of the parent type. At the
-        # moment it is not supported to calculate that.
-        headerSize = szUnknownSize
-        headerAlign = szUncomputedSize
-      else:
-        var st = typ.sons[0]
-        while st.kind in skipPtrs:
-          st = st.sons[^1]
-        computeSizeAlign(conf, st)
-        if st.size == szIllegalRecursion:
-          typ.size = st.size
-          typ.align = st.align
-          return
-        headerSize = st.size
-        headerAlign = st.align
-    elif isObjectWithTypeFieldPredicate(typ):
-      # this branch is taken for RootObj
-      headerSize = conf.target.intSize
-      headerAlign = conf.target.intSize.int16
-    else:
-      headerSize = 0
-      headerAlign = 1
-    let (offset, align) =
-      if tfUnion in typ.flags:
-        if tfPacked in typ.flags:
-          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
-          localError(conf, info, "type may not be packed and union at the same time.")
-          (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
+    try:
+      var headerAccum =
+        if typ.sons[0] != nil:
+          # compute header size
+          if conf.cmd == cmdCompileToCpp:
+            # if the target is C++ the members of this type are written
+            # into the padding byets at the end of the parent type. At the
+            # moment it is not supported to calculate that.
+            OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
+          else:
+            var st = typ.sons[0]
+            while st.kind in skipPtrs:
+              st = st.sons[^1]
+            computeSizeAlign(conf, st)
+            OffsetAccum(
+              offset: int(st.size),
+              maxAlign: st.align
+            )
+        elif isObjectWithTypeFieldPredicate(typ):
+          # this branch is taken for RootObj
+          OffsetAccum(
+            offset: conf.target.intSize,
+            maxAlign: conf.target.intSize
+          )
         else:
-          computeUnionObjectOffsetsFoldFunction(conf, typ.n, false)
-      elif tfPacked in typ.flags:
-        (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(1))
+          OffsetAccum(maxAlign: 1)
+
+      let (offset, align) =
+        if tfUnion in typ.flags:
+          if tfPacked in typ.flags:
+            let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+            localError(conf, info, "type may not be packed and union at the same time.")
+            (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
+          else:
+            computeUnionObjectOffsetsFoldFunction(conf, typ.n, false)
+        elif tfPacked in typ.flags:
+          (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum.offset, false), BiggestInt(1))
+        else:
+          computeObjectOffsetsFoldFunction(conf, typ.n, headerAccum.offset)
+      if offset == szIllegalRecursion:
+        typ.size = szIllegalRecursion
+        typ.align = szIllegalRecursion
+        return
+      if offset == szUnknownSize or (
+          typ.sym != nil and
+          typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}):
+        typ.size = szUnknownSize
+        typ.align = szUnknownSize
+        return
+      # header size is already in size from computeObjectOffsetsFoldFunction
+      # maxAlign is probably not changed at all from headerAlign
+      if tfPacked in typ.flags:
+        typ.size = offset
+        typ.align = 1
       else:
-        computeObjectOffsetsFoldFunction(conf, typ.n, headerSize)
-    if offset == szIllegalRecursion:
+        typ.align = int16(max(align, headerAccum.maxAlign))
+        typ.size = align(offset, typ.align)
+    except IllegalTypeRecursionError:
       typ.size = szIllegalRecursion
       typ.align = szIllegalRecursion
-      return
-    if offset == szUnknownSize or (
-        typ.sym != nil and
-        typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}):
-      typ.size = szUnknownSize
-      typ.align = szUnknownSize
-      return
-    # header size is already in size from computeObjectOffsetsFoldFunction
-    # maxAlign is probably not changed at all from headerAlign
-    if tfPacked in typ.flags:
-      typ.size = offset
-      typ.align = 1
-    else:
-      typ.align = int16(max(align, headerAlign))
-      typ.size = align(offset, typ.align)
   of tyInferred:
     if typ.len > 1:
       computeSizeAlign(conf, typ.lastSon)
