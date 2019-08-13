@@ -137,7 +137,6 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
     else:
       # the union neds to be aligned first, before the offsets can be assigned
       accum.align(maxChildAlign)
-      var maxChildOffset: int
       let accumRoot = accum # copy, because each branch should start af the same offset
       for i in 1 ..< sonsLen(n):
         var branchAccum = accumRoot
@@ -151,8 +150,8 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
     var align = szUnknownSize
     if n.sym.bitsize == 0: # 0 represents bitsize not set
       computeSizeAlign(conf, n.sym.typ)
-      size = n.sym.typ.size.int
       align = n.sym.typ.align.int
+      size = n.sym.typ.size.int
     accum.align(align)
     n.sym.offset = accum.offset
     accum.inc(size)
@@ -160,44 +159,35 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
     accum.maxAlign = szUnknownSize
     accum.offset = szUnknownSize
 
-proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt): BiggestInt =
+proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var OffsetAccum) =
   ## ``result`` is the offset within the object, after the node has been written, no padding bytes added
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    let kindOffset = computePackedObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset)
+    computePackedObjectOffsetsFoldFunction(conf, n.sons[0], accum)
     # the union neds to be aligned first, before the offsets can be assigned
-    let kindUnionOffset = kindOffset
-    var maxChildOffset: BiggestInt = kindUnionOffset
+    let accumRoot = accum # copy, because each branch should start af the same offset
     for i in 1 ..< sonsLen(n):
-      let offset = computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset)
-      if offset == szIllegalRecursion:
-        return szIllegalRecursion
-      if offset == szUnknownSize or maxChildOffset == szUnknownSize:
-        maxChildOffset = szUnknownSize
-      else:
-        maxChildOffset = max(maxChildOffset, offset)
-    result = maxChildOffset
+      var branchAccum = accumRoot
+      computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, branchAccum)
+      accum.mergeBranch(branchAccum)
   of nkRecList:
-    result = initialOffset
     for i, child in n.sons:
-      result = computePackedObjectOffsetsFoldFunction(conf, child, result)
-      if result == szIllegalRecursion:
-        break
+      computePackedObjectOffsetsFoldFunction(conf, child, accum)
   of nkSym:
     var size = szUnknownSize
+    var align = szUnknownSize
     if n.sym.bitsize == 0:
       computeSizeAlign(conf, n.sym.typ)
       size = n.sym.typ.size.int
+      align = 1
 
-    if initialOffset == szUnknownSize or size == szUnknownSize:
-      n.sym.offset = szUnknownSize
-      result = szUnknownSize
-    else:
-      n.sym.offset = int(initialOffset)
-      result = initialOffset + n.sym.typ.size
+    accum.align(align)
+    n.sym.offset = accum.offset
+    accum.inc(size)
   else:
-    result = szUnknownSize
+    accum.maxAlign = szUnknownSize
+    accum.offset = szUnknownSize
 
 proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode): tuple[offset, align: BiggestInt] =
   ## ``result`` is the offset from the larget member of the union.
@@ -414,7 +404,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           else:
             computeUnionObjectOffsetsFoldFunction(conf, typ.n)
         elif tfPacked in typ.flags:
-          (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum.offset), BiggestInt(1))
+          computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
+          (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
         else:
           computeObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
           (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))

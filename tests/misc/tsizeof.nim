@@ -620,9 +620,6 @@ doAssert offsetof(MyPackedCaseObject, val4) == 9
 doAssert offsetof(MyPackedCaseObject, val5) == 13
 
 reject:
-  const off4 = offsetof(MyPackedCaseObject, val1)
-
-reject:
   const off5 = offsetof(MyPackedCaseObject, val2)
 
 reject:
