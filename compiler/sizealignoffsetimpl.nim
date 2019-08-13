@@ -159,8 +159,8 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
     accum.maxAlign = szUnknownSize
     accum.offset = szUnknownSize
 
-proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var OffsetAccum) =
-  ## ``result`` is the offset within the object, after the node has been written, no padding bytes added
+proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var OffsetAccum) =
+  ## ``accum.offset`` will be the offset within the object, after the node has been written, no padding bytes added
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
@@ -189,29 +189,19 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: va
     accum.maxAlign = szUnknownSize
     accum.offset = szUnknownSize
 
-proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode): tuple[offset, align: BiggestInt] =
-  ## ``result`` is the offset from the larget member of the union.
+proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var OffsetAccum) =
+  ## ``accum.offset`` will the offset from the larget member of the union.
   case n.kind
   of nkRecCase:
-    result.offset = szUnknownSize
-    result.align = szUnknownSize
+    accum.offset = szUnknownSize
+    accum.maxAlign = szUnknownSize
     localError(conf, n.info, "Illegal use of ``case`` in union type.")
-    #internalError(conf, "Illegal use of ``case`` in union type.")
   of nkRecList:
-    var maxChildOffset: BiggestInt = 0
+    let accumRoot = accum # copy, because each branch should start af the same offset
     for i, child in n.sons:
-      let (offset, align) = computeUnionObjectOffsetsFoldFunction(conf, child)
-      if offset == szIllegalRecursion or align == szIllegalRecursion:
-        result.offset = szIllegalRecursion
-        result.align = szIllegalRecursion
-      elif offset == szUnknownSize or align == szUnknownSize:
-        result.offset = szUnknownSize
-        result.align = szUnknownSize
-      else:
-        assert offset != szUncomputedSize
-        assert align != szUncomputedSize
-        result.offset = max(result.offset, offset)
-        result.align = max(result.align, align)
+      var branchAccum = accumRoot
+      computeUnionObjectOffsetsFoldFunction(conf, child, branchAccum)
+      accum.mergeBranch(branchAccum)
   of nkSym:
     var size = szUnknownSize
     var align = szUnknownSize
@@ -220,16 +210,12 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode): tuple[off
       size = n.sym.typ.size.int
       align = n.sym.typ.align.int
 
-    result.align = align
-    if size == szUnknownSize:
-      n.sym.offset = szUnknownSize
-      result.offset = szUnknownSize
-    else:
-      n.sym.offset = 0
-      result.offset = n.sym.typ.size
+    accum.align(align)
+    n.sym.offset = accum.offset
+    accum.inc(size)
   else:
-    result.offset = szUnknownSize
-    result.align = szUnknownSize
+    accum.maxAlign = szUnknownSize
+    accum.offset = szUnknownSize
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   ## computes and sets ``size`` and ``align`` members of ``typ``
@@ -399,10 +385,15 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         if tfUnion in typ.flags:
           if tfPacked in typ.flags:
             let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
-            localError(conf, info, "type may not be packed and union at the same time.")
+            localError(conf, info, "union type may not be packed.")
+            (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
+          elif headerAccum.offset != 0:
+            let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+            localError(conf, info, "union type may not have an object header")
             (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
           else:
-            computeUnionObjectOffsetsFoldFunction(conf, typ.n)
+            computeUnionObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
+            (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
         elif tfPacked in typ.flags:
           computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
           (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
