@@ -2,7 +2,7 @@ discard """
   cmd: '''nim c --newruntime $file'''
   output: '''button
 clicked!
-6 6  alloc/dealloc pairs: 0'''
+5 5  alloc/dealloc pairs: 0'''
 """
 
 import core / allocators

@@ -1,7 +1,7 @@
 discard """
   cmd: '''nim c --newruntime $file'''
   output: '''OK 3
-5 1'''
+4 0'''
 """
 
 import strutils, math

@@ -1,7 +1,7 @@
 discard """
   cmd: '''nim c --newruntime $file'''
   output: '''0
-3 3  alloc/dealloc pairs: 0'''
+2 2  alloc/dealloc pairs: 0'''
 """
 
 import core / allocators
