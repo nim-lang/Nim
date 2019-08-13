@@ -295,6 +295,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     computeSizeAlign(conf, base)
     typ.size = 0
     typ.align = base.align
+
   of tyEnum:
     if firstOrd(conf, typ) < Zero:
       typ.size = 4              # use signed int32
@@ -313,6 +314,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       else:
         typ.size = 8
         typ.align = 8
+
   of tySet:
     if typ.sons[0].kind == tyGenericParam:
       typ.size = szUncomputedSize
@@ -336,6 +338,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     computeSizeAlign(conf, typ.sons[0])
     typ.size = typ.sons[0].size
     typ.align = typ.sons[0].align
+
   of tyTuple:
     try:
       var accum = OffsetAccum(maxAlign: 1)
@@ -353,9 +356,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     except IllegalTypeRecursionError:
       typ.size = szIllegalRecursion
       typ.align = szIllegalRecursion
+
   of tyObject:
     try:
-      var headerAccum =
+      var accum =
         if typ.sons[0] != nil:
           # compute header size
           if conf.cmd == cmdCompileToCpp:
@@ -380,47 +384,34 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           )
         else:
           OffsetAccum(maxAlign: 1)
-
-      let (offset, align) =
-        if tfUnion in typ.flags:
-          if tfPacked in typ.flags:
-            let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
-            localError(conf, info, "union type may not be packed.")
-            (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
-          elif headerAccum.offset != 0:
-            let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
-            localError(conf, info, "union type may not have an object header")
-            (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
-          else:
-            computeUnionObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
-            (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
-        elif tfPacked in typ.flags:
-          computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
-          (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
+      if tfUnion in typ.flags:
+        if tfPacked in typ.flags:
+          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+          localError(conf, info, "union type may not be packed.")
+          accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
+        elif accum.offset != 0:
+          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+          localError(conf, info, "union type may not have an object header")
+          accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
         else:
-          computeObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
-          (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
-      if offset == szIllegalRecursion:
-        typ.size = szIllegalRecursion
-        typ.align = szIllegalRecursion
-        return
-      if offset == szUnknownSize or (
-          typ.sym != nil and
-          typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}):
+          computeUnionObjectOffsetsFoldFunction(conf, typ.n, accum)
+      elif tfPacked in typ.flags:
+        accum.maxAlign = 1
+        computePackedObjectOffsetsFoldFunction(conf, typ.n, accum)
+      else:
+        computeObjectOffsetsFoldFunction(conf, typ.n, accum)
+      accum.finish
+      if typ.sym != nil and
+         typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}:
         typ.size = szUnknownSize
         typ.align = szUnknownSize
-        return
-      # header size is already in size from computeObjectOffsetsFoldFunction
-      # maxAlign is probably not changed at all from headerAlign
-      if tfPacked in typ.flags:
-        typ.size = offset
-        typ.align = 1
       else:
-        typ.align = int16(max(align, headerAccum.maxAlign))
-        typ.size = align(offset, typ.align)
+        typ.size = accum.offset
+        typ.align = int16(accum.maxAlign)
     except IllegalTypeRecursionError:
       typ.size = szIllegalRecursion
       typ.align = szIllegalRecursion
+
   of tyInferred:
     if typ.len > 1:
       computeSizeAlign(conf, typ.lastSon)
