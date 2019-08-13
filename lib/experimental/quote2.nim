@@ -46,16 +46,41 @@ proc newTreeExpr(exprNode, symbolTable: NimNode): NimNode {.compileTime.} =
     for child in exprNode:
       result.add newTreeExpr(child, symbolTable)
 
-macro quoteAst*(args: varargs[untyped]): untyped =
-  let symbolList = nnkBracket.newTree()
 
-  let templateSym = genSym(nskTemplate)
+proc substitudeComments(symbols, values, n: NimNode): NimNode =
+  ## substitudes all nodes of kind nnkCommentStmt to parameter
+  ## symbols. Consumes the argument `n`.
+  if n.kind == nnkCommentStmt:
+    values.add newCall(bindSym"newCommentStmtNode", newLit(n.strVal))
+    # Gensym doesn't work for parameters.
+    symbols.add ident("comment"& $values.len & "_OXedObJnhBm6CsumKV2Z")
+    return symbols[^1]
+  for i in 0 ..< n.len:
+    n[i] = substitudeComments(symbols, values, n[i])
+  return n
+
+macro quoteAst*(args: varargs[untyped]): untyped =
+  # This is a workaround for #10430 where comments are removed in
+  # template expansions. This workaround fixes lifts all comments
+  # statements to be arguments of the temporary template.
+
+  let extraCommentSymbols = newNimNode(nnkBracket)
+  let extraCommentGenExpr = newNimNode(nnkBracket)
+  let body = substitudeComments(
+    extraCommentSymbols, extraCommentGenExpr, args[^1]
+  )
 
   let formalParams = nnkFormalParams.newTree(ident"untyped")
   for i in 0 ..< args.len-1:
     formalParams.add nnkIdentDefs.newTree(
       args[i], ident"untyped", newEmptyNode()
     )
+  for sym in extraCommentSymbols:
+    formalParams.add nnkIdentDefs.newTree(
+      sym, ident"untyped", newEmptyNode()
+    )
+
+  let templateSym = genSym(nskTemplate)
 
   let templateDef = nnkTemplateDef.newTree(
     templateSym,
@@ -72,8 +97,8 @@ macro quoteAst*(args: varargs[untyped]): untyped =
   let templateCall = newCall(templateSym)
   for i in 0 ..< args.len-1:
     templateCall.add newCall(bindSym"expectNimNode", args[i])
+  for expr in extraCommentGenExpr:
+    templateCall.add expr
   let getAstCall = newCall(bindSym"getAst", templateCall)
-
   result = newStmtList(templateDef, getAstCall)
-
   echo result.repr
