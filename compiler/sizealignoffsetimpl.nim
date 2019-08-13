@@ -40,6 +40,13 @@ proc inc(arg: var OffsetAccum; value: int) =
   else:
     arg.offset += value
 
+proc alignmentMax(a,b: int): int =
+  if unlikely(a == szIllegalRecursion or b == szIllegalRecursion):  raiseIllegalTypeRecursion()
+  if a == szUnknownSize or b == szUnknownSize:
+    szUnknownSize
+  else:
+    max(a,b)
+
 proc align(arg: var OffsetAccum; value: int) =
   if unlikely(value == szIllegalRecursion):  raiseIllegalTypeRecursion()
   if value == szUnknownSize or arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
@@ -119,13 +126,8 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
       case child.kind
       of nkOfBranch, nkElse:
         # offset parameter cannot be known yet, it needs to know the alignment first
-        let align = computeSubObjectAlign(conf, n.sons[i].lastSon)
-        if align == szIllegalRecursion:
-          raiseIllegalTypeRecursion()
-        if align == szUnknownSize or maxChildAlign == szUnknownSize:
-          maxChildAlign = szUnknownSize
-        else:
-          maxChildAlign = max(maxChildAlign, int(align))
+        let align = int(computeSubObjectAlign(conf, n.sons[i].lastSon))
+        maxChildAlign = alignmentMax(maxChildAlign, align)
       else:
         internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
     if maxChildAlign == szUnknownSize:
@@ -158,17 +160,17 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
     accum.maxAlign = szUnknownSize
     accum.offset = szUnknownSize
 
-proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt, debug: bool): BiggestInt =
+proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt): BiggestInt =
   ## ``result`` is the offset within the object, after the node has been written, no padding bytes added
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    let kindOffset = computePackedObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset, debug)
+    let kindOffset = computePackedObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset)
     # the union neds to be aligned first, before the offsets can be assigned
     let kindUnionOffset = kindOffset
     var maxChildOffset: BiggestInt = kindUnionOffset
     for i in 1 ..< sonsLen(n):
-      let offset = computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset, debug)
+      let offset = computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset)
       if offset == szIllegalRecursion:
         return szIllegalRecursion
       if offset == szUnknownSize or maxChildOffset == szUnknownSize:
@@ -179,7 +181,7 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
   of nkRecList:
     result = initialOffset
     for i, child in n.sons:
-      result = computePackedObjectOffsetsFoldFunction(conf, child, result, debug)
+      result = computePackedObjectOffsetsFoldFunction(conf, child, result)
       if result == szIllegalRecursion:
         break
   of nkSym:
@@ -197,7 +199,7 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
   else:
     result = szUnknownSize
 
-proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, debug: bool): tuple[offset, align: BiggestInt] =
+proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode): tuple[offset, align: BiggestInt] =
   ## ``result`` is the offset from the larget member of the union.
   case n.kind
   of nkRecCase:
@@ -208,7 +210,7 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, debug: boo
   of nkRecList:
     var maxChildOffset: BiggestInt = 0
     for i, child in n.sons:
-      let (offset, align) = computeUnionObjectOffsetsFoldFunction(conf, child, debug)
+      let (offset, align) = computeUnionObjectOffsetsFoldFunction(conf, child)
       if offset == szIllegalRecursion or align == szIllegalRecursion:
         result.offset = szIllegalRecursion
         result.align = szIllegalRecursion
@@ -410,9 +412,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
             localError(conf, info, "type may not be packed and union at the same time.")
             (BiggestInt(szUnknownSize), BiggestInt(szUnknownSize))
           else:
-            computeUnionObjectOffsetsFoldFunction(conf, typ.n, false)
+            computeUnionObjectOffsetsFoldFunction(conf, typ.n)
         elif tfPacked in typ.flags:
-          (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum.offset, false), BiggestInt(1))
+          (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum.offset), BiggestInt(1))
         else:
           computeObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
           (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
