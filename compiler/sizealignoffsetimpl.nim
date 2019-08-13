@@ -49,6 +49,15 @@ proc align(arg: var OffsetAccum; value: int) =
     arg.maxAlign = max(value, arg.maxAlign)
     arg.offset = align(arg.offset, value)
 
+proc mergeBranch(arg: var OffsetAccum; value: OffsetAccum) =
+  if value.maxAlign == szUnknownSize or arg.maxAlign == szUnknownSize or
+     value.offset   == szUnknownSize or arg.offset == szUnknownSize:
+    arg.maxAlign = szUnknownSize
+    arg.offset = szUnknownSize
+  else:
+    arg.offset = max(arg.offset, value.offset)
+    arg.maxAlign = max(arg.maxAlign, value.maxAlign)
+
 proc finish(arg: var OffsetAccum) =
   if arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
     arg.offset = szUnknownSize
@@ -94,23 +103,17 @@ proc setOffsetsToUnknown(n: PNode) =
     for i in 0 ..< safeLen(n):
       setOffsetsToUnknown(n[i])
 
-proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
-                                      initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
+proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var OffsetAccum): void =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
   assert n != nil
   if n.typ != nil and n.typ.size == szIllegalRecursion:
-    result.offset = szIllegalRecursion
-    result.align = szIllegalRecursion
-    return
-
-  result.align = 1
+    raiseIllegalTypeRecursion()
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    let (kindOffset, kindAlign) = computeObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset)
-
-    var maxChildAlign: BiggestInt = if initialOffset == szUnknownSize: szUnknownSize else: 0
+    computeObjectOffsetsFoldFunction(conf, n.sons[0], accum)
+    var maxChildAlign: int = if accum.offset == szUnknownSize: szUnknownSize else: 0
     for i in 1 ..< sonsLen(n):
       let child = n.sons[i]
       case child.kind
@@ -118,49 +121,29 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
         # offset parameter cannot be known yet, it needs to know the alignment first
         let align = computeSubObjectAlign(conf, n.sons[i].lastSon)
         if align == szIllegalRecursion:
-          result.offset = szIllegalRecursion
-          result.align = szIllegalRecursion
-          return
+          raiseIllegalTypeRecursion()
         if align == szUnknownSize or maxChildAlign == szUnknownSize:
           maxChildAlign = szUnknownSize
         else:
-          maxChildAlign = max(maxChildAlign, align)
+          maxChildAlign = max(maxChildAlign, int(align))
       else:
         internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
     if maxChildAlign == szUnknownSize:
       setOffsetsToUnknown(n)
-      result.align  = szUnknownSize
-      result.offset = szUnknownSize
+      accum.offset  = szUnknownSize
+      accum.maxAlign = szUnknownSize
     else:
       # the union neds to be aligned first, before the offsets can be assigned
-      let kindUnionOffset = align(kindOffset, maxChildAlign)
-      var maxChildOffset: BiggestInt = 0
+      accum.align(maxChildAlign)
+      var maxChildOffset: int
+      let accumRoot = accum # copy, because each branch should start af the same offset
       for i in 1 ..< sonsLen(n):
-        let (offset, align) = computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset)
-        maxChildOffset = max(maxChildOffset, offset)
-      result.align = max(kindAlign, maxChildAlign)
-      result.offset = maxChildOffset
+        var branchAccum = accumRoot
+        computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, branchAccum)
+        accum.mergeBranch(branchAccum)
   of nkRecList:
-    result.align = 1 # maximum of all member alignments
-    var offset = initialOffset
     for i, child in n.sons:
-      let (newOffset, align) = computeObjectOffsetsFoldFunction(conf, child, offset)
-      if newOffset == szIllegalRecursion:
-        result.offset = szIllegalRecursion
-        result.align = szIllegalRecursion
-        return
-      elif newOffset == szUnknownSize or offset == szUnknownSize:
-        # if anything is unknown, the rest becomes unknown as well
-        offset = szUnknownSize
-        result.align = szUnknownSize
-      else:
-        offset = newOffset
-        result.align = max(result.align, align)
-    # final alignment
-    if offset == szUnknownSize:
-      result.offset = szUnknownSize
-    else:
-      result.offset = align(offset, result.align)
+      computeObjectOffsetsFoldFunction(conf, child, accum)
   of nkSym:
     var size = szUnknownSize
     var align = szUnknownSize
@@ -168,17 +151,12 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
       computeSizeAlign(conf, n.sym.typ)
       size = n.sym.typ.size.int
       align = n.sym.typ.align.int
-
-    result.align = align
-    if initialOffset == szUnknownSize or size == szUnknownSize or align == szUnknownSize:
-      n.sym.offset = szUnknownSize
-      result.offset = szUnknownSize
-    else:
-      n.sym.offset = align(initialOffset, align).int
-      result.offset = n.sym.offset + n.sym.typ.size
+    accum.align(align)
+    n.sym.offset = accum.offset
+    accum.inc(size)
   else:
-    result.align = szUnknownSize
-    result.offset = szUnknownSize
+    accum.maxAlign = szUnknownSize
+    accum.offset = szUnknownSize
 
 proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt, debug: bool): BiggestInt =
   ## ``result`` is the offset within the object, after the node has been written, no padding bytes added
@@ -436,7 +414,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         elif tfPacked in typ.flags:
           (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerAccum.offset, false), BiggestInt(1))
         else:
-          computeObjectOffsetsFoldFunction(conf, typ.n, headerAccum.offset)
+          computeObjectOffsetsFoldFunction(conf, typ.n, headerAccum)
+          (BiggestInt(headerAccum.offset), BiggestInt(headerAccum.maxAlign))
       if offset == szIllegalRecursion:
         typ.size = szIllegalRecursion
         typ.align = szIllegalRecursion
