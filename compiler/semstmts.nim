@@ -676,25 +676,30 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var length = sonsLen(n)
   let iterBase = n.sons[length-2].typ
   var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink})
+  var iterAfterVarLent = iter.skipTypes({tyLent, tyVar})
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
-  if iter.kind != tyTuple or length == 3:
+  if iterAfterVarLent.kind != tyTuple or length == 3:
     if length == 3:
       if n.sons[0].kind == nkVarTuple:
-        var mutable = false
-        if iter.kind == tyVar:
-          iter = iter.skipTypes({tyVar})
-          mutable = true
-        if sonsLen(n[0])-1 != sonsLen(iter):
+        if sonsLen(n[0])-1 != sonsLen(iterAfterVarLent):
           localError(c.config, n[0].info, errWrongNumberOfVariables)
         for i in 0 ..< sonsLen(n[0])-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-          if mutable:
-            v.typ = newTypeS(tyVar, c)
-            v.typ.sons.add iter[i]
-          else:
-            v.typ = iter.sons[i]
+          case iter.kind
+            of tyVar:
+              v.typ = newTypeS(tyVar, c)
+              v.typ.sons.add iterAfterVarLent[i]
+              if tfVarIsPtr in iter.flags:
+                v.typ.flags.incl tfVarIsPtr
+            of tyLent:
+              v.typ = newTypeS(tyLent, c)
+              v.typ.sons.add iterAfterVarLent[i]
+              if tfVarIsPtr in iter.flags:
+                v.typ.flags.incl tfVarIsPtr
+            else:
+              v.typ = iter.sons[i]
           n.sons[0][i] = newSymNode(v)
           if sfGenSym notin v.flags: addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
@@ -710,15 +715,22 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)
-  elif length-2 != sonsLen(iter):
+  elif length-2 != sonsLen(iterAfterVarLent):
     localError(c.config, n.info, errWrongNumberOfVariables)
   else:
     for i in 0 .. length - 3:
       if n.sons[i].kind == nkVarTuple:
         var mutable = false
-        if iter[i].kind == tyVar:
-          iter[i] = iter[i].skipTypes({tyVar})
-          mutable = true
+        var isLent = false
+        iter[i] = case iter[i].kind
+          of tyVar:
+            mutable = true
+            iter[i].skipTypes({tyVar})
+          of tyLent:
+            isLent = true
+            iter[i].skipTypes({tyLent})
+          else: iter[i]
+
         if sonsLen(n[i])-1 != sonsLen(iter[i]):
           localError(c.config, n[i].info, errWrongNumberOfVariables)
         for j in 0 ..< sonsLen(n[i])-1:
@@ -726,6 +738,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
           if mutable:
             v.typ = newTypeS(tyVar, c)
+            v.typ.sons.add iter[i][j]
+          elif isLent:
+            v.typ = newTypeS(tyLent, c)
             v.typ.sons.add iter[i][j]
           else:
             v.typ = iter[i][j]
@@ -735,7 +750,19 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       else:
         var v = symForVar(c, n.sons[i])
         if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-        v.typ = iter.sons[i]
+        case iter.kind
+        of tyVar:
+          v.typ = newTypeS(tyVar, c)
+          v.typ.sons.add iterAfterVarLent[i]
+          if tfVarIsPtr in iter.flags:
+            v.typ.flags.incl tfVarIsPtr
+        of tyLent:
+          v.typ = newTypeS(tyLent, c)
+          v.typ.sons.add iterAfterVarLent[i]
+          if tfVarIsPtr in iter.flags:
+            v.typ.flags.incl tfVarIsPtr
+        else:
+          v.typ = iter.sons[i]
         n.sons[i] = newSymNode(v)
         if sfGenSym notin v.flags:
           if not isDiscardUnderscore(v): addDecl(c, v)
