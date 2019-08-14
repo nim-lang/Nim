@@ -192,7 +192,7 @@ proc interestingVar(s: PSym): bool {.inline.} =
 
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = skipTypes(s.typ, abstractInst).kind in
-                   {tyVar, tyOpenArray, tyVarargs, tyLent} or
+                   {tyVar, tyOpenArray, tyVarargs} or
       s.kind == skResult
 
 proc isInnerProc(s: PSym): bool =
