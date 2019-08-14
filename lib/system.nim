@@ -70,13 +70,13 @@ proc `not`*(a: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `not` meta class.
 
 type
-  Ordinal* {.magic: Ordinal.}[T] ## Generic ordinal type. Includes integer,
+  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
                                  ## bool, character, and enumeration types
                                  ## as well as their subtypes. Note `uint`
                                  ## and `uint64` are not ordinal types for
                                  ## implementation reasons.
-  `ptr`* {.magic: Pointer.}[T]   ## Built-in generic untraced pointer type.
-  `ref`* {.magic: Pointer.}[T]   ## Built-in generic traced pointer type.
+  `ptr`*[T] {.magic: Pointer.}   ## Built-in generic untraced pointer type.
+  `ref`*[T] {.magic: Pointer.}   ## Built-in generic traced pointer type.
 
   `nil` {.magic: "Nil".}
 
@@ -202,13 +202,13 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 when defined(nimNewTypedesc):
   type
-    `static`* {.magic: "Static".}[T]
+    `static`*[T] {.magic: "Static".}
       ## Meta type representing all values that can be evaluated at compile-time.
       ##
       ## The type coercion ``static(x)`` can be used to force the compile-time
       ## evaluation of the given expression ``x``.
 
-    `type`* {.magic: "Type".}[T]
+    `type`*[T] {.magic: "Type".}
       ## Meta type representing the type of all type values.
       ##
       ## The coercion ``type(x)`` can be used to obtain the type of the given
@@ -288,28 +288,28 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   wasMoved(x)
 
 type
-  range*{.magic: "Range".}[T]         ## Generic type to construct range types.
-  array*{.magic: "Array".}[I, T]      ## Generic type to construct
+  range*[T]{.magic: "Range".}         ## Generic type to construct range types.
+  array*[I, T]{.magic: "Array".}      ## Generic type to construct
                                       ## fixed-length arrays.
-  openArray*{.magic: "OpenArray".}[T] ## Generic type to construct open arrays.
+  openArray*[T]{.magic: "OpenArray".} ## Generic type to construct open arrays.
                                       ## Open arrays are implemented as a
                                       ## pointer to the array data and a
                                       ## length field.
-  varargs*{.magic: "Varargs".}[T]     ## Generic type to construct a varargs type.
-  seq*{.magic: "Seq".}[T]             ## Generic type to construct sequences.
-  set*{.magic: "Set".}[T]             ## Generic type to construct bit sets.
+  varargs*[T]{.magic: "Varargs".}     ## Generic type to construct a varargs type.
+  seq*[T]{.magic: "Seq".}             ## Generic type to construct sequences.
+  set*[T]{.magic: "Set".}             ## Generic type to construct bit sets.
 
 when defined(nimUncheckedArrayTyp):
   type
-    UncheckedArray*{.magic: "UncheckedArray".}[T]
+    UncheckedArray*[T]{.magic: "UncheckedArray".}
     ## Array with no bounds checking.
 else:
   type
-    UncheckedArray*{.unchecked.}[T] = array[0,T]
+    UncheckedArray*[T]{.unchecked.} = array[0,T]
     ## Array with no bounds checking.
 
-type sink*{.magic: "BuiltinType".}[T]
-type lent*{.magic: "BuiltinType".}[T]
+type sink*[T]{.magic: "BuiltinType".}
+type lent*[T]{.magic: "BuiltinType".}
 
 proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
   ## Returns the highest possible value of an ordinal value `x`.
@@ -1703,7 +1703,7 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
   ##   assert @[1, 2] isnot enum
 
 when (defined(nimV2) and not defined(nimscript)) or defined(nimFixedOwned):
-  type owned*{.magic: "BuiltinType".}[T] ## type constructor to mark a ref/ptr or a closure as `owned`.
+  type owned*[T]{.magic: "BuiltinType".} ## type constructor to mark a ref/ptr or a closure as `owned`.
 else:
   template owned*(t: typedesc): typedesc = t
 
