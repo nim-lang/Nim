@@ -594,7 +594,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   for i in 1..sonsLen(n)-1:
     let e = semExpr(c, n.sons[i])
     if e.typ == nil:
-      localError(c.config, e.info, "expression has no type")
+      n.sons[i].typ = errorType(c)
     else:
       n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
   var s = s
