@@ -699,7 +699,10 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         branch.add moveOrCopyIfTyped(ri[i][1])
       else:
         branch = copyNode(ri[i])
-        branch.add moveOrCopyIfTyped(ri[i][0])
+        if ri[i][0].kind == nkNilLit: #XXX: Fix semCase to instead gen nkEmpty for cases that are never reached instead
+          branch.add c.emptyNode
+        else:
+          branch.add moveOrCopyIfTyped(ri[i][0])
       result.add branch
   of nkBracket:
     # array constructor
