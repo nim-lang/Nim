@@ -98,7 +98,7 @@ const
 proc toBase64a(s: cstring, len: int): string =
   ## encodes `s` into base64 representation.
   result = newStringOfCap(((len + 2) div 3) * 4)
-  result.add '_'
+  result.add "__"
   var i = 0
   while i < len - 2:
     let a = ord(s[i])
