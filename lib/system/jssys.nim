@@ -163,7 +163,7 @@ proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
   raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldError, f & " is not accessible")
+  raise newException(FieldError, f)
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
