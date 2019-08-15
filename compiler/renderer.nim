@@ -739,13 +739,15 @@ proc gcase(g: var TSrcGen, n: PNode) =
     if longMode(g, n.sons[length - 1]): incl(c.flags, rfLongMode)
     gsub(g, n.sons[length - 1], c)
 
+template genSymSuffix(s: PSym): string =
+  if sfGenSym in s.flags: "_" & $s.id
+  else: ""
+
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
     let s = n.sons[namePos].sym
-    put(g, tkSymbol, renderDefinitionName(s))
-    if sfGenSym in s.flags:
-      put(g, tkIntLit, $s.id)
+    put(g, tkSymbol, renderDefinitionName(s) & genSymSuffix(s))
   else:
     gsub(g, n.sons[namePos])
 
@@ -839,12 +841,12 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
+  var suffix = ""
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+    suffix = genSymSuffix(n.sym)
     when defined(debugMagics):
-      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
-    else:
-      put(g, tkIntLit, $n.sym.id)
+      suffix.add "_" & $n.sym.magic
+  put(g, t, s & suffix, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
