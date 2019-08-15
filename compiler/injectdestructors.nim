@@ -7,7 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-import astalgo
 ## Injects destructor calls into Nim code as well as
 ## an optimizer that optimizes copies to moves. This is implemented as an
 ## AST to AST transformation so that every backend benefits from it.
@@ -348,19 +347,18 @@ proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   result = newSymNode(sym)
   c.addTopVar(result)
 
-proc p(n: PNode; c: var Con): PNode
+proc pStmt(n: PNode; c: var Con): PNode
 proc pExpr(n: PNode; c: var Con, behaveLikeP = false): PNode
 
 template isExpression(n: PNode): bool =
   (not isEmptyType(n.typ)) or (n.kind in nkLiterals + {nkNilLit})
 
 template recurse(n, dest) =
-  #echo n.kind
   for son in n:
     if isExpression(son):
       dest.add pExpr(son, c)
     else:
-      dest.add p(son, c)
+      dest.add pStmt(son, c)
 
 proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
   result = newNodeI(nkCall, n.info)
@@ -443,7 +441,7 @@ proc containsConstSeq(n: PNode): bool =
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   template pArgIfTyped(argPart: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
-    if argPart.typ == nil: p(argPart, c)
+    if argPart.typ == nil: pStmt(argPart, c)
     else: pArg(argPart, c, isSink)
 
   if isSink:
@@ -480,7 +478,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     elif arg.kind == nkStmtListExpr:
       result = copyNode(arg)
       for i in 0..<arg.len-1:
-        result.add p(arg[i], c)
+        result.add pStmt(arg[i], c)
       result.add pArg(arg[^1], c, isSink)
     elif arg.kind in {nkIfExpr, nkIfStmt}:
       result = copyNode(arg)
@@ -521,18 +519,14 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     result = pExpr(arg, c, behaveLikeP = true)
 
 proc pExpr(n: PNode; c: var Con, behaveLikeP = false): PNode =
-  #XXX: TODO: investigate diff in tdestructor.nim
   assert(isExpression(n))
   case n.kind
-  of nkLiterals, nkNilLit:
-    result = n
   of nkCallKinds:
-    if behaveLikeP:
-      let parameters = n[0].typ
-      let L = if parameters != nil: parameters.len else: 0
-      for i in 1..<n.len:
-        n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
-      if n.typ != nil and hasDestructor(n.typ):
+    let parameters = n[0].typ
+    let L = if parameters != nil: parameters.len else: 0
+    for i in 1..<n.len:
+      n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
+    if behaveLikeP and n.typ != nil and hasDestructor(n.typ):
         # produce temp creation
         result = newNodeIT(nkStmtListExpr, n.info, n.typ)
         let tmp = getTemp(c, n.typ, n.info)
@@ -541,14 +535,8 @@ proc pExpr(n: PNode; c: var Con, behaveLikeP = false): PNode =
         result.add sinkExpr
         result.add tmp
         c.destroys.add genDestroy(c, tmp)
-      else:
-        result = n
     else:
-      result = copyTree(n)
-      let parameters = n[0].typ
-      let L = if parameters != nil: parameters.len else: 0
-      for i in 1..<n.len:
-        result[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
+      result = n
   of nkBracket:
     result = copyTree(n)
     for i in 0..<n.len:
@@ -572,20 +560,11 @@ proc pExpr(n: PNode; c: var Con, behaveLikeP = false): PNode =
         result[i] = pArg(n[i], c, isSink = true)
   of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = copyNode(n)
-    # Destination type
-    result.add n[0]
-    # Analyse the inner expression
-    result.add pExpr(n[1], c)
-  of nkNone..nkType, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
-      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
-    result = n
+    result.add n[0] #Destination type
+    result.add pExpr(n[1], c) #Analyse inner expression
   of nkBracketExpr:
     result = copyNode(n)
     recurse(n, result)
-    # debug n
-    # for son in n:
-    #   echo son
-    #   echo "isExpr: ",isExpression(son)
   of nkChckRange: #XXX: Reassess
     result = copyNode(n)
     recurse(n, result)
@@ -599,7 +578,7 @@ proc pExpr(n: PNode; c: var Con, behaveLikeP = false): PNode =
       else:
         branch.add pExpr(son[0], c) #The expression
       result.add branch
-  of nkObjDownConv: #XXX: Reassess
+  of nkObjDownConv, nkObjUpConv: #XXX: Reassess
     result = copyNode(n)
     recurse(n, result)
   of nkCurly:
@@ -610,9 +589,7 @@ proc pExpr(n: PNode; c: var Con, behaveLikeP = false): PNode =
   of nkStmtListExpr:
     result = copyNode(n)
     recurse(n, result)
-    # All other things processing nkStmtListExpr only iterate over all before the actualy expression/last elem
-    # assert(false, $n.kind)
-  of nkDotExpr: #Really process the first elem?
+  of nkDotExpr:
     result = copyNode(n)
     recurse(n, result)
   of nkCheckedFieldExpr:
@@ -633,22 +610,25 @@ proc pExpr(n: PNode; c: var Con, behaveLikeP = false): PNode =
   of nkWhen:
     result = copyNode(n)
     recurse(n, result)
+  of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
+      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    result = n
   else:
     assert(false, "Unhandled: " & $n.kind)
-    # nkIdent, nkIntlit, nkStrLit, nkSym, nkRStrLit, nkHiddenCallConv, nkInfix, nkHiddenAddr, nkCheckedFieldExpr
-    # nkStmtListExpr
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
+  assert(isExpression(ri), $ri.kind)
   # unfortunately, this needs to be kept consistent with the cases
   # we handle in the 'case of' statement below:
   const movableNodeKinds = (nkCallKinds + {nkSym, nkTupleConstr, nkObjConstr,
                                            nkBracket, nkBracketExpr, nkNilLit})
 
   template moveOrCopyIfTyped(riPart: PNode): PNode =
-    # typ is nil if we are in if/case expr branch with noreturn
+    # if we are in if/case expr branch with noreturn
     if isExpression(riPart): moveOrCopy(dest, riPart, c)
-    else: p(riPart, c)
+    else: pStmt(riPart, c)
 
+  #XXX: All these nkStmtList results will cause problems in recursive moveOrCopy calls
   case ri.kind
   of nkCallKinds:
     result = genSink(c, dest, ri)
@@ -669,13 +649,13 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkStmtListExpr:
     result = newNodeI(nkStmtList, ri.info)
     for i in 0..<ri.len-1:
-      result.add p(ri[i], c)
+      result.add pStmt(ri[i], c)
     result.add moveOrCopy(dest, ri[^1], c)
-  of nkBlockExpr, nkBlockStmt:
+  of nkBlockExpr:
     result = newNodeI(nkBlockStmt, ri.info)
     result.add ri[0] # add label
     result.add moveOrCopy(dest, ri[1], c)
-  of nkIfExpr, nkIfStmt:
+  of nkIfExpr:
     result = newNodeI(nkIfStmt, ri.info)
     for i in 0..<ri.len:
       var branch = copyNode(ri[i])
@@ -717,7 +697,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkTupleConstr, nkClosure:
     result = genSink(c, dest, ri)
     result.add pExpr(ri, c)
-  of nkNilLit:
+  of nkLiterals, nkNilLit:
     result = genSink(c, dest, ri)
     result.add pExpr(ri, c)
   of nkSym:
@@ -739,24 +719,21 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkHiddenSubConv, nkHiddenStdConv:
     if sameType(ri.typ, ri[1].typ):
       result = moveOrCopy(dest, ri[1], c)
-    elif ri[1].kind in movableNodeKinds:
+    else:
+      let copyRi = copyTree(ri)
       result = moveOrCopy(dest, ri[1], c)
-      var b = newNodeIT(ri.kind, ri.info, ri.typ)
-      b.add ri[0] # add empty node
-      b.add result[^1]
-      result[^1] = b
-    else:
-      result = genCopy(c, dest, ri)
-      result.add p(ri, c) #
+      copyRi[1] = result[^1]
+      result[^1] = copyRi
+  of nkConv:
+    let copyRi = copyTree(ri)
+    result = moveOrCopy(dest, ri[1], c)
+    copyRi[1] = result[^1]
+    result[^1] = copyRi
   of nkObjDownConv, nkObjUpConv:
-    if ri[0].kind in movableNodeKinds:
-      result = moveOrCopy(dest, ri[0], c)
-      var b = newNodeIT(ri.kind, ri.info, ri.typ)
-      b.add result[^1]
-      result[^1] = b
-    else:
-      result = genCopy(c, dest, ri)
-      result.add pExpr(ri, c)
+    result = moveOrCopy(dest, ri[0], c)
+    var b = newNodeIT(ri.kind, ri.info, ri.typ)
+    b.add result[^1]
+    result[^1] = b
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(dest.typ):
@@ -765,7 +742,6 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       snk.add ri
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
-      # XXX At least string literals can be moved?
       result = genCopy(c, dest, ri)
       result.add pExpr(ri, c)
 
@@ -808,7 +784,7 @@ proc keepVar(n, it: PNode, c: var Con): PNode =
   if isExpression(it[^1]):
     itCopy.add pExpr(it[^1], c)
   else:
-    itCopy.add p(it[^1], c)
+    itCopy.add pStmt(it[^1], c)
   result.add itCopy
 
 const
@@ -824,11 +800,8 @@ proc implicitlyDiscardable(n: PNode): bool =
            (isCallExpr(n) and n.sons[0].kind == nkSym and
            sfDiscardable in n.sons[0].sym.flags)
 
-proc p(n: PNode; c: var Con): PNode =
-  if implicitlyDiscardable(n):
-    discard
-  else:
-    assert(not isExpression(n), $n & " ::KIND:: " & $n.kind & " ::TYP:: " & $n.typ)
+proc pStmt(n: PNode; c: var Con): PNode =
+  assert(not isExpression(n) or implicitlyDiscardable(n))
   case n.kind
   of nkVarSection, nkLetSection:
     # transform; var x = y to  var x; x op y  where op is a move or copy
@@ -838,7 +811,7 @@ proc p(n: PNode; c: var Con): PNode =
       var ri = it[^1]
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
-        result.add p(x, c)
+        result.add pStmt(x, c)
       elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
         for j in 0..<it.len-2:
           let v = it[j]
@@ -863,9 +836,8 @@ proc p(n: PNode; c: var Con): PNode =
       n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
     result = n
   of nkDiscardStmt:
-    for i in 0..<n.len: #Will always be one iteration anyways
-      if n[i].kind != nkEmpty:
-        n[i] = pArg(n[i], c, false) #XXX: Not the Same as pExpr ????
+    if n[0].kind != nkEmpty:
+      n[0] = pArg(n[0], c, false)
     result = n
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
@@ -877,16 +849,10 @@ proc p(n: PNode; c: var Con): PNode =
     else:
       result = copyNode(n)
       recurse(n, result)
-  of nkNone..nkType, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
-      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
-    result = n
-  of nkLiterals, nkNilLit, nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    assert(false, $n.kind & " :: " & $n.typ)
-    result = n #Need to adapt recurse somehow, nkNilLit doesn't have a type does it?
   of nkWhen:
     # This should be a "when nimvm" node.
     result = copyTree(n)
-    result[1][0] = p(result[1][0], c)
+    result[1][0] = pStmt(result[1][0], c)
   of nkRaiseStmt:
     if optNimV2 in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       if n[0].kind in nkCallKinds:
@@ -913,7 +879,9 @@ proc p(n: PNode; c: var Con): PNode =
     result = copyNode(n)
     recurse(n, result)
     dec c.inLoop
-  of nkIncludeStmt, nkPragma: #Things that dont bother us
+  of nkNone..nkType, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
+      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef,
+      nkIncludeStmt, nkImportStmt, nkExportStmt, nkPragma, nkCommentStmt, nkBreakStmt:
     result = n
   else:
     result = copyNode(n)
@@ -959,7 +927,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
 
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  let body = p(n, c)
+  let body = pStmt(n, c)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
