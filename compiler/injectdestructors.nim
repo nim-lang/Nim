@@ -862,6 +862,11 @@ proc p(n: PNode; c: var Con): PNode =
     for i in 1..<n.len:
       n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
     result = n
+  of nkDiscardStmt:
+    for i in 0..<n.len: #Will always be one iteration anyways
+      if n[i].kind != nkEmpty:
+        n[i] = pArg(n[i], c, false) #XXX: Not the Same as pExpr ????
+    result = n
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
       # rule (self-assignment-removal):
