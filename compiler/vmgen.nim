@@ -810,6 +810,16 @@ proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.gABC(n, opc, tmp, 0, 0)
   c.freeTemp(tmp)
 
+proc genCustom(c: PCtx; opc: TOpcode, nodes: seq[PNode]) =
+  ## Usage: genCustom(c, opc, @[n1, n2]); works with 1..3 nodes.
+  const N = 3
+  assert nodes.len <= N and nodes.len >= 1, $nodes.len
+  var temps: array[N, TRegister]
+  let nlen = nodes.len
+  for i in 0..<nlen: temps[i] = c.genx(nodes[i])
+  c.gABC(nodes[0], opc, temps[0], temps[1], temps[2])
+  for i in 0..<nlen: c.freeTemp(temps[i])
+
 proc genVarargsABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   if dest < 0: dest = getTemp(c, n.typ)
   var x = c.getTempRange(n.len-1, slotTempStr)
@@ -1741,13 +1751,24 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   # If the check fails let the user know
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
   c.freeTemp(rs)
-  let strType = getSysType(c.graph, n.info, tyString)
-  var fieldNameRegister: TDest = c.getTemp(strType)
-  let strLit = newStrNode($accessExpr[1], accessExpr[1].info)
-  strLit.typ = strType
-  c.genLit(strLit, fieldNameRegister)
-  c.gABC(n, opcInvalidField, fieldNameRegister)
-  c.freeTemp(fieldNameRegister)
+
+  when false: # PRTEMP
+    let strType = getSysType(c.graph, n.info, tyString)
+    var fieldNameRegister: TDest = c.getTemp(strType)
+    let strLit = newStrNode($accessExpr[1], accessExpr[1].info)
+    strLit.typ = strType
+    c.genLit(strLit, fieldNameRegister)
+    c.gABC(n, opcInvalidField, fieldNameRegister)
+    c.freeTemp(fieldNameRegister)
+
+  let field = accessExpr[0].sym
+  let msg = genFieldError(field, disc.sym)
+  let s = newStrNode(msg, n.info)
+  s.typ = c.graph.getSysType(n.info, tyString)
+  let msgKind = newIntNode(nkIntLit, errUser.int)
+  msgKind.info = n.info
+  c.genCustom(opcStacktrace, @[s, msgKind])
+
   c.patch(lab1)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =

@@ -1465,6 +1465,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       createStr regs[ra]
       regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments})
+    of opcStacktrace: # stacktrace(msg: string, msgKind: TMsgKind)
+                      # msgKind can be used to generated an error vs hint etc.
+      decodeB(rkNode)
+      let msg = regs[ra].regToNode.strVal
+      let msgKind = TMsgKind(regs[rb].regToNode.intVal)
+      msgWriteln(c.config, "stack trace from opcStacktrace:")
+      stackTraceAux(c, tos, pc)
+      localError(c.config, c.debug[pc], msgKind, msg)
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
