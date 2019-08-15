@@ -1222,10 +1222,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
-      if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped}:
+      if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped, tyTypeDesc} and
+         (let owner = getCurrOwner(c).owner; owner.kind != skModule or owner.owner.name.s != "stdlib"):
         localError(c.config, n.sons[0].info, "return type '" & typeToString(r) &
-            "' is only valid for macros and templates")
-      # 'auto' as a return type does not imply a generic:
+          "' is only valid for macros and templates")
       elif r.kind == tyAnything:
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
