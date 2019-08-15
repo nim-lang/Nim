@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <type int>"
+  errormsg: "type mismatch: got <typedesc[int]>"
   line: 6
 """
 # bug #3079, #1146

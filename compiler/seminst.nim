@@ -387,8 +387,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
-    if result.magic != mSlice:
-      # 'toOpenArray' is special and it is allowed to return 'openArray':
+    if result.magic notin {mSlice, mTypeTrait}:
+      # 'toOpenArray' is special and it is allowed to return `openArray`.
+      # typetrait procs are special as they are allowed to return `typedesc`
       paramsTypeCheck(c, result.typ)
   else:
     result = oldPrc

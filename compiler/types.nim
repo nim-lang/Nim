@@ -493,8 +493,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i], preferTypeName))
     add(result, ']')
   of tyTypeDesc:
-    if t.sons[0].kind == tyNone: result = "typedesc"
-    else: result = "type " & typeToString(t.sons[0])
+    result = "typedesc"
+    if t.sons[0].kind != tyNone:
+      result.add '['
+      result.add typeToString(t.sons[0])
+      result.add ']'
   of tyStatic:
     if prefer == preferGenericArg and t.n != nil:
       result = t.n.renderTree
@@ -1255,8 +1258,12 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if result.isNil and t.sons[0] != nil:
         result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:
-    # XXX: This is still a horrible idea...
-    result = nil
+    if kind != skParam:
+      if taConcept in flags:
+        # XXX: This is still a horrible idea...
+        result = nil
+      else:
+        result = typ
   of tyStatic:
     if kind notin {skParam}: result = t
   of tyUntyped, tyTyped:

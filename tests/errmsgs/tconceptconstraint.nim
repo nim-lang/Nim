@@ -2,7 +2,7 @@ discard """
   errormsg: "cannot instantiate B"
   line: 20
   nimout: '''
-got: <type string>
+got: <typedesc[string]>
 but expected: <T: A>
 '''
 """
@@ -18,4 +18,3 @@ proc advance(x: int): int = x + 1
 
 var a: B[int]
 var b: B[string]
-
