@@ -810,7 +810,7 @@ proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   c.gABC(n, opc, tmp, 0, 0)
   c.freeTemp(tmp)
 
-proc genCustom(c: PCtx; opc: TOpcode, nodes: seq[PNode]) =
+proc genCustom(c: PCtx; opc: TOpcode, nodes: openArray[PNode]) =
   ## Usage: genCustom(c, opc, @[n1, n2]); works with 1..3 nodes.
   const N = 3
   assert nodes.len <= N and nodes.len >= 1, $nodes.len
@@ -1767,7 +1767,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   s.typ = c.graph.getSysType(n.info, tyString)
   let msgKind = newIntNode(nkIntLit, errUser.int)
   msgKind.info = n.info
-  c.genCustom(opcStacktrace, @[s, msgKind])
+  c.genCustom(opcStacktrace, [s, msgKind])
 
   c.patch(lab1)
 
