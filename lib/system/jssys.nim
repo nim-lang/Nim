@@ -259,7 +259,10 @@ proc toJSStr(s: string): cstring {.compilerproc.} =
         inc i
         if i >= s.len or s[i] < '\128': break
         c = s[i]
-      res[j] = decodeURIComponent join(helper)
+      try:
+        res[j] = decodeURIComponent join(helper)
+      except:
+        res[j] = join(helper)
     inc j
   setLen(res, j)
   result = join(res)
