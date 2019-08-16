@@ -1,8 +1,15 @@
 discard """
 errormsg: "type mismatch: got <array[0..0, type int]>"
-line: 22
+line: 29
 nimout: '''
-twrong_at_operator.nim(22, 30) Error: type mismatch: got <array[0..0, type int]>
+Hint: used config file '/home/clyybber/builds/nim/config/nim.cfg' [Conf]
+Hint: used config file '/home/clyybber/builds/nim/config/config.nims' [Conf]
+Hint: used config file '/home/clyybber/builds/nim/tests/config.nims' [Conf]
+Hint: system [Processing]
+Hint: widestrs [Processing]
+Hint: io [Processing]
+Hint: twrong_at_operator [Processing]
+twrong_at_operator.nim(29, 30) Error: type mismatch: got <array[0..0, type int]>
 but expected one of:
 proc `@`[T](a: openArray[T]): seq[T]
   first type mismatch at position: 1
