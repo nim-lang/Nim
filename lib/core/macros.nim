@@ -1709,6 +1709,8 @@ macro quoteAst*(args: varargs[untyped]): untyped =
   result = newStmtList(templateDef, getAstCall)
 
 macro addQuoteAst*(dst: NimNode, args: varargs[untyped]): void =
+  ## Forwards all argumants from `args` to `quoteAst` and appends the
+  ## result of it to `dst`. This is purly for syntactic sugar.
   let call = newCall(bindSym"quoteAst")
   for arg in args:
     call.add arg
