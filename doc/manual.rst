@@ -22,6 +22,10 @@ precise wording. This manual is constantly evolving into a proper specification.
 **Note**: The experimental features of Nim are
 covered `here <manual_experimental.html>`_.
 
+**Note**: Assignments, moves and destruction are specified in
+the `destructors <destructors.html>`_ document.
+
+
 This document describes the lexis, the syntax, and the semantics of the Nim language.
 
 To learn how to compile Nim programs and generate documentation see
