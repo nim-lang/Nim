@@ -787,21 +787,8 @@ proc keepVar(n, it: PNode, c: var Con): PNode =
     itCopy.add pStmt(it[^1], c)
   result.add itCopy
 
-const
-  skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
-    nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
-    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
-    nkHiddenStdConv, nkHiddenDeref}
-
-proc implicitlyDiscardable(n: PNode): bool =
-  var n = n
-  while n.kind in skipForDiscardable: n = n.lastSon
-  result = n.kind == nkRaiseStmt or
-           (isCallExpr(n) and n.sons[0].kind == nkSym and
-           sfDiscardable in n.sons[0].sym.flags)
-
 proc pStmt(n: PNode; c: var Con): PNode =
-  assert(not isExpression(n) or implicitlyDiscardable(n))
+  #assert(not isExpression(n) or implicitlyDiscardable(n))
   case n.kind
   of nkVarSection, nkLetSection:
     # transform; var x = y to  var x; x op y  where op is a move or copy
