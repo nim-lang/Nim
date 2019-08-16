@@ -355,19 +355,13 @@ template isExpression(n: PNode): bool =
 
 template recurse(n, dest) =
   for son in n:
-    if isExpression(son):
-      dest.add pExpr(son, c)
-    else:
-      dest.add pStmt(son, c)
-
-proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
-  result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic(c.graph, magicname, m)))
-  result.add n
+    dest.add if isExpression(son): pExpr(son, c)
+             else: pStmt(son, c)
 
 proc genWasMoved(n: PNode; c: var Con): PNode =
-  # The mWasMoved builtin does not take the address.
-  result = genMagicCall(n, c, "wasMoved", mWasMoved)
+  result = newNodeI(nkCall, n.info)
+  result.add(newSymNode(createMagic(c.graph, "wasMoved", mWasMoved)))
+  result.add n #mWasMoved does not take the address
 
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
@@ -691,13 +685,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     else:
       result = genSink(c, dest, ri)
     result.add pExpr(ri, c)
-  of nkObjConstr:
-    result = genSink(c, dest, ri)
-    result.add pExpr(ri, c)
-  of nkTupleConstr, nkClosure:
-    result = genSink(c, dest, ri)
-    result.add pExpr(ri, c)
-  of nkLiterals, nkNilLit:
+  of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
     result = genSink(c, dest, ri)
     result.add pExpr(ri, c)
   of nkSym:
@@ -716,24 +704,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     else:
       result = genCopy(c, dest, ri)
       result.add pExpr(ri, c)
-  of nkHiddenSubConv, nkHiddenStdConv:
-    if sameType(ri.typ, ri[1].typ):
-      result = moveOrCopy(dest, ri[1], c)
-    else:
+  of nkHiddenSubConv, nkHiddenStdConv, nkConv:
+    result = moveOrCopy(dest, ri[1], c)
+    if not sameType(ri.typ, ri[1].typ):
       let copyRi = copyTree(ri)
-      result = moveOrCopy(dest, ri[1], c)
       copyRi[1] = result[^1]
       result[^1] = copyRi
-  of nkConv:
-    let copyRi = copyTree(ri)
-    result = moveOrCopy(dest, ri[1], c)
-    copyRi[1] = result[^1]
-    result[^1] = copyRi
   of nkObjDownConv, nkObjUpConv:
     result = moveOrCopy(dest, ri[0], c)
-    var b = newNodeIT(ri.kind, ri.info, ri.typ)
-    b.add result[^1]
-    result[^1] = b
+    let copyRi = copyTree(ri)
+    copyRi[0] = result[^1]
+    result[^1] = copyRi
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(dest.typ):
@@ -756,8 +737,7 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
   case n.kind
   of nkVarSection, nkLetSection:
     for it in n:
-      let ri = it[^1]
-      if it.kind == nkIdentDefs and ri.kind == nkEmpty:
+      if it.kind == nkIdentDefs and it[^1].kind == nkEmpty:
         computeUninit(c)
         for j in 0..<it.len-2:
           let v = it[j]
@@ -881,11 +861,9 @@ proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =
       result.add destroys[i]
       destroys[i] = c.emptyNode
 
-proc reverseDestroys(destroys: PNode) =
-  var reversed: seq[PNode]
+proc reverseDestroys(destroys: seq[PNode]): seq[PNode] =
   for i in countdown(destroys.len - 1, 0):
-    reversed.add(destroys[i])
-  destroys.sons = reversed
+    result.add destroys[i]
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if sfGeneratedOp in owner.flags or isInlineIterator(owner): return n
@@ -919,7 +897,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
   if c.destroys.len > 0:
-    reverseDestroys(c.destroys)
+    c.destroys.sons = reverseDestroys(c.destroys.sons)
     if owner.kind == skModule:
       result.add newTryFinally(body, extractDestroysForTemporaries(c, c.destroys))
       g.globalDestructors.add c.destroys
