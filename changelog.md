@@ -12,6 +12,7 @@
 
 ## Library additions
 
+- Added `macros.quoteAst` as a candidate to replace `quote do`.
 
 ## Library changes
 
