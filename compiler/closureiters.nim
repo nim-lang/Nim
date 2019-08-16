@@ -90,9 +90,6 @@
 #  :unrollFinally = true
 #  goto nearestFinally (or -1 if not exists)
 #
-# Every finally block calls closureIterEndFinally() upon its successful
-# completion.
-#
 # Example:
 #
 # try:
@@ -126,6 +123,7 @@
 #     if :curExc.isNil:
 #       return :tmpResult
 #     else:
+#       closureIterSetupExc(nil)
 #       raise
 #   state = -1 # Goto next state. In this case we just exit
 #   break :stateLoop
@@ -809,10 +807,11 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let retStmt = newTree(nkReturnStmt, asgn)
   let branch = newTree(nkElifBranch, cmp, retStmt)
 
-  # The C++ backend requires `getCurrentException` here.
-  let raiseStmt = newTree(nkRaiseStmt, ctx.g.callCodegenProc("getCurrentException"))
+  let nullifyExc = newTree(nkCall, newSymNode(ctx.g.getCompilerProc("closureIterSetupExc")), nilnode)
+  nullifyExc.info = info
+  let raiseStmt = newTree(nkRaiseStmt, curExc)
   raiseStmt.info = info
-  let elseBranch = newTree(nkElse, raiseStmt)
+  let elseBranch = newTree(nkElse, newTree(nkStmtList, nullifyExc, raiseStmt))
 
   let ifBody = newTree(nkIfStmt, branch, elseBranch)
   let elifBranch = newTree(nkElifBranch, ctx.newUnrollFinallyAccess(info), ifBody)

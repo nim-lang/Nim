@@ -136,8 +136,7 @@ proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
     prev.up = cur.up
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  if not e.isNil:
-    currException = e
+  currException = e
 
 # some platforms have native support for stack traces:
 const
