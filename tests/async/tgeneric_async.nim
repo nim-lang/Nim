@@ -20,7 +20,7 @@ template msgId(M: type SomeMsg): int = 1
 proc recvMsg(): Future[tuple[msgId: int, msgData: string]] {.async.} =
   return (1, "message")
 
-proc read(data: string, T: type SomeMsg, maxBytes: int): T =
+proc read(data: string, t: typedesc[SomeMsg], maxBytes: int): SomeMsg =
   result.data = data[0 ..< min(data.len, maxBytes)]
 
 proc nextMsg*(MsgType: typedesc,
@@ -37,4 +37,3 @@ proc main {.async.} =
   echo msg.data
 
 asyncCheck main()
-

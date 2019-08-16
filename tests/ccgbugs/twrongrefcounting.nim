@@ -4,7 +4,7 @@ discard """
 """
 
 # bug #9825
-func empty(T: typedesc): T = discard
+func empty[T](t: typedesc[T]): T = discard
 const emptyChunk = @(empty(array[10, byte]))
 
 var lst: seq[seq[byte]]

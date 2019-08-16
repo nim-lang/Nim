@@ -31,7 +31,7 @@ echo foo(3.14)
 # #2495
 type C = concept x
 
-proc test(x: C, T: typedesc): T =
+proc test[T](x: C, t: typedesc[T]): T =
   cast[T](x)
 
 echo 7.test(int8)

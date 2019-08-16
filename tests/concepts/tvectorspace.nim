@@ -10,10 +10,9 @@ type VectorSpace[K] = concept x, y
   var k: K
   k * x is type(x)
 
-proc zero(T: typedesc): T = 0
+proc zero[T](t: typedesc[T]): T = 0
 
 static:
   assert float is VectorSpace[float]
   # assert float is VectorSpace[int]
   # assert int is VectorSpace
-

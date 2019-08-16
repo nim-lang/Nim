@@ -242,7 +242,7 @@ block t7794:
 
 
 block t8403:
-  proc sum[T](s: seq[T], R: typedesc): R =
+  proc sum[T,R](s: seq[T], t: typedesc[R]): R =
     var sum: R = 0
     for x in s:
       sum += R(x)

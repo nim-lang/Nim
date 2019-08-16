@@ -16,7 +16,7 @@ proc defaultInt: int = 1
 proc defaultTInt(T: type): int = 2
 proc defaultTFoo[T](x: typedesc[T]): Foo = discard
 proc defaultTOldSchool[T](x: typedesc[T]): T = discard
-proc defaultTModern(T: type): T = discard
+proc defaultTModern[T](t: typedesc[T]): T = discard
 
 proc specializedDefault(T: type int): int = 10
 proc specializedDefault(T: type string): string = "default"
@@ -142,4 +142,3 @@ when true:
     foo(10)
     foo(1)
     foo(10)
-
