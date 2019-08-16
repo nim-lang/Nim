@@ -3,6 +3,9 @@
 
 ## Changes affecting backwards compatibility
 
+- The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
+  stdin/stdout/stderr are binary files again. This change only affects
+  Windows.
 
 ### Breaking changes in the standard library
 
