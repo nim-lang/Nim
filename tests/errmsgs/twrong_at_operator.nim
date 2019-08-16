@@ -2,9 +2,9 @@ discard """
 errormsg: "type mismatch: got <array[0..0, type int]>"
 line: 29
 nimout: '''
-Hint: used config file '/home/clyybber/builds/nim/config/nim.cfg' [Conf]
-Hint: used config file '/home/clyybber/builds/nim/config/config.nims' [Conf]
-Hint: used config file '/home/clyybber/builds/nim/tests/config.nims' [Conf]
+Hint: used config file '/home/travis/build/nim-lang/Nim/config/nim.cfg' [Conf]
+Hint: used config file '/home/travis/build/nim-lang/Nim/config/config.nims' [Conf]
+Hint: used config file '/home/travis/build/nim-lang/Nim/tests/config.nims' [Conf]
 Hint: system [Processing]
 Hint: widestrs [Processing]
 Hint: io [Processing]
