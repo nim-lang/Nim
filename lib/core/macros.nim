@@ -1612,8 +1612,6 @@ when defined(nimMacrosSizealignof):
     ## instead of two. Returns a negative value if the Nim compiler
     ## does not know the offset.
 
-
-
 template expectNimNode(arg: untyped): NimNode = arg
   ## This template here is just to be injected by `quoteAst`, so that
   ## a nice error message appears when the captured symbols are not of
@@ -1659,7 +1657,6 @@ macro quoteAst*(args: varargs[untyped]): untyped =
   ##     result = quoteAst(ex,info,expString):
   ##       if not ex:
   ##         echo info & ": Check failed: " & expString
-
 
   expectMinLen(args, 1)
 
