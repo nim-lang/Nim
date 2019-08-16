@@ -26,6 +26,7 @@ proc raiseIndexError() {.compilerproc, noinline.} =
   sysFatal(IndexDefect, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
+  ## kept for bootstrapping, remove in 0.21
   sysFatal(FieldDefect, f)
 
 proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
@@ -49,6 +50,10 @@ proc raiseRangeErrorNoArgs() {.compilerproc, noinline.} =
 
 proc raiseObjectConversionError() {.compilerproc, noinline.} =
   sysFatal(ObjectConversionDefect, "invalid object conversion")
+
+proc raiseFieldError2(f: string, discVal: string) {.compilerproc, noinline.} =
+  ## raised when field is inaccessible given runtime value of discriminant
+  sysFatal(FieldError, f & ": " & discVal)
 
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:

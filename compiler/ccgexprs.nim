@@ -18,6 +18,8 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
 
 # -------------------------- constant expressions ------------------------
 
+proc rdSetElemLoc(conf: ConfigRef; a: TLoc, typ: PType): Rope
+
 proc int64Literal(i: BiggestInt): Rope =
   if i > low(int64):
     result = "IL64($1)" % [rope(i)]
@@ -875,14 +877,13 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     genInExprAux(p, it, u, v, test)
     let msg = genFieldDefect(field, disc.sym)
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
-    if op.magic == mNot:
-      linefmt(p, cpsStmts,
-              "if ($1){ #raiseFieldError($2); $3}$n",
-              [rdLoc(test), strLit, raiseInstr(p)])
-    else:
-      linefmt(p, cpsStmts,
-              "if (!($1)){ #raiseFieldError($2); $3}$n",
-              [rdLoc(test), strLit, raiseInstr(p)])
+    let discIndex = rdSetElemLoc(p.config, v, u.t)
+    let discName = genTypeInfo(p.module, disc.sym.typ, e.info)
+    const code = "{ #raiseFieldError2($2, #reprEnum((NI)$3, $4)); $5 }$n"
+    template fun(code) =
+      linefmt(p, cpsStmts, code, [rdLoc(test), strLit, discIndex, discName, raiseInstr(p)])
+    if op.magic == mNot: fun("if ($1)" & code)
+    else: fun("if (!($1))" & code)
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   assert e[0].kind == nkDotExpr
