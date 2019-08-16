@@ -18,39 +18,40 @@ proc foo(arg1: int, arg2: string): string =
 macro foobar(arg: untyped): untyped =
   # simple generation of source code:
   #echo "foobar: ", arg.lispRepr
-  result = quoteAst:
+  result = newStmtList()
+
+  result.addQuoteAst:
     echo "Hello world!"
 
-  doAssert result[0].lispRepr == """(Command (Ident "echo") (StrLit "Hello world!"))"""
+  doAssert result[^1][0].lispRepr == """(Command (Ident "echo") (StrLit "Hello world!"))"""
 
   # Explicit symbol binding. `quote do` would use `world`:
   let world = newLit("world")
-  result = quoteAst(world):
+  result.addQuoteAst(world):
     echo "Hello ", world, "!"
-
-  doAssert result[0].lispRepr == """(Command (Ident "echo") (StrLit "Hello ") (StrLit "world") (StrLit "!"))"""
+  doAssert result[^1][0].lispRepr == """(Command (Ident "echo") (StrLit "Hello ") (StrLit "world") (StrLit "!"))"""
 
   # mixed usage
   let x = newLit(123)
   let xyz = newLit("xyz")
-  result = quoteAst(x, xyz, arg):
+  result.addQuoteAst(x, xyz, arg):
     echo "abc ", x, " ", xyz, " ", arg
 
   # usage of bindSym
   let foo = bindSym"foo"
-  result = quoteAst(foo):
+  result.addQuoteAst(foo):
     echo foo(123, "abc")
 
-  doAssert result[0].lispRepr == """(Command (Ident "echo") (Call (Sym "foo") (IntLit 123) (StrLit "abc")))"""
+  doAssert result[^1][0].lispRepr == """(Command (Ident "echo") (Call (Sym "foo") (IntLit 123) (StrLit "abc")))"""
 
-  result = quoteAst:
+  result.addQuoteAst:
     var tmp = 1
     for x in 0 ..< 100:
       tmp *= 3
 
-  doAssert result[0].lispRepr == """(VarSection (IdentDefs (Ident "tmp") (Empty) (IntLit 1)))"""
-
-  # we don't actually want to generate code here in this test
+  doAssert result[^1][0].lispRepr == """(VarSection (IdentDefs (Ident "tmp") (Empty) (IntLit 1)))"""
+  doAssert result.len == 5
+  # this macro is not supposed really generate any code
   result = newEmptyNode()
 
 let myVal = "Hallo Welt!"

@@ -13,7 +13,7 @@ proc substitudeComments(symbols, values, n: NimNode): NimNode =
     values.add newCall(bindSym"newCommentStmtNode", newLit(n.strVal))
     # Gensym doesn't work for parameters. These identifiers won't
     # clash unless an argument is constructed to clash here.
-    symbols.add ident("comment"& $values.len & "_XObBdOnh6meCuJK2smZV")
+    symbols.add ident("comment" & $values.len & "_XObBdOnh6meCuJK2smZV")
     return symbols[^1]
   for i in 0 ..< n.len:
     n[i] = substitudeComments(symbols, values, n[i])
@@ -42,9 +42,9 @@ macro quoteAst*(args: varargs[untyped]): untyped =
   ##     var expString = ex.toStrLit
   ##
   ##     # Finally we compose the code to implement the check:
-  ##     result = quote do:
-  ##       if not `ex`:
-  ##         echo `info` & ": Check failed: " & `expString`
+  ##     result = quoteAst(ex,info,expString):
+  ##       if not ex:
+  ##         echo info & ": Check failed: " & expString
 
   # This is a workaround for #10430 where comments are removed in
   # template expansions. This workaround lifts all comments
@@ -86,4 +86,9 @@ macro quoteAst*(args: varargs[untyped]): untyped =
     templateCall.add expr
   let getAstCall = newCall(bindSym"getAst", templateCall)
   result = newStmtList(templateDef, getAstCall)
-  echo result.repr
+
+macro addQuoteAst*(dst: NimNode, args: varargs[untyped]): void =
+  let call = newCall(bindSym"quoteAst")
+  for arg in args:
+    call.add arg
+  result = newCall(bindSym"add", dst, call)
