@@ -53,7 +53,7 @@ type
     graph: ModuleGraph
   PTransf = ref TTransfContext
 
-const forVarTypeKindPassedByRef = {tyObject, tyTuple, tyArray, tySequence, tyOwned}
+const forVarTypeKindPassedByLent = {tyObject, tyTuple, tyArray, tySequence, tyOwned}
 
 proc newTransNode(a: PNode): PTransNode {.inline.} =
   result = PTransNode(shallowCopy(a))
@@ -363,7 +363,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     case lhs.kind:
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
-      if lhs.typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByRef:
+      if lhs.typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByLent:
         let rhs2 = newTree(nkHiddenAddr, rhs.PNode)
         rhs2.typ = makeLentType(rhs.PNode.typ)
         lhs.typ = lhs.sym.typ # sym type is already overwritten, but the node
@@ -635,7 +635,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   for i in 0 .. length - 3:
     if n[i].kind == nkVarTuple:
       for j in 0 ..< sonsLen(n[i])-1:
-        if n[i][j].kind == nkSym and n[i][j].typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByRef:
+        if n[i][j].kind == nkSym and n[i][j].typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByLent:
           # if it is a sym and not dotExpr then it is not captured by lambda lifting can be passed by ref
           let s = copyTree(n[i][j])
           s.sym.typ = makeLentType(s.sym.typ)
@@ -645,7 +645,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
         else:
           addVar(v, copyTree(n[i][j])) # declare new vars
     else:
-      if n[i].kind == nkSym and n[i].typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByRef:
+      if n[i].kind == nkSym and n[i].typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByLent:
         # if it is a sym and not dotExpr then it is not captured by lambda lifting can be passed by ref
         let s = copyTree(n[i])
         s.sym.typ = makeLentType(s.sym.typ)
@@ -1155,13 +1155,6 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
-    if `??`(g.config, prc.ast.info, "t2"):
-      echo "prc ", prc.name.s, " rewritten"
-      echo prc.ast[bodyPos]
-      echo "----------"
-      echo result
-      echo "---------------------------------"
-
     if c.needsDestroyPass and not noDestructors:
       result = injectDestructorCalls(g, prc, result)
 
