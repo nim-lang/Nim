@@ -5,7 +5,7 @@ errormsg: "undeclared identifier: 'a'"
 # from the environment triggers a clean undeclared identifier error
 # message.
 
-import experimental/quote2
+import marcos
 
 macro fooF(): untyped =
   let a = @[1,2,3,4,5]

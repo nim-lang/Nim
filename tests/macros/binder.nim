@@ -1,7 +1,7 @@
 # example from #7889
 
 from streams import newStringStream, readData, writeData
-import experimental/quote2
+import macros
 
 macro bindme*(): untyped =
   let newStringStream = bindSym"newStringStream"

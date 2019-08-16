@@ -6,7 +6,7 @@ errormsg: "type mismatch: got <seq[int]> but expected 'NimNode = ref NimNodeObj'
 # `NimNode` trigger an error message. Automatically lifting symbols is
 # unsafe.
 
-import experimental/quote2
+import macros
 
 macro fooF(): untyped =
   let a = @[1,2,3,4,5]

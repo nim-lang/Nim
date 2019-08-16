@@ -9,7 +9,7 @@ tquoteasterror3.nim(18)  tquoteasterror3
 # overflow in the generated code. The stacktrace should point into the
 # code from the quoteAst body.
 
-import experimental/quote2
+import macros
 
 macro foobar() =
   result = quoteAst:

@@ -10,7 +10,7 @@ false
 '''
 """
 
-import experimental/quote2
+import macros
 
 proc foo(arg1: int, arg2: string): string =
   "xxx"
