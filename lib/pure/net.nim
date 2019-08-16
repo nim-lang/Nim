@@ -67,7 +67,7 @@
 {.deadCodeElim: on.}  # dce option deprecated
 import nativesockets, os, strutils, parseutils, times, sets, options,
   std/monotimes
-export Port, `$`, `==`
+export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
