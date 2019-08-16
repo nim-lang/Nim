@@ -19,6 +19,10 @@ proc newDeref*(n: PNode): PNode {.inline.} =
   result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
   addSon(result, n)
 
+proc makeLentType*(baseType: PType): PType =
+  result = newType(tyLent, baseType.owner)
+  addSonSkipIntLit(result, baseType)
+
 proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
   if tup.kind == nkHiddenAddr:
     result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}))

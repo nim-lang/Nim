@@ -53,6 +53,8 @@ type
     graph: ModuleGraph
   PTransf = ref TTransfContext
 
+const forVarTypeKindPassedByRef = {tyObject, tyTuple, tyArray, tySequence, tyOwned}
+
 proc newTransNode(a: PNode): PTransNode {.inline.} =
   result = PTransNode(shallowCopy(a))
 
@@ -361,7 +363,13 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     case lhs.kind:
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
-      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
+      if lhs.typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByRef:
+        let rhs2 = newTree(nkHiddenAddr, rhs.PNode)
+        rhs2.typ = makeLentType(rhs.PNode.typ)
+        lhs.typ = lhs.sym.typ # sym type is already overwritten, but the node
+        result = newAsgnStmt(c, nkFastAsgn, lhs, rhs2.PTransNode)
+      else:
+        result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
     of nkDotExpr:
       result = newAsgnStmt(c, nkAsgn, lhs, rhs)
     else:
@@ -621,29 +629,45 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var stmtList = newTransNode(nkStmtList, n.info, 0)
   result[1] = stmtList
 
-  var loopBody = transformLoopBody(c, n.sons[length-1])
-
-  discard c.breakSyms.pop
-
+  var newC = newTransCon(getCurrOwner(c))
+  newC.forStmt = n
   var v = newNodeI(nkVarSection, n.info)
   for i in 0 .. length - 3:
     if n[i].kind == nkVarTuple:
       for j in 0 ..< sonsLen(n[i])-1:
-        addVar(v, copyTree(n[i][j])) # declare new vars
+        if n[i][j].kind == nkSym and n[i][j].typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByRef:
+          # if it is a sym and not dotExpr then it is not captured by lambda lifting can be passed by ref
+          let s = copyTree(n[i][j])
+          s.sym.typ = makeLentType(s.sym.typ)
+          s.typ = s.sym.typ
+          addVar(v, s)
+          idNodeTablePut(newC.mapping, s.sym, newDeref(s))
+        else:
+          addVar(v, copyTree(n[i][j])) # declare new vars
     else:
-      addVar(v, copyTree(n.sons[i])) # declare new vars
+      if n[i].kind == nkSym and n[i].typ.skipTypes({tyAlias, tyGenericInst}).kind in forVarTypeKindPassedByRef:
+        # if it is a sym and not dotExpr then it is not captured by lambda lifting can be passed by ref
+        let s = copyTree(n[i])
+        s.sym.typ = makeLentType(s.sym.typ)
+        s.typ = s.sym.typ
+        addVar(v, s)
+        idNodeTablePut(newC.mapping, s.sym, newDeref(s))
+      else:
+        addVar(v, copyTree(n.sons[i])) # declare new vars
   add(stmtList, v.PTransNode)
+
+  pushTransCon(c, newC)
+  var loopBody = transformLoopBody(c, n.sons[length-1])
+  newC.forLoopBody = loopBody
+  discard c.breakSyms.pop
 
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
   # iterator!
   let iter = call.sons[0].sym
-  var newC = newTransCon(getCurrOwner(c))
-  newC.forStmt = n
-  newC.forLoopBody = loopBody
   # this can fail for 'nimsuggest' and 'check':
   if iter.kind != skIterator: return result
   # generate access statements for the parameters (unless they are constant)
-  pushTransCon(c, newC)
+
   for i in 1 ..< sonsLen(call):
     var arg = transform(c, call.sons[i]).PNode
     let ff = skipTypes(iter.typ, abstractInst)
@@ -1131,6 +1155,13 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
+    if `??`(g.config, prc.ast.info, "t2"):
+      echo "prc ", prc.name.s, " rewritten"
+      echo prc.ast[bodyPos]
+      echo "----------"
+      echo result
+      echo "---------------------------------"
+
     if c.needsDestroyPass and not noDestructors:
       result = injectDestructorCalls(g, prc, result)
 
