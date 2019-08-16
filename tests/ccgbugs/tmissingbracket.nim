@@ -28,7 +28,7 @@ proc initialize*(self: TObj) =
   self.class = addr ClassOfTObj
   # this generates wrong C code: && instead of &
 
-proc newInstance(T: typedesc): T =
+proc newInstance[T](t: typedesc[T]): T =
   mixin initialize
   new(result)
   initialize(result)
