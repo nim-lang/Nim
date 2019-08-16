@@ -154,6 +154,7 @@ macro fooB(): untyped =
   result = quoteAst(`==`):
     echo 3 == 4
   doAssert result[0][1][0].kind == nnkClosedSymChoice
+  doAssert result[0][1][0] == `==`
 
 fooB()
 

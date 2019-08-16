@@ -1633,7 +1633,7 @@ proc substitudeComments(symbols, values, n: NimNode): NimNode =
 macro quoteAst*(args: varargs[untyped]): untyped =
   ## New Quasi-quoting operator.  Accepts a list of symbols to inject
   ## into the generated code and a block of code.  Returns an AST that
-  ## generats the body AST.  Within the body, identifiers are only
+  ## generates the body AST.  Within the body, identifiers are only
   ## injected from the outer scope, if they have been explicitly named
   ## in the list of symbols to inject.
   ##
@@ -1695,8 +1695,14 @@ macro quoteAst*(args: varargs[untyped]): untyped =
 
   let templateCall = newCall(templateSym)
   for i in 0 ..< args.len-1:
-    args[i].expectKind nnkIdent
-    templateCall.add newCall(bindSym"expectNimNode", args[i])
+    let symName = args[i]
+    # identifiers and quoted identifiers are allowed.
+    if symName.kind == nnkAccQuoted:
+      symName.expectLen 1
+      symName[0].expectKind nnkIdent
+    else:
+      symName.expectKind nnkIdent
+    templateCall.add newCall(bindSym"expectNimNode", symName)
   for expr in extraCommentGenExpr:
     templateCall.add expr
   let getAstCall = newCall(bindSym"getAst", templateCall)
