@@ -109,7 +109,7 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNGetLineInfo, opcNSetLineInfoObj, opcNCopyLineInfo,
+    opcNGetLineInfo, opcNSetLineInfo,
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,

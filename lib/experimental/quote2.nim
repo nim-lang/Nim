@@ -6,62 +6,48 @@ template expectNimNode(arg: untyped): NimNode = arg
   ## typecheck to ``NimNode`` fails the user will get a nice error
   ## message.
 
-proc newTreeWithLineinfo*(kind: NimNodeKind; lineinfo: LineInfo; children: varargs[NimNode]): NimNode {.compileTime.} =
-  ## like ``macros.newTree``, just that the first argument is a node to take lineinfo from.
-  # TODO lineinfo cannot be forwarded to new node.  I am forced to drop it here.
-  result = newNimNode(kind, nil)
-  result.lineinfoObj = lineinfo
-  result.add(children)
-
-# TODO restrict unquote to nimnode expressions (error message)
-
-const forwardLineinfo = true
-
-proc containsSymbol(symbolList, name: NimNode): bool =
-  for x in symbolList:
-    if eqIdent(x, name):
-      return true
-  return false
-
-proc newTreeExpr(exprNode, symbolTable: NimNode): NimNode {.compileTime.} =
-  # stmtList is a buffer to generate statements
-  if exprNode.kind in nnkLiterals:
-    result = newCall(bindSym"newLit", exprNode)
-  elif exprNode.kind == nnkIdent:
-    result =
-      if containsSymbol(symbolTable, exprNode): newCall(bindSym"expectNimnode", exprNode)
-      else: newCall(bindSym"ident", newLit(exprNode.strVal))
-  elif exprNode.kind == nnkSym:
-    error("for quoting the ast needs to be untyped", exprNode)
-  elif exprNode.kind == nnkCommentStmt:
-    result = newCall(bindSym"newCommentStmtNode", newLit(exprNode.strVal))
-  elif exprNode.kind == nnkEmpty:
-    # bug newTree(nnkEmpty) raises exception:
-    result = newCall(bindSym"newEmptyNode")
-  else:
-    if forwardLineInfo:
-      result = newCall(bindSym"newTreeWithLineinfo", newLit(exprNode.kind), newLit(exprNode.lineinfoObj))
-    else:
-      result = newCall(bindSym"newTree", newLit(exprNode.kind))
-    for child in exprNode:
-      result.add newTreeExpr(child, symbolTable)
-
-
 proc substitudeComments(symbols, values, n: NimNode): NimNode =
   ## substitudes all nodes of kind nnkCommentStmt to parameter
   ## symbols. Consumes the argument `n`.
   if n.kind == nnkCommentStmt:
     values.add newCall(bindSym"newCommentStmtNode", newLit(n.strVal))
-    # Gensym doesn't work for parameters.
-    symbols.add ident("comment"& $values.len & "_OXedObJnhBm6CsumKV2Z")
+    # Gensym doesn't work for parameters. These identifiers won't
+    # clash unless an argument is constructed to clash here.
+    symbols.add ident("comment"& $values.len & "_XObBdOnh6meCuJK2smZV")
     return symbols[^1]
   for i in 0 ..< n.len:
     n[i] = substitudeComments(symbols, values, n[i])
   return n
 
 macro quoteAst*(args: varargs[untyped]): untyped =
+  ## New Quasi-quoting operator.  Accepts an expression or a block and
+  ## returns the AST that represents it.  Within the quoted AST, you
+  ## are able to inject NimNode expressions from the surrounding scope
+  ## if you explicitly inject their symbol.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   macro check(ex: untyped) =
+  ##     # this is a simplified version of the check macro from the
+  ##     # unittest module.
+  ##
+  ##     # If there is a failed check, we want to make it easy for
+  ##     # the user to jump to the faulty line in the code, so we
+  ##     # get the line info here:
+  ##     var info = ex.lineinfo
+  ##
+  ##     # We will also display the code string of the failed check:
+  ##     var expString = ex.toStrLit
+  ##
+  ##     # Finally we compose the code to implement the check:
+  ##     result = quote do:
+  ##       if not `ex`:
+  ##         echo `info` & ": Check failed: " & `expString`
+
   # This is a workaround for #10430 where comments are removed in
-  # template expansions. This workaround fixes lifts all comments
+  # template expansions. This workaround lifts all comments
   # statements to be arguments of the temporary template.
 
   let extraCommentSymbols = newNimNode(nnkBracket)
@@ -81,7 +67,6 @@ macro quoteAst*(args: varargs[untyped]): untyped =
     )
 
   let templateSym = genSym(nskTemplate)
-
   let templateDef = nnkTemplateDef.newTree(
     templateSym,
     newEmptyNode(),

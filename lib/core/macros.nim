@@ -523,8 +523,6 @@ proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
 proc lineInfo*(arg: NimNode): string {.compileTime.} =
   $arg.lineInfoObj
 
-proc `lineInfoObj=`*(n: NimNode; lineinfo: LineInfo) {.magic: "NLineInfo".}
-
 proc internalParseExpr(s: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}
 

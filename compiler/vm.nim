@@ -20,7 +20,6 @@ import
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
-from os import isAbsolute, parentDir, `/`
 
 const
   traceCode = defined(nimVMDebug)
@@ -1609,21 +1608,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         internalAssert c.config, false
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
-    of opcNSetLineInfoObj:
-      decodeB(rkNode)
-      let n = regs[rb].node
-      assert(n.kind == nkObjConstr)
-      assert(n.len == 4)
-      assert(n[1][0].sym.name.s == "filename")
-      var filename = n[1][1].strVal
-      if not isAbsolute(filename):
-         filename = parentDir(toFullPath(c.config, c.debug[pc])) / filename
-      assert(n[2][0].sym.name.s == "line")
-      let line = n[2][1].intVal.int
-      assert(n[3][0].sym.name.s == "column")
-      let column = n[3][1].intVal.int
-      regs[ra].node.info = newLineInfo(c.config, AbsoluteFile(filename), line, column)
-    of opcNCopyLineInfo:
+    of opcNSetLineInfo:
       decodeB(rkNode)
       regs[ra].node.info = regs[rb].node.info
     of opcEqIdent:
