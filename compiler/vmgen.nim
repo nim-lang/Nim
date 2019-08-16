@@ -1738,7 +1738,8 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   internalAssert c.config, disc.sym.kind == skField
 
   # Load the object in `dest`
-  c.gen(accessExpr[0], dest, flags)
+  let field = accessExpr[0]
+  c.gen(field, dest, flags)
   # Load the discriminant
   var discVal = c.getTemp(disc.typ)
   c.gABC(n, opcLdObj, discVal, dest, genField(c, disc))
@@ -1761,8 +1762,9 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
     c.gABC(n, opcInvalidField, fieldNameRegister)
     c.freeTemp(fieldNameRegister)
 
-  let field = accessExpr[0].sym
-  let msg = genFieldError(field, disc.sym)
+  let msg = genFieldError(if field.kind == nkSym: field.sym else: nil, disc.sym)
+  # instead of `nil`, could track down the `sym` inside `field`
+  # could also report `discVal` (shown as enum)
   let s = newStrNode(msg, n.info)
   s.typ = c.graph.getSysType(n.info, tyString)
   let msgKind = newIntNode(nkIntLit, errUser.int)
