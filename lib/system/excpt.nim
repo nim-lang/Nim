@@ -342,12 +342,15 @@ proc raiseExceptionAux(e: ref Exception) =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions):
-    pushCurrentException(e)
-    raiseCounter.inc
-    if raiseCounter == 0:
-      raiseCounter.inc # skip zero at overflow
-    e.raiseId = raiseCounter
-    {.emit: "`e`->raise();".}
+    if e == currException:
+      {.emit: "throw;".}
+    else:
+      pushCurrentException(e)
+      raiseCounter.inc
+      if raiseCounter == 0:
+        raiseCounter.inc # skip zero at overflow
+      e.raiseId = raiseCounter
+      {.emit: "`e`->raise();".}
   elif defined(nimQuirky):
     pushCurrentException(e)
   else:
