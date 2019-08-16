@@ -1754,14 +1754,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
     of opcNNewNimNode:
-      decodeBC(rkNode)
-      var k = regs[rb].intVal
-      if k < 0 or k > ord(high(TNodeKind)):
-        internalError(c.config, c.debug[pc],
-          "request to create a NimNode of invalid kind")
-      let cc = regs[rc].node
 
-      let x = newNodeI(TNodeKind(int(k)),
+      proc externNodeKindToIntern(c: PCtx; reg: TFullReg): TNodeKind =
+        # backwards compatibility:
+        if reg.kind == rkInt:
+          var k = reg.intVal
+          if k < 0 or k > ord(high(TNodeKind)):
+            internalError(c.config, c.debug[pc],
+              "request to create a NimNode of invalid kind")
+          result = TNodeKind(int(k))
+        elif reg.kind == rkNode:
+          translateEnum(reg.node.strVal, TNodeKind)
+
+      decodeBC(rkNode)
+      let k = externNodeKindToIntern(regs[rb])
+      let cc = regs[rc].node
+      let x = newNodeI(k,
         if cc.kind != nkNilLit:
           cc.info
         elif c.comesFromHeuristic.line != 0'u16:

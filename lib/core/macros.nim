@@ -394,14 +394,29 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, de
 
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
 
-proc newNimNode*(kind: NimNodeKind,
-                 lineInfoFrom: NimNode = nil): NimNode
-  {.magic: "NNewNimNode", noSideEffect.}
-  ## Creates a new AST node of the specified kind.
-  ##
-  ## The ``lineInfoFrom`` parameter is used for line information when the
-  ## produced code crashes. You should ensure that it is set to a node that
-  ## you are transforming.
+when defined(nimFixedNewNimNode):
+  proc newNimNodeImpl(kind: string,
+                      lineInfoFrom: NimNode = nil): NimNode
+    {.magic: "NNewNimNode", noSideEffect.}
+
+  proc newNimNode*(kind: NimNodeKind,
+                  lineInfoFrom: NimNode = nil): NimNode =
+    ## Creates a new AST node of the specified kind.
+    ##
+    ## The ``lineInfoFrom`` parameter is used for line information when the
+    ## produced code crashes. You should ensure that it is set to a node that
+    ## you are transforming.
+    result = newNimNodeImpl($kind, lineInfoFrom)
+
+else:
+  proc newNimNode*(kind: NimNodeKind,
+                  lineInfoFrom: NimNode = nil): NimNode
+    {.magic: "NNewNimNode", noSideEffect.}
+    ## Creates a new AST node of the specified kind.
+    ##
+    ## The ``lineInfoFrom`` parameter is used for line information when the
+    ## produced code crashes. You should ensure that it is set to a node that
+    ## you are transforming.
 
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
