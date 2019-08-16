@@ -9,6 +9,9 @@
 
 ### Breaking changes in the compiler
 
+- `typeDesc` handling is now stricter. This means procedures such as
+  `proc foo(T: typedesc): T` have to be written as
+  `proc foo[T](t: typedesc[T]): T`
 
 ## Library additions
 
