@@ -339,6 +339,8 @@ proc mainCommand*(graph: ModuleGraph) =
   of "e":
     if not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
+    elif not conf.projectFull.string.endsWith(".nims"):
+      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in cmdlinehelper.nim.
   of "nop", "help":
     # prevent the "success" message:
