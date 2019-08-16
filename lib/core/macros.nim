@@ -1611,3 +1611,6 @@ when defined(nimMacrosSizealignof):
     ## from a field of a type. Therefore it only requires one argument
     ## instead of two. Returns a negative value if the Nim compiler
     ## does not know the offset.
+
+proc isExported*(n: NimNode): bool {.magic: "IsExported", noSideEffect.} =
+  ## Returns whether the symbol is exported or not.

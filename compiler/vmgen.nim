@@ -1330,6 +1330,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABx(n, opcNodeToReg, a, a)
     c.genAsgnPatch(arg, a)
     c.freeTemp(a)
+  of mIsExported: genUnaryABC(c, n, dest, opcIsExported)
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)
