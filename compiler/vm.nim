@@ -1921,16 +1921,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       when not defined(nimNoNilSeqs):
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
-    of opcIsExported:
-      decodeB(rkNode)
-      if regs[rb].node.kind == nkSym:
-        regs[ra] = TFullReg(kind: rkInt)
-        if sfExported in regs[rb].node.sym.flags:
-          regs[ra].intVal = 1
-        else:
-          regs[ra].intVal = 0
-      else:
-        stackTrace(c, tos, pc, "node is not a symbol")
 
     inc pc
 

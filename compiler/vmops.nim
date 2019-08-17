@@ -148,3 +148,8 @@ proc registerAdditionalOps*(c: PCtx) =
     let n = getNode(a, 0)
     if n.kind != nkSym: raise newException(ValueError, "node is not a symbol")
     setResult(a, $symBodyDigest(c.graph, n.sym))
+
+  registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) {.nimcall.} =
+    let n = getNode(a, 0)
+    if n.kind != nkSym: raise newException(ValueError, "node is not a symbol")
+    setResult(a, sfExported in n.sym.flags)

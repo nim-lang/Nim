@@ -1612,5 +1612,5 @@ when defined(nimMacrosSizealignof):
     ## instead of two. Returns a negative value if the Nim compiler
     ## does not know the offset.
 
-proc isExported*(n: NimNode): bool {.magic: "IsExported", noSideEffect.} =
+proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.

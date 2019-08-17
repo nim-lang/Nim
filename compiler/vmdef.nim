@@ -149,8 +149,7 @@ type
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
     opcSymOwner,
-    opcSymIsInstantiationOf,
-    opcIsExported
+    opcSymIsInstantiationOf
 
   TBlock* = object
     label*: PSym
