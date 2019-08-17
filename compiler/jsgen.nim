@@ -1210,9 +1210,9 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
 
   useMagic(p, "raiseFieldError2")
   useMagic(p, "makeNimstrLit")
+  useMagic(p, "reprDiscriminant") # no need to offset by firstOrd unlike for cgen
   let msg = genFieldDefect(field, disc)
-
-  lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError2(makeNimstrLit($5), reprEnum($2.$3, $6)); }$n",
+  lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError2(makeNimstrLit($5), reprDiscriminant($2.$3, $6)); }$n",
     setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
     makeJSString(msg), genTypeInfo(p, disc.typ))
 
