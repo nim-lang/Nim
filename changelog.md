@@ -6,6 +6,9 @@
 - The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
   stdin/stdout/stderr are binary files again. This change only affects
   Windows.
+- On Windows console applications the code-page is set at program startup
+  to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
+  feature.
 
 ### Breaking changes in the standard library
 
@@ -15,6 +18,9 @@
 
 ## Library additions
 
+- `encodings.getCurrentEncoding` now distinguishes between the console's
+  encoding and the OS's encoding. This distinction is only meaningful on
+  Windows.
 
 ## Library changes
 
