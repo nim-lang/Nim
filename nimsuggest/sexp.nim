@@ -160,7 +160,7 @@ proc parseString(my: var SexpParser): TTokKind =
         if handleHexChar(my.buf[pos], r): inc(pos)
         if handleHexChar(my.buf[pos], r): inc(pos)
         if handleHexChar(my.buf[pos], r): inc(pos)
-        add(my.a, toUTF8(Rune(r)))
+        add(my.a, toUtf8(Rune(r)))
       else:
         # don't bother with the error
         add(my.a, my.buf[pos])

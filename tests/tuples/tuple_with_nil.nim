@@ -267,7 +267,7 @@ proc writeformat(o: var Writer; c: Rune; fmt: Format) =
   # compute alignment
   var alg = getalign(fmt, faLeft, 1)
   writefill(o, fmt, alg.left)
-  let s = c.toUTF8
+  let s = c.toUtf8
   for c in s: write(o, c)
   writefill(o, fmt, alg.right)
 

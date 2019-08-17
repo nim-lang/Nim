@@ -417,7 +417,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
 
 proc toString(runes: seq[Rune]): string =
   result = ""
-  for rune in runes: result.add(rune.toUTF8)
+  for rune in runes: result.add(rune.toUtf8)
 
 
 proc ascii_cmp(a, b: string): int =

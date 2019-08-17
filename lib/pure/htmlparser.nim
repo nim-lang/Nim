@@ -1888,7 +1888,7 @@ proc entityToUtf8*(entity: string): string =
     doAssert entityToUtf8("#X3a3") == sigma
   let rune = entityToRune(entity)
   if rune.ord <= 0: result = ""
-  else: result = toUTF8(rune)
+  else: result = toUtf8(rune)
 
 proc addNode(father, son: XmlNode) =
   if son != nil: add(father, son)

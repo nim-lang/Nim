@@ -765,7 +765,7 @@ proc getch*(): char =
     discard fd.tcSetAttr(TCSADRAIN, addr oldMode)
 
 when defined(windows):
-  from unicode import toUTF8, Rune, runeLenAt
+  from unicode import toUtf8, Rune, runeLenAt
 
   proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
@@ -792,7 +792,7 @@ when defined(windows):
         # https://github.com/nim-lang/Nim/issues/7764
         continue
       else:
-        password.string.add(toUTF8(c.Rune))
+        password.string.add(toUtf8(c.Rune))
     stdout.write "\n"
 
 else:

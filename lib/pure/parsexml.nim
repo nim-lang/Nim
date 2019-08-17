@@ -451,7 +451,7 @@ proc parseEntity(my: var XmlParser, dest: var string) =
       while my.buf[pos] in {'0'..'9'}:
         r = r * 10 + (ord(my.buf[pos]) - ord('0'))
         inc(pos)
-    add(dest, toUTF8(Rune(r)))
+    add(dest, toUtf8(Rune(r)))
   elif my.buf[pos] == 'l' and my.buf[pos+1] == 't' and my.buf[pos+2] == ';':
     add(dest, '<')
     inc(pos, 2)

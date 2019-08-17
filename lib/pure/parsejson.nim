@@ -250,7 +250,7 @@ proc parseString(my: var JsonParser): TokKind =
             else:
               break
         else:
-          add(my.a, toUTF8(Rune(r)))
+          add(my.a, toUtf8(Rune(r)))
       else:
         # don't bother with the error
         add(my.a, my.buf[pos])
