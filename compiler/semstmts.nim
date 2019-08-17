@@ -2035,8 +2035,8 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   for i in 0 ..< sonsLen(n):
     var imp: PNode
     let it = n.sons[i]
-    if it.kind == nkInfix and it.len == 3 and it[0].ident.s == "as":
-      localError(c.config, it.info, "Cannot use 'as' in 'include'.")
+    if it.kind == nkInfix and it.len == 3 and it[0].ident.s != "/":
+      localError(c.config, it.info, "Cannot use '" & it[0].ident.s & "' in 'include'.")
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
       let sep = it[0]
       let dir = it[1]
