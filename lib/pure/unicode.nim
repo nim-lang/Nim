@@ -15,29 +15,97 @@
 ##
 ## The current version is compatible with Unicode v12.0.0.
 ##
-## **See also:**
+##
+## See also
+## ========
 ## * `strutils module <strutils.html>`_
 ## * `unidecode module <unidecode.html>`_
 ## * `encodings module <encodings.html>`_
 
-
-{.deadCodeElim: on.}  # dce option deprecated
-
 include "system/inclrtl"
 
 type
-  RuneImpl = int32 # underlying type of Rune
+  RuneImpl = range[0..0x10FFFF] # underlying type of Rune
   Rune* = distinct RuneImpl ## \
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
-  Rune16* = distinct int16 ## \
+  Rune16* {.deprecated.} = distinct int16 ## \
     ## Type that can hold a single UTF-16 encoded character.
     ##
     ## A single Rune16 may not be enough to hold an arbitrary Unicode code point.
 
+const InvalidChars = {'\xC0', '\xC1', '\xF5' .. '\xFF'} ## \
+  ## These bytes can never occur in a valid UTF-8 sequence
+const ReplacementRune* = Rune(0xFFFD) ## \
+  ## The replacement rune (U+FFFD) is used as a replacement for invalid bytes
+  ## in a UTF-8 string.
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
+
+proc `<`*(a, b: Rune): bool {.borrow.}
+proc `<=`*(a, b: Rune): bool {.borrow.}
+proc `==`*(a, b: Rune): bool {.borrow.}
+
+proc isOverlongEncoded(r: Rune, size: range[1..4]): bool =
+  # See https://en.wikipedia.org/wiki/UTF-8#Description
+  case size
+  of 1:
+    r < 0x0000.Rune or 0x007F.Rune < r
+  of 2:
+    r < 0x0080.Rune or 0x07FF.Rune < r
+  of 3:
+    r < 0x0800.Rune or 0xFFFF.Rune < r
+  of 4:
+    r < 0x10000.Rune or 0x10FFFF.Rune < r
+
+proc isSurrogate(c: Rune): bool =
+  0xD800.Rune <= c and c <= 0xDFFF.Rune
+
+proc replaceSurrogate(r: Rune): Rune =
+  if r.isSurrogate:
+    ReplacementRune
+  else:
+    r
+
+proc runeAndSizeAt*(s: string, i: Natural): tuple[rune: Rune, size: int] =
+  ## Retrieve the rune starting at the byte inedx `i` as well as the
+  ## number of bytes taken up by the rune.
+  ##
+  ## If there's no valid byte starting at `s[i]`,
+  ## returns `(ReplacementRune, 1)`.
+  if ord(s[i]) <=% 127:
+    return (Rune(s[i]), 1)
+  elif s[i] in InvalidChars or ord(s[i]) shr 6 == 0b10:
+    return (ReplacementRune, 1)
+  elif ord(s[i]) shr 5 == 0b110 and i <= s.len - 2 and
+      ord(s[i+1]) shr 6 == 0b10:
+    result = (Rune(
+      (ord(s[i]) and (ones(5))) shl 6 or
+      (ord(s[i+1]) and ones(6))), 2)
+  elif ord(s[i]) shr 4 == 0b1110 and i <= s.len - 3 and
+      ord(s[i+1]) shr 6 == 0b10 and
+      ord(s[i+2]) shr 6 == 0b10:
+    result = (Rune(
+      (ord(s[i]) and ones(4)) shl 12 or
+      (ord(s[i+1]) and ones(6)) shl 6 or
+      (ord(s[i+2]) and ones(6))), 3)
+  elif ord(s[i]) shr 3 == 0b11110 and i <= s.len - 4 and
+      ord(s[i+1]) shr 6 == 0b10 and
+      ord(s[i+2]) shr 6 == 0b10 and
+      ord(s[i+3]) shr 6 == 0b10:
+    result = (Rune(
+      (ord(s[i]) and ones(3)) shl 18 or
+      (ord(s[i+1]) and ones(6)) shl 12 or
+      (ord(s[i+2]) and ones(6)) shl 6 or
+      (ord(s[i+3]) and ones(6))), 4)
+  else:
+    return (ReplacementRune, 1)
+
+  if isOverlongEncoded(result[0], result[1]):
+    result = (ReplacementRune, 1)
+  elif result[0].isSurrogate:
+    result = (ReplacementRune, 1)
 
 proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
   ## Returns the number of runes of the string ``s``.
@@ -48,112 +116,27 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
 
   var i = 0
   while i < len(s):
-    if uint(s[i]) <= 127: inc(i)
-    elif uint(s[i]) shr 5 == 0b110: inc(i, 2)
-    elif uint(s[i]) shr 4 == 0b1110: inc(i, 3)
-    elif uint(s[i]) shr 3 == 0b11110: inc(i, 4)
-    elif uint(s[i]) shr 2 == 0b111110: inc(i, 5)
-    elif uint(s[i]) shr 1 == 0b1111110: inc(i, 6)
-    else: inc i
+    i.inc runeAndSizeAt(s, i).size
     inc(result)
 
-proc runeLenAt*(s: string, i: Natural): int =
+proc runeSizeAt*(s: string, i: Natural): int =
   ## Returns the number of bytes the rune starting at ``s[i]`` takes.
-  ##
-  ## See also:
-  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   runnableExamples:
     let a = "añyóng"
     doAssert a.runeLenAt(0) == 1
     doAssert a.runeLenAt(1) == 2
+  runeAndSizeAt(s, i).size
 
-  if uint(s[i]) <= 127: result = 1
-  elif uint(s[i]) shr 5 == 0b110: result = 2
-  elif uint(s[i]) shr 4 == 0b1110: result = 3
-  elif uint(s[i]) shr 3 == 0b11110: result = 4
-  elif uint(s[i]) shr 2 == 0b111110: result = 5
-  elif uint(s[i]) shr 1 == 0b1111110: result = 6
-  else: result = 1
-
-const replRune = Rune(0xFFFD)
-
-template fastRuneAt*(s: string, i: int, result: untyped, doInc = true) =
+template fastRuneAt*(s: string, i: int, result: untyped, doInc = true)
+    {.deprecated: "Use runeAndSizeAt instead".} =
   ## Returns the rune ``s[i]`` in ``result``.
   ##
   ## If ``doInc == true`` (default), ``i`` is incremented by the number
   ## of bytes that have been processed.
-  bind ones
-  if uint(s[i]) <= 127:
-    result = Rune(uint(s[i]))
-    when doInc: inc(i)
-  elif uint(s[i]) shr 5 == 0b110:
-    # assert(uint(s[i+1]) shr 6 == 0b10)
-    if i <= s.len - 2:
-      result = Rune((uint(s[i]) and (ones(5))) shl 6 or
-                    (uint(s[i+1]) and ones(6)))
-      when doInc: inc(i, 2)
-    else:
-      result = replRune
-      when doInc: inc(i)
-  elif uint(s[i]) shr 4 == 0b1110:
-    # assert(uint(s[i+1]) shr 6 == 0b10)
-    # assert(uint(s[i+2]) shr 6 == 0b10)
-    if i <= s.len - 3:
-      result = Rune((uint(s[i]) and ones(4)) shl 12 or
-               (uint(s[i+1]) and ones(6)) shl 6 or
-               (uint(s[i+2]) and ones(6)))
-      when doInc: inc(i, 3)
-    else:
-      result = replRune
-      when doInc: inc(i)
-  elif uint(s[i]) shr 3 == 0b11110:
-    # assert(uint(s[i+1]) shr 6 == 0b10)
-    # assert(uint(s[i+2]) shr 6 == 0b10)
-    # assert(uint(s[i+3]) shr 6 == 0b10)
-    if i <= s.len - 4:
-      result = Rune((uint(s[i]) and ones(3)) shl 18 or
-               (uint(s[i+1]) and ones(6)) shl 12 or
-               (uint(s[i+2]) and ones(6)) shl 6 or
-               (uint(s[i+3]) and ones(6)))
-      when doInc: inc(i, 4)
-    else:
-      result = replRune
-      when doInc: inc(i)
-  elif uint(s[i]) shr 2 == 0b111110:
-    # assert(uint(s[i+1]) shr 6 == 0b10)
-    # assert(uint(s[i+2]) shr 6 == 0b10)
-    # assert(uint(s[i+3]) shr 6 == 0b10)
-    # assert(uint(s[i+4]) shr 6 == 0b10)
-    if i <= s.len - 5:
-      result = Rune((uint(s[i]) and ones(2)) shl 24 or
-               (uint(s[i+1]) and ones(6)) shl 18 or
-               (uint(s[i+2]) and ones(6)) shl 12 or
-               (uint(s[i+3]) and ones(6)) shl 6 or
-               (uint(s[i+4]) and ones(6)))
-      when doInc: inc(i, 5)
-    else:
-      result = replRune
-      when doInc: inc(i)
-  elif uint(s[i]) shr 1 == 0b1111110:
-    # assert(uint(s[i+1]) shr 6 == 0b10)
-    # assert(uint(s[i+2]) shr 6 == 0b10)
-    # assert(uint(s[i+3]) shr 6 == 0b10)
-    # assert(uint(s[i+4]) shr 6 == 0b10)
-    # assert(uint(s[i+5]) shr 6 == 0b10)
-    if i <= s.len - 6:
-      result = Rune((uint(s[i]) and ones(1)) shl 30 or
-               (uint(s[i+1]) and ones(6)) shl 24 or
-               (uint(s[i+2]) and ones(6)) shl 18 or
-               (uint(s[i+3]) and ones(6)) shl 12 or
-               (uint(s[i+4]) and ones(6)) shl 6 or
-               (uint(s[i+5]) and ones(6)))
-      when doInc: inc(i, 6)
-    else:
-      result = replRune
-      when doInc: inc(i)
-  else:
-    result = Rune(uint(s[i]))
-    when doInc: inc(i)
+  let (rune, size) = runeAndSizeAt(s, i)
+  when doInc:
+    i.inc size
+  result = rune
 
 proc runeAt*(s: string, i: Natural): Rune =
   ## Returns the rune in ``s`` at **byte index** ``i``.
@@ -161,135 +144,79 @@ proc runeAt*(s: string, i: Natural): Rune =
   ## See also:
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `runeStrAtPos proc <#runeStrAtPos,string,Natural>`_
-  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   runnableExamples:
     let a = "añyóng"
     doAssert a.runeAt(1) == "ñ".runeAt(0)
-    doAssert a.runeAt(2) == "ñ".runeAt(1)
+    ## a[2] is not the beginning of a Rune, so result is the replacement rune
+    doAssert a.runeAt(2) == ReplacementRune
     doAssert a.runeAt(3) == "y".runeAt(0)
-  fastRuneAt(s, i, result, false)
+  runeAndSizeAt(s, i).rune
 
 proc validateUtf8*(s: string): int =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
   ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
   ##
   ## See also:
-  ## * `toUTF8 proc <#toUTF8,Rune>`_
-  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
-  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
+  ## * `toUtf8 proc <#toUtf8,Rune>`_
+  ## * `$ proc <#$,Rune>`_ alias for `toUtf8`
+  ## * `add proc<#add,string,Rune>`_
   var i = 0
-  let L = s.len
-  while i < L:
-    if uint(s[i]) <= 127:
-      inc(i)
-    elif uint(s[i]) shr 5 == 0b110:
-      if uint(s[i]) < 0xc2: return i # Catch overlong ascii representations.
-      if i+1 < L and uint(s[i+1]) shr 6 == 0b10: inc(i, 2)
-      else: return i
-    elif uint(s[i]) shr 4 == 0b1110:
-      if i+2 < L and uint(s[i+1]) shr 6 == 0b10 and uint(s[i+2]) shr 6 == 0b10:
-        inc i, 3
-      else: return i
-    elif uint(s[i]) shr 3 == 0b11110:
-      if i+3 < L and uint(s[i+1]) shr 6 == 0b10 and
-                     uint(s[i+2]) shr 6 == 0b10 and
-                     uint(s[i+3]) shr 6 == 0b10:
-        inc i, 4
-      else: return i
-    else:
+  while i < s.len:
+    let (rune, size) = runeAndSizeAt(s, i)
+    if rune == ReplacementRune and size == 1:
       return i
+    i.inc size
   return -1
 
-template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
-  ## Copies UTF-8 representation of ``c`` into the preallocated string ``s``
-  ## starting at position ``pos``.
-  ##
-  ## If ``doInc == true`` (default), ``pos`` is incremented
-  ## by the number of bytes that have been processed.
-  ##
-  ## To be the most efficient, make sure ``s`` is preallocated
-  ## with an additional amount equal to the byte length of ``c``.
-  ##
-  ## See also:
-  ## * `validateUtf8 proc <#validateUtf8,string>`_
-  ## * `toUTF8 proc <#toUTF8,Rune>`_
-  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
-  var i = RuneImpl(c)
-  if i <=% 127:
-    s.setLen(pos+1)
-    s[pos+0] = chr(i)
-    when doInc: inc(pos)
-  elif i <=% 0x07FF:
-    s.setLen(pos+2)
-    s[pos+0] = chr((i shr 6) or 0b110_00000)
-    s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
-    when doInc: inc(pos, 2)
-  elif i <=% 0xFFFF:
-    s.setLen(pos+3)
-    s[pos+0] = chr(i shr 12 or 0b1110_0000)
-    s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
-    when doInc: inc(pos, 3)
-  elif i <=% 0x001FFFFF:
-    s.setLen(pos+4)
-    s[pos+0] = chr(i shr 18 or 0b1111_0000)
-    s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
-    when doInc: inc(pos, 4)
-  elif i <=% 0x03FFFFFF:
-    s.setLen(pos+5)
-    s[pos+0] = chr(i shr 24 or 0b111110_00)
-    s[pos+1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    s[pos+3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+4] = chr(i and ones(6) or 0b10_0000_00)
-    when doInc: inc(pos, 5)
-  elif i <=% 0x7FFFFFFF:
-    s.setLen(pos+6)
-    s[pos+0] = chr(i shr 30 or 0b1111110_0)
-    s[pos+1] = chr(i shr 24 and ones(6) or 0b10_0000_00)
-    s[pos+2] = chr(i shr 18 and ones(6) or 0b10_0000_00)
-    s[pos+3] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    s[pos+4] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    s[pos+5] = chr(i and ones(6) or 0b10_0000_00)
-    when doInc: inc(pos, 6)
-  else:
-    discard # error, exception?
-
-proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
-  ## Converts a rune into its UTF-8 representation.
-  ##
-  ## See also:
-  ## * `validateUtf8 proc <#validateUtf8,string>`_
-  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
-  ## * `utf8 iterator <#utf8.i,string>`_
-  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
-  runnableExamples:
-    let a = "añyóng"
-    doAssert a.runeAt(1).toUTF8 == "ñ"
-
-  result = ""
-  fastToUTF8Copy(c, result, 0, false)
-
-proc add*(s: var string; c: Rune) =
+proc add*(s: var string; r: Rune) =
   ## Adds a rune ``c`` to a string ``s``.
   runnableExamples:
     var s = "abc"
     let c = "ä".runeAt(0)
     s.add(c)
     doAssert s == "abcä"
-
   let pos = s.len
-  fastToUTF8Copy(c, s, pos, false)
+  let i = replaceSurrogate(r).int
+  if i <= 127:
+    s.setLen(pos+1)
+    s[pos+0] = chr(i)
+  elif i <= 0x07FF:
+    s.setLen(pos+2)
+    s[pos+0] = chr((i shr 6) or 0b110_00000)
+    s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
+  elif i <= 0xFFFF:
+    s.setLen(pos+3)
+    s[pos+0] = chr(i shr 12 or 0b1110_0000)
+    s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
+  elif i <= 0x10FFFF:
+    s.setLen(pos+4)
+    s[pos+0] = chr(i shr 18 or 0b1111_0000)
+    s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
 
-proc `$`*(rune: Rune): string =
-  ## An alias for `toUTF8 <#toUTF8,Rune>`_.
+proc toUtf8*(c: Rune): string {.rtl, extern: "nuc$1".} =
+  ## Converts a rune into its UTF-8 representation.
   ##
   ## See also:
   ## * `validateUtf8 proc <#validateUtf8,string>`_
-  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
-  rune.toUTF8
+  ## * `$ proc <#$,Rune>`_ alias for `toUtf8`
+  ## * `utf8 iterator <#utf8.i,string>`_
+  ## * `add proc<#add,string,Rune>`_
+  runnableExamples:
+    let a = "añyóng"
+    doAssert a.runeAt(1).toUtf8 == "ñ"
+
+  result.add c
+
+proc `$`*(rune: Rune): string =
+  ## An alias for `toUtf8 <#toUtf8,Rune>`_.
+  ##
+  ## See also:
+  ## * `validateUtf8 proc <#validateUtf8,string>`_
+  ## * `add proc<#add,string,Rune>`_
+  rune.toUtf8
 
 proc `$`*(runes: seq[Rune]): string =
   ## Converts a sequence of Runes to a string.
@@ -327,7 +254,7 @@ proc runeOffset*(s: string, pos: Natural, start: Natural = 0): int =
     i = 0
     o = start
   while i < pos:
-    o += runeLenAt(s, o)
+    o += runeSizeAt(s, o)
     if o >= s.len:
       return -1
     inc i
@@ -353,7 +280,7 @@ proc runeReverseOffset*(s: string, rev: Positive): (int, int) =
     o = 0
     x = 0
   while o < s.len:
-    let r = runeLenAt(s, o)
+    let r = runeSizeAt(s, o)
     o += r
     if a < 0:
       x += r
@@ -373,7 +300,6 @@ proc runeAtPos*(s: string, pos: int): Rune =
   ## See also:
   ## * `runeAt proc <#runeAt,string,Natural>`_
   ## * `runeStrAtPos proc <#runeStrAtPos,string,Natural>`_
-  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   fastRuneAt(s, runeOffset(s, pos), result, false)
 
 proc runeStrAtPos*(s: string, pos: Natural): string =
@@ -386,13 +312,12 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
   ## See also:
   ## * `runeAt proc <#runeAt,string,Natural>`_
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
-  ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  s[o.. (o+runeLenAt(s, o)-1)]
+  s[o.. (o+runeSizeAt(s, o)-1)]
 
 proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
-  ## Returns the UTF-8 substring starting at code point ``pos``
-  ## with ``len`` code points.
+  ## Returns the UTF-8 substring starting at rune ``pos``
+  ## with ``len`` runes.
   ##
   ## If ``pos`` or ``len`` is negative they count from
   ## the end of the string. If ``len`` is not given it means the longest
@@ -436,29 +361,6 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
       if e < 0:
         e = s.len
       result = s.substr(o, e-1)
-
-proc `<=%`*(a, b: Rune): bool =
-  ## Checks if code point of `a` is smaller or equal to code point of `b`.
-  runnableExamples:
-    let
-      a = "ú".runeAt(0)
-      b = "ü".runeAt(0)
-    doAssert a <=% b
-  return int(a) <=% int(b)
-
-proc `<%`*(a, b: Rune): bool =
-  ## Checks if code point of `a` is smaller than code point of `b`.
-  runnableExamples:
-    let
-      a = "ú".runeAt(0)
-      b = "ü".runeAt(0)
-    doAssert a <% b
-  return int(a) <% int(b)
-
-proc `==`*(a, b: Rune): bool =
-  ## Checks if two runes are equal.
-  return int(a) == int(b)
-
 
 include "includes/unicode_ranges"
 
@@ -624,14 +526,15 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     (c >= 0x20d0 and c <= 0x20ff) or
     (c >= 0xfe20 and c <= 0xfe2f))
 
+
 template runeCheck(s, runeProc) =
   ## Common code for isAlpha and isSpace.
   result = if len(s) == 0: false else: true
   var
     i = 0
-    rune: Rune
   while i < len(s) and result:
-    fastRuneAt(s, i, rune, doInc=true)
+    let (rune, size) = runeAndSizeAt(s, i)
+    i.inc size
     result = runeProc(rune) and result
 
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
@@ -653,15 +556,13 @@ proc isSpace*(s: string): bool {.noSideEffect, procvar,
 
 template convertRune(s, runeProc) =
   ## Convert runes in ``s`` using ``runeProc`` as the converter.
-  result = newString(len(s))
-  var
-    i = 0
-    resultIndex = 0
-    rune: Rune
+  result = newStringOfCap(len(s))
+  var i = 0
   while i < len(s):
-    fastRuneAt(s, i, rune, doInc=true)
+    var (rune, size) = runeAndSizeAt(s, i)
+    i.inc size
     rune = runeProc(rune)
-    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
+    result.add rune
 
 proc toUpper*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
@@ -688,16 +589,15 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
 
   var
     i = 0
-    resultIndex = 0
     rune: Rune
-  result = newString(len(s))
+  result = newStringOfCap(len(s))
   while i < len(s):
     fastRuneAt(s, i, rune)
     if rune.isUpper():
       rune = rune.toLower()
     elif rune.isLower():
       rune = rune.toUpper()
-    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
+    result.add rune
 
 proc capitalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1".} =
@@ -777,9 +677,8 @@ proc title*(s: string): string {.noSideEffect, procvar,
 
   var
     i = 0
-    resultIndex = 0
     rune: Rune
-  result = newString(len(s))
+  result = newStringOfCap(len(s))
   var firstRune = true
 
   while i < len(s):
@@ -789,7 +688,7 @@ proc title*(s: string): string {.noSideEffect, procvar,
       firstRune = false
     elif rune.isWhiteSpace():
       firstRune = true
-    fastToUTF8Copy(rune, result, resultIndex, doInc=true)
+    result.add rune
 
 
 iterator runes*(s: string): Rune =
@@ -806,12 +705,12 @@ iterator utf8*(s: string): string =
   ##
   ## See also:
   ## * `validateUtf8 proc <#validateUtf8,string>`_
-  ## * `toUTF8 proc <#toUTF8,Rune>`_
-  ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
-  ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
+  ## * `toUtf8 proc <#toUtf8,Rune>`_
+  ## * `$ proc <#$,Rune>`_ alias for `toUtf8`
+  ## * `add proc<#add,string,Rune>`_
   var o = 0
   while o < s.len:
-    let n = runeLenAt(s, o)
+    let n = runeSizeAt(s, o)
     yield s[o.. (o+n-1)]
     o += n
 
@@ -899,35 +798,33 @@ proc graphemeLen*(s: string; i: Natural): Natural =
       if not isCombining(r2): break
       result = j-i
 
-proc lastRune*(s: string; last: int): (Rune, int) =
-  ## Length of the last rune in ``s[0..last]``. Returns the rune and its length
+proc lastRune*(s: string; last: Natural): tuple[rune: Rune, size: int] =
+  ## Length of the last rune in ``s[0..last]``. Returns the rune and its size
   ## in bytes.
-  if s[last] <= chr(127):
+  var index = min(s.high, last)
+  if s[index] <= chr(127):
     result = (Rune(s[last]), 1)
   else:
-    var L = 0
-    while last-L >= 0 and uint(s[last-L]) shr 6 == 0b10: inc(L)
-    var r: Rune
-    fastRuneAt(s, last-L, r, false)
-    result = (r, L+1)
+    while index >= 0 and uint(s[index]) shr 6 == 0b10: index.dec
+    if index < 0:
+      result = (ReplacementRune, 1)
+    else:
+      result = runeAndSizeAt(s, index)
 
 proc size*(r: Rune): int {.noSideEffect.} =
-  ## Returns the number of bytes the rune ``r`` takes.
+  ## Returns the number of bytes the rune ``r`` takes
+  ## when encoded as UTF-8.
   runnableExamples:
     let a = toRunes "aá"
     doAssert size(a[0]) == 1
     doAssert size(a[1]) == 2
 
-  let v = r.uint32
+  let v = replaceSurrogate(r).int
   if v <= 0x007F: result = 1
   elif v <= 0x07FF: result = 2
   elif v <= 0xFFFF: result = 3
-  elif v <= 0x1FFFFF: result = 4
-  elif v <= 0x3FFFFFF: result = 5
-  elif v <= 0x7FFFFFFF: result = 6
-  else: result = 1
+  elif v <= 0x10FFFF: result = 4
 
-# --------- Private templates for different split separators -----------
 proc stringHasSep(s: string, index: int, seps: openArray[Rune]): bool =
   var rune: Rune
   fastRuneAt(s, index, rune, false)
@@ -950,7 +847,7 @@ template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
         when sep is Rune:
           inc(last, sepLen)
         else:
-          inc(last, runeLenAt(s, last))
+          inc(last, runeSizeAt(s, last))
       if splits == 0: last = len(s)
       yield s[first .. (last - 1)]
       if splits == 0: break
@@ -958,7 +855,7 @@ template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
       when sep is Rune:
         inc(last, sepLen)
       else:
-        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
+        inc(last, if last < len(s): runeSizeAt(s, last) else: 1)
 
 iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   maxsplit: int = -1): string =
@@ -1188,10 +1085,10 @@ template runeCaseCheck(s, runeProc, skipNonAlpha) =
   if len(s) == 0: return false
   var
     i = 0
-    rune: Rune
     hasAtleastOneAlphaRune = false
   while i < len(s):
-    fastRuneAt(s, i, rune, doInc=true)
+    let (rune, size) = runeAndSizeAt(s, i)
+    i.inc size
     if skipNonAlpha:
       var runeIsAlpha = isAlpha(rune)
       if not hasAtleastOneAlphaRune:
@@ -1262,7 +1159,55 @@ proc isTitle*(s: string): bool {.noSideEffect, procvar,
     elif rune.isWhiteSpace():
       firstRune = true
 
+proc runeLenAt*(s: string, i: Natural): int
+    {.deprecated: "Use runeSizeAt instead".} =
+  ## Returns the number of bytes the rune starting at ``s[i]`` takes.
+  runnableExamples:
+    let a = "añyóng"
+    doAssert a.runeLenAt(0) == 1
+    doAssert a.runeLenAt(1) == 2
+  runeSizeAt(s, i)
 
+template fastToUtf8Copy*(c: Rune, s: var string, pos: int, doInc = true)
+    {.deprecated: "use add instead".} =
+  ## Copies UTF-8 representation of ``c`` into the preallocated string ``s``
+  ## starting at position ``pos``.
+  ##
+  ## If ``doInc == true`` (default), ``pos`` is incremented
+  ## by the number of bytes that have been processed.
+  ##
+  ## To be the most efficient, make sure ``s`` is preallocated
+  ## with an additional amount equal to the byte length of ``c``.
+  ##
+  ## See also:
+  ## * `validateUtf8 proc <#validateUtf8,string>`_
+  ## * `toUtf8 proc <#toUtf8,Rune>`_
+  ## * `$ proc <#$,Rune>`_ alias for `toUtf8`
+  var i = RuneImpl(c)
+  if i <=% 127:
+    s.setLen(pos+1)
+    s[pos+0] = chr(i)
+    when doInc: inc(pos)
+  elif i <=% 0x07FF:
+    s.setLen(pos+2)
+    s[pos+0] = chr((i shr 6) or 0b110_00000)
+    s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
+    when doInc: inc(pos, 2)
+  elif i <=% 0xFFFF:
+    s.setLen(pos+3)
+    s[pos+0] = chr(i shr 12 or 0b1110_0000)
+    s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
+    when doInc: inc(pos, 3)
+  elif i <=% 0x001FFFFF:
+    s.setLen(pos+4)
+    s[pos+0] = chr(i shr 18 or 0b1111_0000)
+    s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
+    when doInc: inc(pos, 4)
+  else:
+    discard # error, exception?
 
 when isMainModule:
 
