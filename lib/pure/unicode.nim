@@ -1217,6 +1217,12 @@ template fastToUtf8Copy*(c: Rune, s: var string, pos: int, doInc = true)
   else:
     discard # error, exception?
 
+proc `<%`*(a, b: Rune): bool {.deprecated: "use < instead".} =
+  a < b
+
+proc `<=%`*(a, b: Rune): bool {.deprecated: "use <= instead".} =
+  a <= b
+
 when isMainModule:
 
   proc asRune(s: static[string]): Rune =
