@@ -218,6 +218,14 @@ proc `$`*(rune: Rune): string =
   ## * `add proc<#add,string,Rune>`_
   rune.toUtf8
 
+proc sanitizeUtf8*(s: string): string =
+  result = newStringOfCap(s.len)
+  var i = 0
+  while i < s.len:
+    let (rune, size) = runeAndSizeAt(s, i)
+    i.inc size
+    result.add rune
+
 proc `$`*(runes: seq[Rune]): string =
   ## Converts a sequence of Runes to a string.
   ##
