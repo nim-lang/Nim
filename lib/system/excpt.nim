@@ -136,8 +136,7 @@ proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
     prev.up = cur.up
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  if not e.isNil:
-    currException = e
+  currException = e
 
 # some platforms have native support for stack traces:
 const
@@ -342,12 +341,15 @@ proc raiseExceptionAux(e: ref Exception) =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions):
-    pushCurrentException(e)
-    raiseCounter.inc
-    if raiseCounter == 0:
-      raiseCounter.inc # skip zero at overflow
-    e.raiseId = raiseCounter
-    {.emit: "`e`->raise();".}
+    if e == currException:
+      {.emit: "throw;".}
+    else:
+      pushCurrentException(e)
+      raiseCounter.inc
+      if raiseCounter == 0:
+        raiseCounter.inc # skip zero at overflow
+      e.raiseId = raiseCounter
+      {.emit: "`e`->raise();".}
   elif defined(nimQuirky):
     pushCurrentException(e)
   else:

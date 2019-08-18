@@ -119,7 +119,7 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
-proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
+proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
   result = sym.owner.name.s & '.' & sym.name.s
   if sym.kind in routineKinds:
@@ -137,9 +137,10 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
     add(result, ')')
     if n.sons[0].typ != nil:
       result.add(": " & typeToString(n.sons[0].typ, prefer))
-  result.add " [declared in "
-  result.add(conf$sym.info)
-  result.add "]"
+  if getDeclarationPath:
+    result.add " [declared in "
+    result.add(conf$sym.info)
+    result.add "]"
 
 proc elemType*(t: PType): PType =
   assert(t != nil)

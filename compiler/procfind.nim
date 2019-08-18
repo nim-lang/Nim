@@ -72,8 +72,8 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
       of paramsEqual:
         if (sfExported notin result.flags) and (sfExported in fn.flags):
           let message = ("public implementation '$1' has non-public " &
-                         "forward declaration in $2") %
-                        [getProcHeader(c.config, result), c.config$result.info]
+                         "forward declaration at $2") %
+                        [getProcHeader(c.config, result, getDeclarationPath = false), c.config$result.info]
           localError(c.config, fn.info, message)
         return
       of paramsIncompatible:
