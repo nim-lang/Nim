@@ -4496,12 +4496,6 @@ proc substr*(s: string, first = 0): string =
 when defined(nimconfig):
   include "system/nimscript"
 
-when defined(windows) and appType == "console" and
-    not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
-  proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
-    importc: "SetConsoleOutputCP".}
-  discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
-
 when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}

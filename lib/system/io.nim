@@ -202,7 +202,7 @@ when defined(windows):
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
     var i = c_fprintf(f, "%s", s)
-    while i < s.len and false:
+    while i < s.len:
       if s[i] == '\0':
         inc i
       else:
@@ -257,9 +257,22 @@ proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
   discard c_fflush(f)
 
 proc getFileHandle*(f: File): FileHandle =
+  ## returns the file handle of the file ``f``. This is only useful for
+  ## platform specific programming.
+  ## Note that on Windows this doesn't return the Windows-specific handle,
+  ## but the C library's notion of a handle, whatever that means.
+  ## Use `getOsFileHandle` instead.
+  c_fileno(f)
+
+proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
-  c_fileno(f)
+  when defined(windows):
+    proc getOsfhandle(fd: cint): FileHandle {.
+      importc: "_get_osfhandle", header: "<io.h>".}
+    result = getOsfhandle(getFileHandle(f))
+  else:
+    result = c_fileno(f)
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -607,6 +620,16 @@ when defined(windows) and not defined(nimscript):
   c_setmode(c_fileno(stdout), O_BINARY)
   c_setmode(c_fileno(stderr), O_BINARY)
 
+when defined(windows) and appType == "console" and
+    not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleOutputCP".}
+  proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleCP".}
+
+  const Utf8codepage = 65001
+  discard setConsoleOutputCP(Utf8codepage)
+  discard setConsoleCP(Utf8codepage)
 
 proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll

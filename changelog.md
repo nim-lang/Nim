@@ -21,6 +21,9 @@
 - `encodings.getCurrentEncoding` now distinguishes between the console's
   encoding and the OS's encoding. This distinction is only meaningful on
   Windows.
+- Added `system.getOsFileHandle` which is usually more useful
+  than `system.getFileHandle`. This distinction is only meaningful on
+  Windows.
 
 ## Library changes
 
