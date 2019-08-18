@@ -257,9 +257,22 @@ proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
   discard c_fflush(f)
 
 proc getFileHandle*(f: File): FileHandle =
+  ## returns the file handle of the file ``f``. This is only useful for
+  ## platform specific programming.
+  ## Note that on Windows this doesn't return the Windows-specific handle,
+  ## but the C library's notion of a handle, whatever that means.
+  ## Use `getOsFileHandle` instead.
+  c_fileno(f)
+
+proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
-  c_fileno(f)
+  when defined(windows):
+    proc getOsfhandle(fd: cint): FileHandle {.
+      importc: "_get_osfhandle", header: "<io.h>".}
+    result = getOsfhandle(getFileHandle(f))
+  else:
+    result = c_fileno(f)
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
