@@ -814,6 +814,55 @@ proc getString(L: var Lexer, tok: var Token, mode: StringMode) =
       else:
         tok.literal.add(L.buf[pos])
         inc(pos)
+  elif L.buf[pos] == ':' and L.buf[pos + 1] in {CR, LF}:
+    # string block literal
+    # TODO: Allow end-of-line comment to exist on starting line?
+    pos = handleCRLF(L, pos + 1)
+    if mode != normal: tok.tokType = tkRStrLit
+    else: tok.tokType = tkStrLit
+    let indent = L.currLineIndent + 2
+    var needIndent = indent
+    var emptyLines = 0
+    while true:
+      var c = L.buf[pos]
+      # skip indent and terminate if block ends
+      if needIndent > 0:
+        if c == ' ':
+          dec(needIndent)
+          inc(pos)
+        elif c in {CR, LF}:
+          inc(emptyLines)
+          pos = handleCRLF(L, pos)
+          needIndent = indent
+        else:
+          break
+        continue
+      # string block content
+      while emptyLines > 0:
+        add(tok.literal, "\n")
+        dec(emptyLines)
+      if c in {CR, LF, nimlexbase.EndOfFile}:
+        add(tok.literal, "\n")
+        pos = handleCRLF(L, pos)
+        needIndent = indent
+        continue
+      if (c == '\\') and mode == normal:
+        L.bufpos = pos
+        if L.buf[pos + 1] in {CR, LF, nimlexbase.EndOfFile}:
+          inc(L.bufpos)
+          pos = handleCRLF(L, pos + 1)
+          needIndent = indent
+          continue
+        else:
+          getEscapedChar(L, tok)
+          pos = L.bufpos
+      else:
+        add(tok.literal, c)
+        inc(pos)
+        L.bufpos = pos
+    if tok.literal == "":
+      lexMessage(L, errGenerated, "string block literal indented by two spaces expected")
+      tokenEndIgnore(tok, pos)
   else:
     # ordinary string literal
     if mode != normal: tok.tokType = tkRStrLit
