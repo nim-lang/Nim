@@ -202,7 +202,7 @@ when defined(windows):
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
     var i = c_fprintf(f, "%s", s)
-    while i < s.len and false:
+    while i < s.len:
       if s[i] == '\0':
         inc i
       else:
@@ -607,6 +607,16 @@ when defined(windows) and not defined(nimscript):
   c_setmode(c_fileno(stdout), O_BINARY)
   c_setmode(c_fileno(stderr), O_BINARY)
 
+when defined(windows) and appType == "console" and
+    not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleOutputCP".}
+  proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleCP".}
+
+  const Utf8codepage = 65001
+  discard setConsoleOutputCP(Utf8codepage)
+  discard setConsoleCP(Utf8codepage)
 
 proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
