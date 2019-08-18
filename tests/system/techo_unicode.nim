@@ -6,6 +6,7 @@ A你好
 ИnastystringA你好
 ÖÜhmabasdfdsmÄhmaИ'''
   disabled: "posix"
+  joinable: "false"
 """
 
 import winlean
