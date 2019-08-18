@@ -367,7 +367,6 @@ proc runeToEntity*(rune: Rune): string =
   runnableExamples:
     import unicode
     doAssert runeToEntity(Rune(0)) == ""
-    doAssert runeToEntity(Rune(-1)) == ""
     doAssert runeToEntity("Ü".runeAt(0)) == "#220"
     doAssert runeToEntity("∈".runeAt(0)) == "#8712"
   if rune.ord <= 0: result = ""
