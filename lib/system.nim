@@ -357,7 +357,8 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ##  for i in low(arr)..high(arr):
   ##    echo arr[i]
 
-proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+proc high*[T: array](x: typedesc[T]): auto {.magic: "High", noSideEffect.}
+  #proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array type.
   ##
   ## See also:
@@ -882,7 +883,7 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
 
 when defined(nimHasalignOf):
   proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
-  proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
+  proc alignof*[T](x: typedesc[T]): int {.magic: "AlignOf", noSideEffect.}
 
   proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
 
@@ -896,7 +897,7 @@ when defined(nimHasalignOf):
   #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
 when defined(nimtypedescfixed):
-  proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
+  proc sizeof*[T](x: typedesc[T]): int {.magic: "SizeOf", noSideEffect.}
 
 proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
   ## **Deprecated since version 0.18.0**. For the common excluding range
@@ -1712,16 +1713,16 @@ when defined(nimV2) and not defined(nimscript):
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it in ``a``.
 
-  proc new*(t: typedesc): auto =
+  proc new*[T](t: typedesc[T]): auto =
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it as result value.
     ##
     ## When ``T`` is a ref type then the resulting type will be ``T``,
     ## otherwise it will be ``ref T``.
-    when (t is ref):
-      var r: owned t
+    when (T is ref):
+      var r: owned T
     else:
-      var r: owned(ref t)
+      var r: owned(ref T)
     new(r)
     return r
 
@@ -1738,16 +1739,16 @@ else:
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it in ``a``.
 
-  proc new*(t: typedesc): auto =
+  proc new*[T](t: typedesc[T]): auto =
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it as result value.
     ##
     ## When ``T`` is a ref type then the resulting type will be ``T``,
     ## otherwise it will be ``ref T``.
-    when (t is ref):
-      var r: t
+    when (T is ref):
+      var r: T
     else:
-      var r: ref t
+      var r: ref T
     new(r)
     return r
 
@@ -1811,7 +1812,7 @@ proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
   ##   echo @b # => @['f', 'o', 'o']
 
 when defined(nimHasDefault):
-  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
+  proc default*[T](t: typedesc[T]): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
@@ -2885,8 +2886,8 @@ proc max*[T](x, y: T): T {.inline.}=
   if y <= x: x else: y
 {.pop.}
 
-proc high*(T: typedesc[SomeFloat]): T = Inf
-proc low*(T: typedesc[SomeFloat]): T = NegInf
+proc high*[T: SomeFloat](t: typedesc[T]): T = Inf
+proc low*[T: SomeFloat](t: typedesc[T]): T = NegInf
 
 proc clamp*[T](x, a, b: T): T =
   ## Limits the value ``x`` within the interval [a, b].

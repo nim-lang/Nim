@@ -493,11 +493,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i], preferTypeName))
     add(result, ']')
   of tyTypeDesc:
-    result = "typedesc"
-    if t.sons[0].kind != tyNone:
-      result.add '['
-      result.add typeToString(t.sons[0])
-      result.add ']'
+    result = "typedesc["
+    result.add typeToString(t.sons[0])
+    result.add ']'
   of tyStatic:
     if prefer == preferGenericArg and t.n != nil:
       result = t.n.renderTree

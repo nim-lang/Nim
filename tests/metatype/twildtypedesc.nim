@@ -33,11 +33,10 @@ echo s as string
 
 # bug #4534
 
-proc unit(t: typedesc[int]): t = 0
-proc unit(t: typedesc[string]): t = ""
-proc unit(t: typedesc[float]): t = 0.0
+proc unit(t: typedesc[int]): int = 0
+proc unit(t: typedesc[string]): string = ""
+proc unit(t: typedesc[float]): float = 0.0
 
 assert unit(int) == 0
 assert unit(string) == ""
 assert unit(float) == 0.0
-

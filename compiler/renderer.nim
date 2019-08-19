@@ -1185,7 +1185,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 0)
   of nkTypeOfExpr:
-    put(g, tkType, "type")
+    put(g, tkType, "typeof")
     put(g, tkParLe, "(")
     if n.len > 0: gsub(g, n.sons[0])
     put(g, tkParRi, ")")

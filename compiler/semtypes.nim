@@ -1218,11 +1218,88 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     message(c.config, info, warnDeprecated, msg)
     r = nil
 
+  if kind == skProc:
+    var warnAboutTypedescUsage = false
+    for i in 1 ..< result.n.len:
+      let argType = result.n[i].sym.typ
+      if argType.kind == tyTypeDesc and argType[0].kind != tyGenericParam:
+        warnAboutTypedescUsage = true
+        break
+    if r != nil and kind == skProc and r.kind == tyTypeDesc and tfUnresolved in r.flags:
+      warnAboutTypedescUsage = true
+
+    if warnAboutTypedescUsage:
+      # Disabling the warnings for stdlib is bad. These warnigs would
+      # benefit the stdlib greatly.  But currently I don't know how to
+      # distinguish magic procs from normal proces at this stage of
+      # compilation. The magic is not set in the owner yet. I think
+      # the magic proces should be magic macros, because that is what
+      # they semantically are.
+      let owner = getCurrOwner(c).owner
+      if owner.kind == skModule and owner.owner.name.s == "stdlib":
+        warnAboutTypedescUsage = false
+
+    if warnAboutTypedescUsage:
+      var msg = "implicit generics typedesc proc parameters are discouraged. "
+      msg.add "Please use explicit generic parameters, for example: \n"
+      msg.add "proc "
+      msg.add c.getCurrOwner.name.s
+      if sfExported in c.getCurrOwner.flags:
+        msg.add '*'
+      var resultName = "T"
+      let name = "T"
+      let sym = r.sym
+      msg.add "["
+      var genCounter = 1
+      for genParam in genericParams:
+        if genParam.kind == nkSym:
+          if msg[^1] != '[':
+            msg.add ", "
+          let symType = genParam.sym.typ
+          if symType.kind == tyTypeDesc:
+            if r != nil and r.sym == genParam.sym:
+              resultName.addInt genCounter
+            msg.add "T"
+            msg.add genCounter
+            if symType[0].kind != tyNone:
+              msg.add ": "
+              if symType[0].sym != nil:
+                msg.add symType[0].sym.name.s
+              else:
+                msg.add $symType[0]
+            inc genCounter
+          else:
+            msg.add genParam.sym.name.s
+        else:
+          msg.add $genParam
+      msg.add "]("
+      genCounter = 1
+      for i in 1 ..< result.n.len:
+        let argSym = result.n[i].sym
+        if i != 1:
+          msg.add "; "
+        msg.add argSym.name.s
+        msg.add ": "
+        if argSym.typ.kind == tyTypeDesc:
+          msg.add "typedesc[T"
+          msg.addInt genCounter
+          msg.add "]"
+          inc genCounter
+        else:
+          msg.add $argSym.typ
+      msg.add "): "
+      msg.add resultName
+      message(c.config, n.info, warnDeprecated, msg)
+
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
+      # stdlib procs sometimes behave like macros.
+      # tfUnresolved is in the result of `proc foo(t: typedesc): t`.
+      # Eventually that should become illegal.
       if kind notin {skMacro, skTemplate} and r.kind in {tyTyped, tyUntyped, tyTypeDesc} and
+         tfUnresolved notin r.flags and
          (let owner = getCurrOwner(c).owner; owner.kind != skModule or owner.owner.name.s != "stdlib"):
         localError(c.config, n.sons[0].info, "return type '" & typeToString(r) &
           "' is only valid for macros and templates")

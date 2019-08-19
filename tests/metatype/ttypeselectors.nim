@@ -103,7 +103,7 @@ echo sizeof(c)
 # Instead of type mismatch for macro, proc just failed with internal error: getTypeDescAux(tyNone)
 # https://github.com/nim-lang/Nim/issues/7231
 
-proc getBase2*(bits: static[int]): typedesc =
+proc getBase2*(bits: static[int]): NimNode =
   if bits == 128:
     result = newTree(nnkBracketExpr, ident("MpUintBase"), ident("uint64"))
   else:

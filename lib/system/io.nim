@@ -593,7 +593,7 @@ proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
   var f: File
   if open(f, filename):
     try:
-      result = readAll(f).TaintedString
+      result = readAll(f)
     finally:
       close(f)
   else:
