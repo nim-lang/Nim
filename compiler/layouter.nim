@@ -9,10 +9,7 @@
 
 ## Layouter for nimpretty.
 
-import idents, lexer, lineinfos, llstream, options, msgs, strutils,
-  pathutils
-from os import changeFileExt
-from sequtils import delete
+import idents, lexer, lineinfos, llstream, options, msgs, strutils, pathutils
 
 const
   MinLineLen = 15
@@ -314,11 +311,11 @@ proc removeSpaces(em: var Emitter) =
 
 const
   openPars = {tkParLe, tkParDotLe,
-              tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
-              tkCurlyLe}
+              tkBracketLe, tkBracketDotLe, tkBracketLeColon,
+              tkCurlyDotLe, tkCurlyLe}
   closedPars = {tkParRi, tkParDotRi,
-              tkBracketRi, tkCurlyDotRi,
-              tkCurlyRi, tkBracketDotRi}
+                tkBracketRi, tkBracketDotRi,
+                tkCurlyDotRi, tkCurlyRi}
 
   splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
