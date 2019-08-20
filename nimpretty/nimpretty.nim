@@ -12,8 +12,7 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer, options,
-  pathutils, layouter]
+import ../compiler / [idents, msgs, syntaxes, options, pathutils, layouter]
 
 import parseopt, strutils, os
 
