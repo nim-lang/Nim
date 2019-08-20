@@ -1812,7 +1812,7 @@ proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
   ##   echo @b # => @['f', 'o', 'o']
 
 when defined(nimHasDefault):
-  proc default*[T](t: typedesc[T]): T {.magic: "Default", noSideEffect.}
+  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
