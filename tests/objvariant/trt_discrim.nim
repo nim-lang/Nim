@@ -148,3 +148,50 @@ reject:
     case kind:
     of k1: result = KindObj(kind: kind, i32: 1)
     else: discard
+    
+type
+  Kind3 = enum
+    A, B, C, E
+
+  OkRange = range[B..C]
+  NotOkRange = range[B..E]
+
+  CaseObject = object
+    case kind: Kind3
+    of B, C:
+      field: int
+    else: discard
+
+accept:
+  let rtDiscriminator: OkRange = B
+  discard CaseObject(kind: rtDiscriminator, field: 1)
+
+accept:
+  let rtDiscriminator = B
+  discard CaseObject(kind: OkRange(rtDiscriminator), field: 1)
+
+accept:
+  const rtDiscriminator: NotOkRange = B
+  discard CaseObject(kind: rtDiscriminator, field: 1)
+
+accept:
+  discard CaseObject(kind: NotOkRange(B), field: 1)
+
+reject:
+  let rtDiscriminator: NotOkRange = B
+  discard CaseObject(kind: rtDiscriminator, field: 1)
+
+reject:
+  let rtDiscriminator = B
+  discard CaseObject(kind: NotOkRange(rtDiscriminator), field: 1)
+
+reject:
+  type Obj = object
+    case x: int
+    of 0 .. 1000:
+      field: int
+    else:
+      discard
+
+  let x: range[0..15] = 1
+  let o = Obj(x: x, field: 1)

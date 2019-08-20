@@ -1600,7 +1600,9 @@ statement. If possible values of the discriminator variable in a
 ``case`` statement branch are a subset of discriminator values for the selected
 object branch, the initialization is considered valid. This analysis only works
 for immutable discriminators of an ordinal type and disregards ``elif``
-branches.
+branches. For discriminator values with a ``range`` type, the compiler
+checks if the entire range of possible values for the discriminator value is
+valid for the choosen object branch.
 
 A small example:
 
@@ -1618,6 +1620,10 @@ A small example:
     z = Node(kind: unknownKind, leftOp: Node(), rightOp: Node())
   else:
     echo "ignoring: ", unknownKind
+
+  # also valid, since unknownKindBounded can only contain the values nkAdd or nkSub
+  let unknownKindBounded = range[nkAdd..nkSub](unknownKind)
+  z = Node(kind: unknownKindBounded, leftOp: Node(), rightOp: Node())
 
 Set type
 --------
