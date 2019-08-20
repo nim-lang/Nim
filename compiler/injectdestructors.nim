@@ -7,7 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-import astalgo
 ## Injects destructor calls into Nim code as well as
 ## an optimizer that optimizes copies to moves. This is implemented as an
 ## AST to AST transformation so that every backend benefits from it.
@@ -540,13 +539,6 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   result.add tmp
 
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
-  proc pArgIfTyped(argPart: PNode, c: var Con): PNode =
-    # typ is nil if we are in if/case expr branch with noreturn
-    if argPart.typ == nil: pStmt(argPart, c)
-    else: pArg(argPart, c, isSink)
-  proc pArgg(argPart: PNode, c: var Con): PNode =
-    pArg(argPart, c, isSink)
-
   if isSink:
     if arg.kind in nkCallKinds:
       # recurse but skip the call expression in order to prevent
@@ -575,9 +567,11 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(arg, c)
     elif arg.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt}:
-      result = recurse(arg, c, pArgg)
+      result = recurse(arg, c, proc(n: PNode, c: var Con): PNode = pArg(n, c, isSink))
     elif arg.kind in {nkIfExpr, nkIfStmt, nkCaseStmt}:
-      result = recurse(arg, c, pArgIfTyped)
+      result = recurse(arg, c, proc(n: PNode, c: var Con): PNode =
+          if n.typ == nil: pStmt(n, c) #in if/case expr branch with noreturn
+          else: pArg(n, c, isSink))
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
@@ -615,21 +609,8 @@ proc keepVar(n, it: PNode, c: var Con): PNode =
     itCopy.add pStmt(it[^1], c)
   result.add itCopy
 
-const
-  skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
-    nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
-    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
-    nkHiddenStdConv, nkHiddenDeref}
-
-proc implicitlyDiscardable(n: PNode): bool =
-  var n = n
-  while n.kind in skipForDiscardable: n = n.lastSon
-  result = n.kind == nkRaiseStmt or
-           (isCallExpr(n) and n.sons[0].kind == nkSym and
-           sfDiscardable in n.sons[0].sym.flags)
-
 proc pStmt(n: PNode; c: var Con): PNode =
-  assert(not isExpression(n) or implicitlyDiscardable(n))
+  #assert(not isExpression(n) or implicitlyDiscardable(n), $n.kind)
   case n.kind
   of nkVarSection, nkLetSection:
     # transform; var x = y to  var x; x op y  where op is a move or copy
@@ -726,13 +707,6 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   const movableNodeKinds = (nkCallKinds + {nkSym, nkTupleConstr, nkObjConstr,
                                            nkBracket, nkBracketExpr, nkNilLit})
 
-  proc moveOrCopyIfTyped(riPart: PNode, c: var Con): PNode =
-    # if we are in if/case expr branch with noreturn
-    if riPart.typ == nil: pStmt(riPart, c)
-    else: moveOrCopy(dest, riPart, c)
-  proc moveOrCopyy(riPart: PNode, c: var Con): PNode =
-    moveOrCopy(dest, riPart, c)
-
   #XXX: All these nkStmtList results will cause problems in recursive moveOrCopy calls
   case ri.kind
   of nkCallKinds:
@@ -789,9 +763,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     copyRi[0] = result[^1]
     result[^1] = copyRi
   of nkStmtListExpr, nkBlockExpr:
-    result = recurse(ri, c, moveOrCopyy)
+    result = recurse(ri, c, proc(n: PNode, c: var Con): PNode = moveOrCopy(dest, n, c))
   of nkIfExpr, nkCaseStmt:
-    result = recurse(ri, c, moveOrCopyIfTyped)
+    result = recurse(ri, c, proc(n: PNode, c: var Con): PNode =
+        if n.typ == nil: pStmt(n, c) #in if/case expr branch with noreturn
+        else: moveOrCopy(dest, n, c))
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(dest.typ):
