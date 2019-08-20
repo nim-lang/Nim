@@ -70,3 +70,14 @@ block:
     yield 4
   for a in myIter2():
     echo a
+
+block t5859:
+  proc flatIterator[T](s: openarray[T]): auto {.noSideEffect.}=
+    result = iterator(): auto =
+      when (T is not seq|array):
+        for item in s:
+          yield item
+      else:
+        yield 123456
+  # issue #5859
+  let it = flatIterator(@[@[1,2], @[3,4]])

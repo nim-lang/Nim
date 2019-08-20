@@ -132,8 +132,8 @@ Through the ``-d:x`` or ``--define:x`` switch you can define compile time
 symbols for conditional compilation. The defined switches can be checked in
 source code with the `when statement <manual.html#when-statement>`_ and
 `defined proc <system.html#defined>`_. The typical use of this switch is to
-enable builds in release mode (``-d:release``) where certain safety checks are
-omitted for better performance. Another common use is the ``-d:ssl`` switch to
+enable builds in release mode (``-d:release``) where optimizations are
+enabled for better performance. Another common use is the ``-d:ssl`` switch to
 activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
@@ -143,6 +143,9 @@ to override symbols during build time.
 
 Compile time symbols are completely **case insensitive** and underscores are
 ignored too. ``--define:FOO`` and ``--define:foo`` are identical.
+
+Compile time symbols starting with the ``nim`` prefix are reserved for the
+implementation and should not be used elsewhere.
 
 
 Configuration files
@@ -168,6 +171,10 @@ The default build of a project is a `debug build`:idx:. To compile a
 `release build`:idx: define the ``release`` symbol::
 
   nim c -d:release myproject.nim
+
+ To compile a `dangerous release build`:idx: define the ``danger`` symbol::
+
+  nim c -d:danger myproject.nim
 
 
 Search path handling
@@ -262,11 +269,11 @@ configuration file should contain something like::
 Cross compilation for Windows
 =============================
 
-To cross compile for Windows from Linux or OSX using the MinGW-w64 toolchain::
+To cross compile for Windows from Linux or macOS using the MinGW-w64 toolchain::
 
   nim c -d:mingw myproject.nim
 
-Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the cpu arch.
+Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the CPU architecture.
 
 The MinGW-w64 toolchain can be installed as follows::
 
@@ -344,10 +351,10 @@ complete list.
 ======================   =========================================================
 Define                   Effect
 ======================   =========================================================
-``release``              Turns off runtime checks and turns on the optimizer.
+``release``              Turns on the optimizer.
                          More aggressive optimizations are possible, eg:
                          ``--passC:-ffast-math`` (but see issue #10305)
-                         ``--stacktrace:off``
+``danger``               Turns off all runtime checks and turns on the optimizer.
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
@@ -410,94 +417,6 @@ the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
 
-Hot code reloading
-------------------
-
-The `hotCodeReloading`:idx: option enables special compilation mode where
-changes in the code can be applied automatically to a running program.
-The code reloading happens at the granularity of an individual module.
-When a module is reloaded, any newly added global variables will be
-initialized, but all other top-level code appearing in the module won't
-be re-executed and the state of all existing global variables will be
-preserved. One can use the special event handlers ``beforeCodeReload`` and
-``afterCodeReload`` to reset the state of a particular variable or to force
-the execution of certain statements:
-
-.. code-block:: Nim
-  var
-   settings = initTable[string, string]()
-   lastReload: Time
-
-  for k, v in loadSettings():
-    settings[k] = v
-
-  initProgram()
-
-  afterCodeReload:
-    lastReload = now()
-    resetProgramState()
-
-On each code reload, Nim will first execute all `beforeCodeReload`:idx:
-handlers registered in the previous version of the program and then all
-`afterCodeReload`:idx handlers appearing in the newly loaded code. Please note
-that any handlers appearing in modules that weren't reloaded will also be
-executed. To prevent this behavior, one can guard the code with the
-`hasModuleChanged()`:idx: API:
-
-.. code-block:: Nim
-  import mydb
-
-  var myCache = initTable[Key, Value]()
-
-  afterCodeReload:
-    if hasModuleChanged(mydb):
-      resetCache(myCache)
-
-The hot code reloading is based on dynamic library hot swapping in the native
-targets and direct manipulation of the global namespace in the JavaScript
-target. The Nim compiler does not specify the mechanism for detecting the
-conditions when the code must be reloaded. Instead, the program code is
-expected to call `performCodeReload()`:idx every time it wishes to reload
-its code.
-
-It's expected that most projects will implement the reloading with a suitable
-build-system triggered IPC notification mechanism, but a polling solution is
-also possible through the provided `hasAnyModuleChanged()`:idx API.
-
-In order to access ``beforeCodeReload``, ``afterCodeReload``, ``hasModuleChanged``
-or ``hasAnyModuleChanged`` one must import the `hotcodereloading`:idx module.
-
-**Usage in Native projects:**
-
-Native projects using the hot code reloading option will be implicitly
-compiled with the `-d:useNimRtl` option and they will depend on both
-the ``nimrtl`` library and the ``nimhcr`` library which implements the
-hot code reloading run-time.
-
-All modules of the project will be compiled to separate dynamic link
-libraries placed in the ``nimcache`` directory. Please note that during
-the execution of the program, the hot code reloading run-time will load
-only copies of these libraries in order to not interfere with any newly
-issued build commands.
-
-The main module of the program is considered non-reloadable. Please note
-that procs from reloadable modules should not appear in the call stack of
-program while ``performCodeReload`` is being called. Thus, the main module
-is a suitable place for implementing a program loop capable of calling
-``performCodeReload``.
-
-Please note that reloading won't be possible when any of the type definitions
-in the program has been changed. When closure iterators are used (directly or
-through async code), the reloaded refinitions will affect only newly created
-instances. Existing iterator instancess will execute their original code to
-completion.
-
-**Usage in JavaScript projects:**
-
-Once your code is compiled for hot reloading, the ``nim-livereload`` NPM
-package provides a convenient solution for implementing the actual reloading
-in the browser using a framework such as [LiveReload](http://livereload.com/)
-or [BrowserSync](https://browsersync.io/).
 
 
 DynlibOverride
@@ -527,7 +446,7 @@ Backend language options
 The typical compiler usage involves using the ``compile`` or ``c`` command to
 transform a ``.nim`` file into one or more ``.c`` files which are then
 compiled with the platform's C compiler into a static binary. However there
-are other commands to compile to C++, Objective-C or Javascript. More details
+are other commands to compile to C++, Objective-C or JavaScript. More details
 can be read in the `Nim Backend Integration document <backends.html>`_.
 
 

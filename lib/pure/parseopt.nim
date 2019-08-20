@@ -160,11 +160,11 @@ type
     cmdArgument,              ## An argument such as a filename
     cmdLongOption,            ## A long option such as --option
     cmdShortOption            ## A short option such as -c
-  OptParser* =
-      object of RootObj ## Implementation of the command line parser.
-      ##
-      ## To initialize it, use the
-      ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+  OptParser* = object of RootObj ## \
+    ## Implementation of the command line parser.
+    ##
+    ## To initialize it, use the
+    ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
     pos*: int
     inShortState: bool
     allowWhitespaceAfterColon: bool
@@ -348,7 +348,8 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
         if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and p.allowWhitespaceAfterColon:
           inc p.idx
           i = 0
-        p.val = TaintedString p.cmds[p.idx].substr(i)
+        if p.idx < p.cmds.len:
+          p.val = TaintedString p.cmds[p.idx].substr(i)
       elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
         p.val = TaintedString p.cmds[p.idx+1]
         inc p.idx
@@ -365,43 +366,42 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     inc p.idx
     p.pos = 0
 
-when declared(os.paramCount):
-  proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
-    ## Retrieves the rest of the command line that has not been parsed yet.
-    ##
-    ## See also:
-    ## * `remainingArgs proc<#remainingArgs,OptParser>`_
-    ##
-    ## **Examples:**
-    ##
-    ## .. code-block::
-    ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-    ##   while true:
-    ##     p.next()
-    ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-    ##       break
-    ##     else: continue
-    ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
-    result = p.cmds[p.idx .. ^1].quoteShellCommand.TaintedString
+proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
+  ## Retrieves the rest of the command line that has not been parsed yet.
+  ##
+  ## See also:
+  ## * `remainingArgs proc<#remainingArgs,OptParser>`_
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+  ##   while true:
+  ##     p.next()
+  ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+  ##       break
+  ##     else: continue
+  ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
+  result = p.cmds[p.idx .. ^1].quoteShellCommand.TaintedString
 
-  proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
-    ## Retrieves a sequence of the arguments that have not been parsed yet.
-    ##
-    ## See also:
-    ## * `cmdLineRest proc<#cmdLineRest,OptParser>`_
-    ##
-    ## **Examples:**
-    ##
-    ## .. code-block::
-    ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-    ##   while true:
-    ##     p.next()
-    ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-    ##       break
-    ##     else: continue
-    ##   doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
-    result = @[]
-    for i in p.idx..<p.cmds.len: result.add TaintedString(p.cmds[i])
+proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
+  ## Retrieves a sequence of the arguments that have not been parsed yet.
+  ##
+  ## See also:
+  ## * `cmdLineRest proc<#cmdLineRest,OptParser>`_
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+  ##   while true:
+  ##     p.next()
+  ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+  ##       break
+  ##     else: continue
+  ##   doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
+  result = @[]
+  for i in p.idx..<p.cmds.len: result.add TaintedString(p.cmds[i])
 
 iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
   ## Convenience iterator for iterating over the given

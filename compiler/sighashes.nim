@@ -11,9 +11,7 @@
 
 import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
-from astalgo import debug
 import types
-from strutils import startsWith, contains
 
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
@@ -249,7 +247,7 @@ proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
   var c: MD5Context
   md5Init c
   hashType c, t, flags+{CoOwnerSig}
-  md5Final c, result.Md5Digest
+  md5Final c, result.MD5Digest
   when defined(debugSigHashes):
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
             typeToString(t), $result)
@@ -272,7 +270,7 @@ proc hashProc*(s: PSym): SigHash =
   # hash, we also hash the line information. This is pretty bad, but the best
   # solution for now:
   #c &= s.info.line
-  md5Final c, result.Md5Digest
+  md5Final c, result.MD5Digest
 
 proc hashNonProc*(s: PSym): SigHash =
   var c: MD5Context
@@ -288,7 +286,7 @@ proc hashNonProc*(s: PSym): SigHash =
   # might cause:
   if s.kind == skParam:
     c &= s.position
-  md5Final c, result.Md5Digest
+  md5Final c, result.MD5Digest
 
 proc hashOwner*(s: PSym): SigHash =
   var c: MD5Context
@@ -301,7 +299,7 @@ proc hashOwner*(s: PSym): SigHash =
   c &= "."
   c &= m.name.s
 
-  md5Final c, result.Md5Digest
+  md5Final c, result.MD5Digest
 
 proc sigHash*(s: PSym): SigHash =
   if s.kind in routineKinds and s.typ != nil:
@@ -368,14 +366,14 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
   md5Init(c)
   c.hashType(sym.typ, {CoProc})
   c &= char(sym.kind)
-  c.md5Final(result.Md5Digest)
+  c.md5Final(result.MD5Digest)
   graph.symBodyHashes[sym.id] = result # protect from recursion in the body
 
   if sym.ast != nil:
     md5Init(c)
     c.md5Update(cast[cstring](result.addr), sizeof(result))
     hashBodyTree(graph, c, sym.ast[bodyPos])
-    c.md5Final(result.Md5Digest)
+    c.md5Final(result.MD5Digest)
     graph.symBodyHashes[sym.id] = result
 
 proc idOrSig*(s: PSym, currentModule: string,

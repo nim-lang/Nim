@@ -10,9 +10,9 @@
 ## This program verifies Nim against the testcases.
 
 import
-  parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
-  marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, sets, md5, sequtils
+  strutils, pegs, os, osproc, streams, json,
+  backend, parseopt, specs, htmlgen, browsers, terminal,
+  algorithm, times, md5, sequtils
 
 include compiler/nodejs
 
@@ -124,19 +124,20 @@ proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: str
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
   let hashInput = options & $target
-  return "nimcache" / (filename & '_' & hashInput.getMD5)
+  result = "nimcache" / (filename & '_' & hashInput.getMD5)
 
-proc prepareTestArgs(cmdTemplate, filename, options: string,
+proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
                      target: TTarget, extraOptions=""): seq[string] =
-  let nimcache = nimcacheDir(filename, options, target)
   let options = options & " " & quoteShell("--nimCache:" & nimcache) & extraOptions
-  return parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+  result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir()])
 
-proc callCompiler(cmdTemplate, filename, options: string,
-                  target: TTarget, extraOptions=""): TSpec =
-  let c = prepareTestArgs(cmdTemplate, filename, options, target, extraOptions)
+proc callCompiler(cmdTemplate, filename, options, nimcache: string,
+                  target: TTarget,
+                  extraOptions=""): TSpec =
+  let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
+                          extraOptions)
   result.cmd = quoteShellCommand(c)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
@@ -146,16 +147,19 @@ proc callCompiler(cmdTemplate, filename, options: string,
   var tmpl = ""
   var x = newStringOfCap(120)
   result.nimout = ""
-  while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
-    if x =~ pegOfInterest:
-      # `err` should contain the last error/warning message
-      err = x
-    elif x =~ pegLineTemplate and err == "":
-      # `tmpl` contains the last template expansion before the error
-      tmpl = x
-    elif x =~ pegSuccess:
-      suc = x
+  while true:
+    if outp.readLine(x.TaintedString):
+      result.nimout.add(x & "\n")
+      if x =~ pegOfInterest:
+        # `err` should contain the last error/warning message
+        err = x
+      elif x =~ pegLineTemplate and err == "":
+        # `tmpl` contains the last template expansion before the error
+        tmpl = x
+      elif x =~ pegSuccess:
+        suc = x
+    elif not running(p):
+      break
   close(p)
   result.msg = ""
   result.file = ""
@@ -193,8 +197,11 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   result.file = ""
   result.output = ""
   result.line = -1
-  while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
+  while true:
+    if outp.readLine(x.TaintedString):
+      result.nimout.add(x & "\n")
+    elif not running(p):
+      break
   close(p)
   if p.peekExitCode == 0:
     result.err = reSuccess
@@ -364,7 +371,7 @@ proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
     currentPos = giv.find(line.strip, currentPos)
     if currentPos < 0:
       given.err = reMsgsDiffer
-      return
+      break
 
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
@@ -385,9 +392,9 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 
 proc getTestSpecTarget(): TTarget =
   if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true":
-    return targetCpp
+    result = targetCpp
   else:
-    return targetC
+    result = targetC
 
 proc checkDisabled(r: var TResults, test: TTest): bool =
   if test.spec.err in {reDisabled, reJoined}:
@@ -395,13 +402,72 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
     r.addResult(test, targetC, "", "", test.spec.err)
     inc(r.skipped)
     inc(r.total)
-    return
-  true
+    result = false
+  else:
+    result = true
+
+var count = 0
+
+proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarget, nimcache: string) =
+  case expected.action
+  of actionCompile:
+    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
+          extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
+    compilerOutputTests(test, target, given, expected, r)
+  of actionRun:
+    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target)
+    if given.err != reSuccess:
+      r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
+    else:
+      let isJsTarget = target == targetJS
+      var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
+      if not existsFile(exeFile):
+        r.addResult(test, target, expected.output,
+                    "executable not found: " & exeFile, reExeNotFound)
+      else:
+        let nodejs = if isJsTarget: findNodeJs() else: ""
+        if isJsTarget and nodejs == "":
+          r.addResult(test, target, expected.output, "nodejs binary not in PATH",
+                      reExeNotFound)
+        else:
+          var exeCmd: string
+          var args = test.args
+          if isJsTarget:
+            exeCmd = nodejs
+            args = concat(@[exeFile], args)
+          else:
+            exeCmd = exeFile
+          var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+          # Treat all failure codes from nodejs as 1. Older versions of nodejs used
+          # to return other codes, but for us it is sufficient to know that it's not 0.
+          if exitCode != 0: exitCode = 1
+          let bufB =
+            if expected.sortoutput:
+              var x = splitLines(strip(buf.string))
+              sort(x, system.cmp)
+              join(x, "\n")
+            else:
+              strip(buf.string)
+          if exitCode != expected.exitCode:
+            r.addResult(test, target, "exitcode: " & $expected.exitCode,
+                              "exitcode: " & $exitCode & "\n\nOutput:\n" &
+                              bufB, reExitCodesDiffer)
+          elif (expected.outputCheck == ocEqual and expected.output != bufB) or
+              (expected.outputCheck == ocSubstr and expected.output notin bufB):
+            given.err = reOutputsDiffer
+            r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
+          else:
+            compilerOutputTests(test, target, given, expected, r)
+  of actionReject:
+    var given = callCompiler(expected.getCmd, test.name, test.options,
+                              nimcache, target)
+    cmpMsgs(r, expected, given, test, target)
+
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
   if expected.parseErrors.len > 0:
-    # targetC is a lie, but parameter is required
+    # targetC is a lie, but a parameter is required
     r.addResult(test, targetC, "", expected.parseErrors, reInvalidSpec)
     inc(r.total)
     return
@@ -416,73 +482,18 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     if target notin gTargets:
       r.addResult(test, target, "", "", reDisabled)
       inc(r.skipped)
-      continue
-
-    if simulate:
-      var count {.global.} = 0
-      count.inc
+    elif simulate:
+      inc count
       echo "testSpec count: ", count, " expected: ", expected
-      continue
+    else:
+      let nimcache = nimcacheDir(test.name, test.options, target)
+      testSpecHelper(r, test, expected, target, nimcache)
 
-    case expected.action
-    of actionCompile:
-      var given = callCompiler(expected.getCmd, test.name, test.options, target,
-        extraOptions=" --stdout --hint[Path]:off --hint[Processing]:off")
-      compilerOutputTests(test, target, given, expected, r)
-    of actionRun:
-      # In this branch of code "early return" pattern is clearer than deep
-      # nested conditionals - the empty rows in between to clarify the "danger"
-      var given = callCompiler(expected.getCmd, test.name, test.options, target)
-      if given.err != reSuccess:
-        r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
-        continue
-      let isJsTarget = target == targetJS
-      var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
-      if not existsFile(exeFile):
-        r.addResult(test, target, expected.output,
-                    "executable not found: " & exeFile, reExeNotFound)
-        continue
-
-      let nodejs = if isJsTarget: findNodeJs() else: ""
-      if isJsTarget and nodejs == "":
-        r.addResult(test, target, expected.output, "nodejs binary not in PATH",
-                    reExeNotFound)
-        continue
-      var exeCmd: string
-      var args = test.args
-      if isJsTarget:
-        exeCmd = nodejs
-        args = concat(@[exeFile], args)
-      else:
-        exeCmd = exeFile
-      var (cmdLine, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
-      # Treat all failure codes from nodejs as 1. Older versions of nodejs used
-      # to return other codes, but for us it is sufficient to know that it's not 0.
-      if exitCode != 0: exitCode = 1
-      let bufB =
-        if expected.sortoutput:
-          var x = splitLines(strip(buf.string))
-          sort(x, system.cmp)
-          join(x, "\n")
-        else:
-          strip(buf.string)
-      if exitCode != expected.exitCode:
-        r.addResult(test, target, "exitcode: " & $expected.exitCode,
-                          "exitcode: " & $exitCode & "\n\nOutput:\n" &
-                          bufB, reExitCodesDiffer)
-        continue
-      if (expected.outputCheck == ocEqual and expected.output != bufB) or
-         (expected.outputCheck == ocSubstr and expected.output notin bufB):
-        given.err = reOutputsDiffer
-        r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
-        continue
-      compilerOutputTests(test, target, given, expected, r)
-      continue
-    of actionReject:
-      var given = callCompiler(expected.getCmd, test.name, test.options,
-                               target)
-      cmpMsgs(r, expected, given, test, target)
-      continue
+proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
+  if not checkDisabled(r, test): return
+  for target in test.spec.targets:
+    inc(r.total)
+    testSpecHelper(r, test, test.spec, target, nimcache)
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
@@ -523,6 +534,15 @@ proc makeTest(test, options: string, cat: Category): TTest =
   result.spec = parseSpec(addFileExt(test, ".nim"))
   result.startTime = epochTime()
 
+proc makeRawTest(test, options: string, cat: Category): TTest =
+  result.cat = cat
+  result.name = test
+  result.options = options
+  result.spec = initSpec(addFileExt(test, ".nim"))
+  result.startTime = epochTime()
+  result.spec.action = actionCompile
+  result.spec.targets = {getTestSpecTarget()}
+
 # TODO: fix these files
 const disabledFilesDefault = @[
   "LockFreeHash.nim",
@@ -547,23 +567,18 @@ when defined(windows):
 else:
   const
     # array of modules disabled from compilation test of stdlib.
-    # TODO: why the ["-"]? (previous code should've prob used seq[string] = @[] instead)
-    disabledFiles = disabledFilesDefault & @["-"]
+    disabledFiles = disabledFilesDefault
 
 include categories
 
 proc loadSkipFrom(name: string): seq[string] =
-  if name.len() == 0: return
-
+  if name.len == 0: return
   # One skip per line, comments start with #
   # used by `nlvm` (at least)
-  try:
-    for line in lines(name):
-      let sline = line.strip()
-      if sline.len > 0 and not sline.startsWith("#"):
-        result.add sline
-  except:
-    echo "Could not load " & name & ", ignoring"
+  for line in lines(name):
+    let sline = line.strip()
+    if sline.len > 0 and not sline.startsWith("#"):
+      result.add sline
 
 proc main() =
   os.putenv "NIMTEST_COLOR", "never"

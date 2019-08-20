@@ -17,7 +17,7 @@ type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
 
-const SIG_HOLD* = cast[SigHandler](2)
+const SIG_HOLD* = cast[Sighandler](2)
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
@@ -218,7 +218,7 @@ type
     st_blocks*: Blkcnt     ## Number of blocks allocated for this object.
     reserved: array[2, clong]
 
-  
+
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
               final, pure.} = object ## struct statvfs
@@ -341,7 +341,7 @@ type
 const Sockaddr_un_path_length* = 108
 
 type
-  Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
+  SockLen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   # cushort really
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cshort
 
@@ -376,7 +376,7 @@ type
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
-    msg_namelen*: Socklen  ## Size of address.
+    msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
     msg_iovlen*: csize   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
@@ -473,7 +473,7 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: Socklen   ## Length of socket address.
+    ai_addrlen*: SockLen   ## Length of socket address.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_next*: ptr AddrInfo ## Pointer to next in list.

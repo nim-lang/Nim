@@ -88,8 +88,6 @@ when defined(macosx):
   const SIGBUS* = cint(10)
 elif defined(haiku):
   const SIGBUS* = cint(30)
-else:
-  template SIGBUS*: untyped = SIGSEGV
 
 when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
   proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
@@ -109,13 +107,13 @@ else:
   proc c_setjmp*(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "setjmp".}
 
-type c_sighandler_t = proc (a: cint) {.noconv.}
-proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): c_sighandler_t {.
+type CSighandlerT = proc (a: cint) {.noconv.}
+proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): CSighandlerT {.
   importc: "signal", header: "<signal.h>", discardable.}
 
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
-          incompletestruct.} = object
+          incompleteStruct.} = object
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
 var
@@ -144,7 +142,7 @@ proc c_realloc*(p: pointer, newsize: csize): pointer {.
 proc c_fwrite*(buf: pointer, size, n: csize, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
-proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable, inline.} =
+proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
   discard c_fwrite(s, 1, s.len, f)
 

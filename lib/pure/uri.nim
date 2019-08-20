@@ -198,8 +198,8 @@ proc initUri*(): Uri =
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
-    var uri: Uri
-    assert initUri() == uri
+    var uri2: Uri
+    assert initUri() == uri2
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
@@ -445,7 +445,7 @@ proc `$`*(u: Uri): string =
       result.add(":")
       result.add(u.password)
     result.add("@")
-  if u.hostname.endswith('/'):
+  if u.hostname.endsWith('/'):
     result.add(u.hostname[0..^2])
   else:
     result.add(u.hostname)

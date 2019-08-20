@@ -1,7 +1,7 @@
 
 import
-  intsets, ast, idents, algorithm, renderer, parser, os, strutils,
-  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables,
+  intsets, ast, idents, algorithm, renderer, os, strutils,
+  msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
 
 type
@@ -151,10 +151,10 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
     if a.kind == nkIncludeStmt:
       for i in 0..<a.len:
         var f = checkModuleName(graph.config, a.sons[i])
-        if f != InvalidFileIDX:
+        if f != InvalidFileIdx:
           if containsOrIncl(includedFiles, f.int):
             localError(graph.config, a.info, "recursive dependency: '$1'" %
-              toFilename(graph.config, f))
+              toMsgFilename(graph.config, f))
           else:
             let nn = includeModule(graph, module, f)
             let nnn = expandIncludes(graph, module, nn, modulePath,

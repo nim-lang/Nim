@@ -9,6 +9,8 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 {.push, callconv: cdecl.}
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 when defined(Unix):
   when defined(macosx):
@@ -153,7 +155,7 @@ const
 type
   Pst_net* = ptr St_net
   St_net*{.final.} = object
-    vio*: PVio
+    vio*: PVIO
     buff*: cstring
     buff_end*: cstring
     write_pos*: cstring
@@ -261,7 +263,7 @@ type
               Tenum_cursor_type: Enum_cursor_type,
               Tenum_mysql_set_option: Enum_mysql_set_option].}
 
-proc my_net_init*(net: PNET, vio: PVio): my_bool{.cdecl, dynlib: lib,
+proc my_net_init*(net: PNET, vio: PVIO): my_bool{.cdecl, dynlib: lib,
     importc: "my_net_init".}
 proc my_net_local_init*(net: PNET){.cdecl, dynlib: lib,
                                     importc: "my_net_local_init".}
@@ -751,7 +753,7 @@ type
     len*: int                 # output length pointer
     is_null*: Pmy_bool        # Pointer to null indicator
     buffer*: pointer          # buffer to get/put data
-    error*: PMy_bool          # set this if you want to track data truncations happened during fetch
+    error*: Pmy_bool          # set this if you want to track data truncations happened during fetch
     buffer_type*: Enum_field_types # buffer type
     buffer_length*: int       # buffer length, must be set for str/binary
                               # Following are for internal use. Set by mysql_stmt_bind_param
@@ -765,8 +767,8 @@ type
     long_data_used*: my_bool  # If used with mysql_send_long_data
     is_null_value*: my_bool   # Used if is_null is 0
     store_param_func*: proc (net: PNET, param: Pst_mysql_bind){.cdecl.}
-    fetch_result*: proc (para1: Pst_mysql_bind, para2: PFIELD, row: PPbyte)
-    skip_result*: proc (para1: Pst_mysql_bind, para2: PFIELD, row: PPbyte)
+    fetch_result*: proc (para1: Pst_mysql_bind, para2: PFIELD, row: PPByte)
+    skip_result*: proc (para1: Pst_mysql_bind, para2: PFIELD, row: PPByte)
 
   BIND* = St_mysql_bind
   PBIND* = ptr BIND           # statement handler
@@ -780,7 +782,7 @@ type
     data_cursor*: PROWS       # current row in cached result
     affected_rows*: my_ulonglong # copy of mysql->affected_rows after statement execution
     insert_id*: my_ulonglong
-    read_row_func*: proc (stmt: Pst_mysql_stmt, row: PPbyte): cint{.cdecl.}
+    read_row_func*: proc (stmt: Pst_mysql_stmt, row: PPByte): cint{.cdecl.}
     stmt_id*: int             # Id for prepared statement
     flags*: int               # i.e. type of cursor to open
     prefetch_rows*: int       # number of rows per one COM_FETCH
@@ -1110,3 +1112,5 @@ proc reload(x: PMySQL): cint =
   result = refresh(x, REFRESH_GRANT)
 
 {.pop.}
+when defined(nimHasStyleChecks):
+  {.pop.}

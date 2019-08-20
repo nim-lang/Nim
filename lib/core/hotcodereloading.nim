@@ -16,7 +16,10 @@ when defined(hotcodereloading):
   proc hasAnyModuleChanged*(): bool = hcrReloadNeeded()
 
   when not defined(JS):
-    template performCodeReload* = hcrPerformCodeReload()
+    template performCodeReload* =
+      when isMainModule:
+        {.warning: "Code residing in the main module will not be changed from calling a code-reload".}
+      hcrPerformCodeReload()
   else:
     template performCodeReload* = discard
 else:

@@ -64,7 +64,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     result = newSymNode(s, info)
-    markUsed(c.config, info, s, c.graph.usageSym)
+    markUsed(c, info, s)
     onUse(info, s)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it

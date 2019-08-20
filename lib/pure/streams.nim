@@ -1241,7 +1241,7 @@ when not defined(js):
     if open(f, filename, mode, bufSize):
       return newFileStream(f)
     else:
-      raise newEIO("cannot open file\n")
+      raise newEIO("cannot open file stream: " & filename)
 
 when false:
   type

@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "1.3"
+  Version = "1.4"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -21,8 +21,9 @@ Options:
   --find, -f          find the pattern (default)
   --replace, -r       replace the pattern
   --peg               pattern is a peg
-  --re                pattern is a regular expression (default); extended
-                      syntax for the regular expression is always turned on
+  --re                pattern is a regular expression (default)
+  --rex, -x           use the "extended" syntax for the regular expression
+                      so that whitespace is not significant
   --recursive         process directories recursively
   --confirm           confirm each occurrence/replacement; there is a chance
                       to abort any time without touching the file
@@ -44,7 +45,8 @@ Options:
 type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
-    optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames
+    optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames,
+    optRex
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -89,14 +91,14 @@ proc countLines(s: string, first, last: int): int =
 proc beforePattern(s: string, first: int): int =
   result = first-1
   while result >= 0:
-    if s[result] in NewLines: break
+    if s[result] in Newlines: break
     dec(result)
   inc(result)
 
 proc afterPattern(s: string, last: int): int =
   result = last+1
   while result < s.len:
-    if s[result] in NewLines: break
+    if s[result] in Newlines: break
     inc(result)
   dec(result)
 
@@ -280,7 +282,7 @@ for kind, key, val in getopt():
       replacement = key
     else:
       filenames.add(key)
-  of cmdLongoption, cmdShortOption:
+  of cmdLongOption, cmdShortOption:
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "r": incl(options, optReplace)
@@ -288,6 +290,10 @@ for kind, key, val in getopt():
       excl(options, optRegex)
       incl(options, optPeg)
     of "re":
+      incl(options, optRegex)
+      excl(options, optPeg)
+    of "rex", "x":
+      incl(options, optRex)
       incl(options, optRegex)
       excl(options, optPeg)
     of "recursive": incl(options, optRecursive)
@@ -342,10 +348,11 @@ else:
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:
-      pattern = r"\b (:?" & pattern & r") \b"
+      pattern = r"\b(:?" & pattern & r")\b"
     if {optIgnoreCase, optIgnoreStyle} * options != {}:
       reflags.incl reIgnoreCase
-    let rep = re(pattern, reflags)
+    let rep = if optRex in options: rex(pattern, reflags)
+              else: re(pattern, reflags)
     for f in items(filenames):
       walker(rep, f, counter)
   stdout.write($counter & " matches\n")

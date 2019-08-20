@@ -11,12 +11,12 @@ proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
 proc `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.
-  info.fileName & "(" & $info.line & ", " & $(info.column+1) & ")"
+  info.filename & "(" & $info.line & ", " & $(info.column+1) & ")"
 
 # ---------------------------------------------------------------------------
 
 
-proc raiseAssert*(msg: string) {.noinline, noReturn.} =
+proc raiseAssert*(msg: string) {.noinline, noreturn.} =
   sysFatal(AssertionError, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
@@ -27,15 +27,15 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   Hide(raiseAssert)(msg)
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
-  const loc = $instantiationInfo(-1, true)
+  const
+    loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
+    ploc = $loc
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
-    # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
-    # here, regardless of --excessiveStackTrace
-    {.line: instantiationInfo(fullPaths = true).}:
+    {.line: loc.}:
       if not cond:
-        failedAssertImpl(loc & " `" & expr & "` " & msg)
+        failedAssertImpl(ploc & " `" & expr & "` " & msg)
 
 template assert*(cond: untyped, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note

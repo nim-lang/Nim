@@ -508,32 +508,23 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     assert name == ""
     assert ext == ""
 
-  if path.len == 0:
-    result = ("", "", "")
-  elif path[^1] in {DirSep, AltSep}:
-    if path.len == 1:
-      # issue #8255
-      result = ($path[0], "", "")
-    else:
-      result = (path[0 ..< ^1], "", "")
-  else:
-    var sepPos = -1
-    var dotPos = path.len
-    for i in countdown(len(path)-1, 0):
-      if path[i] == ExtSep:
-        if dotPos == path.len and i > 0 and
-            path[i-1] notin {DirSep, AltSep, ExtSep}: dotPos = i
-      elif path[i] in {DirSep, AltSep}:
-        sepPos = i
-        break
-    if sepPos-1 >= 0:
-      result.dir = substr(path, 0, sepPos-1)
-    elif path[0] in {DirSep, AltSep}:
-      # issue #8255
-      result.dir = $path[0]
-
-    result.name = substr(path, sepPos+1, dotPos-1)
-    result.ext = substr(path, dotPos)
+  var namePos = 0
+  var dotPos = 0
+  for i in countdown(len(path) - 1, 0):
+    if path[i] in {DirSep, AltSep} or i == 0:
+      if path[i] in {DirSep, AltSep}:
+        result.dir = substr(path, 0, max(0, i - 1))
+        namePos = i + 1
+      if dotPos > i:
+        result.name = substr(path, namePos, dotPos - 1)
+        result.ext = substr(path, dotPos)
+      else:
+        result.name = substr(path, namePos)
+      break
+    elif path[i] == ExtSep and i > 0 and i < len(path) - 1 and
+         path[i - 1] notin {DirSep, AltSep} and
+         path[i + 1] != ExtSep and dotPos == 0:
+      dotPos = i
 
 proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -798,12 +789,16 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## * `expandTilde proc <#expandTilde,string>`_
   ## * `getCurrentDir proc <#getCurrentDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  const tempDirDefault = "/tmp"
+  result = tempDirDefault
   when defined(tempDir):
-    const tempDir {.strdefine.}: string = nil
-    return tempDir
-  elif defined(windows): return string(getEnv("TEMP")) & "\\"
-  elif defined(android): return getHomeDir()
-  else: return "/tmp/"
+    const tempDir {.strdefine.}: string = tempDirDefault
+    result = tempDir
+  elif defined(windows): result = string(getEnv("TEMP"))
+  elif defined(android): result = getHomeDir()
+  else:
+    if existsEnv("TMPDIR"): result = string(getEnv("TMPDIR"))
+  normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -930,13 +925,13 @@ when defined(windows) and not weirdTarget:
     template getCommandLine(): untyped = getCommandLineW()
 
     template getFilename(f: untyped): untyped =
-      $cast[WideCString](addr(f.cFilename[0]))
+      $cast[WideCString](addr(f.cFileName[0]))
   else:
     template findFirstFile(a, b: untyped): untyped = findFirstFileA(a, b)
     template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
     template getCommandLine(): untyped = getCommandLineA()
 
-    template getFilename(f: untyped): untyped = $f.cFilename
+    template getFilename(f: untyped): untyped = $f.cFileName
 
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
@@ -1031,7 +1026,7 @@ const
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
 
 proc findExe*(exe: string, followSymlinks: bool = true;
-              extensions: openarray[string]=ExeExts): string {.
+              extensions: openArray[string]=ExeExts): string {.
   tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimScript.} =
   ## Searches for `exe` in the current working directory and then
   ## in directories listed in the ``PATH`` environment variable.
@@ -1488,7 +1483,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if fpOthersWrite in permissions: p = p or S_IWOTH
     if fpOthersExec in permissions: p = p or S_IXOTH
 
-    if chmod(filename, p) != 0: raiseOSError(osLastError())
+    if chmod(filename, cast[Mode](p)) != 0: raiseOSError(osLastError())
   else:
     when useWinUnicode:
       wrapUnary(res, getFileAttributesW, filename)
@@ -1845,7 +1840,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
           break
     # getFullPathName doesn't do case corrections, so we have to use this convoluted
     # way of retrieving the true filename
-    for x in walkFiles(result.string):
+    for x in walkFiles(result):
       result = x
     if not existsFile(result) and not existsDir(result):
       raise newException(OSError, "file '" & result & "' does not exist")
@@ -2863,7 +2858,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
-    formalInfo.linkCount = rawInfo.st_Nlink.BiggestInt
+    formalInfo.linkCount = rawInfo.st_nlink.BiggestInt
     formalInfo.lastAccessTime = rawInfo.st_atim.toTime
     formalInfo.lastWriteTime = rawInfo.st_mtim.toTime
     formalInfo.creationTime = rawInfo.st_ctim.toTime

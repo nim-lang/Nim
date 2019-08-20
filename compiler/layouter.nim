@@ -12,10 +12,10 @@
 import idents, lexer, lineinfos, llstream, options, msgs, strutils,
   pathutils
 from os import changeFileExt
+from sequtils import delete
 
 const
-  MaxLineLen = 80
-  LineCommentColumn = 30
+  MinLineLen = 15
 
 type
   SplitKind = enum
@@ -24,23 +24,36 @@ type
   SemicolonKind = enum
     detectSemicolonKind, useSemicolon, dontTouch
 
+  LayoutToken = enum
+    ltSpaces,
+    ltCrucialNewline, ## a semantically crucial newline (indentation!)
+    ltSplittingNewline, ## newline used for splitting up long
+                        ## expressions (like after a comma or a binary operator)
+    ltTab,
+    ltOptionalNewline, ## optional newline introduced by nimpretty
+    ltComment, ltLit, ltKeyword, ltExportMarker, ltIdent,
+    ltOther, ltOpr, ltSomeParLe, ltSomeParRi,
+    ltBeginSection, ltEndSection
+
   Emitter* = object
     config: ConfigRef
     fid: FileIndex
     lastTok: TTokType
     inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
-    col, lastLineNumber, lineSpan, indentLevel, indWidth*: int
+    col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
     keepIndents*: int
     doIndentMore*: int
-    content: string
+    kinds: seq[LayoutToken]
+    tokens: seq[string]
     indentStack: seq[int]
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
+    maxLineLen*: int
 
 proc openEmitter*(em: var Emitter, cache: IdentCache;
                   config: ConfigRef, fileIdx: FileIndex) =
-  let fullPath = Absolutefile config.toFullPath(fileIdx)
+  let fullPath = AbsoluteFile config.toFullPath(fileIdx)
   if em.indWidth == 0:
     em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
                                 cache, config)
@@ -50,22 +63,47 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.lastTok = tkInvalid
   em.inquote = false
   em.col = 0
-  em.content = newStringOfCap(16_000)
   em.indentStack = newSeqOfCap[int](30)
   em.indentStack.add 0
   em.lastLineNumber = 1
 
-proc closeEmitter*(em: var Emitter) =
-  let outFile = em.config.absOutFile
-  if fileExists(outFile) and readFile(outFile.string) == em.content:
-    discard "do nothing, see #9499"
-    return
-  var f = llStreamOpen(outFile, fmWrite)
-  if f == nil:
-    rawMessage(em.config, errGenerated, "cannot open file: " & outFile.string)
-    return
-  f.llStreamWrite em.content
-  llStreamClose(f)
+proc computeMax(em: Emitter; pos: int): int =
+  var p = pos
+  var extraSpace = 0
+  result = 0
+  while p < em.tokens.len and em.kinds[p] != ltEndSection:
+    var lhs = 0
+    var lineLen = 0
+    var foundTab = false
+    while p < em.tokens.len and em.kinds[p] != ltEndSection:
+      if em.kinds[p] in {ltCrucialNewline, ltSplittingNewline}:
+        if foundTab and lineLen <= em.maxLineLen:
+          result = max(result, lhs + extraSpace)
+        inc p
+        break
+      if em.kinds[p] == ltTab:
+        extraSpace = if em.kinds[p-1] == ltSpaces: 0 else: 1
+        foundTab = true
+      else:
+        if not foundTab:
+          inc lhs, em.tokens[p].len
+        inc lineLen, em.tokens[p].len
+      inc p
+
+proc computeRhs(em: Emitter; pos: int): int =
+  var p = pos
+  result = 0
+  while p < em.tokens.len and em.kinds[p] notin {ltCrucialNewline, ltSplittingNewline}:
+    inc result, em.tokens[p].len
+    inc p
+
+proc isLongEnough(lineLen, startPos, endPos: int): bool =
+  result = lineLen > MinLineLen and endPos > startPos + 4
+
+proc findNewline(em: Emitter; p, lineLen: var int) =
+  while p < em.tokens.len and em.kinds[p] notin {ltCrucialNewline, ltSplittingNewline}:
+    inc lineLen, em.tokens[p].len
+    inc p
 
 proc countNewlines(s: string): int =
   result = 0
@@ -79,95 +117,337 @@ proc calcCol(em: var Emitter; s: string) =
     dec i
     inc em.col
 
-template wr(x) =
-  em.content.add x
-  inc em.col, x.len
+proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
+  let ourIndent = em.tokens[pos].len
+  var p = pos+1
+  var lineLen = 0
+  em.findNewline(p, lineLen)
+  if p == pos+1: # optionalNewline followed by another newline
+    result = false
+  elif em.kinds[p-1] == ltComment and currentLen+lineLen < em.maxLineLen+MinLineLen:
+    result = false
+  elif p+1 < em.tokens.len and em.kinds[p+1] == ltSpaces and
+      em.kinds[p-1] == ltOptionalNewline:
+    if em.tokens[p+1].len == ourIndent:
+      # concatenate lines with the same indententation
+      var nlPos = p
+      var lineLenTotal = lineLen
+      inc p
+      em.findNewline(p, lineLenTotal)
+      if isLongEnough(lineLenTotal, nlPos, p):
+        em.kinds[nlPos] = ltOptionalNewline
+        if em.kinds[nlPos+1] == ltSpaces:
+          # inhibit extra spaces when concatenating two lines
+          em.tokens[nlPos+1] = if em.tokens[nlPos-2] == ",": " " else: ""
+      result = true
+    elif em.tokens[p+1].len < ourIndent:
+      result = isLongEnough(lineLen, pos, p)
+  elif em.kinds[pos+1] in {ltOther, ltSomeParLe, ltSomeParRi}: # note: pos+1, not p+1
+    result = false
+  else:
+    result = isLongEnough(lineLen, pos, p)
 
-template goodCol(col): bool = col in 40..MaxLineLen
+proc lenOfNextTokens(em: Emitter; pos: int): int =
+  result = 0
+  for i in 1 ..< em.tokens.len-pos:
+    if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
+    inc result, em.tokens[pos+i].len
+
+proc guidingInd(em: Emitter; pos: int): int =
+  var i = pos - 1
+  while i >= 0 and em.kinds[i] != ltSomeParLe:
+    dec i
+  while i+1 <= em.kinds.high and em.kinds[i] != ltSomeParRi:
+    if em.kinds[i] == ltSplittingNewline and em.kinds[i+1] == ltSpaces:
+      return em.tokens[i+1].len
+    inc i
+  result = -1
+
+proc closeEmitter*(em: var Emitter) =
+  template defaultCase() =
+    content.add em.tokens[i]
+    inc lineLen, em.tokens[i].len
+
+  let outFile = em.config.absOutFile
+
+  var content = newStringOfCap(16_000)
+  var maxLhs = 0
+  var lineLen = 0
+  var lineBegin = 0
+  var openPars = 0
+  var i = 0
+  while i <= em.tokens.high:
+    when defined(debug):
+      echo (token: em.tokens[i], kind: em.kinds[i])
+    case em.kinds[i]
+    of ltBeginSection:
+      maxLhs = computeMax(em, lineBegin)
+    of ltEndSection:
+      maxLhs = 0
+      lineBegin = i+1
+    of ltTab:
+      if i >= 2 and em.kinds[i-2] in {ltCrucialNewline, ltSplittingNewline} and
+          em.kinds[i-1] in {ltCrucialNewline, ltSplittingNewline, ltSpaces}:
+        # a previous section has ended
+        maxLhs = 0
+
+      if maxLhs == 0:
+        if em.kinds[i-1] != ltSpaces:
+          content.add em.tokens[i]
+          inc lineLen, em.tokens[i].len
+      else:
+        # pick the shorter indentation token:
+        var spaces = maxLhs - lineLen
+        if spaces < em.tokens[i].len or computeRhs(em, i+1)+maxLhs <= em.maxLineLen+MinLineLen:
+          if spaces <= 0 and content[^1] notin {' ', '\L'}: spaces = 1
+          for j in 1..spaces: content.add ' '
+          inc lineLen, spaces
+        else:
+          content.add em.tokens[i]
+          inc lineLen, em.tokens[i].len
+    of ltCrucialNewline, ltSplittingNewline:
+      content.add em.tokens[i]
+      lineLen = 0
+      lineBegin = i+1
+    of ltOptionalNewline:
+      let totalLineLen = lineLen + lenOfNextTokens(em, i)
+      if totalLineLen > em.maxLineLen and optionalIsGood(em, i, lineLen):
+        if i-1 >= 0 and em.kinds[i-1] == ltSpaces:
+          let spaces = em.tokens[i-1].len
+          content.setLen(content.len - spaces)
+        content.add "\L"
+        let guide = if openPars > 0: guidingInd(em, i) else: -1
+        if guide >= 0:
+          content.add repeat(' ', guide)
+          lineLen = guide
+        else:
+          content.add em.tokens[i]
+          lineLen = em.tokens[i].len
+        lineBegin = i+1
+        if i+1 < em.kinds.len and em.kinds[i+1] == ltSpaces:
+          # inhibit extra spaces at the start of a new line
+          inc i
+    of ltLit:
+      let lineSpan = countNewlines(em.tokens[i])
+      if lineSpan > 0:
+        em.calcCol(em.tokens[i])
+        lineLen = em.col
+      else:
+        inc lineLen, em.tokens[i].len
+      content.add em.tokens[i]
+    of ltSomeParLe:
+      inc openPars
+      defaultCase()
+    of ltSomeParRi:
+      doAssert openPars > 0
+      dec openPars
+      defaultCase()
+    else:
+      defaultCase()
+    inc i
+
+  if fileExists(outFile) and readFile(outFile.string) == content:
+    discard "do nothing, see #9499"
+    return
+  var f = llStreamOpen(outFile, fmWrite)
+  if f == nil:
+    rawMessage(em.config, errGenerated, "cannot open file: " & outFile.string)
+    return
+  f.llStreamWrite content
+  llStreamClose(f)
+
+proc wr(em: var Emitter; x: string; lt: LayoutToken) =
+  em.tokens.add x
+  em.kinds.add lt
+  inc em.col, x.len
+  assert em.tokens.len == em.kinds.len
+
+proc wrNewline(em: var Emitter; kind = ltCrucialNewline) =
+  em.tokens.add "\L"
+  em.kinds.add kind
+  em.col = 0
+
+proc newlineWasSplitting*(em: var Emitter) =
+  if em.kinds.len >= 3 and em.kinds[^3] == ltCrucialNewline:
+    em.kinds[^3] = ltSplittingNewline
+
+#[
+Splitting newlines can occur:
+- after commas, semicolon, '[', '('.
+- after binary operators, '='.
+- after ':' type
+
+We only need parser support for the "after type" case.
+]#
+
+proc wrSpaces(em: var Emitter; spaces: int) =
+  if spaces > 0:
+    wr(em, strutils.repeat(' ', spaces), ltSpaces)
+
+proc wrSpace(em: var Emitter) =
+  wr(em, " ", ltSpaces)
+
+proc wrTab(em: var Emitter) =
+  wr(em, " ", ltTab)
+
+proc beginSection*(em: var Emitter) =
+  let pos = max(0, em.tokens.len-2)
+  em.tokens.insert "", pos
+  em.kinds.insert ltBeginSection, pos
+  inc em.inSection
+
+#wr(em, "", ltBeginSection)
+proc endSection*(em: var Emitter) =
+  em.tokens.insert "", em.tokens.len-2
+  em.kinds.insert ltEndSection, em.kinds.len-2
+  dec em.inSection
+
+#wr(em, "", ltEndSection)
+
+proc removeSpaces(em: var Emitter) =
+  while em.kinds.len > 0 and em.kinds[^1] == ltSpaces:
+    let tokenLen = em.tokens[^1].len
+    setLen(em.tokens, em.tokens.len-1)
+    setLen(em.kinds, em.kinds.len-1)
+    dec em.col, tokenLen
+
 
 const
   openPars = {tkParLe, tkParDotLe,
               tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
               tkCurlyLe}
-  splitters = openPars + {tkComma, tkSemicolon}
+  closedPars = {tkParRi, tkParDotRi,
+              tkBracketRi, tkCurlyDotRi,
+              tkCurlyRi, tkBracketDotRi}
+
+  splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
-template rememberSplit(kind) =
-  if goodCol(em.col):
-    em.altSplitPos[kind] = em.content.len
+template goodCol(col): bool = col >= em.maxLineLen div 2
 
 template moreIndent(em): int =
-  (if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth)
+  if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth
 
-proc softLinebreak(em: var Emitter, lit: string) =
-  # XXX Use an algorithm that is outlined here:
-  # https://llvm.org/devmtg/2013-04/jasper-slides.pdf
-  # +2 because we blindly assume a comma or ' &' might follow
-  if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
-    if em.lastTok in splitters:
-      while em.content.len > 0 and em.content[em.content.high] == ' ':
-        setLen(em.content, em.content.len-1)
-      wr("\L")
-      em.col = 0
-      for i in 1..em.indentLevel+moreIndent(em): wr(" ")
+template rememberSplit(kind) =
+  if goodCol(em.col) and not em.inquote:
+    let spaces = em.indentLevel+moreIndent(em)
+    if spaces < em.col and spaces > 0:
+      wr(em, strutils.repeat(' ', spaces), ltOptionalNewline)
+    #em.altSplitPos[kind] = em.tokens.len
+
+proc emitMultilineComment(em: var Emitter, lit: string, col: int; dontIndent: bool) =
+  # re-align every line in the multi-line comment:
+  var i = 0
+  var lastIndent = if em.keepIndents > 0: em.indentLevel else: em.indentStack[^1]
+  var b = 0
+  var dontIndent = dontIndent
+  var hasEmptyLine = false
+  for commentLine in splitLines(lit):
+    if i == 0 and (commentLine.endsWith("\\") or commentLine.endsWith("[")):
+      dontIndent = true
+      wr em, commentLine, ltComment
+    elif dontIndent:
+      if i > 0: wrNewline em
+      wr em, commentLine, ltComment
     else:
-      # search backwards for a good split position:
-      for a in mitems(em.altSplitPos):
-        if a > em.fixedUntil:
-          var spaces = 0
-          while a+spaces < em.content.len and em.content[a+spaces] == ' ':
-            inc spaces
-          if spaces > 0: delete(em.content, a, a+spaces-1)
-          em.col = em.content.len - a
-          let ws = "\L" & repeat(' ', em.indentLevel+moreIndent(em))
-          em.content.insert(ws, a)
-          a = -1
-          break
+      let stripped = commentLine.strip()
+      if i == 0:
+        if em.kinds.len > 0 and em.kinds[^1] != ltTab:
+          wr(em, "", ltTab)
+      elif stripped.len == 0:
+        wrNewline em
+        hasEmptyLine = true
+      else:
+        var a = 0
+        while a < commentLine.len and commentLine[a] == ' ': inc a
+
+        if a > lastIndent:
+          b += em.indWidth
+          lastIndent = a
+        elif a < lastIndent:
+          b -= em.indWidth
+          lastIndent = a
+        wrNewline em
+        if not hasEmptyLine or col + b < 15:
+          if col + b > 0:
+            wr(em, repeat(' ', col+b), ltTab)
+          else:
+            wr(em, "", ltTab)
+        else:
+          wr(em, repeat(' ', a), ltSpaces)
+      wr em, stripped, ltComment
+    inc i
+
+proc lastChar(s: string): char =
+  result = if s.len > 0: s[s.high] else: '\0'
+
+proc endsInWhite(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
+  result = if i >= 0: em.kinds[i] in {ltSpaces, ltCrucialNewline, ltSplittingNewline, ltTab} else: true
+
+proc endsInNewline(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection, ltSpaces}: dec(i)
+  result = if i >= 0: em.kinds[i] in {ltCrucialNewline, ltSplittingNewline, ltTab} else: true
+
+proc endsInAlpha(em: Emitter): bool =
+  var i = em.tokens.len-1
+  while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
+  result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
+
+proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
+  var col = em.col
+  let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
+  em.lineSpan = countNewlines(lit)
+  if em.lineSpan > 0: calcCol(em, lit)
+  if em.lineSpan == 0:
+    if not endsInNewline(em):
+      wrTab em
+    wr em, lit, ltComment
+  else:
+    if not endsInWhite(em):
+      wrTab em
+      inc col
+    emitMultilineComment(em, lit, col, dontIndent)
 
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
-
-  template endsInWhite(em): bool =
-    em.content.len == 0 or em.content[em.content.high] in {' ', '\L'}
-  template endsInAlpha(em): bool =
-    em.content.len > 0 and em.content[em.content.high] in SymChars+{'_'}
-
-  proc emitComment(em: var Emitter; tok: TToken) =
-    let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
-    em.lineSpan = countNewlines(lit)
-    if em.lineSpan > 0: calcCol(em, lit)
-    if not endsInWhite(em):
-      wr(" ")
-      if em.lineSpan == 0 and max(em.col, LineCommentColumn) + lit.len <= MaxLineLen:
-        for i in 1 .. LineCommentColumn - em.col: wr(" ")
-    wr lit
+  template wasExportMarker(em): bool =
+    em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
 
   if tok.tokType == tkComment and tok.literal.startsWith("#!nimpretty"):
     case tok.literal
     of "#!nimpretty off":
       inc em.keepIndents
-      wr("\L")
+      wrNewline em
       em.lastLineNumber = tok.line + 1
     of "#!nimpretty on":
       dec em.keepIndents
       em.lastLineNumber = tok.line
-    wr("\L")
-    #for i in 1 .. tok.indent: wr " "
-    wr tok.literal
+    wrNewline em
+    wr em, tok.literal, ltComment
     em.col = 0
     em.lineSpan = 0
     return
 
   var preventComment = false
-  if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
+  if tok.tokType == tkComment and tok.line == em.lastLineNumber:
     # we have an inline comment so handle it before the indentation token:
-    emitComment(em, tok)
+    emitComment(em, tok, dontIndent = (em.inSection == 0))
     preventComment = true
-    em.fixedUntil = em.content.high
+    em.fixedUntil = em.tokens.high
 
   elif tok.indent >= 0:
-    if em.lastTok in (splitters + oprSet) or em.keepIndents > 0:
+    var newlineKind = ltCrucialNewline
+    if em.keepIndents > 0:
       em.indentLevel = tok.indent
+    elif (em.lastTok in (splitters + oprSet) and
+        tok.tokType notin (closedPars - {tkBracketDotRi})):
+      # aka: we are in an expression context:
+      let alignment = max(tok.indent - em.indentStack[^1], 0)
+      em.indentLevel = alignment + em.indentStack.high * em.indWidth
+      newlineKind = ltSplittingNewline
     else:
       if tok.indent > em.indentStack[^1]:
         em.indentStack.add tok.indent
@@ -186,122 +466,122 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
        is not touched.
     ]#
     # remove trailing whitespace:
-    while em.content.len > 0 and em.content[em.content.high] == ' ':
-      setLen(em.content, em.content.len-1)
-    wr("\L")
-    for i in 2..tok.line - em.lastLineNumber: wr("\L")
-    em.col = 0
-    for i in 1..em.indentLevel:
-      wr(" ")
-    em.fixedUntil = em.content.high
+    removeSpaces em
+    wrNewline em, newlineKind
+    for i in 2..tok.line - em.lastLineNumber: wrNewline(em)
+    wrSpaces em, em.indentLevel
+    em.fixedUntil = em.tokens.high
 
   var lastTokWasTerse = false
   case tok.tokType
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
-      wr(" ")
+      wrSpace em
     elif not em.inquote and not endsInWhite(em) and
-        em.lastTok notin openPars and not em.lastTokWasTerse:
+        em.lastTok notin (openPars+{tkOpr, tkDotDot}) and not em.lastTokWasTerse:
       #and tok.tokType in oprSet
-      wr(" ")
+      wrSpace em
 
     if not em.inquote:
-      wr(TokTypeToStr[tok.tokType])
-
-      case tok.tokType
-      of tkAnd: rememberSplit(splitAnd)
-      of tkOr: rememberSplit(splitOr)
-      of tkIn, tkNotin:
+      wr(em, TokTypeToStr[tok.tokType], ltKeyword)
+      if tok.tokType in {tkAnd, tkOr, tkIn, tkNotin}:
         rememberSplit(splitIn)
-        wr(" ")
-      else: discard
+        wrSpace em
     else:
       # keywords in backticks are not normalized:
-      wr(tok.ident.s)
+      wr(em, tok.ident.s, ltIdent)
 
   of tkColon:
-    wr(TokTypeToStr[tok.tokType])
-    wr(" ")
-  of tkSemicolon, tkComma:
-    wr(TokTypeToStr[tok.tokType])
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wrSpace em
+  of tkSemiColon, tkComma:
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitComma)
-    wr(" ")
-  of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
-     tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
-    if tok.strongSpaceA > 0 and not em.endsInWhite:
-      wr(" ")
-    wr(TokTypeToStr[tok.tokType])
+    wrSpace em
+  of openPars:
+    if tok.strongSpaceA > 0 and not em.endsInWhite and not em.wasExportMarker:
+      wrSpace em
+    wr(em, TokTypeToStr[tok.tokType], ltSomeParLe)
     rememberSplit(splitParLe)
-  of tkParRi,
-     tkBracketRi, tkCurlyRi,
-     tkBracketDotRi,
-     tkCurlyDotRi,
-     tkParDotRi,
-     tkColonColon:
-    wr(TokTypeToStr[tok.tokType])
+  of closedPars:
+    wr(em, TokTypeToStr[tok.tokType], ltSomeParRi)
+  of tkColonColon:
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
   of tkDot:
     lastTokWasTerse = true
-    wr(TokTypeToStr[tok.tokType])
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
   of tkEquals:
-    if not em.inquote and not em.endsInWhite: wr(" ")
-    wr(TokTypeToStr[tok.tokType])
-    if not em.inquote: wr(" ")
+    if not em.inquote and not em.endsInWhite: wrSpace(em)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
-    if ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) or em.inquote) and
-      tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]:
+    if em.inquote or ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) and
+        tok.ident.s notin ["<", ">", "<=", ">=", "==", "!="]):
       # bug #9504: remember to not spacify a keyword:
       lastTokWasTerse = true
       # if not surrounded by whitespace, don't produce any whitespace either:
-      wr(tok.ident.s)
+      wr(em, tok.ident.s, ltOpr)
     else:
-      if not em.endsInWhite: wr(" ")
-      wr(tok.ident.s)
+      if not em.endsInWhite: wrSpace(em)
+      wr(em, tok.ident.s, ltOpr)
       template isUnary(tok): bool =
         tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
       if not isUnary(tok):
         rememberSplit(splitBinary)
-        wr(" ")
+        wrSpace(em)
   of tkAccent:
-    if not em.inquote and endsInAlpha(em): wr(" ")
-    wr(TokTypeToStr[tok.tokType])
+    if not em.inquote and endsInAlpha(em): wrSpace(em)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     em.inquote = not em.inquote
   of tkComment:
     if not preventComment:
-      emitComment(em, tok)
+      emitComment(em, tok, dontIndent = false)
   of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
-    softLinebreak(em, lit)
-    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wr(" ")
+    if endsInAlpha(em) and tok.tokType notin {tkGStrLit, tkGTripleStrLit}: wrSpace(em)
     em.lineSpan = countNewlines(lit)
     if em.lineSpan > 0: calcCol(em, lit)
-    wr lit
+    wr em, lit, ltLit
   of tkEof: discard
   else:
     let lit = if tok.ident != nil: tok.ident.s else: tok.literal
-    softLinebreak(em, lit)
-    if endsInAlpha(em): wr(" ")
-    wr lit
+    if endsInAlpha(em): wrSpace(em)
+    wr em, lit, ltIdent
 
   em.lastTok = tok.tokType
   em.lastTokWasTerse = lastTokWasTerse
   em.lastLineNumber = tok.line + em.lineSpan
   em.lineSpan = 0
 
+proc endsWith(em: Emitter; k: varargs[string]): bool =
+  if em.tokens.len < k.len: return false
+  for i in 0..high(k):
+    if em.tokens[em.tokens.len - k.len + i] != k[i]: return false
+  return true
+
+proc rfind(em: Emitter, t: string): int =
+  for i in 1 .. 5:
+    if em.tokens[^i] == t:
+      return i
+
 proc starWasExportMarker*(em: var Emitter) =
-  if em.content.endsWith(" * "):
-    setLen(em.content, em.content.len-3)
-    em.content.add("*")
+  if em.endsWith(" ", "*", " "):
+    setLen(em.tokens, em.tokens.len-3)
+    setLen(em.kinds, em.kinds.len-3)
+    em.tokens.add("*")
+    em.kinds.add ltExportMarker
     dec em.col, 2
 
 proc commaWasSemicolon*(em: var Emitter) =
   if em.semicolons == detectSemicolonKind:
-    em.semicolons = if em.content.endsWith(", "): dontTouch else: useSemicolon
-  if em.semicolons == useSemicolon and em.content.endsWith(", "):
-    setLen(em.content, em.content.len-2)
-    em.content.add("; ")
+    em.semicolons = if em.rfind(";") > 0: useSemicolon else: dontTouch
+  if em.semicolons == useSemicolon:
+    let commaPos = em.rfind(",")
+    if commaPos > 0:
+      em.tokens[^commaPos] = ";"
 
 proc curlyRiWasPragma*(em: var Emitter) =
-  if em.content.endsWith("}"):
-    setLen(em.content, em.content.len-1)
-    em.content.add(".}")
+  if em.endsWith("}"):
+    em.tokens[^1] = ".}"
+    inc em.col

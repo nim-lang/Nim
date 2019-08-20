@@ -136,8 +136,7 @@ proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
     prev.up = cur.up
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  if not e.isNil:
-    currException = e
+  currException = e
 
 # some platforms have native support for stack traces:
 const
@@ -342,12 +341,15 @@ proc raiseExceptionAux(e: ref Exception) =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions):
-    pushCurrentException(e)
-    raiseCounter.inc
-    if raiseCounter == 0:
-      raiseCounter.inc # skip zero at overflow
-    e.raiseId = raiseCounter
-    {.emit: "`e`->raise();".}
+    if e == currException:
+      {.emit: "throw;".}
+    else:
+      pushCurrentException(e)
+      raiseCounter.inc
+      if raiseCounter == 0:
+        raiseCounter.inc # skip zero at overflow
+      e.raiseId = raiseCounter
+      {.emit: "`e`->raise();".}
   elif defined(nimQuirky):
     pushCurrentException(e)
   else:
@@ -474,10 +476,10 @@ when defined(endb):
 when defined(cpp) and appType != "lib" and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
-      
-  type 
+
+  type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
-      
+
   proc what(ex: StdException): cstring {.importcpp: "((char *)#.what())".}
 
   proc setTerminate(handler: proc() {.noconv.})
@@ -497,7 +499,7 @@ when defined(cpp) and appType != "lib" and
       msg = "Error: unhandled cpp exception: " & $e.what()
     except:
       msg = "Error: unhandled unknown cpp exception"
-      
+
     when defined(genode):
       # stderr not available by default, use the LOG session
       echo msg
@@ -518,7 +520,7 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
         action("SIGABRT: Abnormal termination.\n")
       elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
       elif s == SIGILL: action("SIGILL: Illegal operation.\n")
-      elif s == SIGBUS:
+      elif (when declared(SIGBUS): s == SIGBUS else: false):
         action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
       else:
         block platformSpecificSignal:
@@ -553,7 +555,8 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     c_signal(SIGABRT, signalHandler)
     c_signal(SIGFPE, signalHandler)
     c_signal(SIGILL, signalHandler)
-    c_signal(SIGBUS, signalHandler)
+    when declared(SIGBUS):
+      c_signal(SIGBUS, signalHandler)
     when declared(SIGPIPE):
       c_signal(SIGPIPE, signalHandler)
 

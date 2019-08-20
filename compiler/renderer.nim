@@ -64,14 +64,11 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   else:
     result = '`' & x & '`'
 
-when not defined(nimpretty):
-  const
-    IndentWidth = 2
-    longIndentWid = IndentWidth * 2
-else:
-  template IndentWidth: untyped = lexer.gIndentationWidth
-  template longIndentWid: untyped = IndentWidth() * 2
+const
+  IndentWidth = 2
+  longIndentWid = IndentWidth * 2
 
+when defined(nimpretty):
   proc minmaxLine(n: PNode): (int, int) =
     case n.kind
     of nkTripleStrLit:
@@ -333,8 +330,7 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
-  else: result = $x
-  # XXX proper unsigned output!
+  else: result = $cast[BiggestUInt](x)
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
@@ -743,13 +739,18 @@ proc gcase(g: var TSrcGen, n: PNode) =
     if longMode(g, n.sons[length - 1]): incl(c.flags, rfLongMode)
     gsub(g, n.sons[length - 1], c)
 
+proc genSymSuffix(result: var string, s: PSym) {.inline.} =
+  if sfGenSym in s.flags:
+    result.add '_'
+    result.addInt s.id
+
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
     let s = n.sons[namePos].sym
-    put(g, tkSymbol, renderDefinitionName(s))
-    if sfGenSym in s.flags:
-      put(g, tkIntLit, $s.id)
+    var ret = renderDefinitionName(s)
+    ret.genSymSuffix(s)
+    put(g, tkSymbol, ret)
   else:
     gsub(g, n.sons[namePos])
 
@@ -843,12 +844,12 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+    s.genSymSuffix(n.sym)
     when defined(debugMagics):
-      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
-    else:
-      put(g, tkIntLit, $n.sym.id)
+      s.add '_'
+      s.add $n.sym.magic
+  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -898,16 +899,19 @@ proc accentedName(g: var TSrcGen, n: PNode) =
     gsub(g, n)
 
 proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
-  if i >= n.len: return
-
+  if i < 1 and i > 2: return
   var needsParenthesis = false
-  let n_next = n[i].skipHiddenNodes
-  if n_next.kind == nkInfix:
-    if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
-      let nextId = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
+  let nNext = n[i].skipHiddenNodes
+  if nNext.kind == nkInfix:
+    if nNext[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
+      let nextId = if nNext[0].kind == nkSym: nNext[0].sym.name else: nNext[0].ident
       let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident
-      if getPrecedence(nextId) < getPrecedence(nnId):
-        needsParenthesis = true
+      if i == 1:
+        if getPrecedence(nextId) < getPrecedence(nnId):
+          needsParenthesis = true
+      elif i == 2:
+        if getPrecedence(nextId) <= getPrecedence(nnId):
+          needsParenthesis = true
   if needsParenthesis:
     put(g, tkParLe, "(")
   gsub(g, n, i)
@@ -1135,16 +1139,19 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkSpaces, Space)
     infixArgument(g, n, 2)
   of nkPrefix:
-    gsub(g, n, 0)
+    if n.len > 0 and n[0].kind == nkIdent and n[0].ident.s == "<//>":
+      discard "XXX Remove this hack after 0.20 has been released!"
+    else:
+      gsub(g, n, 0)
     if n.len > 1:
       let opr = if n[0].kind == nkIdent: n[0].ident
                 elif n[0].kind == nkSym: n[0].sym.name
                 elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
-      let n_next = skipHiddenNodes(n[1])
-      if n_next.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
+      let nNext = skipHiddenNodes(n[1])
+      if nNext.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
-      if n_next.kind == nkInfix:
+      if nNext.kind == nkInfix:
         put(g, tkParLe, "(")
         gsub(g, n.sons[1])
         put(g, tkParRi, ")")
@@ -1573,3 +1580,15 @@ proc getTokSym*(r: TSrcGen): PSym =
     result = r.tokens[r.idx-1].sym
   else:
     result = nil
+
+proc quoteExpr*(a: string): string {.inline.} =
+  ## can be used for quoting expressions in error msgs.
+  "'" & a & "'"
+
+proc genFieldError*(field: PSym, disc: PSym): string =
+  ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
+  ## provide this error msg FieldError; msgs would be better but it does not
+  ## import ast
+  result = field.name.s.quoteExpr & " is not accessible using discriminant " &
+    disc.name.s.quoteExpr & " of type " &
+    disc.owner.name.s.quoteExpr

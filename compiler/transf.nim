@@ -19,9 +19,9 @@
 # * transforms 'defer' into a 'try finally' statement
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, lookups,
-  idents, renderer, types, passes, semfold, magicsys, cgmeth,
-  sempass2, lowerings, injectdestructors, liftlocals,
+  options, ast, astalgo, trees, msgs,
+  idents, renderer, types, semfold, magicsys, cgmeth,
+  lowerings, injectdestructors, liftlocals,
   modulegraphs, lineinfos
 
 proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
@@ -489,8 +489,8 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
         result = newTransNode(nkChckRange, n, 3)
       dest = skipTypes(n.typ, abstractVar)
       result[0] = transform(c, n.sons[1])
-      result[1] = newIntTypeNode(nkIntLit, firstOrd(c.graph.config, dest), dest).PTransNode
-      result[2] = newIntTypeNode(nkIntLit, lastOrd(c.graph.config, dest), dest).PTransNode
+      result[1] = newIntTypeNode(firstOrd(c.graph.config, dest), dest).PTransNode
+      result[2] = newIntTypeNode(lastOrd(c.graph.config, dest), dest).PTransNode
   of tyFloat..tyFloat128:
     # XXX int64 -> float conversion?
     if skipTypes(n.typ, abstractVar).kind == tyRange:
@@ -555,17 +555,22 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
 
 type
   TPutArgInto = enum
-    paDirectMapping, paFastAsgn, paVarAsgn, paComplexOpenarray
+    paDirectMapping, paFastAsgn, paFastAsgnTakeTypeFromArg
+    paVarAsgn, paComplexOpenarray
 
 proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
   # inline context.
   if formal.kind == tyTypeDesc: return paDirectMapping
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
-    if arg.kind == nkStmtListExpr:
+    case arg.kind
+    of nkStmtListExpr:
       return paComplexOpenarray
-    return paDirectMapping    # XXX really correct?
-                              # what if ``arg`` has side-effects?
+    of nkBracket:
+      return paFastAsgnTakeTypeFromArg
+    else:
+      return paDirectMapping    # XXX really correct?
+                                # what if ``arg`` has side-effects?
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
@@ -645,12 +650,15 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     # can happen for 'nim check':
     if i >= ff.n.len: return result
     var formal = ff.n.sons[i].sym
-    case putArgInto(arg, formal.typ)
+    let pa = putArgInto(arg, formal.typ)
+    case pa
     of paDirectMapping:
       idNodeTablePut(newC.mapping, formal, arg)
-    of paFastAsgn:
+    of paFastAsgn, paFastAsgnTakeTypeFromArg:
       var t = formal.typ
-      if formal.ast != nil and formal.ast.typ.destructor != nil and t.destructor == nil:
+      if pa == paFastAsgnTakeTypeFromArg:
+        t = arg.typ
+      elif formal.ast != nil and formal.ast.typ.destructor != nil and t.destructor == nil:
         t = formal.ast.typ # better use the type that actually has a destructor.
       elif t.destructor == nil and arg.typ.destructor != nil:
         t = arg.typ
@@ -795,7 +803,6 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
       result = s.PTransNode
 
 proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
-  result = transformSons(c, n)
   if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
     let excTypeNode = n[0][1]
     let actions = newTransNode(nkStmtListExpr, n[1], 2)
@@ -817,12 +824,14 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
     letSection[0] = identDefs
     # Place the let statement and body of the 'except' branch into new stmtList.
     actions[0] = letSection
-    actions[1] = transformSons(c, n[1])
+    actions[1] = transform(c, n[1])
     # Overwrite 'except' branch body with our stmtList.
-    result[1] = actions
-
+    result = newTransNode(nkExceptBranch, n[1].info, 2)
     # Replace the `Exception as foobar` with just `Exception`.
-    result[0] = result[0][1]
+    result[0] = transform(c, n[0][1])
+    result[1] = actions
+  else:
+    result = transformSons(c, n)
 
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be

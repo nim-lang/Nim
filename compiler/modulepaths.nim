@@ -8,7 +8,7 @@
 #
 
 import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
-  pathutils, nimblecmd
+  pathutils
 
 when false:
   const
@@ -162,6 +162,6 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n
       localError(conf, n.info, "cannot open file: " & m)
-    result = InvalidFileIDX
+    result = InvalidFileIdx
   else:
     result = fileInfoIdx(conf, fullPath)
