@@ -425,6 +425,41 @@ proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
 
+proc parseMultipartDataString(item: string): string =
+  var itemPart: seq[string] = item.
+    split("Content-Disposition: form-data; name=\"", 1)[1].split("\"", 1)
+  let name = itemPart[0]
+  let filenameAvailable = itemPart[1].contains("; filename=\"")
+  let filename = if filenameAvailable:
+                    itemPart = itemPart[1].
+                      split("; filename=\"", 1)[1].split("\"", 1)
+                    itemPart[0]
+                 else: ""
+  itemPart = itemPart[1].split("\c\L", 1)
+  let contentTypeAvailable = itemPart[1].contains("Content-Type: ")
+  let contentType = if contentTypeAvailable:
+                    itemPart = itemPart[1].
+                      split("Content-Type: ", 1)[1].split("\c\L", 1)
+                    itemPart[0]
+                 else: ""
+  itemPart = itemPart[1].split("\c\n", 1)[1].rsplit("\c\L", 1)
+  let content = itemPart[0]
+  
+  result &= "name: " & "\"" & name & "\", "
+  if filenameAvailable:
+    result &= "filename: " & "\"" & filename & "\", "
+  if contentTypeAvailable:
+    result &= "contentType: " & "\"" & contentType & "\", "
+  result &= "content: " & "\"" & content & "\""
+
+proc `$`*(data: MultipartData): string =
+  for pos, item in data.content:
+    result &= "{"
+    result &= item.parseMultipartDataString()
+    result &= "}"
+    if pos != data.content.high:
+      result &= ", "
+
 proc add*(p: var MultipartData, name, content: string, filename: string = "",
           contentType: string = "") =
   ## Add a value to the multipart data. Raises a `ValueError` exception if
