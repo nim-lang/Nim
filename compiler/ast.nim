@@ -1660,6 +1660,8 @@ proc getInt64*(a: PNode): int64 {.deprecated: "use getInt".} =
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
   of nkFloatLiterals: result = a.floatVal
+  of nkCharLit, nkUIntLit..nkUInt64Lit, nkIntLit..nkInt64Lit:
+    result = BiggestFloat a.intVal
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")
     #doAssert false, "getFloat"
