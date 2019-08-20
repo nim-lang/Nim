@@ -36,14 +36,6 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-when false:
-  proc hashOwner(s: PSym): SigHash =
-    var m = s
-    while m.kind != skModule: m = m.owner
-    let p = m.owner
-    assert p.kind == skPackage
-    result = gDebugInfo.register(p.name.s, m.name.s)
-
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
@@ -743,16 +735,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           of 4: addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
           of 8: addf(m.s[cfsTypes], "typedef NI64 $1;$n", [result])
           else: internalError(m.config, t.sym.info, "getTypeDescAux: enum")
-        when false:
-          let owner = hashOwner(t.sym)
-          if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
-            var vals: seq[(string, int)] = @[]
-            for i in 0 ..< t.n.len:
-              assert(t.n.sons[i].kind == nkSym)
-              let field = t.n.sons[i].sym
-              vals.add((field.name.s, field.position.int))
-            gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
-              name: t.sym.name.s, values: vals))
   of tyProc:
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result

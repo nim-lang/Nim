@@ -63,17 +63,6 @@ proc asyncTest() {.async.} =
   except:
     doAssert(false, "HttpRequestError should have been raised")
 
-
-  when false:
-    # w3.org now blocks travis, so disabled:
-    # Multipart test.
-    var data = newMultipartData()
-    data["output"] = "soap12"
-    data["uploaded_file"] = ("test.html", "text/html",
-      "<html><head></head><body><p>test</p></body></html>")
-    resp = await client.post("http://validator.w3.org/check", multipart = data)
-    doAssert(resp.code.is2xx)
-
   # onProgressChanged
   when manualTests:
     proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
@@ -124,16 +113,6 @@ proc syncTest() =
   except:
     doAssert(false, "HttpRequestError should have been raised")
 
-  when false:
-    # w3.org now blocks travis, so disabled:
-    # Multipart test.
-    var data = newMultipartData()
-    data["output"] = "soap12"
-    data["uploaded_file"] = ("test.html", "text/html",
-      "<html><head></head><body><p>test</p></body></html>")
-    resp = client.post("http://validator.w3.org/check", multipart = data)
-    doAssert(resp.code.is2xx)
-
   # onProgressChanged
   when manualTests:
     proc onProgressChanged(total, progress, speed: BiggestInt) =
@@ -144,18 +123,6 @@ proc syncTest() =
                         "100mb.test")
 
   client.close()
-
-  when false:
-    # Disabled for now because it causes troubles with AppVeyor
-    # Timeout test.
-    client = newHttpClient(timeout = 1)
-    try:
-      resp = client.request("http://example.com/")
-      doAssert false, "TimeoutError should have been raised."
-    except TimeoutError:
-      discard
-    except:
-      doAssert false, "TimeoutError should have been raised."
 
 proc ipv6Test() =
   var client = newAsyncHttpClient()

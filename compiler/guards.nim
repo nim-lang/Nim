@@ -918,12 +918,6 @@ proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
       result = impliesLe(fact, a, b)
       if result != impUnknown:
         return result
-      when false:
-        # given: x <= y;  y==a;  x <= a this means: a <= b  if  x <= b
-        if sameTree(y, a):
-          result = ple(m, b, x)
-          if result != impUnknown:
-            return result
 
 proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
   # compute replacements:

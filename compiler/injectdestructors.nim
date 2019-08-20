@@ -216,41 +216,6 @@ proc isLastRead(n: PNode; c: var Con): bool =
   result = isLastRead(n, c, instr+1, -1) >= 0
   dbg:
     echo "ugh ", c.otherRead.isNil, " ", result
-
-  when false:
-    let s = n.sym
-    var pcs: seq[int] = @[instr+1]
-    var takenGotos: IntSet
-    var takenForks = initIntSet()
-    while pcs.len > 0:
-      var pc = pcs.pop
-
-      takenGotos = initIntSet()
-      while pc < c.g.len:
-        case c.g[pc].kind
-        of def:
-          if c.g[pc].sym == s:
-            # the path lead to a redefinition of 's' --> abandon it.
-            break
-          inc pc
-        of use:
-          if c.g[pc].sym == s:
-            c.otherRead = c.g[pc].n
-            return false
-          inc pc
-        of goto:
-          # we must leave endless loops eventually:
-          if not takenGotos.containsOrIncl(pc):
-            pc = pc + c.g[pc].dest
-          else:
-            inc pc
-        of fork:
-          # we follow the next instruction but push the dest onto our "work" stack:
-          if not takenForks.containsOrIncl(pc):
-            pcs.add pc + c.g[pc].dest
-          inc pc
-        of InstrKind.join:
-          inc pc
     #echo c.graph.config $ n.info, " last read here!"
     return true
 
@@ -339,15 +304,6 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
-
-when false:
-  proc preventMoveRef(dest, ri: PNode): bool =
-    let lhs = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    var ri = ri
-    if ri.kind in nkCallKinds and ri[0].kind == nkSym and ri[0].sym.magic == mUnown:
-      ri = ri[1]
-    let rhs = ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    result = lhs.kind == tyRef and rhs.kind == tyOwned
 
 proc canBeMoved(t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})

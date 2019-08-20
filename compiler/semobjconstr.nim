@@ -365,18 +365,6 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # branches will be reported as an error):
   let initResult = semConstructType(c, result, t, flags)
 
-  # It's possible that the object was not fully initialized while
-  # specifying a .requiresInit. pragma.
-  # XXX: Turn this into an error in the next release
-  if tfNeedsInit in t.flags and initResult != initFull:
-    # XXX: Disable this warning for now, because tfNeedsInit is propagated
-    # too aggressively from fields to object types (and this is not correct
-    # in case objects)
-    when false: message(n.info, warnUser,
-      "object type uses the 'requiresInit' pragma, but not all fields " &
-      "have been initialized. future versions of Nim will treat this as " &
-      "an error")
-
   # Since we were traversing the object fields, it's possible that
   # not all of the fields specified in the constructor was visited.
   # We'll check for such fields here:

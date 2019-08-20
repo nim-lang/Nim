@@ -4194,15 +4194,6 @@ type
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## Represents a Nim AST node. Macros operate on this type.
 
-when false:
-  template eval*(blk: typed): typed =
-    ## Executes a block of code at compile time just as if it was a macro.
-    ##
-    ## Optionally, the block can return an AST tree that will replace the
-    ## eval expression.
-    macro payload: typed {.gensym.} = blk
-    payload()
-
 when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## Inserts `item` into `x` at position `i`.

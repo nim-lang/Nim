@@ -480,21 +480,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
                      ($typ.kind).substr(2).toLowerAscii)
         elif typ.kind == tyProc and tfUnresolved in typ.flags:
           localError(c.config, def.info, errProcHasNoConcreteType % def.renderTree)
-        when false:
-          # XXX This typing rule is neither documented nor complete enough to
-          # justify it. Instead use the newer 'unowned x' until we figured out
-          # a more general solution.
-          if symkind == skVar and typ.kind == tyOwned and def.kind notin nkCallKinds:
-            # special type inference rule: 'var it = ownedPointer' is turned
-            # into an unowned pointer.
-            typ = typ.lastSon
     else:
       if symkind == skLet: localError(c.config, a.info, errLetNeedsInit)
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(c.config, a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
-    when false: liftTypeBoundOps(c, typ, a.info)
     instAllTypeBoundOp(c, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
@@ -825,8 +816,6 @@ proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
   # this would be the perfectly consistent solution with 'for loop macros',
   # but it kinda sucks for pattern matching as the matcher is not attached to
   # a type then:
-  when false:
-    result = handleStmtMacro(c, n, n[0], "CaseStmt")
 
 proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   checkMinSonsLen(n, 3, c.config)
@@ -1314,20 +1303,6 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
 
   rec typeSectionRightSidePass
   rec typeSectionFinalPass
-  when false:
-    # too beautiful to delete:
-    template rec(name; setbit=false) =
-      proc `name rec`(c: PContext; n: PNode) {.nimcall.} =
-        if n.kind == nkTypeSection:
-          when setbit: incl n.flags, nfSem
-          name(c, n)
-        elif n.kind == nkStmtList:
-          for i in 0 ..< n.len:
-            `name rec`(c, n.sons[i])
-      `name rec`(c, n)
-    rec typeSectionLeftSidePass, true
-    rec typeSectionRightSidePass
-    rec typeSectionFinalPass
 
 proc semTypeSection(c: PContext, n: PNode): PNode =
   ## Processes a type section. This must be done in separate passes, in order
@@ -1491,7 +1466,6 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       popProcCon(c)
     elif efOperand notin flags:
       localError(c.config, n.info, errGenericLambdaNotAllowed)
-    sideEffectsCheck(c, s)
   else:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
   closeScope(c)           # close scope for parameters
@@ -1541,19 +1515,6 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   # let inferred = c.semGenerateInstance(c, prc, m.bindings, arg.info)
   # result = inferred.ast
   # result.kind = arg.kind
-
-proc activate(c: PContext, n: PNode) =
-  # XXX: This proc is part of my plan for getting rid of
-  # forward declarations. stay tuned.
-  when false:
-    # well for now it breaks code ...
-    case n.kind
-    of nkLambdaKinds:
-      discard semLambda(c, n, {})
-    of nkCallKinds:
-      for i in 1 ..< n.len: activate(c, n[i])
-    else:
-      discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.kind == skMacro:
@@ -1748,13 +1709,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[namePos] = newSymNode(s)
     s.ast = n
     #s.scope = c.currentScope
-    when false:
-      # disable for now
-      if sfNoForward in c.module.flags and
-         sfSystemModule notin c.module.flags:
-        addInterfaceOverloadableSymAt(c, c.currentScope, s)
-        s.flags.incl sfForward
-        return
   else:
     s = n[namePos].sym
     s.owner = getCurrOwner(c)
@@ -1909,7 +1863,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
-  sideEffectsCheck(c, s)
   closeScope(c)           # close scope for parameters
   # c.currentScope = oldScope
   popOwner(c)
@@ -2077,12 +2030,8 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   dec c.inStaticContext
   n.sons[0] = a
   evalStaticStmt(c.module, c.graph, a, c.p.owner)
-  when false:
-    # for incremental replays, keep the AST as required for replays:
-    result = n
-  else:
-    result = newNodeI(nkDiscardStmt, n.info, 1)
-    result.sons[0] = c.graph.emptyNode
+  result = newNodeI(nkDiscardStmt, n.info, 1)
+  result.sons[0] = c.graph.emptyNode
 
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,

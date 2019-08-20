@@ -543,8 +543,6 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if sub != "":
         var e = searchInScopes(con, getIdent(con.cache, sub))
         if e != nil:
-          when false:
-            if e.kind == skStub: loadStub(e)
           incl(e.flags, sfUsed)
           addSon(result, newSymNode(e))
         else:

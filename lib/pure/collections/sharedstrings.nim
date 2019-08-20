@@ -36,15 +36,6 @@ proc `=destroy`*(s: SharedString) =
   if not s.buffer.isNil:
     decRef(s.buffer)
 
-when false:
-  proc `=`*(dest: var SharedString; src: SharedString) =
-    incRef(src.buffer)
-    if not dest.buffer.isNil:
-      decRef(dest.buffer)
-    dest.buffer = src.buffer
-    dest.first = src.first
-    dest.len = src.len
-
 proc len*(s: SharedString): int = s.len
 
 proc `[]`*(s: SharedString; i: Natural): char =

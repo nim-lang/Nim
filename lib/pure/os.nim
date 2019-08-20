@@ -141,19 +141,6 @@ proc joinPath*(head, tail: string): string {.
     result.add DirSep
   else:
     addNormalizePath(tail, result, state, DirSep)
-  when false:
-    if len(head) == 0:
-      result = tail
-    elif head[len(head)-1] in {DirSep, AltSep}:
-      if tail.len > 0 and tail[0] in {DirSep, AltSep}:
-        result = head & substr(tail, 1)
-      else:
-        result = head & tail
-    else:
-      if tail.len > 0 and tail[0] in {DirSep, AltSep}:
-        result = head & tail
-      else:
-        result = head & DirSep & tail
 
 proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1OpenArray".} =
@@ -1266,32 +1253,6 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScr
       assert a == "a/c/d"
 
   path = pathnorm.normalizePath(path)
-  when false:
-    let isAbs = isAbsolute(path)
-    var stack: seq[string] = @[]
-    for p in split(path, {DirSep}):
-      case p
-      of "", ".":
-        continue
-      of "..":
-        if stack.len == 0:
-          if isAbs:
-            discard  # collapse all double dots on absoluta paths
-          else:
-            stack.add(p)
-        elif stack[^1] == "..":
-          stack.add(p)
-        else:
-          discard stack.pop()
-      else:
-        stack.add(p)
-
-    if isAbs:
-      path = DirSep & join(stack, $DirSep)
-    elif stack.len > 0:
-      path = join(stack, $DirSep)
-    else:
-      path = "."
 
 proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
   ## Returns a normalized path for the current OS.

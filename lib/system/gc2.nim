@@ -387,11 +387,6 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
           newsize-oldsize)
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
-  when false:
-    # this is wrong since seqs can be shared via 'shallow':
-    when reallyDealloc: rawDealloc(gch.region, ol)
-    else:
-      zeroMem(ol, sizeof(Cell))
   when useCellIds:
     inc gch.idGenerator
     res.id = gch.idGenerator
@@ -451,13 +446,6 @@ proc GC_dumpHeap*(file: File) =
   ## can be translated into "dot" syntax via the "heapdump2dot" tool.
   gch.pDumpHeapFile = file
   var spaceIter: ObjectSpaceIter
-  when false:
-    var d = gch.decStack.d
-    for i in 0 .. gch.decStack.len-1:
-      if isAllocatedPtr(gch.region, d[i]):
-        c_fprintf(file, "onstack %p\n", d[i])
-      else:
-        c_fprintf(file, "onstack_invalid %p\n", d[i])
   if gch.gcThreadId == 0:
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
@@ -572,11 +560,6 @@ proc doOperation(p: pointer, op: WalkOp) =
     handleRoot()
     discard allocInv(gch.region)
   of waMarkGrey:
-    when false:
-      if not isAllocatedPtr(gch.region, c):
-        c_fprintf(stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
-        #GC_dumpHeap()
-        sysAssert(false, "wtf")
     if c.color == 1-gch.black:
       c.setColor(rcGrey)
       add(gch.greyStack, c)
@@ -608,8 +591,6 @@ proc collectALittle(gch: var GcHeap): bool =
       gch.phase = Phase.Marking
       markGlobals(gch)
       result = collectALittle(gch)
-      #when false: c_fprintf(stdout, "collectALittle: introduced bug E %ld\n", gch.phase)
-      #discard allocInv(gch.region)
   of Phase.Marking:
     when hasThreadSupport:
       for c in gch.toDispose:

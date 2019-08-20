@@ -345,7 +345,6 @@ proc nonterminal*(n: NonTerminal): Peg {.
   ## constructs a PEG that consists of the nonterminal symbol
   assert n != nil
   if ntDeclared in n.flags and spaceCost(n.rule) < InlineThreshold:
-    when false: echo "inlining symbol: ", n.name
     result = n.rule # inlining of rule enables better optimizations
   else:
     result = Peg(kind: pkNonTerminal, nt: n)
@@ -718,9 +717,7 @@ template matchOrParse(mopProc: untyped) =
     of pkNonTerminal:
       enter(pkNonTerminal, s, p, start)
       var oldMl = c.ml
-      when false: echo "enter: ", p.nt.name
       result = mopProc(s, p.nt.rule, start, c)
-      when false: echo "leave: ", p.nt.name
       if result < 0: c.ml = oldMl
       leave(pkNonTerminal, s, p, start, result)
     of pkSequence:

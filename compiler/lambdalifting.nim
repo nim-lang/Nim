@@ -523,13 +523,6 @@ proc newEnvVar(cache: IdentCache; owner: PSym; typ: PType; info: TLineInfo): PNo
   v.flags = {sfShadowed, sfGeneratedOp}
   v.typ = typ
   result = newSymNode(v)
-  when false:
-    if owner.kind == skIterator and owner.typ.callConv == ccClosure:
-      let it = getHiddenParam(owner)
-      addUniqueField(it.typ.sons[0], v)
-      result = indirectAccess(newSymNode(it), v, v.info)
-    else:
-      result = newSymNode(v)
 
 proc setupEnvVar(owner: PSym; d: DetectionPass;
                  c: var LiftingPass; info: TLineInfo): PNode =

@@ -32,7 +32,5 @@ proc mismatch*[T](lhs: T, rhs: T): string =
           0..<i]) & "}"
 
 proc assertEquals*[T](lhs: T, rhs: T) =
-  when false: # can be useful for debugging to see all that's fed to this.
-    echo "----" & $lhs
   if lhs!=rhs:
     doAssert false, mismatch(lhs, rhs)

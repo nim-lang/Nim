@@ -30,12 +30,6 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
   else:
     let existing = strTableGet(packSym.tab, result.name)
     if existing != nil and existing.info.fileIndex != result.info.fileIndex:
-      when false:
-        # we used to produce an error:
-        localError(graph.config, result.info,
-          "module names need to be unique per Nimble package; module clashes with " &
-            toFullPath(graph.config, existing.info.fileIndex))
-      else:
         # but starting with version 0.20 we now produce a fake Nimble package instead
         # to resolve the conflicts:
         let pck3 = fakePackageName(graph.config, filename)

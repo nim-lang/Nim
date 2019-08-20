@@ -202,17 +202,6 @@ when isMainModule:
     for k, v in st:
       echo k, ": ", v
 
-    when false:
-      var b2 = initBTree[string, string]()
-      const iters = 10_000
-      for i in 1..iters:
-        b2.add($i, $(iters - i))
-      for i in 1..iters:
-        let x = b2.getOrDefault($i)
-        if x != $(iters - i):
-          echo "got ", x, ", but expected ", iters - i
-      echo b2.entries
-
     when true:
       var b2 = initBTree[int, string]()
       var t2 = initTable[int, string]()

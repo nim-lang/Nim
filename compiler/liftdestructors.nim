@@ -331,9 +331,6 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     moveCall.add destructorCall(c.g, t.destructor, x)
     body.add moveCall
     # alternatively we could do this:
-    when false:
-      doAssert t.asink != nil
-      body.add newAsgnCall(c.g, t.asink, x, y)
   of attachedDestructor:
     doAssert t.destructor != nil
     body.add destructorCall(c.g, t.destructor, x)

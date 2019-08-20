@@ -769,7 +769,6 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n.sons[0])
     addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
-    when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked.graph, tracked.c, n[0].typ, n.info)
   of nkVarSection, nkLetSection:
@@ -841,7 +840,6 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, loopBody)
     setLen(tracked.init, oldState)
   of nkObjConstr:
-    when false: track(tracked, n.sons[0])
     let oldFacts = tracked.guards.s.len
     for i in 1 ..< n.len:
       let x = n.sons[i]
@@ -1015,10 +1013,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       listGcUnsafety(s, onlyWarning=true, g.config)
       #localError(s.info, warnGcUnsafe2, s.name.s)
   if sfNoSideEffect in s.flags and t.hasSideEffect:
-    when false:
-      listGcUnsafety(s, onlyWarning=false, g.config)
-    else:
-      localError(g.config, s.info, "'$1' can have side effects" % s.name.s)
+    localError(g.config, s.info, "'$1' can have side effects" % s.name.s)
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
@@ -1033,7 +1028,6 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
-      when false: trackWrites(s, body)
 
 proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,

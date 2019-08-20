@@ -680,12 +680,6 @@ proc mergeIndexes*(dir: string): string =
     result.add(generateModuleJumps(modules))
     result.add("<p />")
 
-  when false:
-    # Generate the HTML block with API documents.
-    if docs.len > 0:
-      result.add("<h2>Documentation files</h2>\n")
-      result.add(generateDocumentationIndex(docs))
-
   # Generate the HTML block with symbols.
   if symbols.len > 0:
     sortIndex(symbols)

@@ -206,17 +206,6 @@ when defined(windows):
       (65000, "utf-7"), # Unicode (UTF-7)
       (65001, "utf-8")] # Unicode (UTF-8)
 
-  when false:
-    # not needed yet:
-    type
-      CpInfo = object
-        maxCharSize: int32
-        defaultChar: array[0..1, char]
-        leadByte: array[0..12-1, char]
-
-    proc getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
-      stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
-
   proc nameToCodePage*(name: string): CodePage =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1

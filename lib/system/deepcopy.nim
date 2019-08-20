@@ -142,11 +142,6 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
           tab.put(s2, z)
           genericDeepCopyAux(z, s2, realType.base, tab)
         else:
-          when false:
-            # addition check disabled
-            let x = usrToCell(s2)
-            let realType = x.typ
-            sysAssert realType == mt, " types do differ"
           # this version should work for any possible GC:
           let typ = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[] else: mt.base
           let z = newObj(mt, typ.size)

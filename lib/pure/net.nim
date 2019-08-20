@@ -812,58 +812,6 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
         let ret = SSLAccept(client.sslHandle)
         socketError(client, ret, false)
 
-when false: #defineSsl:
-  proc acceptAddrSSL*(server: Socket, client: var Socket,
-                      address: var string): SSLAcceptResult {.
-                      tags: [ReadIOEffect].} =
-    ## This procedure should only be used for non-blocking **SSL** sockets.
-    ## It will immediately return with one of the following values:
-    ##
-    ## ``AcceptSuccess`` will be returned when a client has been successfully
-    ## accepted and the handshake has been successfully performed between
-    ## ``server`` and the newly connected client.
-    ##
-    ## ``AcceptNoHandshake`` will be returned when a client has been accepted
-    ## but no handshake could be performed. This can happen when the client
-    ## connects but does not yet initiate a handshake. In this case
-    ## ``acceptAddrSSL`` should be called again with the same parameters.
-    ##
-    ## ``AcceptNoClient`` will be returned when no client is currently attempting
-    ## to connect.
-    template doHandshake(): untyped =
-      when defineSsl:
-        if server.isSSL:
-          client.setBlocking(false)
-          # We must wrap the client sock in a ssl context.
-
-          if not client.isSSL or client.sslHandle == nil:
-            server.sslContext.wrapSocket(client)
-          let ret = SSLAccept(client.sslHandle)
-          while ret <= 0:
-            let err = SSLGetError(client.sslHandle, ret)
-            if err != SSL_ERROR_WANT_ACCEPT:
-              case err
-              of SSL_ERROR_ZERO_RETURN:
-                raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
-              of SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE,
-                 SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT:
-                client.sslNoHandshake = true
-                return AcceptNoHandshake
-              of SSL_ERROR_WANT_X509_LOOKUP:
-                raiseSSLError("Function for x509 lookup has been called.")
-              of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-                raiseSSLError()
-              else:
-                raiseSSLError("Unknown error")
-          client.sslNoHandshake = false
-
-    if client.isSSL and client.sslNoHandshake:
-      doHandshake()
-      return AcceptSuccess
-    else:
-      acceptAddrPlain(AcceptNoClient, AcceptSuccess):
-        doHandshake()
-
 proc accept*(server: Socket, client: var owned(Socket),
              flags = {SocketFlag.SafeDisconn}) {.tags: [ReadIOEffect].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the

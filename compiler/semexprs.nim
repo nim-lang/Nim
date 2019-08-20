@@ -501,12 +501,6 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
     else:
       for i in 0 ..< sonsLen(n):
         changeType(c, n.sons[i], tup.sons[i], check)
-        when false:
-          var m = n.sons[i]
-          var a = newNodeIT(nkExprColonExpr, m.info, newType.sons[i])
-          addSon(a, newSymNode(newType.n.sons[i].sym))
-          addSon(a, m)
-          changeType(m, tup.sons[i], check)
   of nkCharLit..nkUInt64Lit:
     if check and n.kind != nkUInt64Lit:
       let value = n.intVal
@@ -859,15 +853,10 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   of skTemplate: result = semTemplateExpr(c, result, callee, flags)
   else:
     semFinishOperands(c, result)
-    activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-    when false:
-      if result.typ != nil and
-          not (result.typ.kind == tySequence and result.typ.sons[0].kind == tyEmpty):
-        liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
@@ -1710,8 +1699,6 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     borrowCheck(c, n, lhs, rhs)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
-    when false: liftTypeBoundOps(c, lhs.typ, lhs.info)
-
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n
@@ -1896,15 +1883,6 @@ proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
-
-  when false:
-    let expandedSym = expectMacroOrTemplateCall(c, macroCall)
-    if expandedSym.kind == skError: return n
-
-    macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
-    markUsed(c, n.info, expandedSym)
-    onUse(n.info, expandedSym)
-
   if isCallExpr(macroCall):
     for i in 1 ..< macroCall.len:
       #if macroCall.sons[0].typ.sons[i].kind != tyUntyped:
@@ -2209,7 +2187,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       let callee = result.sons[0].sym
       if callee.magic == mNone:
         semFinishOperands(c, result)
-      activate(c, result)
       fixAbstractType(c, result)
       analyseIfAddressTakenInCall(c, result)
       if callee.magic != mNone:
@@ -2217,18 +2194,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mRunnableExamples:
     markUsed(c, n.info, s)
     if c.config.cmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
-      when false:
-        # some of this dead code was moved to `prepareExamples`
-        if sfMainModule in c.module.flags:
-          let inp = toFullPath(c.config, c.module.info)
-          if c.runnableExamples == nil:
-            c.runnableExamples = newTree(nkStmtList,
-              newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
-          let imports = newTree(nkStmtList)
-          var savedLastSon = copyTree n.lastSon
-          extractImports(savedLastSon, imports)
-          for imp in imports: c.runnableExamples.add imp
-          c.runnableExamples.add newTree(nkBlockStmt, c.graph.emptyNode, copyTree savedLastSon)
       result = setMs(n, s)
     else:
       result = c.graph.emptyNode

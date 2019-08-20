@@ -26,10 +26,6 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
     localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
-  when false:
-    if t.kind == tyObject and t.sons[0] != nil:
-      if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags:
-        localError(info, errInheritanceOnlyWithNonFinalObjects)
 
 proc searchInstTypes*(key: PType): PType =
   let genericTyp = key.sons[0]
@@ -108,17 +104,8 @@ proc lookup(typeMap: ptr LayeredIdTable, key: PType): PType =
 template put(typeMap: ptr LayeredIdTable, key, value: PType) =
   idTablePut(typeMap.topLayer, key, value)
 
-template checkMetaInvariants(cl: TReplTypeVars, t: PType) =
-  when false:
-    if t != nil and tfHasMeta in t.flags and
-       cl.allowMetaTypes == false:
-      echo "UNEXPECTED META ", t.id, " ", instantiationInfo(-1)
-      debug t
-      writeStackTrace()
-
 proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
   result = replaceTypeVarsTAux(cl, t)
-  checkMetaInvariants(cl, result)
 
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)
@@ -197,7 +184,6 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   result = copyNode(n)
   if n.typ != nil:
     result.typ = replaceTypeVarsT(cl, n.typ)
-    checkMetaInvariants(cl, result.typ)
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard
@@ -288,11 +274,6 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
     result.flags.excl tfInstClearedFlags
-  when false:
-    if newDestructors:
-      result.assignment = nil
-      result.destructor = nil
-      result.sink = nil
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]

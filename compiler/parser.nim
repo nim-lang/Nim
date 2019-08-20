@@ -1455,14 +1455,6 @@ proc parseExprStmt(p: var TParser): PNode =
 
 proc parseModuleName(p: var TParser, kind: TNodeKind): PNode =
   result = parseExpr(p)
-  when false:
-    # parseExpr already handles 'as' syntax ...
-    if p.tok.tokType == tkAs and kind == nkImportStmt:
-      let a = result
-      result = newNodeP(nkImportAs, p)
-      getTok(p)
-      result.add(a)
-      result.add(parseExpr(p))
 
 proc parseImport(p: var TParser, kind: TNodeKind): PNode =
   #| importStmt = 'import' optInd expr

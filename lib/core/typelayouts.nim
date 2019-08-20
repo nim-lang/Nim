@@ -12,8 +12,5 @@ type
     size*, alignment*: int
     destructor*: proc (self: pointer; a: Allocator) {.nimcall.}
     trace*: proc (self: pointer; a: Allocator) {.nimcall.}
-    when false:
-      construct*: proc (self: pointer; a: Allocator) {.nimcall.}
-      copy*, deepcopy*, sink*: proc (self, other: pointer; a: Allocator) {.nimcall.}
 
 proc getTypeLayout(t: typedesc): ptr TypeLayout {.magic: "getTypeLayout".}

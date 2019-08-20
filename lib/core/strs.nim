@@ -9,20 +9,6 @@
 
 ## Default new string implementation used by Nim's core.
 
-when false:
-  # these are to be implemented or changed in the code generator.
-
-  #proc rawNewStringNoInit(space: int): NimString {.compilerproc.}
-  # seems to be unused.
-  proc copyDeepString(src: NimString): NimString {.inline.}
-  # ----------------- sequences ----------------------------------------------
-
-  proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.}
-  proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
-      compilerRtl.}
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
-  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.}
-
 import allocators
 
 type

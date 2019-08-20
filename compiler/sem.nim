@@ -46,7 +46,6 @@ proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
-proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
@@ -150,15 +149,6 @@ proc commonType*(x, y: PType): PType =
     # run people expect ranges to work properly within a tuple.
     if not sameType(a, b):
       result = skipTypes(a, {tyRange}).skipIntLit
-    when false:
-      if a.kind != tyRange and b.kind == tyRange:
-        # XXX This really needs a better solution, but a proper fix now breaks
-        # code.
-        result = a #.skipIntLit
-      elif a.kind == tyRange and b.kind != tyRange:
-        result = b #.skipIntLit
-      elif a.kind in IntegralTypes and a.n != nil:
-        result = a #.skipIntLit
   else:
     var k = tyNone
     if a.kind in {tyRef, tyPtr}:
@@ -207,12 +197,6 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     if result.kind notin {kind, skTemp}:
       localError(c.config, n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
-    when false:
-      if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
-        # declarative context, so produce a fresh gensym:
-        result = copySym(result)
-        result.ast = n.sym.ast
-        put(c.p, n.sym, result)
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909
@@ -262,21 +246,6 @@ proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
 proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
   result = newSymNode(symFromType(c, t, info), info)
   result.typ = makeTypeDesc(c, t)
-
-when false:
-  proc createEvalContext(c: PContext, mode: TEvalMode): PEvalContext =
-    result = newEvalContext(c.module, mode)
-    result.getType = proc (n: PNode): PNode =
-      result = tryExpr(c, n)
-      if result == nil:
-        result = newSymNode(errorSym(c, n))
-      elif result.typ == nil:
-        result = newSymNode(getSysSym"void")
-      else:
-        result.typ = makeTypeDesc(c, result.typ)
-
-    result.handleIsOperator = proc (n: PNode): PNode =
-      result = isOpImpl(c, n)
 
 proc hasCycle(n: PNode): bool =
   incl n.flags, nfNone
@@ -379,13 +348,6 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if evaluated != nil: return evaluated
 
 include hlo, seminst, semcall
-
-when false:
-  # hopefully not required:
-  proc resetSemFlag(n: PNode) =
-    excl n.flags, nfSem
-    for i in 0 ..< n.safeLen:
-      resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
                        s: PSym, flags: TExprFlags): PNode =
@@ -563,18 +525,6 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   else:
     result = n
   result = semStmt(c, result, {})
-  when false:
-    # Code generators are lazy now and can deal with undeclared procs, so these
-    # steps are not required anymore and actually harmful for the upcoming
-    # destructor support.
-    # BUGFIX: process newly generated generics here, not at the end!
-    if c.lastGenericIdx < c.generics.len:
-      var a = newNodeI(nkStmtList, n.info)
-      addCodeForGenerics(c, a)
-      if sonsLen(a) > 0:
-        # a generic has been added to `a`:
-        if result.kind != nkEmpty: addSon(a, result)
-        result = a
   result = hloStmt(c, result)
   if c.config.cmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)

@@ -87,11 +87,3 @@ proc newImpl(t: ptr TypeLayout): pointer =
 
 template new*[T](x: var ref T) =
   x = newImpl(getTypeLayout(x))
-
-
-when false:
-  # implement these if your GC requires them:
-  proc writeBarrierLocal() {.core.}
-  proc writeBarrierGlobal() {.core.}
-
-  proc writeBarrierGeneric() {.core.}

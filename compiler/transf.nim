@@ -217,19 +217,6 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
 
 proc transformConstSection(c: PTransf, v: PNode): PTransNode =
   result = PTransNode(v)
-  when false:
-    result = newTransNode(v)
-    for i in 0 ..< sonsLen(v):
-      var it = v.sons[i]
-      if it.kind == nkCommentStmt:
-        result[i] = PTransNode(it)
-      else:
-        if it.kind != nkConstDef: internalError(c.graph.config, it.info, "transformConstSection")
-        if it.sons[0].kind != nkSym:
-          debug it.sons[0]
-          internalError(c.graph.config, it.info, "transformConstSection")
-
-        result[i] = PTransNode(it)
 
 proc hasContinue(n: PNode): bool =
   case n.kind
@@ -794,10 +781,6 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:
     if s.sons[0].kind == nkSym and s.sons[0].sym.kind == skMethod:
-      when false:
-        let t = lastSon(s.sons[0].sym.ast)
-        if t.kind != nkSym or sfDispatcher notin t.sym.flags:
-          methodDef(s.sons[0].sym, false)
       result = methodCall(s, c.graph.config).PTransNode
     else:
       result = s.PTransNode
@@ -908,13 +891,6 @@ proc hoistParamsUsedInDefault(c: PTransf, call, letSection, defExpr: PNode): PNo
       if hoisted != nil: defExpr[i] = hoisted
 
 proc transform(c: PTransf, n: PNode): PTransNode =
-  when false:
-    var oldDeferAnchor: PNode
-    if n.kind in {nkElifBranch, nkOfBranch, nkExceptBranch, nkElifExpr,
-                  nkElseExpr, nkElse, nkForStmt, nkWhileStmt, nkFinally,
-                  nkBlockStmt, nkBlockExpr}:
-      oldDeferAnchor = c.deferAnchor
-      c.deferAnchor = n
   if (n.typ != nil and tfHasAsgn in n.typ.flags) or
       optNimV2 in c.graph.config.globalOptions:
     c.needsDestroyPass = true
@@ -935,11 +911,6 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = PTransNode(n)
   of nkMacroDef:
     # XXX no proper closure support yet:
-    when false:
-      if n.sons[genericParamsPos].kind == nkEmpty:
-        var s = n.sons[namePos].sym
-        n.sons[bodyPos] = PNode(transform(c, s.getBody))
-        if n.kind == nkMethodDef: methodDef(s, false)
     result = PTransNode(n)
   of nkForStmt:
     result = transformFor(c, n)
@@ -953,23 +924,6 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkDefer:
     c.deferDetected = true
     result = transformSons(c, n)
-    when false:
-      let deferPart = newNodeI(nkFinally, n.info)
-      deferPart.add n.sons[0]
-      let tryStmt = newNodeI(nkTryStmt, n.info)
-      if c.deferAnchor.isNil:
-        tryStmt.add c.root
-        c.root = tryStmt
-        result = PTransNode(tryStmt)
-      else:
-        # modify the corresponding *action*, don't rely on nkStmtList:
-        let L = c.deferAnchor.len-1
-        tryStmt.add c.deferAnchor.sons[L]
-        c.deferAnchor.sons[L] = tryStmt
-        result = newTransNode(nkCommentStmt, n.info, 0)
-      tryStmt.addSon(deferPart)
-      # disable the original 'defer' statement:
-      n.kind = nkEmpty
   of nkContinueStmt:
     result = PTransNode(newNodeI(nkBreakStmt, n.info))
     var labl = c.contSyms[c.contSyms.high]
@@ -1044,8 +998,6 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformExceptBranch(c, n)
   else:
     result = transformSons(c, n)
-  when false:
-    if oldDeferAnchor != nil: c.deferAnchor = oldDeferAnchor
 
   # Constants can be inlined here, but only if they cannot result in a cast
   # in the back-end (e.g. var p: pointer = someProc)

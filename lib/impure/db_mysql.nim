@@ -104,16 +104,6 @@ proc dbError*(db: DbConn) {.noreturn.} =
   e.msg = $mysql.error(PMySQL db)
   raise e
 
-when false:
-  proc dbQueryOpt*(db: DbConn, query: string, args: varargs[string, `$`]) =
-    var stmt = mysql_stmt_init(db)
-    if stmt == nil: dbError(db)
-    if mysql_stmt_prepare(stmt, query, len(query)) != 0:
-      dbError(db)
-    var
-      binding: seq[MYSQL_BIND]
-    discard mysql_stmt_close(stmt)
-
 proc dbQuote*(s: string): string =
   ## DB quotes the string.
   result = "'"

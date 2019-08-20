@@ -1606,9 +1606,3 @@ proc isSinkTypeForParam*(t: PType): bool =
   # a parameter like 'seq[owned T]' must not be used only once, but its
   # elements must, so we detect this case here:
   result = t.skipTypes({tyGenericInst, tyAlias}).kind in {tySink, tyOwned}
-  when false:
-    if isSinkType(t):
-      if t.skipTypes({tyGenericInst, tyAlias}).kind in {tyArray, tyVarargs, tyOpenArray, tySequence}:
-        result = false
-      else:
-        result = true

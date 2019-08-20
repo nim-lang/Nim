@@ -712,10 +712,6 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     let builddll = if isDllBuild: CC[conf.cCompiler].buildDll else: ""
     let exefile = quoteShell(output)
 
-    when false:
-      if optCDebug in conf.globalOptions:
-        writeDebugInfo(exefile.changeFileExt("ndb"))
-
     # Map files are required by Nintendo Switch compilation. They are a list
     # of all function calls in the library and where they come from.
     let mapfile = quoteShell(getNimcacheDir(conf) / RelativeFile(splitFile(output).name & ".map"))

@@ -233,22 +233,6 @@ else:
     ## Waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
-when false:
-  # XXX a thread should really release its heap here somehow:
-  proc destroyThread*[TArg](t: var Thread[TArg]) =
-    ## Forces the thread `t` to terminate. This is potentially dangerous if
-    ## you don't have full control over `t` and its acquired resources.
-    when hostOS == "windows":
-      discard TerminateThread(t.sys, 1'i32)
-    else:
-      discard pthread_cancel(t.sys)
-    when declared(registerThread): unregisterThread(addr(t))
-    t.dataFn = nil
-    ## if thread `t` already exited, `t.core` will be `null`.
-    if not isNil(t.core):
-      deallocShared(t.core)
-      t.core = nil
-
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},

@@ -323,9 +323,7 @@ proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
   ## * `lowerBound proc<#lowerBound,openArray[T],T>`_
 
 template `<-` (a, b) =
-  when false:
-    a = b
-  elif onlySafeCode:
+  when onlySafeCode:
     shallowCopy(a, b)
   else:
     copyMem(addr(a), addr(b), sizeof(T))

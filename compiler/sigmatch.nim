@@ -133,14 +133,6 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
   initIdTable(c.bindings)
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
-  when false:
-    let old = PType(idTableGet(c.bindings, key))
-    if old != nil:
-      echo "Putting ", typeToString(key), " ", typeToString(val), " and old is ", typeToString(old)
-      if typeToString(old) == "seq[string]":
-        writeStackTrace()
-    if c.c.module.name.s == "temp3":
-      echo "binding ", key, " -> ", val
   idTablePut(c.bindings, key, val.skipIntLit)
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
@@ -266,11 +258,6 @@ proc complexDisambiguation(a, b: PType): int =
         if winner != -1:
           return 0
   result = winner
-  when false:
-    var x, y: int
-    for i in 1 ..< a.len: x += a.sons[i].sumGeneric
-    for i in 1 ..< b.len: y += b.sons[i].sumGeneric
-    result = x - y
 
 proc writeMatches*(c: TCandidate) =
   echo "Candidate '", c.calleeSym.name.s, "' at ", c.c.config $ c.calleeSym.info
@@ -944,26 +931,6 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
            baseTypesCheck(f.sons[1], a.sons[1])
   else:
     return false
-
-when false:
-  proc maxNumericType(prev, candidate: PType): PType =
-    let c = candidate.skipTypes({tyRange})
-    template greater(s) =
-      if c.kind in s: result = c
-    case prev.kind
-    of tyInt: greater({tyInt64})
-    of tyInt8: greater({tyInt, tyInt16, tyInt32, tyInt64})
-    of tyInt16: greater({tyInt, tyInt32, tyInt64})
-    of tyInt32: greater({tyInt64})
-
-    of tyUInt: greater({tyUInt64})
-    of tyUInt8: greater({tyUInt, tyUInt16, tyUInt32, tyUInt64})
-    of tyUInt16: greater({tyUInt, tyUInt32, tyUInt64})
-    of tyUInt32: greater({tyUInt64})
-
-    of tyFloat32: greater({tyFloat64, tyFloat128})
-    of tyFloat64: greater({tyFloat128})
-    else: discard
 
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
@@ -1822,21 +1789,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   else:
     internalError c.c.graph.config, " unknown type kind " & $f.kind
 
-when false:
-  var nowDebug = false
-  var dbgCount = 0
-
-  proc typeRel(c: var TCandidate, f, aOrig: PType,
-              flags: TTypeRelFlags = {}): TTypeRelation =
-    if nowDebug:
-      echo f, " <- ", aOrig
-      inc dbgCount
-      if dbgCount == 2:
-        writeStackTrace()
-    result = typeRelImpl(c, f, aOrig, flags)
-    if nowDebug:
-      echo f, " <- ", aOrig, " res ", result
-
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate
   initCandidate(c, m, f)
@@ -2222,11 +2174,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       onUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
-  when false:
-    if m.calleeSym != nil and m.calleeSym.name.s == "[]":
-      echo m.c.config $ arg.info, " for ", m.calleeSym.name.s, " ", m.c.config $ m.calleeSym.info
-      writeMatches(m)
-
 proc setSon(father: PNode, at: int, son: PNode) =
   let oldLen = father.len
   if oldLen <= at:
@@ -2366,7 +2313,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         # we used to produce 'errCannotBindXTwice' here but see
         # bug #3836 of why that is not sound (other overload with
         # different parameter names could match later on):
-        when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
         noMatch()
         return
       m.baseTypeMatch = false
@@ -2434,7 +2380,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         if containsOrIncl(marker, formal.position) and container.isNil:
           m.firstMismatch.kind = kPositionalAlreadyGiven
           # positional param already in namedParams: (see above remark)
-          when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           noMatch()
           return
 
@@ -2506,9 +2451,6 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
     m.call = n
     # Note the following doesn't work as it would produce ambiguities.
     # Instead we patch system.nim, see bug #8049.
-    when false:
-      inc m.genericMatches
-      inc m.exactMatches
     return
   var marker = initIntSet()
   matchesAux(c, n, nOrig, m, marker)

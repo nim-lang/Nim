@@ -1003,23 +1003,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   # tmp = a
   # end:
   # a = tmp
-  when false:
-    #if isSimpleExpr(e) and p.module.compileToCpp:
-    var tmpA, tmpB: TLoc
-    #getTemp(p, e.typ, tmpA)
-    #getTemp(p, e.typ, tmpB)
-    initLocExprSingleUse(p, e.sons[1], tmpA)
-    initLocExprSingleUse(p, e.sons[2], tmpB)
-    tmpB.k = locExpr
-    if m == mOr:
-      tmpB.r = "((" & rdLoc(tmpA) & ")||(" & rdLoc(tmpB) & "))"
-    else:
-      tmpB.r = "((" & rdLoc(tmpA) & ")&&(" & rdLoc(tmpB) & "))"
-    if d.k == locNone:
-      d = tmpB
-    else:
-      genAssignment(p, d, tmpB, {})
-  else:
+  when true:
     var
       L: TLabel
       tmp: TLoc
@@ -1063,11 +1047,6 @@ proc genEcho(p: BProc, n: PNode) =
       var a: TLoc
       initLocExpr(p, n, a)
       linefmt(p, cpsStmts, "#echoBinSafe($1, $2);$n", [a.rdLoc, n.len])
-    when false:
-      p.module.includeHeader("<stdio.h>")
-      linefmt(p, cpsStmts, "printf($1$2);$n",
-              makeCString(repeat("%s", n.len) & "\L"), [args])
-      linefmt(p, cpsStmts, "fflush(stdout);$n", [])
 
 proc gcUsage(conf: ConfigRef; n: PNode) =
   if conf.selectedGC == gcNone: message(conf, n.info, warnGcMem, n.renderTree)
@@ -1511,10 +1490,6 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
       let cache = "Nim_OfCheck_CACHE" & p.module.labels.rope
       addf(p.module.s[cfsVars], "static TNimType* $#[2];$n", [cache])
       result = ropecg(p.module, "#isObjWithCache($#.m_type, $#, $#)", [a, ti, cache])
-    when false:
-      # former version:
-      result = ropecg(p.module, "#isObj($1.m_type, $2)",
-                    [a, genTypeInfo(p.module, dest, info)])
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -2059,23 +2034,6 @@ proc genDestroy(p: BProc; n: PNode) =
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
-proc genDispose(p: BProc; n: PNode) =
-  when false:
-    let elemType = n[1].typ.skipTypes(abstractVar).lastSon
-
-    var a: TLoc
-    initLocExpr(p, n[1].skipAddr, a)
-
-    if isFinal(elemType):
-      if elemType.destructor != nil:
-        var destroyCall = newNodeI(nkCall, n.info)
-        genStmts(p, destroyCall)
-      lineCg(p, cpsStmts, ["#nimRawDispose($#)", rdLoc(a)])
-    else:
-      # ``nimRawDisposeVirtual`` calls the ``finalizer`` which is the same as the
-      # destructor, but it uses the runtime type. Afterwards the memory is freed:
-      lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
-
 proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst)
@@ -2362,10 +2320,6 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
     if n.sons[0].skipConv.kind == nkClosure:
       internalError(p.config, n.info, "closure to closure created")
     # tasyncawait.nim breaks with this optimization:
-    when false:
-      if d.k != locNone:
-        linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
-                [d.rdLoc, a.rdLoc, b.rdLoc])
     else:
       getTemp(p, n.typ, tmp)
       linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",

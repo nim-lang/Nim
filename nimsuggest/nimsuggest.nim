@@ -372,12 +372,6 @@ proc replEpc(x: ThreadParams) {.thread.} =
         cmd = message[2].getSymbol
         args = message[3]
 
-      when false:
-        x.ideCmd[] = parseIdeCmd(message[2].getSymbol)
-        case x.ideCmd[]
-        of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
-          setVerbosity(0)
-        else: discard
       let fullCmd = cmd & " " & args.argsToStr
       myLog "MSG CMD: " & fullCmd
       requests.send(fullCmd)

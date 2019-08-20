@@ -78,8 +78,6 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
-    when false:
-      if s.kind == skStub: loadStub(s)
     let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds
     # for an enumeration we have to add all identifiers
     if multiImport:

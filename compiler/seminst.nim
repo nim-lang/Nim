@@ -101,10 +101,6 @@ proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
-when false:
-  proc `$`(x: PSym): string =
-    result = x.name.s & " " & " id " & $x.id
-
 proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
   #if n.kind == nkSym and sfGenSym in n.sym.flags:
@@ -166,12 +162,6 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       popInfoContext(c.config)
       popOwner(c)
       popProcCon(c)
-
-proc sideEffectsCheck(c: PContext, s: PSym) =
-  when false:
-    if {sfNoSideEffect, sfSideEffect} * s.flags ==
-        {sfNoSideEffect, sfSideEffect}:
-      localError(s.info, errXhasSideEffects, s.name.s)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
@@ -386,7 +376,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       n.sons[bodyPos] = copyTree(fn.getBody)
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
-    sideEffectsCheck(c, result)
     if result.magic != mSlice:
       # 'toOpenArray' is special and it is allowed to return 'openArray':
       paramsTypeCheck(c, result.typ)

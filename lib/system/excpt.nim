@@ -82,18 +82,6 @@ proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev
 
-when false:
-  proc popFrameOfAddr(s: PFrame) {.compilerRtl.} =
-    var it = framePtr
-    if it == s:
-      framePtr = framePtr.prev
-    else:
-      while it != nil:
-        if it == s:
-          framePtr = it.prev
-          break
-        it = it.prev
-
 proc setFrame*(s: PFrame) {.compilerRtl, inl.} =
   framePtr = s
 

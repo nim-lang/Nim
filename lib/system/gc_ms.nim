@@ -164,9 +164,6 @@ when defined(nimGcRefLeak):
 
 proc nimGCref(p: pointer) {.compilerproc.} =
   # we keep it from being collected by pretending it's not even allocated:
-  when false:
-    when withBitvectors: excl(gch.allocated, usrToCell(p))
-    else: usrToCell(p).refcount = rcBlack
   when defined(nimGcRefLeak):
     captureStackTrace(framePtr, ax[gch.additionalRoots.len])
   add(gch.additionalRoots, usrToCell(p))
@@ -184,9 +181,6 @@ proc nimGCunref(p: pointer) {.compilerproc.} =
       dec gch.additionalRoots.len
       break
     dec(i)
-  when false:
-    when withBitvectors: incl(gch.allocated, usrToCell(p))
-    else: usrToCell(p).refcount = rcWhite
 
 when defined(nimGcRefLeak):
   proc writeLeaks() =
@@ -424,15 +418,6 @@ proc sweep(gch: var GcHeap) =
         var c = cast[PCell](x)
         if c.refcount == rcBlack: c.refcount = rcWhite
         else: freeCyclicCell(gch, c)
-
-when false:
-  proc newGcInvariant*() =
-    for x in allObjects(gch.region):
-      if isCell(x):
-        var c = cast[PCell](x)
-        if c.typ == nil:
-          writeStackTrace()
-          quit 1
 
 proc markGlobals(gch: var GcHeap) =
   if gch.gcThreadId == 0:

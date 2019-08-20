@@ -52,14 +52,6 @@ when defined(windows):
 
   discard addVectoredExceptionHandler(0, segfaultHandler)
 
-  when false:
-    {.push stackTrace: off.}
-    proc segfaultHandler(sig: cint) {.noconv.} =
-      {.gcsafe.}:
-        rawRaise se
-    {.pop.}
-    c_signal(SIGSEGV, segfaultHandler)
-
 else:
   import posix
 

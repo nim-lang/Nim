@@ -176,10 +176,6 @@ proc bundleWinTools(args: string) =
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
   bundleC2nim(args)
-  when false:
-    # not yet a tool worth including
-    nimCompile(r"tools\downloader.nim",
-               options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
 proc zip(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
@@ -238,20 +234,6 @@ proc geninstall(args="") =
 proc install(args: string) =
   geninstall()
   exec("sh ./install.sh $#" % args)
-
-when false:
-  proc web(args: string) =
-    nimexec("js tools/dochack/dochack.nim")
-    nimexec("cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc website(args: string) =
-    nimexec("cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
-        [args, VersionAsString])
-
-  proc pdf(args="") =
-    exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-        [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
 
 # -------------- boot ---------------------------------------------------------
 
@@ -477,10 +459,6 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  when false:
-    execFold("nimble install -y libffi", "nimble install -y libffi")
-    kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
-
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-packages")
   else:
@@ -504,10 +482,6 @@ proc runCI(cmd: string) =
     when defined(posix):
       kochExecFold("Docs", "docs --git.commit:devel")
       kochExecFold("C sources", "csource")
-    elif defined(windows):
-      when false:
-        kochExec "csource"
-        kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):

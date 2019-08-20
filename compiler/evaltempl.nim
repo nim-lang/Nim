@@ -143,14 +143,6 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
     result.info = info
     if result.kind in {nkStmtList, nkStmtListExpr} and result.len > 0:
       result.lastSon.info = info
-    when false:
-      # this hack is required to
-      var x = result
-      while x.kind == nkStmtListExpr: x = x.lastSon
-      if x.kind in nkCallKinds:
-        for i in 1..<x.len:
-          if x[i].kind in nkCallKinds:
-            x.sons[i].info = info
   else:
     result = newNodeI(nkStmtListExpr, info)
     var d = newNodeI(nkComesFrom, info)

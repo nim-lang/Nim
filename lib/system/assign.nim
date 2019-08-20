@@ -113,35 +113,6 @@ proc genericAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
 proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   genericAssignAux(dest, src, mt, true)
 
-when false:
-  proc debugNimType(t: PNimType) =
-    if t.isNil:
-      cprintf("nil!")
-      return
-    var k: cstring
-    case t.kind
-    of tyBool: k = "bool"
-    of tyChar: k = "char"
-    of tyEnum: k = "enum"
-    of tyArray: k = "array"
-    of tyObject: k = "object"
-    of tyTuple: k = "tuple"
-    of tyRange: k = "range"
-    of tyPtr: k = "ptr"
-    of tyRef: k = "ref"
-    of tyVar: k = "var"
-    of tySequence: k = "seq"
-    of tyProc: k = "proc"
-    of tyPointer: k = "range"
-    of tyOpenArray: k = "openarray"
-    of tyString: k = "string"
-    of tyCString: k = "cstring"
-    of tyInt: k = "int"
-    of tyInt32: k = "int32"
-    else: k = "other"
-    cprintf("%s %ld\n", k, t.size)
-    debugNimType(t.base)
-
 proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   var src = src # ugly, but I like to stress the parser sometimes :-)
   genericAssign(dest, addr(src), mt)

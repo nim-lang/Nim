@@ -509,7 +509,6 @@ proc srcdist(c: var ConfigData) =
   if not existsDir(getOutputDir(c) / "c_code"):
     createDir(getOutputDir(c) / "c_code")
   for x in walkFiles(c.libpath / "lib/*.h"):
-    when false: echo(getOutputDir(c) / "c_code" / extractFilename(x))
     copyFile(dest=getOutputDir(c) / "c_code" / extractFilename(x), source=x)
   var winIndex = -1
   var intel32Index = -1
@@ -628,7 +627,6 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
 
   proc processFile(destFile, src: string) =
     let dest = tmpDir / destFile
-    when false: echo "Copying ", src, " to ", dest
     if not existsFile(src):
       echo "[Warning] Source file doesn't exist: ", src
     let destDir = dest.splitFile.dir
@@ -675,14 +673,6 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
       if windowsZip:
         if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
           echo("External program failed (zip)")
-        when false:
-          writeFile("config.txt", """;!@Install@!UTF-8!
-Title="Nim v$1"
-BeginPrompt="Do you want to configure Nim v$1?"
-RunProgram="tools\downloader.exe"
-;!@InstallEnd@!""" % NimVersion)
-          if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
-            echo("External program failed (7z)")
       else:
         if execShellCmd("gtar cf $1.tar --exclude=.DS_Store $1" %
                         proj) != 0:

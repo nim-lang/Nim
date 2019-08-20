@@ -23,24 +23,6 @@ template yes(e): void =
 template no(e): void =
   static: assert(not e)
 
-when false:
-  var s = @[1, 2, 3]
-
-  yes s.items is iterator
-  no  s.items is proc
-
-  yes s.items is iterator: int
-  no  s.items is iterator: float
-
-  yes s.items is iterator: TNumber
-  no  s.items is iterator: object
-
-  type
-    Iter[T] = iterator: T
-
-  yes s.items is Iter[TNumber]
-  no  s.items is Iter[float]
-
 type
   Foo[N: static[int], T] = object
     field: array[1..N, T]

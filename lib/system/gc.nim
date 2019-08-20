@@ -218,10 +218,7 @@ proc nimGCunref(p: pointer) {.compilerproc.} =
 include gc_common
 
 template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
-  when false:
-    for i in 0..gch.decStack.len-1:
-      if gch.decStack.d[i] == c:
-        sysAssert(false, msg)
+  discard
 
 proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} =
   sysAssert(allocInv(gch.region), "begin nimGCunrefNoCycle")
@@ -666,12 +663,6 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
       # mark the cell:
       incRef(objStart)
       add(gch.decStack, objStart)
-    when false:
-      if isAllocatedPtr(gch.region, cell):
-        sysAssert false, "allocated pointer but not interior?"
-        # mark the cell:
-        incRef(cell)
-        add(gch.decStack, cell)
   sysAssert(allocInv(gch.region), "gcMark end")
 
 #[
@@ -784,10 +775,6 @@ proc collectCT(gch: var GcHeap) =
   if (gch.zct.len >= gch.zctThreshold or (cycleGC and
       getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and
       gch.recGcLock == 0:
-    when false:
-      prepareForInteriorPointerChecking(gch.region)
-      cellsetReset(gch.marked)
-      markForDebug(gch)
     collectCTBody(gch)
     gch.zctThreshold = max(InitialZctThreshold, gch.zct.len * CycleIncrease)
 

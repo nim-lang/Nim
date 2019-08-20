@@ -199,41 +199,6 @@ iterator elements(t: CellSet): PCell {.inline.} =
       inc(i)
     r = r.next
 
-when false:
-  type
-    CellSetIter = object
-      p: PPageDesc
-      i, w, j: int
-
-  proc next(it: var CellSetIter): PCell =
-    while true:
-      while it.w != 0:         # test all remaining bits for zero
-        if (it.w and 1) != 0:  # the bit is set!
-          result = cast[PCell]((it.p.key shl PageShift) or
-                               (it.i shl IntShift +% it.j) *% MemAlign)
-
-          inc(it.j)
-          it.w = it.w shr 1
-          return
-        else:
-          inc(it.j)
-          it.w = it.w shr 1
-      # load next w:
-      if it.i >= high(it.p.bits):
-        it.i = 0
-        it.j = 0
-        it.p = it.p.next
-        if it.p == nil: return nil
-      else:
-        inc it.i
-      it.w = it.p.bits[i]
-
-  proc init(it: var CellSetIter; t: CellSet): PCell =
-    it.p = t.head
-    it.i = -1
-    it.w = 0
-    result = it.next
-
 iterator elementsExcept(t, s: CellSet): PCell {.inline.} =
   var r = t.head
   while r != nil:

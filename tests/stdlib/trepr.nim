@@ -19,14 +19,6 @@ type
 var foo: TFoo
 new(foo)
 
-when false:
-  # cannot capture this output as it contains a memory address :-/
-  echo foo.repr
-#var testseq: seq[string] = @[
-#  "a", "b", "c", "d", "e"
-#]
-#echo(repr(testseq))
-
 # bug #7878
 proc test(variable: var openarray[int]) =
   echo repr(variable)

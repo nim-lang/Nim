@@ -85,9 +85,6 @@ type
     bump: pointer
     head, tail: Chunk
     nextChunkSize, totalSize: int
-    when false:
-      freeLists: array[MaxSmallObject div MemAlign, FreeEntry]
-      holes: SizedFreeEntry
     when hasThreadSupport:
       lock: SysLock
 
@@ -162,22 +159,6 @@ proc allocSlowPath(r: var MemRegion; size: int) =
   r.remaining = s - sizeof(BaseChunk)
 
 proc allocFast(r: var MemRegion; size: int): pointer =
-  when false:
-    if size <= MaxSmallObject:
-      var it = r.freeLists[size div MemAlign]
-      if it != nil:
-        r.freeLists[size div MemAlign] = it.next
-        return pointer(it)
-    else:
-      var it = r.holes
-      var prev: SizedFreeEntry = nil
-      while it != nil:
-        if it.size >= size:
-          if prev != nil: prev.next = it.next
-          else: r.holes = it.next
-          return pointer(it)
-        prev = it
-        it = it.next
   let size = roundup(size, MemAlign)
   if size > r.remaining:
     allocSlowPath(r, size)
@@ -216,16 +197,6 @@ proc dealloc(r: var MemRegion; p: pointer; size: int) =
   # it is benefitial to not use the free lists here:
   if r.bump -! size == p:
     dec r.bump, size
-  when false:
-    if size <= MaxSmallObject:
-      let it = cast[FreeEntry](p)
-      it.next = r.freeLists[size div MemAlign]
-      r.freeLists[size div MemAlign] = it
-    else:
-      let it = cast[SizedFreeEntry](p)
-      it.size = size
-      it.next = r.holes
-      r.holes = it
 
 proc deallocAll(r: var MemRegion; head: Chunk) =
   var it = head
@@ -253,10 +224,6 @@ proc setObstackPtr*(r: var MemRegion; sp: StackPtr) =
   if sp.current != nil and sp.current.next != nil:
     deallocAll(r, sp.current.next)
     sp.current.next = nil
-    when false:
-      # better leak this memory than be sorry:
-      for i in 0..high(r.freeLists): r.freeLists[i] = nil
-      r.holes = nil
   if r.tail != nil: runFinalizers(r.tail, sp.bump)
 
   r.bump = sp.bump
@@ -269,13 +236,6 @@ proc deallocAll*() = tlRegion.deallocAll()
 
 proc deallocOsPages(r: var MemRegion) = r.deallocAll()
 
-when false:
-  let obs = obstackPtr()
-  try:
-    body
-  finally:
-    setObstackPtr(obs)
-
 template withScratchRegion*(body: untyped) =
   var scratch: MemRegion
   let oldRegion = tlRegion
@@ -285,19 +245,6 @@ template withScratchRegion*(body: untyped) =
   finally:
     tlRegion = oldRegion
     deallocAll(scratch)
-
-when false:
-  proc joinRegion*(dest: var MemRegion; src: MemRegion) =
-    # merging is not hard.
-    if dest.head.isNil:
-      dest.head = src.head
-    else:
-      dest.tail.next = src.head
-    dest.tail = src.tail
-    dest.bump = src.bump
-    dest.remaining = src.remaining
-    dest.nextChunkSize = max(dest.nextChunkSize, src.nextChunkSize)
-    inc dest.totalSize, src.totalSize
 
 proc isOnHeap*(r: MemRegion; p: pointer): bool =
   # the tail chunk is the largest, so check it first. It's also special

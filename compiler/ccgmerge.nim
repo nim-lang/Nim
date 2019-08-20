@@ -102,9 +102,6 @@ proc genMergeInfo*(m: BModule): Rope =
   writeTypeCache(m.typeCache, s)
   s.add("declared:{")
   writeIntSet(m.declaredThings, s)
-  when false:
-    s.add("typeInfo:{")
-    writeIntSet(m.typeInfoMarker, s)
   s.add("labels:")
   encodeVInt(m.labels, s)
   s.add(" flags:")
@@ -190,8 +187,6 @@ proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
     inc L.bufpos
     var value = decodeStr(L.buf, L.bufpos)
     # XXX implement me
-    when false:
-      idTablePut(result, newFakeType(key), value.rope)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =
@@ -214,8 +209,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     case k
     of "typeCache": readTypeCache(L, m.typeCache)
     of "declared":  readIntSet(L, m.declaredThings)
-    of "typeInfo":
-      when false: readIntSet(L, m.typeInfoMarker)
+    of "typeInfo":  discard
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "flags":
       m.flags = cast[set[CodegenFlag]](decodeVInt(L.buf, L.bufpos) != 0)

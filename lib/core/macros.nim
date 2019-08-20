@@ -703,13 +703,6 @@ proc newLit*(b: bool): NimNode {.compileTime.} =
   ## produces a new boolean literal node.
   result = if b: bindSym"true" else: bindSym"false"
 
-when false:
-  # the float type is not really a distinct type as described in https://github.com/nim-lang/Nim/issues/5875
-  proc newLit*(f: float): NimNode {.compileTime.} =
-    ## produces a new float literal node.
-    result = newNimNode(nnkFloatLit)
-    result.floatVal = f
-
 proc newLit*(f: float32): NimNode {.compileTime.} =
   ## produces a new float literal node.
   result = newNimNode(nnkFloat32Lit)

@@ -65,10 +65,6 @@ proc initConfigData(c: var TConfigData) =
   c.vars = newStringTable(modeStyleInsensitive)
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
-  when false:
-    let (output, code) = execCmdEx("git log -n 1 --format=%H")
-    if code == 0 and output.strip.len == 40:
-      c.gitCommit = output.strip
   c.quotations = initTable[string, tuple[quote, author: string]]()
 
 include "website.nimf"

@@ -661,12 +661,6 @@ proc parseSmiley(p: var RstParser): PRstNode =
       result.text = val
       return
 
-when false:
-  const
-    urlChars = {'A'..'Z', 'a'..'z', '0'..'9', ':', '#', '@', '%', '/', ';',
-                 '$', '(', ')', '~', '_', '?', '+', '-', '=', '\\', '.', '&',
-                 '\128'..'\255'}
-
 proc isUrl(p: RstParser, i: int): bool =
   result = (p.tok[i+1].symbol == ":") and (p.tok[i+2].symbol == "//") and
     (p.tok[i+3].kind == tkWord) and
@@ -705,30 +699,6 @@ proc parseBackslash(p: var RstParser, father: PRstNode) =
   else:
     add(father, newLeaf(p))
     inc(p.idx)
-
-when false:
-  proc parseAdhoc(p: var RstParser, father: PRstNode, verbatim: bool) =
-    if not verbatim and isURL(p, p.idx):
-      var n = newRstNode(rnStandaloneHyperlink)
-      while true:
-        case p.tok[p.idx].kind
-        of tkWord, tkAdornment, tkOther: nil
-        of tkPunct:
-          if p.tok[p.idx+1].kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
-            break
-        else: break
-        add(n, newLeaf(p))
-        inc(p.idx)
-      add(father, n)
-    elif not verbatim and roSupportSmilies in p.sharedState.options:
-      let n = parseSmiley(p)
-      if s != nil:
-        add(father, n)
-    else:
-      var n = newLeaf(p)
-      inc(p.idx)
-      if p.tok[p.idx].symbol == "_": n = parsePostfix(p, n)
-      add(father, n)
 
 proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
                 interpretBackslash: bool) =
@@ -1480,13 +1450,6 @@ proc `$`(t: Token): string =
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)
   if p.tok[p.idx].kind != tkEof:
-    when false:
-      assert isAllocatedPtr(cast[pointer](p.tok))
-      for i in 0 .. high(p.tok):
-        assert isNil(p.tok[i].symbol) or
-               isAllocatedPtr(cast[pointer](p.tok[i].symbol))
-      echo "index: ", p.idx, " length: ", high(p.tok), "##",
-          p.tok[p.idx-1], p.tok[p.idx], p.tok[p.idx+1]
     #assert isAllocatedPtr(cast[pointer](p.indentStack))
     rstMessage(p, meGeneralParseError)
 

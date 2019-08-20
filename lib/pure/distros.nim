@@ -244,8 +244,3 @@ proc echoForeignDeps*() =
   ## Writes the list of registered foreign deps to stdout.
   for d in foreignDeps:
     echo d
-
-when false:
-  foreignDep("libblas-dev")
-  foreignDep "libfoo"
-  echoForeignDeps()

@@ -345,19 +345,6 @@ proc `%`*[T](opt: Option[T]): JsonNode =
   ## if ``opt`` is empty, otherwise it delegates to the underlying value.
   if opt.isSome: %opt.get else: newJNull()
 
-when false:
-  # For 'consistency' we could do this, but that only pushes people further
-  # into that evil comfort zone where they can use Nim without understanding it
-  # causing problems later on.
-  proc `%`*(elements: set[bool]): JsonNode =
-    ## Generic constructor for JSON data. Creates a new `JObject JsonNode`.
-    ## This can only be used with the empty set ``{}`` and is supported
-    ## to prevent the gotcha ``%*{}`` which used to produce an empty
-    ## JSON array.
-    result = newJObject()
-    assert false notin elements, "usage error: only empty sets allowed"
-    assert true notin elements, "usage error: only empty sets allowed"
-
 proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`.
   assert(obj.kind == JObject)
@@ -1543,36 +1530,6 @@ macro to*(node: JsonNode, T: typedesc): untyped =
 
   let constructor = createConstructor(typeNode[1], temp)
   result.add(postProcessValue(constructor))
-
-  # echo(treeRepr(result))
-  # echo(toStrLit(result))
-
-when false:
-  import os
-  var s = newFileStream(paramStr(1), fmRead)
-  if s == nil: quit("cannot open the file" & paramStr(1))
-  var x: JsonParser
-  open(x, s, paramStr(1))
-  while true:
-    next(x)
-    case x.kind
-    of jsonError:
-      Echo(x.errorMsg())
-      break
-    of jsonEof: break
-    of jsonString, jsonInt, jsonFloat: echo(x.str)
-    of jsonTrue: echo("!TRUE")
-    of jsonFalse: echo("!FALSE")
-    of jsonNull: echo("!NULL")
-    of jsonObjectStart: echo("{")
-    of jsonObjectEnd: echo("}")
-    of jsonArrayStart: echo("[")
-    of jsonArrayEnd: echo("]")
-
-  close(x)
-
-# { "json": 5 }
-# To get that we shall use, obj["json"]
 
 when isMainModule:
   # Note: Macro tests are in tests/stdlib/tjsonmacro.nim

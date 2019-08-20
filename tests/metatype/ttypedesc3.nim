@@ -23,8 +23,6 @@ Base.pr
 Child.pr
 
 Base.me
-when false:
-  Child.me #<- bug #2710
 
 for s in Base.it: echo s
 for s in Child.it: echo s #<- bug #2662

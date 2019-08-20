@@ -71,9 +71,6 @@ block:
 block:
   static:
     # for joint test, the project path is different, so I disabled it:
-    when false:
-      assert "vm" in getProjectPath()
-
     let b = getEnv("UNSETENVVAR")
     assert b == ""
     assert existsEnv("UNSERENVVAR") == false

@@ -115,13 +115,6 @@ proc nimGetKeyword(id: string): TokenClass =
   for k in nimKeywords:
     if cmpIgnoreStyle(id, k) == 0: return gtKeyword
   result = gtIdentifier
-  when false:
-    var i = getIdent(id)
-    if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
-        (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
-      result = gtKeyword
-    else:
-      result = gtIdentifier
 
 proc nimNumberPostfix(g: var GeneralTokenizer, position: int): int =
   var pos = position

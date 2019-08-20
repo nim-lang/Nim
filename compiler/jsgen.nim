@@ -1442,12 +1442,6 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
     inc emitted
     hasArgs = true
   add(r.res, ")")
-  when false:
-    # XXX look into this:
-    let jsp = countJsParams(typ)
-    if emitted != jsp and tfVarargs notin typ.flags:
-      localError(p.config, n.info, "wrong number of parameters emitted; expected: " & $jsp &
-        " but got: " & $emitted)
   r.kind = resExpr
 
 proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;

@@ -1842,13 +1842,6 @@ proc getCFile(m: BModule): AbsoluteFile =
       else: ".nim.c"
   result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
-when false:
-  proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
-    injectG()
-    var m = newModule(g, module, graph.config)
-    readMergeInfo(getCFile(m), m)
-    result = m
-
 proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
   if n.kind == nkStmtList:
     for child in n:

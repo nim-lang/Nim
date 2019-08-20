@@ -1333,10 +1333,6 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
-  when false:
-    if result.id == 76426:
-      echo "KNID ", kind
-      writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
@@ -1809,13 +1805,6 @@ proc findUnresolvedStatic*(n: PNode): PNode =
     if n != nil: return n
 
   return nil
-
-when false:
-  proc containsNil*(n: PNode): bool =
-    # only for debugging
-    if n.isNil: return true
-    for i in 0 ..< n.safeLen:
-      if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
 template incompleteType*(t: PType): bool =

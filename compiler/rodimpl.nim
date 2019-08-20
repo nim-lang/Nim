@@ -54,10 +54,6 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile;
 proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
   ## Analyse the known dependency graph.
   if g.config.symbolFiles == disabledSf: return getID()
-  when false:
-    if g.config.symbolFiles in {disabledSf, writeOnlySf} or
-      g.incr.configChanged:
-      return getID()
   let module = g.incr.db.getRow(
     sql"select id, fullHash, nimid from modules where fullpath = ?", string fullpath)
   let currentFullhash = hashFileCached(g.config, fileIdx, fullpath)
@@ -379,14 +375,10 @@ proc transitiveClosure(g: ModuleGraph) =
       doAssert false, "loop never ends!"
     if w.sstack.len > 0:
       let s = w.sstack.pop()
-      when false:
-        echo "popped ", s.name.s, " ", s.id
       storeSym(g, s)
     elif w.tstack.len > 0:
       let t = w.tstack.pop()
       storeType(g, t)
-      when false:
-        echo "popped type ", typeToString(t), " ", t.uniqueId
     else:
       break
     inc i
@@ -518,13 +510,6 @@ proc decodeNodeLazyBody(g; b; fInfo: TLineInfo,
     else:
       var i = 0
       while b.s[b.pos] != ')':
-        when false:
-          if belongsTo != nil and i == bodyPos:
-            addSonNilAllowed(result, nil)
-            belongsTo.offset = b.pos
-            skipNode(b)
-          else:
-            discard
         addSonNilAllowed(result, decodeNodeLazyBody(g, b, result.info, nil))
         inc i
     if b.s[b.pos] == ')': inc(b.pos)

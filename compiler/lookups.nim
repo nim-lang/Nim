@@ -295,8 +295,6 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     return
   if contains(c.ambiguousSymbols, result.id):
     errorUseQualifier(c, n.info, result)
-  when false:
-    if result.kind == skStub: loadStub(result)
 
 type
   TLookupFlag* = enum
@@ -351,8 +349,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         result = errorSym(c, n.sons[1])
   else:
     result = nil
-  when false:
-    if result != nil and result.kind == skStub: loadStub(result)
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case n.kind
@@ -401,8 +397,6 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.inSymChoice = initIntSet()
     incl(o.inSymChoice, result.id)
   else: discard
-  when false:
-    if result != nil and result.kind == skStub: loadStub(result)
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
@@ -453,9 +447,6 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       result = firstIdentExcluding(o.it, o.scope.symbols,
                                    n.sons[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
 
-  when false:
-    if result != nil and result.kind == skStub: loadStub(result)
-
 proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
               flags: TSymFlags = {}): PSym =
   var o: TOverloadIter
@@ -465,4 +456,3 @@ proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
       if result == nil: result = a
       else: return nil # ambiguous
     a = nextOverloadIter(o, c, n)
-

@@ -12,15 +12,15 @@
 ## what this module allows you to do.
 ##
 ## Note that even though ``Any`` and its operations hide the nasty low level
-## details from its clients, it remains inherently unsafe! Also, Nim's 
+## details from its clients, it remains inherently unsafe! Also, Nim's
 ## runtime type information will evolve and may eventually be deprecated.
 ## As an alternative approach to programmatically understanding and
 ## manipulating types, consider using the `macros <macros.html>`_ package to
 ## work with the types' AST representation at compile time. See, for example,
-## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative 
+## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative
 ## approach to storing arbitrary types at runtime, consider using generics.
 ##
-## 
+##
 
 {.push hints: off.}
 
@@ -294,8 +294,6 @@ iterator fields*(x: Any): tuple[name: string, any: Any] =
   var p = x.value
   var t = x.rawType
   # XXX BUG: does not work yet, however is questionable anyway
-  when false:
-    if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   var ret: seq[tuple[name: cstring, any: Any]] = @[]
   if t.kind == tyObject:
     while true:
@@ -345,8 +343,6 @@ proc `[]=`*(x: Any, fieldName: string, value: Any) =
   ## sets a field of `x`; `x` represents an object or a tuple.
   var t = x.rawType
   # XXX BUG: does not work yet, however is questionable anyway
-  when false:
-    if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   assert x.rawType.kind in {tyTuple, tyObject}
   var n = getFieldNode(x.value, t.node, fieldName)
   if n != nil:
@@ -359,8 +355,6 @@ proc `[]`*(x: Any, fieldName: string): Any =
   ## gets a field of `x`; `x` represents an object or a tuple.
   var t = x.rawType
   # XXX BUG: does not work yet, however is questionable anyway
-  when false:
-    if x.rawType.kind == tyObject: t = cast[ptr PNimType](x.value)[]
   assert x.rawType.kind in {tyTuple, tyObject}
   var n = getFieldNode(x.value, t.node, fieldName)
   if n != nil:

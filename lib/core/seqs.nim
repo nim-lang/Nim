@@ -30,12 +30,6 @@ template payloadSize(cap): int = cap * sizeof(T) + sizeof(int) + sizeof(Allocato
 
 # XXX make code memory safe for overflows in '*'
 
-when false:
-  # this is currently not part of Nim's type bound operators and so it's
-  # built into the tracing proc generation just like before.
-  proc `=trace`[T](s: NimSeqV2[T]) =
-    for i in 0 ..< s.len: `=trace`(s.data[i])
-
 #[
 Keep in mind that C optimizers are bad at detecting the connection
 between ``s.p != nil`` and ``s.len != 0`` and that these are intermingled
@@ -178,36 +172,3 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       if xu.p == nil or xu.p.cap < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T)))
       xu.len = newlen
-
-when false:
-  proc resize[T](s: var NimSeqV2[T]) =
-    let old = s.cap
-    if old == 0: s.cap = 8
-    else: s.cap = (s.cap * 3) shr 1
-    s.data = cast[type(s.data)](realloc(s.data, old * sizeof(T), s.cap * sizeof(T)))
-
-  proc reserveSlot[T](x: var NimSeqV2[T]): ptr T =
-    if x.len >= x.cap: resize(x)
-    result = addr(x.data[x.len])
-    inc x.len
-
-  template add*[T](x: var NimSeqV2[T]; y: T) =
-    reserveSlot(x)[] = y
-
-  template `[]`*[T](x: NimSeqV2[T]; i: Natural): T =
-    assert i < x.len
-    x.data[i]
-
-  template `[]=`*[T](x: NimSeqV2[T]; i: Natural; y: T) =
-    assert i < x.len
-    x.data[i] = y
-
-  proc `@`*[T](elems: openArray[T]): NimSeqV2[T] =
-    result.cap = elems.len
-    result.len = elems.len
-    result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
-    when supportsCopyMem(T):
-      copyMem(result.data, unsafeAddr(elems[0]), result.cap * sizeof(T))
-    else:
-      for i in 0..<result.len:
-        result.data[i] = elems[i]

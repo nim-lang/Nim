@@ -118,10 +118,6 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
                            (b.uint32 shl 16'u32) or
                            (c.uint32 shl 24'u32)).TInstr
-  when false:
-    if ctx.code.len == 43:
-      writeStackTrace()
-      echo "generating ", opc
   ctx.code.add(ins)
   ctx.debug.add(n.info)
 
@@ -142,11 +138,6 @@ proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
 proc gABx(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0; bx: int) =
   # Applies `opc` to `bx` and stores it into register `a`
   # `bx` must be signed and in the range [-32768, 32767]
-  when false:
-    if c.code.len == 43:
-      writeStackTrace()
-      echo "generating ", opc
-
   if bx >= -32768 and bx <= 32767:
     let ins = (opc.uint32 or a.uint32 shl 8'u32 or
               (bx+wordExcess).uint32 shl 16'u32).TInstr
