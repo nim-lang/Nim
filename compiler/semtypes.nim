@@ -1058,7 +1058,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # aliasSym are not bindOnce
       paramTypId = nil
       let t = newTypeS(tyAliasSym, c)
-      result = addImplicitGeneric(t)
+      result = addImplicitGeneric(c, t, paramTypId, info, genericParams, paramName)
       if result != nil: result.flags.incl({tfUnresolved})
 
   of tyDistinct:

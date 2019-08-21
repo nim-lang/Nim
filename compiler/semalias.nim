@@ -1,5 +1,6 @@
 import "."/[ast,options]
 
+{.emit: "NIM_EXTERNC".} # for bootstrapping; remove after 0.21, refs #12144
 proc isMacroRealGeneric*(s: PSym): bool {.exportc.} =
   if s.kind != skMacro: return false
   if s.ast == nil: return false
