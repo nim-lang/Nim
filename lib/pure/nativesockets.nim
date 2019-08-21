@@ -44,7 +44,7 @@ export
   MSG_PEEK
 
 when defined(macosx) and not defined(nimdoc):
-    export SO_NOSIGPIPE
+  export SO_NOSIGPIPE
 
 type
   Port* = distinct uint16  ## port type

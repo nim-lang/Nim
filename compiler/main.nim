@@ -24,8 +24,6 @@ import
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
 
-from magicsys import resetSysTypes
-
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
@@ -151,14 +149,6 @@ const evalPasses = [verbosePass, semPass, evalPass]
 
 proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym) =
   carryPasses(graph, nodes, module, evalPasses)
-
-proc commandEval(graph: ModuleGraph; exp: string) =
-  if graph.systemModule == nil:
-    interactivePasses(graph)
-    compileSystemModule(graph)
-  let echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
-  evalNim(graph, echoExp.parseString(graph.cache, graph.config),
-    makeStdinModule(graph))
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -347,8 +337,11 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of "e":
-    incl conf.globalOptions, optWasNimscript
-    commandEval(graph, mainCommandArg(conf))
+    if not fileExists(conf.projectFull):
+      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
+    elif not conf.projectFull.string.endsWith(".nims"):
+      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
+    # main NimScript logic handled in cmdlinehelper.nim.
   of "nop", "help":
     # prevent the "success" message:
     conf.cmd = cmdDump

@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, lineinfos, parseutils, linter
+import algorithm, sets, prefixmatches, lineinfos, parseutils, linter
 from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
@@ -535,13 +535,14 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
   if module != nil and module != c.module:
     var i = 0
     while i <= high(c.unusedImports):
-      if c.unusedImports[i][0] == module:
+      let candidate = c.unusedImports[i][0]
+      if candidate == module or c.exportIndirections.contains((candidate.id, s.id)):
         # mark it as used:
         c.unusedImports.del(i)
       else:
         inc i
 
-proc markUsed(c: PContext; info: TLineInfo; s: PSym; usageSym: var PSym) =
+proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
   let conf = c.config
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
@@ -552,7 +553,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym; usageSym: var PSym) =
     if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
     if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
-    suggestSym(conf, info, s, usageSym, false)
+    suggestSym(conf, info, s, c.graph.usageSym, false)
   if {optStyleHint, optStyleError} * conf.globalOptions != {}:
     styleCheckUse(conf, info, s)
   markOwnerModuleAsUsed(c, s)

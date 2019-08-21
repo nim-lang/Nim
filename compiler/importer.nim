@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos
+  semdata, modulepaths, sigmatch, lineinfos, sets
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -31,7 +31,7 @@ proc importPureEnumField*(c: PContext; s: PSym) =
       incl(c.ambiguousSymbols, checkB.id)
       incl(c.ambiguousSymbols, s.id)
 
-proc rawImportSymbol(c: PContext, s: PSym) =
+proc rawImportSymbol(c: PContext, s, origin: PSym) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
@@ -63,13 +63,14 @@ proc rawImportSymbol(c: PContext, s: PSym) =
           check = nextIdentIter(it, c.importTable.symbols)
         if e != nil:
           if sfPure notin s.flags:
-            rawImportSymbol(c, e)
+            rawImportSymbol(c, e, origin)
           else:
             importPureEnumField(c, e)
   else:
-    # rodgen assures that converters and patterns are no stubs
     if s.kind == skConverter: addConverter(c, s)
     if hasPattern(s): addPattern(c, s)
+  if s.owner != origin:
+    c.exportIndirections.incl((origin.id, s.id))
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   let ident = lookups.considerQuotedIdent(c, n)
@@ -88,10 +89,10 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         if s.kind in ExportableSymKinds:
-          rawImportSymbol(c, e)
+          rawImportSymbol(c, e, fromMod)
         e = nextIdentIter(it, fromMod.tab)
     else:
-      rawImportSymbol(c, s)
+      rawImportSymbol(c, s, fromMod)
     suggestSym(c.config, n.info, s, c.graph.usageSym, false)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
@@ -103,14 +104,14 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
         if s.kind notin ExportableSymKinds:
           internalError(c.config, s.info, "importAllSymbols: " & $s.kind & " " & s.name.s)
         if exceptSet.isNil or s.name.id notin exceptSet:
-          rawImportSymbol(c, s)
+          rawImportSymbol(c, s, fromMod)
     s = nextIter(i, fromMod.tab)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   var exceptSet: IntSet
   importAllSymbolsExcept(c, fromMod, exceptSet)
 
-proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
+proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym) =
   if n.isNil: return
   case n.kind
   of nkExportStmt:
@@ -120,12 +121,12 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
       if s.kind == skModule:
         importAllSymbolsExcept(c, s, exceptSet)
       elif exceptSet.isNil or s.name.id notin exceptSet:
-        rawImportSymbol(c, s)
+        rawImportSymbol(c, s, fromMod)
   of nkExportExceptStmt:
     localError(c.config, n.info, "'export except' not implemented")
   else:
     for i in 0..safeLen(n)-1:
-      importForwarded(c, n.sons[i], exceptSet)
+      importForwarded(c, n.sons[i], exceptSet, fromMod)
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
   result = realModule
@@ -186,7 +187,7 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     # ``addDecl`` needs to be done before ``importAllSymbols``!
     addDecl(c, m, it.info) # add symbol to symbol table of module
     importAllSymbolsExcept(c, m, emptySet)
-    #importForwarded(c, m.ast, emptySet)
+    #importForwarded(c, m.ast, emptySet, m)
 
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
@@ -233,4 +234,4 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
     importAllSymbolsExcept(c, m, readExceptSet(c, n))
-    #importForwarded(c, m.ast, exceptSet)
+    #importForwarded(c, m.ast, exceptSet, m)

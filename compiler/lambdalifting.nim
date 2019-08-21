@@ -933,7 +933,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
-  whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(g, body.info, tyBool))
+  whileLoop.sons[0] = newIntTypeNode(1, getSysType(g, body.info, tyBool))
   whileLoop.sons[1] = loopBody
   result.add whileLoop
 

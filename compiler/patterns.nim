@@ -295,7 +295,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
         # constraint not fulfilled:
         if not ok: return nil
 
-  markUsed(c, n.info, s, c.graph.usageSym)
+  markUsed(c, n.info, s)
   if ctx.subMatch:
     assert m.len == 3
     m.sons[1] = result

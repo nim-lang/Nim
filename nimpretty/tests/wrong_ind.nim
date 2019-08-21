@@ -71,3 +71,41 @@ proc a() =
 
   # comment 2
   discard
+
+
+proc i11937() =
+    result = %*
+        {
+            "_comment": "pbreports-style JSON",
+            "attributes": [],
+            "dataset_uuids": [],
+            "id": "microbial_asm_polishing_report",
+            "plotGroups": [],
+            "tables": [
+                {
+                "columns": [
+                    {
+                        "header": "Contig",
+                        "id": "microbial",
+                        "values": values_contig
+                    },
+                    {
+                        "header": "Length",
+                        "id": "microbial",
+                        "values": values_length
+                    },
+                    {
+                        "header": "Circular?",
+                        "id": "microbial",
+                        "values": values_circular
+                    }
+                ],
+                "id": "microbial_asm_polishing_report.contigs_table",
+                "title": "Polished contigs from Microbial Assembly"
+                },
+            ],
+            "tags": [],
+            "title": "Microbial Assembly Polishing Report",
+            "uuid": uuid,
+            "version": version
+        }

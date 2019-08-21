@@ -52,7 +52,7 @@ Untyped Arguments
 Untyped macro arguments are passed to the macro before they are
 semantically checked. This means the syntax tree that is passed down
 to the macro does not need to make sense for Nim yet, the only
-limitation is that it needs to be parseable. Usually the macro does
+limitation is that it needs to be parsable. Usually the macro does
 not check the argument either but uses it in the transformation's
 result somehow. The result of a macro expansion is always checked
 by the compiler, so apart from weird error messages nothing bad
@@ -99,7 +99,7 @@ but in the macro body ``arg`` is just like a normal parameter of type
   myMacro(1 + 2 * 3)
 
 
-Code blocks as arguments
+Code Blocks as Arguments
 ------------------------
 
 It is possible to pass the last argument of a call expression in a
@@ -153,7 +153,7 @@ but does nothing else. Here is an example of such a tree representation:
   #             StrLit "abcdef"
 
 
-Custom sematic checking
+Custom Semantic Checking
 -----------------------
 
 The first thing that a macro should do with its arguments is to check
@@ -179,7 +179,7 @@ tree with expressions that contain a lot of calls to ``newTree`` and
 the best low level control for the syntax tree generation, but the
 second option is much less verbose. If you choose to create the syntax
 tree with calls to ``newTree`` and ``newLit`` the macro
-``marcos.dumpAstGen`` can help you with the verbosity. ``quote do:``
+``macros.dumpAstGen`` can help you with the verbosity. ``quote do:``
 allows you to write the code that you want to generate literally,
 backticks are used to insert code from ``NimNode`` symbols into the
 generated expression. This means that you can't use backticks within
@@ -220,10 +220,10 @@ The call to ``myMacro`` will generate the following code:
   echo MyType(a: 123.456'f64, b: "abcdef")
 
 
-Building your first macro
+Building Your First Macro
 -------------------------
 
-To give a footstart to writing macros we will show now how to
+To give a starting point to writing macros we will show now how to
 implement the ``myDebug`` macro mentioned earlier. The first thing to
 do is to build a simple example of the macro usage, and then just
 print the argument. This way it is possible to get an idea of a
@@ -250,10 +250,10 @@ correct argument should be look like.
     Ident "b"
 
 
-From the output it is possible to see that the information that the
-argument is an infix operator (node kind is "Infix"), as well as that the two
-operands are at index 1 and 2. With this information the actual
-macro can be written.
+From the output it is possible to see that the argument is an infix
+operator (node kind is "Infix"), as well as that the two operands are
+at index 1 and 2. With this information the actual macro can be
+written.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -330,7 +330,7 @@ in a macro like here is generally not recommended. The parsed AST
 cannot have type information, and parsing implemented on the VM is
 generally not very fast. Working on AST nodes is almost always the
 recommended way. But still ``strformat`` is a good example for a
-practical use case for a macro that is slightly more complex that the
+practical use case for a macro that is slightly more complex than the
 ``assert`` macro.
 
 `Strformat <https://github.com/nim-lang/Nim/blob/5845716df8c96157a047c2bd6bcdd795a7a2b9b1/lib/pure/strformat.nim#L280>`_

@@ -103,7 +103,7 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 
-import strutils, sqlite3
+import sqlite3
 
 import db_common
 export db_common

@@ -146,5 +146,14 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) {.nimcall.} =
     let n = getNode(a, 0)
-    if n.kind != nkSym: raise newException(ValueError, "node is not a symbol")
+    if n.kind != nkSym:
+      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
+                  "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, $symBodyDigest(c.graph, n.sym))
+
+  registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) {.nimcall.} =
+    let n = getNode(a, 0)
+    if n.kind != nkSym:
+      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
+                  "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+    setResult(a, sfExported in n.sym.flags)

@@ -3,6 +3,12 @@
 
 ## Changes affecting backwards compatibility
 
+- The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
+  stdin/stdout/stderr are binary files again. This change only affects
+  Windows.
+- On Windows console applications the code-page is set at program startup
+  to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
+  feature.
 
 ### Breaking changes in the standard library
 
@@ -12,6 +18,12 @@
 
 ## Library additions
 
+- `encodings.getCurrentEncoding` now distinguishes between the console's
+  encoding and the OS's encoding. This distinction is only meaningful on
+  Windows.
+- Added `system.getOsFileHandle` which is usually more useful
+  than `system.getFileHandle`. This distinction is only meaningful on
+  Windows.
 
 ## Library changes
 
@@ -21,9 +33,12 @@
 
 - Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
 
-- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`, `update` and `finalize` procedures from `sha1` module. (#11694)
+- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`,
+  `update` and `finalize` procedures from `sha1` module. (#11694)
 
 - Added the `std/monotimes` module which implements monotonic timestamps.
+
+- Consistent error handling of two `exec` overloads. (#10967)
 
 ## Language additions
 

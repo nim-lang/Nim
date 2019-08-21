@@ -136,9 +136,12 @@ else:
       when TArg is void:
         thrd.dataFn()
       else:
-        var x: TArg
-        deepCopy(x, thrd.data)
-        thrd.dataFn(x)
+        when defined(nimV2):
+          thrd.dataFn(thrd.data)
+        else:
+          var x: TArg
+          deepCopy(x, thrd.data)
+          thrd.dataFn(x)
     finally:
       afterThreadRuns()
 

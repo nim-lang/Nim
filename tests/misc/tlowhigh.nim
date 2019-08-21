@@ -12,3 +12,7 @@ doAssert y.low == -1'f64
 doAssert y.high == 1'f64
 doAssert y.type.low == -1'f64
 doAssert y.type.high == 1'f64
+
+# bug #11972
+var num: uint8
+doAssert num.high.float == 255.0
