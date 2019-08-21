@@ -155,14 +155,13 @@ proc enumHasHoles*(t: PType): bool =
   var b = t.skipTypes({tyRange, tyGenericInst, tyAlias, tySink})
   result = b.kind == tyEnum and tfEnumHasHoles in b.flags
 
-proc isOrdinalType*(t: PType, allowEnumWithHoles = false): bool =
+proc isOrdinalType*(t: PType, allowEnumWithHoles: bool = false): bool =
   assert(t != nil)
   const
-    # caution: uint, uint64 are no ordinal types!
-    baseKinds = {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum}
+    baseKinds = {tyChar,tyInt..tyUInt64,tyBool,tyEnum}
     parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
-  (t.kind in baseKinds and not (t.enumHasHoles and not allowEnumWithHoles)) or
-    (t.kind in parentKinds and isOrdinalType(t.lastSon))
+  result = (t.kind in baseKinds and not (t.enumHasHoles and not allowEnumWithHoles)) or
+    (t.kind in parentKinds and isOrdinalType(t.lastSon, allowEnumWithHoles))
 
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
                      closure: RootRef): bool
@@ -1284,7 +1283,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
-      {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
+      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64}: result = t
   of tyOpenArray, tyVarargs, tySink:
     if kind != skParam:
       result = t

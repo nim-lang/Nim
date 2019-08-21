@@ -117,7 +117,7 @@ proc sameValue*(a, b: PNode): bool =
   result = false
   case a.kind
   of nkCharLit..nkUInt64Lit:
-    if b.kind in {nkCharLit..nkUInt64Lit}: result = a.intVal == b.intVal
+    if b.kind in {nkCharLit..nkUInt64Lit}: result = getInt(a) == getInt(b)
   of nkFloatLit..nkFloat64Lit:
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal == b.floatVal
   of nkStrLit..nkTripleStrLit:
@@ -131,8 +131,8 @@ proc leValue*(a, b: PNode): bool =
   # a <= b?
   result = false
   case a.kind
-  of nkCharLit..nkUInt32Lit:
-    if b.kind in {nkCharLit..nkUInt32Lit}: result = a.intVal <= b.intVal
+  of nkCharLit..nkUInt64Lit:
+    if b.kind in {nkCharLit..nkUInt64Lit}: result = getInt(a) <= getInt(b)
   of nkFloatLit..nkFloat64Lit:
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal <= b.floatVal
   of nkStrLit..nkTripleStrLit:

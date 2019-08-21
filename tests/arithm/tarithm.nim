@@ -54,6 +54,7 @@ block tcast:
   crossCheck(uint16, uint16.high + 5'u16)
   crossCheck(uint32, uint32.high + 5'u32)
   crossCheck(uint64, 0xFFFFFFFFFFFFFFFF'u64 + 5'u64)
+  crossCheck(uint64, uint64.high + 5'u64)
 
   doAssert $sub1(0'u8) == "255"
   doAssert $sub1(0'u16) == "65535"
