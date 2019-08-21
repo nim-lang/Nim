@@ -426,6 +426,8 @@ proc newMultipartData*: MultipartData =
   MultipartData(content: @[])
 
 proc parseMultipartDataString(item: string): string =
+  ## Helper for ``proc `$`*(data: MultipartData): string``.
+  ## Parses string from MultipartData to human-readable string.
   var itemPart: seq[string] = item.split(
       "Content-Disposition: form-data; name=\"", 1)[1].split("\"", 1)
   let name = itemPart[0]
