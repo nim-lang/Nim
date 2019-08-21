@@ -545,7 +545,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
           if s.kind == skParam and s.typ != nil and s.typ.kind == tyAliasSym: # IMPROVE ; TODO: only for `aliassym`, not `typed` ?
             x.call.add s.ast
           else:
-            internalAssert c.config, false, $s.kind
+            internalAssert c.config, false
 
   result = x.call
   instGenericConvertersSons(c, result, x)
