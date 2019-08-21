@@ -37,7 +37,7 @@ const
   errRecursiveDependencyIteratorX = "recursion is not supported in iterators: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
 
-import compiler/semalias
+import ./semalias
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
