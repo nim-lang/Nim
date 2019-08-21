@@ -1894,7 +1894,7 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
-        result = strTableGet(m.tab, ident)
+        result = strTableGet(m.tabOpt, ident)
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
@@ -2519,13 +2519,13 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   let exceptSet = readExceptSet(c, n)
   let exported = moduleName.sym
   result = newNodeI(nkExportStmt, n.info)
-  strTableAdd(c.module.tab, exported)
+  c.module.addPublicSymbol exported
   var i: TTabIter
   var s = initTabIter(i, exported.tab)
   while s != nil:
     if s.kind in ExportableSymKinds+{skModule} and
        s.name.id notin exceptSet and sfError notin s.flags:
-      strTableAdd(c.module.tab, s)
+      c.module.addPublicSymbol s
       result.add newSymNode(s, n.info)
     s = nextIter(i, exported.tab)
   markUsed(c, n.info, exported)
@@ -2540,12 +2540,12 @@ proc semExport(c: PContext, n: PNode): PNode =
       localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a))
     elif s.kind == skModule:
       # forward everything from that module:
-      strTableAdd(c.module.tab, s)
+      c.module.addPublicSymbol s
       var ti: TTabIter
       var it = initTabIter(ti, s.tab)
       while it != nil:
         if it.kind in ExportableSymKinds+{skModule}:
-          strTableAdd(c.module.tab, it)
+          c.module.addPublicSymbol it
           result.add newSymNode(it, a.info)
         it = nextIter(ti, s.tab)
       markUsed(c, n.info, s)
@@ -2556,7 +2556,7 @@ proc semExport(c: PContext, n: PNode): PNode =
             "; enum field cannot be exported individually")
         if s.kind in ExportableSymKinds+{skModule} and sfError notin s.flags:
           result.add(newSymNode(s, a.info))
-          strTableAdd(c.module.tab, s)
+          c.module.addPublicSymbol s
           markUsed(c, n.info, s)
         s = nextOverloadIter(o, c, a)
 

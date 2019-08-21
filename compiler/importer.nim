@@ -154,8 +154,11 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, nextId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
-    if ifPrivateImport in importFlags: result.options.incl optPrivateImport
   if ifPrivateImport in importFlags:
+    if result == realModule:
+      result = createModuleAlias(realModule, realModule.name, realModule.info,
+                               c.config.options)
+    result.options.incl optPrivateImport
     c.friendModulesPrivateImport.add realModule # `realModule` needed, not `result`
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
@@ -171,6 +174,8 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: I
       result = n2[0]
     else:
       result = n2
+      if result.safeLen > 0:
+        result[^1] = processPragma(result[^1])
 
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     ret.node = newNodeI(nkImportAs, n.info)

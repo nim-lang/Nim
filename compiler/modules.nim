@@ -65,8 +65,7 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
 
   initStrTable(result.tab)
   initStrTable(result.tabAll)
-  strTableAdd(result.tab, result) # a module knows itself
-  strTableAdd(result.tabAll, result)
+  result.addPublicSymbol result # a module knows itself
   strTableAdd(packSym.tab, result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
