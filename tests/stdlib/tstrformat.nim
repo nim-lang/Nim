@@ -3,6 +3,17 @@ action: "run"
 output: '''Received (name: "Foo", species: "Bar")'''
 """
 
+# issue #7632
+
+import genericstrformat
+
+doAssert works(5) == "formatted  5"
+doAssert fails0(6) == "formatted  6"
+doAssert fails(7) == "formatted  7"
+doAssert fails2[0](8) == "formatted  8"
+
+# other tests
+
 import strformat
 
 type Obj = object
@@ -93,16 +104,6 @@ let v1 = Vec2[float32](x:1.0, y: 2.0)
 let v2 = Vec2[int32](x:1, y: 1337)
 doAssert fmt"v1: {v1:+08}  v2: {v2:>4}" == "v1: [+0000001, +0000002]  v2: [   1, 1337]"
 
-# issue #7632
-
-import genericstrformat
-
-doAssert works(5) == "formatted  5"
-doAssert fails0(6) == "formatted  6"
-doAssert fails(7) == "formatted  7"
-doAssert fails2[0](8) == "formatted  8"
-
-
 # bug #11012
 
 type
@@ -114,3 +115,21 @@ proc print_object(animalAddr: AnimalRef) =
   echo fmt"Received {animalAddr[]}"
 
 print_object(AnimalRef(name: "Foo", species: "Bar"))
+
+# bug #11723
+
+let pos: Positive = 64
+doAssert fmt"{pos:3}" == " 64"
+doAssert fmt"{pos:3b}" == "1000000"
+doAssert fmt"{pos:3d}" == " 64"
+doAssert fmt"{pos:3o}" == "100"
+doAssert fmt"{pos:3x}" == " 40"
+doAssert fmt"{pos:3X}" == " 40"
+
+let nat: Natural = 64
+doAssert fmt"{nat:3}" == " 64"
+doAssert fmt"{nat:3b}" == "1000000"
+doAssert fmt"{nat:3d}" == " 64"
+doAssert fmt"{nat:3o}" == "100"
+doAssert fmt"{nat:3x}" == " 40"
+doAssert fmt"{nat:3X}" == " 40"

@@ -15,7 +15,52 @@
 
 type
   Utf16Char* = distinct int16
-  WideCString* = ref UncheckedArray[Utf16Char]
+
+when defined(nimv2):
+
+  import core / allocators
+
+  type
+    WideCString* = ptr UncheckedArray[Utf16Char]
+
+    WideCStringObj* = object
+      bytes: int
+      data: WideCString
+
+  proc `=destroy`(a: var WideCStringObj) =
+    if a.data != nil:
+      let alor = getLocalAllocator()
+      alor.dealloc(alor, a.data, a.bytes)
+      a.data = nil
+
+  proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
+
+  proc `=sink`(a: var WideCStringObj; b: WideCStringObj) =
+    a.bytes = b.bytes
+    a.data = b.data
+
+  proc createWide(a: var WideCStringObj; bytes: int) =
+    a.bytes = bytes
+    let alor = getLocalAllocator()
+    a.data = cast[typeof(a.data)](alor.alloc(alor, bytes))
+
+  template `[]`(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
+  template `[]=`(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val
+
+  template nullWide(): untyped = WideCStringObj(bytes: 0, data: nil)
+
+  converter toWideCString*(x: WideCStringObj): WideCString {.inline.} =
+    result = x.data
+
+else:
+  template nullWide(): untyped = nil
+
+  type
+    WideCString* = ref UncheckedArray[Utf16Char]
+    WideCStringObj* = WideCString
+
+  template createWide(a; L) =
+    unsafeNew(a, L * 4 + 2)
 
 proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
@@ -95,8 +140,8 @@ iterator runes(s: cstring, L: int): int =
     fastRuneAt(s, i, L, result, true)
     yield result
 
-proc newWideCString*(source: cstring, L: int): WideCString =
-  unsafeNew(result, L * 4 + 2)
+proc newWideCString*(source: cstring, L: int): WideCStringObj =
+  createWide(result, L * 4 + 2)
   #result = cast[wideCString](alloc(L * 4 + 2))
   var d = 0
   for ch in runes(source, L):
@@ -116,12 +161,12 @@ proc newWideCString*(source: cstring, L: int): WideCString =
     inc d
   result[d] = Utf16Char(0)
 
-proc newWideCString*(s: cstring): WideCString =
-  if s.isNil: return nil
+proc newWideCString*(s: cstring): WideCStringObj =
+  if s.isNil: return nullWide
 
   result = newWideCString(s, s.len)
 
-proc newWideCString*(s: string): WideCString =
+proc newWideCString*(s: string): WideCStringObj =
   result = newWideCString(s, s.len)
 
 proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =

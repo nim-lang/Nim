@@ -44,7 +44,7 @@ export
   MSG_PEEK
 
 when defined(macosx) and not defined(nimdoc):
-    export SO_NOSIGPIPE
+  export SO_NOSIGPIPE
 
 type
   Port* = distinct uint16  ## port type
@@ -201,21 +201,17 @@ proc createNativeSocket*(domain: cint, sockType: cint,
 proc newNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
                       protocol: Protocol = IPPROTO_TCP): SocketHandle
-                      {.deprecated.} =
+                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  ##
-  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
   createNativeSocket(domain, sockType, protocol)
 
 proc newNativeSocket*(domain: cint, sockType: cint,
                       protocol: cint): SocketHandle
-                      {.deprecated.} =
+                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
-  ##
-  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
   createNativeSocket(domain, sockType, protocol)
 
 proc close*(socket: SocketHandle) =
@@ -257,8 +253,8 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and not defined(android) and not defined(haiku):
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
-  let socket_port = if sockType == SOCK_RAW: "" else: $port
-  var gaiResult = getaddrinfo(address, socket_port, addr(hints), result)
+  let socketPort = if sockType == SOCK_RAW: "" else: $port
+  var gaiResult = getaddrinfo(address, socketPort, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
       raiseOSError(osLastError())
@@ -341,7 +337,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
         posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
                             cint(posix.AF_INET))
       else:
-        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
+        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).SockLen,
                             cint(posix.AF_INET))
     if s == nil:
       raiseOSError(osLastError(), $hstrerror(h_errno))
@@ -358,11 +354,11 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
   if result.addrtype == AF_INET:
-    result.addrlist = @[]
+    result.addrList = @[]
     var i = 0
-    while not isNil(s.h_addrlist[i]):
-      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+    while not isNil(s.h_addr_list[i]):
+      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrList.add($inet_ntoa(inaddrPtr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
@@ -387,11 +383,11 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
   if result.addrtype == AF_INET:
-    result.addrlist = @[]
+    result.addrList = @[]
     var i = 0
-    while not isNil(s.h_addrlist[i]):
-      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
-      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+    while not isNil(s.h_addr_list[i]):
+      var inaddrPtr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrList.add($inet_ntoa(inaddrPtr[]))
       inc(i)
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
@@ -404,10 +400,10 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   const size = 64
   result = newString(size)
   when useWinVersion:
-    let success = winlean.getHostname(result, size)
+    let success = winlean.gethostname(result, size)
   else:
     # Posix
-    let success = posix.getHostname(result, size)
+    let success = posix.gethostname(result, size)
   if success != 0.cint:
     raiseOSError(osLastError())
   let x = len(cstring(result))
@@ -453,7 +449,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
 
 when defined(posix) and not defined(nimdoc):
   proc makeUnixAddr*(path: string): Sockaddr_un =
-    result.sun_family = AF_UNIX.uint16
+    result.sun_family = AF_UNIX.TSa_Family
     if path.len >= Sockaddr_un_path_length:
       raise newException(ValueError, "socket path too long")
     copyMem(addr result.sun_path, path.cstring, path.len + 1)
@@ -464,7 +460,7 @@ proc getSockName*(socket: SocketHandle): Port =
   when useWinVersion:
     name.sin_family = uint16(ord(AF_INET))
   else:
-    name.sin_family = uint16(posix.AF_INET)
+    name.sin_family = TSa_Family(posix.AF_INET)
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
   var namelen = sizeof(name).SockLen
@@ -483,7 +479,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = uint16(posix.AF_INET)
+      name.sin_family = TSa_Family(posix.AF_INET)
     var namelen = sizeof(name).SockLen
     if getsockname(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -495,7 +491,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin6_family = uint16(ord(AF_INET6))
     else:
-      name.sin6_family = uint16(posix.AF_INET6)
+      name.sin6_family = TSa_Family(posix.AF_INET6)
     var namelen = sizeof(name).SockLen
     if getsockname(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -520,7 +516,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = uint16(posix.AF_INET)
+      name.sin_family = TSa_Family(posix.AF_INET)
     var namelen = sizeof(name).SockLen
     if getpeername(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -532,7 +528,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     when useWinVersion:
       name.sin6_family = uint16(ord(AF_INET6))
     else:
-      name.sin6_family = uint16(posix.AF_INET6)
+      name.sin6_family = TSa_Family(posix.AF_INET6)
     var namelen = sizeof(name).SockLen
     if getpeername(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -617,7 +613,7 @@ proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
+  var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var rd: TFdSet
   var m = 0
@@ -639,7 +635,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
+  var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var wr: TFdSet
   var m = 0

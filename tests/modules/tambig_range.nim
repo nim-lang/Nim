@@ -1,6 +1,6 @@
 discard """
-  errormsg: "ambiguous identifier: 'range' --use system.range or mrange.range"
-  line: 13
+  errormsg: "ambiguous identifier: 'range' -- use one of the following:"
+  line: "13"
 """
 
 import mrange

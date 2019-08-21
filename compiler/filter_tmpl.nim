@@ -10,8 +10,8 @@
 # This module implements Nim's standard template filter.
 
 import
-  llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options,
-  renderer, filters, lineinfos, pathutils
+  llstream, strutils, ast, msgs, options,
+  filters, lineinfos, pathutils
 
 type
   TParseState = enum

@@ -122,7 +122,7 @@ when defined(unix):
     const extra = " -D_XOPEN_SOURCE"
   else:
     const extra = ""
-  {.passC: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" & extra.}
+  {.passc: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" & extra.}
 
 const
   CORO_CREATED = 0

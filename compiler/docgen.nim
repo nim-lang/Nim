@@ -15,9 +15,9 @@ import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
-  packages/docutils/highlite, json, xmltree, cgi, trees, types,
-  typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
-  pathutils
+  json, xmltree, cgi, trees, types,
+  typesrenderer, astalgo, lineinfos, intsets,
+  pathutils, trees
 
 const
   exportSection = skField
@@ -25,7 +25,8 @@ const
 type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
-    modDesc: Rope           # module description
+    modDesc: Rope       # module description
+    modDeprecationMsg: Rope
     toc, section: TSections
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
@@ -109,6 +110,8 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
             else: conf.projectPath
     createDir(d)
     result = d / changeFileExt(filename, ext)
+  elif not conf.outFile.isEmpty:
+    result = absOutFile(conf)
   else:
     result = getOutFile(conf, filename, ext)
 
@@ -177,7 +180,7 @@ template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArra
   else: addf(dest, tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
-  for i in countup(0, high(varnames)):
+  for i in 0 .. high(varnames):
     if cmpIgnoreStyle(varnames[i], id) == 0:
       return i
   result = -1
@@ -254,9 +257,9 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   result = genComment(d, n).rope
   if result == nil:
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
-                  nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn}:
+                  nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
-      for i in countup(0, len(n)-1):
+      for i in 0 ..< len(n):
         result = genRecCommentAux(d, n.sons[i])
         if result != nil: return
   else:
@@ -284,7 +287,7 @@ proc getPlainDocstring(n: PNode): string =
   if startsWith(n.comment, "##"):
     result = n.comment
   if result.len < 1:
-    for i in countup(0, safeLen(n)-1):
+    for i in 0 ..< safeLen(n):
       result = getPlainDocstring(n.sons[i])
       if result.len > 0: return
 
@@ -403,6 +406,7 @@ proc runAllExamples(d: PDoc) =
                 elif isDefined(d.conf, "objc"): "objc"
                 else: "c"
   if os.execShellCmd(os.getAppFilename() & " " & backend &
+                    " --warning[UnusedImport]:off" &
                     " --path:" & quoteShell(d.conf.projectPath) &
                     " --nimcache:" & quoteShell(outputDir) &
                     " -r " & quoteShell(outp)) != 0:
@@ -412,12 +416,6 @@ proc runAllExamples(d: PDoc) =
     rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
     removeFile(outp.changeFileExt(ExeExt))
 
-proc extractImports(n: PNode; result: PNode) =
-  if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
-    result.add copyTree(n)
-    n.kind = nkEmpty
-    return
-  for i in 0..<n.safeLen: extractImports(n[i], result)
 
 proc prepareExamples(d: PDoc; n: PNode) =
   var docComment = newTree(nkCommentStmt)
@@ -427,12 +425,20 @@ proc prepareExamples(d: PDoc; n: PNode) =
       docComment,
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
-  let imports = newTree(nkStmtList)
-  var savedLastSon = copyTree n.lastSon
-  extractImports(savedLastSon, imports)
-  for imp in imports: runnableExamples.add imp
-  runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
+  for a in n.lastSon: runnableExamples.add a
   testExample(d, runnableExamples)
+  when false:
+    proc extractImports(n: PNode; result: PNode) =
+      if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+        result.add copyTree(n)
+        n.kind = nkEmpty
+        return
+      for i in 0..<n.safeLen: extractImports(n[i], result)
+    let imports = newTree(nkStmtList)
+    var savedLastSon = copyTree n.lastSon
+    extractImports(savedLastSon, imports)
+    for imp in imports: runnableExamples.add imp
+    runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
 proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
   if n.info.fileIndex != orig.info.fileIndex: return
@@ -608,6 +614,23 @@ proc docstringSummary(rstText: string): string =
     result.delete(pos, last)
     result.add("…")
 
+proc genDeprecationMsg(d: PDoc, n: PNode): Rope =
+  ## Given a nkPragma wDeprecated node output a well-formatted section
+  if n == nil: return
+
+  case n.safeLen:
+  of 0: # Deprecated w/o any message
+    result = ropeFormatNamedVars(d.conf,
+      getConfigVar(d.conf, "doc.deprecationmsg"), ["label", "message"],
+      [~"Deprecated", nil])
+  of 2: # Deprecated w/ a message
+    if n[1].kind in {nkStrLit..nkTripleStrLit}:
+      result = ropeFormatNamedVars(d.conf,
+        getConfigVar(d.conf, "doc.deprecationmsg"), ["label", "message"],
+        [~"Deprecated:", rope(xmltree.escape(n[1].strVal))])
+  else:
+    doAssert false
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(d, nameNode): return
   let
@@ -629,6 +652,10 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break
     plainName.add(literal)
 
+  var pragmaNode: PNode = nil
+  if n.isCallable and n.sons[pragmasPos].kind != nkEmpty:
+    pragmaNode = findPragma(n.sons[pragmasPos], wDeprecated)
+
   inc(d.id)
   let
     plainNameRope = rope(xmltree.escape(plainName.strip))
@@ -640,6 +667,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdRope = symbolOrId.rope
     symbolOrIdEncRope = encodeUrl(symbolOrId).rope
+    deprecationMsgRope = genDeprecationMsg(d, pragmaNode)
 
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
     renderDocComments, renderSyms}, symbolOrIdEncRope)
@@ -655,7 +683,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
         path = path[cwd.len+1 .. ^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
-      let defaultBranch = if NimPatch mod 2 == 1: "devel" else: "master"
+      let defaultBranch =
+        if NimPatch mod 2 == 1: "devel"
+        else: "version-$1-$2" % [$NimMajor, $NimMinor]
       let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
       let develBranch = getConfigVar(d.conf, "git.devel", "devel")
       dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
@@ -664,11 +694,12 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
 
   add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc", "deprecationMsg"],
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
-      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
+      symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope,
+      deprecationMsgRope]))
 
-  let external = AbsoluteFile(d.filename).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+  let external = d.destFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
 
   var attype: Rope
   if k in routineKinds and nameNode.kind == nkSym:
@@ -819,6 +850,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
   case n.kind
+  of nkPragma:
+    let pragmaNode = findPragma(n, wDeprecated)
+    add(d.modDeprecationMsg, genDeprecationMsg(d, pragmaNode))
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
@@ -838,13 +872,13 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1): generateDoc(d, n.sons[i], orig)
+    for i in 0 ..< sonsLen(n): generateDoc(d, n.sons[i], orig)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
@@ -892,13 +926,13 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       generateJson(d, n.sons[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
@@ -935,13 +969,13 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
     when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         r.add genTagsItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       generateTags(d, n.sons[i], r)
   of nkWhenStmt:
     # generate documentation for the first branch only:
@@ -971,12 +1005,12 @@ proc genOutFile(d: PDoc): Rope =
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
-  for i in countup(low(TSymKind), high(TSymKind)):
+  for i in low(TSymKind) .. high(TSymKind):
     genSection(d, i)
     add(toc, d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in countup(low(TSymKind), high(TSymKind)): add(code, d.section[i])
+  for i in low(TSymKind) .. high(TSymKind): add(code, d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
@@ -991,17 +1025,17 @@ proc genOutFile(d: PDoc): Rope =
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code])
+      rope(getClockStr()), code, d.modDeprecationMsg])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), ["title",
         "tableofcontents", "moduledesc", "date", "time",
-        "content", "author", "version", "analytics"],
+        "content", "author", "version", "analytics", "deprecationMsg"],
         [title.rope, toc, d.modDesc, rope(getDateStr()),
                      rope(getClockStr()), content, d.meta[metaAuthor].rope,
-                     d.meta[metaVersion].rope, d.analytics.rope])
+                     d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
   result = code

@@ -5,7 +5,7 @@ is in separate files:
 * `assertions <assertions.html>`_
 * `dollars <dollars.html>`_
 * `io <io.html>`_
-* `widestr <widestr.html>`_
+* `widestrs <widestrs.html>`_
 
 
 Here is a short overview of the most commonly used functions from the
@@ -65,7 +65,7 @@ Proc                                       Usage
 ========================================   ==========================================
 
 **See also:**
-* `sequtils module <collections/sequtils.html>`_ for operations on container
+* `sequtils module <sequtils.html>`_ for operations on container
   types (including strings)
 * `json module <json.html>`_ for a structure which allows heterogeneous members
 * `lists module <lists.html>`_ for linked lists

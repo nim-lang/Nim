@@ -21,6 +21,7 @@ kind: cmdShortOption	key:val  --  r:1
 kind: cmdShortOption	key:val  --  r:0
 kind: cmdShortOption	key:val  --  l:
 kind: cmdShortOption	key:val  --  r:4
+kind: cmdLongOption	key:val  --  debug:
 '''
 joinable: false
 """
@@ -62,7 +63,7 @@ else:
   block:
     echo "parseoptNoVal"
     # test NoVal mode with custom cmdline arguments
-    var argv = "--left --debug:3 -l -r:2 --debug 2 --debug=1 -r1 -r=0 -lr4"
+    var argv = "--left --debug:3 -l -r:2 --debug 2 --debug=1 -r1 -r=0 -lr4 --debug:"
     var p = parseopt.initOptParser(argv,
                                     shortNoVal = {'l'}, longNoVal = @["left"])
     for kind, key, val in parseopt.getopt(p):

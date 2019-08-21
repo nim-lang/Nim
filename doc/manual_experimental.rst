@@ -17,13 +17,16 @@ Some of these are not covered by the ``.experimental`` pragma or
 one may want to use Nim libraries using these features without using them
 oneself.
 
+**Note**: Unless otherwise indicated, these features are not to be removed,
+but refined and overhauled.
+
 
 Package level objects
 =====================
 
 Every Nim module resides in a (nimble) package. An object type can be attached
 to the package it resides in. If that is done, the type can be referenced from
-other modules as an `incomplete`:idx: object type. This features allows to
+other modules as an `incomplete`:idx: object type. This feature allows to
 break up recursive type dependencies accross module boundaries. Incomplete
 object types are always passed ``byref`` and can only be used in pointer like
 contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
@@ -773,11 +776,12 @@ object inheritance syntax involving the ``of`` keyword:
 Type bound operations
 =====================
 
-There are 3 operations that are bound to a type:
+There are 4 operations that are bound to a type:
 
 1. Assignment
-2. Destruction
-3. Deep copying for communication between threads
+2. Moves
+3. Destruction
+4. Deep copying for communication between threads
 
 These operations can be *overridden* instead of *overloaded*. This means the
 implementation is automatically lifted to structured types. For instance if type
@@ -789,78 +793,8 @@ bound to ``T`` and not to ``ref T``. This also means that one cannot override
 ``deepCopy`` for both ``ptr T`` and ``ref T`` at the same time; instead a
 helper distinct or object type has to be used for one pointer type.
 
-
-operator `=`
-------------
-
-This operator is the assignment operator. Note that in the contexts
-``result = expr``, ``parameter = defaultValue`` or for
-parameter passing no assignment is performed. For a type ``T`` that has an
-overloaded assignment operator ``var v = T()`` is rewritten
-to ``var v: T; v = T()``; in other words ``var`` and ``let`` contexts do count
-as assignments.
-
-The assignment operator needs to be attached to an object or distinct
-type ``T``. Its signature has to be ``(var T, T)``. Example:
-
-.. code-block:: nim
-  type
-    Concrete = object
-      a, b: string
-
-  proc `=`(d: var Concrete; src: Concrete) =
-    shallowCopy(d.a, src.a)
-    shallowCopy(d.b, src.b)
-    echo "Concrete '=' called"
-
-  var x, y: array[0..2, Concrete]
-  var cA, cB: Concrete
-
-  var cATup, cBTup: tuple[x: int, ha: Concrete]
-
-  x = y
-  cA = cB
-  cATup = cBTup
-
-
-
-destructors
------------
-
-A destructor must have a single parameter with a concrete type (the name of a
-generic type is allowed too). The name of the destructor has to be ``=destroy``.
-
-``=destroy(v)`` will be automatically invoked for every local stack
-variable ``v`` that goes out of scope.
-
-If a structured type features a field with destructable type and
-the user has not provided an explicit implementation, a destructor for the
-structured type will be automatically generated. Calls to any base class
-destructors in both user-defined and generated destructors will be inserted.
-
-A destructor is attached to the type it destructs.
-
-.. code-block:: nim
-  type
-    MyObj = object
-      x, y: int
-      p: pointer
-
-  proc `=destroy`(o: var MyObj) =
-    if o.p != nil: dealloc o.p
-
-  proc open: MyObj =
-    result = MyObj(x: 1, y: 2, p: alloc(3))
-
-  proc work(o: MyObj) =
-    echo o.x
-    # No destructor invoked here for 'o' as 'o' is a parameter.
-
-  proc main() =
-    # destructor automatically invoked at the end of the scope:
-    var x = open()
-    # valid: pass 'x' to some other proc:
-    work(x)
+Assignments, moves and destruction are specified in
+the `destructors <destructors.html>`_ document.
 
 
 deepCopy
@@ -881,6 +815,57 @@ like channels to implement thread safe automatic memory management.
 
 The builtin ``deepCopy`` can even clone closures and their environments. See
 the documentation of `spawn`_ for details.
+
+
+Case statement macros
+=====================
+
+A macro that needs to be called `match`:idx: can be used to rewrite
+``case`` statements in order to implement `pattern matching`:idx: for
+certain types. The following example implements a simplistic form of
+pattern matching for tuples, leveraging the existing equality operator
+for tuples (as provided in ``system.==``):
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "caseStmtMacros".}
+
+  import macros
+
+  macro match(n: tuple): untyped =
+    result = newTree(nnkIfStmt)
+    let selector = n[0]
+    for i in 1 ..< n.len:
+      let it = n[i]
+      case it.kind
+      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
+        result.add it
+      of nnkOfBranch:
+        for j in 0..it.len-2:
+          let cond = newCall("==", selector, it[j])
+          result.add newTree(nnkElifBranch, cond, it[^1])
+      else:
+        error "'match' cannot handle this node", it
+    echo repr result
+
+  case ("foo", 78)
+  of ("foo", 78): echo "yes"
+  of ("bar", 88): echo "no"
+  else: discard
+
+
+Currently case statement macros must be enabled explicitly
+via ``{.experimental: "caseStmtMacros".}``.
+
+``match`` macros are subject to overload resolution. First the
+``case``'s selector expression is used to determine which ``match``
+macro to call. To this macro is then passed the complete ``case``
+statement body and the macro is evaluated.
+
+In other words, the macro needs to transform the full ``case`` statement
+but only the statement's selector expression is used to determine which
+macro to call.
 
 
 Term rewriting macros
@@ -1586,6 +1571,26 @@ having unknown lock level as well:
       g.memberProc()
 
 
+noRewrite pragma
+----------------
+
+Term rewriting macros and templates are currently greedy and
+they will rewrite as long as there is a match.
+There was no way to ensure some rewrite happens only once,
+eg. when rewriting term to same term plus extra content.
+
+``noRewrite`` pragma can actually prevent further rewriting on marked code,
+e.g. with given example ``echo("ab")`` will be rewritten just once:
+
+.. code-block:: nim
+  template pwnEcho{echo(x)}(x: expr) =
+    {.noRewrite.}: echo("pwned!")
+
+  echo "ab"
+
+``noRewrite`` pragma can be useful to control term-rewriting macros recursion.
+
+
 Taint mode
 ==========
 
@@ -1606,3 +1611,28 @@ validation errors:
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for
 ``string``.
+
+
+Aliasing restrictions in parameter passing
+==========================================
+
+**Note**: The aliasing restrictions are currently not enforced by the
+implementation and need to be fleshed out futher.
+
+"Aliasing" here means that the underlying storage locations overlap in memory
+at runtime. An "output parameter" is a parameter of type ``var T``, an input
+parameter is any parameter that is not of type ``var``.
+
+1. Two output parameters should never be aliased.
+2. An input and an output parameter should not be aliased.
+3. An output parameter should never be aliased with a global or thread local
+   variable referenced by the called proc.
+4. An input parameter should not be aliased with a global or thread local
+   variable updated by the called proc.
+
+One problem with rules 3 and 4 is that they affect specific global or thread
+local variables, but Nim's effect tracking only tracks "uses no global variable"
+via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different rule:
+
+5. A global or thread local variable (or a location derived from such a location)
+   can only passed to a parameter of a ``.noSideEffect`` proc.

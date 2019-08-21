@@ -104,6 +104,10 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
     compilerRtl, noSideEffect, raises: [].} =
   {.noSideEffect.}:
+    template `+!`(p: pointer, s: int): pointer =
+      cast[pointer](cast[int](p) +% s)
+
+    const headerSize = sizeof(int) + sizeof(Allocator)
     if addlen <= 0:
       result = p
     elif p == nil:
@@ -112,20 +116,29 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
       var p = cast[ptr PayloadBase](p)
-      let allocator = if p.allocator == nil: getLocalAllocator() else: p.allocator
       let cap = max(resize(p.cap), len+addlen)
-      var q = cast[ptr PayloadBase](allocator.realloc(allocator, p,
-        sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
-        sizeof(int) + sizeof(Allocator) + elemSize * cap))
-      q.allocator = allocator
-      q.cap = cap
-      result = q
+      if p.allocator == nil:
+        let allocator = getLocalAllocator()
+        var q = cast[ptr PayloadBase](allocator.alloc(allocator,
+          headerSize + elemSize * cap))
+        copyMem(q +! headerSize, p +! headerSize, len * elemSize)
+        q.allocator = allocator
+        q.cap = cap
+        result = q
+      else:
+        let allocator = p.allocator
+        var q = cast[ptr PayloadBase](allocator.realloc(allocator, p,
+          headerSize + elemSize * p.cap,
+          headerSize + elemSize * cap))
+        q.allocator = allocator
+        q.cap = cap
+        result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
   mixin `=destroy`
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
   when not supportsCopyMem(T):
-    for i in countdown(x.len - 1, newLen - 1):
+    for i in countdown(x.len - 1, newLen):
       `=destroy`(x[i])
   # XXX This is wrong for const seqs that were moved into 'x'!
   cast[ptr NimSeqV2[T]](addr x).len = newLen
@@ -140,12 +153,31 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   for i in oldLen .. newLen-1:
     xu.p.data[i] = value
 
+proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
+  ## Generic proc for adding a data item `y` to a container `x`.
+  ##
+  ## For containers that have an order, `add` means *append*. New generic
+  ## containers should also call their adding proc `add` for consistency.
+  ## Generic code becomes much easier to write if the Nim naming scheme is
+  ## respected.
+  let oldLen = x.len
+  var xu = cast[ptr NimSeqV2[T]](addr x)
+  if xu.p == nil or xu.p.cap < oldLen+1:
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T)))
+  xu.len = oldLen+1
+  xu.p.data[oldLen] = value
+
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:
     if newlen < s.len:
-      shrink(s, newLen)
+      shrink(s, newlen)
     else:
-      grow(s, newLen, default(T))
+      let oldLen = s.len
+      if newlen <= oldLen: return
+      var xu = cast[ptr NimSeqV2[T]](addr s)
+      if xu.p == nil or xu.p.cap < newlen:
+        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T)))
+      xu.len = newlen
 
 when false:
   proc resize[T](s: var NimSeqV2[T]) =

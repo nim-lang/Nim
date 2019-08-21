@@ -43,21 +43,21 @@ type
     wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wExportc, wExportNims, wIncompleteStruct, wRequiresInit,
-    wAlign, wNodecl, wPure, wSideeffect, wHeader,
-    wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
-    wCompilerproc, wCore, wProcVar, wBase, wUsed,
+    wAlign, wNodecl, wPure, wSideEffect, wHeader,
+    wNoSideEffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
+    wCompilerProc, wCore, wProcVar, wBase, wUsed,
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
-    wLinedir, wStacktrace, wLinetrace, wLink, wCompile,
+    wLineDir, wStackTrace, wLineTrace, wLink, wCompile,
     wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger,
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
-    wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks,
-    wBoundchecks, wOverflowchecks, wNilchecks,
-    wFloatchecks, wNanChecks, wInfChecks, wMoveChecks,
+    wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangeChecks,
+    wBoundChecks, wOverflowChecks, wNilChecks,
+    wFloatChecks, wNanChecks, wInfChecks, wStyleChecks,
     wNonReloadable, wExecuteOnReload,
     wAssertions, wPatterns, wTrMacros, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
-    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite,
+    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
     wPragma,
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
@@ -142,13 +142,13 @@ const
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
-    "floatchecks", "nanchecks", "infchecks", "movechecks",
+    "floatchecks", "nanchecks", "infchecks", "stylechecks",
     "nonreloadable", "executeonreload",
 
     "assertions", "patterns", "trmacros", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim",  # deprecated, dead code elim always happens
-    "safecode", "package", "noforward", "reorder", "norewrite",
+    "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
     "pragma",
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",
@@ -180,7 +180,39 @@ const
     ]
 
 proc findStr*(a: openArray[string], s: string): int =
-  for i in countup(low(a), high(a)):
+  for i in low(a) .. high(a):
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
+
+proc canonPragmaSpelling*(w: TSpecialWord): string =
+  case w
+  of wNoSideEffect: "noSideEffect"
+  of wImportCompilerProc: "importCompilerProc"
+  of wIncompleteStruct: "incompleteStruct"
+  of wRequiresInit: "requiresInit"
+  of wSideEffect: "sideEffect"
+  of wLineDir: "lineDir"
+  of wStackTrace: "stackTrace"
+  of wLineTrace: "lineTrace"
+  of wRangeChecks: "rangeChecks"
+  of wBoundChecks: "boundChecks"
+  of wOverflowChecks: "overflowChecks"
+  of wNilChecks: "nilChecks"
+  of wFloatChecks: "floatChecks"
+  of wNanChecks: "nanChecks"
+  of wInfChecks: "infChecks"
+  of wStyleChecks: "styleChecks"
+  of wNonReloadable: "nonReloadable"
+  of wExecuteOnReload: "executeOnReload"
+  of wDeadCodeElimUnused: "deadCodeElim"
+  of wCompileTime: "compileTime"
+  of wFieldChecks: "fieldChecks"
+  of wLinearScanEnd: "linearScanEnd"
+  of wComputedGoto: "computedGoto"
+  of wInjectStmt: "injectStmt"
+  of wAsmNoStackFrame: "asmNoStackframe"
+  of wImplicitStatic: "implicitStatic"
+  of wCodegenDecl: "codegenDecl"
+  of wLiftLocals: "liftLocals"
+  else: specialWords[w]

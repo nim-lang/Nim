@@ -15,7 +15,7 @@ import
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if sonsLen(procA) != sonsLen(procB): return false
-  for i in countup(0, sonsLen(procA) - 1):
+  for i in 0 ..< sonsLen(procA):
     if procA.sons[i].kind != nkSym:
       return false
     if procB.sons[i].kind != nkSym:
@@ -72,8 +72,8 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
       of paramsEqual:
         if (sfExported notin result.flags) and (sfExported in fn.flags):
           let message = ("public implementation '$1' has non-public " &
-                         "forward declaration in $2") %
-                        [getProcHeader(c.config, result), c.config$result.info]
+                         "forward declaration at $2") %
+                        [getProcHeader(c.config, result, getDeclarationPath = false), c.config$result.info]
           localError(c.config, fn.info, message)
         return
       of paramsIncompatible:
@@ -98,7 +98,7 @@ when false:
     var length = sonsLen(child)
     result = false
     if length == sonsLen(parent):
-      for i in countup(1, length - 1):
+      for i in 1 ..< length:
         var m = child.sons[i].sym
         var n = parent.sons[i].sym
         assert((m.kind == skParam) and (n.kind == skParam))

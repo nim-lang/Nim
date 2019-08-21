@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  output: "@[@[], @[], @[], @[], @[]]"
 """
 import sugar
 import macros
@@ -26,3 +26,12 @@ block distinctBase:
       Uint[bits: static[int]] = distinct uintImpl(bits)
 
     doAssert Uint[128].distinctBase is UintImpl[uint64]
+
+# bug #7816
+import sequtils
+
+proc tester[T](x: T) =
+  let test = toSeq(0..4).map(i => newSeq[int]())
+  echo test
+
+tester(1)

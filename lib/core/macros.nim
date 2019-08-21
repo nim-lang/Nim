@@ -139,24 +139,24 @@ const
 
 {.push warnings: off.}
 
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
+proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
   ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.0**: Use ``ident`` or ``newIdentNode`` instead.
 
-proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
+proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
   ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.1**; Use ``ident`` or ``newIdentNode`` instead.
 
-proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated.}
+proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use '==' on 'NimNode' instead.".}
   ## compares two Nim identifiers
-  ## **Deprecated since version 0.18.1**; Use ``==`` on ``NimNode`` instead.
 
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
-proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
+proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use '==(NimNode, NimNode)' instead.".}
   ## compares two Nim symbols
-  ## **Deprecated since version 0.18.1**; Use ``==(NimNode, NimNode)`` instead.
 
 {.pop.}
 
@@ -226,16 +226,18 @@ proc kind*(n: NimNode): NimNodeKind {.magic: "NKind", noSideEffect.}
   ## returns the `kind` of the node `n`.
 
 proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
+  ## Returns an integer value from any integer literal or enum field symbol.
 
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
+  ## Returns a float from any floating point literal.
 
 {.push warnings: off.}
 
-proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated.} =
-  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
+proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
-proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
+proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
@@ -246,13 +248,13 @@ when defined(nimSymKind):
     ## retrieve the implementation of `symbol`. `symbol` can be a
     ## routine or a const.
 
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated.}
+  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
+    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## converts a Nim identifier to a string
-    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
 
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated.}
+  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
+    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## converts a Nim symbol to a string
-    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
 
 else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
@@ -375,11 +377,11 @@ proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSide
 
 {.push warnings: off.}
 
-proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``genSym`` instead.
+proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'genSym' instead.".}
 
-proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``ident(string)`` instead.
+proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
 
 {.pop.}
 
@@ -483,10 +485,9 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
 
-proc callsite*(): NimNode {.magic: "NCallSite", benign,
-  deprecated: "use varargs[untyped] in the macro prototype instead".}
+proc callsite*(): NimNode {.magic: "NCallSite", benign, deprecated:
+  "Deprecated since v0.18.1; use varargs[untyped] in the macro prototype instead".}
   ## returns the AST of the invocation expression that invoked this macro.
-  ## **Deprecated since version 0.18.1**.
 
 proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nim code and wraps that
@@ -498,7 +499,7 @@ type
     filename*: string
     line*,column*: int
 
-proc `$`*(arg: Lineinfo): string =
+proc `$`*(arg: LineInfo): string =
   # BUG: without `result = `, gives compile error
   result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
 
@@ -561,15 +562,13 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
   ## Within the quoted AST, you are able to interpolate NimNode expressions
   ## from the surrounding scope. If no operator is given, quoting is done using
   ## backticks. Otherwise, the given operator must be used as a prefix operator
-  ## for any interpolated expression. The original meaning of the interpolation
-  ## operator may be obtained by escaping it (by prefixing it with itself):
-  ## e.g. `@` is escaped as `@@`, `@@` is escaped as `@@@` and so on.
+  ## for any interpolated expression.
   ##
   ## Example:
   ##
   ## .. code-block:: nim
   ##
-  ##   macro check(ex: untyped): typed =
+  ##   macro check(ex: untyped) =
   ##     # this is a simplified version of the check macro from the
   ##     # unittest module.
   ##
@@ -609,7 +608,7 @@ proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
   ## If this is not the case, compilation aborts with an error message.
   ## This is useful for writing macros that check its number of arguments.
   if n.len < min or n.len > max:
-    error("macro expects a node with " & $min & ".." & $max " children", n)
+    error("macro expects a node with " & $min & ".." & $max & " children", n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
@@ -627,12 +626,10 @@ proc newCall*(theProc: NimNode,
 
 {.push warnings: off.}
 
-proc newCall*(theProc: NimIdent,
-              args: varargs[NimNode]): NimNode {.compileTime, deprecated.} =
+proc newCall*(theProc: NimIdent, args: varargs[NimNode]): NimNode {.compileTime, deprecated:
+  "Deprecated since v0.18.1; use 'newCall(string, ...)' or 'newCall(NimNode, ...)' instead".} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
-  ## **Deprecated since version 0.18.1**; Use ``newCall(string, ...)``,
-  ## or ``newCall(NimNode, ...)`` instead.
   result = newNimNode(nnkCall)
   result.add(newIdentNode(theProc))
   result.add(args)
@@ -751,17 +748,17 @@ proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.} =
     result.add newLit(x)
 
 proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
-  var bracket = nnkBracket.newTree
+  let bracket = nnkBracket.newTree
   for x in arg:
     bracket.add newLit(x)
-
-  result = nnkCall.newTree(
-    nnkBracketExpr.newTree(
-      nnkAccQuoted.newTree( bindSym"@" ),
-      getTypeInst( bindSym"T" )
-    ),
+  result = nnkPrefix.newTree(
+    bindSym"@",
     bracket
   )
+  if arg.len == 0:
+    # add type cast for empty seq
+    var typ = getTypeInst(typeof(arg))[1]
+    result = newCall(typ,result)
 
 proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
   result = nnkCurly.newTree
@@ -798,8 +795,8 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
 
 {.push warnings: off.}
 
-proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated.} =
-  ## **Deprecated since version 0.18.1**; Use one of ``nestList(NimNode, ...)`` instead.
+proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated:
+  "Deprecated since v0.18.1; use one of 'nestList(NimNode, ...)' instead.".} =
   nestList(newIdentNode(theProc), x)
 
 {.pop.}
@@ -991,16 +988,16 @@ proc newBlockStmt*(label, body: NimNode): NimNode {.compileTime.} =
   ## Create a new block statement with label
   return newNimNode(nnkBlockStmt).add(label, body)
 
-proc newBlockStmt*(body: NimNode): NimNode {.compiletime.} =
+proc newBlockStmt*(body: NimNode): NimNode {.compileTime.} =
   ## Create a new block: stmt
   return newNimNode(nnkBlockStmt).add(newEmptyNode(), body)
 
-proc newVarStmt*(name, value: NimNode): NimNode {.compiletime.} =
+proc newVarStmt*(name, value: NimNode): NimNode {.compileTime.} =
   ## Create a new var stmt
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
 
-proc newLetStmt*(name, value: NimNode): NimNode {.compiletime.} =
+proc newLetStmt*(name, value: NimNode): NimNode {.compileTime.} =
   ## Create a new let stmt
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
@@ -1076,25 +1073,29 @@ proc expectKind*(n: NimNode; k: set[NimNodeKind]) {.compileTime.} =
   ## macros that check the AST that is passed to them.
   if n.kind notin k: error("Expected one of " & $k & ", got " & $n.kind, n)
 
-proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode()];
-    body: NimNode = newStmtList(), procType = nnkProcDef): NimNode {.compileTime.} =
+proc newProc*(name = newEmptyNode();
+              params: openArray[NimNode] = [newEmptyNode()];
+              body: NimNode = newStmtList();
+              procType = nnkProcDef;
+              pragmas: NimNode = newEmptyNode()): NimNode {.compileTime.} =
   ## shortcut for creating a new proc
   ##
   ## The ``params`` array must start with the return type of the proc,
   ## followed by a list of IdentDefs which specify the params.
   if procType notin RoutineNodes:
     error("Expected one of " & $RoutineNodes & ", got " & $procType)
+  pragmas.expectKind({nnkEmpty, nnkPragma})
   result = newNimNode(procType).add(
     name,
     newEmptyNode(),
     newEmptyNode(),
     newNimNode(nnkFormalParams).add(params),
-    newEmptyNode(),  # pragmas
+    pragmas,
     newEmptyNode(),
     body)
 
 proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
-                NimNode {.compiletime.} =
+                NimNode {.compileTime.} =
   ## Constructor for ``if`` statements.
   ##
   ## .. code-block:: nim
@@ -1232,7 +1233,7 @@ proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   else:
     badNodeKind someProc, "body="
 
-proc basename*(a: NimNode): NimNode {.compiletime, benign.}
+proc basename*(a: NimNode): NimNode {.compileTime, benign.}
 
 proc `$`*(node: NimNode): string {.compileTime.} =
   ## Get the string of an identifier node
@@ -1301,7 +1302,8 @@ proc basename*(a: NimNode): NimNode =
   of nnkIdent: return a
   of nnkPostfix, nnkPrefix: return a[1]
   else:
-    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
+    error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
+      repr(a), a)
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
@@ -1310,7 +1312,8 @@ proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   of nnkPostfix, nnkPrefix:
     a[1] = ident(val)
   else:
-    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
+    error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
+      repr(a), a)
 
 proc postfix*(node: NimNode; op: string): NimNode {.compileTime.} =
   newNimNode(nnkPostfix).add(ident(op), node)
@@ -1393,7 +1396,7 @@ else:
     else:
       result = false
 
-proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
+proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search nnkFormalParams for an argument.
   expectKind(params, nnkFormalParams)
   for i in 1 ..< params.len:
@@ -1401,7 +1404,7 @@ proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
     if name.eqIdent( $ node[0]):
       return true
 
-proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compiletime.} =
+proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compileTime.} =
   ## Add ident to dest if it is not present. This is intended for use
   ## with pragmas.
   for node in dest.children:
@@ -1417,7 +1420,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
 
-macro expandMacros*(body: typed): typed =
+macro expandMacros*(body: typed): untyped =
   ## Expands one level of macro - useful for debugging.
   ## Can be used to inspect what happens when a macro call is expanded,
   ## without altering its result.
@@ -1594,12 +1597,20 @@ proc getProjectPath*(): string = discard
 
 when defined(nimMacrosSizealignof):
   proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.sizeof``, but it works on
-    ## ``NimNode`` for use in macro context.
+    ## Returns the same result as ``system.sizeof`` if the size is
+    ## known by the Nim compiler. Returns a negative value if the Nim
+    ## compiler does not know the size.
   proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.alignof``, but it works on
-    ## ``NimNode`` for use in macro context.
+    ## Returns the same result as ``system.alignof`` if the alignment
+    ## is known by the Nim compiler. It works on ``NimNode`` for use
+    ## in macro context. Returns a negative value if the Nim compiler
+    ## does not know the alignment.
   proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.offsetof``, but it expects
-    ## a resolved symbol node from a field of a type. Therefore it
-    ## only requires one argument instead of two.
+    ## Returns the same result as ``system.offsetof`` if the offset is
+    ## known by the Nim compiler. It expects a resolved symbol node
+    ## from a field of a type. Therefore it only requires one argument
+    ## instead of two. Returns a negative value if the Nim compiler
+    ## does not know the offset.
+
+proc isExported*(n: NimNode): bool {.noSideEffect.} =
+  ## Returns whether the symbol is exported or not.

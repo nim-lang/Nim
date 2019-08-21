@@ -1,5 +1,5 @@
 discard """
-  errormsg: "illegal recursion in type 'RefTreeInt'"
+  errormsg: "illegal recursion in type 'RefTree'"
 """
 
 type

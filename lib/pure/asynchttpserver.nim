@@ -14,9 +14,8 @@
 ## application you should use a reverse proxy (for example nginx) instead of
 ## allowing users to connect directly to this server.
 ##
-##
 ## Basic usage
-## -----------
+## ===========
 ##
 ## This example will create an HTTP server on port 8080. The server will
 ## respond to all requests with a ``200 OK`` response code and "Hello World"

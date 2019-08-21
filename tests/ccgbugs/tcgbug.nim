@@ -59,7 +59,7 @@ type
       of M3: c:cstring
 
 proc newMyObject(kind: MyKind, val: string): MyObject =
-  result.kind = kind
+  result = MyObject(kind: kind)
 
   case kind
     of M1: result.a = parseInt(val)
@@ -67,8 +67,7 @@ proc newMyObject(kind: MyKind, val: string): MyObject =
     of M3: result.c = val
 
 proc newMyObjectRef(kind: MyKind, val: string): MyObjectRef =
-  new(result)
-  result.kind = kind
+  result = MyObjectRef(kind: kind)
   case kind
     of M1: result.a = parseInt(val)
     of M2: result.b = parseFloat(val)

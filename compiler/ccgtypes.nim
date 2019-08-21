@@ -152,7 +152,7 @@ proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
 proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
   ## Maps a Nim type to a C type
   case typ.kind
-  of tyNone, tyStmt: result = ctVoid
+  of tyNone, tyTyped: result = ctVoid
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(conf, typ)
@@ -333,6 +333,9 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
       addAbiCheck(m, typ, result)
 
 proc pushType(m: BModule, typ: PType) =
+  for i in 0 .. high(m.typeStack):
+    # pointer equality is good enough here:
+    if m.typeStack[i] == typ: return
   add(m.typeStack, typ)
 
 proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
@@ -388,13 +391,52 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
       result = getTypeForward(m, t, hashType(t))
       pushType(m, t)
   of tySequence:
+    let sig = hashType(t)
     if m.config.selectedGC == gcDestructors:
-      result = getTypeDescAux(m, t, check)
+      if skipTypes(etB.sons[0], typedescInst).kind == tyEmpty:
+        internalError(m.config, "cannot map the empty seq type to a C type")
+
+      result = cacheGetType(m.forwTypeCache, sig)
+      if result == nil:
+        result = getTypeName(m, t, sig)
+        if not isImportedType(t):
+          m.forwTypeCache[sig] = result
+          addForwardStructFormat(m, rope"struct", result)
+          let payload = result & "_Content"
+          addForwardStructFormat(m, rope"struct", payload)
+
+      if cacheGetType(m.typeCache, sig) == nil:
+        m.typeCache[sig] = result
+        #echo "adding ", sig, " ", typeToString(t), " ", m.module.name.s
+        appcg(m, m.s[cfsTypes],
+          "struct $1 {$N" &
+          "  NI len; $1_Content* p;$N" &
+          "};$N", [result])
     else:
-      result = getTypeForward(m, t, hashType(t)) & seqStar(m)
-      pushType(m, t)
+      result = getTypeForward(m, t, sig) & seqStar(m)
+    pushType(m, t)
   else:
     result = getTypeDescAux(m, t, check)
+
+proc getSeqPayloadType(m: BModule; t: PType): Rope =
+  var check = initIntSet()
+  result = getTypeDescWeak(m, t, check) & "_Content"
+  #result = getTypeForward(m, t, hashType(t)) & "_Content"
+
+proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
+  let sig = hashType(t)
+  let result = cacheGetType(m.typeCache, sig)
+  if result == nil:
+    discard getTypeDescAux(m, t, check)
+  else:
+    # little hack for now to prevent multiple definitions of the same
+    # Seq_Content:
+    appcg(m, m.s[cfsTypes], """$N
+$3ifndef $2_Content_PP
+$3define $2_Content_PP
+struct $2_Content { NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];};
+$3endif$N
+      """, [getTypeDescAux(m, t.skipTypes(abstractInst).sons[0], check), result, rope"#"])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
   if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
@@ -411,7 +453,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     rettype = ~"void"
   else:
     rettype = getTypeDescAux(m, t.sons[0], check)
-  for i in countup(1, sonsLen(t.n) - 1):
+  for i in 1 ..< sonsLen(t.n):
     if t.n.sons[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
@@ -472,7 +514,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   result = nil
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       add(result, genRecordFieldsAux(m, n.sons[i], rectype, check))
   of nkRecCase:
     if n.sons[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
@@ -480,7 +522,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody: Rope = nil
-    for i in countup(1, sonsLen(n) - 1):
+    for i in 1 ..< sonsLen(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         let k = lastSon(n.sons[i])
@@ -517,7 +559,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       if fieldType.kind == tyUncheckedArray:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
-      elif fieldType.kind == tySequence and m.config.selectedGC != gcDestructors:
+      elif fieldType.kind == tySequence:
         # we need to use a weak dependency here for trecursive_table.
         addf(result, "$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check), sname])
       elif field.bitsize != 0:
@@ -595,7 +637,7 @@ proc getTupleDesc(m: BModule, typ: PType, name: Rope,
                   check: var IntSet): Rope =
   result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = nil
-  for i in countup(0, sonsLen(typ) - 1):
+  for i in 0 ..< sonsLen(typ):
     addf(desc, "$1 Field$2;$n",
          [getTypeDescAux(m, typ.sons[i], check), rope(i)])
   if desc == nil: add(result, "char dummy;\L")
@@ -630,15 +672,6 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
     if result != nil and result.len > 0:
       result = if result.kind == tyGenericInst: result.sons[1]
                else: result.elemType
-
-proc getSeqPayloadType(m: BModule; t: PType): Rope =
-  result = getTypeForward(m, t, hashType(t)) & "_Content"
-  when false:
-    var check = initIntSet()
-    # XXX remove this duplication:
-    appcg(m, m.s[cfsSeqTypes],
-      "struct $2_Content { NI cap; void* allocator; $1 data[SEQ_DECL_SIZE]; };$n",
-      [getTypeDescAux(m, t.sons[0], check), result])
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
@@ -679,11 +712,15 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         result = name & star
         m.typeCache[sig] = result
     of tySequence:
-      # no restriction! We have a forward declaration for structs
-      let name = getTypeForward(m, et, hashType et)
-      result = name & seqStar(m) & star
-      m.typeCache[sig] = result
-      pushType(m, et)
+      if m.config.selectedGC == gcDestructors:
+        result = getTypeDescWeak(m, et, check) & star
+        m.typeCache[sig] = result
+      else:
+        # no restriction! We have a forward declaration for structs
+        let name = getTypeForward(m, et, hashType et)
+        result = name & seqStar(m) & star
+        m.typeCache[sig] = result
+        pushType(m, et)
     else:
       # else we have a strong dependency  :-(
       result = getTypeDescAux(m, et, check) & star
@@ -714,7 +751,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           let owner = hashOwner(t.sym)
           if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
             var vals: seq[(string, int)] = @[]
-            for i in countup(0, t.n.len - 1):
+            for i in 0 ..< t.n.len:
               assert(t.n.sons[i].kind == nkSym)
               let field = t.n.sons[i].sym
               vals.add((field.name.s, field.position.int))
@@ -735,29 +772,25 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             "void* ClE_0;$n} $1;$n",
              [result, rettype, desc])
   of tySequence:
-    # we cannot use getTypeForward here because then t would be associated
-    # with the name of the struct, not with the pointer to the struct:
-    result = cacheGetType(m.forwTypeCache, sig)
-    if result == nil:
-      result = getTypeName(m, origTyp, sig)
+    if m.config.selectedGC == gcDestructors:
+      result = getTypeDescWeak(m, t, check)
+    else:
+      # we cannot use getTypeForward here because then t would be associated
+      # with the name of the struct, not with the pointer to the struct:
+      result = cacheGetType(m.forwTypeCache, sig)
+      if result == nil:
+        result = getTypeName(m, origTyp, sig)
+        if not isImportedType(t):
+          addForwardStructFormat(m, structOrUnion(t), result)
+        m.forwTypeCache[sig] = result
+      assert(cacheGetType(m.typeCache, sig) == nil)
+      m.typeCache[sig] = result & seqStar(m)
       if not isImportedType(t):
-        addForwardStructFormat(m, structOrUnion(t), result)
-      m.forwTypeCache[sig] = result
-    assert(cacheGetType(m.typeCache, sig) == nil)
-    m.typeCache[sig] = result & seqStar(m)
-    if not isImportedType(t):
-      if skipTypes(t.sons[0], typedescInst).kind != tyEmpty:
-        const
-          cppSeq = "struct $2 : #TGenericSeq {$n"
-          cSeq = "struct $2 {$n" &
-                 "  #TGenericSeq Sup;$n"
-        if m.config.selectedGC == gcDestructors:
-          appcg(m, m.s[cfsTypes],
-            "typedef struct{ NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];}$2_Content;$n" &
-            "struct $2 {$n" &
-            "  NI len; $2_Content* p;$n" &
-            "};$n", [getTypeDescAux(m, t.sons[0], check), result])
-        else:
+        if skipTypes(t.sons[0], typedescInst).kind != tyEmpty:
+          const
+            cppSeq = "struct $2 : #TGenericSeq {$n"
+            cSeq = "struct $2 {$n" &
+                  "  #TGenericSeq Sup;$n"
           if m.compileToCpp:
             appcg(m, m.s[cfsSeqTypes],
                 cppSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
@@ -766,11 +799,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             appcg(m, m.s[cfsSeqTypes],
                 cSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
                 "};$n", [getTypeDescAux(m, t.sons[0], check), result])
-      elif m.config.selectedGC == gcDestructors:
-        internalError(m.config, "cannot map the empty seq type to a C type")
-      else:
-        result = rope("TGenericSeq")
-    add(result, seqStar(m))
+        else:
+          result = rope("TGenericSeq")
+      add(result, seqStar(m))
   of tyUncheckedArray:
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
@@ -778,7 +809,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t.sons[0], check)
       addf(m.s[cfsTypes], "typedef $1 $2[1];$n", [foo, result])
   of tyArray:
-    var n: BiggestInt = lengthOrd(m.config, t)
+    var n: BiggestInt = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
@@ -834,21 +865,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       m.typeCache[sig] = typedefName
       result = typedefName
     else:
-      when false:
-        if t.sym != nil and t.sym.name.s == "KeyValuePair":
-          if t == origTyp:
-            echo "wtf: came here"
-            writeStackTrace()
-            quit 1
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
-        when false:
-          if t.sym != nil and t.sym.name.s == "KeyValuePair":
-            # or {sfImportc, sfExportc} * t.sym.flags == {}:
-            if t.loc.r != nil:
-              echo t.kind, " ", hashType t
-              echo origTyp.kind, " ", sig
-            assert t.loc.r == nil
         result = getTypeName(m, origTyp, sig)
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
@@ -907,8 +925,13 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
 
 proc finishTypeDescriptions(m: BModule) =
   var i = 0
+  var check = initIntSet()
   while i < len(m.typeStack):
-    discard getTypeDesc(m, m.typeStack[i])
+    let t = m.typeStack[i]
+    if m.config.selectedGC == gcDestructors and t.skipTypes(abstractInst).kind == tySequence:
+      seqV2ContentType(m, t, check)
+    else:
+      discard getTypeDescAux(m, t, check)
     inc(i)
 
 template cgDeclFrmt*(s: PSym): string =
@@ -959,7 +982,7 @@ proc getNimNode(m: BModule): Rope =
   result = "$1[$2]" % [m.typeNodesName, rope(m.typeNodes)]
   inc(m.typeNodes)
 
-proc TINameForHcr(m: BModule, name: Rope): Rope =
+proc tiNameForHcr(m: BModule, name: Rope): Rope =
   return if m.hcrOn: "(*".rope & name & ")" else: name
 
 proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
@@ -971,7 +994,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   else:
     nimtypeKind = ord(typ.kind)
 
-  let nameHcr = TINameForHcr(m, name)
+  let nameHcr = tiNameForHcr(m, name)
 
   var size: Rope
   if tfIncompleteStruct in typ.flags: size = rope"void*"
@@ -996,7 +1019,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     if typename == "ref object" and origType.skipTypes(skipPtrs).sym != nil:
       typename = "anon ref object from " & m.config$origType.skipTypes(skipPtrs).sym.info
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
-        [nameHcr, makeCstring typename])
+        [nameHcr, makeCString typename])
     discard cgsym(m, "nimTypeRoot")
     addf(m.s[cfsTypeInit3], "$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
          [nameHcr])
@@ -1031,6 +1054,8 @@ proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype)), rope(d.name.s.mangle)]
 
+proc rope(arg: Int128): Rope = rope($arg)
+
 proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
   discard cgsym(m, "TNimNode")
   var tmp = discriminatorTableName(m, objtype, d)
@@ -1054,7 +1079,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
     elif L > 0:
       var tmp = getTempName(m) & "_" & $L
       genTNimNodeArray(m, tmp, rope(L))
-      for i in countup(0, L-1):
+      for i in 0 ..< L:
         var tmp2 = getNimNode(m)
         addf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
         genObjectFields(m, typ, origType, n.sons[i], tmp2, info)
@@ -1079,7 +1104,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
                            makeCString(field.name.s),
                            tmp, rope(L)])
     addf(m.s[cfsData], "TNimNode* $1[$2];$n", [tmp, rope(L+1)])
-    for i in countup(1, sonsLen(n)-1):
+    for i in 1 ..< sonsLen(n):
       var b = n.sons[i]           # branch
       var tmp2 = getNimNode(m)
       genObjectFields(m, typ, origType, lastSon(b), tmp2, info)
@@ -1087,10 +1112,10 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
       of nkOfBranch:
         if sonsLen(b) < 2:
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in countup(0, sonsLen(b) - 2):
+        for j in 0 .. sonsLen(b) - 2:
           if b.sons[j].kind == nkRange:
-            var x = int(getOrdValue(b.sons[j].sons[0]))
-            var y = int(getOrdValue(b.sons[j].sons[1]))
+            var x = toInt(getOrdValue(b.sons[j].sons[0]))
+            var y = toInt(getOrdValue(b.sons[j].sons[1]))
             while x <= y:
               addf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, rope(x), tmp2])
               inc(x)
@@ -1126,7 +1151,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo
   var tmp = getNimNode(m)
   if not isImportedType(typ):
     genObjectFields(m, typ, origType, typ.n, tmp, info)
-  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [TINameForHcr(m, name), tmp])
+  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [tiNameForHcr(m, name), tmp])
   var t = typ.sons[0]
   while t != nil:
     t = t.skipTypes(skipPtrs)
@@ -1140,7 +1165,7 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
   if length > 0:
     var tmp = getTempName(m) & "_" & $length
     genTNimNodeArray(m, tmp, rope(length))
-    for i in countup(0, length - 1):
+    for i in 0 ..< length:
       var a = typ.sons[i]
       var tmp2 = getNimNode(m)
       addf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
@@ -1154,7 +1179,7 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
   else:
     addf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 2;$n",
          [expr, rope(length)])
-  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [TINameForHcr(m, name), expr])
+  addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [tiNameForHcr(m, name), expr])
 
 proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   # Type information for enumerations is quite heavy, so we do some
@@ -1168,7 +1193,7 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   var enumNames, specialCases: Rope
   var firstNimNode = m.typeNodes
   var hasHoles = false
-  for i in countup(0, length - 1):
+  for i in 0 ..< length:
     assert(typ.n.sons[i].kind == nkSym)
     var field = typ.n.sons[i].sym
     var elemNode = getNimNode(m)
@@ -1193,17 +1218,17 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   add(m.s[cfsTypeInit3], specialCases)
   addf(m.s[cfsTypeInit3],
        "$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n$4.node = &$1;$n",
-       [getNimNode(m), rope(length), nodePtrs, TINameForHcr(m, name)])
+       [getNimNode(m), rope(length), nodePtrs, tiNameForHcr(m, name)])
   if hasHoles:
     # 1 << 2 is {ntfEnumHole}
-    addf(m.s[cfsTypeInit3], "$1.flags = 1<<2;$n", [TINameForHcr(m, name)])
+    addf(m.s[cfsTypeInit3], "$1.flags = 1<<2;$n", [tiNameForHcr(m, name)])
 
 proc genSetInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   assert(typ.sons[0] != nil)
   genTypeInfoAux(m, typ, typ, name, info)
   var tmp = getNimNode(m)
   addf(m.s[cfsTypeInit3], "$1.len = $2; $1.kind = 0;$n" & "$3.node = &$1;$n",
-       [tmp, rope(firstOrd(m.config, typ)), TINameForHcr(m, name)])
+       [tmp, rope(firstOrd(m.config, typ)), tiNameForHcr(m, name)])
 
 proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, genTypeInfo(m, typ.sons[1], info), info)
@@ -1337,12 +1362,12 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     if m.config.selectedGC != gcDestructors:
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
-        addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [TINameForHcr(m, result), markerProc])
+        addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig)
-      addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [TINameForHcr(m, result), markerProc])
+      addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)
   of tySet: genSetInfo(m, t, result, info)

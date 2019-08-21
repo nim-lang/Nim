@@ -591,33 +591,33 @@ proc readIndexDir(dir: string):
       var
         fileEntries: seq[IndexEntry]
         title: IndexEntry
-        F = 0
+        f = 0
       newSeq(fileEntries, 500)
       setLen(fileEntries, 0)
       for line in lines(path):
         let s = line.find('\t')
         if s < 0: continue
-        setLen(fileEntries, F+1)
-        fileEntries[F].keyword = line.substr(0, s-1)
-        fileEntries[F].link = line.substr(s+1)
+        setLen(fileEntries, f+1)
+        fileEntries[f].keyword = line.substr(0, s-1)
+        fileEntries[f].link = line.substr(s+1)
         # See if we detect a title, a link without a `#foobar` trailing part.
-        if title.keyword.len == 0 and fileEntries[F].link.isDocumentationTitle:
-          title.keyword = fileEntries[F].keyword
-          title.link = fileEntries[F].link
+        if title.keyword.len == 0 and fileEntries[f].link.isDocumentationTitle:
+          title.keyword = fileEntries[f].keyword
+          title.link = fileEntries[f].link
 
-        if fileEntries[F].link.find('\t') > 0:
-          let extraCols = fileEntries[F].link.split('\t')
-          fileEntries[F].link = extraCols[0]
+        if fileEntries[f].link.find('\t') > 0:
+          let extraCols = fileEntries[f].link.split('\t')
+          fileEntries[f].link = extraCols[0]
           assert extraCols.len == 3
-          fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
-          fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
+          fileEntries[f].linkTitle = extraCols[1].unquoteIndexColumn
+          fileEntries[f].linkDesc = extraCols[2].unquoteIndexColumn
         else:
-          fileEntries[F].linkTitle = ""
-          fileEntries[F].linkDesc = ""
-        inc F
+          fileEntries[f].linkTitle = ""
+          fileEntries[f].linkDesc = ""
+        inc f
       # Depending on type add this to the list of symbols or table of APIs.
       if title.keyword.len == 0:
-        for i in 0 ..< F:
+        for i in 0 ..< f:
           # Don't add to symbols TOC entries (they start with a whitespace).
           let toc = fileEntries[i].linkTitle
           if toc.len > 0 and toc[0] == ' ':

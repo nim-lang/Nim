@@ -12,7 +12,7 @@ import unittest, macros
 
 # bug #4555
 
-macro memo(n: untyped): typed =
+macro memo(n: untyped) =
   result = n
 
 proc fastFib(n: int): int {.memo.} = 40

@@ -17,3 +17,8 @@ echo cast[string](@[116'u8, 101, 115, 116])
 var a = cast[seq[uint32]]("test1234")
 a.setLen(2)
 echo a
+
+
+#issue 11204
+var ac {.compileTime.} = @["a", "b"]
+const bc = ac.len

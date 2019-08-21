@@ -146,10 +146,6 @@ type
       previousToken: TLineInfo
     config*: ConfigRef
 
-when defined(nimpretty):
-  var
-    gIndentationWidth*: int
-
 proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
   result = newLineInfo(L.fileIdx, tok.line, tok.col)
   when defined(nimpretty):
@@ -173,7 +169,7 @@ proc isNimIdentifier*(s: string): bool =
       inc(i)
     result = true
 
-proc tokToStr*(tok: TToken): string =
+proc `$`*(tok: TToken): string =
   case tok.tokType
   of tkIntLit..tkInt64Lit: result = $tok.iNumber
   of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
@@ -188,11 +184,11 @@ proc tokToStr*(tok: TToken): string =
 
 proc prettyTok*(tok: TToken): string =
   if isKeyword(tok.tokType): result = "keyword " & tok.ident.s
-  else: result = tokToStr(tok)
+  else: result = $tok
 
 proc printTok*(conf: ConfigRef; tok: TToken) =
   msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
-      TokTypeToStr[tok.tokType] & " " & tokToStr(tok))
+      TokTypeToStr[tok.tokType] & " " & $tok)
 
 proc initToken*(L: var TToken) =
   L.tokType = tkInvalid
@@ -223,7 +219,7 @@ proc fillToken(L: var TToken) =
 proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
-  lex.fileIdx = fileidx
+  lex.fileIdx = fileIdx
   lex.indentAhead = -1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
@@ -379,7 +375,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
   result.literal = ""
   result.base = base10
   startpos = L.bufpos
-  tokenBegin(result, startPos)
+  tokenBegin(result, startpos)
 
   # First stage: find out base, make verifications, build token literal string
   # {'c', 'C'} is added for deprecation reasons to provide a clear error message
@@ -534,13 +530,13 @@ proc getNumber(L: var TLexer, result: var TToken) =
 
       case result.tokType
       of tkIntLit, tkInt64Lit: result.iNumber = xi
-      of tkInt8Lit: result.iNumber = BiggestInt(int8(toU8(int(xi))))
-      of tkInt16Lit: result.iNumber = BiggestInt(int16(toU16(int(xi))))
-      of tkInt32Lit: result.iNumber = BiggestInt(int32(toU32(int64(xi))))
+      of tkInt8Lit: result.iNumber = ashr(xi shl 56, 56)
+      of tkInt16Lit: result.iNumber = ashr(xi shl 48, 48)
+      of tkInt32Lit: result.iNumber = ashr(xi shl 32, 32)
       of tkUIntLit, tkUInt64Lit: result.iNumber = xi
-      of tkUInt8Lit: result.iNumber = BiggestInt(uint8(toU8(int(xi))))
-      of tkUInt16Lit: result.iNumber = BiggestInt(uint16(toU16(int(xi))))
-      of tkUInt32Lit: result.iNumber = BiggestInt(uint32(toU32(int64(xi))))
+      of tkUInt8Lit: result.iNumber = xi and 0xff
+      of tkUInt16Lit: result.iNumber = xi and 0xffff
+      of tkUInt32Lit: result.iNumber = xi and 0xffffffff
       of tkFloat32Lit:
         result.fNumber = (cast[PFloat32](addr(xi)))[]
         # note: this code is endian neutral!
@@ -569,7 +565,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       case result.tokType
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
-      of tkUint64Lit:
+      of tkUInt64Lit:
         var iNumber: uint64
         var len: int
         try:
@@ -647,34 +643,35 @@ proc handleDecChars(L: var TLexer, xi: var int) =
     inc(L.bufpos)
 
 proc addUnicodeCodePoint(s: var string, i: int) =
+  let i = cast[uint](i)
   # inlined toUTF-8 to avoid unicode and strutils dependencies.
   let pos = s.len
-  if i <=% 127:
+  if i <= 127:
     s.setLen(pos+1)
     s[pos+0] = chr(i)
-  elif i <=% 0x07FF:
+  elif i <= 0x07FF:
     s.setLen(pos+2)
     s[pos+0] = chr((i shr 6) or 0b110_00000)
     s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
-  elif i <=% 0xFFFF:
+  elif i <= 0xFFFF:
     s.setLen(pos+3)
     s[pos+0] = chr(i shr 12 or 0b1110_0000)
     s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
-  elif i <=% 0x001FFFFF:
+  elif i <= 0x001FFFFF:
     s.setLen(pos+4)
     s[pos+0] = chr(i shr 18 or 0b1111_0000)
     s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
     s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
-  elif i <=% 0x03FFFFFF:
+  elif i <= 0x03FFFFFF:
     s.setLen(pos+5)
     s[pos+0] = chr(i shr 24 or 0b111110_00)
     s[pos+1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
     s[pos+2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
     s[pos+3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     s[pos+4] = chr(i and ones(6) or 0b10_0000_00)
-  elif i <=% 0x7FFFFFFF:
+  elif i <= 0x7FFFFFFF:
     s.setLen(pos+6)
     s[pos+0] = chr(i shr 30 or 0b1111110_0)
     s[pos+1] = chr(i shr 24 and ones(6) or 0b10_0000_00)
@@ -867,7 +864,9 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '
   var c = L.buf[L.bufpos]
   case c
-  of '\0'..pred(' '), '\'': lexMessage(L, errGenerated, "invalid character literal")
+  of '\0'..pred(' '), '\'':
+    lexMessage(L, errGenerated, "invalid character literal")
+    tok.literal = $c
   of '\\': getEscapedChar(L, tok)
   else:
     tok.literal = $c
@@ -881,6 +880,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
   var h: Hash = 0
   var pos = L.bufpos
   tokenBegin(tok, pos)
+  var suspicious = false
   while true:
     var c = L.buf[pos]
     case c
@@ -891,21 +891,26 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
       h = h !& ord(c)
       inc(pos)
+      suspicious = true
     of '_':
       if L.buf[pos+1] notin SymChars:
         lexMessage(L, errGenerated, "invalid token: trailing underscore")
         break
       inc(pos)
+      suspicious = true
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
   tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
-  L.bufpos = pos
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
     tok.tokType = tkSymbol
   else:
     tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
+    if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
+      lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
+  L.bufpos = pos
+
 
 proc endOperator(L: var TLexer, tok: var TToken, pos: int,
                  hash: Hash) {.inline.} =
@@ -1118,7 +1123,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
       inc(tok.strongSpaceA)
     of '\t':
-      if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabulators are not allowed")
+      if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabs are not allowed, use spaces instead")
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
@@ -1173,8 +1178,6 @@ proc skip(L: var TLexer, tok: var TToken) =
       tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
       tok.indent = commentIndent
-    if gIndentationWidth <= 0:
-      gIndentationWidth = tok.indent
 
 proc rawGetTok*(L: var TLexer, tok: var TToken) =
   template atTokenEnd() {.dirty.} =
@@ -1333,10 +1336,13 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
   var tok: TToken
   initToken(tok)
   openLexer(lex, fileIdx, inputstream, cache, config)
-  while true:
+  var prevToken = tkEof
+  while tok.tokType != tkEof:
     rawGetTok(lex, tok)
-    result = tok.indent
-    if result > 0 or tok.tokType == tkEof: break
+    if tok.indent > 0 and prevToken in {tkColon, tkEquals, tkType, tkConst, tkLet, tkVar, tkUsing}:
+      result = tok.indent
+      if result > 0: break
+    prevToken = tok.tokType
   closeLexer(lex)
 
 proc getPrecedence*(ident: PIdent): int =

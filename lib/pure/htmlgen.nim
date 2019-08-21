@@ -16,7 +16,8 @@
 ## generator. Each commonly used HTML tag has a corresponding macro
 ## that generates a string with its HTML representation.
 ##
-## Example:
+## Examples
+## ========
 ##
 ## .. code-block:: Nim
 ##   var nim = "Nim"

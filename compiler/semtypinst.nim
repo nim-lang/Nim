@@ -67,10 +67,9 @@ proc cacheTypeInst*(inst: PType) =
   #      update the refcount
   let gt = inst.sons[0]
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
-  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
+  if t.kind in {tyStatic, tyError, tyGenericParam} + tyTypeClasses:
     return
   gt.sym.typeInstCache.add(inst)
-
 
 type
   LayeredIdTable* = object
@@ -174,7 +173,7 @@ proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
     discard
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       var it = n.sons[i]
       if it == nil: illFormedAst(n, cl.c.config)
       case it.kind
@@ -206,6 +205,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard
+  of nkOpenSymChoice, nkClosedSymChoice: result = n
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)
     if result.sym.typ.kind == tyVoid:
@@ -213,7 +213,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNode(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       var it = n.sons[i]
       if it == nil: illFormedAst(n, cl.c.config)
       case it.kind
@@ -243,7 +243,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       newSons(result, length)
       if start > 0:
         result.sons[0] = n.sons[0]
-      for i in countup(start, length - 1):
+      for i in start ..< length:
         result.sons[i] = replaceTypeVarsN(cl, n.sons[i])
 
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
@@ -259,7 +259,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   # (e.g. skGenericParam and skType).
   # Note: `s.magic` may be `mType` in an example such as:
   # proc foo[T](a: T, b = myDefault(type(a)))
-  if s.kind in routineKinds or s.magic != mNone:
+  if s.kind in routineKinds+{skLet, skConst, skVar} or s.magic != mNone:
     return s
 
   #result = PSym(idTableGet(cl.symMap, s))
@@ -315,7 +315,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     when defined(reportCacheHits):
       echo "Generic instantiation cached ", typeToString(result), " for ", typeToString(t)
     return
-  for i in countup(1, sonsLen(t) - 1):
+  for i in 1 ..< sonsLen(t):
     var x = t.sons[i]
     if x.kind in {tyGenericParam}:
       x = lookupTypeVar(cl, x)
@@ -355,17 +355,20 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var typeMapLayer = newTypeMapLayer(cl)
   cl.typeMap = addr(typeMapLayer)
 
-  for i in countup(1, sonsLen(t) - 1):
+  for i in 1 ..< sonsLen(t):
     var x = replaceTypeVarsT(cl, t.sons[i])
     assert x.kind != tyGenericInvocation
     header.sons[i] = x
     propagateToOwner(header, x)
     cl.typeMap.put(body.sons[i-1], x)
 
-  for i in countup(1, sonsLen(t) - 1):
+  for i in 1 ..< sonsLen(t):
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header.sons[i])
+
+  if body.kind == tyError:
+    return
 
   let bbody = lastSon body
   var newbody = replaceTypeVarsT(cl, bbody)
@@ -540,7 +543,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil:
       result = lookup
-      if tfUnresolved in t.flags or cl.skipTypedesc: result = result.base
+      if result.kind != tyTypeDesc:
+        result = makeTypeDesc(cl.c, result)
+      elif tfUnresolved in t.flags or cl.skipTypedesc:
+        result = result.base
     elif t.sons[0].kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
 
@@ -565,7 +571,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       #if not cl.allowMetaTypes:
       idTablePut(cl.localCache, t, result)
 
-      for i in countup(0, sonsLen(result) - 1):
+      for i in 0 ..< sonsLen(result):
         if result.sons[i] != nil:
           if result.sons[i].kind == tyGenericBody:
             localError(cl.c.config, t.sym.info,
@@ -597,7 +603,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       of tySequence:
-        if cl.isReturnType and cl.c.config.selectedGc == gcDestructors and
+        if cl.isReturnType and cl.c.config.selectedGC == gcDestructors and
             result.attachedOps[attachedDestructor].isNil and
             result[0].kind != tyEmpty and optNimV2 notin cl.c.config.globalOptions:
           let s = cl.c.graph.sysTypes[tySequence]
@@ -667,6 +673,22 @@ proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;
   result = replaceTypeVarsN(cl, n)
   popInfoContext(p.config)
 
+proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
+  if t != nil and t.len > 0 and t.sons[0] != nil:
+    let b = skipTypes(t.sons[0], skipPtrs)
+    recomputeFieldPositions(b, b.n, currPosition)
+  case obj.kind
+  of nkRecList:
+    for i in 0 ..< sonsLen(obj): recomputeFieldPositions(nil, obj.sons[i], currPosition)
+  of nkRecCase:
+    recomputeFieldPositions(nil, obj.sons[0], currPosition)
+    for i in 1 ..< sonsLen(obj):
+      recomputeFieldPositions(nil, lastSon(obj.sons[i]), currPosition)
+  of nkSym:
+    obj.sym.position = currPosition
+    inc currPosition
+  else: discard "cannot happen"
+
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
   var typeMap = initLayeredTypeMap(pt)
@@ -674,6 +696,10 @@ proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
   pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
   popInfoContext(p.config)
+  let objType = result.skipTypes(abstractInst)
+  if objType.kind == tyObject:
+    var position = 0
+    recomputeFieldPositions(objType, objType.n, position)
 
 proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
                                  t: PType): PType =

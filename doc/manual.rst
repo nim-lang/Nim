@@ -22,7 +22,14 @@ precise wording. This manual is constantly evolving into a proper specification.
 **Note**: The experimental features of Nim are
 covered `here <manual_experimental.html>`_.
 
-This document describes the lexis, the syntax, and the semantics of Nim.
+**Note**: Assignments, moves and destruction are specified in
+the `destructors <destructors.html>`_ document.
+
+
+This document describes the lexis, the syntax, and the semantics of the Nim language.
+
+To learn how to compile Nim programs and generate documentation see
+`Compiler User Guide <nimc.html>`_ and `DocGen Tools Guide <docgen.html>`_.
 
 The language constructs are explained using an extended BNF, in which ``(a)*``
 means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and ``(a)?`` means an
@@ -92,8 +99,8 @@ and code execution in the executable.
 
 The compiler parses Nim source code into an internal data structure called the
 `abstract syntax tree`:idx: (`AST`:idx:). Then, before executing the code or
-compiling it into the executable, it transforms the AST through `semantic
-analysis`:idx:. This adds semantic information such as expression types,
+compiling it into the executable, it transforms the AST through
+`semantic analysis`:idx:. This adds semantic information such as expression types,
 identifier meanings, and in some cases expression values. An error detected
 during semantic analysis is called a `static error`:idx:. Errors described in
 this manual are static errors when not otherwise specified.
@@ -824,7 +831,10 @@ Ordinal types have the following characteristics:
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are not ordinal types.
+the types ``uint`` and ``uint64`` are not ordinal types. (This will be changed
+in later versions of the language.)
+
+A distinct type is an ordinal type if its base type is an ordinal type.
 
 
 Pre-defined integer types
@@ -1123,6 +1133,7 @@ as ``MyEnum.value``:
   echo amb    # Error: Unclear whether it's MyEnum.amb or OtherEnum.amb
   echo MyEnum.amb # OK.
 
+To implement bit fields with enums see `Bit fields <#set-type-bit-fields>`_
 
 String type
 -----------
@@ -1275,6 +1286,39 @@ The notation ``x[i]`` can be used to access the i-th element of ``x``.
 Arrays are always bounds checked (statically or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--boundChecks:off`` command line switch.
+
+An array constructor can have explicit indexes for readability:
+
+.. code-block:: nim
+
+  type
+    Values = enum
+      valA, valB, valC
+
+  const
+    lookupTable = [
+      valA: "A",
+      valB: "B",
+      valC: "C"
+    ]
+
+If an index is left out, ``succ(lastIndex)`` is used as the index
+value:
+
+.. code-block:: nim
+
+  type
+    Values = enum
+      valA, valB, valC, valD, valE
+
+  const
+    lookupTable = [
+      valA: "A",
+      "B",
+      valC: "C",
+      "D", "e"
+    ]
+
 
 
 Open arrays
@@ -1478,8 +1522,10 @@ For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 Object variants
 ---------------
-Often an object hierarchy is overkill in certain situations where simple
-variant types are needed.
+Often an object hierarchy is overkill in certain situations where simple variant
+types are needed. Object variants are tagged unions discriminated via a
+enumerated type used for runtime type flexibility, mirroring the concepts of
+*sum types* and *algebraic data types (ADTs)* as found in other languages.
 
 An example:
 
@@ -1531,11 +1577,53 @@ the ``case`` statement: The branches in a ``case`` section may be indented too.
 
 In the example the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
-new value must not lead to a change of the active object branch. For an object
-branch switch ``system.reset`` has to be used. Also, when the fields of a
-particular branch are specified during object construction, the corresponding
-discriminator value must be specified as a constant expression.
+new value must not lead to a change of the active object branch. Also, when the
+fields of a particular branch are specified during object construction, the
+corresponding discriminator value must be specified as a constant expression.
 
+Instead of changing the active object branch, replace the old object in memory
+with a new one completely:
+
+.. code-block:: nim
+
+  var x = Node(kind: nkAdd, leftOp: Node(kind: nkInt, intVal: 4),
+                            rightOp: Node(kind: nkInt, intVal: 2))
+  # change the node's contents:
+  x[] = NodeObj(kind: nkString, strVal: "abc")
+
+
+Starting with version 0.20 ``system.reset`` cannot be used anymore to support
+object branch changes as this never was completely memory safe.
+
+As a special rule, the discriminator kind can also be bounded using a ``case``
+statement. If possible values of the discriminator variable in a
+``case`` statement branch are a subset of discriminator values for the selected
+object branch, the initialization is considered valid. This analysis only works
+for immutable discriminators of an ordinal type and disregards ``elif``
+branches. For discriminator values with a ``range`` type, the compiler
+checks if the entire range of possible values for the discriminator value is
+valid for the choosen object branch.
+
+A small example:
+
+.. code-block:: nim
+
+  let unknownKind = nkSub
+
+  # invalid: unsafe initialization because the kind field is not statically known:
+  var y = Node(kind: unknownKind, strVal: "y")
+
+  var z = Node()
+  case unknownKind
+  of nkAdd, nkSub:
+    # valid: possible values of this branch are a subset of nkAdd/nkSub object branch:
+    z = Node(kind: unknownKind, leftOp: Node(), rightOp: Node())
+  else:
+    echo "ignoring: ", unknownKind
+
+  # also valid, since unknownKindBounded can only contain the values nkAdd or nkSub
+  let unknownKindBounded = range[nkAdd..nkSub](unknownKind)
+  z = Node(kind: unknownKindBounded, leftOp: Node(), rightOp: Node())
 
 Set type
 --------
@@ -1624,7 +1712,39 @@ To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
 ``realloc`` can be used. The documentation of the system module contains
 further information.
 
-If a reference points to *nothing*, it has the value ``nil``.
+
+Nil
+---
+
+If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
+the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
+is an unrecoverable fatal runtime error. A dereferencing operation ``p[]``
+implies that ``p`` is not nil. This can be exploited by the implementation to
+optimize code like:
+
+
+.. code-block:: nim
+
+  p[].field = 3
+  if p != nil:
+    # if p were nil, ``p[]`` would have caused a crash already,
+    # so we know ``p`` is always not nil here.
+    action()
+
+Into:
+
+.. code-block:: nim
+
+  p[].field = 3
+  action()
+
+
+*Note*: This is not comparable to C's "undefined behavior" for
+dereferencing NULL pointers.
+
+
+Mixing GC'ed memory with ``ptr``
+--------------------------------
 
 Special care has to be taken if an untraced object contains traced objects like
 traced references, strings or sequences: in order to free everything properly,
@@ -1796,6 +1916,8 @@ of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
 base type and vice versa are allowed. See also ``distinctBase`` to get the
 reverse operation.
+
+A distinct type is an ordinal type if its base type is an ordinal type.
 
 
 Modelling currencies
@@ -2140,7 +2262,7 @@ algorithm returns true:
     of array:
       result = b == openArray and typeEquals(a.baseType, b.baseType)
       if a.baseType == char and a.indexType.rangeA == 0:
-        result = b = cstring
+        result = b == cstring
     of cstring, ptr:
       result = b == pointer
     of string:
@@ -2978,6 +3100,21 @@ As seen in the above example, the case expression can also introduce side
 effects. When multiple statements are given for a branch, Nim will use
 the last expression as the result value.
 
+Block expression
+----------------
+
+A `block expression` is almost like a block statement, but it is an expression
+that uses last expression under the block as the value.
+It is similar to the statement list expression, but the statement list expression
+does not open new block scope.
+
+.. code-block:: nim
+  let a = block:
+    var fib = @[0, 1]
+    for i in 0..10:
+      fib.add fib[^1] + fib[^2]
+    fib
+
 Table constructor
 -----------------
 
@@ -3016,6 +3153,16 @@ results in an exception (if it cannot be determined statically).
 Ordinary procs are often preferred over type conversions in Nim: For instance,
 ``$`` is the ``toString`` operator by convention and ``toFloat`` and ``toInt``
 can be used to convert from floating point to integer or vice versa.
+
+A type conversion can also be used to disambiguate overloaded routines:
+
+.. code-block:: nim
+
+  proc p(x: int) = echo "int"
+  proc p(x: string) = echo "string"
+
+  let procVar = (proc(x: string))(p)
+  procVar("a")
 
 
 Type casts
@@ -3252,6 +3399,25 @@ different; for this a special setter syntax is needed:
   var s: Socket
   new s
   s.host = 34  # same as `host=`(s, 34)
+
+A proc defined as ``f=`` (with the trailing ``=``) is called
+a `setter`:idx:. A setter can be called explicitly via the common
+backticks notation:
+
+.. code-block:: nim
+
+  proc `f=`(x: MyObject; value: string) =
+    discard
+
+  `f=`(myObject, "value")
+
+
+``f=`` can be called implicitly in the pattern
+``x.f = value`` if and only if the type of ``x`` does not have a field
+named ``f`` or if ``f`` is not visible in the current module. These rules
+ensure that object fields and accessors can have the same name. Within the
+module ``x.f`` is then always interpreted as field access and outside the
+module it is interpreted as an accessor proc call.
 
 
 Command invocation syntax
@@ -3516,6 +3682,8 @@ the effects that a call to ``m`` might cause.
 
 
 **Note**: Compile-time execution is not (yet) supported for methods.
+
+**Note**: Starting from Nim 0.20, generic methods are deprecated.
 
 
 Inhibit dynamic method resolution via procCall
@@ -3861,9 +4029,18 @@ follows a ``(`` it has to be written as a one liner:
 Except clauses
 --------------
 
-Within an ``except`` clause, it is possible to use
-``getCurrentException`` to retrieve the exception that has been
-raised:
+Within an ``except`` clause it is possible to access the current exception
+using the following syntax:
+
+.. code-block:: nim
+  try:
+    # ...
+  except IOError as e:
+    # Now use "e"
+    echo "I/O error: " & e.msg
+
+Alternatively, it is possible to use ``getCurrentException`` to retrieve the
+exception that has been raised:
 
 .. code-block:: nim
   try:
@@ -3890,8 +4067,8 @@ error message from ``e``, and for such situations it is enough to use
 .. code-block:: nim
   try:
     # ...
-  except IOError:
-    echo "I/O error: " & getCurrentExceptionMsg()
+  except:
+    echo getCurrentExceptionMsg()
 
 
 Defer statement
@@ -4241,7 +4418,21 @@ Procedures utilizing type classes in such manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
 combination of param types used within the program.
 
-Nim also allows for type classes and regular types to be specified
+Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
+types in ML-like languages, it should be understood that type classes are static
+constraints to be enforced at type instantations. Type classes are not really
+types in themsleves, but are instead a system of providing generic "checks" that
+ultimately *resolve* to some singular type. Type classes do not allow for
+runtime type dynamism, unlike object variants or methods.
+
+As an example, the following would not compile:
+
+.. code-block:: nim
+  type TypeClass = int | string
+  var foo: TypeClass = 2 # foo's type is resolved to an int here
+  foo = "this will fail" # error here, because foo is an int
+
+Nim allows for type classes and regular types to be specified
 as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nim
@@ -4378,6 +4569,8 @@ A symbol can be forced to be open by a `mixin`:idx: declaration:
     new result
     init result
 
+``mixin`` statements only make sense in templates and generics.
+
 
 Bind statement
 --------------
@@ -4406,6 +4599,7 @@ definition):
 But a ``bind`` is rarely useful because symbol binding from the definition
 scope is the default.
 
+``bind`` statements only make sense in templates and generics.
 
 
 Templates
@@ -4769,16 +4963,8 @@ While macros enable advanced compile-time code transformations, they
 cannot change Nim's syntax. However, this is no real restriction because
 Nim's syntax is flexible enough anyway.
 
-To write macros, one needs to know how the Nim concrete syntax is converted
-to an AST.
-
-There are two ways to invoke a macro:
-(1) invoking a macro like a procedure call (`expression macros`)
-(2) invoking a macro with the special ``macrostmt`` syntax (`statement macros`)
-
-
-Expression Macros
------------------
+Debug Example
+-------------
 
 The following example implements a powerful ``debug`` command that accepts a
 variable number of arguments:
@@ -4884,22 +5070,23 @@ However, the symbols ``write``, ``writeLine`` and ``stdout`` are already bound
 and are not looked up again. As the example shows, ``bindSym`` does work with
 overloaded symbols implicitly.
 
+Case-Of Macro
+-------------
 
-Statement Macros
-----------------
-
-Statement macros are defined just as expression macros. However, they are
-invoked by an expression following a colon.
-
-The following example outlines a macro that generates a lexical analyzer from
-regular expressions:
+In Nim it is possible to have a macro with the syntax of a *case-of*
+expression just with the difference that all of branches are passed to
+and processed by the macro implementation. It is then up the macro
+implementation to transform the *of-branches* into a valid Nim
+statement. The following example should show how this feature could be
+used for a lexical analyzer.
 
 .. code-block:: nim
   import macros
 
-  macro case_token(n: untyped): untyped =
+  macro case_token(args: varargs[untyped]): untyped =
+    echo args.treeRepr
     # creates a lexical analyzer from regular expressions
-    # ... (implementation is an exercise for the reader :-)
+    # ... (implementation is an exercise for the reader ;-)
     discard
 
   case_token: # this colon tells the parser it is a macro statement
@@ -4942,8 +5129,8 @@ This is a simple syntactic transformation into:
     proc p() = discard
 
 
-For loop macros
----------------
+For Loop Macro
+--------------
 
 A macro that takes as its only input parameter an expression of the special
 type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
@@ -4986,57 +5173,6 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
 
 Currently for loop macros must be enabled explicitly
 via ``{.experimental: "forLoopMacros".}``.
-
-
-Case statement macros
----------------------
-
-A macro that needs to be called `match`:idx: can be used to rewrite
-``case`` statements in order to implement `pattern matching`:idx: for
-certain types. The following example implements a simplistic form of
-pattern matching for tuples, leveraging the existing equality operator
-for tuples (as provided in ``system.==``):
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  {.experimental: "caseStmtMacros".}
-
-  import macros
-
-  macro match(n: tuple): untyped =
-    result = newTree(nnkIfStmt)
-    let selector = n[0]
-    for i in 1 ..< n.len:
-      let it = n[i]
-      case it.kind
-      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
-        result.add it
-      of nnkOfBranch:
-        for j in 0..it.len-2:
-          let cond = newCall("==", selector, it[j])
-          result.add newTree(nnkElifBranch, cond, it[^1])
-      else:
-        error "'match' cannot handle this node", it
-    echo repr result
-
-  case ("foo", 78)
-  of ("foo", 78): echo "yes"
-  of ("bar", 88): echo "no"
-  else: discard
-
-
-Currently case statement macros must be enabled explicitly
-via ``{.experimental: "caseStmtMacros".}``.
-
-``match`` macros are subject to overload resolution. First the
-``case``'s selector expression is used to determine which ``match``
-macro to call. To this macro is then passed the complete ``case``
-statement body and the macro is evaluated.
-
-In other words, the macro needs to transform the full ``case`` statement
-but only the statement's selector expression is used to determine which
-macro to call.
 
 
 Special Types
@@ -5138,8 +5274,10 @@ Once bound, type params can appear in the rest of the proc signature:
   declareVariableWithType int, 42
 
 
-Overload resolution can be further influenced by constraining the set of
-types that will match the type param:
+Overload resolution can be further influenced by constraining the set
+of types that will match the type param. This works in practice to
+attaching attributes to types via templates. The constraint can be a
+concrete type or a type class.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -5152,14 +5290,34 @@ types that will match the type param:
   when false:
     var s = string.maxval # error, maxval is not implemented for string
 
-The constraint can be a concrete type or a type class.
+  template isNumber(t: typedesc[object]): string = "Don't think so."
+  template isNumber(t: typedesc[SomeInteger]): string = "Yes!"
+  template isNumber(t: typedesc[SomeFloat]): string = "Maybe, could be NaN."
 
+  echo "is int a number? ", isNumber(int)
+  echo "is float a number? ", isNumber(float)
+  echo "is RootObj a number? ", isNumber(RootObj)
+
+Passing ``typedesc`` almost identical, just with the differences that
+the macro is not instantiated generically. The type expression is
+simply passed as a ``NimNode`` to the macro, like everything else.
+
+.. code-block:: nim
+
+  import macros
+
+  macro forwardType(arg: typedesc): typedesc =
+    # ``arg`` is of type ``NimNode``
+    let tmp: NimNode = arg
+    result = tmp
+
+  var tmp: forwardType(int)
 
 typeof operator
 ---------------
 
-**Note**: ``typeof(x)`` can also be written as ``type(x)`` but ``type(x)``
-is discouraged.
+**Note**: ``typeof(x)`` can for historical reasons also be written as
+``type(x)`` but ``type(x)`` is discouraged.
 
 You can obtain the type of a given expression by constructing a ``typeof``
 value from it (in many other languages this is known as the `typeof`:idx:
@@ -5946,7 +6104,6 @@ In the example a new pragma named ``rtl`` is introduced that either imports
 a symbol from a dynamic library or exports the symbol for dynamic library
 generation.
 
-
 Disabling certain messages
 --------------------------
 Nim generates some warnings and hints ("line too long") that may annoy the
@@ -6217,7 +6374,7 @@ prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 ImportCpp pragma
 ----------------
 
-**Note**: `c2nim <https://nim-lang.org/docs/c2nim.html>`_ can parse a large subset of C++ and knows
+**Note**: `c2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_ can parse a large subset of C++ and knows
 about the ``importcpp`` pragma pattern language. It is not necessary
 to know all the details described here.
 
@@ -6930,5 +7087,3 @@ Threads and exceptions
 The interaction between threads and exceptions is simple: A *handled* exception
 in one thread cannot affect any other thread. However, an *unhandled* exception
 in one thread terminates the whole *process*!
-
-

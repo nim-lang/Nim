@@ -114,15 +114,19 @@ proc cmpic*(a, b: string): int =
   cmpIgnoreCase(a, b)
 
 proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
-  ## Retrieves the environment variable of name `key`.
+  ## Retrieves the environment variable of name ``key``.
   builtin
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
-  ## Checks for the existence of an environment variable named `key`.
+  ## Checks for the existence of an environment variable named ``key``.
   builtin
 
 proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
-  ## Sets the value of the environment variable named key to val.
+  ## Sets the value of the environment variable named ``key`` to ``val``.
+  builtin
+
+proc delEnv*(key: string) {.tags: [WriteIOEffect].} =
+  ## Deletes the environment variable named ``key``.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
@@ -235,8 +239,14 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
     copyDir `from`, to
     checkOsError()
 
-proc exec*(command: string) =
-  ## Executes an external process.
+proc exec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
+  ##
+  ## **Note:** If you need a version of ``exec`` that returns the exit code
+  ## and text output of the command, you can use `system.gorgeEx
+  ## <system.html#gorgeEx,string,string,string>`_.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
@@ -244,11 +254,16 @@ proc exec*(command: string) =
 
 proc exec*(command: string, input: string, cache = "") {.
   raises: [OSError], tags: [ExecIOEffect].} =
-  ## Executes an external process.
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
   log "exec: " & command:
-    echo staticExec(command, input, cache)
+    let (output, exitCode) = gorgeEx(command, input, cache)
+    if exitCode != 0:
+      raise newException(OSError, "FAILED: " & command)
+    echo output
 
-proc selfExec*(command: string) =
+proc selfExec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external command with the current nim/nimble executable.
   ## ``Command`` must not contain the "nim " part.
   let c = selfExe() & " " & command

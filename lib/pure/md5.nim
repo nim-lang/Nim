@@ -15,6 +15,9 @@
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values
 ##   for diverse Nim types
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
 type
   MD5State = array[0..3, uint32]
   MD5Block = array[0..15, uint32]
@@ -197,7 +200,7 @@ proc `$`*(d: MD5Digest): string =
     add(result, digits[d[i].int and 0xF])
 
 proc getMD5*(s: string): string =
-  ## Computes an MD5 value of `s` and returns its string representation. 
+  ## Computes an MD5 value of `s` and returns its string representation.
   ## .. note::
   ## available at compile time
   ##
@@ -232,7 +235,7 @@ proc md5Init*(c: var MD5Context) =
   c.state[3] = 0x10325476'u32
   c.count[0] = 0'u32
   c.count[1] = 0'u32
-  zeroMem(addr(c.buffer), sizeof(MD5buffer))
+  zeroMem(addr(c.buffer), sizeof(MD5Buffer))
 
 proc md5Update*(c: var MD5Context, input: cstring, len: int) =
   ## Updates the `MD5Context` with the `input` data of length `len`.
@@ -280,3 +283,6 @@ when isMainModule:
   assert(getMD5("Frank jagt im komplett verwahrlosten Taxi quer durch Bayern") ==
     "7e716d0e702df0505fc72e2b89467910")
   assert($toMD5("") == "d41d8cd98f00b204e9800998ecf8427e")
+
+when defined(nimHasStyleChecks):
+  {.pop.} #{.push styleChecks: off.}

@@ -292,52 +292,37 @@ proc raiseParseErr*(p: SexpParser, msg: string) {.noinline, noreturn.} =
 
 proc newSString*(s: string): SexpNode {.procvar.}=
   ## Creates a new `SString SexpNode`.
-  new(result)
-  result.kind = SString
-  result.str = s
+  result = SexpNode(kind: SString, str: s)
 
 proc newSStringMove(s: string): SexpNode =
-  new(result)
-  result.kind = SString
+  result = SexpNode(kind: SString)
   shallowCopy(result.str, s)
 
 proc newSInt*(n: BiggestInt): SexpNode {.procvar.} =
   ## Creates a new `SInt SexpNode`.
-  new(result)
-  result.kind = SInt
-  result.num  = n
+  result = SexpNode(kind: SInt, num: n)
 
 proc newSFloat*(n: float): SexpNode {.procvar.} =
   ## Creates a new `SFloat SexpNode`.
-  new(result)
-  result.kind = SFloat
-  result.fnum  = n
+  result = SexpNode(kind: SFloat, fnum: n)
 
 proc newSNil*(): SexpNode {.procvar.} =
   ## Creates a new `SNil SexpNode`.
-  new(result)
+  result = SexpNode(kind: SNil)
 
 proc newSCons*(car, cdr: SexpNode): SexpNode {.procvar.} =
   ## Creates a new `SCons SexpNode`
-  new(result)
-  result.kind = SCons
-  result.car = car
-  result.cdr = cdr
+  result = SexpNode(kind: SCons, car: car, cdr: cdr)
 
 proc newSList*(): SexpNode {.procvar.} =
   ## Creates a new `SList SexpNode`
-  new(result)
-  result.kind = SList
-  result.elems = @[]
+  result = SexpNode(kind: SList, elems: @[])
 
 proc newSSymbol*(s: string): SexpNode {.procvar.} =
-  new(result)
-  result.kind = SSymbol
-  result.symbol = s
+  result = SexpNode(kind: SSymbol, symbol: s)
 
 proc newSSymbolMove(s: string): SexpNode =
-  new(result)
-  result.kind = SSymbol
+  result = SexpNode(kind: SSymbol)
   shallowCopy(result.symbol, s)
 
 proc getStr*(n: SexpNode, default: string = ""): string =
@@ -386,43 +371,34 @@ proc getCons*(n: SexpNode, defaults: Cons = (newSNil(), newSNil())): Cons =
 
 proc sexp*(s: string): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SString SexpNode`.
-  new(result)
-  result.kind = SString
-  result.str = s
+  result = SexpNode(kind: SString, str: s)
 
 proc sexp*(n: BiggestInt): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SInt SexpNode`.
-  new(result)
-  result.kind = SInt
-  result.num  = n
+  result = SexpNode(kind: SInt, num: n)
 
 proc sexp*(n: float): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SFloat SexpNode`.
-  new(result)
-  result.kind = SFloat
-  result.fnum  = n
+  result = SexpNode(kind: SFloat, fnum: n)
 
 proc sexp*(b: bool): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SSymbol
   ## SexpNode` with value t or `SNil SexpNode`.
-  new(result)
   if b:
-    result.kind = SSymbol
-    result.symbol = "t"
+    result = SexpNode(kind: SSymbol, symbol: "t")
   else:
-    result.kind = SNil
+    result = SexpNode(kind: SNil)
 
 proc sexp*(elements: openArray[SexpNode]): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SList SexpNode`
-  new(result)
-  result.kind = SList
+  result = SexpNode(kind: SList)
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
 proc sexp*(s: SexpNode): SexpNode =
   result = s
 
-proc toSexp(x: NimNode): NimNode {.compiletime.} =
+proc toSexp(x: NimNode): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket:
     result = newNimNode(nnkBracket)

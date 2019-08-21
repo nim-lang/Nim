@@ -7,12 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-import parseutils, strutils, os, osproc, streams, parsecfg
+import sequtils, parseutils, strutils, os, streams, parsecfg
 
 var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
+
+var skips*: seq[string]
 
 type
   TTestAction* = enum
@@ -76,7 +78,7 @@ proc getCmd*(s: TSpec): string =
     result = s.cmd
 
 const
-  targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
+  targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
 
 when not declared(parseCfgBool):
@@ -119,6 +121,9 @@ proc addLine*(self: var string; a,b: string) =
   self.add a
   self.add b
   self.add "\n"
+
+proc initSpec*(filename: string): TSpec =
+  result.file = filename
 
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
@@ -245,3 +250,6 @@ proc parseSpec*(filename: string): TSpec =
     of cfgEof:
       break
   close(p)
+
+  if skips.anyIt(it in result.file):
+    result.err = reDisabled

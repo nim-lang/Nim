@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, lowerings, sigmatch, tables
+  modulegraphs
 
 when not defined(leanCompiler):
   import writetracking
@@ -18,7 +18,7 @@ when not defined(leanCompiler):
 when defined(useDfa):
   import dfa
 
-include liftdestructors
+import liftdestructors
 
 #[ Second semantic checking pass over the AST. Necessary because the old
    way had some inherent problems. Performs:
@@ -34,7 +34,7 @@ In the construct let/var x = expr() x's type is marked.
 
 In x = y the type of x is marked.
 
-For every sink parameter of type T T is marked. TODO!
+For every sink parameter of type T T is marked.
 
 For every call f() the return type of f() is marked.
 
@@ -74,7 +74,7 @@ type
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
-    gcUnsafe, isRecursive, isToplevel, hasSideEffect, inEnforcedGcSafe: bool
+    gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     config: ConfigRef
@@ -263,7 +263,7 @@ proc useVar(a: PEffects, n: PNode) =
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
-      s.magic != mNimVm:
+      s.magic != mNimvm:
     if s.guard != nil: guardGlobal(a, n, s.guard)
     if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
         (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
@@ -386,7 +386,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
       if blen == 1:
         catchesAll(tracked)
       else:
-        for j in countup(0, blen - 2):
+        for j in 0 .. blen - 2:
           if b.sons[j].isInfixAs():
             assert(b.sons[j][1].kind == nkType)
             catches(tracked, b.sons[j][1].typ)
@@ -430,7 +430,7 @@ proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
 proc trackPragmaStmt(tracked: PEffects, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in 0 ..< sonsLen(n):
     var it = n.sons[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:
@@ -476,7 +476,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
     markSideEffect(tracked, s)
   mergeLockLevels(tracked, n, s.getLockLevel)
 
-proc procVarcheck(n: PNode; conf: ConfigRef) =
+proc procVarCheck(n: PNode; conf: ConfigRef) =
   if n.kind in nkSymChoices:
     for x in n: procVarCheck(x, conf)
   elif n.kind == nkSym and n.sym.magic != mNone and n.sym.kind in routineKinds:
@@ -485,7 +485,7 @@ proc procVarcheck(n: PNode; conf: ConfigRef) =
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
   if paramType.isNil or paramType.kind != tyTypeDesc:
-    procVarcheck skipConvAndClosure(n), tracked.config
+    procVarCheck skipConvAndClosure(n), tracked.config
   #elif n.kind in nkSymChoices:
   #  echo "came here"
   let paramType = paramType.skipTypesOrNil(abstractInst)
@@ -527,7 +527,7 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
 
 proc isTrival(caller: PNode): bool {.inline.} =
-  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil}
+  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved}
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
   let a = skipConvAndClosure(n)
@@ -696,6 +696,7 @@ proc track(tracked: PEffects, n: PNode) =
       addEffect(tracked, n.sons[0], useLineInfo=false)
       for i in 0 ..< safeLen(n):
         track(tracked, n.sons[i])
+      createTypeBoundOps(tracked.graph, tracked.c, n[0].typ, n.info)
     else:
       # A `raise` with no arguments means we're going to re-raise the exception
       # being handled or, if outside of an `except` block, a `ReraiseError`.
@@ -709,7 +710,7 @@ proc track(tracked: PEffects, n: PNode) =
       return
     if n.typ != nil:
       if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        createTypeBoundOps(tracked.c, n.typ, n.info)
+        createTypeBoundOps(tracked.graph, tracked.c, n.typ, n.info)
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
@@ -770,18 +771,18 @@ proc track(tracked: PEffects, n: PNode) =
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
-      createTypeBoundOps(tracked.c, n[0].typ, n.info)
+      createTypeBoundOps(tracked.graph, tracked.c, n[0].typ, n.info)
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
       if last.kind != nkEmpty: track(tracked, last)
       if tracked.owner.kind != skMacro:
         if child.kind == nkVarTuple:
-          createTypeBoundOps(tracked.c, child[^1].typ, child.info)
+          createTypeBoundOps(tracked.graph, tracked.c, child[^1].typ, child.info)
           for i in 0..child.len-3:
-            createTypeBoundOps(tracked.c, child[i].typ, child.info)
+            createTypeBoundOps(tracked.graph, tracked.c, child[i].typ, child.info)
         else:
-          createTypeBoundOps(tracked.c, child[0].typ, child.info)
+          createTypeBoundOps(tracked.graph, tracked.c, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)
@@ -827,15 +828,15 @@ proc track(tracked: PEffects, n: PNode) =
       if tracked.owner.kind != skMacro:
         if it.kind == nkVarTuple:
           for x in it:
-            createTypeBoundOps(tracked.c, x.typ, x.info)
+            createTypeBoundOps(tracked.graph, tracked.c, x.typ, x.info)
         else:
-          createTypeBoundOps(tracked.c, it.typ, it.info)
+          createTypeBoundOps(tracked.graph, tracked.c, it.typ, it.info)
     let iterCall = n[n.len-2]
     let loopBody = n[n.len-1]
-    if tracked.owner.kind != skMacro and iterCall.len > 1:
+    if tracked.owner.kind != skMacro and iterCall.safeLen > 1:
       # XXX this is a bit hacky:
       if iterCall[1].typ != nil and iterCall[1].typ.skipTypes(abstractVar).kind notin {tyVarargs, tyOpenArray}:
-        createTypeBoundOps(tracked.c, iterCall[1].typ, iterCall[1].info)
+        createTypeBoundOps(tracked.graph, tracked.c, iterCall[1].typ, iterCall[1].info)
     track(tracked, iterCall)
     track(tracked, loopBody)
     setLen(tracked.init, oldState)
@@ -860,7 +861,7 @@ proc track(tracked: PEffects, n: PNode) =
         lockLocations(tracked, pragmaList.sons[i])
       elif pragma == wGcSafe:
         enforcedGcSafety = true
-      elif pragma == wNosideeffect:
+      elif pragma == wNoSideEffect:
         enforceNoSideEffects = true
     if enforcedGcSafety: tracked.inEnforcedGcSafe = true
     if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
@@ -976,8 +977,17 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   var t: TEffects
   initEffects(g, effects, s, t, c)
   track(t, body)
+
+  if s.kind != skMacro:
+    let params = s.typ.n
+    for i in 1 ..< params.len:
+      let param = params[i].sym
+      if isSinkTypeForParam(param.typ):
+        createTypeBoundOps(t.graph, t.c, param.typ, param.info)
+
   if not isEmptyType(s.typ.sons[0]) and
-      {tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} and
+      ({tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} or
+      s.typ.sons[0].skipTypes(abstractInst).kind == tyVar) and
       s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:
@@ -1033,5 +1043,5 @@ proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
   var effects = newNode(nkEffectList, n.info)
   var t: TEffects
   initEffects(g, effects, module, t, c)
-  t.isToplevel = true
+  t.isTopLevel = true
   track(t, n)

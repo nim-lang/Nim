@@ -52,6 +52,9 @@ xcuserdata/
 /compiler/nim.dot
 /reject.json
 /run.json
+/tools/dochack/dochack.js
+*.json
+/pkgstemp/**/*
 # for `nim doc foo.nim`
 /*.html
 lib/**/*.html
@@ -59,6 +62,8 @@ lib/**/*.html
 
 /testresults.json
 testament.db
+/tests/**/*.json
+/tests/**/*.js
 /csources
 dist/
 
@@ -78,3 +83,4 @@ megatest.nim
 /outputExpected.txt
 /outputGotten.txt
 
+/lib/pure/*.js

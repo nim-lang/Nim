@@ -6,6 +6,8 @@ runnableExamples:
   import subdir / subdir_b / utils
   doAssert bar(3, 4) == 7
   foo(enumValueA, enumValueB)
+  # bug #11078
+  for x in "xx": discard
 
 
 template foo*(a, b: SomeType) =
@@ -14,6 +16,14 @@ template foo*(a, b: SomeType) =
   discard
 
 proc bar*[T](a, b: T): T =
+  result = a + b
+
+proc baz*[T](a, b: T): T {.deprecated.} =
+  ## This is deprecated without message.
+  result = a + b
+
+proc buzz*[T](a, b: T): T {.deprecated: "since v0.20".} =
+  ## This is deprecated with a message.
   result = a + b
 
 import std/macros

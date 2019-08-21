@@ -16,63 +16,63 @@
 ## * Navigation through the FTP server's directories.
 ##
 ## Connecting to an FTP server
-## ------------------------
+## ===========================
 ##
 ## In order to begin any sort of transfer of files you must first
 ## connect to an FTP server. You can do so with the ``connect`` procedure.
 ##
-##   .. code-block::nim
-##      import asyncdispatch, asyncftpclient
-##      proc main() {.async.} =
-##        var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##        await ftp.connect()
-##        echo("Connected")
-##      waitFor(main())
+## .. code-block::nim
+##    import asyncdispatch, asyncftpclient
+##    proc main() {.async.} =
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      await ftp.connect()
+##      echo("Connected")
+##    waitFor(main())
 ##
 ## A new ``main`` async procedure must be declared to allow the use of the
 ## ``await`` keyword. The connection will complete asynchronously and the
 ## client will be connected after the ``await ftp.connect()`` call.
 ##
 ## Uploading a new file
-## --------------------
+## ====================
 ##
 ## After a connection is made you can use the ``store`` procedure to upload
 ## a new file to the FTP server. Make sure to check you are in the correct
 ## working directory before you do so with the ``pwd`` procedure, you can also
 ## instead specify an absolute path.
 ##
-##   .. code-block::nim
-##      import asyncdispatch, asyncftpclient
-##      proc main() {.async.} =
-##        var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##        await ftp.connect()
-##        let currentDir = await ftp.pwd()
-##        assert currentDir == "/home/user/"
-##        await ftp.store("file.txt", "file.txt")
-##        echo("File finished uploading")
-##      waitFor(main())
+## .. code-block::nim
+##    import asyncdispatch, asyncftpclient
+##    proc main() {.async.} =
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      await ftp.connect()
+##      let currentDir = await ftp.pwd()
+##      assert currentDir == "/home/user/"
+##      await ftp.store("file.txt", "file.txt")
+##      echo("File finished uploading")
+##    waitFor(main())
 ##
 ## Checking the progress of a file transfer
-## ----------------------------------------
+## ========================================
 ##
 ## The progress of either a file upload or a file download can be checked
 ## by specifying a ``onProgressChanged`` procedure to the ``store`` or
 ## ``retrFile`` procedures.
 ##
-##   .. code-block::nim
-##      import asyncdispatch, asyncftpclient
+## .. code-block::nim
+##    import asyncdispatch, asyncftpclient
 ##
-##      proc onProgressChanged(total, progress: BiggestInt,
-##                              speed: float): Future[void] =
-##        echo("Uploaded ", progress, " of ", total, " bytes")
-##        echo("Current speed: ", speed, " kb/s")
+##    proc onProgressChanged(total, progress: BiggestInt,
+##                            speed: float): Future[void] =
+##      echo("Uploaded ", progress, " of ", total, " bytes")
+##      echo("Current speed: ", speed, " kb/s")
 ##
-##      proc main() {.async.} =
-##        var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##        await ftp.connect()
-##        await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
-##        echo("File finished uploading")
-##      waitFor(main())
+##    proc main() {.async.} =
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      await ftp.connect()
+##      await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
+##      echo("File finished uploading")
+##    waitFor(main())
 
 
 import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
@@ -86,15 +86,15 @@ type
     address*: string
     port*: Port
     jobInProgress*: bool
-    job*: FTPJob
+    job*: FtpJob
     dsockConnected*: bool
 
-  FTPJobType* = enum
+  FtpJobType* = enum
     JRetrText, JRetr, JStore
 
   FtpJob = ref object
     prc: proc (ftp: AsyncFtpClient, async: bool): bool {.nimcall, gcsafe.}
-    case typ*: FTPJobType
+    case typ*: FtpJobType
     of JRetrText:
       lines: string
     of JRetr, JStore:
@@ -106,12 +106,12 @@ type
       lastProgressReport: float # Time
       toStore: string # Data left to upload (Only used with async)
 
-  FTPEventType* = enum
+  FtpEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore
 
-  FTPEvent* = object ## Event
+  FtpEvent* = object ## Event
     filename*: string
-    case typ*: FTPEventType
+    case typ*: FtpEventType
     of EvLines:
       lines*: string ## Lines that have been transferred.
     of EvRetr, EvStore: ## Retr/Store operation finished.
@@ -120,7 +120,7 @@ type
       bytesTotal*: BiggestInt     ## Bytes total.
       bytesFinished*: BiggestInt  ## Bytes transferred.
       speed*: BiggestInt          ## Speed in bytes/s
-      currentJob*: FTPJobType     ## The current job being performed.
+      currentJob*: FtpJobType     ## The current job being performed.
 
   ReplyError* = object of IOError
 
@@ -398,8 +398,8 @@ proc store*(ftp: AsyncFtpClient, file, dest: string,
 proc rename*(ftp: AsyncFtpClient, nameFrom: string, nameTo: string) {.async.} =
   ## Rename a file or directory on the remote FTP Server from current name
   ## ``name_from`` to new name ``name_to``
-  assertReply(await ftp.send("RNFR " & name_from), "350")
-  assertReply(await ftp.send("RNTO " & name_to), "250")
+  assertReply(await ftp.send("RNFR " & nameFrom), "350")
+  assertReply(await ftp.send("RNTO " & nameTo), "250")
 
 proc removeFile*(ftp: AsyncFtpClient, filename: string) {.async.} =
   ## Delete a file ``filename`` on the remote FTP server

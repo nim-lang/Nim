@@ -11,8 +11,8 @@
 ## is needed for incremental compilation.
 
 import
-  ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
-  intsets, platform, llstream, tables, sighashes, modulegraphs, pathutils
+  ast, ropes, options, strutils, nimlexbase, cgendata, rodutils,
+  intsets, llstream, tables, modulegraphs, pathutils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
