@@ -426,25 +426,25 @@ proc newMultipartData*: MultipartData =
   MultipartData(content: @[])
 
 proc parseMultipartDataString(item: string): string =
-  var itemPart: seq[string] = item.
-    split("Content-Disposition: form-data; name=\"", 1)[1].split("\"", 1)
+  var itemPart: seq[string] = item.split(
+      "Content-Disposition: form-data; name=\"", 1)[1].split("\"", 1)
   let name = itemPart[0]
   let filenameAvailable = itemPart[1].contains("; filename=\"")
   let filename = if filenameAvailable:
-                    itemPart = itemPart[1].
-                      split("; filename=\"", 1)[1].split("\"", 1)
-                    itemPart[0]
+                  itemPart = itemPart[1].split(
+                    "; filename=\"", 1)[1].split("\"", 1)
+                  itemPart[0]
                  else: ""
   itemPart = itemPart[1].split("\c\L", 1)
   let contentTypeAvailable = itemPart[1].contains("Content-Type: ")
   let contentType = if contentTypeAvailable:
-                    itemPart = itemPart[1].
-                      split("Content-Type: ", 1)[1].split("\c\L", 1)
-                    itemPart[0]
-                 else: ""
+                      itemPart = itemPart[1].split(
+                        "Content-Type: ", 1)[1].split("\c\L", 1)
+                      itemPart[0]
+                    else: ""
   itemPart = itemPart[1].split("\c\n", 1)[1].rsplit("\c\L", 1)
   let content = itemPart[0]
-  
+
   result &= "name: " & "\"" & name & "\", "
   if filenameAvailable:
     result &= "filename: " & "\"" & filename & "\", "
