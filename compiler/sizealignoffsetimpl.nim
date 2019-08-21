@@ -409,10 +409,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = typ.lastSon.align
       typ.paddingAtEnd = typ.lastSon.paddingAtEnd
     else:
-      # XXX should be szUnknownsize
-      typ.size = szUncomputedSize
-      typ.align = szUncomputedSize
-      typ.paddingAtEnd = szUncomputedSize
+      typ.size = szUnknownSize
+      typ.align = szUnknownSize
+      typ.paddingAtEnd = szUnknownSize
 
   of tyTypeDesc:
     computeSizeAlign(conf, typ.base)
@@ -433,15 +432,13 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.align = typ.lastSon.align
       typ.paddingAtEnd = typ.lastSon.paddingAtEnd
     else:
-      # XXX should be szUnknownsize
-      typ.size = szUncomputedSize
-      typ.align = szUncomputedSize
-      typ.paddingAtEnd = szUncomputedSize
+      typ.size = szUnknownSize
+      typ.align = szUnknownSize
+      typ.paddingAtEnd = szUnknownSize
   else:
-    # XXX should be szUnknownsizea
-    typ.size = szUncomputedSize
-    typ.align = szUncomputedSize
-    typ.paddingAtEnd = szUncomputedSize
+    typ.size = szUnknownSize
+    typ.align = szUnknownSize
+    typ.paddingAtEnd = szUnknownSize
 
 template foldSizeOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
   let config = conf
