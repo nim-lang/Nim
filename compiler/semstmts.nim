@@ -2156,16 +2156,6 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
-    if n.sons[i].kind in LastBlockStmts or
-        n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and
-        sfNoReturn in n.sons[i][0].sym.flags:
-      for j in i + 1 ..< length:
-        case n.sons[j].kind
-        of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
-            nkBlockStmt, nkState: discard
-        else: localError(c.config, n.sons[j].info,
-          "unreachable statement after 'return' statement or '{.noReturn.}' proc")
-    else: discard
 
   if result.len == 1 and
      # concept bodies should be preserved as a stmt list:
