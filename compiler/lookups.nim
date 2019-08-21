@@ -80,16 +80,28 @@ iterator walkScopes*(scope: PScope): PScope =
     yield current
     current = current.parent
 
-proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
-  if s == nil or s.kind != skAlias:
-    result = s
-  else:
-    result = s.owner
-    if conf.cmd == cmdPretty:
-      prettybase.replaceDeprecated(conf, n.info, s, result)
+proc skipAlias*(s: PSym; info: TLineInfo; conf: ConfigRef): PSym =
+  result = s
+  while true:
+    if result == nil: return result
+    if result.kind in {skParam, skConst} and result.typ != nil and result.typ.kind == tyAliasSym and result.typ.n != nil:
+      # `result.typ.n` can be nil for a proc declaration param
+      result = result.typ.n.sym
+      if result.nodeAliasGroup.kind == nkSym:
+        result = result.nodeAliasGroup.sym
+    elif result.kind == skAlias:
+      let old = result
+      result=result.owner
+      if conf.cmd == cmdPretty:
+        prettybase.replaceDeprecated(conf, info, old, result)
+      else:
+        message(conf, info, warnDeprecated, "use " & result.name.s & " instead; " &
+                old.name.s & " is deprecated")
     else:
-      message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-              s.name.s & " is deprecated")
+      return result
+
+proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
+  skipAlias(s, n.info, conf)
 
 proc isShadowScope*(s: PScope): bool {.inline.} = s.parent != nil and s.parent.depthLevel == s.depthLevel
 
@@ -153,6 +165,7 @@ type
     symChoiceIndex*: int
     scope*: PScope
     inSymChoice: IntSet
+    n2*: PNode
 
 proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
   case s.kind
@@ -379,6 +392,13 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  defer:
+    if result != nil and result.kind == skAliasGroup:
+      result = initOverloadIter(o, c, result.nodeAliasGroup)
+  o.n2 = n
+  if n.typ != nil and n.typ.kind == tyAliasSym:
+    return initOverloadIter(o, c, n.typ.n.sym.nodeAliasGroup)
+
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
@@ -436,6 +456,7 @@ proc lastOverloadScope*(o: TOverloadIter): int =
   else: result = -1
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  let n = o.n2 # consider removing `n` from params
   case o.mode
   of oimDone:
     result = nil

@@ -200,7 +200,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty,
      tyUntyped, tyTyped, tyTypeDesc, tyBuiltInTypeClass, tyCompositeTypeClass,
-     tyAnd, tyOr, tyNot, tyAnything, tyVoid:
+     tyAnd, tyOr, tyNot, tyAnything, tyVoid, tyAliasSym:
     result = etyNone
   of tyGenericInst, tyInferred, tyAlias, tyUserTypeClass, tyUserTypeClassInst,
      tySink, tyOwned:

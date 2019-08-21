@@ -542,7 +542,10 @@ proc semResolvedCall(c: PContext, x: TCandidate,
         of skType:
           x.call.add newSymNode(s, n.info)
         else:
-          internalAssert c.config, false
+          if s.kind == skParam and s.typ != nil and s.typ.kind == tyAliasSym: # IMPROVE ; TODO: only for `aliassym`, not `typed` ?
+            x.call.add s.ast
+          else:
+            internalAssert c.config, false, $s.kind
 
   result = x.call
   instGenericConvertersSons(c, result, x)

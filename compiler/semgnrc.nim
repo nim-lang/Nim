@@ -36,7 +36,8 @@ type
     withinBind,
     withinTypeDesc,
     withinMixin,
-    withinConcept
+    withinConcept,
+    withinAliasSym,
 
   TSemGenericFlags = set[TSemGenericFlag]
 
@@ -55,7 +56,7 @@ template macroToExpand(s): untyped =
 
 template macroToExpandSym(s): untyped =
   sfCustomPragma notin s.flags and s.kind in {skMacro, skTemplate} and
-    (s.typ.len == 1) and not fromDotExpr
+    (s.typ.len == 1) and not fromDotExpr and withinAliasSym notin flags
 
 template isMixedIn(sym): bool =
   let s = sym
@@ -286,7 +287,8 @@ proc semGenericStmt(c: PContext, n: PNode,
     # Consider 'when declared(globalsSlot): ThreadVarSetValue(globalsSlot, ...)'
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which
     # is not exported and yet the generic 'threadProcWrapper' works correctly.
-    let flags = if mixinContext: flags+{withinMixin} else: flags
+    var flags = if mixinContext: flags+{withinMixin} else: flags
+    if s != nil and s.magic == mAlias2: flags.incl withinAliasSym
     for i in first..<result.safeLen:
       result[i] = semGenericStmt(c, result[i], flags, ctx)
   of nkCurlyExpr:

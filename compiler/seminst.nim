@@ -62,9 +62,12 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
   for i, a in n.pairs:
     internalAssert c.config, a.kind == nkSym
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
+    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic, tyAliasSym}+tyTypeClasses:
       continue
-    let symKind = if q.typ.kind == tyStatic: skConst else: skType
+    let symKind = case q.typ.kind
+    of tyStatic: skConst
+    of tyAliasSym: skParam
+    else: skType
     var s = newSym(symKind, q.name, nextId c.idgen, getCurrOwner(c), q.info)
     s.flags.incl {sfUsed, sfFromGeneric}
     var t = PType(idTableGet(pt, q.typ))
@@ -85,6 +88,8 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
       #t = ReplaceTypeVarsT(cl, t)
     s.typ = t
     if t.kind == tyStatic: s.ast = t.n
+    if t.kind == tyAliasSym:
+      s.ast = t.n
     yield s
 
 proc sameInstantiation(a, b: TInstantiation): bool =

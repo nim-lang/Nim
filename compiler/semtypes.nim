@@ -967,6 +967,8 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
       addDecl(c, a)
       #elif param.typ != nil and param.typ.kind == tyTypeDesc:
       #  addDecl(c, param)
+    elif param.typ != nil and param.typ.kind == tyAliasSym:
+      addDecl(c, param) # TODO: skip skParam?
     else:
       # within a macro, every param has the type NimNode!
       let nn = getSysSym(c.graph, param.info, "NimNode")
@@ -1050,6 +1052,14 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       let t = c.newTypeWithSons(tyTypeDesc, @[paramType.base])
       incl t.flags, tfCheckedForDestructor
       result = addImplicitGeneric(c, t, paramTypId, info, genericParams, paramName)
+
+  of tyAliasSym:
+    if tfUnresolved notin paramType.flags:
+      # aliasSym are not bindOnce
+      paramTypId = nil
+      let t = newTypeS(tyAliasSym, c)
+      result = addImplicitGeneric(t)
+      if result != nil: result.flags.incl({tfUnresolved})
 
   of tyDistinct:
     if paramType.len == 1:
@@ -2011,6 +2021,9 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyTyped, 0)
   of mTypeDesc, mType:
     setMagicIntegral(c.config, m, tyTypeDesc, 0)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
+  of mAliasSym:
+    setMagicIntegral(c.config, m, tyAliasSym, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mStatic:
     setMagicType(c.config, m, tyStatic, 0)

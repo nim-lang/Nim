@@ -29,6 +29,9 @@ when not defined(leanCompiler):
 
 # implementation
 
+proc isMacroRealGeneric*(s: PSym): bool {.importc.}
+proc semAlias2(c: PContext, n: PNode): PNode {.exportc.}
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
@@ -468,7 +471,47 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
-  result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
+  template evalMacroCallAux: untyped =
+    result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
+
+  proc evalAux(): PNode = # MOVE
+    # c.p.wasForwarded = proto != nil
+    # TODO: cleanup afterwards the changes to avoid affecting original macro
+    var oldPrc = sym
+    pushProcCon(c, oldPrc)
+    pushOwner(c, oldPrc)
+    pushInfoContext(c.config, oldPrc.info)
+    openScope(c)
+    #[
+    var n = oldPrc.ast
+    n.sons[bodyPos] = copyTree(s.getBody)
+    instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
+    ]#
+    let procParams = sym.typ.n
+    for i in 1 ..< procParams.len:
+      let pi = procParams[i]
+      # SEE: instantiateBody
+      if pi.kind == nkSym and pi.sym.typ != nil and pi.sym.typ.kind == tyAliasSym:
+        pi.sym.typ = n.sons[i].typ # TODO: undo that after; or operate on different copy
+      doAssert sym.kind == skMacro
+      addParamOrResult(c, pi.sym, sym.kind)
+    # paramsTypeCheck(c, s.typ) # TODO?
+    maybeAddResult(c, sym, n) # CHECKME: n or sym.ast?
+    sym.ast[bodyPos] = hloBody(c, semProcBody(c, sym.ast[bodyPos]))
+
+    result = evalMacroCallAux()
+    # skipping trackProc
+
+    closeScope(c)
+    popInfoContext(c.config)
+    popOwner(c)
+    popProcCon(c)
+
+  if isMacroRealGeneric(sym):
+    result = evalAux()
+  else:
+    result = evalMacroCallAux()
+
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
   if c.config.macrosToExpand.hasKey(sym.name.s):

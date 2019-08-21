@@ -2181,6 +2181,57 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   n.typ = getSysType(c.graph, n.info, tyInt)
   result = foldSizeOf(c.config, n, n)
 
+proc semAlias2(c: PContext, n: PNode): PNode =
+  var nodeOrigin = n[1]
+  if nodeOrigin.kind == nkOpenSymChoice:
+    # might originate from `semGenericStmtSymbol` which generates symChoice
+    # this can with default params pointing to an overload, eg:
+    #   proc fun(a: aliassym, b: aliassym = alias2(fun1))
+    nodeOrigin = n[0]
+
+  if nodeOrigin.kind in {nkSym} and nodeOrigin.sym.kind == skUnknown:
+    doAssert false
+
+  if nodeOrigin.kind notin {nkIdent, nkAccQuoted, nkSym}:
+    nodeOrigin = semExprWithType(c, nodeOrigin)
+
+  if nodeOrigin.kind == nkBracketExpr:
+    # see BUG D20190812T234102
+    nodeOrigin = nodeOrigin.sons[0].sons[nodeOrigin.sons[1].intVal]
+    doAssert nodeOrigin.kind != nkBracketExpr
+
+  if nodeOrigin.typ != nil and nodeOrigin.typ.kind == tyAliasSym:
+    doAssert nodeOrigin.typ.n != nil
+    let sym2 = nodeOrigin.typ.n.sym
+    doAssert sym2.kind == skAliasGroup
+    return nodeOrigin.typ.n
+
+  if nodeOrigin.kind notin {nkIdent, nkAccQuoted, nkSym}:
+    doAssert false, $nodeOrigin.kind
+    return nil
+
+  let sym = qualifiedLookUp(c, nodeOrigin, {checkUndeclared, checkModule})
+  if sym == nil:
+    globalError(c.config, n.info, errUser, "undeclared symbol: " & renderTree(nodeOrigin))
+    return nil
+
+  let sc = symChoice(c, nodeOrigin, sym, scClosed)
+  let sym2 = newSym(skAliasGroup, sym.name, owner = c.getCurrOwner, info = n.info)
+  sym2.nodeAliasGroup = sc
+
+  result = newSymNode(sym2)
+  result.info = n.info
+  result.typ = newTypeS(tyAliasSym, c)
+  result.typ.n = result # TODO: maybe `result.typ.n = sc` directly, and get rid of `skAliasGroup`? EDIT: not sure it's feasible
+  #[
+  TODO:
+  should we pass nodeAliasGroup in the type or in the value?
+  matters, eg:
+  proc fun(a: sym) =
+    static: echo "some instantiation"
+    a()
+  ]#
+
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
   result = n
@@ -2294,6 +2345,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
+  of mAlias2: result = semAlias2(c, n)
   else:
     result = semDirectOp(c, n, flags)
 
@@ -2627,6 +2679,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStackraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
   result = n
+  defer:
+    result = resolveAliasSym(result)
+
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
@@ -2654,7 +2709,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkSym:
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
-    result = semSym(c, n, n.sym, flags)
+    if n.sym.kind != skAliasGroup: # fold inside semSym?
+      result = semSym(c, n, n.sym, flags)
+    else: discard
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
