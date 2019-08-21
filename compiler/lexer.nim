@@ -834,13 +834,15 @@ proc getString(L: var Lexer, tok: var Token, mode: StringMode) =
           inc(emptyLines)
           pos = handleCRLF(L, pos)
           needIndent = indent
+        elif c == ')':
+          add(tok.literal, '\n'.repeat(emptyLines))
+          break
         else:
           break
         continue
       # string block content
-      while emptyLines > 0:
-        add(tok.literal, "\n")
-        dec(emptyLines)
+      add(tok.literal, '\n'.repeat(emptyLines))
+      emptyLines = 0
       if c in {CR, LF, nimlexbase.EndOfFile}:
         add(tok.literal, "\n")
         pos = handleCRLF(L, pos)
