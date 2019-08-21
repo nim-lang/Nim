@@ -425,7 +425,7 @@ proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
 
-proc parseMultipartDataString(item: string): string =
+func parseMultipartDataString(item: string): string =
   ## Helper for ``proc `$`*(data: MultipartData): string``.
   ## Parses string from MultipartData to human-readable string.
   var itemPart: seq[string] = item.split(
