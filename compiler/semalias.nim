@@ -1,10 +1,4 @@
-#[
-MOVE here:
-  proc evalAux(): PNode =
-]#
-
-import compiler/ast
-import compiler/options
+import "."/[ast,options]
 
 proc isMacroRealGeneric*(s: PSym): bool {.exportc.} =
   if s.kind != skMacro: return false
@@ -23,24 +17,18 @@ proc resolveAliasSym*(n: PNode): PNode =
   if result!=nil and result.typ != nil and result.typ.kind == tyAliasSym:
     case result.kind
     of {nkStmtListExpr,nkBlockExpr}:
-      # simplify node
-      # CHECKME
+      # allows defining things like lambdaIter, lambdaIt, a~>a*2 sugar
       let typ = result.typ
-      # result = newSymNode(sym2)
       result = newSymNode(typ.n.sym)
-      # CHECKME
-      # result.info = n.info
       result.info = typ.n.info
       result.typ = typ
     of nkSym:
-      # `nkStmtListExpr` reserved to declare lambda helper syntaxes
-      if result.sym.kind == skAliasGroup: # TODO: instead assert result.sym.kind == skAliasGroup
+      if result.sym.kind == skAliasGroup:
         discard
       elif result.sym.kind == skResult:
-        # D20190816T205304
         discard
     else: # the alias is resolved
-      # TODO: fold in qualifiedLookUp?
       doAssert result.typ.n != nil
-      # nil would mean a aliasSem param was not instantiated; for macros, this requires macro instantiation
+      # nil would mean a aliasSem param was not instantiated; for macros, this
+      # requires macro instantiation
       result = result.typ.n.sym.nodeAliasGroup
