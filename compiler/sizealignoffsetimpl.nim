@@ -15,7 +15,6 @@ proc align(address, alignment: BiggestInt): BiggestInt =
 proc align(address, alignment: int): int =
   result = (address + (alignment - 1)) and not (alignment - 1)
 
-
 const
   ## a size is concidered "unknown" when it is an imported type from C
   ## or C++.
@@ -182,7 +181,6 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var
       computeSizeAlign(conf, n.sym.typ)
       size = n.sym.typ.size.int
       align = n.sym.typ.align.int
-
     accum.align(align)
     n.sym.offset = accum.offset
     accum.inc(size)
@@ -284,7 +282,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.align = 4
       else:
         typ.size = 8
-        typ.align = 8 # XXX incorrect, could be 4
+        typ.align = int16(conf.floatInt64Align)
   of tySet:
     if typ.sons[0].kind == tyGenericParam:
       typ.size = szUncomputedSize
@@ -293,17 +291,22 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       let length = toInt64(lengthOrd(conf, typ.sons[0]))
       if length <= 8:
         typ.size = 1
+        typ.align = 1
       elif length <= 16:
         typ.size = 2
+        typ.align = 2
       elif length <= 32:
         typ.size = 4
+        typ.align = 4
       elif length <= 64:
         typ.size = 8
+        typ.align = int16(conf.floatInt64Align)
       elif align(length, 8) mod 8 == 0:
         typ.size = align(length, 8) div 8
+        typ.align = int16(conf.floatInt64Align)
       else:
         typ.size = align(length, 8) div 8 + 1
-      typ.align = int16(typ.size) # XXX incorrect, could be 4 when size is 8
+        typ.align = int16(conf.floatInt64Align)
   of tyRange:
     computeSizeAlign(conf, typ.sons[0])
     typ.size = typ.sons[0].size

@@ -147,6 +147,14 @@ type
     ValueA
     ValueB
 
+  # Must have more than 32 elements so that set[MyEnum33] will become compile to an int64.
+  MyEnum33 {.pure.} = enum
+    Value1, Value2, Value3, Value4, Value5, Value6,
+    Value7, Value8, Value9, Value10, Value11, Value12,
+    Value13, Value14, Value15, Value16, Value17, Value18,
+    Value19, Value20, Value21, Value22, Value23, Value24,
+    Value25, Value26, Value27, Value28, Value29, Value30,
+    Value31, Value32, Value33
 
 proc transformObjectconfigPacked(arg: NimNode): NimNode =
   let debug = arg.kind == nnkPragmaExpr
@@ -300,6 +308,10 @@ testinstance:
         b: int8
       c: int8
 
+    PaddingOfSetEnum33 = object
+      cause: int8
+      theSet: set[MyEnum33]
+
     Bazing {.objectconfig.} = object of RootObj
       a: int64
       # TODO test on 32 bit system
@@ -332,6 +344,7 @@ testinstance:
     var g : RecursiveStuff
     var ro : RootObj
     var go : GenericObject[int64]
+    var po : PaddingOfSetEnum33
 
     var
       e1: Enum1
@@ -350,7 +363,8 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go, e1, e2, e4, e8, eoa, eob)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob)
+
 
     type
       WithBitsize {.objectconfig.} = object
@@ -385,6 +399,9 @@ testinstance:
     testOffsetOf(PaddingAfterBranch, cause)
 
     testOffsetOf(Foobar, c)
+
+    testOffsetOf(PaddingOfSetEnum33, cause)
+    testOffsetOf(PaddingOfSetEnum33, theSet)
 
     testOffsetOf(Bazing, a)
     testOffsetOf(InheritanceA, a)
