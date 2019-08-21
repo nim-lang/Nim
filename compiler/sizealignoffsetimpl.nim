@@ -110,7 +110,7 @@ proc setOffsetsToUnknown(n: PNode) =
     for i in 0 ..< safeLen(n):
       setOffsetsToUnknown(n[i])
 
-proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var OffsetAccum): void =
+proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, accum: var OffsetAccum): void =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
   assert n != nil
@@ -119,17 +119,18 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    computeObjectOffsetsFoldFunction(conf, n.sons[0], accum)
-    var maxChildAlign: int = if accum.offset == szUnknownSize: szUnknownSize else: 0
-    for i in 1 ..< sonsLen(n):
-      let child = n.sons[i]
-      case child.kind
-      of nkOfBranch, nkElse:
-        # offset parameter cannot be known yet, it needs to know the alignment first
-        let align = int(computeSubObjectAlign(conf, n.sons[i].lastSon))
-        maxChildAlign = alignmentMax(maxChildAlign, align)
-      else:
-        internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
+    computeObjectOffsetsFoldFunction(conf, n.sons[0], packed, accum)
+    var maxChildAlign: int = if accum.offset == szUnknownSize: szUnknownSize else: 1
+    if not packed:
+      for i in 1 ..< sonsLen(n):
+        let child = n.sons[i]
+        case child.kind
+        of nkOfBranch, nkElse:
+          # offset parameter cannot be known yet, it needs to know the alignment first
+          let align = int(computeSubObjectAlign(conf, n.sons[i].lastSon))
+          maxChildAlign = alignmentMax(maxChildAlign, align)
+        else:
+          internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
     if maxChildAlign == szUnknownSize:
       setOffsetsToUnknown(n)
       accum.offset  = szUnknownSize
@@ -140,48 +141,18 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, accum: var Offs
       let accumRoot = accum # copy, because each branch should start af the same offset
       for i in 1 ..< sonsLen(n):
         var branchAccum = accumRoot
-        computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, branchAccum)
+        computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, packed, branchAccum)
         accum.mergeBranch(branchAccum)
   of nkRecList:
     for i, child in n.sons:
-      computeObjectOffsetsFoldFunction(conf, child, accum)
+      computeObjectOffsetsFoldFunction(conf, child, packed, accum)
   of nkSym:
     var size = szUnknownSize
     var align = szUnknownSize
     if n.sym.bitsize == 0: # 0 represents bitsize not set
       computeSizeAlign(conf, n.sym.typ)
-      align = n.sym.typ.align.int
       size = n.sym.typ.size.int
-    accum.align(align)
-    n.sym.offset = accum.offset
-    accum.inc(size)
-  else:
-    accum.maxAlign = szUnknownSize
-    accum.offset = szUnknownSize
-
-proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var OffsetAccum) =
-  ## ``accum.offset`` will be the offset within the object, after the node has been written, no padding bytes added
-  case n.kind
-  of nkRecCase:
-    assert(n.sons[0].kind == nkSym)
-    computePackedObjectOffsetsFoldFunction(conf, n.sons[0], accum)
-    # the union neds to be aligned first, before the offsets can be assigned
-    let accumRoot = accum # copy, because each branch should start af the same offset
-    for i in 1 ..< sonsLen(n):
-      var branchAccum = accumRoot
-      computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, branchAccum)
-      accum.mergeBranch(branchAccum)
-  of nkRecList:
-    for i, child in n.sons:
-      computePackedObjectOffsetsFoldFunction(conf, child, accum)
-  of nkSym:
-    var size = szUnknownSize
-    var align = szUnknownSize
-    if n.sym.bitsize == 0:
-      computeSizeAlign(conf, n.sym.typ)
-      size = n.sym.typ.size.int
-      align = 1
-
+      align = if packed: 1 else: n.sym.typ.align.int
     accum.align(align)
     n.sym.offset = accum.offset
     accum.inc(size)
@@ -397,9 +368,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           computeUnionObjectOffsetsFoldFunction(conf, typ.n, accum)
       elif tfPacked in typ.flags:
         accum.maxAlign = 1
-        computePackedObjectOffsetsFoldFunction(conf, typ.n, accum)
+        computeObjectOffsetsFoldFunction(conf, typ.n, true, accum)
       else:
-        computeObjectOffsetsFoldFunction(conf, typ.n, accum)
+        computeObjectOffsetsFoldFunction(conf, typ.n, false, accum)
       accum.finish
       if typ.sym != nil and
          typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}:
