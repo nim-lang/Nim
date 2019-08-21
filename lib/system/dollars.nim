@@ -149,7 +149,7 @@ when not defined(nimNoArrayToString):
     ## Generic ``$`` operator for arrays that is lifted from the components.
     collectionToString(x, "[", ", ", "]")
 
-proc `$`*[T](x: openarray[T]): string =
+proc `$`*[T](x: openArray[T]): string =
   ## Generic ``$`` operator for openarrays that is lifted from the components
   ## of `x`. Example:
   ##

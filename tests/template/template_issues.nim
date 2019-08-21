@@ -5,6 +5,7 @@ output: '''
 0
 a
 hi
+Hello, World!
 '''
 """
 
@@ -207,3 +208,15 @@ block t4097:
 
   doAssert idFor(int8) == 2
   doAssert idFor(int16) == 3
+
+
+
+block t5235:
+  template outer(body: untyped) =
+    template test(val: string) =
+      const SomeConst: string = val
+      echo SomeConst
+    body
+
+  outer:
+    test("Hello, World!")

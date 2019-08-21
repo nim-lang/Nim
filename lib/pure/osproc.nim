@@ -501,7 +501,7 @@ when defined(Windows) and not defined(useNimRtl):
   #var
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
-  proc myDup(h: Handle; inherit: WinBool=1): Handle =
+  proc myDup(h: Handle; inherit: WINBOOL=1): Handle =
     let thisProc = getCurrentProcess()
     if duplicateHandle(thisProc, h,
                        thisProc, addr result,0,inherit,
@@ -594,11 +594,11 @@ when defined(Windows) and not defined(useNimRtl):
         else:
           createPipeHandles(he, si.hStdError)
           if setHandleInformation(he, DWORD(1), DWORD(0)) == 0'i32:
-            raiseOsError(osLastError())
+            raiseOSError(osLastError())
         if setHandleInformation(hi, DWORD(1), DWORD(0)) == 0'i32:
-          raiseOsError(osLastError())
+          raiseOSError(osLastError())
         if setHandleInformation(ho, DWORD(1), DWORD(0)) == 0'i32:
-          raiseOsError(osLastError())
+          raiseOSError(osLastError())
       else:
         createAllPipeHandles(si, hi, ho, he, cast[int](result))
       result.inHandle = FileHandle(hi)
@@ -1086,10 +1086,10 @@ elif not defined(useNimRtl):
         discard close(p.errHandle)
 
   proc suspend(p: Process) =
-    if kill(p.id, SIGSTOP) != 0'i32: raiseOsError(osLastError())
+    if kill(p.id, SIGSTOP) != 0'i32: raiseOSError(osLastError())
 
   proc resume(p: Process) =
-    if kill(p.id, SIGCONT) != 0'i32: raiseOsError(osLastError())
+    if kill(p.id, SIGCONT) != 0'i32: raiseOSError(osLastError())
 
   proc running(p: Process): bool =
     if p.exitFlag:
@@ -1111,11 +1111,11 @@ elif not defined(useNimRtl):
 
   proc terminate(p: Process) =
     if kill(p.id, SIGTERM) != 0'i32:
-      raiseOsError(osLastError())
+      raiseOSError(osLastError())
 
   proc kill(p: Process) =
     if kill(p.id, SIGKILL) != 0'i32:
-      raiseOsError(osLastError())
+      raiseOSError(osLastError())
 
   when defined(macosx) or defined(freebsd) or defined(netbsd) or
        defined(openbsd) or defined(dragonfly):
@@ -1304,7 +1304,7 @@ elif not defined(useNimRtl):
         p.exitStatus = status
         result = exitStatusLikeShell(status)
 
-  proc createStream(stream: var Stream, handle: var FileHandle,
+  proc createStream(stream: var owned(Stream), handle: var FileHandle,
                     fileMode: FileMode) =
     var f: File
     if not open(f, handle, fileMode): raiseOSError(osLastError())
@@ -1358,7 +1358,7 @@ elif not defined(useNimRtl):
   proc select(readfds: var seq[Process], timeout = 500): int =
     var tv: Timeval
     tv.tv_sec = posix.Time(0)
-    tv.tv_usec = timeout * 1000
+    tv.tv_usec = Suseconds(timeout * 1000)
 
     var rd: TFdSet
     var m = 0

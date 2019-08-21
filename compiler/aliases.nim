@@ -10,7 +10,7 @@
 ## Simple alias analysis for the HLO and the code generators.
 
 import
-  ast, astalgo, types, trees, intsets, msgs
+  ast, astalgo, types, trees, intsets
 
 type
   TAnalysisResult* = enum
@@ -186,7 +186,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         if res != arNo:
           result = res
           if res == arYes: break
-    of nkCall:
+    of nkCallKinds:
       result = arNo
       for i in 1 ..< b.len:
         let res = isPartOf(a, b[i])

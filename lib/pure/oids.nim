@@ -15,7 +15,7 @@
 ## This implementation calls ``math.randomize()`` for the first call of
 ## ``genOid``.
 
-import times, endians
+import hashes, times, endians
 
 type
   Oid* = object ## an OID
@@ -26,6 +26,14 @@ type
 proc `==`*(oid1: Oid, oid2: Oid): bool =
   ## Compare two Mongo Object IDs for equality
   return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and (oid1.count == oid2.count)
+
+proc hash*(oid: Oid): Hash =
+  ## Generate hash of Oid for use in hashtables
+  var h: Hash = 0
+  h = h !& hash(oid.time)
+  h = h !& hash(oid.fuzz)
+  h = h !& hash(oid.count)
+  result = !$h
 
 proc hexbyte*(hex: char): int =
   case hex

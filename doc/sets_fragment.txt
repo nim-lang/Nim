@@ -40,7 +40,7 @@ operation             meaning
 ``A - B``             difference of two sets (A without B's elements)
 ``A == B``            set equality
 ``A <= B``            subset relation (A is subset of B or equal to B)
-``A < B``             strong subset relation (A is a real subset of B)
+``A < B``             strict subset relation (A is a proper subset of B)
 ``e in A``            set membership (A contains element e)
 ``e notin A``         A does not contain element e
 ``contains(A, e)``    A contains element e

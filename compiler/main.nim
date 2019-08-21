@@ -13,21 +13,16 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
-  os, condsyms, times,
-  wordrecg, sem, semdata, idents, passes, extccomp,
+  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  condsyms, times,
+  sem, idents, passes, extccomp,
   cgen, json, nversion,
-  platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  parser, modules, ccgutils, sigmatch, ropes,
+  platform, nimconf, passaux, depends, vm, idgen,
+  parser, modules,
   modulegraphs, tables, rod, lineinfos, pathutils
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
-
-from magicsys import resetSysTypes
-
-proc codegenPass(g: ModuleGraph) =
-  registerPass g, cgenPass
 
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
@@ -86,6 +81,13 @@ proc commandCompileToC(graph: ModuleGraph) =
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
+
+  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+    let proj = changeFileExt(conf.projectFull, "")
+    if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      # nothing changed
+      graph.config.notes = graph.config.mainPackageNotes
+      return
 
   compileProject(graph)
   if graph.config.errorCounter > 0:
@@ -147,14 +149,6 @@ const evalPasses = [verbosePass, semPass, evalPass]
 
 proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym) =
   carryPasses(graph, nodes, module, evalPasses)
-
-proc commandEval(graph: ModuleGraph; exp: string) =
-  if graph.systemModule == nil:
-    interactivePasses(graph)
-    compileSystemModule(graph)
-  let echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
-  evalNim(graph, echoExp.parseString(graph.cache, graph.config),
-    makeStdinModule(graph))
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -343,8 +337,11 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of "e":
-    incl conf.globalOptions, optWasNimscript
-    commandEval(graph, mainCommandArg(conf))
+    if not fileExists(conf.projectFull):
+      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
+    elif not conf.projectFull.string.endsWith(".nims"):
+      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
+    # main NimScript logic handled in cmdlinehelper.nim.
   of "nop", "help":
     # prevent the "success" message:
     conf.cmd = cmdDump
@@ -363,7 +360,8 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
                formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
                usedMem,
-               if isDefined(conf, "release"): "Release Build"
+               if isDefined(conf, "danger"): "Dangerous Release Build"
+               elif isDefined(conf, "release"): "Release Build"
                else: "Debug Build"])
 
   when PrintRopeCacheStats:

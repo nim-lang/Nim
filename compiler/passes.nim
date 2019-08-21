@@ -11,9 +11,9 @@
 ## `TPass` interface.
 
 import
-  strutils, options, ast, astalgo, llstream, msgs, platform, os,
-  condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, idgen, modulegraphs, reorder, rod,
+  options, ast, llstream, msgs,
+  idents,
+  syntaxes, idgen, modulegraphs, reorder, rod,
   lineinfos, pathutils
 
 type
@@ -90,14 +90,13 @@ proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray)
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
   if fullPath.isEmpty:
-    result = InvalidFileIDX
+    result = InvalidFileIdx
   else:
     result = fileInfoIdx(conf, fullPath)
 
 proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       a: var TPassContextArray; m: PSym) =
   # XXX fixme this should actually be relative to the config file!
-  let gCmdLineInfo = newLineInfo(FileIndex(0), 1, 1)
   let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
@@ -113,6 +112,19 @@ const
     nkMacroDef, nkConverterDef, nkIteratorDef, nkFuncDef, nkPragma,
     nkExportStmt, nkExportExceptStmt, nkFromStmt, nkImportStmt, nkImportExceptStmt}
 
+proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
+  if sfMainModule in module.flags:
+    graph.config.mainPackageId = module.owner.id
+  # don't be verbose unless the module belongs to the main package:
+  if module.owner.id == graph.config.mainPackageId:
+    graph.config.notes = graph.config.mainPackageNotes
+  else:
+    if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
+    graph.config.notes = graph.config.foreignPackageNotes
+
+proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
+  result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
+
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
@@ -120,6 +132,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
+  prepareConfigNotes(graph, module)
   if module.id < 0:
     # new module caching mechanism:
     for i in 0 ..< graph.passes.len:

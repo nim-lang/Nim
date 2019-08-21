@@ -99,6 +99,8 @@ when defined(boehmgc):
     ## Return the total number of bytes allocated in this process.
     ## Never decreases.
 
+  proc boehmRegisterFinalizer(obj, ff, cd, off, ocd: pointer) {.importc: "GC_register_finalizer", boehmGC.}
+
   proc allocAtomic(size: int): pointer =
     result = boehmAllocAtomic(size)
     zeroMem(result, size)
@@ -155,9 +157,14 @@ when defined(boehmgc):
     when hasThreadSupport:
       boehmGC_allow_register_threads()
 
+  proc boehmgc_finalizer(obj: pointer, typedFinalizer: (proc(x: pointer) {.cdecl.})) =
+    typedFinalizer(obj)
+
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     if ntfNoRefs in typ.flags: result = allocAtomic(size)
     else: result = alloc(size)
+    if typ.finalizer != nil:
+      boehmRegisterFinalizer(result, boehmgc_finalizer, typ.finalizer, nil, nil)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
@@ -228,6 +235,8 @@ elif defined(gogc):
   proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
   proc writebarrierptr(dest: PPointer, src: pointer) {.importc: "writebarrierptr", codegenDecl:"$1 $2$3 __asm__ (\"main.Atomic_store_pointer\");\n$1 $2$3", dynlib: goLib.}
 
+  proc `$`*(x: uint64): string {.noSideEffect, raises: [].}
+
   proc GC_getStatistics(): string =
     var mstats = goMemStats()
     result = "[GC] total allocated memory: " & $(mstats.total_alloc) & "\n" &
@@ -261,7 +270,7 @@ elif defined(gogc):
     result = goMalloc(size.uint)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    raise newException(Exception, "not implemented")
+    doAssert false, "not implemented"
 
   proc dealloc(p: pointer) =
     discard

@@ -9,6 +9,28 @@
 
 ## This module implements an algorithm to compute the
 ## `diff`:idx: between two sequences of lines.
+##
+## A basic example of ``diffInt`` on 2 arrays of integers:
+##
+## .. code::nim
+##
+##   import experimental/diff
+##   echo diffInt([0, 1, 2, 3, 4, 5, 6, 7, 8], [-1, 1, 2, 3, 4, 5, 666, 7, 42])
+##
+## Another short example of ``diffText`` to diff strings:
+##
+## .. code::nim
+##
+##   import experimental/diff
+##   # 2 samples of text for testing (from "The Call of Cthulhu" by Lovecraft)
+##   let txt0 = """I have looked upon all the universe has to hold of horror,
+##   even skies of spring and flowers of summer must ever be poison to me."""
+##   let txt1 = """I have looked upon all your code has to hold of bugs,
+##   even skies of spring and flowers of summer must ever be poison to me."""
+##
+##   echo diffText(txt0, txt1)
+##
+## - To learn more see `Diff on Wikipedia. <http://wikipedia.org/wiki/Diff>`_
 
 # code owner: Arne Döring
 #
@@ -257,7 +279,7 @@ proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   ##
   ## ``arrayB`` B-version of the numbers (usualy the new one)
   ##
-  ## Returns a array of Items that describe the differences.
+  ## Returns a sequence of Items that describe the differences.
 
   # The A-Version of the data (original data) to be compared.
   var dataA = newDiffData(@arrayA, arrayA.len)

@@ -78,7 +78,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  PByteArray = ptr array[0xffff, int8]
+  PByteArray = ptr array[0xffff, byte]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
@@ -104,7 +104,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   else:
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
-      if (ze(a[i div 8]) and (1 shl (i mod 8))) != 0:
+      if (uint(a[i shr 3]) and (1'u shl (i and 7))) != 0:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)
@@ -230,7 +230,8 @@ when not defined(useNimRtl):
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)
-      add result, "ref " & reprPointer(p)
+      add result, if typ.kind == tyPtr: "ptr " else: "ref "
+      add result, reprPointer(p)
       if cell notin cl.marked:
         # only the address is shown:
         incl(cl.marked, cell)
@@ -298,18 +299,19 @@ when not defined(useNimRtl):
       add result, "(invalid data!)"
     inc(cl.recdepth)
 
-proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
-                   compilerRtl.} =
-  var
-    cl: ReprClosure
-  initReprClosure(cl)
-  result = "["
-  var bs = elemtyp.size
-  for i in 0..length - 1:
-    if i > 0: add result, ", "
-    reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
-  add result, "]"
-  deinitReprClosure(cl)
+when not defined(useNimRtl):
+  proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
+                     compilerRtl.} =
+    var
+      cl: ReprClosure
+    initReprClosure(cl)
+    result = "["
+    var bs = elemtyp.size
+    for i in 0..length - 1:
+      if i > 0: add result, ", "
+      reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
+    add result, "]"
+    deinitReprClosure(cl)
 
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string =

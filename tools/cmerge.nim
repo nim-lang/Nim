@@ -26,9 +26,9 @@ proc process(dir, infile: string, outfile: File,
 proc main(dir, outfile: string) =
   var o: File
   if open(o, outfile, fmWrite):
-    var processed = initSet[string]()
+    var processed = initHashSet[string]()
     processed.incl(outfile)
-    for infile in walkfiles(dir / "*.c"):
+    for infile in walkFiles(dir / "*.c"):
       discard process(dir, extractFilename(infile), o, processed)
     close(o)
   else:

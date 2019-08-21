@@ -49,3 +49,15 @@ myEnums = enumerators2()
 echo myEnums
 myEnums = enumerators3()
 echo myEnums
+
+#10751
+
+type Tuple = tuple
+  a: string
+  b: int
+
+macro foo(t: static Tuple): untyped =
+  doAssert t.a == "foo"
+  doAssert t.b == 12345
+
+foo((a: "foo", b: 12345))

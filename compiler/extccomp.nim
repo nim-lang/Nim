@@ -138,12 +138,12 @@ compiler vcc:
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c $options $include /Fo$objfile $file",
+    compileTmpl: "/c$vccplatform$options $include /Fo$objfile $file",
     buildGui: " /link /SUBSYSTEM:WINDOWS ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$options $builddll /Fe$exefile $objfiles $buildgui",
+    linkTmpl: "$options $builddll$vccplatform /Fe$exefile $objfiles $buildgui",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
@@ -375,6 +375,10 @@ proc nameToCC*(name: string): TSystemCC =
       return i
   result = ccNone
 
+proc listCCnames(): seq[string] =
+  for i in succ(ccNone) .. high(TSystemCC):
+    result.add CC[i].name
+
 proc isVSCompatible*(conf: ConfigRef): bool =
   return conf.cCompiler == ccVcc or
           conf.cCompiler == ccClangCl or
@@ -408,10 +412,11 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
 proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.cCompiler = nameToCC(ccname)
   if conf.cCompiler == ccNone:
-    localError(conf, info, "unknown C compiler: '$1'" % ccname)
+    let ccList = listCCnames().join(", ")
+    localError(conf, info, "unknown C compiler: '$1'. Available options are: $2" % [ccname, ccList])
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
-  conf.ccompilerpath = getConfigVar(conf, conf.cCompiler, ".path")
+  conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
   for i in low(CC) .. high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
@@ -438,10 +443,10 @@ proc initVars*(conf: ConfigRef) =
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
-  if len(conf.ccompilerpath) == 0:
-    conf.ccompilerpath = getConfigVar(conf, conf.cCompiler, ".path")
+  if len(conf.cCompilerPath) == 0:
+    conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
 
-proc completeCFilePath*(conf: ConfigRef; cfile: AbsoluteFile,
+proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
                         createSubDir: bool = true): AbsoluteFile =
   result = completeGeneratedFilePath(conf, cfile, createSubDir)
 
@@ -528,6 +533,19 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
 proc getCompileOptions(conf: ConfigRef): string =
   result = cFileSpecificOptions(conf, "__dummy__")
 
+proc vccplatform(conf: ConfigRef): string =
+  # VCC specific but preferable over the config hacks people
+  # had to do before, see #11306
+  case conf.target.targetCPU
+  of cpuI386:
+    result = " --platform:x86"
+  of cpuArm:
+    result = " --platform:arm"
+  of cpuAmd64:
+    result = " --platform:amd64"
+  else:
+    result = ""
+
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
   for linkedLib in items(conf.cLinkedLibs):
@@ -573,7 +591,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
-    compilePattern = joinPath(conf.ccompilerpath, exe)
+    compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
     includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
@@ -588,7 +606,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
       if not cfile.flags.contains(CfileFlag.External) or noAbsolutePaths(conf):
         toObjFile(conf, cf).string
       else:
-        completeCFilePath(conf, toObjFile(conf, cf)).string
+        completeCfilePath(conf, toObjFile(conf, cf)).string
     elif noAbsolutePaths(conf):
       extractFilename(cfile.obj.string)
     else:
@@ -611,7 +629,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
     "file", cfsh, "objfile", objfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
-    "lib", quoteShell(conf.libpath)])
+    "lib", quoteShell(conf.libpath),
+    "vccplatform", vccplatform(conf)])
 
 proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
   result = secureHash(
@@ -647,11 +666,11 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
   var c = Cfile(nimname: splitFile(filename).name, cname: filename,
-    obj: toObjFile(conf, completeCFilePath(conf, filename, false)),
+    obj: toObjFile(conf, completeCfilePath(conf, filename, false)),
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
-proc compileCFiles(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var TStringSeq,
+proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
   var currIdx = 0
   for it in list:
@@ -685,7 +704,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
-    else: result = joinPath(conf.cCompilerpath, linkerExe)
+    else: result = joinPath(conf.cCompilerPath, linkerExe)
     let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
                      CC[conf.cCompiler].buildGui
                    else:
@@ -716,7 +735,8 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),
-        "lib", quoteShell(conf.libpath)])
+        "lib", quoteShell(conf.libpath),
+        "vccplatform", vccplatform(conf)])
     # On windows the debug information for binaries is emitted in a separate .pdb
     # file and the binaries (.dll and .exe) contain a full path to that .pdb file.
     # This is a problem for hot code reloading because even when we copy the .dll
@@ -755,11 +775,13 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
       let t = now()
       let pdb = output.string & "." & format(t, "MMMM-yyyy-HH-mm-") & $t.nanosecond & ".pdb"
       result.add " /link /PDB:" & pdb
+  if optCDebug in conf.globalOptions and conf.cCompiler == ccVcc:
+    result.add " /Zi /FS /Od"
 
 template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
   getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
 
-template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped): typed =
+template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped) =
   try:
     body
   except OSError:
@@ -834,7 +856,7 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   finally:
     removeFile(linkerArgs)
 
-proc getObjFilePath(conf: ConfigRef, f: CFile): string =
+proc getObjFilePath(conf: ConfigRef, f: Cfile): string =
   if noAbsolutePaths(conf): f.obj.extractFilename
   else: f.obj.string
 
@@ -925,7 +947,9 @@ proc callCCompiler*(conf: ConfigRef) =
     generateScript(conf, script)
 
 #from json import escapeJson
-import json
+import json, std / sha1
+
+template hashNimExe(): string = $secureHashFile(os.getAppFilename())
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: untyped) = f.write x
@@ -938,17 +962,17 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       f.write escapeJson(x)
 
   proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
-    var pastStart = false
+    var i = 0
     for it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(conf, it)
-      if pastStart: lit "],\L"
+      if i > 0: lit ",\L"
       lit "["
       str it.cname.string
       lit ", "
       str compileCmd
-      pastStart = true
-    lit "]\L"
+      lit "]"
+      inc i
 
   proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
                  llist: seq[string]) =
@@ -972,6 +996,19 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       pastStart = true
     lit "\L"
 
+  proc nimfiles(conf: ConfigRef; f: File) =
+    var i = 0
+    for it in conf.m.fileInfos:
+      if isAbsolute(it.fullPath.string):
+        if i > 0: lit "],\L"
+        lit "["
+        str it.fullPath.string
+        lit ", "
+        str $secureHashFile(it.fullPath.string)
+        inc i
+    lit "]\L"
+
+
   var buf = newStringOfCap(50)
 
   let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
@@ -987,8 +1024,47 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(conf, conf.absOutFile, objfiles)
+
+    if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
+      lit ",\L\"cmdline\": "
+      str conf.commandLine
+      lit ",\L\"nimfiles\":[\L"
+      nimfiles(conf, f)
+      lit "],\L\"nimexe\": \L"
+      str hashNimExe()
+      lit "\L"
+
     lit "\L}\L"
     close(f)
+
+proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
+  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+  if not fileExists(jsonFile): return true
+  if not fileExists(conf.absOutFile): return true
+  result = false
+  try:
+    let data = json.parseFile(jsonFile.string)
+    if not data.hasKey("nimfiles") or not data.hasKey("cmdline"):
+      return true
+    let oldCmdLine = data["cmdline"].getStr
+    if conf.commandLine != oldCmdLine:
+      return true
+    if hashNimExe() != data["nimexe"].getStr:
+      return true
+    let nimfilesPairs = data["nimfiles"]
+    doAssert nimfilesPairs.kind == JArray
+    for p in nimfilesPairs:
+      doAssert p.kind == JArray
+      # >= 2 for forwards compatibility with potential later .json files:
+      doAssert p.len >= 2
+      let nimFilename = p[0].getStr
+      let oldHashValue = p[1].getStr
+      let newHashValue = $secureHashFile(nimFilename)
+      if oldHashValue != newHashValue:
+        return true
+  except IOError, OSError, ValueError:
+    echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
+    result = true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")
@@ -1019,7 +1095,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
       echo getCurrentException().getStackTrace()
     quit "error evaluating JSON file: " & jsonFile.string
 
-proc genMappingFiles(conf: ConfigRef; list: CFileList): Rope =
+proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:
     addf(result, "--file:r\"$1\"$N", [rope(it.cname.string)])
 

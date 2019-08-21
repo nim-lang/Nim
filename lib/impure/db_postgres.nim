@@ -381,6 +381,10 @@ proc `[]`*(row: InstantRow; col: int): string {.inline.} =
   ## returns text for given column of the row
   $pqgetvalue(row.res, int32(row.line), int32(col))
 
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  pqgetvalue(row.res, int32(row.line), int32(index))
+
 proc len*(row: InstantRow): int {.inline.} =
   ## returns number of columns in the row
   int(pqNfields(row.res))
@@ -392,7 +396,8 @@ proc getRow*(db: DbConn, query: SqlQuery,
   var res = setupQuery(db, query, args)
   var L = pqnfields(res)
   result = newRow(L)
-  setRow(res, result, 0, L)
+  if pqntuples(res) > 0:
+    setRow(res, result, 0, L)
   pqclear(res)
 
 proc getRow*(db: DbConn, stmtName: SqlPrepared,
@@ -400,7 +405,8 @@ proc getRow*(db: DbConn, stmtName: SqlPrepared,
   var res = setupQuery(db, stmtName, args)
   var L = pqNfields(res)
   result = newRow(L)
-  setRow(res, result, 0, L)
+  if pqntuples(res) > 0:
+    setRow(res, result, 0, L)
   pqClear(res)
 
 proc getAllRows*(db: DbConn, query: SqlQuery,

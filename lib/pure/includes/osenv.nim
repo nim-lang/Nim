@@ -9,6 +9,8 @@ proc c_getenv(env: cstring): cstring {.
   importc: "getenv", header: "<stdlib.h>".}
 proc c_putenv(env: cstring): cint {.
   importc: "putenv", header: "<stdlib.h>".}
+proc c_unsetenv(env: cstring): cint {.
+  importc: "unsetenv", header: "<stdlib.h>".}
 
 # Environment handling cannot be put into RTL, because the ``envPairs``
 # iterator depends on ``environment``.
@@ -16,6 +18,11 @@ proc c_putenv(env: cstring): cint {.
 var
   envComputed {.threadvar.}: bool
   environment {.threadvar.}: seq[string]
+
+when defined(nimV2):
+  proc unpairedEnvAllocs*(): int =
+    result = environment.len
+    if result > 0: inc result
 
 when defined(windows) and not defined(nimscript):
   # because we support Windows GUI applications, things get really
@@ -109,6 +116,7 @@ proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].}
   ## See also:
   ## * `existsEnv proc <#existsEnv,string>`_
   ## * `putEnv proc <#putEnv,string,string>`_
+  ## * `delEnv proc <#delEnv,string>`_
   ## * `envPairs iterator <#envPairs.i>`_
   runnableExamples:
     assert getEnv("unknownEnv") == ""
@@ -132,6 +140,7 @@ proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
   ## See also:
   ## * `getEnv proc <#getEnv,string,string>`_
   ## * `putEnv proc <#putEnv,string,string>`_
+  ## * `delEnv proc <#delEnv,string>`_
   ## * `envPairs iterator <#envPairs.i>`_
   runnableExamples:
     assert not existsEnv("unknownEnv")
@@ -149,6 +158,7 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   ## See also:
   ## * `getEnv proc <#getEnv,string,string>`_
   ## * `existsEnv proc <#existsEnv,string>`_
+  ## * `delEnv proc <#delEnv,string>`_
   ## * `envPairs iterator <#envPairs.i>`_
 
   # Note: by storing the string in the environment sequence,
@@ -175,6 +185,31 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
       if c_putenv(environment[indx]) != 0'i32:
         raiseOSError(osLastError())
 
+proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
+  ## Deletes the `environment variable`:idx: named `key`.
+  ## If an error occurs, `OSError` is raised.
+  ##
+  ## See also:ven
+  ## * `getEnv proc <#getEnv,string,string>`_
+  ## * `existsEnv proc <#existsEnv,string>`_
+  ## * `putEnv proc <#putEnv,string,string>`_
+  ## * `envPairs iterator <#envPairs.i>`_
+  when nimvm:
+    discard "built into the compiler"
+  else:
+    var indx = findEnvVar(key)
+    if indx < 0: return # Do nothing if the env var is not already set
+    when defined(windows) and not defined(nimscript):
+      when useWinUnicode:
+        var k = newWideCString(key)
+        if setEnvironmentVariableW(k, nil) == 0'i32: raiseOSError(osLastError())
+      else:
+        if setEnvironmentVariableA(key, nil) == 0'i32: raiseOSError(osLastError())
+    else:
+      if c_unsetenv(key) != 0'i32:
+        raiseOSError(osLastError())
+    environment.delete(indx)
+
 iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
   ## Iterate over all `environments variables`:idx:.
   ##
@@ -185,6 +220,7 @@ iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].}
   ## * `getEnv proc <#getEnv,string,string>`_
   ## * `existsEnv proc <#existsEnv,string>`_
   ## * `putEnv proc <#putEnv,string,string>`_
+  ## * `delEnv proc <#delEnv,string>`_
   getEnvVarsC()
   for i in 0..high(environment):
     var p = find(environment[i], '=')

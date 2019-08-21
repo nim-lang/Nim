@@ -15,7 +15,7 @@ const
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
 
-proc getTraverseProc(p: BProc, v: Psym): Rope =
+proc getTraverseProc(p: BProc, v: PSym): Rope =
   if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       optNimV2 notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
@@ -246,10 +246,10 @@ proc genGotoState(p: BProc, n: PNode) =
   lineF(p, cpsStmts, " goto BeforeRet_;$n", [])
   var statesCounter = lastOrd(p.config, n.sons[0].typ)
   if n.len >= 2 and n[1].kind == nkIntLit:
-    statesCounter = n[1].intVal
+    statesCounter = getInt(n[1])
   let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
                else: rope"STATE"
-  for i in 0i64 .. statesCounter:
+  for i in 0i64 .. toInt64(statesCounter):
     lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
@@ -494,7 +494,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
       if aSize > 10_000:
         localError(p.config, it.info,
             "case statement has too many cases for computed goto"); return
-      arraySize = aSize.int
+      arraySize = toInt(aSize)
       if firstOrd(p.config, it.sons[0].typ) != 0:
         localError(p.config, it.info,
             "case statement has to start at 0 for computed goto"); return
@@ -527,7 +527,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
 
       let val = getOrdValue(it.sons[j])
-      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
+      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(toInt64(val)+id+1)])
 
     genStmts(p, it.lastSon)
 
@@ -690,7 +690,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
           [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
-          makeCString(toFileName(p.config, t.info)), toLinenumber(t.info)])
+          quotedFilename(p.config, t.info), toLinenumber(t.info)])
       if optNimV2 in p.config.globalOptions:
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
@@ -1211,7 +1211,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
   discard genTypeInfo(p.module, t, a.lode.info)
-  var L = lengthOrd(p.config, field.typ)
+  var L = toInt64(lengthOrd(p.config, field.typ))
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])
@@ -1220,6 +1220,21 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
         [rdLoc(a), rdLoc(tmp), discriminatorTableName(p.module, t, field),
          intLiteral(L+1)])
 
+proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
+  const ObjDiscMappingProcSlot = -5
+  var theProc: PSym = nil
+  for idx, p in items(t.methods):
+    if idx == ObjDiscMappingProcSlot:
+      theProc = p
+      break
+  if theProc == nil:
+    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph)
+    t.methods.add((ObjDiscMappingProcSlot, theProc))
+  var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
+  call.add newSymNode(theProc)
+  call.add e
+  expr(p, call, d)
+
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   var a, tmp: TLoc
   var dotExpr = e.sons[0]
@@ -1227,7 +1242,17 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   initLocExpr(p, e.sons[0], a)
   getTemp(p, a.t, tmp)
   expr(p, e.sons[1], tmp)
-  genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, dotExpr.sons[1].sym)
+  let field = dotExpr.sons[1].sym
+  if optNimV2 in p.config.globalOptions:
+    let t = dotExpr[0].typ.skipTypes(abstractInst)
+    var oldVal, newVal: TLoc
+    genCaseObjDiscMapping(p, e[0], t, field, oldVal)
+    genCaseObjDiscMapping(p, e[1], t, field, newVal)
+    lineCg(p, cpsStmts,
+          "#nimFieldDiscriminantCheckV2($1, $2);$n",
+          [rdLoc(oldVal), rdLoc(newVal)])
+  else:
+    genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, field)
   genAssignment(p, a, tmp, {})
 
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
@@ -1241,14 +1266,17 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
+    a.flags.incl(lfPrepareForMutation)
     expr(p, le, a)
+    a.flags.excl(lfPrepareForMutation)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
     genLineDir(p, ri)
-    loadInto(p, e.sons[0], ri, a)
+    loadInto(p, le, ri, a)
   else:
     genLineDir(p, e)
     asgnFieldDiscriminant(p, e)
+    message(p.config, e.info, warnCaseTransition)
 
 proc genStmts(p: BProc, t: PNode) =
   var a: TLoc

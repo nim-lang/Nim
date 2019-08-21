@@ -10,13 +10,13 @@
 # This module implements the semantic checking pass.
 
 import
-  ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
-  wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
-  magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
+  ast, strutils, options, astalgo, trees,
+  wordrecg, ropes, msgs, idents, renderer, types, platform, math,
+  magicsys, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, pluginsupport, plugins/active, rod, lineinfos
+  lowerings, plugins/active, rod, lineinfos, strtabs, int128
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
@@ -24,7 +24,7 @@ when defined(nimfix):
   import nimfix/prettybase
 
 when not defined(leanCompiler):
-  import semparallel
+  import spawn, semparallel
 
 # implementation
 
@@ -407,12 +407,11 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   else:
     case s.typ.sons[0].kind
     of tyUntyped:
-      # BUGFIX: we cannot expect a type here, because module aliases would not
-      # work then (see the ``tmodulealias`` test)
-      # semExprWithType(c, result)
+      # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags)
     of tyTyped:
-      result = semStmt(c, result, flags)
+      # More restrictive version.
+      result = semExprWithType(c, result, flags)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
@@ -451,13 +450,12 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   let info = getCallLineInfo(n)
-  markUsed(c.config, info, sym, c.graph.usageSym)
+  markUsed(c, info, sym)
   onUse(info, sym)
   if sym == c.p.owner:
     globalError(c.config, info, "recursive dependency: '$1'" % sym.name.s)
 
-  let genericParams = if sfImmediate in sym.flags: 0
-                      else: sym.ast[genericParamsPos].len
+  let genericParams = sym.ast[genericParamsPos].len
   let suppliedParams = max(n.safeLen - 1, 0)
 
   if suppliedParams < genericParams:
@@ -468,6 +466,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.graph, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
+  if c.config.macrosToExpand.hasKey(sym.name.s):
+    message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
 
@@ -523,12 +523,6 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   if sfSystemModule in module.flags:
     graph.systemModule = module
   c.topLevelScope = openScope(c)
-  # don't be verbose unless the module belongs to the main package:
-  if module.owner.id == graph.config.mainPackageId:
-    graph.config.notes = graph.config.mainPackageNotes
-  else:
-    if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
-    graph.config.notes = graph.config.foreignPackageNotes
   result = c
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
@@ -618,12 +612,17 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   rod.storeNode(c.graph, c.module, result)
 
+proc reportUnusedModules(c: PContext) =
+  for i in 0..high(c.unusedImports):
+    message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
+
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
+  reportUnusedModules(c)
   result = newNode(nkStmtList)
   if n != nil:
     internalError(c.config, n.info, "n is not nil") #result := n;

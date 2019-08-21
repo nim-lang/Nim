@@ -133,7 +133,7 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   result = usrToCell(c).typ
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
-  result = int(usrToCell(p).refcount) shr rcShift
+  result = usrToCell(p).refcount shr rcShift
 
 # this that has to equals zero, otherwise we have to round up UnitsPerPage:
 when BitsPerPage mod (sizeof(int)*8) != 0:
@@ -184,7 +184,7 @@ proc incRef(c: PCell) {.inline.} =
   # and not colorMask
   logCell("incRef", c)
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerproc.} =
   # we keep it from being collected by pretending it's not even allocated:
   let c = usrToCell(p)
   add(gch.additionalRoots, c)
@@ -202,7 +202,7 @@ proc decRef(c: PCell) {.inline.} =
     rtlAddZCT(c)
   logCell("decRef", c)
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -223,15 +223,15 @@ template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
       if gch.decStack.d[i] == c:
         sysAssert(false, msg)
 
-proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} =
   sysAssert(allocInv(gch.region), "begin nimGCunrefNoCycle")
   decRef(usrToCell(p))
   sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
 
-proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefRC1(p: pointer) {.compilerproc, inline.} =
   decRef(usrToCell(p))
 
-proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
@@ -242,7 +242,7 @@ proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
 proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
   deprecated: "old compiler compat".} = asgnRef(dest, src)
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
   # stack. It is used by the code generator if it cannot decide wether a
   # reference is in the stack or not (this can happen for var parameters).

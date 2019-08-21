@@ -5,7 +5,6 @@
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
 CC ??= gcc
-LD ??= gcc
 CFLAGS += -Ic_code ?{c.ccompiler.flags}
 LDFLAGS += ?{c.linker.flags}
 binDir = ?{firstBinPath(c).toUnix}
@@ -15,8 +14,14 @@ ifeq ($(koch),yes)
   binDir = ../bin
 endif
 
+target := ?{"$(binDir)/" & toLowerAscii(c.name)}
+
 ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
-uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
+ifeq ($(OS),Windows_NT)
+  uos := windows
+else
+  uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
+endif
 
 ifeq ($(uos),linux)
   myos = linux
@@ -29,7 +34,6 @@ endif
 ifeq ($(uos),freebsd)
   myos= freebsd
   CC = clang
-  LD = clang
   LDFLAGS += -lm
 endif
 ifeq ($(uos),openbsd)
@@ -43,7 +47,6 @@ endif
 ifeq ($(uos),darwin)
   myos = macosx
   CC = clang
-  LD = clang
   LDFLAGS += -ldl -lm
   ifeq ($(HOSTTYPE),x86_64)
     ucpu = amd64
@@ -63,6 +66,10 @@ ifeq ($(uos),sun)
 endif
 ifeq ($(uos),haiku)
   myos = haiku
+endif
+ifeq ($(uos),windows)
+  myos = windows
+  target := $(target).exe
 endif
 ifndef myos
   $(error unknown operating system: $(uos))
@@ -169,9 +176,9 @@ ifeq ($(strip $(oFiles)),)
   $(error no C code generated for: [$(myos): $(mycpu)])
 endif
 
-?{"$(binDir)/" & toLowerAscii(c.name)}: $(oFiles)
+$(target): $(oFiles)
 	@mkdir -p $(binDir)
-	$(LD) -o $@ $^ $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 	@echo "SUCCESS"
 
 .PHONY: clean

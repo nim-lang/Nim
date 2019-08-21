@@ -10,8 +10,9 @@
 # abstract syntax tree + symbol table
 
 import
-  lineinfos, hashes, nversion, options, strutils, std / sha1, ropes, idents,
-  intsets, idgen
+  lineinfos, hashes, options, ropes, idents, idgen, int128
+
+export int128
 
 type
   TCallingConvention* = enum
@@ -279,16 +280,14 @@ type
     sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
                       # meaning that it won't be renamed and/or changed in any way
     sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
+                      # variable is generated closure environment; requires early
+                      # destruction for --newruntime.
 
 
   TSymFlags* = set[TSymFlag]
 
 const
   sfNoInit* = sfMainModule       # don't generate code to init the variable
-
-  sfImmediate* = sfDispatcher
-    # macro or template is immediately expanded
-    # without considering any possible overloads
 
   sfCursor* = sfDispatcher
     # local variable has been computed to be a "cursor".
@@ -623,10 +622,6 @@ type
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
-    mZe8ToI, mZe8ToI64,
-    mZe16ToI, mZe16ToI64,
-    mZe32ToI64, mZeIToI64,
-    mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat,
     mToInt, mToBiggestInt,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
@@ -697,10 +692,6 @@ const
     mEqRef, mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
-    mZe8ToI, mZe8ToI64,
-    mZe16ToI, mZe16ToI64,
-    mZe32ToI64, mZeIToI64,
-    mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat,
     mToInt, mToBiggestInt,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
@@ -768,7 +759,9 @@ type
     lfImportCompilerProc,     # ``importc`` of a compilerproc
     lfSingleUse               # no location yet and will only be used once
     lfEnforceDeref            # a copyMem is required to dereference if this a
-      # ptr array due to C array limitations. See #1181, #6422, #11171
+                              # ptr array due to C array limitations.
+                              # See #1181, #6422, #11171
+    lfPrepareForMutation      # string location is about to be mutated (V2)
   TStorageLoc* = enum
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section
@@ -1066,7 +1059,7 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 when defined(useNodeIds):
-  const nodeIdToDebug* = -1 # 299750 # 300761 #300863 # 300879
+  const nodeIdToDebug* = 2322967# 2322968
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =
@@ -1244,9 +1237,47 @@ proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
   result = newNode(kind)
   result.intVal = intVal
 
-proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
-  result = newIntNode(kind, intVal)
+proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
+  result = newNode(kind)
+  result.intVal = castToInt64(intVal)
+
+proc lastSon*(n: PType): PType = n.sons[^1]
+
+proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## Used throughout the compiler code to test whether a type tree contains or
+  ## doesn't contain a specific type/types - it is often the case that only the
+  ## last child nodes of a type tree need to be searched. This is a really hot
+  ## path within the compiler!
+  result = t
+  while result.kind in kinds: result = lastSon(result)
+
+proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
+
+  # this is dirty. abstractVarRange isn't defined yet and therefor it
+  # is duplicated here.
+  const abstractVarRange = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  case skipTypes(typ, abstractVarRange).kind
+  of tyInt:     result = newNode(nkIntLit)
+  of tyInt8:    result = newNode(nkInt8Lit)
+  of tyInt16:   result = newNode(nkInt16Lit)
+  of tyInt32:   result = newNode(nkInt32Lit)
+  of tyInt64:   result = newNode(nkInt64Lit)
+  of tyChar:    result = newNode(nkCharLit)
+  of tyUInt:    result = newNode(nkUIntLit)
+  of tyUInt8:   result = newNode(nkUInt8Lit)
+  of tyUInt16:  result = newNode(nkUInt16Lit)
+  of tyUInt32:  result = newNode(nkUInt32Lit)
+  of tyUInt64:  result = newNode(nkUInt64Lit)
+  else: # tyBool, tyEnum
+    # XXX: does this really need to be the kind nkIntLit?
+    result = newNode(nkIntLit)
+  result.intVal = intVal
   result.typ = typ
+
+proc newIntTypeNode*(intVal: Int128, typ: PType): PNode =
+  # XXX: introduce range check
+  newIntTypeNode(castToInt64(intVal), typ)
 
 proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
   result = newNode(kind)
@@ -1336,7 +1367,6 @@ proc sonsLen*(n: PType): int = n.sons.len
 proc len*(n: PType): int = n.sons.len
 proc sonsLen*(n: PNode): int = n.sons.len
 proc lastSon*(n: PNode): PNode = n.sons[^1]
-proc lastSon*(n: PType): PType = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1431,14 +1461,6 @@ proc initIdNodeTable*(x: var TIdNodeTable) =
 proc initNodeTable*(x: var TNodeTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
-
-proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
-  ## Used throughout the compiler code to test whether a type tree contains or
-  ## doesn't contain a specific type/types - it is often the case that only the
-  ## last child nodes of a type tree need to be searched. This is a really hot
-  ## path within the compiler!
-  result = t
-  while result.kind in kinds: result = lastSon(result)
 
 proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
   result = t
@@ -1615,18 +1637,31 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc getInt*(a: PNode): BiggestInt =
+proc getInt*(a: PNode): Int128 =
   case a.kind
-  of nkCharLit..nkUInt64Lit: result = a.intVal
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
+    result = toInt128(cast[uint64](a.intVal))
+  of nkInt8Lit..nkInt64Lit:
+    result = toInt128(a.intVal)
+  of nkIntLit:
+    # XXX: enable this assert
+    # assert a.typ.kind notin {tyChar, tyUint..tyUInt64}
+    result = toInt128(a.intVal)
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")
-    #internalError(a.info, "getInt")
-    #doAssert false, "getInt"
-    #result = 0
+
+proc getInt64*(a: PNode): int64 {.deprecated: "use getInt".} =
+  case a.kind
+  of nkCharLit, nkUIntLit..nkUInt64Lit, nkIntLit..nkInt64Lit:
+    result = a.intVal
+  else:
+    raiseRecoverableError("cannot extract number from invalid AST node")
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
   of nkFloatLiterals: result = a.floatVal
+  of nkCharLit, nkUIntLit..nkUInt64Lit, nkIntLit..nkInt64Lit:
+    result = BiggestFloat a.intVal
   else:
     raiseRecoverableError("cannot extract number from invalid AST node")
     #doAssert false, "getFloat"
@@ -1752,20 +1787,6 @@ proc toObject*(typ: PType): PType =
   let t = typ.skipTypes({tyAlias, tyGenericInst})
   if t.kind == tyRef: t.lastSon
   else: typ
-
-proc isException*(t: PType): bool =
-  # check if `y` is object type and it inherits from Exception
-  assert(t != nil)
-
-  if t.kind notin {tyObject, tyGenericInst}:
-    return false
-
-  var base = t
-  while base != nil and base.kind in {tyRef, tyObject, tyGenericInst}:
-    if base.sym != nil and base.sym.magic == mException:
-      return true
-    base = base.lastSon
-  return false
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil

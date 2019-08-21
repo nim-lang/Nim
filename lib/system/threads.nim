@@ -136,9 +136,12 @@ else:
       when TArg is void:
         thrd.dataFn()
       else:
-        var x: TArg
-        deepCopy(x, thrd.data)
-        thrd.dataFn(x)
+        when defined(nimV2):
+          thrd.dataFn(thrd.data)
+        else:
+          var x: TArg
+          deepCopy(x, thrd.data)
+          thrd.dataFn(x)
     finally:
       afterThreadRuns()
 
@@ -146,7 +149,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
   elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not defined(gcDestructors):
-    var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
+    var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall, gcsafe.} =
       threadProcWrapDispatch[TArg]
     # init the GC for refc/markandsweep
     nimGC_setStackBottom(addr(p))
@@ -309,7 +312,7 @@ else:
     when TArg isnot void: t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
-    var a {.noinit.}: PthreadAttr
+    var a {.noinit.}: Pthread_attr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:

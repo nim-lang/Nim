@@ -99,6 +99,23 @@ input#searchInput {
   width: 80%;
 }
 
+/*
+ * Some custom formatting for input forms.
+ * This also fixes input form colors on Firefox with a dark system theme on Linux.
+ */
+input {
+  -moz-appearance: none;
+  color: #333;
+  background-color: #f8f8f8;
+  border: 1px solid #aaa;
+  font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
+  font-size: 0.9em;
+  padding: 6px;
+}
+input:focus {
+  border: 1px solid #1fa0eb;
+  box-shadow: 0 0 2px #1fa0eb;
+}
 
 /* Docgen styles */
 /* Links */
@@ -811,9 +828,17 @@ function main() {
           <li><a class="reference external"
           data-doc-search-tag="testproject: bar(): untyped" href="testproject.html#bar.m">testproject: bar(): untyped</a></li>
           </ul></dd>
+<dt><a name="baz" href="#baz"><span>baz:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: baz[T](a, b: T): T" href="testproject.html#baz%2CT%2CT">testproject: baz[T](a, b: T): T</a></li>
+          </ul></dd>
 <dt><a name="bEnum" href="#bEnum"><span>bEnum:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="utils: bEnum(): untyped" href="subdir/subdir_b/utils.html#bEnum.t">utils: bEnum(): untyped</a></li>
+          </ul></dd>
+<dt><a name="buzz" href="#buzz"><span>buzz:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: buzz[T](a, b: T): T" href="testproject.html#buzz%2CT%2CT">testproject: buzz[T](a, b: T): T</a></li>
           </ul></dd>
 <dt><a name="enumValueA" href="#enumValueA"><span>enumValueA:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"

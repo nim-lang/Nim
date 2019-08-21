@@ -40,7 +40,7 @@ else:
   template allocStrNoInit(size: untyped): untyped =
     cast[NimString](newObjNoInit(addr(strDesc), size))
 
-proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
+proc rawNewStringNoInit(space: int): NimString {.compilerproc.} =
   var s = space
   if s < 7: s = 7
   result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
@@ -49,7 +49,7 @@ proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
   when defined(gogc):
     result.elemSize = 1
 
-proc rawNewString(space: int): NimString {.compilerProc.} =
+proc rawNewString(space: int): NimString {.compilerproc.} =
   var s = space
   if s < 7: s = 7
   result = allocStr(sizeof(TGenericSeq) + s + 1)
@@ -58,11 +58,11 @@ proc rawNewString(space: int): NimString {.compilerProc.} =
   when defined(gogc):
     result.elemSize = 1
 
-proc mnewString(len: int): NimString {.compilerProc.} =
+proc mnewString(len: int): NimString {.compilerproc.} =
   result = rawNewString(len)
   result.len = len
 
-proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
+proc copyStrLast(s: NimString, start, last: int): NimString {.compilerproc.} =
   # This is not used by most recent versions of the compiler anymore, but
   # required for bootstrapping purposes.
   let start = max(start, 0)
@@ -76,17 +76,17 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   else:
     result = rawNewString(len)
 
-proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
+proc copyStr(s: NimString, start: int): NimString {.compilerproc.} =
   # This is not used by most recent versions of the compiler anymore, but
   # required for bootstrapping purposes.
   if s == nil: return nil
   result = copyStrLast(s, start, s.len-1)
 
-proc nimToCStringConv(s: NimString): cstring {.compilerProc, nonReloadable, inline.} =
+proc nimToCStringConv(s: NimString): cstring {.compilerproc, nonReloadable, inline.} =
   if s == nil or s.len == 0: result = cstring""
   else: result = cstring(addr s.data)
 
-proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
+proc toNimStr(str: cstring, len: int): NimString {.compilerproc.} =
   result = rawNewStringNoInit(len)
   result.len = len
   copyMem(addr(result.data), str, len + 1)
@@ -245,7 +245,7 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
 
 # ----------------- sequences ----------------------------------------------
 
-proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
+proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerproc.} =
   # increments the length by one:
   # this is needed for supporting ``add``;
   #
@@ -260,7 +260,7 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
     result.reserved = r
   inc(result.len)
 
-proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
+proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerproc.} =
   # incrSeq version 2
   result = seq
   if result.len >= result.space:
@@ -272,7 +272,7 @@ proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
 
-proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.} =
+proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
   if s == nil:
     result = cast[PGenericSeq](newSeq(typ, 1))
     result.len = 0

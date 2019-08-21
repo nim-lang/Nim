@@ -536,3 +536,100 @@ proc main() =
   typeProcessing(mylocal)
 
 main()
+
+# issue #11320 use UncheckedArray
+
+type
+  Payload = object
+    something: int8
+    vals: UncheckedArray[int32]
+
+proc payloadCheck() =
+  doAssert offsetOf(Payload, vals) == 4
+  doAssert sizeOf(Payload) == 4
+
+payloadCheck()
+
+# offsetof tuple types
+
+type
+  MyTupleType = tuple
+    a: float64
+    b: float64
+    c: float64
+
+  MyOtherTupleType = tuple
+    a: float64
+    b: imported_double
+    c: float64
+
+  MyCaseObject = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+doAssert offsetof(MyTupleType, a) == 0
+doAssert offsetof(MyTupleType, b) == 8
+doAssert offsetof(MyTupleType, c) == 16
+
+doAssert offsetof(MyOtherTupleType, a) == 0
+doAssert offsetof(MyOtherTupleType, b) == 8
+
+# The following expression can only work if the offsetof expression is
+# properly forwarded for the C code generator.
+doAssert offsetof(MyOtherTupleType, c) == 16
+doAssert offsetof(Bar, foo) == 4
+doAssert offsetof(MyCaseObject, val1) == 0
+doAssert offsetof(MyCaseObject, kind) == 8
+doAssert offsetof(MyCaseObject, val2) == 12
+doAssert offsetof(MyCaseObject, val3) == 16
+doAssert offsetof(MyCaseObject, val4) == 12
+doAssert offsetof(MyCaseObject, val5) == 16
+
+template reject(e) =
+  static: assert(not compiles(e))
+
+reject:
+  const off1 = offsetof(MyOtherTupleType, c)
+
+reject:
+  const off2 = offsetof(MyOtherTupleType, b)
+
+reject:
+  const off3 = offsetof(MyCaseObject, kind)
+
+
+type
+  MyPackedCaseObject {.packed.} = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+# packed case object
+
+doAssert offsetof(MyPackedCaseObject, val1) == 0
+doAssert offsetof(MyPackedCaseObject, val2) == 9
+doAssert offsetof(MyPackedCaseObject, val3) == 13
+doAssert offsetof(MyPackedCaseObject, val4) == 9
+doAssert offsetof(MyPackedCaseObject, val5) == 13
+
+reject:
+  const off4 = offsetof(MyPackedCaseObject, val1)
+
+reject:
+  const off5 = offsetof(MyPackedCaseObject, val2)
+
+reject:
+  const off6 = offsetof(MyPackedCaseObject, val3)
+
+reject:
+  const off7 = offsetof(MyPackedCaseObject, val4)
+
+reject:
+  const off8 = offsetof(MyPackedCaseObject, val5)

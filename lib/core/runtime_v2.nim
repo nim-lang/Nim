@@ -52,17 +52,30 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     result = orig +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
-  inc allocs
+  when hasThreadSupport:
+    atomicInc allocs
+  else:
+    inc allocs
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
-  dec head(p).rc
+  when hasThreadSupport:
+    atomicDec head(p).rc
+  else:
+    dec head(p).rc
 
 proc nimIncWeakRef(p: pointer) {.compilerRtl.} =
-  inc head(p).rc
+  when hasThreadSupport:
+    atomicInc head(p).rc
+  else:
+    inc head(p).rc
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
-    if head(p).rc != 0:
+    when hasThreadSupport:
+      let hasDanglingRefs = atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) != 0
+    else:
+      let hasDanglingRefs = head(p).rc != 0
+    if hasDanglingRefs:
       cstderr.rawWrite "[FATAL] dangling references exist\n"
       quit 1
     when defined(useMalloc):
@@ -70,14 +83,27 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
     else:
       dealloc(p -! sizeof(RefHeader))
     if allocs > 0:
-      dec allocs
+      when hasThreadSupport:
+        discard atomicDec(allocs)
+      else:
+        dec allocs
     else:
       cstderr.rawWrite "[FATAL] unpaired dealloc\n"
       quit 1
 
+template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
+#proc dispose*(x: pointer) = nimRawDispose(x)
+
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
   let d = cast[ptr PNimType](p)[].destructor
   if d != nil: cast[DestructorProc](d)(p)
+  when false:
+    cstderr.rawWrite cast[ptr PNimType](p)[].name
+    cstderr.rawWrite "\n"
+    if d == nil:
+      cstderr.rawWrite "bah, nil\n"
+    else:
+      cstderr.rawWrite "has destructor!\n"
   nimRawDispose(p)
 
 proc isObj(obj: PNimType, subclass: cstring): bool {.compilerproc.} =

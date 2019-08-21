@@ -142,8 +142,8 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
-  typetraits, options
+  hashes, tables, strutils, lexbase, streams, macros, parsejson,
+  options
 
 export
   tables.`$`
@@ -188,48 +188,35 @@ type
 
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
-  new(result)
-  result.kind = JString
-  result.str = s
+  result = JsonNode(kind: JString, str: s)
 
 proc newJStringMove(s: string): JsonNode =
-  new(result)
-  result.kind = JString
+  result = JsonNode(kind: JString)
   shallowCopy(result.str, s)
 
 proc newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = n
+  result = JsonNode(kind: JInt, num: n)
 
 proc newJFloat*(n: float): JsonNode =
   ## Creates a new `JFloat JsonNode`.
-  new(result)
-  result.kind = JFloat
-  result.fnum  = n
+  result = JsonNode(kind: JFloat, fnum: n)
 
 proc newJBool*(b: bool): JsonNode =
   ## Creates a new `JBool JsonNode`.
-  new(result)
-  result.kind = JBool
-  result.bval = b
+  result = JsonNode(kind: JBool, bval: b)
 
 proc newJNull*(): JsonNode =
   ## Creates a new `JNull JsonNode`.
-  new(result)
+  result = JsonNode(kind: JNull)
 
 proc newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
-  new(result)
-  result.kind = JObject
-  result.fields = initOrderedTable[string, JsonNode](4)
+  result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](4))
 
 proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
-  new(result)
-  result.kind = JArray
-  result.elems = @[]
+  result = JsonNode(kind: JArray, elems: @[])
 
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
@@ -252,8 +239,8 @@ proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated: "use getInt or getBiggestInt instead".} =
-  ## **Deprecated since v0.18.2:** use ``getInt`` or ``getBiggestInt`` instead.
+proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated:
+  "Deprecated since v0.18.2; use 'getInt' or 'getBiggestInt' instead".} =
   getBiggestInt(n, default)
 
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
@@ -266,8 +253,8 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated: "use getFloat instead".} =
-  ## **Deprecated since v0.18.2:** use ``getFloat`` instead.
+proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated:
+  "Deprecated since v0.18.2; use 'getFloat' instead".} =
   getFloat(n, default)
 
 proc getBool*(n: JsonNode, default: bool = false): bool =
@@ -277,8 +264,8 @@ proc getBool*(n: JsonNode, default: bool = false): bool =
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
 
-proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated: "use getBool instead".} =
-  ## **Deprecated since v0.18.2:** use ``getBool`` instead.
+proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated:
+  "Deprecated since v0.18.2; use 'getBool' instead".} =
   getBool(n, default)
 
 proc getFields*(n: JsonNode,
@@ -309,49 +296,35 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
 
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
-  new(result)
-  result.kind = JString
-  result.str = s
+  result = JsonNode(kind: JString, str: s)
 
 proc `%`*(n: uint): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = BiggestInt(n)
+  result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: int): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = n
+  result = JsonNode(kind: JInt, num: n)
 
 proc `%`*(n: BiggestUInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = BiggestInt(n)
+  result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  new(result)
-  result.kind = JInt
-  result.num  = n
+  result = JsonNode(kind: JInt, num: n)
 
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
-  new(result)
-  result.kind = JFloat
-  result.fnum  = n
+  result = JsonNode(kind: JFloat, fnum: n)
 
 proc `%`*(b: bool): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JBool JsonNode`.
-  new(result)
-  result.kind = JBool
-  result.bval = b
+  result = JsonNode(kind: JBool, bval: b)
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
-  if keyvals.len == 0: return newJArray()
+  if keyVals.len == 0: return newJArray()
   result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
 
@@ -407,7 +380,7 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
-proc toJson(x: NimNode): NimNode {.compiletime.} =
+proc toJson(x: NimNode): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
@@ -538,8 +511,8 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
   assert(node.kind == JArray)
   find(node.elems, val) >= 0
 
-proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use hasKey instead".} = node.hasKey(key)
-  ## **Deprecated:** use `hasKey` instead.
+proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use 'hasKey' instead".} =
+  node.hasKey(key)
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
@@ -692,12 +665,12 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
   of JInt:
     if lstArr: result.indent(currIndent)
     when defined(js): result.add($node.num)
-    else: result.add(node.num)
+    else: result.addInt(node.num)
   of JFloat:
     if lstArr: result.indent(currIndent)
     # Fixme: implement new system.add ops for the JS target
     when defined(js): result.add($node.fnum)
-    else: result.add(node.fnum)
+    else: result.addFloat(node.fnum)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
@@ -773,10 +746,10 @@ proc toUgly*(result: var string, node: JsonNode) =
     node.str.escapeJson(result)
   of JInt:
     when defined(js): result.add($node.num)
-    else: result.add(node.num)
+    else: result.addInt(node.num)
   of JFloat:
     when defined(js): result.add($node.fnum)
-    else: result.add(node.fnum)
+    else: result.addFloat(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
@@ -805,6 +778,12 @@ iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   assert node.kind == JObject
   for key, val in pairs(node.fields):
     yield (key, val)
+
+iterator keys*(node: JsonNode): string =
+  ## Iterator for the keys in `node`. `node` has to be a JObject.
+  assert node.kind == JObject
+  for key in node.fields.keys:
+    yield key
 
 iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
@@ -1138,11 +1117,11 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     exprColonExpr.add(createConstructor(typeNode, indexedJsonNode))
   of nnkRecCase:
     # A "case" field that introduces a variant.
-    let exprColonExpr = newNimNode(nnkExprColonExpr)
-    result.add(exprColonExpr)
+    let exprEqExpr = newNimNode(nnkExprEqExpr)
+    result.add(exprEqExpr)
 
     # Add the "case" field name (usually "kind").
-    exprColonExpr.add(toIdentNode(field[0]))
+    exprEqExpr.add(toIdentNode(field[0]))
 
     # -> jsonNode["`field[0]`"]
     let kindJsonNode = createJsonIndexer(jsonNode, $field[0])
@@ -1152,7 +1131,7 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     let getEnumSym = bindSym("getEnum")
     let astStrLit = toStrLit(kindJsonNode)
     let getEnumCall = newCall(getEnumSym, kindJsonNode, astStrLit, kindType)
-    exprColonExpr.add(getEnumCall)
+    exprEqExpr.add(getEnumCall)
 
     # Iterate through each `of` branch.
     for i in 1 ..< field.len:
@@ -1499,23 +1478,20 @@ proc postProcess(node: NimNode): NimNode =
   # Create the type.
   # -> var res = Object()
   var resIdent = genSym(nskVar, "res")
-  # TODO: Placing `node[0]` inside quote is buggy
-  var resType = toIdentNode(node[0])
+  var resType = node[0]
 
-  result.add(
-    quote do:
-      var `resIdent` = `resType`();
-  )
+  var objConstr = newTree(nnkObjConstr, resType)
+  result.add newVarStmt(resIdent, objConstr)
 
   # Process each ExprColonExpr.
   for i in 1..<len(node):
-    result.add postProcessExprColonExpr(node[i], resIdent)
+    if node[i].kind == nnkExprEqExpr:
+      objConstr.add newTree(nnkExprColonExpr, node[i][0], node[i][1])
+    else:
+      result.add postProcessExprColonExpr(node[i], resIdent)
 
   # Return the `res` variable.
-  result.add(
-    quote do:
-      `resIdent`
-  )
+  result.add(resIdent)
 
 
 macro to*(node: JsonNode, T: typedesc): untyped =
@@ -1566,7 +1542,6 @@ macro to*(node: JsonNode, T: typedesc): untyped =
     let `temp` = `node`
 
   let constructor = createConstructor(typeNode[1], temp)
-  # TODO: Rename postProcessValue and move it (?)
   result.add(postProcessValue(constructor))
 
   # echo(treeRepr(result))

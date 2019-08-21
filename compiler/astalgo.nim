@@ -425,7 +425,7 @@ proc value(this: var DebugPrinter; value: string) =
 proc value(this: var DebugPrinter; value: BiggestInt) =
   if this.useColor:
     this.res.add numberStyle
-  this.res.add value
+  this.res.addInt value
   if this.useColor:
     this.res.add resetStyle
 
@@ -460,7 +460,7 @@ template earlyExit(this: var DebugPrinter; n: PType | PNode | PSym) =
     if this.useColor:
       this.res.add backrefStyle
     this.res.add "<defined "
-    this.res.add(this.currentLine - index)
+    this.res.addInt(this.currentLine - index)
     this.res.add " lines upwards>"
     if this.useColor:
       this.res.add resetStyle
@@ -667,31 +667,14 @@ proc strTableContains*(t: TStrTable, n: PSym): bool =
 
 proc strTableRawInsert(data: var seq[PSym], n: PSym) =
   var h: Hash = n.name.h and high(data)
-  if sfImmediate notin n.flags:
-    # fast path:
-    while data[h] != nil:
-      if data[h] == n:
-        # allowed for 'export' feature:
-        #InternalError(n.info, "StrTableRawInsert: " & n.name.s)
-        return
-      h = nextTry(h, high(data))
-    assert(data[h] == nil)
-    data[h] = n
-  else:
-    # slow path; we have to ensure immediate symbols are preferred for
-    # symbol lookups.
-    # consider the chain: foo (immediate), foo, bar, bar (immediate)
-    # then bar (immediate) gets replaced with foo (immediate) and the non
-    # immediate foo is picked! Thus we need to replace it with the first
-    # slot that has in fact the same identifier stored in it!
-    var favPos = -1
-    while data[h] != nil:
-      if data[h] == n: return
-      if favPos < 0 and data[h].name.id == n.name.id: favPos = h
-      h = nextTry(h, high(data))
-    assert(data[h] == nil)
-    data[h] = n
-    if favPos >= 0: swap data[h], data[favPos]
+  while data[h] != nil:
+    if data[h] == n:
+      # allowed for 'export' feature:
+      #InternalError(n.info, "StrTableRawInsert: " & n.name.s)
+      return
+    h = nextTry(h, high(data))
+  assert(data[h] == nil)
+  data[h] = n
 
 proc symTabReplaceRaw(data: var seq[PSym], prevSym: PSym, newSym: PSym) =
   assert prevSym.name.h == newSym.name.h

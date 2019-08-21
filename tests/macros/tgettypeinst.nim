@@ -22,7 +22,7 @@ proc symToIdent(x: NimNode): NimNode =
         result.add symToIdent(c)
 
 # check getTypeInst and getTypeImpl for given symbol x
-macro testX(x,inst0: typed; recurse: static[bool]; implX: typed): typed =
+macro testX(x,inst0: typed; recurse: static[bool]; implX: typed) =
   # check that getTypeInst(x) equals inst0
   let inst = x.getTypeInst
   let instr = inst.symToIdent.treeRepr

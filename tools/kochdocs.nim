@@ -28,7 +28,7 @@ proc findNim*(): string =
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   let prevPath = getEnv("PATH")
   if additionalPath.len > 0:
-    var absolute = additionalPATH
+    var absolute = additionalPath
     if not absolute.isAbsolute:
       absolute = getCurrentDir() / absolute
     echo("Adding to $PATH: ", absolute)
@@ -57,10 +57,10 @@ proc execCleanPath*(cmd: string,
   # simulate a poor man's virtual environment
   let prevPath = getEnv("PATH")
   when defined(windows):
-    let CleanPath = r"$1\system32;$1;$1\System32\Wbem" % getEnv"SYSTEMROOT"
+    let cleanPath = r"$1\system32;$1;$1\System32\Wbem" % getEnv"SYSTEMROOT"
   else:
-    const CleanPath = r"/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin"
-  putEnv("PATH", CleanPath & PathSep & additionalPath)
+    const cleanPath = r"/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin"
+  putEnv("PATH", cleanPath & PathSep & additionalPath)
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
@@ -97,10 +97,12 @@ doc/apis.rst
 doc/lib.rst
 doc/manual.rst
 doc/manual_experimental.rst
+doc/destructors.rst
 doc/tut1.rst
 doc/tut2.rst
 doc/tut3.rst
 doc/nimc.rst
+doc/hcr.rst
 doc/overview.rst
 doc/filters.rst
 doc/tools.rst
@@ -157,6 +159,7 @@ lib/windows/winlean.nim
 lib/pure/random.nim
 lib/pure/complex.nim
 lib/pure/times.nim
+lib/std/monotimes.nim
 lib/pure/osproc.nim
 lib/pure/pegs.nim
 lib/pure/dynlib.nim
@@ -241,6 +244,7 @@ lib/pure/oswalkdir.nim
 lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
+lib/std/sums.nim
 lib/std/varints.nim
 lib/std/time_t.nim
 lib/impure/rdstdin.nim
@@ -278,14 +282,14 @@ lib/wrappers/odbcsql.nim
 lib/js/jscore.nim
 """.splitWhitespace()
 
-proc sexec(cmds: openarray[string]) =
+proc sexec(cmds: openArray[string]) =
   ## Serial queue wrapper around exec.
   for cmd in cmds:
     echo(cmd)
     let (outp, exitCode) = osproc.execCmdEx(cmd)
     if exitCode != 0: quit outp
 
-proc mexec(cmds: openarray[string]) =
+proc mexec(cmds: openArray[string]) =
   ## Multiprocessor version of exec
   let r = execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd})
   if r != 0:

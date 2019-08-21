@@ -967,6 +967,7 @@ const mimes* = {
   "niff": "image/x-niff",
   "nim": "text/nim",
   "nimble": "text/nimble",
+  "nimf": "text/nim",
   "nims": "text/nim",
   "nitf": "application/vnd.nitf",
   "nix": "application/x-mix-transfer",
