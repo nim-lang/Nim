@@ -314,6 +314,27 @@ proc testTemplate() =
     ("testTemplate.2", fun(1), fun(2))
   doAssert bar2(a~>a*10) == ("testTemplate.2", 10, 20)
 
+proc test5702() = # fix https://github.com/nim-lang/Nim/issues/5702
+  iterator zip[T1, T2](a: openarray[T1], b: openarray[T2]): (T1,T2) {.inline.} =
+    let len = min(a.len, b.len)
+    for i in 0..<len:
+      yield (a[i], b[i])
+
+  iterator zipWith[T1,T2,T3](f: T3, a: openarray[T1], b: openarray[T2]): auto {.inline.} =
+    for i,j in zip(a,b):
+      yield f(i,j)
+
+  proc foo(args: varargs[int]) =
+    for i in zip(args,args):
+      echo i
+
+  proc bar(args: varargs[int]) =
+    for i in zipWith(alias2 `+`,args,args):
+      echo i
+
+  foo(1,2,3,4)
+  bar(1,2,3,4)
+
 proc testAll*() =
   testAlias()
   testAliasReturn()
@@ -324,6 +345,7 @@ proc testAll*() =
   testProc()
   testMacro()
   testTemplate()
+  test5702()
 
 when isMainModule:
   testAll()
