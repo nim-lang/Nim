@@ -65,11 +65,13 @@ proc mergeBranch(arg: var OffsetAccum; value: OffsetAccum) =
     arg.offset = max(arg.offset, value.offset)
     arg.maxAlign = max(arg.maxAlign, value.maxAlign)
 
-proc finish(arg: var OffsetAccum) =
+proc finish(arg: var OffsetAccum): int =
   if arg.maxAlign == szUnknownSize or arg.offset == szUnknownSize:
+    result = szUnknownSize
     arg.offset = szUnknownSize
   else:
-    arg.offset = align(arg.offset, arg.maxAlign)
+    result = align(arg.offset, arg.maxAlign) - arg.offset
+    arg.offset += result
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType)
 
@@ -216,6 +218,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   # mark computation in progress
   typ.size = szIllegalRecursion
   typ.align = szIllegalRecursion
+  typ.paddingAtEnd = 0
 
   var tk = typ.kind
   case tk
@@ -225,26 +228,23 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     else:
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
-
   of tyNil:
     typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
-
   of tyString:
     if conf.selectedGC == gcDestructors:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
-
   of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ:
       # this is not the correct location to detect ``type A = ptr A``
       typ.size = szIllegalRecursion
       typ.align = szIllegalRecursion
+      typ.paddingAtEnd = szIllegalRecursion
       return
-
     typ.align = int16(conf.target.ptrSize)
     if typ.kind == tySequence and conf.selectedGC == gcDestructors:
       typ.size = conf.target.ptrSize * 2
@@ -284,12 +284,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.align = 4
       else:
         typ.size = 8
-        typ.align = 8
-
+        typ.align = 8 # XXX incorrect, could be 4
   of tySet:
     if typ.sons[0].kind == tyGenericParam:
       typ.size = szUncomputedSize
-      typ.align = szUncomputedSize # in original version this was 1
+      typ.align = szUncomputedSize
     else:
       let length = toInt64(lengthOrd(conf, typ.sons[0]))
       if length <= 8:
@@ -304,11 +303,12 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.size = align(length, 8) div 8
       else:
         typ.size = align(length, 8) div 8 + 1
-    typ.align = int16(typ.size)
+      typ.align = int16(typ.size) # XXX incorrect, could be 4 when size is 8
   of tyRange:
     computeSizeAlign(conf, typ.sons[0])
     typ.size = typ.sons[0].size
     typ.align = typ.sons[0].align
+    typ.paddingAtEnd = typ.sons[0].paddingAtEnd
 
   of tyTuple:
     try:
@@ -321,10 +321,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           let sym = typ.n[i].sym
           sym.offset = accum.offset
         accum.inc(int(child.size))
-      accum.finish
+      typ.paddingAtEnd = int16(accum.finish())
       typ.size = accum.offset
       typ.align = int16(accum.maxAlign)
     except IllegalTypeRecursionError:
+      typ.paddingAtEnd = szIllegalRecursion
       typ.size = szIllegalRecursion
       typ.align = szIllegalRecursion
 
@@ -333,16 +334,16 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       var accum =
         if typ.sons[0] != nil:
           # compute header size
+          var st = typ.sons[0]
+          while st.kind in skipPtrs:
+            st = st.sons[^1]
+          computeSizeAlign(conf, st)
           if conf.cmd == cmdCompileToCpp:
-            # if the target is C++ the members of this type are written
-            # into the padding byets at the end of the parent type. At the
-            # moment it is not supported to calculate that.
-            OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
+            OffsetAccum(
+              offset: int(st.size) - int(st.paddingAtEnd),
+              maxAlign: st.align
+            )
           else:
-            var st = typ.sons[0]
-            while st.kind in skipPtrs:
-              st = st.sons[^1]
-            computeSizeAlign(conf, st)
             OffsetAccum(
               offset: int(st.size),
               maxAlign: st.align
@@ -371,59 +372,73 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         computeObjectOffsetsFoldFunction(conf, typ.n, true, accum)
       else:
         computeObjectOffsetsFoldFunction(conf, typ.n, false, accum)
-      accum.finish
+      let paddingAtEnd = int16(accum.finish())
       if typ.sym != nil and
          typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}:
         typ.size = szUnknownSize
         typ.align = szUnknownSize
+        typ.paddingAtEnd = szUnknownSize
       else:
         typ.size = accum.offset
         typ.align = int16(accum.maxAlign)
+        typ.paddingAtEnd = paddingAtEnd
     except IllegalTypeRecursionError:
       typ.size = szIllegalRecursion
       typ.align = szIllegalRecursion
-
+      typ.paddingAtEnd = szIllegalRecursion
   of tyInferred:
     if typ.len > 1:
       computeSizeAlign(conf, typ.lastSon)
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
+      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
 
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink, tyOwned:
     computeSizeAlign(conf, typ.lastSon)
     typ.size = typ.lastSon.size
     typ.align = typ.lastSon.align
+    typ.paddingAtEnd = typ.lastSon.paddingAtEnd
 
   of tyTypeClasses:
     if typ.isResolvedUserTypeClass:
       computeSizeAlign(conf, typ.lastSon)
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
+      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
     else:
+      # XXX should be szUnknownsize
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
+      typ.paddingAtEnd = szUncomputedSize
 
   of tyTypeDesc:
     computeSizeAlign(conf, typ.base)
     typ.size = typ.base.size
     typ.align = typ.base.align
+    typ.paddingAtEnd = typ.base.paddingAtEnd
 
   of tyForward:
     # is this really illegal recursion, or maybe just unknown?
     typ.size = szIllegalRecursion
     typ.align = szIllegalRecursion
+    typ.paddingAtEnd = szIllegalRecursion
 
   of tyStatic:
     if typ.n != nil:
       computeSizeAlign(conf, typ.lastSon)
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
+      typ.paddingAtEnd = typ.lastSon.paddingAtEnd
     else:
+      # XXX should be szUnknownsize
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
+      typ.paddingAtEnd = szUncomputedSize
   else:
+    # XXX should be szUnknownsizea
     typ.size = szUncomputedSize
     typ.align = szUncomputedSize
+    typ.paddingAtEnd = szUncomputedSize
 
 template foldSizeOf*(conf: ConfigRef; n: PNode; fallback: PNode): PNode =
   let config = conf
