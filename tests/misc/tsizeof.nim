@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   output: '''
 body executed
 body executed
@@ -6,6 +7,9 @@ OK
 macros api OK
 '''
 """
+
+# Object offsets are different for inheritance objects when compiling
+# to c++.
 
 type
   TMyEnum = enum
@@ -348,14 +352,13 @@ testinstance:
 
     testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go, e1, e2, e4, e8, eoa, eob)
 
-    when not defined(cpp):
-      type
-        WithBitsize {.objectconfig.} = object
-          bitfieldA {.bitsize: 16.}: uint32
-          bitfieldB {.bitsize: 16.}: uint32
+    type
+      WithBitsize {.objectconfig.} = object
+        bitfieldA {.bitsize: 16.}: uint32
+        bitfieldB {.bitsize: 16.}: uint32
 
-      var wbs: WithBitsize
-      testSize(wbs)
+    var wbs: WithBitsize
+    testSize(wbs)
 
     testOffsetOf(TrivialType, x)
     testOffsetOf(TrivialType, y)
@@ -383,11 +386,10 @@ testinstance:
 
     testOffsetOf(Foobar, c)
 
-    when not defined(cpp):
-      testOffsetOf(Bazing, a)
-      testOffsetOf(InheritanceA, a)
-      testOffsetOf(InheritanceB, b)
-      testOffsetOf(InheritanceC, c)
+    testOffsetOf(Bazing, a)
+    testOffsetOf(InheritanceA, a)
+    testOffsetOf(InheritanceB, b)
+    testOffsetOf(InheritanceC, c)
 
     testOffsetOf(EnumObjectA, a)
     testOffsetOf(EnumObjectA, b)
