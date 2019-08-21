@@ -412,6 +412,7 @@ template isExpression(n: PNode): bool =
   (not isEmptyType(n.typ)) or (n.kind in nkLiterals + {nkNilLit, nkRange})
 
 proc recurse(n: PNode, c: var Con, processProc: proc): PNode =
+  if n.sons.len == 0: return n
   case n.kind:
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
