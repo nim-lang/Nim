@@ -816,55 +816,57 @@ proc getString(L: var Lexer, tok: var Token, mode: StringMode) =
         inc(pos)
   elif L.buf[pos] == ':' and L.buf[pos + 1] in {CR, LF}:
     # string block literal
-    # TODO: Allow end-of-line comment to exist on starting line?
-    pos = handleCRLF(L, pos + 1)
-    if mode != normal: tok.tokType = tkRStrLit
-    else: tok.tokType = tkStrLit
+    L.bufpos = pos + 1
+    tok.tokType = if mode == normal: tkStrLit
+      else: tkRStrLit
     let indent = L.currLineIndent + 2
-    var needIndent = indent
-    var emptyLines = 0
     while true:
-      var c = L.buf[pos]
-      # skip indent and terminate if block ends
-      if needIndent > 0:
-        if c == ' ':
-          dec(needIndent)
+      # skip indent and/or empty lines without moving lexer
+      var needIndent = indent
+      var emptyLines = -1  # account for previous LF still in buffer
+      var pos = L.bufpos
+      while needIndent > 0:
+        var c = L.buf[pos]
+        if c in {' ', CR, LF}:
+          if c == ' ':
+            dec(needIndent)
+          if c == LF:
+            inc(emptyLines)
+            needIndent = indent
           inc(pos)
-        elif c in {CR, LF}:
-          inc(emptyLines)
-          pos = handleCRLF(L, pos)
-          needIndent = indent
-        elif c == ')':
-          add(tok.literal, '\n'.repeat(emptyLines))
-          break
         else:
-          break
-        continue
-      # string block content
-      add(tok.literal, '\n'.repeat(emptyLines))
-      emptyLines = 0
-      if c in {CR, LF, nimlexbase.EndOfFile}:
-        add(tok.literal, "\n")
-        pos = handleCRLF(L, pos)
-        needIndent = indent
-        continue
-      if (c == '\\') and mode == normal:
-        L.bufpos = pos
-        if L.buf[pos + 1] in {CR, LF, nimlexbase.EndOfFile}:
-          inc(L.bufpos)
-          pos = handleCRLF(L, pos + 1)
-          needIndent = indent
-          continue
-        else:
-          getEscapedChar(L, tok)
+          # end of block found -> cancel lookahead
           pos = L.bufpos
-      else:
-        add(tok.literal, c)
-        inc(pos)
-        L.bufpos = pos
+          if c != ')': emptyLines = 0
+          break
+      if emptyLines > 0:
+        add(tok.literal, '\n'.repeat(emptyLines))
+      # fast-forward lexer to current position
+      while L.bufpos < pos:
+        if L.buf[L.bufpos] in {CR, LF}:
+          L.bufpos = handleCRLF(L, L.bufpos)
+        else:
+          inc(L.bufpos)
+      # EXIT if end of block was reached
+      if needIndent > 0: break
+      # parse a line of string, break before EOL
+      while true:
+        var c = L.buf[L.bufpos]
+        if c in {CR, LF, nimlexbase.EndOfFile}:
+          add(tok.literal, "\n")
+          break
+        if (c == '\\') and mode == normal:
+          if L.buf[L.bufpos + 1] in {CR, LF, nimlexbase.EndOfFile}:
+            inc(L.bufpos)
+            break
+          else:
+            getEscapedChar(L, tok)
+        else:
+          add(tok.literal, c)
+          inc(L.bufpos)
     if tok.literal == "":
       lexMessage(L, errGenerated, "string block literal indented by two spaces expected")
-      tokenEndIgnore(tok, pos)
+      tokenEndIgnore(tok, L.bufpos)
   else:
     # ordinary string literal
     if mode != normal: tok.tokType = tkRStrLit
