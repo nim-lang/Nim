@@ -2,17 +2,10 @@
 D20190811T003919
 ]#
 
-import timn/lambda
+import std/lambdas
 import ./mlambda
 
-const elementType = alias2 lambda.elementType2
-
-from timn/test_util2 import nil
-const doAssert = alias2 test_util2.doAssert
-
-when true:
-  import timn/nimimport/timnmagics
-  # timnMagicSetLogging()
+const elementType = alias2 lambdas.elementType2
 
 proc toSeq[T](a: T): auto =
   type T = elementType(a)

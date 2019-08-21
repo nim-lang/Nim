@@ -1,20 +1,8 @@
-#[
-D20190811T003919
-$nim_dev_X.temp4.dbg c -r -d:timn_with_assert2_simple -d:timn_isMainModuleOverride:true $timn_D/src/timn/tests/tlambda.nim
-]#
-
-import timn/lambda
+import std/lambdas
 
 # test import of alias
 from ./mlambda import mbar
 const mbar2 = alias2 mbar
-
-when true:
-  import timn/nimimport/timnmagics
-  # timnMagicSetLogging()
-
-from timn/test_util2 import nil
-const doAssert = alias2 test_util2.doAssert
 
 ## templates with all optional params
 template tfun(a = 1, b = 2): untyped = a*b

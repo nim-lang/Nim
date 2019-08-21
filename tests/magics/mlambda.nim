@@ -1,4 +1,4 @@
-import timn/lambda
+import std/lambdas
 
 proc mbar*(a0: int, funx: aliassym): auto =
   ("mbar", a0, funx(a0))
