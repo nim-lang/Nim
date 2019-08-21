@@ -158,6 +158,8 @@ when defined(nimJsonGet):
 else:
   {.pragma: deprecatedGet.}
 
+const nativeJs = defined(js) and not nimvm
+
 type
   JsonNodeKind* = enum ## possible JSON node types
     JNull,
@@ -840,7 +842,7 @@ proc parseJson(p: var JsonParser): JsonNode =
   of tkError, tkCurlyRi, tkBracketRi, tkColon, tkComma, tkEof:
     raiseParseErr(p, "{")
 
-when not defined(js):
+when not nativeJs:
   proc parseJson*(s: Stream, filename: string = ""): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
@@ -1769,3 +1771,8 @@ when isMainModule:
     )
 
     doAssert(obj == to(%obj, type(obj)))
+    
+    # bug #11988
+    when defined(js):
+      const jsConstantNode = parseJson("12")
+      doAssert(jsConstantNode.num == 12)
