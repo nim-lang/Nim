@@ -47,7 +47,8 @@ type
   TSymChoiceRule = enum
     scClosed, scOpen, scForceOpen
 
-proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
+proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
+               isField = false): PNode =
   var
     a: PSym
     o: TOverloadIter
@@ -63,9 +64,12 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
-    result = newSymNode(s, info)
-    markUsed(c, info, s)
-    onUse(info, s)
+    if not isField or sfGenSym notin s.flags:
+      result = newSymNode(s, info)
+      markUsed(c, info, s)
+      onUse(info, s)
+    else:
+      result = n
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -74,7 +78,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
-      if a.kind != skModule:
+      if a.kind != skModule and (not isField or sfGenSym notin s.flags):
         incl(a.flags, sfUsed)
         addSon(result, newSymNode(a, info))
         onUse(info, a)
@@ -327,19 +331,17 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
-      elif c.isDotField > 0:
-        result = n
       elif contains(c.toBind, s.id):
-        result = symChoice(c.c, n, s, scClosed)
+        result = symChoice(c.c, n, s, scClosed, c.isDotField > 0)
       elif contains(c.toMixin, s.name.id):
-        result = symChoice(c.c, n, s, scForceOpen)
-      elif s.owner == c.owner and sfGenSym in s.flags:
+        result = symChoice(c.c, n, s, scForceOpen, c.isDotField > 0)
+      elif s.owner == c.owner and sfGenSym in s.flags and c.isDotField == 0:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
-      else:
+      elif c.isDotField == 0:
         result = semTemplSymbol(c.c, n, s)
   of nkBind:
     result = semTemplBody(c, n.sons[0])

@@ -18,7 +18,7 @@ import
   sem, idents, passes, extccomp,
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm, idgen,
-  parser, modules,
+  modules,
   modulegraphs, tables, rod, lineinfos, pathutils
 
 when not defined(leanCompiler):

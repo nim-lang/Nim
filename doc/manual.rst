@@ -4893,6 +4893,8 @@ no semantics outside of a template definition and cannot be abstracted over:
 To get rid of hygiene in templates, one can use the `dirty`:idx: pragma for
 a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 
+``gensym``'ed symbols cannot be used
+
 
 
 Limitations of the method call syntax
