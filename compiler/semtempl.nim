@@ -233,7 +233,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     else:
       replaceIdentBySym(c.c, n, ident)
 
-proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
+proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   incl(s.flags, sfUsed)
   # we do not call onUse here, as the identifier is not really
   # resolved here. We will fixup the used identifiers later.
@@ -242,15 +242,18 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of OverloadableSyms:
-    result = symChoice(c, n, s, scOpen)
+    result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
-    result = newSymNodeTypeDesc(s, n.info)
+    if isField: result = n
+    else: result = newSymNodeTypeDesc(s, n.info)
   of skParam:
     result = n
   of skType:
-    result = newSymNodeTypeDesc(s, n.info)
+    if isField: result = n
+    else: result = newSymNodeTypeDesc(s, n.info)
   else:
-    result = newSymNode(s, n.info)
+    if isField: result = n
+    else: result = newSymNode(s, n.info)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -341,8 +344,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
-      elif c.isDotField == 0:
-        result = semTemplSymbol(c.c, n, s)
+      else:
+        result = semTemplSymbol(c.c, n, s, c.isDotField > 0)
   of nkBind:
     result = semTemplBody(c, n.sons[0])
   of nkBindStmt:
@@ -529,11 +532,11 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         onUse(n.info, s)
         return newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
-        return symChoice(c.c, n, s, scClosed)
+        return symChoice(c.c, n, s, scClosed, c.isDotField > 0)
       elif contains(c.toMixin, s.name.id):
-        return symChoice(c.c, n, s, scForceOpen)
+        return symChoice(c.c, n, s, scForceOpen, c.isDotField > 0)
       else:
-        return symChoice(c.c, n, s, scOpen)
+        return symChoice(c.c, n, s, scOpen, c.isDotField > 0)
     if n.kind == nkDotExpr:
       result = n
       result.sons[0] = semTemplBody(c, n.sons[0])
