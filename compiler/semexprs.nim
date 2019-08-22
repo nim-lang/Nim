@@ -2398,11 +2398,9 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
   for i in 0 ..< sonsLen(n):
-    if n[i].kind != nkExprColonExpr or n[i][0].kind notin {nkSym, nkIdent}:
+    if n[i].kind != nkExprColonExpr:
       illFormedAst(n.sons[i], c.config)
-    var id: PIdent
-    if n.sons[i].sons[0].kind == nkIdent: id = n.sons[i].sons[0].ident
-    else: id = n.sons[i].sons[0].sym.name
+    let id = considerQuotedIdent(c, n[i][0])
     if containsOrIncl(ids, id.id):
       localError(c.config, n.sons[i].info, errFieldInitTwice % id.s)
     n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1],
