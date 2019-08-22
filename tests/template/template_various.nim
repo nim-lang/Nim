@@ -9,6 +9,7 @@ bar7
 10
 4true
 132
+20
 '''
 """
 
@@ -192,7 +193,7 @@ block ttempl:
 
 
 block ttempl4:
-  template `:=`(name, val: untyped): typed =
+  template `:=`(name, val: untyped) =
     var name = val
 
   ha := 1 * 4
@@ -211,7 +212,7 @@ block ttempl5:
       discard
 
   # Call parse_to_close
-  template get_next_ident: typed =
+  template get_next_ident =
       discard "{something}".parse_to_close(0, open = '{', close = '}')
 
   get_next_ident()
@@ -231,3 +232,16 @@ block ttempl5:
 block templreturntype:
   template `=~` (a: int, b: int): bool = false
   var foo = 2 =~ 3
+
+# bug #7117
+template parse9(body: untyped): untyped =
+
+  template val9(arg: string): int {.inject.} =
+    var b: bool
+    if b: 10
+    else: 20
+
+  body
+
+parse9:
+  echo val9("1")
