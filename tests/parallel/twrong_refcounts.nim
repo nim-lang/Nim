@@ -1,7 +1,10 @@
 discard """
   output: "Success"
+  target: "c"
 """
 
+# Note: target: "cpp" fails because we can't yet have `extern "C"` mangling in
+# `exportc` procs.
 import math, random, threadPool
 
 # ---
@@ -48,6 +51,6 @@ proc update =
 
 # ---
 
-when isMainModule:
+when true:
   setup()
   update()

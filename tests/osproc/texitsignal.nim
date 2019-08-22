@@ -28,6 +28,9 @@ if paramCount() == 0:
     # windows kill happens using TerminateProcess(h, 0), so we should get a
     # 0 here
     echo p.waitForExit() == 0
+  elif defined(haiku):
+    # on Haiku, the program main thread receive SIGKILLTHR
+    echo p.waitForExit() == 128 + SIGKILLTHR
   else:
     # on posix (non-windows), kill sends SIGKILL
     echo p.waitForExit() == 128 + SIGKILL

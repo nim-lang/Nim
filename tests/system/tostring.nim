@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  output: "DONE: tostring.nim"
 """
 
 doAssert "@[23, 45]" == $(@[23, 45])
@@ -24,10 +24,10 @@ doAssert "nan" == $(0.0/0.0)
 # nil tests
 # maybe a bit inconsistent in types
 var x: seq[string]
-doAssert "nil" == $(x)
+doAssert "@[]" == $(x)
 
-var y: string = nil
-doAssert nil == $(y)
+var y: string
+doAssert "" == $(y)
 
 type
   Foo = object
@@ -54,7 +54,7 @@ doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '
 doAssert $cstring(unsafeAddr arr) == "Hello World!"
 
 proc takes(c: cstring) =
-  doAssert c == ""
+  doAssert c == cstring""
 
 proc testm() =
   var x: string
@@ -90,12 +90,8 @@ proc stringCompare() =
 
   doAssert e == ""
   doAssert "" == e
-  doAssert nil == e
-  doAssert e == nil
   doAssert f == g
   doAssert "" == ""
-  doAssert "" == nil
-  doAssert nil == ""
 
   g.setLen(10)
   doAssert g == "\0\0\0\0\0\0\0\0\0\0"
@@ -111,3 +107,14 @@ bar(nilstring)
 
 static:
   stringCompare()
+
+# bug 8847
+var a2: cstring = "fo\"o2"
+
+block:
+  var s: string
+  s.addQuoted a2
+  doAssert s == "\"fo\\\"o2\""
+
+
+echo "DONE: tostring.nim"

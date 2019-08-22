@@ -1,9 +1,3 @@
-discard """
-  file: "ttupleunpack.nim"
-  output: ""
-  exitcode: 0
-"""
-
 proc returnsTuple(): (int, int, int) = (4, 2, 3)
 
 proc main2 =

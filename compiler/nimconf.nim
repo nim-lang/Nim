@@ -10,8 +10,8 @@
 # This module handles the reading of the config file.
 
 import
-  llstream, nversion, commands, os, strutils, msgs, platform, condsyms, lexer,
-  options, idents, wordrecg, strtabs, lineinfos
+  llstream, commands, os, strutils, msgs, lexer,
+  options, idents, wordrecg, strtabs, lineinfos, pathutils
 
 # ---------------- configuration file parser -----------------------------
 # we use Nim's scanner here to save space and work
@@ -28,7 +28,7 @@ proc parseAtom(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
     result = parseExpr(L, tok, config)
     if tok.tokType == tkParRi: ppGetTok(L, tok)
     else: lexMessage(L, errGenerated, "expected closing ')'")
-  elif tok.ident.id == ord(wNot):
+  elif tok.tokType == tkNot:
     ppGetTok(L, tok)
     result = not parseAtom(L, tok, config)
   else:
@@ -37,14 +37,14 @@ proc parseAtom(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
 
 proc parseAndExpr(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
   result = parseAtom(L, tok, config)
-  while tok.ident.id == ord(wAnd):
+  while tok.tokType == tkAnd:
     ppGetTok(L, tok)          # skip "and"
     var b = parseAtom(L, tok, config)
     result = result and b
 
 proc parseExpr(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
   result = parseAndExpr(L, tok, config)
-  while tok.ident.id == ord(wOr):
+  while tok.tokType == tkOr:
     ppGetTok(L, tok)          # skip "or"
     var b = parseAndExpr(L, tok, config)
     result = result or b
@@ -123,31 +123,31 @@ proc parseDirective(L: var TLexer, tok: var TToken; config: ConfigRef; condStack
   of wEnd: doEnd(L, tok, condStack)
   of wWrite:
     ppGetTok(L, tok)
-    msgs.msgWriteln(config, strtabs.`%`(tokToStr(tok), config.configVars,
+    msgs.msgWriteln(config, strtabs.`%`($tok, config.configVars,
                                 {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
     case tok.ident.s.normalize
     of "putenv":
       ppGetTok(L, tok)
-      var key = tokToStr(tok)
+      var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, tokToStr(tok))
+      os.putEnv(key, $tok)
       ppGetTok(L, tok)
     of "prependenv":
       ppGetTok(L, tok)
-      var key = tokToStr(tok)
+      var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, tokToStr(tok) & os.getEnv(key))
+      os.putEnv(key, $tok & os.getEnv(key))
       ppGetTok(L, tok)
     of "appendenv":
       ppGetTok(L, tok)
-      var key = tokToStr(tok)
+      var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, os.getEnv(key) & tokToStr(tok))
+      os.putEnv(key, os.getEnv(key) & $tok)
       ppGetTok(L, tok)
     else:
-      lexMessage(L, errGenerated, "invalid directive: '$1'" % tokToStr(tok))
+      lexMessage(L, errGenerated, "invalid directive: '$1'" % $tok)
 
 proc confTok(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var seq[bool]) =
   ppGetTok(L, tok)
@@ -156,7 +156,7 @@ proc confTok(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var s
 
 proc checkSymbol(L: TLexer, tok: TToken) =
   if tok.tokType notin {tkSymbol..tkInt64Lit, tkStrLit..tkTripleStrLit}:
-    lexMessage(L, errGenerated, "expected identifier, but got: " & tokToStr(tok))
+    lexMessage(L, errGenerated, "expected identifier, but got: " & $tok)
 
 proc parseAssignment(L: var TLexer, tok: var TToken;
                      config: ConfigRef; condStack: var seq[bool]) =
@@ -164,21 +164,21 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     confTok(L, tok, config, condStack)           # skip unnecessary prefix
   var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
-  var s = tokToStr(tok)
+  var s = $tok
   confTok(L, tok, config, condStack)             # skip symbol
   var val = ""
   while tok.tokType == tkDot:
     add(s, '.')
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
-    add(s, tokToStr(tok))
+    add(s, $tok)
     confTok(L, tok, config, condStack)
   if tok.tokType == tkBracketLe:
     # BUGFIX: val, not s!
-    # BUGFIX: do not copy '['!
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
-    add(val, tokToStr(tok))
+    add(val, '[')
+    add(val, $tok)
     confTok(L, tok, config, condStack)
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
     else: lexMessage(L, errGenerated, "expected closing ']'")
@@ -188,12 +188,12 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     if len(val) > 0: add(val, ':')
     confTok(L, tok, config, condStack)           # skip ':' or '=' or '%'
     checkSymbol(L, tok)
-    add(val, tokToStr(tok))
+    add(val, $tok)
     confTok(L, tok, config, condStack)           # skip symbol
     while tok.ident != nil and tok.ident.s == "&":
       confTok(L, tok, config, condStack)
       checkSymbol(L, tok)
-      add(val, tokToStr(tok))
+      add(val, $tok)
       confTok(L, tok, config, condStack)
   if percent:
     processSwitch(s, strtabs.`%`(val, config.configVars,
@@ -201,8 +201,8 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
   else:
     processSwitch(s, val, passPP, info, config)
 
-proc readConfigFile(
-    filename: string; cache: IdentCache; config: ConfigRef): bool =
+proc readConfigFile(filename: AbsoluteFile; cache: IdentCache;
+                    config: ConfigRef): bool =
   var
     L: TLexer
     tok: TToken
@@ -219,38 +219,38 @@ proc readConfigFile(
     closeLexer(L)
     return true
 
-proc getUserConfigPath(filename: string): string =
-  result = joinPath(getConfigDir(), filename)
+proc getUserConfigPath*(filename: RelativeFile): AbsoluteFile =
+  result = getConfigDir().AbsoluteDir / RelativeDir"nim" / filename
 
-proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
+proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile =
   # try standard configuration file (installation did not distribute files
   # the UNIX way)
   let p = getPrefixDir(conf)
-  result = joinPath([p, "config", filename])
+  result = p / RelativeDir"config" / filename
   when defined(unix):
-    if not existsFile(result): result = joinPath([p, "etc", filename])
-    if not existsFile(result): result = "/etc/" & filename
+    if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
+    if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)
 
-  var configFiles = newSeq[string]()
+  var configFiles = newSeq[AbsoluteFile]()
 
-  template readConfigFile(path: string) =
+  template readConfigFile(path) =
     let configPath = path
     if readConfigFile(configPath, cache, conf):
       add(configFiles, configPath)
 
-  if optSkipConfigFile notin conf.globalOptions:
+  if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
 
   if optSkipUserConfigFile notin conf.globalOptions:
     readConfigFile(getUserConfigPath(cfg))
 
-  let pd = if conf.projectPath.len > 0: conf.projectPath else: getCurrentDir()
+  let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
   if optSkipParentConfigFiles notin conf.globalOptions:
-    for dir in parentDirs(pd, fromRoot=true, inclusive=false):
-      readConfigFile(dir / cfg)
+    for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
+      readConfigFile(AbsoluteDir(dir) / cfg)
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
@@ -263,4 +263,5 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
       readConfigFile(projectConfig)
 
   for filename in configFiles:
-    rawMessage(conf, hintConf, filename)
+    # delayed to here so that `hintConf` is honored
+    rawMessage(conf, hintConf, filename.string)

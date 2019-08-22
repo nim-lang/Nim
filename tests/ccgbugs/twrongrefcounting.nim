@@ -2,6 +2,17 @@ discard """
   output: '''ok'''
   cmd: "nim c -r --gc:refc -d:useGcAssert -d:useSysAssert -d:fulldebug -d:smokeCycles $file"
 """
+
+# bug #9825
+func empty(T: typedesc): T = discard
+const emptyChunk = @(empty(array[10, byte]))
+
+var lst: seq[seq[byte]]
+lst.add emptyChunk
+
+doAssert($lst == "@[@[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]")
+
+
 # bug #6234
 type
     Foo = ref object

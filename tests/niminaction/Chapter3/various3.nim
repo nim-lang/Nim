@@ -1,3 +1,9 @@
+discard """
+output: '''
+Future is no longer empty, 42
+'''
+"""
+
 import threadpool
 proc foo: string = "Dog"
 var x: FlowVar[string] = spawn foo()
@@ -33,9 +39,9 @@ let data = """
   {"username": "Dominik"}
 """
 
-let obj = parseJson(data) 
-assert obj.kind == JObject 
-assert obj["username"].kind == JString 
+let obj = parseJson(data)
+assert obj.kind == JObject
+assert obj["username"].kind == JString
 assert obj["username"].str == "Dominik"
 
 block:
@@ -60,12 +66,12 @@ var amy = Human(name: "Amy", age: 20)
 
 import asyncdispatch
 
-var future = newFuture[int]() 
-doAssert(not future.finished) 
+var future = newFuture[int]()
+doAssert(not future.finished)
 
-future.callback = 
-  proc (future: Future[int]) = 
-    echo("Future is no longer empty, ", future.read) 
+future.callback =
+  proc (future: Future[int]) =
+    echo("Future is no longer empty, ", future.read)
 
 future.complete(42)
 
@@ -85,9 +91,8 @@ import asyncdispatch, asyncfile, os
 proc readFiles() {.async.} =
   # --- Changed to getTempDir here.
   var file = openAsync(getTempDir() / "test.txt", fmReadWrite)
-  let data = await file.readAll() 
-  echo(data) 
-  await file.write("Hello!\n") 
+  let data = await file.readAll()
+  echo(data)
+  await file.write("Hello!\n")
 
 waitFor readFiles()
-

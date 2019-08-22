@@ -1,6 +1,6 @@
 discard """
-  line: 13
   errormsg: "case statement cannot work on enums with holes for computed goto"
+  line: 13
 """
 
 type

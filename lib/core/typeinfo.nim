@@ -8,12 +8,19 @@
 #
 
 ## This module implements an interface to Nim's `runtime type information`:idx:
-## (`RTTI`:idx:).
-## Note that even though ``Any`` and its operations hide the nasty low level
-## details from its clients, it remains inherently unsafe!
+## (`RTTI`:idx:). See the `marshal <marshal.html>`_ module for an example of
+## what this module allows you to do.
 ##
-## See the `marshal <marshal.html>`_ module for what this module allows you
-## to do.
+## Note that even though ``Any`` and its operations hide the nasty low level
+## details from its clients, it remains inherently unsafe! Also, Nim's 
+## runtime type information will evolve and may eventually be deprecated.
+## As an alternative approach to programmatically understanding and
+## manipulating types, consider using the `macros <macros.html>`_ package to
+## work with the types' AST representation at compile time. See, for example,
+## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative 
+## approach to storing arbitrary types at runtime, consider using generics.
+##
+## 
 
 {.push hints: off.}
 
@@ -83,8 +90,6 @@ when not defined(js):
   template `rawType=`(x: var Any, p: PNimType) =
     x.rawTypePtr = cast[pointer](p)
 
-{.deprecated: [TAny: Any, TAnyKind: AnyKind].}
-
 when defined(gogc):
   const GenericSeqSize = (3 * sizeof(int))
 else:
@@ -108,6 +113,7 @@ proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   of 1: d = ze(cast[ptr int8](a +% n.offset)[])
   of 2: d = ze(cast[ptr int16](a +% n.offset)[])
   of 4: d = int(cast[ptr int32](a +% n.offset)[])
+  of 8: d = int(cast[ptr int64](a +% n.offset)[])
   else: assert(false)
   return d
 
@@ -195,14 +201,14 @@ proc `[]`*(x: Any, i: int): Any =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
     return newAny(x.value +!! i*bs, x.rawType.base)
   of tySequence:
     var s = cast[ppointer](x.value)[]
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     return newAny(s +!! (GenericSeqSize+i*bs), x.rawType.base)
   else: assert false
 
@@ -212,7 +218,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
     assert y.rawType == x.rawType.base
     genericAssign(x.value +!! i*bs, y.value, y.rawType)
   of tySequence:
@@ -220,7 +226,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     assert y.rawType == x.rawType.base
     genericAssign(s +!! (GenericSeqSize+i*bs), y.value, y.rawType)
   else: assert false
@@ -228,8 +234,14 @@ proc `[]=`*(x: Any, i: int, y: Any) =
 proc len*(x: Any): int =
   ## len for an any `x` that represents an array or a sequence.
   case x.rawType.kind
-  of tyArray: result = x.rawType.size div x.rawType.base.size
-  of tySequence: result = cast[PGenSeq](cast[ppointer](x.value)[]).len
+  of tyArray:
+    result = x.rawType.size div x.rawType.base.size
+  of tySequence:
+    let pgenSeq = cast[PGenSeq](cast[ppointer](x.value)[])
+    if isNil(pgenSeq):
+      result = 0
+    else:
+      result = pgenSeq.len
   else: assert false
 
 
@@ -240,10 +252,9 @@ proc base*(x: Any): Any =
 
 
 proc isNil*(x: Any): bool =
-  ## `isNil` for an any `x` that represents a sequence, string, cstring,
-  ## proc or some pointer type.
-  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
-                            tySequence, tyProc}
+  ## `isNil` for an any `x` that represents a cstring, proc or
+  ## some pointer type.
+  assert x.rawType.kind in {tyCString, tyRef, tyPtr, tyPointer, tyProc}
   result = isNil(cast[ppointer](x.value)[])
 
 proc getPointer*(x: Any): pointer =
@@ -689,7 +700,7 @@ when isMainModule:
 
   var test3: TestObj
   test3.test = 42
-  test3.test2 = blah2
+  test3 = TestObj(test2: blah2)
   var x3 = toAny(test3)
   i = 0
   for n, a in fields(x3):
@@ -716,5 +727,3 @@ when isMainModule:
     for i in 0 .. m.len-1:
       for j in 0 .. m[i].len-1:
         echo getString(m[i][j])
-
-

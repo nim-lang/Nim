@@ -1,5 +1,5 @@
 discard """
-  outputsub: '''Error: invalid indentation 45'''
+  outputsub: '''Error: expression expected, but found '[EOF]' 45'''
 """
 
 # feature request #1473

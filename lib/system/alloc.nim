@@ -20,7 +20,7 @@ template track(op, address, size) =
 # Each chunk starts at an address that is divisible by the page size.
 
 const
-  InitialMemoryRequest = 128 * PageSize # 0.5 MB
+  nimMinHeapPages {.intdefine.} = 128 # 0.5 MB
   SmallChunkSize = PageSize
   MaxFli = 30
   MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
@@ -38,7 +38,7 @@ type
   Trunk = object
     next: PTrunk         # all nodes are connected with this pointer
     key: int             # start address at bit 0
-    bits: array[0..IntsPerTrunk-1, int] # a bit vector
+    bits: array[0..IntsPerTrunk-1, uint] # a bit vector
 
   TrunkBuckets = array[0..255, PTrunk]
   IntSet = object
@@ -116,6 +116,8 @@ type
     nextChunkSize: int
     bottomData: AvlNode
     heapLinks: HeapLinks
+    when defined(nimTypeNames):
+      allocCounter, deallocCounter: int
 
 const
   fsLookupTable: array[byte, int8] = [
@@ -221,10 +223,6 @@ proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   mat() = b
   setBit(sl, a.slBitmap[fl])
   setBit(fl, a.flBitmap)
-
-{.push stack_trace: off.}
-proc initAllocator() = discard "nothing to do anymore"
-{.pop.}
 
 proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   inc(a.currMem, bytes)
@@ -334,21 +332,21 @@ proc contains(s: IntSet, key: int): bool =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
-    result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
+    result = (t.bits[u shr IntShift] and (uint(1) shl (u and IntMask))) != 0
   else:
     result = false
 
 proc incl(a: var MemRegion, s: var IntSet, key: int) =
   var t = intSetPut(a, s, key shr TrunkShift)
   var u = key and TrunkMask
-  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
+  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (uint(1) shl (u and IntMask))
 
 proc excl(s: var IntSet, key: int) =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
     t.bits[u shr IntShift] = t.bits[u shr IntShift] and not
-        (1 shl (u and IntMask))
+        (uint(1) shl (u and IntMask))
 
 iterator elements(t: IntSet): int {.inline.} =
   # while traversing it is forbidden to change the set!
@@ -434,8 +432,9 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
         a.nextChunkSize = PageSize*4
       else:
         a.nextChunkSize = min(roundup(usedMem shr 2, PageSize), a.nextChunkSize * 2)
-  var size = size
+        a.nextChunkSize = min(a.nextChunkSize, MaxBigChunkSize)
 
+  var size = size
   if size > a.nextChunkSize:
     result = cast[PBigChunk](osAllocPages(size))
   else:
@@ -451,10 +450,10 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   a.addHeapLink(result, size)
   when defined(debugHeapLinks):
     cprintf("owner: %p; result: %p; next pointer %p; size: %ld\n", addr(a),
-      result, result.heapLink, result.origSize)
+      result, result.heapLink, result.size)
 
   when defined(memtracker):
-    trackLocation(addr result.origSize, sizeof(int))
+    trackLocation(addr result.size, sizeof(int))
 
   sysAssert((cast[ByteAddress](result) and PageMask) == 0, "requestOsChunks 1")
   #zeroMem(result, size)
@@ -524,7 +523,7 @@ proc updatePrevSize(a: var MemRegion, c: PBigChunk,
 proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   result = cast[PBigChunk](cast[ByteAddress](c) +% size)
   result.size = c.size - size
-  track("result.origSize", addr result.origSize, sizeof(int))
+  track("result.size", addr result.size, sizeof(int))
   # XXX check if these two nil assignments are dead code given
   # addChunkToMatrix's implementation:
   result.next = nil
@@ -585,8 +584,8 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
   if result == nil:
-    if size < InitialMemoryRequest:
-      result = requestOsChunks(a, InitialMemoryRequest)
+    if size < nimMinHeapPages * PageSize:
+      result = requestOsChunks(a, nimMinHeapPages * PageSize)
       splitChunk(a, result, size)
     else:
       result = requestOsChunks(a, size)
@@ -599,7 +598,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
       splitChunk(a, result, size)
   # set 'used' to to true:
   result.prevSize = 1
-  track("setUsedToFalse", addr result.origSize, sizeof(int))
+  track("setUsedToFalse", addr result.size, sizeof(int))
 
   incl(a, a.chunkStarts, pageIndex(result))
   dec(a.freeMem, size)
@@ -737,6 +736,8 @@ when false:
         result = nil
 
 proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
+  when defined(nimTypeNames):
+    inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
@@ -810,6 +811,8 @@ proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
+  when defined(nimTypeNames):
+    inc(a.deallocCounter)
   #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)
@@ -961,7 +964,7 @@ proc deallocOsPages(a: var MemRegion) =
       let (p, size) = it.chunks[i]
       when defined(debugHeapLinks):
         cprintf("owner %p; dealloc A: %p size: %ld; next: %p\n", addr(a),
-          it, it.origSize, next)
+          it, it.size, next)
       sysAssert size >= PageSize, "origSize too small"
       osDeallocPages(p, size)
     it = next
@@ -974,6 +977,10 @@ proc getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem
 proc getOccupiedMem(a: MemRegion): int {.inline.} =
   result = a.occ
   # a.currMem - a.freeMem
+
+when defined(nimTypeNames):
+  proc getMemCounters(a: MemRegion): (int, int) {.inline.} =
+    (a.allocCounter, a.deallocCounter)
 
 # ---------------------- thread memory region -------------------------------
 
@@ -1000,7 +1007,7 @@ template instantiateForRegion(allocator: untyped) =
     dealloc(allocator, p)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    result = realloc(allocator, p, newSize)
+    result = realloc(allocator, p, newsize)
 
   when false:
     proc countFreeMem(): int =
@@ -1017,6 +1024,9 @@ template instantiateForRegion(allocator: untyped) =
   proc getTotalMem(): int = return allocator.currMem
   proc getOccupiedMem(): int = return allocator.occ #getTotalMem() - getFreeMem()
   proc getMaxMem*(): int = return getMaxMem(allocator)
+
+  when defined(nimTypeNames):
+    proc getMemCounters*(): (int, int) = getMemCounters(allocator)
 
   # -------------------- shared heap region ----------------------------------
   when hasThreadSupport:
@@ -1050,11 +1060,10 @@ template instantiateForRegion(allocator: untyped) =
       result = realloc(sharedHeap, p, newsize)
       releaseSys(heapLock)
     else:
-      result = realloc(p, newSize)
+      result = realloc(p, newsize)
 
   when hasThreadSupport:
-
-    template sharedMemStatsShared(v: int) {.immediate.} =
+    template sharedMemStatsShared(v: int) =
       acquireSys(heapLock)
       result = v
       releaseSys(heapLock)

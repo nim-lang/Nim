@@ -1,10 +1,9 @@
 discard """
-  file: "tjsonmacro.nim"
   output: ""
 """
 import json, strutils, options, tables
 
-when isMainModule:
+when true:
   # Tests inspired by own use case (with some additional tests).
   # This should succeed.
   type
@@ -40,7 +39,7 @@ when isMainModule:
     test: 18827361,
     test2: "hello world",
     test3: true,
-    testNil: nil
+    testNil: "nil"
   )
 
   let node = %x
@@ -53,7 +52,7 @@ when isMainModule:
   doAssert y.test == 18827361
   doAssert y.test2 == "hello world"
   doAssert y.test3
-  doAssert y.testNil.isNil
+  doAssert y.testNil == "nil"
 
   # Test for custom object variants (without an enum) and with an else branch.
   block:
@@ -517,3 +516,43 @@ when isMainModule:
       var w = u.to(MyDistRef)
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
+
+# TODO: when the issue with the limeted vm registers is solved, the
+# exact same test as above should be evaluated at compile time as
+# well, to ensure that the vm functionality won't diverge from the
+# runtime functionality. Until then, the following test should do it.
+
+static:
+  var t = parseJson("""
+    {
+      "name":"Bongo",
+      "email":"bongo@bingo.com",
+      "list": [11,7,15],
+      "year": 1975,
+      "dict": {"a": 1, "b": 2},
+      "arr": [1.0, 2.0, 7.0],
+      "person": {"name": "boney"},
+      "dog": {"name": "honey"},
+      "fruit": {"color": 10},
+      "distfruit": {"color": 11},
+      "emails": ["abc", "123"]
+    }
+  """)
+
+  doAssert t["name"].getStr == "Bongo"
+  doAssert t["email"].getStr == "bongo@bingo.com"
+  doAssert t["list"][0].getInt == 11
+  doAssert t["list"][1].getInt == 7
+  doAssert t["list"][2].getInt == 15
+  doAssert t["year"].getInt == 1975
+  doAssert t["dict"]["a"].getInt == 1
+  doAssert t["dict"]["b"].getInt == 2
+  doAssert t["arr"][0].getFloat == 1.0
+  doAssert t["arr"][1].getFloat == 2.0
+  doAssert t["arr"][2].getFloat == 7.0
+  doAssert t["person"]["name"].getStr == "boney"
+  doAssert t["distfruit"]["color"].getInt == 11
+  doAssert t["dog"]["name"].getStr == "honey"
+  doAssert t["fruit"]["color"].getInt == 10
+  doAssert t["emails"][0].getStr == "abc"
+  doAssert t["emails"][1].getStr == "123"

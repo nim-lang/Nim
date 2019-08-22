@@ -68,7 +68,7 @@ proc write*[T](future: FutureStream[T], value: T): Future[void] =
   if not future.cb.isNil: future.cb()
   result.complete()
 
-proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
+proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
   ## Returns a future that will complete when the ``FutureStream`` has data
   ## placed into it. The future will be completed with the oldest
   ## value stored inside the stream. The return value will also determine
@@ -79,8 +79,11 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
   ## ``FutureStream``.
   var resFut = newFuture[(bool, T)]("FutureStream.take")
   let savedCb = future.cb
-  future.callback =
+  var newCb =
     proc (fs: FutureStream[T]) =
+      # Exit early if `resFut` is already complete. (See #8994).
+      if resFut.finished: return
+
       # We don't want this callback called again.
       future.cb = nil
 
@@ -93,11 +96,15 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
         res[0] = true
         res[1] = fs.queue.popFirst()
 
-      if not resFut.finished:
-        resFut.complete(res)
+      resFut.complete(res)
 
       # If the saved callback isn't nil then let's call it.
       if not savedCb.isNil: savedCb()
+
+  if future.queue.len > 0 or future.finished:
+    newCb(future)
+  else:
+    future.callback = newCb
   return resFut
 
 proc len*[T](future: FutureStream[T]): int =

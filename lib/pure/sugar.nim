@@ -123,9 +123,11 @@ macro `->`*(p, b: untyped): untyped =
   result = createProcType(p, b)
 
 type ListComprehension = object
-var lc*: ListComprehension
+var lc* {.deprecated.}: ListComprehension
 
-macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
+template `|`*(lc: ListComprehension, comp: untyped): untyped {.deprecated.} = lc
+
+macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped {.deprecated.} =
   ## List comprehension, returns a sequence. `comp` is the actual list
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
   ## the type that will be stored inside the result seq.
@@ -137,11 +139,11 @@ macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
   ##   const n = 20
   ##   echo lc[(x,y,z) | (x <- 1..n, y <- x..n, z <- y..n, x*x + y*y == z*z),
   ##           tuple[a,b,c: int]]
+  ## **Deprecated since version 0.19.9**
 
   expectLen(comp, 3)
   expectKind(comp, nnkInfix)
-  expectKind(comp[0], nnkIdent)
-  assert($comp[0].ident == "|")
+  assert($comp[0] == "|")
 
   result = newCall(
     newDotExpr(
@@ -198,3 +200,41 @@ macro dump*(x: typed): untyped =
   let r = quote do:
     debugEcho `s`, " = ", `x`
   return r
+
+# TODO: consider exporting this in macros.nim
+proc freshIdentNodes(ast: NimNode): NimNode =
+  # Replace NimIdent and NimSym by a fresh ident node
+  # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
+  proc inspect(node: NimNode): NimNode =
+    case node.kind:
+    of nnkIdent, nnkSym:
+      result = ident($node)
+    of nnkEmpty, nnkLiterals:
+      result = node
+    else:
+      result = node.kind.newTree()
+      for child in node:
+        result.add inspect(child)
+  result = inspect(ast)
+
+macro distinctBase*(T: typedesc): untyped =
+  ## reverses ``type T = distinct A``; works recursively.
+  runnableExamples:
+    type T = distinct int
+    doAssert distinctBase(T) is int
+    doAssert: not compiles(distinctBase(int))
+    type T2 = distinct T
+    doAssert distinctBase(T2) is int
+
+  let typeNode = getTypeImpl(T)
+  expectKind(typeNode, nnkBracketExpr)
+  if typeNode[0].typeKind != ntyTypeDesc:
+    error "expected typeDesc, got " & $typeNode[0]
+  var typeSym = typeNode[1]
+  typeSym = getTypeImpl(typeSym)
+  if typeSym.typeKind != ntyDistinct:
+    error "type is not distinct"
+  typeSym = typeSym[0]
+  while typeSym.typeKind == ntyDistinct:
+    typeSym = getTypeImpl(typeSym)[0]
+  typeSym.freshIdentNodes

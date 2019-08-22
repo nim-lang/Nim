@@ -9,7 +9,7 @@
 
 ## This module contains a simple persistent id generator.
 
-import idents, strutils, os, options
+import idents, strutils, options, pathutils
 
 var gFrontEndId*: int
 
@@ -36,18 +36,18 @@ proc setId*(id: int) {.inline.} =
 proc idSynchronizationPoint*(idRange: int) =
   gFrontEndId = (gFrontEndId div idRange + 1) * idRange + 1
 
-proc toGid(conf: ConfigRef; f: string): string =
+proc toGid(conf: ConfigRef; f: AbsoluteFile): string =
   # we used to use ``f.addFileExt("gid")`` (aka ``$project.gid``), but this
   # will cause strange bugs if multiple projects are in the same folder, so
   # we simply use a project independent name:
-  result = options.completeGeneratedFilePath(conf, "nim.gid")
+  result = options.completeGeneratedFilePath(conf, AbsoluteFile"nim.gid").string
 
-proc saveMaxIds*(conf: ConfigRef; project: string) =
+proc saveMaxIds*(conf: ConfigRef; project: AbsoluteFile) =
   var f = open(toGid(conf, project), fmWrite)
   f.writeLine($gFrontEndId)
   f.close()
 
-proc loadMaxIds*(conf: ConfigRef; project: string) =
+proc loadMaxIds*(conf: ConfigRef; project: AbsoluteFile) =
   var f: File
   if open(f, toGid(conf, project), fmRead):
     var line = newStringOfCap(20)

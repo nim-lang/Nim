@@ -1,11 +1,11 @@
 discard """
-  output: '''3030
+  output: '''0
 true
 3'''
 """
 
 template arithOps: untyped = (`+` | `-` | `*`)
-template testOr{ (arithOps{f})(a, b) }(a, b, f: untyped): untyped = f(a+1, b)
+template testOr{ (arithOps{f})(a, b) }(a, b, f: untyped): untyped = f(a mod 10, b)
 
 let xx = 10
 echo 10*xx

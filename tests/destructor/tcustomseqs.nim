@@ -16,7 +16,7 @@ discard """
 1 2 6
 1 3 7
 after 6 6'''
-  cmd: '''nim c --newruntime $file'''
+joinable: false
 """
 
 import typetraits
@@ -43,9 +43,10 @@ proc `=destroy`*[T](x: var myseq[T]) =
 proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
   if a.data == b.data: return
   if a.data != nil:
-    dealloc(a.data)
-    inc deallocCount
-    a.data = nil
+    `=destroy`(a)
+    #dealloc(a.data)
+    #inc deallocCount
+    #a.data = nil
   a.len = b.len
   a.cap = b.cap
   if b.data != nil:

@@ -1,5 +1,4 @@
 discard """
-  file: "twinasyncrw.nim"
   output: "5000"
 """
 when defined(windows):
@@ -47,7 +46,7 @@ when defined(windows):
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
@@ -234,7 +233,7 @@ when defined(windows):
     setBlocking(server, false)
     block:
       var name = Sockaddr_in()
-      name.sin_family = toInt(Domain.AF_INET).int16
+      name.sin_family = toInt(Domain.AF_INET).uint16
       name.sin_port = htons(uint16(port))
       name.sin_addr.s_addr = htonl(INADDR_ANY)
       if bindAddr(server, cast[ptr SockAddr](addr(name)),

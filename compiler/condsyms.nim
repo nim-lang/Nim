@@ -10,28 +10,26 @@
 # This module handles the conditional symbols.
 
 import
-  strtabs, platform, strutils, idents
+  strtabs
 
-const
-  catNone = "false"
+from options import Feature
+from lineinfos import HintsToStr, WarningsToStr
 
 proc defineSymbol*(symbols: StringTableRef; symbol: string, value: string = "true") =
   symbols[symbol] = value
 
 proc undefSymbol*(symbols: StringTableRef; symbol: string) =
-  symbols[symbol] = catNone
+  symbols.del(symbol)
 
 #proc lookupSymbol*(symbols: StringTableRef; symbol: string): string =
 #  result = if isDefined(symbol): gSymbols[symbol] else: nil
 
 iterator definedSymbolNames*(symbols: StringTableRef): string =
   for key, val in pairs(symbols):
-    if val != catNone: yield key
+    yield key
 
 proc countDefinedSymbols*(symbols: StringTableRef): int =
-  result = 0
-  for key, val in pairs(symbols):
-    if val != catNone: inc(result)
+  symbols.len
 
 proc initDefines*(symbols: StringTableRef) =
   # for bootstrapping purposes and old code:
@@ -55,7 +53,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
-  defineSymbol("nimImmediateDeprecated")
+  defineSymbol("nimHasalignOf")
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
@@ -72,3 +70,30 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNoZeroTerminator")
   defineSymbol("nimNotNil")
   defineSymbol("nimVmExportFixed")
+  defineSymbol("nimHasSymOwnerInMacro")
+  defineSymbol("nimNewRuntime")
+  defineSymbol("nimIncrSeqV3")
+  defineSymbol("nimAshr")
+  defineSymbol("nimNoNilSeqs")
+  defineSymbol("nimNoNilSeqs2")
+  defineSymbol("nimHasUserErrors")
+  defineSymbol("nimUncheckedArrayTyp")
+  defineSymbol("nimHasTypeof")
+  defineSymbol("nimErrorProcCanHaveBody")
+  defineSymbol("nimHasInstantiationOfInMacro")
+  defineSymbol("nimHasHotCodeReloading")
+  defineSymbol("nimHasNilSeqs")
+  defineSymbol("nimHasSignatureHashInMacro")
+  defineSymbol("nimHasDefault")
+  defineSymbol("nimMacrosSizealignof")
+  defineSymbol("nimNoZeroExtendMagic")
+  for f in low(Feature)..high(Feature):
+    defineSymbol("nimHas" & $f)
+
+  for s in WarningsToStr:
+    defineSymbol("nimHasWarning" & s)
+  for s in HintsToStr:
+    defineSymbol("nimHasHint" & s)
+
+  defineSymbol("nimFixedOwned")
+  defineSymbol("nimHasStyleChecks")

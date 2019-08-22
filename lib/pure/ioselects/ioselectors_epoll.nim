@@ -53,6 +53,7 @@ when hasThreadSupport:
     SelectorImpl[T] = object
       epollFD: cint
       maxFD: int
+      numFD: int
       fds: ptr SharedArray[SelectorKey[T]]
       count: int
     Selector*[T] = ptr SelectorImpl[T]
@@ -61,6 +62,7 @@ else:
     SelectorImpl[T] = object
       epollFD: cint
       maxFD: int
+      numFD: int
       fds: seq[SelectorKey[T]]
       count: int
     Selector*[T] = ref SelectorImpl[T]
@@ -73,24 +75,31 @@ proc newSelector*[T](): Selector[T] =
   # Retrieve the maximum fd count (for current OS) via getrlimit()
   var a = RLimit()
   if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
-    raiseOsError(osLastError())
+    raiseOSError(osLastError())
   var maxFD = int(a.rlim_max)
   doAssert(maxFD > 0)
+  # Start with a reasonable size, checkFd() will grow this on demand
+  const numFD = 1024
 
   var epollFD = epoll_create(MAX_EPOLL_EVENTS)
   if epollFD < 0:
-    raiseOsError(osLastError())
+    raiseOSError(osLastError())
 
   when hasThreadSupport:
     result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
     result.epollFD = epollFD
     result.maxFD = maxFD
-    result.fds = allocSharedArray[SelectorKey[T]](maxFD)
+    result.numFD = numFD
+    result.fds = allocSharedArray[SelectorKey[T]](numFD)
   else:
     result = Selector[T]()
     result.epollFD = epollFD
     result.maxFD = maxFD
-    result.fds = newSeq[SelectorKey[T]](maxFD)
+    result.numFD = numFD
+    result.fds = newSeq[SelectorKey[T]](numFD)
+
+  for i in 0 ..< numFD:
+    result.fds[i].ident = InvalidIdent
 
 proc close*[T](s: Selector[T]) =
   let res = posix.close(s.epollFD)
@@ -99,12 +108,6 @@ proc close*[T](s: Selector[T]) =
     deallocShared(cast[pointer](s))
   if res != 0:
     raiseIOSelectorsError(osLastError())
-
-template clearKey[T](key: ptr SelectorKey[T]) =
-  var empty: T
-  key.ident = 0
-  key.events = {}
-  key.data = empty
 
 proc newSelectEvent*(): SelectEvent =
   let fdci = eventfd(0, 0)
@@ -130,12 +133,22 @@ template checkFd(s, f) =
   # FD if there is too many. -- DP
   if f >= s.maxFD:
     raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
+  if f >= s.numFD:
+    var numFD = s.numFD
+    while numFD <= f: numFD *= 2
+    when hasThreadSupport:
+      s.fds = reallocSharedArray(s.fds, numFD)
+    else:
+      s.fds.setLen(numFD)
+    for i in s.numFD ..< numFD:
+      s.fds[i].ident = InvalidIdent
+    s.numFD = numFD
 
 proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   let fdi = int(fd)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0, "Descriptor $# already registered" % $fdi)
+  doAssert(s.fds[fdi].ident == InvalidIdent, "Descriptor $# already registered" % $fdi)
   s.setKey(fdi, events, 0, data)
   if events != {}:
     var epv = EpollEvent(events: EPOLLRDHUP)
@@ -152,7 +165,7 @@ proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle, events: set[Event]
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0,
+  doAssert(pkey.ident != InvalidIdent,
            "Descriptor $# is not registered in the selector!" % $fdi)
   doAssert(pkey.events * maskEvents == {})
   if pkey.events != events:
@@ -180,7 +193,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0,
+  doAssert(pkey.ident != InvalidIdent,
            "Descriptor $# is not registered in the selector!" % $fdi)
   if pkey.events != {}:
     when not defined(android):
@@ -243,7 +256,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.efd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0, "Event is not registered in the queue!")
+  doAssert(pkey.ident != InvalidIdent, "Event is not registered in the queue!")
   doAssert(Event.User in pkey.events)
   var epv = EpollEvent()
   if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
@@ -254,34 +267,34 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
 proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                        data: T): int {.discardable.} =
   var
-    new_ts: Itimerspec
-    old_ts: Itimerspec
+    newTs: Itimerspec
+    oldTs: Itimerspec
   let fdi = timerfd_create(CLOCK_MONOTONIC, 0).int
   if fdi == -1:
     raiseIOSelectorsError(osLastError())
   setNonBlocking(fdi.cint)
 
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == InvalidIdent)
 
   var events = {Event.Timer}
   var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
   epv.data.u64 = fdi.uint
 
   if oneshot:
-    new_ts.it_interval.tv_sec = posix.Time(0)
-    new_ts.it_interval.tv_nsec = 0
-    new_ts.it_value.tv_sec = posix.Time(timeout div 1_000)
-    new_ts.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
+    newTs.it_interval.tv_sec = posix.Time(0)
+    newTs.it_interval.tv_nsec = 0
+    newTs.it_value.tv_sec = posix.Time(timeout div 1_000)
+    newTs.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
     incl(events, Event.Oneshot)
     epv.events = epv.events or EPOLLONESHOT
   else:
-    new_ts.it_interval.tv_sec = posix.Time(timeout div 1000)
-    new_ts.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
-    new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
-    new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec
+    newTs.it_interval.tv_sec = posix.Time(timeout div 1000)
+    newTs.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
+    newTs.it_value.tv_sec = newTs.it_interval.tv_sec
+    newTs.it_value.tv_nsec = newTs.it_interval.tv_nsec
 
-  if timerfd_settime(fdi.cint, cint(0), new_ts, old_ts) != 0:
+  if timerfd_settime(fdi.cint, cint(0), newTs, oldTs) != 0:
     raiseIOSelectorsError(osLastError())
   if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
     raiseIOSelectorsError(osLastError())
@@ -307,7 +320,7 @@ when not defined(android):
     setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
-    doAssert(s.fds[fdi].ident == 0)
+    doAssert(s.fds[fdi].ident == InvalidIdent)
 
     var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
     epv.data.u64 = fdi.uint
@@ -334,7 +347,7 @@ when not defined(android):
     setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
-    doAssert(s.fds[fdi].ident == 0)
+    doAssert(s.fds[fdi].ident == InvalidIdent)
 
     var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
     epv.data.u64 = fdi.uint
@@ -347,7 +360,7 @@ when not defined(android):
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   let fdi = int(ev.efd)
-  doAssert(s.fds[fdi].ident == 0, "Event is already registered in the queue!")
+  doAssert(s.fds[fdi].ident == InvalidIdent, "Event is already registered in the queue!")
   s.setKey(fdi, {Event.User}, 0, data)
   var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
   epv.data.u64 = ev.efd.uint
@@ -356,7 +369,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   inc(s.count)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var
     resTable: array[MAX_EPOLL_EVENTS, EpollEvent]
     maxres = MAX_EPOLL_EVENTS
@@ -364,6 +377,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
   if maxres > len(results):
     maxres = len(results)
+
+  verifySelectParams(timeout)
 
   let count = epoll_wait(s.epollFD, addr(resTable[0]), maxres.cint,
                          timeout.cint)
@@ -381,19 +396,19 @@ proc selectInto*[T](s: Selector[T], timeout: int,
       let fdi = int(resTable[i].data.u64)
       let pevents = resTable[i].events
       var pkey = addr(s.fds[fdi])
-      doAssert(pkey.ident != 0)
+      doAssert(pkey.ident != InvalidIdent)
       var rkey = ReadyKey(fd: fdi, events: {})
 
       if (pevents and EPOLLERR) != 0 or (pevents and EPOLLHUP) != 0:
         if (pevents and EPOLLHUP) != 0:
-          rkey.errorCode = ECONNRESET.OSErrorCode
+          rkey.errorCode = OSErrorCode ECONNRESET
         else:
           # Try reading SO_ERROR from fd.
           var error: cint
-          var size = sizeof(error).SockLen
-          if getsockopt(fdi.SocketHandle, SOL_SOCKET, SO_ERROR, addr(error),
+          var size = SockLen sizeof(error)
+          if getsockopt(SocketHandle fdi, SOL_SOCKET, SO_ERROR, addr(error),
                         addr(size)) == 0'i32:
-            rkey.errorCode = error.OSErrorCode
+            rkey.errorCode = OSErrorCode error
 
         rkey.events.incl(Event.Error)
       if (pevents and EPOLLOUT) != 0:
@@ -482,7 +497,7 @@ template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
-  return s.fds[fd.int].ident != 0
+  return s.fds[fd.int].ident != InvalidIdent
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)

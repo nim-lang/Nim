@@ -57,8 +57,8 @@
 ##   # Run suites starting with 'bug #' and standalone tests starting with '#'
 ##   nim c -r test 'bug #*::' '::#*'
 ##
-## Example
-## -------
+## Examples
+## ========
 ##
 ## .. code:: nim
 ##
@@ -145,8 +145,6 @@ type
     testStartTime: float
     testStackTrace: string
 
-{.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
-
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
@@ -176,26 +174,23 @@ method suiteEnded*(formatter: OutputFormatter) {.base, gcsafe.} =
   discard
 
 proc addOutputFormatter*(formatter: OutputFormatter) =
-  if formatters == nil:
-    formatters = @[formatter]
-  else:
-    formatters.add(formatter)
+  formatters.add(formatter)
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
-                                colorOutput = true): ConsoleOutputFormatter =
+                                colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
   )
 
-proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
+proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
   when declared(stdout):
     # Reading settings
     # On a terminal this branch is executed
     var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
     var colorOutput  = isatty(stdout)
     if existsEnv("NIMTEST_COLOR"):
-      let colorEnv = getenv("NIMTEST_COLOR")
+      let colorEnv = getEnv("NIMTEST_COLOR")
       if colorEnv == "never":
         colorOutput = false
       elif colorEnv == "always":
@@ -225,7 +220,7 @@ method testStarted*(formatter: ConsoleOutputFormatter, testName: string) =
   formatter.isInTest = true
 
 method failureOccurred*(formatter: ConsoleOutputFormatter, checkpoints: seq[string], stackTrace: string) =
-  if stackTrace != nil:
+  if stackTrace.len > 0:
     echo stackTrace
   let prefix = if formatter.isInSuite: "    " else: ""
   for msg in items(checkpoints):
@@ -236,7 +231,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
 
   if formatter.outputLevel != PRINT_NONE and
      (formatter.outputLevel == PRINT_ALL or testResult.status == FAILED):
-    let prefix = if testResult.suiteName != nil: "  " else: ""
+    let prefix = if testResult.suiteName.len > 0: "  " else: ""
     template rawPrint() = echo(prefix, "[", $testResult.status, "] ", testResult.testName)
     when not defined(ECMAScript):
       if formatter.colorOutput and not defined(ECMAScript):
@@ -244,7 +239,6 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of OK: fgGreen
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
-                    else: fgWhite
         styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
       else:
         rawPrint()
@@ -269,7 +263,7 @@ proc xmlEscape(s: string): string =
       else:
         result.add(c)
 
-proc newJUnitOutputFormatter*(stream: Stream): JUnitOutputFormatter =
+proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
   ## The ``stream`` is NOT closed automatically when the test are finished,
@@ -301,7 +295,7 @@ method failureOccurred*(formatter: JUnitOutputFormatter, checkpoints: seq[string
   ## ``stackTrace`` is provided only if the failure occurred due to an exception.
   ## ``checkpoints`` is never ``nil``.
   formatter.testErrors.add(checkpoints)
-  if stackTrace != nil:
+  if stackTrace.len > 0:
     formatter.testStackTrace = stackTrace
 
 method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
@@ -355,7 +349,7 @@ proc glob(matcher, filter: string): bool =
   let beforeAndAfter = filter.split('*', maxsplit=1)
   if beforeAndAfter.len == 1:
     # "foo*"
-    return matcher.startswith(beforeAndAfter[0])
+    return matcher.startsWith(beforeAndAfter[0])
 
   if matcher.len < filter.len - 1:
     return false  # "12345" should not match "123*345"
@@ -372,8 +366,8 @@ proc matchFilter(suiteName, testName, filter: string): bool =
 
   if suiteAndTestFilters.len == 1:
     # no suite specified
-    let test_f = suiteAndTestFilters[0]
-    return glob(testName, test_f)
+    let testFilter = suiteAndTestFilters[0]
+    return glob(testName, testFilter)
 
   return glob(suiteName, suiteAndTestFilters[0]) and glob(testName, suiteAndTestFilters[1])
 
@@ -392,7 +386,7 @@ proc shouldRun(currentSuiteName, testName: string): bool =
   return false
 
 proc ensureInitialized() =
-  if formatters == nil:
+  if formatters.len == 0:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
 
   if not disabledParamFiltering and not testsFilters.isValid:
@@ -505,9 +499,9 @@ template test*(name, body) {.dirty.} =
 
     finally:
       if testStatusIMPL == FAILED:
-        programResult += 1
+        programResult = 1
       let testResult = TestResult(
-        suiteName: when declared(testSuiteName): testSuiteName else: nil,
+        suiteName: when declared(testSuiteName): testSuiteName else: "",
         testName: name,
         status: testStatusIMPL
       )
@@ -525,8 +519,6 @@ proc checkpoint*(msg: string) =
   ##  checkpoint("Checkpoint B")
   ##
   ## outputs "Checkpoint A" once it fails.
-  if checkpoints == nil:
-    checkpoints = @[]
   checkpoints.add(msg)
   # TODO: add support for something like SCOPED_TRACE from Google Test
 
@@ -548,7 +540,7 @@ template fail* =
   when declared(testStatusIMPL):
     testStatusIMPL = FAILED
   else:
-    programResult += 1
+    programResult = 1
 
   ensureInitialized()
 
@@ -557,9 +549,9 @@ template fail* =
     when declared(stackTrace):
       formatter.failureOccurred(checkpoints, stackTrace)
     else:
-      formatter.failureOccurred(checkpoints, nil)
+      formatter.failureOccurred(checkpoints, "")
 
-  when not defined(ECMAScript):
+  when declared(programResult):
     if abortOnError: quit(programResult)
 
   checkpoints = @[]
@@ -573,7 +565,7 @@ template skip* =
   ##
   ## .. code-block:: nim
   ##
-  ##  if not isGLConextCreated():
+  ##  if not isGLContextCreated():
   ##    skip()
   bind checkpoints
 
@@ -635,7 +627,7 @@ macro check*(conditions: untyped): untyped =
             #   Ident !"v"
             #   IntLit 2
             result.check[i] = exp[i][1]
-          if exp[i].typekind notin {ntyTypeDesc}:
+          if exp[i].typeKind notin {ntyTypeDesc}:
             let arg = newIdentNode(":p" & $counter)
             result.assigns.add getAst(asgn(arg, paramAst))
             result.printOuts.add getAst(print(argStr, arg))
@@ -648,7 +640,7 @@ macro check*(conditions: untyped): untyped =
   of nnkCallKinds:
 
     let (assigns, check, printOuts) = inspectArgs(checked)
-    let lineinfo = newStrLitNode(checked.lineinfo)
+    let lineinfo = newStrLitNode(checked.lineInfo)
     let callLit = checked.toStrLit
     result = quote do:
       block:
@@ -665,7 +657,7 @@ macro check*(conditions: untyped): untyped =
         result.add(newCall(!"check", node))
 
   else:
-    let lineinfo = newStrLitNode(checked.lineinfo)
+    let lineinfo = newStrLitNode(checked.lineInfo)
     let callLit = checked.toStrLit
 
     result = quote do:
@@ -720,7 +712,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   for i in countup(1, exp.len - 2):
     errorTypes.add(exp[i])
 
-  result = getAst(expectBody(errorTypes, exp.lineinfo, body))
+  result = getAst(expectBody(errorTypes, exp.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params

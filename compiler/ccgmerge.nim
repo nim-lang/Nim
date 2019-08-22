@@ -11,8 +11,8 @@
 ## is needed for incremental compilation.
 
 import
-  ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
-  intsets, platform, llstream, tables, sighashes
+  ast, ropes, options, strutils, nimlexbase, cgendata, rodutils,
+  intsets, llstream, tables, modulegraphs, pathutils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
@@ -21,6 +21,7 @@ const
   CFileSectionNames: array[TCFileSection, string] = [
     cfsMergeInfo: "",
     cfsHeaders: "NIM_merge_HEADERS",
+    cfsFrameDefines: "NIM_merge_FRAME_DEFINES",
     cfsForwardTypes: "NIM_merge_FORWARD_TYPES",
     cfsTypes: "NIM_merge_TYPES",
     cfsSeqTypes: "NIM_merge_SEQ_TYPES",
@@ -31,6 +32,7 @@ const
     cfsData: "NIM_merge_DATA",
     cfsProcs: "NIM_merge_PROCS",
     cfsInitProc: "NIM_merge_INIT_PROC",
+    cfsDatInitProc: "NIM_merge_DATINIT_PROC",
     cfsTypeInit1: "NIM_merge_TYPE_INIT1",
     cfsTypeInit2: "NIM_merge_TYPE_INIT2",
     cfsTypeInit3: "NIM_merge_TYPE_INIT3",
@@ -58,7 +60,7 @@ proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
 
 proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(nil)
+    result = rope("")
     add(result, "\n/*\t")
     add(result, CProcSectionNames[ps])
     add(result, ":*/\n")
@@ -144,38 +146,34 @@ proc atEndMark(buf: cstring, pos: int): bool =
 
 proc readVerbatimSection(L: var TBaseLexer): Rope =
   var pos = L.bufpos
-  var buf = L.buf
   var r = newStringOfCap(30_000)
   while true:
-    case buf[pos]
+    case L.buf[pos]
     of CR:
       pos = nimlexbase.handleCR(L, pos)
-      buf = L.buf
       r.add('\L')
     of LF:
       pos = nimlexbase.handleLF(L, pos)
-      buf = L.buf
       r.add('\L')
     of '\0':
       doAssert(false, "ccgmerge: expected: " & NimMergeEndMark)
       break
     else:
-      if atEndMark(buf, pos):
+      if atEndMark(L.buf, pos):
         inc pos, NimMergeEndMark.len
         break
-      r.add(buf[pos])
+      r.add(L.buf[pos])
       inc pos
   L.bufpos = pos
   result = r.rope
 
 proc readKey(L: var TBaseLexer, result: var string) =
   var pos = L.bufpos
-  var buf = L.buf
   setLen(result, 0)
-  while buf[pos] in IdentChars:
-    result.add(buf[pos])
+  while L.buf[pos] in IdentChars:
+    result.add(L.buf[pos])
     inc pos
-  if buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
+  if L.buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
 proc newFakeType(id: int): PType =
@@ -226,7 +224,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template withCFile(cfilename: string, body: untyped) =
+template withCFile(cfilename: AbsoluteFile, body: untyped) =
   var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer
@@ -238,7 +236,7 @@ template withCFile(cfilename: string, body: untyped) =
     body
   closeBaseLexer(L)
 
-proc readMergeInfo*(cfilename: string, m: BModule) =
+proc readMergeInfo*(cfilename: AbsoluteFile, m: BModule) =
   ## reads the merge meta information into `m`.
   withCFile(cfilename):
     readKey(L, k)
@@ -251,7 +249,7 @@ type
     f: TCFileSections
     p: TCProcSections
 
-proc readMergeSections(cfilename: string, m: var TMergeSections) =
+proc readMergeSections(cfilename: AbsoluteFile, m: var TMergeSections) =
   ## reads the merge sections into `m`.
   withCFile(cfilename):
     readKey(L, k)
@@ -285,7 +283,7 @@ proc mergeRequired*(m: BModule): bool =
       #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
 
-proc mergeFiles*(cfilename: string, m: BModule) =
+proc mergeFiles*(cfilename: AbsoluteFile, m: BModule) =
   ## merges the C file with the old version on hard disc.
   var old: TMergeSections
   readMergeSections(cfilename, old)

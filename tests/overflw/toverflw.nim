@@ -1,8 +1,6 @@
 discard """
-  file: "toverflw.nim"
   output: "ok"
-  cmd: "nim $target -d:release $options $file"
-
+  cmd: "nim $target --overflowChecks:off $options $file"
 """
 # Tests nim's ability to detect overflows
 

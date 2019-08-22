@@ -8,7 +8,7 @@ type
     addy: enet.TAddress
     host*: PHost
     peer*: PPeer
-    handlers*: TTable[char, TScPktHandler]
+    handlers*: Table[char, TScPktHandler]
   TScPktHandler* = proc(serv: PServer; buffer: PBuffer)
   TFileTransfer = object
     fileName: string

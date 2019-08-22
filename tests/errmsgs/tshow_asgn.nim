@@ -1,7 +1,7 @@
 discard """
   errormsg: "type mismatch: got <int> but expected 'cshort = int16'"
   line: 12
-  column: 10
+  column: 27
   file: "tshow_asgn.nim"
 """
 

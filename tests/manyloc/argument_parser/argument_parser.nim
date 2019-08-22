@@ -74,14 +74,14 @@ type
     ## nothing prevents you from accessing directly the type of field you want
     ## if you expect only one kind.
     case kind*: Tparam_kind
-    of PK_EMPTY: nil
+    of PK_EMPTY: discard
     of PK_INT: int_val*: int
     of PK_BIGGEST_INT: big_int_val*: BiggestInt
     of PK_FLOAT: float_val*: float
     of PK_BIGGEST_FLOAT: big_float_val*: BiggestFloat
     of PK_STRING: str_val*: string
     of PK_BOOL: bool_val*: bool
-    of PK_HELP: nil
+    of PK_HELP: discard
 
   Tcommandline_results* = object of RootObj ## \
     ## Contains the results of the parsing.
@@ -232,7 +232,7 @@ template run_custom_proc(parsed_parameter: Tparsed_parameter,
   if not custom_validator.isNil:
     try:
       let message = custom_validator(parameter, parsed_parameter)
-      if not message.isNil and message.len > 0:
+      if message.len > 0:
         raise_or_quit(ValueError, ("Failed to validate value for " &
           "parameter $1:\n$2" % [escape(parameter), message]))
     except:
@@ -319,7 +319,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
 
 
 proc parse*(expected: seq[Tparameter_specification] = @[],
-    type_of_positional_parameters = PK_STRING, args: seq[TaintedString] = nil,
+    type_of_positional_parameters = PK_STRING, args: seq[TaintedString] = @[],
     bad_prefixes = @["-", "--"], end_of_options = "--",
     quit_on_failure = true): Tcommandline_results =
   ## Parses parameters and returns results.
@@ -339,7 +339,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
   ##
   ## The args sequence should be the list of parameters passed to your program
   ## without the program binary (usually OSes provide the path to the binary as
-  ## the zeroth parameter). If args is nil, the list will be retrieved from the
+  ## the zeroth parameter). If args is empty, the list will be retrieved from the
   ## OS.
   ##
   ## If there is any kind of error and quit_on_failure is true, the quit proc
@@ -358,7 +358,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
 
   # Prepare the input parameter list, maybe get it from the OS if not available.
   var args = args
-  if args == nil:
+  if args.len == 0:
     let total_params = paramCount()
     #echo "Got no explicit args, retrieving from OS. Count: ", total_params
     newSeq(args, total_params)
@@ -486,7 +486,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
     echo line
 
 
-when isMainModule:
+when true:
   # Simply tests code embedded in docs.
   let
     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)

@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+import pathutils
+
 template setX(k, field) {.dirty.} =
   var s: seq[TFullReg]
   move(s, cast[seq[TFullReg]](a.slots))
@@ -37,6 +39,8 @@ proc setResult*(a: VmArgs; n: PNode) =
     myreset(s[a.ra])
     s[a.ra].kind = rkNode
   s[a.ra].node = n
+
+proc setResult*(a: VmArgs; v: AbsoluteDir) = setResult(a, v.string)
 
 proc setResult*(a: VmArgs; v: seq[string]) =
   var s: seq[TFullReg]

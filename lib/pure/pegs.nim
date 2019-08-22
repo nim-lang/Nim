@@ -20,11 +20,11 @@ include "system/inclrtl"
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
-import
-  strutils
+import strutils, macros
 
 when useUnicode:
   import unicode
+  export unicode.`==`
 
 const
   InlineThreshold = 5  ## number of leaves; -1 to disable inlining
@@ -74,7 +74,7 @@ type
     line: int                     ## line the symbol has been declared/used in
     col: int                      ## column the symbol has been declared/used in
     flags: set[NonTerminalFlag]   ## the nonterminal's flags
-    rule: Peg                   ## the rule that the symbol refers to
+    rule: Peg                     ## the rule that the symbol refers to
   Peg* {.shallow.} = object ## type that represents a PEG
     case kind: PegKind
     of pkEmpty..pkWhitespace: nil
@@ -86,56 +86,85 @@ type
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
 
-proc name*(nt: NonTerminal): string = nt.name
-proc line*(nt: NonTerminal): int = nt.line
-proc col*(nt: NonTerminal): int = nt.col
-proc flags*(nt: NonTerminal): set[NonTerminalFlag] = nt.flags
-proc rule*(nt: NonTerminal): Peg = nt.rule
-
 proc kind*(p: Peg): PegKind = p.kind
+  ## Returns the *PegKind* of a given *Peg* object.
+
 proc term*(p: Peg): string = p.term
+  ## Returns the *string* representation of a given *Peg* variant object
+  ## where present.
+
 proc ch*(p: Peg): char = p.ch
+  ## Returns the *char* representation of a given *Peg* variant object
+  ## where present.
+
 proc charChoice*(p: Peg): ref set[char] = p.charChoice
+  ## Returns the *charChoice* field of a given *Peg* variant object
+  ## where present.
+
 proc nt*(p: Peg): NonTerminal = p.nt
+  ## Returns the *NonTerminal* object of a given *Peg* variant object
+  ## where present.
+
 proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
+  ## Returns the back-reference index of a captured sub-pattern in the
+  ## *Captures* object for a given *Peg* variant object where present.
+
 iterator items*(p: Peg): Peg {.inline.} =
+  ## Yields the child nodes of a *Peg* variant object where present.
   for s in p.sons:
     yield s
+
 iterator pairs*(p: Peg): (int, Peg) {.inline.} =
+  ## Yields the indices and child nodes of a *Peg* variant object where present.
   for i in 0 ..< p.sons.len:
     yield (i, p.sons[i])
 
-proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
+proc name*(nt: NonTerminal): string = nt.name
+  ## Gets the name of the symbol represented by the parent *Peg* object variant
+  ## of a given *NonTerminal*.
+
+proc line*(nt: NonTerminal): int = nt.line
+  ## Gets the line number of the definition of the parent *Peg* object variant
+  ## of a given *NonTerminal*.
+
+proc col*(nt: NonTerminal): int = nt.col
+  ## Gets the column number of the definition of the parent *Peg* object variant
+  ## of a given *NonTerminal*.
+
+proc flags*(nt: NonTerminal): set[NonTerminalFlag] = nt.flags
+  ## Gets the *NonTerminalFlag*-typed flags field of the parent *Peg* variant
+  ## object of a given *NonTerminal*.
+
+proc rule*(nt: NonTerminal): Peg = nt.rule
+  ## Gets the *Peg* object representing the rule definition of the parent *Peg*
+  ## object variant of a given *NonTerminal*.
+
+proc term*(t: string): Peg {.noSideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
   if t.len != 1:
-    result.kind = pkTerminal
-    result.term = t
+    result = Peg(kind: pkTerminal, term: t)
   else:
-    result.kind = pkChar
-    result.ch = t[0]
+    result = Peg(kind: pkChar, ch: t[0])
 
 proc termIgnoreCase*(t: string): Peg {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a terminal string; ignore case for matching
-  result.kind = pkTerminalIgnoreCase
-  result.term = t
+  result = Peg(kind: pkTerminalIgnoreCase, term: t)
 
 proc termIgnoreStyle*(t: string): Peg {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a terminal string; ignore style for matching
-  result.kind = pkTerminalIgnoreStyle
-  result.term = t
+  result = Peg(kind: pkTerminalIgnoreStyle, term: t)
 
-proc term*(t: char): Peg {.nosideEffect, rtl, extern: "npegs$1Char".} =
+proc term*(t: char): Peg {.noSideEffect, rtl, extern: "npegs$1Char".} =
   ## constructs a PEG from a terminal char
   assert t != '\0'
-  result.kind = pkChar
-  result.ch = t
+  result = Peg(kind: pkChar, ch: t)
 
-proc charSet*(s: set[char]): Peg {.nosideEffect, rtl, extern: "npegs$1".} =
+proc charSet*(s: set[char]): Peg {.noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
   assert '\0' notin s
-  result.kind = pkCharChoice
+  result = Peg(kind: pkCharChoice)
   new(result.charChoice)
   result.charChoice[] = s
 
@@ -155,8 +184,7 @@ proc addChoice(dest: var Peg, elem: Peg) =
   else: add(dest, elem)
 
 template multipleOp(k: PegKind, localOpt: untyped) =
-  result.kind = k
-  result.sons = @[]
+  result = Peg(kind: k, sons: @[])
   for x in items(a):
     if x.kind == k:
       for y in items(x.sons):
@@ -167,7 +195,7 @@ template multipleOp(k: PegKind, localOpt: untyped) =
     result = result.sons[0]
 
 proc `/`*(a: varargs[Peg]): Peg {.
-  nosideEffect, rtl, extern: "npegsOrderedChoice".} =
+  noSideEffect, rtl, extern: "npegsOrderedChoice".} =
   ## constructs an ordered choice with the PEGs in `a`
   multipleOp(pkOrderedChoice, addChoice)
 
@@ -184,11 +212,11 @@ proc addSequence(dest: var Peg, elem: Peg) =
   else: add(dest, elem)
 
 proc sequence*(a: varargs[Peg]): Peg {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a sequence with all the PEGs from `a`
   multipleOp(pkSequence, addSequence)
 
-proc `?`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsOptional".} =
+proc `?`*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsOptional".} =
   ## constructs an optional for the PEG `a`
   if a.kind in {pkOption, pkGreedyRep, pkGreedyAny, pkGreedyRepChar,
                 pkGreedyRepSet}:
@@ -196,118 +224,106 @@ proc `?`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsOptional".} =
     # a? ?  --> a?
     result = a
   else:
-    result.kind = pkOption
-    result.sons = @[a]
+    result = Peg(kind: pkOption, sons: @[a])
 
-proc `*`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsGreedyRep".} =
+proc `*`*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsGreedyRep".} =
   ## constructs a "greedy repetition" for the PEG `a`
   case a.kind
   of pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet, pkGreedyAny, pkOption:
     assert false
     # produces endless loop!
   of pkChar:
-    result.kind = pkGreedyRepChar
-    result.ch = a.ch
+    result = Peg(kind: pkGreedyRepChar, ch: a.ch)
   of pkCharChoice:
-    result.kind = pkGreedyRepSet
-    result.charChoice = a.charChoice # copying a reference suffices!
+    result = Peg(kind: pkGreedyRepSet, charChoice: a.charChoice)
   of pkAny, pkAnyRune:
-    result.kind = pkGreedyAny
+    result = Peg(kind: pkGreedyAny)
   else:
-    result.kind = pkGreedyRep
-    result.sons = @[a]
+    result = Peg(kind: pkGreedyRep, sons: @[a])
 
-proc `!*`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsSearch".} =
+proc `!*`*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsSearch".} =
   ## constructs a "search" for the PEG `a`
-  result.kind = pkSearch
-  result.sons = @[a]
+  result = Peg(kind: pkSearch, sons: @[a])
 
 proc `!*\`*(a: Peg): Peg {.noSideEffect, rtl,
                              extern: "npgegsCapturedSearch".} =
   ## constructs a "captured search" for the PEG `a`
-  result.kind = pkCapturedSearch
-  result.sons = @[a]
+  result = Peg(kind: pkCapturedSearch, sons: @[a])
 
-proc `+`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsGreedyPosRep".} =
+proc `+`*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsGreedyPosRep".} =
   ## constructs a "greedy positive repetition" with the PEG `a`
   return sequence(a, *a)
 
-proc `&`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsAndPredicate".} =
+proc `&`*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsAndPredicate".} =
   ## constructs an "and predicate" with the PEG `a`
-  result.kind = pkAndPredicate
-  result.sons = @[a]
+  result = Peg(kind: pkAndPredicate, sons: @[a])
 
-proc `!`*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsNotPredicate".} =
+proc `!`*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsNotPredicate".} =
   ## constructs a "not predicate" with the PEG `a`
-  result.kind = pkNotPredicate
-  result.sons = @[a]
+  result = Peg(kind: pkNotPredicate, sons: @[a])
 
 proc any*: Peg {.inline.} =
   ## constructs the PEG `any character`:idx: (``.``)
-  result.kind = pkAny
+  result = Peg(kind: pkAny)
 
 proc anyRune*: Peg {.inline.} =
   ## constructs the PEG `any rune`:idx: (``_``)
-  result.kind = pkAnyRune
+  result = Peg(kind: pkAnyRune)
 
 proc newLine*: Peg {.inline.} =
   ## constructs the PEG `newline`:idx: (``\n``)
-  result.kind = pkNewLine
+  result = Peg(kind: pkNewLine)
 
 proc unicodeLetter*: Peg {.inline.} =
   ## constructs the PEG ``\letter`` which matches any Unicode letter.
-  result.kind = pkLetter
+  result = Peg(kind: pkLetter)
 
 proc unicodeLower*: Peg {.inline.} =
   ## constructs the PEG ``\lower`` which matches any Unicode lowercase letter.
-  result.kind = pkLower
+  result = Peg(kind: pkLower)
 
 proc unicodeUpper*: Peg {.inline.} =
   ## constructs the PEG ``\upper`` which matches any Unicode uppercase letter.
-  result.kind = pkUpper
+  result = Peg(kind: pkUpper)
 
 proc unicodeTitle*: Peg {.inline.} =
   ## constructs the PEG ``\title`` which matches any Unicode title letter.
-  result.kind = pkTitle
+  result = Peg(kind: pkTitle)
 
 proc unicodeWhitespace*: Peg {.inline.} =
   ## constructs the PEG ``\white`` which matches any Unicode
   ## whitespace character.
-  result.kind = pkWhitespace
+  result = Peg(kind: pkWhitespace)
 
 proc startAnchor*: Peg {.inline.} =
   ## constructs the PEG ``^`` which matches the start of the input.
-  result.kind = pkStartAnchor
+  result = Peg(kind: pkStartAnchor)
 
 proc endAnchor*: Peg {.inline.} =
   ## constructs the PEG ``$`` which matches the end of the input.
   result = !any()
 
-proc capture*(a: Peg): Peg {.nosideEffect, rtl, extern: "npegsCapture".} =
+proc capture*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
-  result.kind = pkCapture
-  result.sons = @[a]
+  result = Peg(kind: pkCapture, sons: @[a])
 
 proc backref*(index: range[1..MaxSubpatterns]): Peg {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1.
-  result.kind = pkBackRef
-  result.index = index-1
+  result = Peg(kind: pkBackRef, index: index-1)
 
 proc backrefIgnoreCase*(index: range[1..MaxSubpatterns]): Peg {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1. Ignores case for matching.
-  result.kind = pkBackRefIgnoreCase
-  result.index = index-1
+  result = Peg(kind: pkBackRefIgnoreCase, index: index-1)
 
 proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns]): Peg {.
-  nosideEffect, rtl, extern: "npegs$1".}=
+  noSideEffect, rtl, extern: "npegs$1".}=
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1. Ignores style for matching.
-  result.kind = pkBackRefIgnoreStyle
-  result.index = index-1
+  result = Peg(kind: pkBackRefIgnoreStyle, index: index-1)
 
 proc spaceCost(n: Peg): int =
   case n.kind
@@ -325,23 +341,19 @@ proc spaceCost(n: Peg): int =
       if result >= InlineThreshold: break
 
 proc nonterminal*(n: NonTerminal): Peg {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a PEG that consists of the nonterminal symbol
   assert n != nil
   if ntDeclared in n.flags and spaceCost(n.rule) < InlineThreshold:
     when false: echo "inlining symbol: ", n.name
     result = n.rule # inlining of rule enables better optimizations
   else:
-    result.kind = pkNonTerminal
-    result.nt = n
+    result = Peg(kind: pkNonTerminal, nt: n)
 
 proc newNonTerminal*(name: string, line, column: int): NonTerminal {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a nonterminal symbol
-  new(result)
-  result.name = name
-  result.line = line
-  result.col = column
+  result = NonTerminal(name: name, line: line, col: column)
 
 template letters*: Peg =
   ## expands to ``charset({'A'..'Z', 'a'..'z'})``
@@ -506,7 +518,7 @@ proc toStrAux(r: Peg, res: var string) =
   of pkStartAnchor:
     add(res, '^')
 
-proc `$` *(r: Peg): string {.nosideEffect, rtl, extern: "npegsToString".} =
+proc `$` *(r: Peg): string {.noSideEffect, rtl, extern: "npegsToString".} =
   ## converts a PEG to its string representation
   result = ""
   toStrAux(r, result)
@@ -518,8 +530,6 @@ type
     matches: array[0..MaxSubpatterns-1, tuple[first, last: int]]
     ml: int
     origStart: int
-
-{.deprecated: [TCaptures: Captures].}
 
 proc bounds*(c: Captures,
              i: range[0..MaxSubpatterns-1]): tuple[first, last: int] =
@@ -540,223 +550,503 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
-               nosideEffect, rtl, extern: "npegs$1".} =
+template matchOrParse(mopProc: untyped) =
+  # Used to make the main matcher proc *rawMatch* as well as event parser
+  # procs. For the former, *enter* and *leave* event handler code generators
+  # are provided which just return *discard*.
+
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int =
+    proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
+      # Parse handler code must run in an *of* clause of its own for each
+      # *PegKind*, so we encapsulate the identical clause body for
+      # *pkBackRef..pkBackRefIgnoreStyle* here.
+      if p.index >= c.ml: return -1
+      var (a, b) = c.matches[p.index]
+      var n: Peg
+      case p.kind
+      of pkBackRef:
+        n = Peg(kind: pkTerminal, term: s.substr(a, b))
+      of pkBackRefIgnoreStyle:
+        n = Peg(kind: pkTerminalIgnoreStyle, term: s.substr(a, b))
+      of pkBackRefIgnoreCase:
+        n = Peg(kind: pkTerminalIgnoreCase, term: s.substr(a, b))
+      else: assert(false, "impossible case")
+      mopProc(s, n, start, c)
+
+    case p.kind
+    of pkEmpty:
+      enter(pkEmpty, s, p, start)
+      result = 0 # match of length 0
+      leave(pkEmpty, s, p, start, result)
+    of pkAny:
+      enter(pkAny, s, p, start)
+      if start < s.len: result = 1
+      else: result = -1
+      leave(pkAny, s, p, start, result)
+    of pkAnyRune:
+      enter(pkAnyRune, s, p, start)
+      if start < s.len:
+        result = runeLenAt(s, start)
+      else:
+        result = -1
+      leave(pkAnyRune, s, p, start, result)
+    of pkLetter:
+      enter(pkLetter, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isAlpha(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkLetter, s, p, start, result)
+    of pkLower:
+      enter(pkLower, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isLower(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkLower, s, p, start, result)
+    of pkUpper:
+      enter(pkUpper, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isUpper(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkUpper, s, p, start, result)
+    of pkTitle:
+      enter(pkTitle, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isTitle(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkTitle, s, p, start, result)
+    of pkWhitespace:
+      enter(pkWhitespace, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isWhiteSpace(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkWhitespace, s, p, start, result)
+    of pkGreedyAny:
+      enter(pkGreedyAny, s, p, start)
+      result = len(s) - start
+      leave(pkGreedyAny, s, p, start, result)
+    of pkNewLine:
+      enter(pkNewLine, s, p, start)
+      if start < s.len and s[start] == '\L': result = 1
+      elif start < s.len and s[start] == '\C':
+        if start+1 < s.len and s[start+1] == '\L': result = 2
+        else: result = 1
+      else: result = -1
+      leave(pkNewLine, s, p, start, result)
+    of pkTerminal:
+      enter(pkTerminal, s, p, start)
+      result = len(p.term)
+      for i in 0..result-1:
+        if start+i >= s.len or p.term[i] != s[start+i]:
+          result = -1
+          break
+      leave(pkTerminal, s, p, start, result)
+    of pkTerminalIgnoreCase:
+      enter(pkTerminalIgnoreCase, s, p, start)
+      var
+        i = 0
+        a, b: Rune
+      result = start
+      while i < len(p.term):
+        if result >= s.len:
+          result = -1
+          break
+        fastRuneAt(p.term, i, a)
+        fastRuneAt(s, result, b)
+        if toLower(a) != toLower(b):
+          result = -1
+          break
+      dec(result, start)
+      leave(pkTerminalIgnoreCase, s, p, start, result)
+    of pkTerminalIgnoreStyle:
+      enter(pkTerminalIgnoreStyle, s, p, start)
+      var
+        i = 0
+        a, b: Rune
+      result = start
+      while i < len(p.term):
+        while i < len(p.term):
+          fastRuneAt(p.term, i, a)
+          if a != Rune('_'): break
+        while result < s.len:
+          fastRuneAt(s, result, b)
+          if b != Rune('_'): break
+        if result >= s.len:
+          if i >= p.term.len: break
+          else:
+            result = -1
+            break
+        elif toLower(a) != toLower(b):
+          result = -1
+          break
+      dec(result, start)
+      leave(pkTerminalIgnoreStyle, s, p, start, result)
+    of pkChar:
+      enter(pkChar, s, p, start)
+      if start < s.len and p.ch == s[start]: result = 1
+      else: result = -1
+      leave(pkChar, s, p, start, result)
+    of pkCharChoice:
+      enter(pkCharChoice, s, p, start)
+      if start < s.len and contains(p.charChoice[], s[start]): result = 1
+      else: result = -1
+      leave(pkCharChoice, s, p, start, result)
+    of pkNonTerminal:
+      enter(pkNonTerminal, s, p, start)
+      var oldMl = c.ml
+      when false: echo "enter: ", p.nt.name
+      result = mopProc(s, p.nt.rule, start, c)
+      when false: echo "leave: ", p.nt.name
+      if result < 0: c.ml = oldMl
+      leave(pkNonTerminal, s, p, start, result)
+    of pkSequence:
+      enter(pkSequence, s, p, start)
+      var oldMl = c.ml
+      result = 0
+      for i in 0..high(p.sons):
+        var x = mopProc(s, p.sons[i], start+result, c)
+        if x < 0:
+          c.ml = oldMl
+          result = -1
+          break
+        else: inc(result, x)
+      leave(pkSequence, s, p, start, result)
+    of pkOrderedChoice:
+      enter(pkOrderedChoice, s, p, start)
+      var oldMl = c.ml
+      for i in 0..high(p.sons):
+        result = mopProc(s, p.sons[i], start, c)
+        if result >= 0: break
+        c.ml = oldMl
+      leave(pkOrderedChoice, s, p, start, result)
+    of pkSearch:
+      enter(pkSearch, s, p, start)
+      var oldMl = c.ml
+      result = 0
+      while start+result <= s.len:
+        var x = mopProc(s, p.sons[0], start+result, c)
+        if x >= 0:
+          inc(result, x)
+          leave(pkSearch, s, p, start, result)
+          return
+        inc(result)
+      result = -1
+      c.ml = oldMl
+      leave(pkSearch, s, p, start, result)
+    of pkCapturedSearch:
+      enter(pkCapturedSearch, s, p, start)
+      var idx = c.ml # reserve a slot for the subpattern
+      inc(c.ml)
+      result = 0
+      while start+result <= s.len:
+        var x = mopProc(s, p.sons[0], start+result, c)
+        if x >= 0:
+          if idx < MaxSubpatterns:
+            c.matches[idx] = (start, start+result-1)
+          #else: silently ignore the capture
+          inc(result, x)
+          leave(pkCapturedSearch, s, p, start, result)
+          return
+        inc(result)
+      result = -1
+      c.ml = idx
+      leave(pkCapturedSearch, s, p, start, result)
+    of pkGreedyRep:
+      enter(pkGreedyRep, s, p, start)
+      result = 0
+      while true:
+        var x = mopProc(s, p.sons[0], start+result, c)
+        # if x == 0, we have an endless loop; so the correct behaviour would be
+        # not to break. But endless loops can be easily introduced:
+        # ``(comment / \w*)*`` is such an example. Breaking for x == 0 does the
+        # expected thing in this case.
+        if x <= 0: break
+        inc(result, x)
+      leave(pkGreedyRep, s, p, start, result)
+    of pkGreedyRepChar:
+      enter(pkGreedyRepChar, s, p, start)
+      result = 0
+      var ch = p.ch
+      while start+result < s.len and ch == s[start+result]: inc(result)
+      leave(pkGreedyRepChar, s, p, start, result)
+    of pkGreedyRepSet:
+      enter(pkGreedyRepSet, s, p, start)
+      result = 0
+      while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
+      leave(pkGreedyRepSet, s, p, start, result)
+    of pkOption:
+      enter(pkOption, s, p, start)
+      result = max(0, mopProc(s, p.sons[0], start, c))
+      leave(pkOption, s, p, start, result)
+    of pkAndPredicate:
+      enter(pkAndPredicate, s, p, start)
+      var oldMl = c.ml
+      result = mopProc(s, p.sons[0], start, c)
+      if result >= 0: result = 0 # do not consume anything
+      else: c.ml = oldMl
+      leave(pkAndPredicate, s, p, start, result)
+    of pkNotPredicate:
+      enter(pkNotPredicate, s, p, start)
+      var oldMl = c.ml
+      result = mopProc(s, p.sons[0], start, c)
+      if result < 0: result = 0
+      else:
+        c.ml = oldMl
+        result = -1
+      leave(pkNotPredicate, s, p, start, result)
+    of pkCapture:
+      enter(pkCapture, s, p, start)
+      var idx = c.ml # reserve a slot for the subpattern
+      inc(c.ml)
+      result = mopProc(s, p.sons[0], start, c)
+      if result >= 0:
+        if idx < MaxSubpatterns:
+          c.matches[idx] = (start, start+result-1)
+        #else: silently ignore the capture
+      else:
+        c.ml = idx
+      leave(pkCapture, s, p, start, result)
+    of pkBackRef:
+      enter(pkBackRef, s, p, start)
+      result = matchBackRef(s, p, start, c)
+      leave(pkBackRef, s, p, start, result)
+    of pkBackRefIgnoreCase:
+      enter(pkBackRefIgnoreCase, s, p, start)
+      result = matchBackRef(s, p, start, c)
+      leave(pkBackRefIgnoreCase, s, p, start, result)
+    of pkBackRefIgnoreStyle:
+      enter(pkBackRefIgnoreStyle, s, p, start)
+      result = matchBackRef(s, p, start, c)
+      leave(pkBackRefIgnoreStyle, s, p, start, result)
+    of pkStartAnchor:
+      enter(pkStartAnchor, s, p, start)
+      if c.origStart == start: result = 0
+      else: result = -1
+      leave(pkStartAnchor, s, p, start, result)
+    of pkRule, pkList: assert false
+
+proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
+      {.noSideEffect, rtl, extern: "npegs$1".} =
   ## low-level matching proc that implements the PEG interpreter. Use this
   ## for maximum efficiency (every other PEG operation ends up calling this
   ## proc).
   ## Returns -1 if it does not match, else the length of the match
-  case p.kind
-  of pkEmpty: result = 0 # match of length 0
-  of pkAny:
-    if start < s.len: result = 1
-    else: result = -1
-  of pkAnyRune:
-    if start < s.len:
-      result = runeLenAt(s, start)
-    else:
-      result = -1
-  of pkLetter:
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isAlpha(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-  of pkLower:
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isLower(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-  of pkUpper:
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isUpper(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-  of pkTitle:
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isTitle(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-  of pkWhitespace:
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isWhiteSpace(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-  of pkGreedyAny:
-    result = len(s) - start
-  of pkNewLine:
-    if start < s.len and s[start] == '\L': result = 1
-    elif start < s.len and s[start] == '\C':
-      if start+1 < s.len and s[start+1] == '\L': result = 2
-      else: result = 1
-    else: result = -1
-  of pkTerminal:
-    result = len(p.term)
-    for i in 0..result-1:
-      if start+i >= s.len or p.term[i] != s[start+i]:
-        result = -1
-        break
-  of pkTerminalIgnoreCase:
-    var
-      i = 0
-      a, b: Rune
-    result = start
-    while i < len(p.term):
-      if result >= s.len:
-        result = -1
-        break
-      fastRuneAt(p.term, i, a)
-      fastRuneAt(s, result, b)
-      if toLower(a) != toLower(b):
-        result = -1
-        break
-    dec(result, start)
-  of pkTerminalIgnoreStyle:
-    var
-      i = 0
-      a, b: Rune
-    result = start
-    while i < len(p.term):
-      while i < len(p.term):
-        fastRuneAt(p.term, i, a)
-        if a != Rune('_'): break
-      while result < s.len:
-        fastRuneAt(s, result, b)
-        if b != Rune('_'): break
-      if result >= s.len:
-        if i >= p.term.len: break
+
+  # Set the handler generators to produce do-nothing handlers.
+  template enter(pk, s, p, start) =
+    discard
+  template leave(pk, s, p, start, length) =
+    discard
+  matchOrParse(matchIt)
+  result = matchIt(s, p, start, c)
+
+macro mkHandlerTplts(handlers: untyped): untyped =
+  # Transforms the handler spec in *handlers* into handler templates.
+  # The AST structure of *handlers[0]*:
+  #
+  # .. code-block::
+  # StmtList
+  #   Call
+  #     Ident "pkNonTerminal"
+  #     StmtList
+  #       Call
+  #         Ident "enter"
+  #         StmtList
+  #           <handler code block>
+  #       Call
+  #         Ident "leave"
+  #         StmtList
+  #           <handler code block>
+  #   Call
+  #     Ident "pkChar"
+  #     StmtList
+  #       Call
+  #         Ident "leave"
+  #         StmtList
+  #           <handler code block>
+  #   ...
+  proc mkEnter(hdName, body: NimNode): NimNode =
+    quote do:
+      template `hdName`(s, p, start) =
+        let s {.inject.} = s
+        let p {.inject.} = p
+        let start {.inject.} = start
+        `body`
+
+  template mkLeave(hdPostf, body) {.dirty.} =
+    # this has to be dirty to be able to capture *result* as *length* in
+    # *leaveXX* calls.
+    template `leave hdPostf`(s, p, start, length) =
+      body
+
+  result = newStmtList()
+  for topCall in handlers[0]:
+    if nnkCall != topCall.kind:
+      error("Call syntax expected.", topCall)
+    let pegKind = topCall[0]
+    if nnkIdent != pegKind.kind:
+      error("PegKind expected.", pegKind)
+    if 2 == topCall.len:
+      for hdDef in topCall[1]:
+        if nnkCall != hdDef.kind:
+          error("Call syntax expected.", hdDef)
+        if nnkIdent != hdDef[0].kind:
+          error("Handler identifier expected.", hdDef[0])
+        if 2 == hdDef.len:
+          let hdPostf = substr(pegKind.strVal, 2)
+          case hdDef[0].strVal
+          of "enter":
+            result.add mkEnter(newIdentNode("enter" & hdPostf), hdDef[1])
+          of "leave":
+            result.add getAst(mkLeave(ident(hdPostf), hdDef[1]))
+          else:
+            error(
+              "Unsupported handler identifier, expected 'enter' or 'leave'.",
+              hdDef[0]
+            )
+
+template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
+  ## Generates an interpreting event parser *proc* according to the specified
+  ## PEG AST and handler code blocks. The *proc* can be called with a string
+  ## to be parsed and will execute the handler code blocks whenever their
+  ## associated grammar element is matched. It returns -1 if the string does not
+  ## match, else the length of the total match. The following example code
+  ## evaluates an arithmetic expression defined by a simple PEG:
+  ##
+  ## .. code-block:: nim
+  ##  import strutils, pegs
+  ##
+  ##  let
+  ##    pegAst = """
+  ##  Expr    <- Sum
+  ##  Sum     <- Product (('+' / '-')Product)*
+  ##  Product <- Value (('*' / '/')Value)*
+  ##  Value   <- [0-9]+ / '(' Expr ')'
+  ##    """.peg
+  ##    txt = "(5+3)/2-7*22"
+  ##
+  ##  var
+  ##    pStack: seq[string] = @[]
+  ##    valStack: seq[float] = @[]
+  ##    opStack = ""
+  ##  let
+  ##    parseArithExpr = pegAst.eventParser:
+  ##      pkNonTerminal:
+  ##        enter:
+  ##          pStack.add p.nt.name
+  ##        leave:
+  ##          pStack.setLen pStack.high
+  ##          if length > 0:
+  ##            let matchStr = s.substr(start, start+length-1)
+  ##            case p.nt.name
+  ##            of "Value":
+  ##              try:
+  ##                valStack.add matchStr.parseFloat
+  ##                echo valStack
+  ##              except ValueError:
+  ##                discard
+  ##            of "Sum", "Product":
+  ##              try:
+  ##                let val = matchStr.parseFloat
+  ##              except ValueError:
+  ##                if valStack.len > 1 and opStack.len > 0:
+  ##                  valStack[^2] = case opStack[^1]
+  ##                  of '+': valStack[^2] + valStack[^1]
+  ##                  of '-': valStack[^2] - valStack[^1]
+  ##                  of '*': valStack[^2] * valStack[^1]
+  ##                  else: valStack[^2] / valStack[^1]
+  ##                  valStack.setLen valStack.high
+  ##                  echo valStack
+  ##                  opStack.setLen opStack.high
+  ##                  echo opStack
+  ##      pkChar:
+  ##        leave:
+  ##          if length == 1 and "Value" != pStack[^1]:
+  ##            let matchChar = s[start]
+  ##            opStack.add matchChar
+  ##            echo opStack
+  ##
+  ##  let pLen = parseArithExpr(txt)
+  ##
+  ## The *handlers* parameter consists of code blocks for *PegKinds*,
+  ## which define the grammar elements of interest. Each block can contain
+  ## handler code to be executed when the parser enters and leaves text
+  ## matching the grammar element. An *enter* handler can access the specific
+  ## PEG AST node being matched as *p*, the entire parsed string as *s*
+  ## and the position of the matched text segment in *s* as *start*. A *leave*
+  ## handler can access *p*, *s*, *start* and also the length of the matched
+  ## text segment as *length*. For an unsuccessful match, the *enter* and
+  ## *leave* handlers will be executed, with *length* set to -1.
+  ##
+  ## Symbols  declared in an *enter* handler can be made visible in the
+  ## corresponding *leave* handler by annotating them with an *inject* pragma.
+  proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
+      {.genSym.} =
+
+    # binding from *macros*
+    bind strVal
+
+    mkHandlerTplts:
+      handlers
+
+    macro enter(pegKind, s, pegNode, start: untyped): untyped =
+      # This is called by the matcher code in *matchOrParse* at the
+      # start of the code for a grammar element of kind *pegKind*.
+      # Expands to a call to the handler template if one was generated
+      # by *mkHandlerTplts*.
+      template mkDoEnter(hdPostf, s, pegNode, start) =
+        when declared(`enter hdPostf`):
+          `enter hdPostf`(s, pegNode, start):
         else:
-          result = -1
-          break
-      elif toLower(a) != toLower(b):
-        result = -1
-        break
-    dec(result, start)
-  of pkChar:
-    if start < s.len and p.ch == s[start]: result = 1
-    else: result = -1
-  of pkCharChoice:
-    if start < s.len and contains(p.charChoice[], s[start]): result = 1
-    else: result = -1
-  of pkNonTerminal:
-    var oldMl = c.ml
-    when false: echo "enter: ", p.nt.name
-    result = rawMatch(s, p.nt.rule, start, c)
-    when false: echo "leave: ", p.nt.name
-    if result < 0: c.ml = oldMl
-  of pkSequence:
-    var oldMl = c.ml
-    result = 0
-    for i in 0..high(p.sons):
-      var x = rawMatch(s, p.sons[i], start+result, c)
-      if x < 0:
-        c.ml = oldMl
-        result = -1
-        break
-      else: inc(result, x)
-  of pkOrderedChoice:
-    var oldMl = c.ml
-    for i in 0..high(p.sons):
-      result = rawMatch(s, p.sons[i], start, c)
-      if result >= 0: break
-      c.ml = oldMl
-  of pkSearch:
-    var oldMl = c.ml
-    result = 0
-    while start+result <= s.len:
-      var x = rawMatch(s, p.sons[0], start+result, c)
-      if x >= 0:
-        inc(result, x)
-        return
-      inc(result)
-    result = -1
-    c.ml = oldMl
-  of pkCapturedSearch:
-    var idx = c.ml # reserve a slot for the subpattern
-    inc(c.ml)
-    result = 0
-    while start+result <= s.len:
-      var x = rawMatch(s, p.sons[0], start+result, c)
-      if x >= 0:
-        if idx < MaxSubpatterns:
-          c.matches[idx] = (start, start+result-1)
-        #else: silently ignore the capture
-        inc(result, x)
-        return
-      inc(result)
-    result = -1
-    c.ml = idx
-  of pkGreedyRep:
-    result = 0
-    while true:
-      var x = rawMatch(s, p.sons[0], start+result, c)
-      # if x == 0, we have an endless loop; so the correct behaviour would be
-      # not to break. But endless loops can be easily introduced:
-      # ``(comment / \w*)*`` is such an example. Breaking for x == 0 does the
-      # expected thing in this case.
-      if x <= 0: break
-      inc(result, x)
-  of pkGreedyRepChar:
-    result = 0
-    var ch = p.ch
-    while start+result < s.len and ch == s[start+result]: inc(result)
-  of pkGreedyRepSet:
-    result = 0
-    while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
-  of pkOption:
-    result = max(0, rawMatch(s, p.sons[0], start, c))
-  of pkAndPredicate:
-    var oldMl = c.ml
-    result = rawMatch(s, p.sons[0], start, c)
-    if result >= 0: result = 0 # do not consume anything
-    else: c.ml = oldMl
-  of pkNotPredicate:
-    var oldMl = c.ml
-    result = rawMatch(s, p.sons[0], start, c)
-    if result < 0: result = 0
-    else:
-      c.ml = oldMl
-      result = -1
-  of pkCapture:
-    var idx = c.ml # reserve a slot for the subpattern
-    inc(c.ml)
-    result = rawMatch(s, p.sons[0], start, c)
-    if result >= 0:
-      if idx < MaxSubpatterns:
-        c.matches[idx] = (start, start+result-1)
-      #else: silently ignore the capture
-    else:
-      c.ml = idx
-  of pkBackRef..pkBackRefIgnoreStyle:
-    if p.index >= c.ml: return -1
-    var (a, b) = c.matches[p.index]
-    var n: Peg
-    n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
-    n.term = s.substr(a, b)
-    result = rawMatch(s, n, start, c)
-  of pkStartAnchor:
-    if c.origStart == start: result = 0
-    else: result = -1
-  of pkRule, pkList: assert false
+          discard
+      let hdPostf = ident(substr(strVal(pegKind), 2))
+      getAst(mkDoEnter(hdPostf, s, pegNode, start))
+
+    macro leave(pegKind, s, pegNode, start, length: untyped): untyped =
+      # Like *enter*, but called at the end of the matcher code for
+      # a grammar element of kind *pegKind*.
+      template mkDoLeave(hdPostf, s, pegNode, start, length) =
+        when declared(`leave hdPostf`):
+          `leave hdPostf`(s, pegNode, start, length):
+        else:
+          discard
+      let hdPostf = ident(substr(strVal(pegKind), 2))
+      getAst(mkDoLeave(hdPostf, s, pegNode, start, length))
+
+    matchOrParse(parseIt)
+    parseIt(s, p, start, c)
+
+  proc parser(s: string): int {.genSym.} =
+    # the proc to be returned
+    var
+      ms: array[MaxSubpatterns, (int, int)]
+      cs = Captures(matches: ms, ml: 0, origStart: 0)
+    rawParse(s, pegAst, 0, cs)
+  parser
 
 template fillMatches(s, caps, c) =
   for k in 0..c.ml-1:
@@ -765,10 +1055,10 @@ template fillMatches(s, caps, c) =
     if startIdx != -1:
       caps[k] = substr(s, startIdx, endIdx)
     else:
-      caps[k] = nil
+      caps[k] = ""
 
 proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
-               start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
+               start = 0): int {.noSideEffect, rtl, extern: "npegs$1Capture".} =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
@@ -779,7 +1069,7 @@ proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
   if result >= 0: fillMatches(s, matches, c)
 
 proc matchLen*(s: string, pattern: Peg,
-               start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
+               start = 0): int {.noSideEffect, rtl, extern: "npegs$1".} =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
@@ -789,7 +1079,7 @@ proc matchLen*(s: string, pattern: Peg,
   result = rawMatch(s, pattern, start, c)
 
 proc match*(s: string, pattern: Peg, matches: var openArray[string],
-            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
+            start = 0): bool {.noSideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
@@ -797,13 +1087,13 @@ proc match*(s: string, pattern: Peg, matches: var openArray[string],
   result = matchLen(s, pattern, matches, start) != -1
 
 proc match*(s: string, pattern: Peg,
-            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1".} =
+            start = 0): bool {.noSideEffect, rtl, extern: "npegs$1".} =
   ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
   result = matchLen(s, pattern, start) != -1
 
 
 proc find*(s: string, pattern: Peg, matches: var openArray[string],
-           start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
+           start = 0): int {.noSideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns the starting position of ``pattern`` in ``s`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
   ## is written into ``matches`` and -1 is returned.
@@ -819,7 +1109,7 @@ proc find*(s: string, pattern: Peg, matches: var openArray[string],
 
 proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
                  start = 0): tuple[first, last: int] {.
-                 nosideEffect, rtl, extern: "npegs$1Capture".} =
+                 noSideEffect, rtl, extern: "npegs$1Capture".} =
   ## returns the starting position and end position of ``pattern`` in ``s``
   ## and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
@@ -835,7 +1125,7 @@ proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
   return (-1, 0)
 
 proc find*(s: string, pattern: Peg,
-           start = 0): int {.nosideEffect, rtl, extern: "npegs$1".} =
+           start = 0): int {.noSideEffect, rtl, extern: "npegs$1".} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, -1 is returned.
   var c: Captures
@@ -859,7 +1149,7 @@ iterator findAll*(s: string, pattern: Peg, start = 0): string =
       inc(i, L)
 
 proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
@@ -893,22 +1183,22 @@ template `=~`*(s: string, pattern: Peg): bool =
 # ------------------------- more string handling ------------------------------
 
 proc contains*(s: string, pattern: Peg, start = 0): bool {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## same as ``find(s, pattern, start) >= 0``
   return find(s, pattern, start) >= 0
 
 proc contains*(s: string, pattern: Peg, matches: var openArray[string],
-              start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
+              start = 0): bool {.noSideEffect, rtl, extern: "npegs$1Capture".} =
   ## same as ``find(s, pattern, matches, start) >= 0``
   return find(s, pattern, matches, start) >= 0
 
 proc startsWith*(s: string, prefix: Peg, start = 0): bool {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## returns true if `s` starts with the pattern `prefix`
   result = matchLen(s, prefix, start) >= 0
 
 proc endsWith*(s: string, suffix: Peg, start = 0): bool {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## returns true if `s` ends with the pattern `suffix`
   var c: Captures
   c.origStart = start
@@ -916,7 +1206,7 @@ proc endsWith*(s: string, suffix: Peg, start = 0): bool {.
     if rawMatch(s, suffix, i, c) == s.len - i: return true
 
 proc replacef*(s: string, sub: Peg, by: string): string {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
@@ -945,7 +1235,7 @@ proc replacef*(s: string, sub: Peg, by: string): string {.
   add(result, substr(s, i))
 
 proc replace*(s: string, sub: Peg, by = ""): string {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be accessed
   ## in `by`.
   result = ""
@@ -963,7 +1253,7 @@ proc replace*(s: string, sub: Peg, by = ""): string {.
 
 proc parallelReplace*(s: string, subs: varargs[
                       tuple[pattern: Peg, repl: string]]): string {.
-                      nosideEffect, rtl, extern: "npegs$1".} =
+                      noSideEffect, rtl, extern: "npegs$1".} =
   ## Returns a modified copy of `s` with the substitutions in `subs`
   ## applied in parallel.
   result = ""
@@ -1034,7 +1324,7 @@ when not defined(js):
                       subs: varargs[tuple[pattern: Peg, repl: string]]) {.
                       rtl, extern: "npegs$1".} =
     ## reads in the file `infile`, performs a parallel replacement (calls
-    ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+    ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
     ## error occurs. This is supposed to be used for quick scripting.
     ##
     ## **Note**: this proc does not exist while using the JS backend.
@@ -1078,7 +1368,7 @@ iterator split*(s: string, sep: Peg): string =
       yield substr(s, first, last-1)
 
 proc split*(s: string, sep: Peg): seq[string] {.
-  nosideEffect, rtl, extern: "npegs$1".} =
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## Splits the string `s` into substrings.
   accumulateResult(split(s, sep))
 
@@ -1239,20 +1529,17 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
 
 proc skip(c: var PegLexer) =
   var pos = c.bufpos
-  var buf = c.buf
   while pos < c.buf.len:
-    case buf[pos]
+    case c.buf[pos]
     of ' ', '\t':
       inc(pos)
     of '#':
       while (pos < c.buf.len) and
-             not (buf[pos] in {'\c', '\L', '\0'}): inc(pos)
+             not (c.buf[pos] in {'\c', '\L', '\0'}): inc(pos)
     of '\c':
       pos = handleCR(c, pos)
-      buf = c.buf
     of '\L':
       pos = handleLF(c, pos)
-      buf = c.buf
     else:
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
@@ -1260,10 +1547,9 @@ proc skip(c: var PegLexer) =
 proc getString(c: var PegLexer, tok: var Token) =
   tok.kind = tkStringLit
   var pos = c.bufpos + 1
-  var buf = c.buf
-  var quote = buf[pos-1]
+  var quote = c.buf[pos-1]
   while pos < c.buf.len:
-    case buf[pos]
+    case c.buf[pos]
     of '\\':
       c.bufpos = pos
       getEscapedChar(c, tok)
@@ -1271,22 +1557,21 @@ proc getString(c: var PegLexer, tok: var Token) =
     of '\c', '\L', '\0':
       tok.kind = tkInvalid
       break
-    elif buf[pos] == quote:
+    elif c.buf[pos] == quote:
       inc(pos)
       break
     else:
-      add(tok.literal, buf[pos])
+      add(tok.literal, c.buf[pos])
       inc(pos)
   c.bufpos = pos
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  var buf = c.buf
-  if buf[pos] in {'0'..'9'}:
+  if c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
-    while pos < c.buf.len and buf[pos] in {'0'..'9'}:
-      tok.index = tok.index * 10 + ord(buf[pos]) - ord('0')
+    while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
+      tok.index = tok.index * 10 + ord(c.buf[pos]) - ord('0')
       inc(pos)
   else:
     tok.kind = tkDollar
@@ -1296,14 +1581,13 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
   tok.kind = tkCharSet
   tok.charset = {}
   var pos = c.bufpos + 1
-  var buf = c.buf
   var caret = false
-  if buf[pos] == '^':
+  if c.buf[pos] == '^':
     inc(pos)
     caret = true
   while pos < c.buf.len:
     var ch: char
-    case buf[pos]
+    case c.buf[pos]
     of ']':
       if pos < c.buf.len: inc(pos)
       break
@@ -1316,11 +1600,11 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
       tok.kind = tkInvalid
       break
     else:
-      ch = buf[pos]
+      ch = c.buf[pos]
       inc(pos)
     incl(tok.charset, ch)
-    if buf[pos] == '-':
-      if pos+1 < c.buf.len and buf[pos+1] == ']':
+    if c.buf[pos] == '-':
+      if pos+1 < c.buf.len and c.buf[pos+1] == ']':
         incl(tok.charset, '-')
         inc(pos)
       else:
@@ -1329,7 +1613,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
         else:
           break
         var ch2: char
-        case buf[pos]
+        case c.buf[pos]
         of '\\':
           c.bufpos = pos
           getEscapedChar(c, tok)
@@ -1340,7 +1624,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
           break
         else:
           if pos+1 < c.buf.len:
-            ch2 = buf[pos]
+            ch2 = c.buf[pos]
             inc(pos)
           else:
             break
@@ -1351,11 +1635,10 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
 
 proc getSymbol(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos
-  var buf = c.buf
   while pos < c.buf.len:
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if pos < buf.len and buf[pos] notin strutils.IdentChars: break
+    if pos < c.buf.len and c.buf[pos] notin strutils.IdentChars: break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
@@ -1854,7 +2137,7 @@ when isMainModule:
   assert match("prefix/start", peg"^start$", 7)
 
   if "foo" =~ peg"{'a'}?.*":
-    assert matches[0] == nil
+    assert matches[0].len == 0
   else: assert false
 
   if "foo" =~ peg"{''}.*":

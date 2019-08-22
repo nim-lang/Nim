@@ -1,6 +1,6 @@
 discard """
-  line: 7
   errormsg: "has to be discarded"
+  line: 7
 """
 
 proc myProc(name: string): string = "Hello " & name

@@ -12,7 +12,7 @@
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  types, lookups, lineinfos
+  types, lookups, lineinfos, pathutils, linter
 
 const
   FirstCallConv* = wNimcall
@@ -20,40 +20,40 @@ const
 
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
-    wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
-    wCompilerProc, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
+    wCompilerProc, wNonReloadable, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
-    wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe, wOverride,
-    wConstructor, wExportNims, wUsed, wLiftLocals, wStacktrace, wLinetrace}
-  converterPragmas* = procPragmas
-  methodPragmas* = procPragmas+{wBase}-{wImportCpp}
-  templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
+    wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
+    wConstructor, wExportNims, wUsed, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy}
+  converterPragmas* = procPragmas - {wNoDestroy}
+  methodPragmas* = procPragmas+{wBase}-{wImportCpp, wNoDestroy}
+  templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
-  macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
-    wNodecl, wMagic, wNosideeffect, wCompilerProc, wCore, wDeprecated, wExtern,
+  macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc,
+    wNodecl, wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
     wExportNims, wUsed}
-  iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
+  iteratorPragmas* = {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wLocks, wGcSafe, wExportNims, wUsed}
-  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
-  stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
-    wBoundchecks, wOverflowchecks, wNilchecks, wMovechecks, wAssertions,
+  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
+  stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
+    wBoundChecks, wOverflowChecks, wNilChecks, wStyleChecks, wAssertions,
     wWarnings, wHints,
-    wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
+    wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wBreakpoint, wWatchPoint, wPassl, wPassc,
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
-    wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects, wNoForward, wReorder, wComputedGoto,
+    wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
+    wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
-    wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
+    wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
-    wRaises, wLocks, wTags, wGcSafe}
+    wRaises, wLocks, wTags, wGcSafe, wCodegenDecl}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
@@ -64,14 +64,16 @@ const
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerProc, wCore, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed, wCursor}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine, wUsed, wCompilerProc, wCore}
+    wIntDefine, wStrDefine, wBoolDefine, wUsed, wCompilerProc, wCore}
   letPragmas* = varPragmas
-  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
+  procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
+  forVarPragmas* = {wInject, wGensym}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
+  enumFieldPragmas* = {wDeprecated}
 
 proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
   let p = procAst[pragmasPos]
@@ -95,12 +97,14 @@ const
   errIntLiteralExpected = "integer literal expected"
 
 proc invalidPragma*(c: PContext; n: PNode) =
-  localError(c.config, n.info, "invalid pragma: " % renderTree(n, {renderNoComments}))
+  localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
+proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
+  localError(c.config, n.info, "cannot attach a custom pragma to '" & s.name.s & "'")
 
 proc pragmaAsm*(c: PContext, n: PNode): char =
   result = '\0'
   if n != nil:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       let it = n.sons[i]
       if it.kind in nkPragmaCallKinds and it.len == 2 and it.sons[0].kind == nkIdent:
         case whichKeyword(it.sons[0].ident)
@@ -157,7 +161,7 @@ proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   incl(s.flags, sfNamedParamCall)
   excl(s.flags, sfForward)
   let m = s.getModule()
-  incl(m.flags, sfCompileToObjC)
+  incl(m.flags, sfCompileToObjc)
 
 proc newEmptyStrNode(c: PContext; n: PNode): PNode {.noinline.} =
   result = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
@@ -205,7 +209,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   var v: string
   if n.sons[1].kind == nkIdent: v = n.sons[1].ident.s
   else: v = expectStrLit(c, n)
-  for m in countup(low(TMagic), high(TMagic)):
+  for m in low(TMagic) .. high(TMagic):
     if substr($m, 1) == v:
       s.magic = m
       break
@@ -228,8 +232,17 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   else: resOptions = resOptions - op
 
 proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
-  if isTurnedOn(c, n): incl(c.module.flags, flag)
-  else: excl(c.module.flags, flag)
+  if isTurnedOn(c, n):
+    incl(c.module.flags, flag)
+    c.features.incl codeReordering
+  else:
+    excl(c.module.flags, flag)
+    # c.features.excl codeReordering
+
+  # deprecated as of 0.18.1
+  message(c.config, n.info, warnDeprecated,
+          "use {.experimental: \"codeReordering\".} instead; " &
+          (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}") & " is deprecated")
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n.sons[1].kind == nkIdent:
@@ -318,27 +331,47 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wChecks: ChecksOptions
   of wObjChecks: {optObjCheck}
   of wFieldChecks: {optFieldCheck}
-  of wRangechecks: {optRangeCheck}
-  of wBoundchecks: {optBoundsCheck}
-  of wOverflowchecks: {optOverflowCheck}
-  of wNilchecks: {optNilCheck}
-  of wFloatchecks: {optNaNCheck, optInfCheck}
+  of wRangeChecks: {optRangeCheck}
+  of wBoundChecks: {optBoundsCheck}
+  of wOverflowChecks: {optOverflowCheck}
+  of wNilChecks: {optNilCheck}
+  of wFloatChecks: {optNaNCheck, optInfCheck}
   of wNanChecks: {optNaNCheck}
   of wInfChecks: {optInfCheck}
-  of wMovechecks: {optMoveCheck}
+  of wStyleChecks: {optStyleCheck}
   of wAssertions: {optAssert}
   of wWarnings: {optWarns}
   of wHints: {optHints}
-  of wLinedir: {optLineDir}
-  of wStacktrace: {optStackTrace}
-  of wLinetrace: {optLineTrace}
+  of wLineDir: {optLineDir}
+  of wStackTrace: {optStackTrace}
+  of wLineTrace: {optLineTrace}
   of wDebugger: {optEndb}
   of wProfiler: {optProfiler, optMemTracker}
   of wMemTracker: {optMemTracker}
   of wByRef: {optByRef}
   of wImplicitStatic: {optImplicitStatic}
-  of wPatterns: {optPatterns}
+  of wPatterns, wTrMacros: {optTrMacros}
   else: {}
+
+proc processExperimental(c: PContext; n: PNode) =
+  if n.kind notin nkPragmaCallKinds or n.len != 2:
+    c.features.incl oldExperimentalFeatures
+  else:
+    n[1] = c.semConstExpr(c, n[1])
+    case n[1].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      try:
+        let feature = parseEnum[Feature](n[1].strVal)
+        c.features.incl feature
+        if feature == codeReordering:
+          if not isTopLevel(c):
+              localError(c.config, n.info,
+                         "Code reordering experimental pragma only valid at toplevel")
+          c.module.flags.incl sfReorder
+      except ValueError:
+        localError(c.config, n[1].info, "unknown experimental feature")
+    else:
+      localError(c.config, n.info, errStringLiteralExpected)
 
 proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
   result = true
@@ -347,6 +380,9 @@ proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
   elif n.sons[0].kind != nkIdent: result = false
   else:
     let sw = whichKeyword(n.sons[0].ident)
+    if sw == wExperimental:
+      processExperimental(c, n)
+      return true
     let opts = pragmaToOptions(sw)
     if opts != {}:
       onOff(c, n, opts, resOptions)
@@ -385,8 +421,9 @@ proc processPush(c: PContext, n: PNode, start: int) =
   x.defaultCC = y.defaultCC
   x.dynlib = y.dynlib
   x.notes = c.config.notes
+  x.features = c.features
   c.optionStack.add(x)
-  for i in countup(start, sonsLen(n) - 1):
+  for i in start ..< sonsLen(n):
     if not tryProcessOption(c, n.sons[i], c.config.options):
       # simply store it somewhere:
       if x.otherPragmas.isNil:
@@ -397,6 +434,8 @@ proc processPush(c: PContext, n: PNode, start: int) =
   # If stacktrace is disabled globally we should not enable it
   if optStackTrace notin c.optionStack[0].options:
     c.config.options.excl(optStackTrace)
+  when defined(debugOptions):
+    echo c.config $ n.info, " PUSH config is now ", c.config.options
 
 proc processPop(c: PContext, n: PNode) =
   if c.optionStack.len <= 1:
@@ -404,42 +443,42 @@ proc processPop(c: PContext, n: PNode) =
   else:
     c.config.options = c.optionStack[^1].options
     c.config.notes = c.optionStack[^1].notes
+    c.features = c.optionStack[^1].features
     c.optionStack.setLen(c.optionStack.len - 1)
+  when defined(debugOptions):
+    echo c.config $ n.info, " POP config is now ", c.config.options
 
 proc processDefine(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     defineSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "define")
+    message(c.config, n.info, warnDeprecated, "define is deprecated")
   else:
     invalidPragma(c, n)
 
 proc processUndef(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     undefSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "undef")
+    message(c.config, n.info, warnDeprecated, "undef is deprecated")
   else:
     invalidPragma(c, n)
 
-type
-  TLinkFeature = enum
-    linkNormal, linkSys
-
-proc relativeFile(c: PContext; n: PNode; ext=""): string =
+proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
   var s = expectStrLit(c, n)
   if ext.len > 0 and splitFile(s).ext == "":
     s = addFileExt(s, ext)
-  result = parentDir(toFullPath(c.config, n.info)) / s
+  result = AbsoluteFile parentDir(toFullPath(c.config, n.info)) / s
   if not fileExists(result):
-    if isAbsolute(s): result = s
+    if isAbsolute(s): result = AbsoluteFile s
     else:
       result = findFile(c.config, s)
-      if result.len == 0: result = s
+      if result.isEmpty: result = AbsoluteFile s
 
 proc processCompile(c: PContext, n: PNode) =
-  proc docompile(c: PContext; it: PNode; src, dest: string) =
-    var cf = Cfile(cname: src, obj: dest, flags: {CfileFlag.External})
+  proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile) =
+    var cf = Cfile(nimname: splitFile(src).name,
+                   cname: src, obj: dest, flags: {CfileFlag.External})
     extccomp.addExternalFileToCompile(c.config, cf)
-    recordPragma(c, it, "compile", src, dest)
+    recordPragma(c, it, "compile", src.string, dest.string)
 
   proc getStrLit(c: PContext, n: PNode; i: int): string =
     n.sons[i] = c.semConstExpr(c, n[i])
@@ -456,30 +495,23 @@ proc processCompile(c: PContext, n: PNode) =
     let dest = getStrLit(c, it, 1)
     var found = parentDir(toFullPath(c.config, n.info)) / s
     for f in os.walkFiles(found):
-      let obj = completeCFilePath(c.config, dest % extractFilename(f))
-      docompile(c, it, f, obj)
+      let obj = completeCfilePath(c.config, AbsoluteFile(dest % extractFilename(f)))
+      docompile(c, it, AbsoluteFile f, obj)
   else:
     let s = expectStrLit(c, n)
-    var found = parentDir(toFullPath(c.config, n.info)) / s
+    var found = AbsoluteFile(parentDir(toFullPath(c.config, n.info)) / s)
     if not fileExists(found):
-      if isAbsolute(s): found = s
+      if isAbsolute(s): found = AbsoluteFile s
       else:
         found = findFile(c.config, s)
-        if found.len == 0: found = s
-    let obj = toObjFile(c.config, completeCFilePath(c.config, found, false))
+        if found.isEmpty: found = AbsoluteFile s
+    let obj = toObjFile(c.config, completeCfilePath(c.config, found, false))
     docompile(c, it, found, obj)
 
-proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
+proc processLink(c: PContext, n: PNode) =
   let found = relativeFile(c, n, CC[c.config.cCompiler].objExt)
-  case feature
-  of linkNormal:
-    extccomp.addExternalFileToLink(c.config, found)
-    recordPragma(c, n, "link", found)
-  of linkSys:
-    let dest = c.config.libpath / completeCFilePath(c.config, found, false)
-    extccomp.addExternalFileToLink(c.config, dest)
-    recordPragma(c, n, "link", dest)
-  else: internalError(c.config, n.info, "processCommonLink")
+  extccomp.addExternalFileToLink(c.config, found)
+  recordPragma(c, n, "link", found.string)
 
 proc pragmaBreakpoint(c: PContext, n: PNode) =
   discard getOptionalStr(c, n, "")
@@ -572,8 +604,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(c.config, n.info, errIntLiteralExpected)
       else:
-        # XXX this produces weird paths which are not properly resolved:
-        n.info.fileIndex = msgs.fileInfoIdx(c.config, x.strVal)
+        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
         n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
@@ -583,9 +614,9 @@ proc pragmaLine(c: PContext, n: PNode) =
 
 proc processPragma(c: PContext, n: PNode, i: int) =
   let it = n[i]
-  if it.kind notin nkPragmaCallKinds and it.len == 2: invalidPragma(c, n)
-  elif it[0].kind != nkIdent: invalidPragma(c, n)
-  elif it[1].kind != nkIdent: invalidPragma(c, n)
+  if it.kind notin nkPragmaCallKinds and it.safeLen == 2: invalidPragma(c, n)
+  elif it.safeLen != 2 or it[0].kind != nkIdent or it[1].kind != nkIdent:
+    invalidPragma(c, n)
 
   var userPragma = newSym(skTemplate, it[1].ident, nil, it.info, c.config.options)
   userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
@@ -693,45 +724,37 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc semCustomPragma(c: PContext, n: PNode): PNode =
+  var callNode: PNode
+
   if n.kind == nkIdent:
-    result = newTree(nkCall, n)
+    # pragma -> pragma()
+    callNode = newTree(nkCall, n)
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
-    result = newTree(nkCall, n[0], n[1])
-  elif n.kind in nkPragmaCallKinds + {nkIdent}:
-    result = n
+    callNode = newTree(nkCall, n[0], n[1])
+  elif n.kind in nkPragmaCallKinds:
+    callNode = n
   else:
     invalidPragma(c, n)
     return n
 
-  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {})
+  let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
+
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
-  else:
-    result = r
-    if n.kind == nkIdent:
-      result = result[0]
-    elif n.kind == nkExprColonExpr:
-      result.kind = n.kind # pragma(arg) -> pragma: arg
+    return n
 
-proc processExperimental(c: PContext; n: PNode; s: PSym) =
-  if not isTopLevel(c):
-    localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement")
-  if n.kind notin nkPragmaCallKinds or n.len != 2:
-    c.features.incl oldExperimentalFeatures
-  else:
-    n[1] = c.semConstExpr(c, n[1])
-    case n[1].kind
-    of nkStrLit, nkRStrLit, nkTripleStrLit:
-      try:
-        c.features.incl parseEnum[Feature](n[1].strVal)
-      except ValueError:
-        localError(c.config, n[1].info, "unknown experimental feature")
-    else:
-      localError(c.config, n.info, errStringLiteralExpected)
+  result = r
+  # Transform the nkCall node back to its original form if possible
+  if n.kind == nkIdent and r.len == 1:
+    # pragma() -> pragma
+    result = result[0]
+  elif n.kind == nkExprColonExpr and r.len == 2:
+    # pragma(arg) -> pragma: arg
+    result.kind = n.kind
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
-                  validPragmas: TSpecialWords): bool =
+                  validPragmas: TSpecialWords, comesFromPush: bool) : bool =
   var it = n.sons[i]
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it.sons[0] else: it
   if key.kind == nkBracketExpr:
@@ -743,6 +766,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   let ident = considerQuotedIdent(c, key)
   var userPragma = strTableGet(c.userPragmas, ident)
   if userPragma != nil:
+    if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+      styleCheckUse(c.config, key.info, userPragma)
+
     # number of pragmas increase/decrease with user pragma expansion
     inc c.instCounter
     if c.instCounter > 100:
@@ -755,6 +781,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   else:
     let k = whichKeyword(ident)
     if k in validPragmas:
+      if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+        checkPragmaUse(c.config, key.info, k, ident.s)
       case k
       of wExportc:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
@@ -770,12 +798,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         recordPragma(c, it, "cppdefine", name)
         processImportCompilerProc(c, sym, name, it.info)
       of wExtern: setExternName(c, sym, expectStrLit(c, it), it.info)
-      of wImmediate:
-        if sym.kind in {skTemplate, skMacro}:
-          incl(sym.flags, sfImmediate)
-          incl(sym.flags, sfAllUntyped)
-          message(c.config, n.info, warnDeprecated, "use 'untyped' parameters instead; immediate")
-        else: invalidPragma(c, it)
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
         else: invalidPragma(c, it)
@@ -793,10 +815,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
-        if not isPowerOfTwo(size) or size <= 0 or size > 8:
-          localError(c.config, it.info, "power of two expected")
-        else:
+        case size
+        of 1, 2, 4, 8:
           sym.typ.size = size
+          if size == 8 and c.config.target.targetCPU == cpuI386:
+            sym.typ.align = 4
+          else:
+            sym.typ.align = int16(size)
+        else:
+          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
@@ -816,7 +843,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, {sfThread, sfGlobal})
       of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
-      of wReorder: pragmaNoForward(c, it, sfReorder)
+      of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)
@@ -840,21 +867,25 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
         if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
-      of wOverride:
-        sym.flags.incl sfOverriden
-      of wNosideeffect:
+      of wNoSideEffect:
         noVal(c, it)
-        incl(sym.flags, sfNoSideEffect)
-        if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
-      of wSideeffect:
+        if sym != nil:
+          incl(sym.flags, sfNoSideEffect)
+          if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
+      of wSideEffect:
         noVal(c, it)
         incl(sym.flags, sfSideEffect)
       of wNoreturn:
         noVal(c, it)
-        incl(sym.flags, sfNoReturn)
+        # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
+        if not isDefined(c.config, "nimQuirky"):
+          incl(sym.flags, sfNoReturn)
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")
+      of wNoDestroy:
+        noVal(c, it)
+        incl(sym.flags, sfGeneratedOp)
       of wDynlib:
         processDynLib(c, it, sym)
       of wCompilerProc, wCore:
@@ -862,17 +893,25 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         cppDefine(c.graph.config, sym.name.s)
         recordPragma(c, it, "cppdefine", sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(c, sym)
+      of wNonReloadable:
+        sym.flags.incl sfNonReloadable
       of wProcVar:
         noVal(c, it)
         incl(sym.flags, sfProcvar)
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
-        if sym != nil and sym.kind in routineKinds:
+        if sym != nil and sym.kind in routineKinds + {skType, skVar, skLet}:
           if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfDeprecated)
+        elif sym != nil and sym.kind != skModule:
+          # We don't support the extra annotation field
+          if it.kind in nkPragmaCallKinds:
+            localError(c.config, it.info, "annotation to deprecated not supported here")
+          incl(sym.flags, sfDeprecated)
+        # At this point we're quite sure this is a statement and applies to the
+        # whole module
         elif it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
-        elif sym != nil: incl(sym.flags, sfDeprecated)
         else: incl(c.module.flags, sfDeprecated)
       of wVarargs:
         noVal(c, it)
@@ -899,7 +938,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wAcyclic:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfAcyclic)
+        # now: ignored
       of wShallow:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
@@ -932,13 +971,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         recordPragma(c, it, "warning", s)
         message(c.config, it.info, warnUser, s)
       of wError:
-        if sym != nil and sym.isRoutine:
+        if sym != nil and (sym.isRoutine or sym.kind == skType) and wUsed in validPragmas:
           # This is subtle but correct: the error *statement* is only
-          # allowed for top level statements. Seems to be easier than
-          # distinguishing properly between
+          # allowed when 'wUsed' is not in validPragmas. Here this is the easiest way to
+          # distinguish properly between
           # ``proc p() {.error}`` and ``proc p() = {.error: "msg".}``
-          noVal(c, it)
+          if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfError)
+          excl(sym.flags, sfForward)
         else:
           let s = expectStrLit(c, it)
           recordPragma(c, it, "error", s)
@@ -947,8 +987,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wDefine: processDefine(c, it)
       of wUndef: processUndef(c, it)
       of wCompile: processCompile(c, it)
-      of wLink: processCommonLink(c, it, linkNormal)
-      of wLinksys: processCommonLink(c, it, linkSys)
+      of wLink: processLink(c, it)
       of wPassl:
         let s = expectStrLit(c, it)
         extccomp.addLinkOption(c.config, s)
@@ -976,12 +1015,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym != nil: incl(sym.flags, sfNoInit)
       of wCodegenDecl: processCodegenDecl(c, it, sym)
-      of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks,
-         wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
-         wLinedir, wOptimization, wMovechecks, wCallconv, wDebugger, wProfiler,
-         wFloatchecks, wNanChecks, wInfChecks, wPatterns:
+      of wChecks, wObjChecks, wFieldChecks, wRangeChecks, wBoundChecks,
+         wOverflowChecks, wNilChecks, wAssertions, wWarnings, wHints,
+         wLineDir, wOptimization, wStyleChecks, wCallconv, wDebugger, wProfiler,
+         wFloatChecks, wNanChecks, wInfChecks, wPatterns, wTrMacros:
         processOption(c, it, c.config.options)
-      of wStacktrace, wLinetrace:
+      of wStackTrace, wLineTrace:
         if sym.kind in {skProc, skMethod, skConverter}:
           processOption(c, it, sym.options)
         else:
@@ -1002,8 +1041,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: incl(sym.typ.flags, tfIncompleteStruct)
       of wUnchecked:
         noVal(c, it)
-        if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfUncheckedArray)
+        if sym.typ == nil or sym.typ.kind notin {tyArray, tyUncheckedArray}:
+          invalidPragma(c, it)
+        else:
+          sym.typ.kind = tyUncheckedArray
       of wUnion:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
@@ -1043,6 +1084,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
         else:
           sym.bitsize = expectIntLit(c, it)
+          if sym.bitsize <= 0:
+            localError(c.config, it.info, "bitsize needs to be positive")
       of wGuard:
         if sym == nil or sym.kind notin {skVar, skLet, skField}:
           invalidPragma(c, it)
@@ -1053,6 +1096,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
         else:
           sym.flags.incl sfGoto
+      of wCursor:
+        if sym == nil or sym.kind notin {skVar, skLet}:
+          invalidPragma(c, it)
+        else:
+          sym.flags.incl sfCursor
       of wExportNims:
         if sym == nil: invalidPragma(c, it)
         else: magicsys.registerNimScriptSymbol(c.graph, sym)
@@ -1062,12 +1110,16 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           it.sons[1] = c.semExpr(c, it.sons[1])
       of wExperimental:
-        processExperimental(c, it, sym)
+        if not isTopLevel(c):
+          localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
+        processExperimental(c, it)
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
         elif it.kind == nkIdent or it.len == 1:
           c.selfName = getIdent(c.cache, "self")
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
         else:
           localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:
@@ -1079,15 +1131,37 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.magic = mIntDefine
       of wStrDefine:
         sym.magic = mStrDefine
+      of wBoolDefine:
+        sym.magic = mBoolDefine
       of wUsed:
         noVal(c, it)
         if sym == nil: invalidPragma(c, it)
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
+    elif comesFromPush and whichKeyword(ident) in {wTags, wRaises}:
+      discard "ignore the .push pragma; it doesn't apply"
     else:
-      n.sons[i] = semCustomPragma(c, it)
+      if sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam,
+                        skField, skProc, skFunc, skConverter, skMethod, skType}):
+        n.sons[i] = semCustomPragma(c, it)
+      elif sym != nil:
+        illegalCustomPragma(c, it, sym)
+      else:
+        invalidPragma(c, it)
 
+proc overwriteLineInfo(n: PNode; info: TLineInfo) =
+  n.info = info
+  for i in 0..<safeLen(n):
+    overwriteLineInfo(n[i], info)
+
+proc mergePragmas(n, pragmas: PNode) =
+  var pragmas = copyTree(pragmas)
+  overwriteLineInfo pragmas, n.info
+  if n[pragmasPos].kind == nkEmpty:
+    n[pragmasPos] = pragmas
+  else:
+    for p in pragmas: n.sons[pragmasPos].add p
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
@@ -1097,11 +1171,12 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
       if not o.isNil:
         pushInfoContext(c.config, n.info)
         var i = 0
-        while i < o.len():
-          if singlePragma(c, sym, o, i, validPragmas):
+        while i < o.len:
+          if singlePragma(c, sym, o, i, validPragmas, true):
             internalError(c.config, n.info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
+        if sym.kind in routineKinds and sym.ast != nil: mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, n.info, ".dynlib requires .exportc")
@@ -1126,7 +1201,7 @@ proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   var i = 0
   while i < n.len:
-    if singlePragma(c, sym, n, i, validPragmas): break
+    if singlePragma(c, sym, n, i, validPragmas, false): break
     inc i
 
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =

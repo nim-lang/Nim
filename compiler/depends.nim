@@ -10,12 +10,12 @@
 # This module implements a dependency file generator.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, modulepaths
+  options, ast, ropes, idents, passes, modulepaths, pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  TGen = object of TPassContext
+  TGen = object of PPassContext
     module: PSym
     config: ConfigRef
     graph: ModuleGraph
@@ -34,21 +34,21 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   let b = Backend(g.graph.backend)
   case n.kind
   of nkImportStmt:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       var imported = getModuleName(g.config, n.sons[i])
       addDependencyAux(b, g.module.name.s, imported)
   of nkFromStmt, nkImportExceptStmt:
     var imported = getModuleName(g.config, n.sons[0])
     addDependencyAux(b, g.module.name.s, imported)
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr:
-    for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])
+    for i in 0 ..< sonsLen(n): discard addDotDependency(c, n.sons[i])
   else:
     discard
 
-proc generateDot*(graph: ModuleGraph; project: string) =
+proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
   let b = Backend(graph.backend)
   discard writeRope("digraph $1 {$n$2}$n" % [
-      rope(changeFileExt(extractFilename(project), "")), b.dotGraph],
+      rope(project.splitFile.name), b.dotGraph],
             changeFileExt(project, "dot"))
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =

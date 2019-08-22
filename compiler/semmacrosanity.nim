@@ -10,20 +10,20 @@
 ## Implements type sanity checking for ASTs resulting from macros. Lots of
 ## room for improvement here.
 
-import ast, astalgo, msgs, types, options
+import ast, msgs, types, options
 
 proc ithField(n: PNode, field: var int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       result = ithField(n.sons[i], field)
       if result != nil: return
   of nkRecCase:
     if n.sons[0].kind != nkSym: return
     result = ithField(n.sons[0], field)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in 1 ..< sonsLen(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = ithField(lastSon(n.sons[i]), field)
@@ -33,6 +33,15 @@ proc ithField(n: PNode, field: var int): PSym =
     if field == 0: result = n.sym
     else: dec(field)
   else: discard
+
+proc ithField(t: PType, field: var int): PSym =
+  var base = t.sons[0]
+  while base != nil:
+    let b = skipTypes(base, skipPtrs)
+    result = ithField(b.n, field)
+    if result != nil: return result
+    base = b.sons[0]
+  result = ithField(t.n, field)
 
 proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
   let x = t.skipTypes(abstractInst+{tyRange})
@@ -44,7 +53,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
     n.typ = t
     for i in 1 ..< n.len:
       var j = i-1
-      let field = x.n.ithField(j)
+      let field = x.ithField(j)
       if field.isNil:
         globalError conf, n.info, "invalid field at index " & $i
       else:
@@ -88,7 +97,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
     else:
       globalError(conf, n.info, "string literal must be of some string type")
   of nkNilLit:
-    if x.kind in NilableTypes:
+    if x.kind in NilableTypes+{tyString, tySequence}:
       n.typ = t
     else:
       globalError(conf, n.info, "nil literal must be of some pointer type")

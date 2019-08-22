@@ -1,7 +1,7 @@
 discard """
+  errormsg: "The `to` macro does not support ref objects with cycles."
   file: "tjsonmacro_reject2.nim"
   line: 10
-  errormsg: "The `to` macro does not support ref objects with cycles."
 """
 import json
 

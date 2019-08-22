@@ -10,13 +10,14 @@
 ## Low-level streams for high performance.
 
 import
-  strutils
+  pathutils
 
 # support '-d:useGnuReadline' for backwards compatibility:
 when not defined(windows) and (defined(useGnuReadline) or defined(useLinenoise)):
   import rdstdin
 
 type
+  TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
   TLLStreamKind* = enum       # enum of different stream implementations
     llsNone,                  # null stream: reading and writing has no effect
     llsString,                # stream encapsulates a string
@@ -28,6 +29,7 @@ type
     s*: string
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
+    repl*: TLLRepl            # gives stdin control to clients
 
   PLLStream* = ref TLLStream
 
@@ -41,20 +43,22 @@ proc llStreamOpen*(f: File): PLLStream =
   result.f = f
   result.kind = llsFile
 
-proc llStreamOpen*(filename: string, mode: FileMode): PLLStream =
+proc llStreamOpen*(filename: AbsoluteFile, mode: FileMode): PLLStream =
   new(result)
   result.kind = llsFile
-  if not open(result.f, filename, mode): result = nil
+  if not open(result.f, filename.string, mode): result = nil
 
 proc llStreamOpen*(): PLLStream =
   new(result)
   result.kind = llsNone
 
-proc llStreamOpenStdIn*(): PLLStream =
+proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int
+proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin): PLLStream =
   new(result)
   result.kind = llsStdIn
   result.s = ""
   result.lineOffset = -1
+  result.repl = r
 
 proc llStreamClose*(s: PLLStream) =
   case s.kind
@@ -66,10 +70,10 @@ proc llStreamClose*(s: PLLStream) =
 when not declared(readLineFromStdin):
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
-    stdout.write(prompt)
+    stderr.write(prompt)
     result = readLine(stdin, line)
     if not result:
-      stdout.write("\n")
+      stderr.write("\n")
       quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
@@ -87,13 +91,13 @@ proc endsWithOpr*(x: string): bool =
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
-  result = inTripleString or
-      line[0] == ' ' or
-      line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
+  result = inTripleString or line.len > 0 and (
+        line[0] == ' ' or
+        line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs))
 
 proc countTriples(s: string): int =
   var i = 0
-  while i < s.len:
+  while i+2 < s.len:
     if s[i] == '"' and s[i+1] == '"' and s[i+2] == '"':
       inc result
       inc i, 2
@@ -127,7 +131,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsFile:
     result = readBuffer(s.f, buf, bufLen)
   of llsStdIn:
-    result = llReadFromStdin(s, buf, bufLen)
+    result = s.repl(s, buf, bufLen)
 
 proc llStreamReadLine*(s: PLLStream, line: var string): bool =
   setLen(line, 0)

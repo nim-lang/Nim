@@ -1,3 +1,4 @@
+
 import
   unittest, macros
 
@@ -42,6 +43,5 @@ test "arithmetic failure":
   expect(ArithmeticError):
     err()
 
-  expect(ArithmeticError, SystemError):
+  expect(ArithmeticError, CatchableError):
     discard foo()
-

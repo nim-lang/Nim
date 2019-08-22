@@ -12,7 +12,6 @@ type
   PccState* = ptr CcState
 
   ErrorFunc* = proc (opaque: pointer, msg: cstring) {.cdecl.}
-{.deprecated: [TccState: CcState, TErrorFunc: ErrorFunc].}
 
 proc openCCState*(): PccState {.importc: "tcc_new", cdecl.}
   ## create a new TCC compilation context
@@ -67,7 +66,7 @@ const
   OutputObj*: cint = 4 ## object file
   OutputPreprocess*: cint = 5 ## preprocessed file (used internally)
 
-proc setOutputType*(s: PCCState, outputType: cint): cint {.cdecl,
+proc setOutputType*(s: PccState, outputType: cint): cint {.cdecl,
   importc: "tcc_set_output_type".}
   ## set output type. MUST BE CALLED before any compilation
 
@@ -75,7 +74,7 @@ proc addLibraryPath*(s: PccState, pathname: cstring): cint {.cdecl,
   importc: "tcc_add_library_path".}
   ## equivalent to -Lpath option
 
-proc addLibrary*(s: PCCState, libraryname: cstring): cint {.cdecl,
+proc addLibrary*(s: PccState, libraryname: cstring): cint {.cdecl,
   importc: "tcc_add_library".}
   ## the library name is the same as the argument of the '-l' option
 
@@ -106,5 +105,3 @@ proc getSymbol*(s: PccState, name: cstring): pointer {.cdecl,
 proc setLibPath*(s: PccState, path: cstring) {.cdecl,
   importc: "tcc_set_lib_path".}
   ## set CONFIG_TCCDIR at runtime
-
-

@@ -1,0 +1,1 @@
+proc flat*() = echo "flat"

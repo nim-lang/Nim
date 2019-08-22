@@ -18,7 +18,7 @@ proc initOpts(): set[nlOptions] =
 
 const cOpts = initOpts()
 
-macro nlo(): typed =
+macro nlo() =
   nlOpts.incl(nloNone)
   nlOpts.excl(nloDebug)
   result = newEmptyNode()

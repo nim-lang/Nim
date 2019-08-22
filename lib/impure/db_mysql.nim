@@ -14,7 +14,7 @@
 ## `db_postgres <db_postgres.html>`_.
 ##
 ## Parameter substitution
-## ----------------------
+## ======================
 ##
 ## All ``db_*`` modules support the same form of parameter substitution.
 ## That is, using the ``?`` (question mark) to signify the place where a
@@ -25,10 +25,10 @@
 ##
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Opening a connection to a database
-## ==================================
+## ----------------------------------
 ##
 ## .. code-block:: Nim
 ##     import db_mysql
@@ -36,7 +36,7 @@
 ##     db.close()
 ##
 ## Creating a table
-## ================
+## ----------------
 ##
 ## .. code-block:: Nim
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
@@ -45,14 +45,14 @@
 ##                       name varchar(50) not null)"""))
 ##
 ## Inserting data
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Dominik")
 ##
 ## Larger example
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##
@@ -96,7 +96,6 @@ type
                        ## column text on demand
     row: cstringArray
     len: int
-{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.
@@ -128,10 +127,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   var a = 0
   for c in items(string(formatstr)):
     if c == '?':
-      if args[a].isNil:
-        add(result, "NULL")
-      else:
-        add(result, dbQuote(args[a]))
+      add(result, dbQuote(args[a]))
       inc(a)
     else:
       add(result, c)
@@ -183,24 +179,8 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
       row = mysql.fetchRow(sqlres)
       if row == nil: break
       for i in 0..L-1:
-        if row[i] == nil:
-          if backup == nil:
-            newSeq(backup, L)
-          if backup[i] == nil and result[i] != nil:
-            shallowCopy(backup[i], result[i])
-          result[i] = nil
-        else:
-          if result[i] == nil:
-            if backup != nil:
-              if backup[i] == nil:
-                backup[i] = ""
-              shallowCopy(result[i], backup[i])
-              setLen(result[i], 0)
-            else:
-              result[i] = ""
-          else:
-            setLen(result[i], 0)
-          add(result[i], row[i])
+        setLen(result[i], 0)
+        result[i].add row[i]
       yield result
     properFreeResult(sqlres, row)
 
@@ -306,6 +286,10 @@ proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row.
   $row.row[col]
 
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
+
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row.
   row.len
@@ -323,10 +307,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
     if row != nil:
       for i in 0..L-1:
         setLen(result[i], 0)
-        if row[i] == nil:
-          result[i] = nil
-        else:
-          add(result[i], row[i])
+        add(result[i], row[i])
     properFreeResult(sqlres, row)
 
 proc getAllRows*(db: DbConn, query: SqlQuery,
@@ -345,10 +326,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
       setLen(result, j+1)
       newSeq(result[j], L)
       for i in 0..L-1:
-        if row[i] == nil:
-          result[j][i] = nil
-        else:
-          result[j][i] = $row[i]
+        result[j][i] = $row[i]
       inc(j)
     mysql.freeResult(sqlres)
 

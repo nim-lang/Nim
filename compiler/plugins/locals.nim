@@ -9,7 +9,7 @@
 
 ## The builtin 'system.locals' implemented as a plugin.
 
-import ".." / [pluginsupport, ast, astalgo,
+import ".." / [ast, astalgo,
   magicsys, lookups, semdata, lowerings]
 
 proc semLocals*(c: PContext, n: PNode): PNode =
@@ -26,10 +26,10 @@ proc semLocals*(c: PContext, n: PNode): PNode =
       #if it.owner != c.p.owner: return result
       if it.kind in skLocalVars and
           it.typ.skipTypes({tyGenericInst, tyVar}).kind notin
-            {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyExpr, tyStmt, tyEmpty}:
+            {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyUntyped, tyTyped, tyEmpty}:
 
         var field = newSym(skField, it.name, getCurrOwner(c), n.info)
-        field.typ = it.typ.skipTypes({tyGenericInst, tyVar})
+        field.typ = it.typ.skipTypes({tyVar})
         field.position = counter
         inc(counter)
 

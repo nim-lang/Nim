@@ -10,19 +10,29 @@
 # This include file implements the semantic checking for magics.
 # included from sem.nim
 
-proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
-  result = newNodeI(nkAddr, n.info)
+proc semAddrArg(c: PContext; n: PNode; isUnsafeAddr = false): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
-    localError(c.config, n.info, errExprHasNoAddress)
-  result.add x
-  result.typ = makePtrType(c, x.typ)
+    # Do not suggest the use of unsafeAddr if this expression already is a
+    # unsafeAddr
+    if isUnsafeAddr:
+      localError(c.config, n.info, errExprHasNoAddress)
+    else:
+      localError(c.config, n.info, errExprHasNoAddress & "; maybe use 'unsafeAddr'")
+  result = x
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
+  var m = BiggestInt 1 # typeOfIter
+  if n.len == 3:
+    let mode = semConstExpr(c, n[2])
+    if mode.kind != nkIntLit:
+      localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
+    else:
+      m = mode.intVal
   result = newNodeI(nkTypeOfExpr, n.info)
-  let typExpr = semExprWithType(c, n, {efInTypeof})
+  let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
   result.typ = makeTypeDesc(c, typExpr.typ)
 
@@ -83,9 +93,10 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   line.intVal = toLinenumber(info)
   var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
   column.intVal = toColumn(info)
-  result.add(filename)
-  result.add(line)
-  result.add(column)
+  # filename: string, line: int, column: int
+  result.add(newTree(nkExprColonExpr, n.typ.n[0], filename))
+  result.add(newTree(nkExprColonExpr, n.typ.n[1], line))
+  result.add(newTree(nkExprColonExpr, n.typ.n[2], column))
 
 proc toNode(t: PType, i: TLineInfo): PNode =
   result = newNodeIT(nkType, i, t)
@@ -122,14 +133,15 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   template typeWithSonsResult(kind, sons): PNode =
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
-  case trait.sym.name.s
+  let s = trait.sym.name.s
+  case s
   of "or", "|":
     return typeWithSonsResult(tyOr, @[operand, operand2])
   of "and":
     return typeWithSonsResult(tyAnd, @[operand, operand2])
   of "not":
     return typeWithSonsResult(tyNot, @[operand])
-  of "name":
+  of "name", "$":
     result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
     result.typ = newType(tyString, context)
     result.info = traitCall.info
@@ -153,7 +165,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
                      hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
-    localError(c.config, traitCall.info, "unknown trait")
+    localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
@@ -174,7 +186,9 @@ proc semOrd(c: PContext, n: PNode): PNode =
   if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   elif parType.kind == tySet:
-    result.typ = makeRangeType(c, firstOrd(c.config, parType), lastOrd(c.config, parType), n.info)
+    let a = toInt64(firstOrd(c.config, parType))
+    let b = toInt64(lastOrd(c.config, parType))
+    result.typ = makeRangeType(c, a, b, n.info)
   else:
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
@@ -207,6 +221,67 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   else:
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
 
+proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode): PNode =
+  if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit, nkIdent}:
+    localError(c.config, info.info, errStringOrIdentNodeExpected)
+    return errorNode(c, n)
+
+  if isMixin < 0 or isMixin > high(TSymChoiceRule).int:
+    localError(c.config, info.info, errConstExprExpected)
+    return errorNode(c, n)
+
+  let id = if n.kind == nkIdent: n
+    else: newIdentNode(getIdent(c.cache, n.strVal), info.info)
+
+  let tmpScope = c.currentScope
+  c.currentScope = scope
+  let s = qualifiedLookUp(c, id, {checkUndeclared})
+  if s != nil:
+    # we need to mark all symbols:
+    result = symChoice(c, id, s, TSymChoiceRule(isMixin))
+  else:
+    errorUndeclaredIdentifier(c, info.info, if n.kind == nkIdent: n.ident.s
+      else: n.strVal)
+  c.currentScope = tmpScope
+
+proc semDynamicBindSym(c: PContext, n: PNode): PNode =
+  # inside regular code, bindSym resolves to the sym-choice
+  # nodes (see tinspectsymbol)
+  if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+    return semBindSym(c, n)
+
+  if c.graph.vm.isNil:
+    setupGlobalCtx(c.module, c.graph)
+
+  let
+    vm = PCtx c.graph.vm
+    # cache the current scope to
+    # prevent it lost into oblivion
+    scope = c.currentScope
+
+  # cannot use this
+  # vm.config.features.incl dynamicBindSym
+
+  proc bindSymWrapper(a: VmArgs) =
+    # capture PContext and currentScope
+    # param description:
+    #   0. ident, a string literal / computed string / or ident node
+    #   1. bindSym rule
+    #   2. info node
+    a.setResult opBindSym(c, scope, a.getNode(0), a.getInt(1).int, a.getNode(2))
+
+  let
+    # altough we use VM callback here, it is not
+    # executed like 'normal' VM callback
+    idx = vm.registerCallback("bindSymImpl", bindSymWrapper)
+    # dummy node to carry idx information to VM
+    idxNode = newIntTypeNode(idx, c.graph.getSysType(TLineInfo(), tyInt))
+
+  result = copyNode(n)
+  for x in n: result.add x
+  result.add n # info node
+  result.add idxNode
+
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semOf(c: PContext, n: PNode): PNode =
@@ -238,28 +313,84 @@ proc semOf(c: PContext, n: PNode): PNode =
         result.typ = getSysType(c.graph, n.info, tyBool)
         return result
       elif diff == high(int):
-        localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
+        if commonSuperclass(a, b) == nil:
+          localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
+        else:
+          message(c.config, n.info, hintConditionAlwaysFalse, renderTree(n))
+          result = newIntNode(nkIntLit, 0)
+          result.info = n.info
+          result.typ = getSysType(c.graph, n.info, tyBool)
   else:
     localError(c.config, n.info, "'of' takes 2 arguments")
   n.typ = getSysType(c.graph, n.info, tyBool)
   result = n
 
+proc semUnown(c: PContext; n: PNode): PNode =
+  proc unownedType(c: PContext; t: PType): PType =
+    case t.kind
+    of tyTuple:
+      var elems = newSeq[PType](t.len)
+      var someChange = false
+      for i in 0..<t.len:
+        elems[i] = unownedType(c, t[i])
+        if elems[i] != t[i]: someChange = true
+      if someChange:
+        result = newType(tyTuple, t.owner)
+        # we have to use 'rawAddSon' here so that type flags are
+        # properly computed:
+        for e in elems: result.rawAddSon(e)
+      else:
+        result = t
+    of tyOwned: result = t.sons[0]
+    of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyLent,
+       tyGenericInst, tyAlias:
+      let L = t.len-1
+      let b = unownedType(c, t[L])
+      if b != t[L]:
+        result = copyType(t, t.owner, keepId = false)
+        result[L] = b
+        result.flags.excl tfHasOwned
+      else:
+        result = t
+    else:
+      result = t
+
+  result = copyTree(n[1])
+  result.typ = unownedType(c, result.typ)
+  # little hack for injectdestructors.nim (see bug #11350):
+  #result.sons[0].typ = nil
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
+  ## This is the preferred code point to implement magics.
+  ## ``c`` the current module, a symbol table to a very good approximation
+  ## ``n`` the ast like it would be passed to a real macro
+  ## ``flags`` Some flags for more contextual information on how the
+  ## "macro" is calld.
+
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
-    result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
+    result = n
+    result[1] = semAddrArg(c, n[1], n[0].sym.name.s == "unsafeAddr")
+    result.typ = makePtrType(c, result[1].typ)
   of mTypeOf:
-    checkSonsLen(n, 2, c.config)
-    result = semTypeOf(c, n.sons[1])
-  of mArrGet: result = semArrGet(c, n, flags)
-  of mArrPut: result = semArrPut(c, n, flags)
+    result = semTypeOf(c, n)
+  of mSizeOf:
+    result = foldSizeOf(c.config, n, n)
+  of mAlignOf:
+    result = foldAlignOf(c.config, n, n)
+  of mOffsetOf:
+    result = foldOffsetOf(c.config, n, n)
+  of mArrGet:
+    result = semArrGet(c, n, flags)
+  of mArrPut:
+    result = semArrPut(c, n, flags)
   of mAsgn:
     if n[0].sym.name.s == "=":
       result = semAsgnOpr(c, n)
     else:
-      result = n
+      result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:
@@ -270,7 +401,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mOf: result = semOf(c, n)
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
-  of mNBindSym: result = semBindSym(c, n)
+  of mNBindSym:
+    if dynamicBindSym notin c.features:
+      result = semBindSym(c, n)
+    else:
+      result = semDynamicBindSym(c, n)
   of mProcCall:
     result = n
     result.typ = n[1].typ
@@ -285,4 +420,16 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n
     else:
       result = plugin(c, n)
+  of mNewFinalize:
+    # Make sure the finalizer procedure refers to a procedure
+    if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
+      localError(c.config, n.info, "finalizer must be a direct reference to a procedure")
+    result = n
+  of mDestroy:
+    result = n
+    let t = n[1].typ.skipTypes(abstractVar)
+    if t.destructor != nil:
+      result.sons[0] = newSymNode(t.destructor)
+  of mUnown:
+    result = semUnown(c, n)
   else: result = n

@@ -1,5 +1,4 @@
 discard """
-  file: "tstrutil.nim"
   output: "ha/home/a1xyz/usr/bin"
 """
 # test the new strutils module
@@ -190,14 +189,27 @@ proc testFind =
 
 proc testRFind =
   assert "0123456789ABCDEFGAH".rfind('A') == 17
-  assert "0123456789ABCDEFGAH".rfind('A', 13) == 10
-  assert "0123456789ABCDEFGAH".rfind('H', 13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind('H', last=13) == -1
   assert "0123456789ABCDEFGAH".rfind("A") == 17
-  assert "0123456789ABCDEFGAH".rfind("A", 13) == 10
-  assert "0123456789ABCDEFGAH".rfind("H", 13) == -1
+  assert "0123456789ABCDEFGAH".rfind("A", last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind("H", last=13) == -1
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}) == 17
-  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
-  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
+  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, last=13) == 12
+  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, last=13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=18) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=11, last=17) == 17
+  assert "0123456789ABCDEFGAH".rfind("0", start=0) == 0
+  assert "0123456789ABCDEFGAH".rfind("0", start=1) == -1
+  assert "0123456789ABCDEFGAH".rfind("H", start=11) == 18
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=5) == 9
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=10) == -1
+
+proc testSplitLines() =
+  let fixture = "a\nb\rc\r\nd"
+  assert len(fixture.splitLines) == 4
+  assert splitLines(fixture) == @["a", "b", "c", "d"]
+  assert splitLines(fixture, keepEol=true) == @["a\n", "b\r", "c\r\n", "d"]
 
 proc testCountLines =
   proc assertCountLines(s: string) = assert s.countLines == s.splitLines.len
@@ -229,7 +241,7 @@ proc testParseInts =
   assert "72".parseHexInt == 114
   assert "FF".parseHexInt == 255
   assert "ff".parseHexInt == 255
-  assert "fF".parseHexInt == 255  
+  assert "fF".parseHexInt == 255
   assert "0x7_2".parseHexInt == 114
   rejectParse "".parseHexInt
   rejectParse "_".parseHexInt
@@ -252,6 +264,7 @@ proc testParseInts =
 testDelete()
 testFind()
 testRFind()
+testSplitLines()
 testCountLines()
 testParseInts()
 
@@ -270,7 +283,7 @@ assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
 assert(editDistance("main", "malign") == 2)
 
 assert "/1/2/3".rfind('/') == 4
-assert "/1/2/3".rfind('/', 1) == 0
+assert "/1/2/3".rfind('/', last=1) == 0
 assert "/1/2/3".rfind('0') == -1
 
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")
@@ -301,6 +314,28 @@ assert(spaces(8) == "        ")
 assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
+
+# bug #11369
+
+var num: int64 = -1
+assert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+assert num.toOct(24) == "001777777777777777777777"
+
+
+# bug #8911
+when true:
+  static:
+    let a = ""
+    let a2 = a.replace("\n", "\\n")
+
+when true:
+  static:
+    let b = "b"
+    let b2 = b.replace("\n", "\\n")
+
+when true:
+  let c = ""
+  let c2 = c.replace("\n", "\\n")
 
 main()
 #OUT ha/home/a1xyz/usr/bin

@@ -23,7 +23,6 @@ type
                            # except for the global data description.
     f: TFrame
     slots: array[0..10_000, VarSlot]
-{.deprecated: [TVarSlot: VarSlot, TExtendedFrame: ExtendedFrame].}
 
 var
   dbgGlobalData: ExtendedFrame  # this reserves much space, but
@@ -156,7 +155,6 @@ type
     address: pointer
     typ: PNimType
     oldValue: Hash
-{.deprecated: [THash: Hash, TWatchpoint: Watchpoint].}
 
 var
   watchpoints: array[0..99, Watchpoint]

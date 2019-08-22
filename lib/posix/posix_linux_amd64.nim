@@ -19,7 +19,10 @@ const
 # On Linux:
 # timer_{create,delete,settime,gettime},
 # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
-{.passL: "-lrt".}
+{.passl: "-lrt".}
+
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 # Types
 
@@ -27,15 +30,12 @@ type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
     ## A type representing a directory stream.
-{.deprecated: [TDIR: DIR].}
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
-{.deprecated: [TSocketHandle: SocketHandle].}
-
 # not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
-const SIG_HOLD* = cast[SigHandler](2)
+const SIG_HOLD* = cast[Sighandler](2)
 
 type
   Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
@@ -299,7 +299,7 @@ type
     sigev_signo*: cint            ## Signal number.
     sigev_notify*: cint           ## Notification type.
     sigev_notify_function*: proc (x: SigVal) {.noconv.} ## Notification func.
-    sigev_notify_attributes*: ptr PthreadAttr ## Notification attributes.
+    sigev_notify_attributes*: ptr Pthread_attr ## Notification attributes.
     abi: array[12, int]
 
   SigVal* {.importc: "union sigval",
@@ -375,29 +375,6 @@ type
                             ## context is active.
     # todo fpregds_mem
 
-{.deprecated: [TOff: Off, TPid: Pid, TGid: Gid, TMode: Mode, TDev: Dev,
-              TNlink: Nlink, TStack: Stack, TGroup: Group, TMqd: Mqd,
-              TPasswd: Passwd, TClock: Clock, TClockId: ClockId, TKey: Key,
-              TSem: Sem, Tpthread_attr: PthreadAttr, Ttimespec: Timespec,
-              Tdirent: Dirent, TGlob: Glob,
-              # Tflock: Flock, # Naming conflict if we drop the `T`
-              Ticonv: Iconv, Tlconv: Lconv, TMqAttr: MqAttr, Tblkcnt: Blkcnt,
-              Tblksize: Blksize, Tfsblkcnt: Fsblkcnt, Tfsfilcnt: Fsfilcnt,
-              Tid: Id, Tino: Ino, Tpthread_barrier: Pthread_barrier,
-              Tpthread_barrierattr: Pthread_barrierattr, Tpthread_cond: Pthread_cond,
-              TPthread_condattr: Pthread_condattr, Tpthread_key: Pthread_key,
-              Tpthread_mutex: Pthread_mutex, Tpthread_mutexattr: Pthread_mutexattr,
-              Tpthread_once: Pthread_once, Tpthread_rwlock: Pthread_rwlock,
-              Tpthread_rwlockattr: Pthread_rwlockattr, Tpthread_spinlock: Pthread_spinlock,
-              Tpthread: Pthread, Tsuseconds: Suseconds, Ttimer: Timer,
-              Tuid: Uid, Tuseconds: Useconds, Tutsname: Utsname, Tipc_perm: Ipc_perm,
-              TStat: Stat, TStatvfs: Statvfs,
-              Ttm: Tm, titimerspec: Itimerspec, Tsig_atomic: Sig_atomic, Tsigset: Sigset,
-              TsigEvent: SigEvent, TsigVal: SigVal, TSigaction: Sigaction,
-              TSigStack: SigStack, TsigInfo: SigInfo, Tnl_item: Nl_item,
-              Tnl_catd: Nl_catd, Tsched_param: Sched_param,
-              # TFdSet: FdSet, # Naming conflict if we drop the `T`
-              Tmcontext: Mcontext, Tucontext: Ucontext].}
 type
   Taiocb* {.importc: "struct aiocb", header: "<aio.h>",
             final, pure.} = object ## struct aiocb
@@ -439,9 +416,8 @@ when hasSpawnH:
 const Sockaddr_un_path_length* = 108
 
 type
-  Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  # cushort really
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cshort
+  SockLen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
@@ -474,7 +450,7 @@ type
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
-    msg_namelen*: Socklen  ## Size of address.
+    msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
     msg_iovlen*: csize   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
@@ -575,7 +551,7 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: Socklen   ## Length of socket address.
+    ai_addrlen*: SockLen   ## Length of socket address.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
@@ -587,13 +563,6 @@ type
     revents*: cshort ## The output event flags (see below).
 
   Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = culong
-
-{.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
-    TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    Tsockaddr_storage: Sockaddr_storage, Tsockaddr_in6: Sockaddr_in6,
-    Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr, TIOVec: IOVec, TInPort: InPort, TInAddrT: InAddrT,
-    TIn6Addr: In6Addr, TInAddrScalar: InAddrScalar, TProtoent: Protoent].}
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -613,4 +582,7 @@ proc WSTOPSIG*(s:cint): cint = WEXITSTATUS(s)
 proc WIFEXITED*(s:cint) : bool = WTERMSIG(s) == 0
 proc WIFSIGNALED*(s:cint) : bool = (cast[int8]((s and 0x7f) + 1) shr 1) > 0
 proc WIFSTOPPED*(s:cint) : bool = (s and 0xff) == 0x7f
-proc WIFCONTINUED*(s:cint) : bool = s == W_CONTINUED
+proc WIFCONTINUED*(s:cint) : bool = s == WCONTINUED
+
+when defined(nimHasStyleChecks):
+  {.pop.} # {.push styleChecks: off.}

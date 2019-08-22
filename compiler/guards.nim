@@ -10,7 +10,7 @@
 ## This module implements the 'implies' relation for guards.
 
 import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
-  saturate, modulegraphs, options, lineinfos
+  saturate, modulegraphs, options, lineinfos, int128
 
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
@@ -70,7 +70,7 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
       n = n.sons[0]
       inc derefs
     of nkBracketExpr:
-      if isConstExpr(n.sons[1]) or isLet(n.sons[1]):
+      if isConstExpr(n.sons[1]) or isLet(n.sons[1]) or isConstExpr(n.sons[1].skipConv):
         n = n.sons[0]
       else: return
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
@@ -257,9 +257,9 @@ proc canon*(n: PNode; o: Operators): PNode =
     for i in 0 ..< n.len:
       result.sons[i] = canon(n.sons[i], o)
   elif n.kind == nkSym and n.sym.kind == skLet and
-      n.sym.ast.getMagic in (someEq + someAdd + someMul + someMin +
+      n.sym.astdef.getMagic in (someEq + someAdd + someMul + someMin +
       someMax + someHigh + {mUnaryLt} + someSub + someLen + someDiv):
-    result = n.sym.ast.copyTree
+    result = n.sym.astdef.copyTree
   else:
     result = n
   case result.getMagic
@@ -395,8 +395,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
     #   if a:
     #     ...
     # We make can easily replace 'a' by '2 < x' here:
-    if n.sym.ast != nil:
-      result = usefulFact(n.sym.ast, o)
+    if n.sym.astdef != nil:
+      result = usefulFact(n.sym.astdef, o)
   elif n.kind == nkStmtListExpr:
     result = usefulFact(n.lastSon, o)
 
@@ -443,7 +443,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkEmpty, nkNilLit: result = true
     else:
       if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+        for i in 0 ..< sonsLen(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
@@ -522,7 +522,7 @@ proc geImpliesIn(x, c, aSet: PNode): TImplication =
     var value = newIntNode(c.kind, c.intVal)
     let max = lastOrd(nil, x.typ)
     # don't iterate too often:
-    if max - value.intVal < 1000:
+    if max - getInt(value) < toInt128(1000):
       var i, pos, neg: int
       while value.intVal <= max:
         if inSet(aSet, value): inc pos
@@ -981,9 +981,10 @@ proc buildElse(n: PNode; o: Operators): PNode =
   var s = newNodeIT(nkCurly, n.info, settype(n.sons[0]))
   for i in 1..n.len-2:
     let branch = n.sons[i]
-    assert branch.kind == nkOfBranch
-    for j in 0..branch.len-2:
-      s.add(branch.sons[j])
+    assert branch.kind != nkElse
+    if branch.kind == nkOfBranch:
+      for j in 0..branch.len-2:
+        s.add(branch.sons[j])
   result = newNodeI(nkCall, n.info, 3)
   result.sons[0] = newSymNode(o.opContains)
   result.sons[1] = s

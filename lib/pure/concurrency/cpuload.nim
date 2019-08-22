@@ -81,7 +81,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     result = doNothing
   inc s.calls
 
-when not defined(testing) and isMainModule:
+when not defined(testing) and isMainModule and not defined(nimdoc):
   import random
 
   proc busyLoop() =

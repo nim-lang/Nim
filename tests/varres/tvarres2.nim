@@ -1,7 +1,7 @@
 discard """
+  errormsg: "expression has no address"
   file: "tvarres2.nim"
   line: 11
-  errormsg: "expression has no address"
 """
 
 var
@@ -13,4 +13,3 @@ proc p(): var int =
 p() = 45
 
 echo g
-

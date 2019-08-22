@@ -7,12 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements Nim's 'spawn'.
+## Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
+##
+## **See also:**
+## * `threads module <threads.html>`_
+## * `channels module <channels.html>`_
+## * `locks module <locks.html>`_
+## * `asyncdispatch module <asyncdispatch.html>`_
 
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}
 
-import cpuinfo, cpuload, locks
+import cpuinfo, cpuload, locks, os
 
 {.push stackTrace:off.}
 
@@ -30,7 +36,7 @@ proc destroySemaphore(cv: var Semaphore) {.inline.} =
   deinitCond(cv.c)
   deinitLock(cv.L)
 
-proc await(cv: var Semaphore) =
+proc blockUntil(cv: var Semaphore) =
   acquire(cv.L)
   while cv.counter <= 0:
     wait(cv.c, cv.L)
@@ -53,7 +59,7 @@ type
       cacheAlign: array[CacheLineSize-4*sizeof(int), byte]
     left: int
     cacheAlign2: array[CacheLineSize-sizeof(int), byte]
-    interest: bool ## wether the master is interested in the "all done" event
+    interest: bool # whether the master is interested in the "all done" event
 
 proc barrierEnter(b: ptr Barrier) {.compilerProc, inline.} =
   # due to the signaling between threads, it is ensured we are the only
@@ -81,7 +87,7 @@ proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
     fence()
     b.interest = true
     fence()
-    while b.left != b.entered: await(b.cv)
+    while b.left != b.entered: blockUntil(b.cv)
     destroySemaphore(b.cv)
 
 {.pop.}
@@ -89,17 +95,14 @@ proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
 # ----------------------------------------------------------------------------
 
 type
-  foreign* = object ## a region that indicates the pointer comes from a
-                    ## foreign thread heap.
   AwaitInfo = object
     cv: Semaphore
     idx: int
 
-  FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
+  FlowVarBase* = ref FlowVarBaseObj ## Untyped base class for ``FlowVar[T]``.
   FlowVarBaseObj = object of RootObj
     ready, usesSemaphore, awaited: bool
-    cv: Semaphore #\
-    # for 'awaitAny' support
+    cv: Semaphore  # for 'blockUntilAny' support
     ai: ptr AwaitInfo
     idx: int
     data: pointer  # we incRef and unref it to keep it alive; note this MUST NOT
@@ -109,7 +112,7 @@ type
   FlowVarObj[T] = object of FlowVarBaseObj
     blob: T
 
-  FlowVar*{.compilerProc.}[T] = ref FlowVarObj[T] ## a data flow variable
+  FlowVar*{.compilerProc.}[T] = ref FlowVarObj[T] ## A data flow variable.
 
   ToFreeQueue = object
     len: int
@@ -130,12 +133,15 @@ type
     q: ToFreeQueue
     readyForTask: Semaphore
 
-proc await*(fv: FlowVarBase) =
-  ## waits until the value for the flowVar arrives. Usually it is not necessary
-  ## to call this explicitly.
+const threadpoolWaitMs {.intdefine.}: int = 100
+
+proc blockUntil*(fv: FlowVarBase) =
+  ## Waits until the value for the ``fv`` arrives.
+  ##
+  ## Usually it is not necessary to call this explicitly.
   if fv.usesSemaphore and not fv.awaited:
     fv.awaited = true
-    await(fv.cv)
+    blockUntil(fv.cv)
     destroySemaphore(fv.cv)
 
 proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
@@ -143,7 +149,7 @@ proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
     w.data = data
     w.f = fn
     signal(w.taskArrived)
-    await(w.taskStarted)
+    blockUntil(w.taskStarted)
     result = true
 
 proc cleanFlowVars(w: ptr Worker) =
@@ -178,11 +184,11 @@ proc attach(fv: FlowVarBase; i: int): bool =
   release(fv.cv.L)
 
 proc finished(fv: FlowVarBase) =
-  doAssert fv.ai.isNil, "flowVar is still attached to an 'awaitAny'"
+  doAssert fv.ai.isNil, "flowVar is still attached to an 'blockUntilAny'"
   # we have to protect against the rare cases where the owner of the flowVar
   # simply disregards the flowVar and yet the "flowVar" has not yet written
   # anything to it:
-  await(fv)
+  blockUntil(fv)
   if fv.data.isNil: return
   let owner = cast[ptr Worker](fv.owner)
   let q = addr(owner.q)
@@ -191,12 +197,14 @@ proc finished(fv: FlowVarBase) =
     #echo "EXHAUSTED!"
     release(q.lock)
     wakeupWorkerToProcessQueue(owner)
-    await(q.empty)
+    blockUntil(q.empty)
     acquire(q.lock)
   q.data[q.len] = cast[pointer](fv.data)
   inc q.len
   release(q.lock)
   fv.data = nil
+  # the worker thread waits for "data" to be set to nil before shutting down
+  owner.data = nil
 
 proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
 
@@ -218,11 +226,13 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
     signal(fv.cv)
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
-  ## blocks until the ``fv`` is available and then passes its value
-  ## to ``action``. Note that due to Nim's parameter passing semantics this
-  ## means that ``T`` doesn't need to be copied and so ``awaitAndThen`` can
-  ## sometimes be more efficient than ``^``.
-  await(fv)
+  ## Blocks until the ``fv`` is available and then passes its value
+  ## to ``action``.
+  ##
+  ## Note that due to Nim's parameter passing semantics this
+  ## means that ``T`` doesn't need to be copied so ``awaitAndThen`` can
+  ## sometimes be more efficient than `^ proc <#^,FlowVar[T]>`_.
+  blockUntil(fv)
   when T is string or T is seq:
     action(cast[T](fv.data))
   elif T is ref:
@@ -231,32 +241,44 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     action(fv.blob)
   finished(fv)
 
-proc unsafeRead*[T](fv: FlowVar[ref T]): foreign ptr T =
-  ## blocks until the value is available and then returns this value.
-  await(fv)
-  result = cast[foreign ptr T](fv.data)
+proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
+  ## Blocks until the value is available and then returns this value.
+  blockUntil(fv)
+  result = cast[ptr T](fv.data)
+  finished(fv)
 
 proc `^`*[T](fv: FlowVar[ref T]): ref T =
-  ## blocks until the value is available and then returns this value.
-  await(fv)
+  ## Blocks until the value is available and then returns this value.
+  blockUntil(fv)
   let src = cast[ref T](fv.data)
-  deepCopy result, src
+  when defined(nimV2):
+    result = src
+  else:
+    deepCopy result, src
+  finished(fv)
 
 proc `^`*[T](fv: FlowVar[T]): T =
-  ## blocks until the value is available and then returns this value.
-  await(fv)
+  ## Blocks until the value is available and then returns this value.
+  blockUntil(fv)
   when T is string or T is seq:
-    # XXX closures? deepCopy?
-    result = cast[T](fv.data)
+    let src = cast[T](fv.data)
+    when defined(nimV2):
+      result = src
+    else:
+      deepCopy result, src
   else:
     result = fv.blob
+  finished(fv)
 
-proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
-  ## awaits any of the given flowVars. Returns the index of one flowVar for
-  ## which a value arrived. A flowVar only supports one call to 'awaitAny' at
-  ## the same time. That means if you awaitAny([a,b]) and awaitAny([b,c]) the second
-  ## call will only await 'c'. If there is no flowVar left to be able to wait
-  ## on, -1 is returned.
+proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
+  ## Awaits any of the given ``flowVars``. Returns the index of one ``flowVar``
+  ## for which a value arrived.
+  ##
+  ## A ``flowVar`` only supports one call to ``blockUntilAny`` at the same time.
+  ## That means if you ``blockUntilAny([a,b])`` and ``blockUntilAny([b,c])``
+  ## the second call will only block until ``c``. If there is no ``flowVar`` left
+  ## to be able to wait on, -1 is returned.
+  ##
   ## **Note**: This results in non-deterministic behaviour and should be avoided.
   var ai: AwaitInfo
   ai.cv.initSemaphore()
@@ -271,7 +293,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
       inc conflicts
   if conflicts < flowVars.len:
     if result < 0:
-      await(ai.cv)
+      blockUntil(ai.cv)
       result = ai.idx
     for i in 0 .. flowVars.high:
       discard cas(addr flowVars[i].ai, addr ai, nil)
@@ -280,7 +302,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
 proc isReady*(fv: FlowVarBase): bool =
   ## Determines whether the specified ``FlowVarBase``'s value is available.
   ##
-  ## If ``true`` awaiting ``fv`` will not block.
+  ## If ``true``, awaiting ``fv`` will not block.
   if fv.usesSemaphore and not fv.awaited:
     acquire(fv.cv.L)
     result = fv.cv.counter > 0
@@ -293,9 +315,9 @@ proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   signal(w.taskStarted)
 
 const
-  MaxThreadPoolSize* = 256 ## maximal size of the thread pool. 256 threads
+  MaxThreadPoolSize* = 256 ## Maximum size of the thread pool. 256 threads
                            ## should be good enough for anybody ;-)
-  MaxDistinguishedThread* = 32 ## maximal number of "distinguished" threads.
+  MaxDistinguishedThread* = 32 ## Maximum number of "distinguished" threads.
 
 type
   ThreadId* = range[0..MaxDistinguishedThread-1]
@@ -322,13 +344,27 @@ gSomeReady.initSemaphore()
 proc slave(w: ptr Worker) {.thread.} =
   isSlave = true
   while true:
+    if w.shutdown:
+      w.shutdown = false
+      atomicDec currentPoolSize
+      while true:
+        if w.data != nil:
+          sleep(threadpoolWaitMs)
+        else:
+          # The flowvar finalizer ("finished()") set w.data to nil, so we can
+          # safely terminate the thread.
+          #
+          # TODO: look for scenarios in which the flowvar is never finalized, so
+          # a shut down thread gets stuck in this loop until the main thread exits.
+          break
+      break
     when declared(atomicStoreN):
       atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
     else:
       w.ready = true
     readyWorker = w
     signal(gSomeReady)
-    await(w.taskArrived)
+    blockUntil(w.taskArrived)
     # XXX Somebody needs to look into this (why does this assertion fail
     # in Visual Studio?)
     when not defined(vcc) and not defined(tcc): assert(not w.ready)
@@ -342,9 +378,6 @@ proc slave(w: ptr Worker) {.thread.} =
       dec numSlavesRunning
 
     if w.q.len != 0: w.cleanFlowVars
-    if w.shutdown:
-      w.shutdown = false
-      atomicDec currentPoolSize
 
 proc distinguishedSlave(w: ptr Worker) {.thread.} =
   while true:
@@ -353,7 +386,7 @@ proc distinguishedSlave(w: ptr Worker) {.thread.} =
     else:
       w.ready = true
     signal(w.readyForTask)
-    await(w.taskArrived)
+    blockUntil(w.taskArrived)
     assert(not w.ready)
     w.f(w, w.data)
     if w.q.len != 0: w.cleanFlowVars
@@ -369,12 +402,12 @@ when defined(nimPinToCpu):
   var gCpus: Natural
 
 proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
-  ## sets the minimal thread pool size. The default value of this is 4.
+  ## Sets the minimum thread pool size. The default value of this is 4.
   minPoolSize = size
 
 proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
-  ## sets the maximal thread pool size. The default value of this
-  ## is ``MaxThreadPoolSize``.
+  ## Sets the maximum thread pool size. The default value of this
+  ## is ``MaxThreadPoolSize`` (256).
   maxPoolSize = size
   if currentPoolSize > maxPoolSize:
     for i in maxPoolSize..currentPoolSize-1:
@@ -414,37 +447,46 @@ proc setup() =
   for i in 0..<currentPoolSize: activateWorkerThread(i)
 
 proc preferSpawn*(): bool =
-  ## Use this proc to determine quickly if a 'spawn' or a direct call is
-  ## preferable. If it returns 'true' a 'spawn' may make sense. In general
-  ## it is not necessary to call this directly; use 'spawnX' instead.
+  ## Use this proc to determine quickly if a ``spawn`` or a direct call is
+  ## preferable.
+  ##
+  ## If it returns ``true``, a ``spawn`` may make sense. In general
+  ## it is not necessary to call this directly; use `spawnX template
+  ## <#spawnX.t>`_ instead.
   result = gSomeReady.counter > 0
 
 proc spawn*(call: typed): void {.magic: "Spawn".}
-  ## always spawns a new task, so that the 'call' is never executed on
-  ## the calling thread. 'call' has to be proc call 'p(...)' where 'p'
-  ## is gcsafe and has a return type that is either 'void' or compatible
-  ## with ``FlowVar[T]``.
+  ## Always spawns a new task, so that the ``call`` is never executed on
+  ## the calling thread.
+  ##
+  ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
+  ## return type that is either ``void`` or compatible with ``FlowVar[T]``.
 
 proc pinnedSpawn*(id: ThreadId; call: typed): void {.magic: "Spawn".}
-  ## always spawns a new task on the worker thread with ``id``, so that
-  ## the 'call' is **always** executed on
-  ## the thread. 'call' has to be proc call 'p(...)' where 'p'
-  ## is gcsafe and has a return type that is either 'void' or compatible
-  ## with ``FlowVar[T]``.
+  ## Always spawns a new task on the worker thread with ``id``, so that
+  ## the ``call`` is **always** executed on the thread.
+  ##
+  ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
+  ## return type that is either ``void`` or compatible with ``FlowVar[T]``.
 
 template spawnX*(call): void =
-  ## spawns a new task if a CPU core is ready, otherwise executes the
-  ## call in the calling thread. Usually it is advised to
-  ## use 'spawn' in order to not block the producer for an unknown
-  ## amount of time. 'call' has to be proc call 'p(...)' where 'p'
-  ## is gcsafe and has a return type that is either 'void' or compatible
-  ## with ``FlowVar[T]``.
+  ## Spawns a new task if a CPU core is ready, otherwise executes the
+  ## call in the calling thread.
+  ##
+  ## Usually it is advised to use `spawn proc <#spawn,typed>`_ in order to
+  ## not block the producer for an unknown amount of time.
+  ##
+  ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
+  ## return type that is either 'void' or compatible with ``FlowVar[T]``.
   (if preferSpawn(): spawn call else: call)
 
 proc parallel*(body: untyped) {.magic: "Parallel".}
-  ## a parallel section can be used to execute a block in parallel. ``body``
-  ## has to be in a DSL that is a particular subset of the language. Please
-  ## refer to the manual for further information.
+  ## A parallel section can be used to execute a block in parallel.
+  ##
+  ## ``body`` has to be in a DSL that is a particular subset of the language.
+  ##
+  ## Please refer to `the manual <manual.html#parallel-amp-spawn>`_
+  ## for further information.
 
 var
   state: ThreadPoolState
@@ -501,7 +543,7 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
         # on the current thread instead.
         var self = addr(workersData[localThreadId-1])
         fn(self, data)
-        await(self.taskStarted)
+        blockUntil(self.taskStarted)
         return
 
     if isSlave:
@@ -526,7 +568,7 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
 
         inc numSlavesWaiting
 
-    await(gSomeReady)
+    blockUntil(gSomeReady)
 
     if isSlave:
       withLock numSlavesLock:
@@ -544,23 +586,22 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
   release(distinguishedLock)
   while true:
     if selectWorker(addr(distinguishedData[id]), fn, data): break
-    await(distinguishedData[id].readyForTask)
+    blockUntil(distinguishedData[id].readyForTask)
 
 
 proc sync*() =
-  ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
-  ## waiting, you have to use an explicit barrier.
-  var toRelease = 0
+  ## A simple barrier to wait for all ``spawn``'ed tasks.
+  ##
+  ## If you need more elaborate waiting, you have to use an explicit barrier.
   while true:
     var allReady = true
     for i in 0 ..< currentPoolSize:
       if not allReady: break
       allReady = allReady and workersData[i].ready
     if allReady: break
-    await(gSomeReady)
-    inc toRelease
-
-  for i in 0 ..< toRelease:
-    signal(gSomeReady)
+    sleep(threadpoolWaitMs)
+    # We cannot "blockUntil(gSomeReady)" because workers may be shut down between
+    # the time we establish that some are not "ready" and the time we wait for a
+    # "signal(gSomeReady)" from inside "slave()" that can never come.
 
 setup()

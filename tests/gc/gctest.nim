@@ -45,19 +45,14 @@ var
   flip: int
 
 proc newCaseNode(data: string): PCaseNode =
-  new(result)
   if flip == 0:
-    result.kind = nkStr
-    result.data = data
+    result = PCaseNode(kind: nkStr, data: data)
   else:
-    result.kind = nkWhole
-    result.unused = @["", "abc", "abdc"]
+    result = PCaseNode(kind: nkWhole, unused: @["", "abc", "abdc"])
   flip = 1 - flip
 
 proc newCaseNode(a, b: PCaseNode): PCaseNode =
-  new(result)
-  result.kind = nkList
-  result.sons = @[a, b]
+  result = PCaseNode(kind: nkList, sons: @[a, b])
 
 proc caseTree(lvl: int = 0): PCaseNode =
   if lvl == 3: result = newCaseNode("data item")
@@ -66,8 +61,7 @@ proc caseTree(lvl: int = 0): PCaseNode =
 proc finalizeNode(n: PNode) =
   assert(n != nil)
   write(stdout, "finalizing: ")
-  if isNil(n.data): writeLine(stdout, "nil!")
-  else: writeLine(stdout, "not nil")
+  writeLine(stdout, "not nil")
 
 var
   id: int = 1

@@ -1,6 +1,11 @@
+discard """
+outputsub: ""
+"""
+
 # tests for rstgen module.
 
 import ../../lib/packages/docutils/rstgen
+import ../../lib/packages/docutils/rst
 import unittest
 
 suite "YAML syntax highlighting":
@@ -27,7 +32,7 @@ suite "YAML syntax highlighting":
 <span class="Punctuation">?</span> <span class="StringLit">key</span>
 <span class="Punctuation">:</span> <span class="StringLit">value</span>
 <span class="Keyword">...</span></pre>"""
-  
+
   test "Block scalars":
     let input = """.. code-block:: yaml
     a literal block scalar: |
@@ -55,7 +60,7 @@ suite "YAML syntax highlighting":
 <span class="StringLit">another literal block scalar</span><span class="Punctuation">:</span>
   <span class="Command">|+</span> <span class="Comment"># comment after header</span><span class="LongStringLit">
  allowed, since more indented than parent</span></pre>"""
- 
+
   test "Directives":
     let input = """.. code-block:: yaml
     %YAML 1.2
@@ -97,7 +102,7 @@ suite "YAML syntax highlighting":
   <span class="StringLit">more numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span><span class="DecNumber">-783</span><span class="Punctuation">,</span> <span class="FloatNumber">11e78</span><span class="Punctuation">]</span><span class="Punctuation">,</span>
   <span class="StringLit">not numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span> <span class="StringLit">42e</span><span class="Punctuation">,</span> <span class="StringLit">0023</span><span class="Punctuation">,</span> <span class="StringLit">+32.37</span><span class="Punctuation">,</span> <span class="StringLit">8 ball</span><span class="Punctuation">]</span>
 <span class="Punctuation">}</span></pre>"""
-  
+
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
     --- !!map
@@ -137,3 +142,14 @@ suite "YAML syntax highlighting":
   <span class="DecNumber">-4</span>
 <span class="StringLit">example.com/not/a#comment</span><span class="Punctuation">:</span>
   <span class="StringLit">?not a map key</span></pre>"""
+
+
+  test "Markdown links":
+    let
+      a = rstToHtml("(( [Nim](https://nim-lang.org/) ))", {roSupportMarkdown}, defaultConfig())
+      b = rstToHtml("(([Nim](https://nim-lang.org/)))", {roSupportMarkdown}, defaultConfig())
+      c = rstToHtml("[[Nim](https://nim-lang.org/)]", {roSupportMarkdown}, defaultConfig())
+
+    assert a == """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))"""
+    assert b == """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))"""
+    assert c == """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]"""

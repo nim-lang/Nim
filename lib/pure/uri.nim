@@ -8,6 +8,34 @@
 #
 
 ## This module implements URI parsing as specified by RFC 3986.
+##
+## A Uniform Resource Identifier (URI) provides a simple and extensible
+## means for identifying a resource. A URI can be further classified
+## as a locator, a name, or both. The term “Uniform Resource Locator”
+## (URL) refers to the subset of URIs.
+##
+## Basic usage
+## ===========
+##
+## Combine URIs
+## -------------
+## .. code-block::
+##    import uri
+##    let host = parseUri("https://nim-lang.org")
+##    let blog = "/blog.html"
+##    let bloguri = host / blog
+##    assert $host == "https://nim-lang.org"
+##    assert $bloguri == "https://nim-lang.org/blog.html"
+##
+## Access URI item
+## ---------------
+## .. code-block::
+##    import uri
+##    let res = parseUri("sftp://127.0.0.1:4343")
+##    if isAbsolute(res):
+##      assert res.port == "4343"
+##    else:
+##      echo "Wrong format"
 
 import strutils, parseutils
 type
@@ -18,48 +46,29 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
-{.push warning[deprecated]: off.}
-proc `$`*(url: Url): string {.deprecated: "use Uri instead".} =
-  ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
-  return string(url)
-
-proc `/`*(a, b: Url): Url {.deprecated: "use Uri instead".} =
-  ## Joins two URLs together, separating them with / if needed.
-  ##
-  ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
-  var urlS = $a
-  var bS = $b
-  if urlS == "": return b
-  if urlS[urlS.len-1] != '/':
-    urlS.add('/')
-  if bS[0] == '/':
-    urlS.add(bS.substr(1))
-  else:
-    urlS.add(bs)
-  result = Url(urlS)
-
-proc add*(url: var Url, a: Url) {.deprecated: "use Uri instead".} =
-  ## Appends url to url.
-  ##
-  ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
-  url = url / a
-{.pop.}
-
 proc encodeUrl*(s: string, usePlus=true): string =
   ## Encodes a URL according to RFC3986.
   ##
   ## This means that characters in the set
   ## ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}`` are
   ## carried over to the result.
-  ## All other characters are encoded as ``''%xx'`` where ``xx``
+  ## All other characters are encoded as ``%xx`` where ``xx``
   ## denotes its hexadecimal value.
   ##
   ## As a special rule, when the value of ``usePlus`` is true,
-  ## spaces are encoded as ``'+'`` instead of ``'%20'``.
+  ## spaces are encoded as ``+`` instead of ``%20``.
+  ##
+  ## **See also:**
+  ## * `decodeUrl proc<#decodeUrl,string>`_
+  runnableExamples:
+    assert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
+    assert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
+    assert encodeUrl("https://nim-lang.org/this is a test", false) == "https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test"
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
   let fromSpace = if usePlus: "+" else: "%20"
   for c in s:
     case c
+    # https://tools.ietf.org/html/rfc3986#section-2.3
     of 'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~': add(result, c)
     of ' ': add(result, fromSpace)
     else:
@@ -69,12 +78,19 @@ proc encodeUrl*(s: string, usePlus=true): string =
 proc decodeUrl*(s: string, decodePlus=true): string =
   ## Decodes a URL according to RFC3986.
   ##
-  ## This means that any ``'%xx'`` (where ``xx`` denotes a hexadecimal
+  ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
   ## value) are converted to the character with ordinal number ``xx``,
   ## and every other character is carried over.
   ##
-  ## As a special rule, when the value of ``decodePlus`` is true, ``'+'``
+  ## As a special rule, when the value of ``decodePlus`` is true, ``+``
   ## characters are converted to a space.
+  ##
+  ## **See also:**
+  ## * `encodeUrl proc<#encodeUrl,string>`_
+  runnableExamples:
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
   proc handleHexChar(c: char, x: var int) {.inline.} =
     case c
     of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
@@ -102,6 +118,33 @@ proc decodeUrl*(s: string, decodePlus=true): string =
     inc(i)
     inc(j)
   setLen(result, j)
+
+proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true): string =
+  ## Encodes a set of (key, value) parameters into a URL query string.
+  ##
+  ## Every (key, value) pair is URL-encoded and written as ``key=value``. If the
+  ## value is an empty string then the ``=`` is omitted, unless ``omitEq`` is
+  ## false.
+  ## The pairs are joined together by a ``&`` character.
+  ##
+  ## The ``usePlus`` parameter is passed down to the `encodeUrl` function that
+  ## is used for the URL encoding of the string values.
+  ##
+  ## **See also:**
+  ## * `encodeUrl proc<#encodeUrl,string>`_
+  runnableExamples:
+    assert encodeQuery({:}) == ""
+    assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
+    assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
+  for elem in query:
+    # Encode the `key = value` pairs and separate them with a '&'
+    if result.len > 0: result.add('&')
+    let (key, val) = elem
+    result.add(encodeUrl(key, usePlus))
+    # Omit the '=' if the value string is empty
+    if not omitEq or val.len > 0:
+      result.add('=')
+      result.add(encodeUrl(val, usePlus))
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
@@ -149,7 +192,14 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
     i.inc parseUntil(uri, result.anchor, {}, i)
 
 proc initUri*(): Uri =
-  ## Initializes a URI.
+  ## Initializes a URI with ``scheme``, ``username``, ``password``,
+  ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
+  runnableExamples:
+    var uri2: Uri
+    assert initUri() == uri2
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
@@ -162,6 +212,16 @@ proc resetUri(uri: var Uri) =
 
 proc parseUri*(uri: string, result: var Uri) =
   ## Parses a URI. The `result` variable will be cleared before.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
+  ## * `initUri proc <#initUri>`_ for initializing a URI
+  runnableExamples:
+    var res = initUri()
+    parseUri("https://nim-lang.org/docs/manual.html", res)
+    assert res.scheme == "https"
+    assert res.hostname == "nim-lang.org"
+    assert res.path == "/docs/manual.html"
   resetUri(result)
 
   var i = 0
@@ -200,6 +260,14 @@ proc parseUri*(uri: string, result: var Uri) =
 
 proc parseUri*(uri: string): Uri =
   ## Parses a URI and returns it.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
+  runnableExamples:
+    let res = parseUri("ftp://Username:Password@Hostname")
+    assert res.username == "Username"
+    assert res.password == "Password"
+    assert res.scheme == "ftp"
   result = initUri()
   parseUri(uri, result)
 
@@ -250,22 +318,18 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ## This uses the algorithm specified in
   ## `section 5.2.2 of RFC 3986 <http://tools.ietf.org/html/rfc3986#section-5.2.2>`_.
   ##
-  ## This means that the slashes inside the base URI's path as well as reference
-  ## URI's path affect the resulting URI.
+  ## This means that the slashes inside the base URIs path as well as reference
+  ## URIs path affect the resulting URI.
   ##
-  ## For building URIs you may wish to use \`/\` instead.
-  ##
-  ## Examples:
-  ##
-  ## .. code-block::
-  ##   let foo = combine(parseUri("http://example.com/foo/bar"), parseUri("/baz"))
-  ##   assert foo.path == "/baz"
-  ##
-  ##   let bar = combine(parseUri("http://example.com/foo/bar"), parseUri("baz"))
-  ##   assert bar.path == "/foo/baz"
-  ##
-  ##   let bar = combine(parseUri("http://example.com/foo/bar/"), parseUri("baz"))
-  ##   assert bar.path == "/foo/bar/baz"
+  ## **See also:**
+  ## * `/ proc <#/,Uri,string>`_ for building URIs
+  runnableExamples:
+    let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
+    assert foo.path == "/baz"
+    let bar = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("baz"))
+    assert bar.path == "/foo/baz"
+    let qux = combine(parseUri("https://nim-lang.org/foo/bar/"), parseUri("baz"))
+    assert qux.path == "/foo/bar/baz"
 
   template setAuthority(dest, src): untyped =
     dest.hostname = src.hostname
@@ -301,32 +365,42 @@ proc combine*(base: Uri, reference: Uri): Uri =
 
 proc combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
+  ##
+  ## **See also:**
+  ## * `/ proc <#/,Uri,string>`_ for building URIs
+  runnableExamples:
+    let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"), parseUri("manual.html"))
+    assert foo.hostname == "nim-lang.org"
+    assert foo.path == "/docs/manual.html"
   result = uris[0]
   for i in 1 ..< uris.len:
     result = combine(result, uris[i])
 
 proc isAbsolute*(uri: Uri): bool =
-  ## returns true if URI is absolute, false otherwise
+  ## Returns true if URI is absolute, false otherwise.
+  runnableExamples:
+    let foo = parseUri("https://nim-lang.org")
+    assert isAbsolute(foo) == true
+    let bar = parseUri("nim-lang")
+    assert isAbsolute(bar) == false
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
 
 proc `/`*(x: Uri, path: string): Uri =
-  ## Concatenates the path specified to the specified URI's path.
+  ## Concatenates the path specified to the specified URIs path.
   ##
-  ## Contrary to the ``combine`` procedure you do not have to worry about
-  ## the slashes at the beginning and end of the path and URI's path
+  ## Contrary to the `combine proc <#combine,Uri,Uri>`_ you do not have to worry about
+  ## the slashes at the beginning and end of the path and URIs path
   ## respectively.
   ##
-  ## Examples:
-  ##
-  ## .. code-block::
-  ##   let foo = parseUri("http://example.com/foo/bar") / "/baz"
-  ##   assert foo.path == "/foo/bar/baz"
-  ##
-  ##   let bar = parseUri("http://example.com/foo/bar") / "baz"
-  ##   assert bar.path == "/foo/bar/baz"
-  ##
-  ##   let bar = parseUri("http://example.com/foo/bar/") / "baz"
-  ##   assert bar.path == "/foo/bar/baz"
+  ## **See also:**
+  ## * `combine proc <#combine,Uri,Uri>`_
+  runnableExamples:
+    let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
+    assert foo.path == "/foo/bar/baz"
+    let bar = parseUri("https://nim-lang.org/foo/bar") / "baz"
+    assert bar.path == "/foo/bar/baz"
+    let qux = parseUri("https://nim-lang.org/foo/bar/") / "baz"
+    assert qux.path == "/foo/bar/baz"
   result = x
 
   if result.path.len == 0:
@@ -345,8 +419,19 @@ proc `/`*(x: Uri, path: string): Uri =
       result.path.add '/'
     result.path.add(path)
 
+proc `?`*(u: Uri, query: openArray[(string, string)]): Uri =
+  ## Concatenates the query parameters to the specified URI object.
+  runnableExamples:
+    let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
+    assert $foo == "https://example.com/foo?bar=qux"
+  result = u
+  result.query = encodeQuery(query)
+
 proc `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
+  runnableExamples:
+    let foo = parseUri("https://nim-lang.org")
+    assert $foo == "https://nim-lang.org"
   result = ""
   if u.scheme.len > 0:
     result.add(u.scheme)
@@ -360,7 +445,7 @@ proc `$`*(u: Uri): string =
       result.add(":")
       result.add(u.password)
     result.add("@")
-  if u.hostname.endswith('/'):
+  if u.hostname.endsWith('/'):
     result.add(u.hostname[0..^2])
   else:
     result.add(u.hostname)
@@ -625,5 +710,26 @@ when isMainModule:
     doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
+
+  # encodeQuery tests
+  block:
+    doAssert encodeQuery({:}) == ""
+    doAssert encodeQuery({"foo": "bar"}) == "foo=bar"
+    doAssert encodeQuery({"foo": "bar & baz"}) == "foo=bar+%26+baz"
+    doAssert encodeQuery({"foo": "bar & baz"}, usePlus=false) == "foo=bar%20%26%20baz"
+    doAssert encodeQuery({"foo": ""}) == "foo"
+    doAssert encodeQuery({"foo": ""}, omitEq=false) == "foo="
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq=false) == "a=1&b=&c=3"
+
+    block:
+      var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}
+      var foo1 = parseUri("http://example.com/foo?bar=1&baz=qux")
+      doAssert foo == foo1
+
+    block:
+      var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
+      var foo1 = parseUri("http://example.com/foo?do=do&bar")
+      doAssert foo == foo1
 
   echo("All good!")

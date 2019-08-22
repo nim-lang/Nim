@@ -1,8 +1,36 @@
+discard """
+output: '''
+start tradix.nim
+false
+false
+false
+false
+false
+false
+false
+false
+false
+false
+128
+1
+2
+3
+4
+255
+17
+45
+19000
+4294967288
+'''
+"""
+
 # implements and tests an efficient radix tree
 
 ## another method to store an efficient array of pointers:
 ## We use a radix tree with node compression.
 ## There are two node kinds:
+
+echo "start tradix.nim"
 
 const BitsPerUnit = 8*sizeof(int)
 
@@ -101,7 +129,7 @@ proc excl*(r: PRadixNode, a: ByteAddress): bool =
 proc addLeaf(r: var PRadixNode, a: int): bool =
   if r == nil:
     # a linear node:
-    var x = cast[ptr TRadixNodeLinear](alloc(sizeof(TRadixNodeLinear)))
+    var x = cast[ptr TRadixNodeLinear](alloc0(sizeof(TRadixNodeLinear)))
     x.kind = rnLeafLinear
     x.len = 1'i8
     x.keys[0] = toU8(a)
@@ -137,7 +165,7 @@ proc addInner(r: var PRadixNode, a: int, d: int): bool =
   var k = a shr d and 0xff
   if r == nil:
     # a linear node:
-    var x = cast[ptr TRadixNodeLinear](alloc(sizeof(TRadixNodeLinear)))
+    var x = cast[ptr TRadixNodeLinear](alloc0(sizeof(TRadixNodeLinear)))
     x.kind = rnLinear
     x.len = 1'i8
     x.keys[0] = toU8(k)
@@ -218,102 +246,9 @@ proc main() =
     r: PRadixNode = nil
   for x in items(numbers):
     echo testOrIncl(r, x)
-  for x in elements(r): echo(x)
+  for x in elements(r):
+    # ByteAddress being defined as a signed integer cases trouble
+    # exactly here
+    echo(cast[uint](x))
 
 main()
-
-
-when false:
-  proc traverse(r: PRadixNode, prefix: int, d: int) =
-    if r == nil: return
-    case r.kind
-    of rnLeafBits:
-      assert(d == 0)
-      var x = cast[ptr TRadixNodeLeafBits](r)
-      # iterate over any bit:
-      for i in 0..high(x.b):
-        if x.b[i] != 0: # test all bits for zero
-          for j in 0..BitsPerUnit-1:
-            if testBit(x.b[i], j):
-              visit(prefix or i*BitsPerUnit+j)
-    of rnLeafLinear:
-      assert(d == 0)
-      var x = cast[ptr TRadixNodeLeafLinear](r)
-      for i in 0..ze(x.len)-1:
-        visit(prefix or ze(x.keys[i]))
-    of rnFull:
-      var x = cast[ptr TRadixNodeFull](r)
-      for i in 0..high(r.b):
-        if r.b[i] != nil:
-          traverse(r.b[i], prefix or (i shl d), d-8)
-    of rnLinear:
-      var x = cast[ptr TRadixNodeLinear](r)
-      for i in 0..ze(x.len)-1:
-        traverse(x.vals[i], prefix or (ze(x.keys[i]) shl d), d-8)
-
-  type
-    TRadixIter {.final.} = object
-      r: PRadixNode
-      p: int
-      x: int
-
-  proc init(i: var TRadixIter, r: PRadixNode) =
-    i.r = r
-    i.x = 0
-    i.p = 0
-
-  proc nextr(i: var TRadixIter): PRadixNode =
-    if i.r == nil: return nil
-    case i.r.kind
-    of rnFull:
-      var r = cast[ptr TRadixNodeFull](i.r)
-      while i.x <= high(r.b):
-        if r.b[i.x] != nil:
-          i.p = i.x
-          return r.b[i.x]
-        inc(i.x)
-    of rnLinear:
-      var r = cast[ptr TRadixNodeLinear](i.r)
-      if i.x < ze(r.len):
-        i.p = ze(r.keys[i.x])
-        result = r.vals[i.x]
-        inc(i.x)
-    else: assert(false)
-
-  proc nexti(i: var TRadixIter): int =
-    result = -1
-    case i.r.kind
-    of rnLeafBits:
-      var r = cast[ptr TRadixNodeLeafBits](i.r)
-      # iterate over any bit:
-      for i in 0..high(r.b):
-        if x.b[i] != 0: # test all bits for zero
-          for j in 0..BitsPerUnit-1:
-            if testBit(x.b[i], j):
-              visit(prefix or i*BitsPerUnit+j)
-    of rnLeafLinear:
-      var r = cast[ptr TRadixNodeLeafLinear](i.r)
-      if i.x < ze(r.len):
-        result = ze(r.keys[i.x])
-        inc(i.x)
-
-  iterator elements(r: PRadixNode): ByteAddress {.inline.} =
-    var
-      a, b, c, d: TRadixIter
-    init(a, r)
-    while true:
-      var x = nextr(a)
-      if x != nil:
-        init(b, x)
-        while true:
-          var y = nextr(b)
-          if y != nil:
-            init(c, y)
-            while true:
-              var z = nextr(c)
-              if z != nil:
-                init(d, z)
-                while true:
-                  var q = nexti(d)
-                  if q != -1:
-                    yield a.p shl 24 or b.p shl 16 or c.p shl 8 or q

@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, wordrecg, idgen, nimfix.prettybase, lineinfos, strutils
+  renderer, nimfix/prettybase, lineinfos, strutils
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -58,8 +58,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
 
-proc addUniqueSym*(scope: PScope, s: PSym): bool =
-  result = not strTableIncl(scope.symbols, s)
+proc addUniqueSym*(scope: PScope, s: PSym): PSym =
+  result = strTableInclReportConflict(scope.symbols, s)
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
@@ -89,7 +89,7 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       prettybase.replaceDeprecated(conf, n.info, s, result)
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-              s.name.s)
+              s.name.s & " is deprecated")
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   result = strTableGet(c.currentScope.symbols, s)
@@ -150,7 +150,7 @@ type
 
 proc getSymRepr*(conf: ConfigRef; s: PSym): string =
   case s.kind
-  of skProc, skFunc, skMethod, skConverter, skIterator:
+  of routineKinds, skType:
     result = getProcHeader(conf, s)
   else:
     result = s.name.s
@@ -161,40 +161,46 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
   while s != nil:
-    if sfForward in s.flags and s.kind != skType:
+    if sfForward in s.flags and s.kind notin {skType, skModule}:
       # too many 'implementation of X' errors are annoying
       # and slow 'suggest' down:
       if missingImpls == 0:
         localError(c.config, s.info, "implementation of '$1' expected" %
             getSymRepr(c.config, s))
       inc missingImpls
-    elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options:
-      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
+    elif {sfUsed, sfExported} * s.flags == {}:
+      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:
         # XXX: implicit type params are currently skTypes
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
-          message(c.config, s.info, hintXDeclaredButNotUsed, getSymRepr(c.config, s))
+          message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
     s = nextIter(it, scope.symbols)
 
-proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string) =
+proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
+                        conflictsWith: TLineInfo) =
   if c.config.cmd != cmdInteractive:
-    localError(c.config, info, "redefinition of '$1'" % s)
+    localError(c.config, info,
+      "redefinition of '$1'; previous declaration here: $2" %
+      [s, c.config $ conflictsWith])
 
 proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
-  if not c.currentScope.addUniqueSym(sym):
-    wrongRedefinition(c, info, sym.name.s)
+  let conflict = c.currentScope.addUniqueSym(sym)
+  if conflict != nil:
+    wrongRedefinition(c, info, sym.name.s, conflict.info)
 
 proc addDecl*(c: PContext, sym: PSym) =
-  if not c.currentScope.addUniqueSym(sym):
-    wrongRedefinition(c, sym.info, sym.name.s)
+  let conflict = strTableInclReportConflict(c.currentScope.symbols, sym, true)
+  if conflict != nil:
+    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
-  if not scope.addUniqueSym(sym):
-    wrongRedefinition(c, sym.info, sym.name.s)
+  let conflict = scope.addUniqueSym(sym)
+  if conflict != nil:
+    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   if sfExported in sym.flags:
@@ -212,7 +218,7 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
     return
   let check = strTableGet(scope.symbols, fn.name)
   if check != nil and check.kind notin OverloadableSyms:
-    wrongRedefinition(c, fn.info, fn.name.s)
+    wrongRedefinition(c, fn.info, fn.name.s, check.info)
   else:
     scope.addSym(fn)
 
@@ -244,14 +250,15 @@ else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
-  var err = "Error: ambiguous identifier: '" & s.name.s & "'"
+  var err = "ambiguous identifier: '" & s.name.s & "'"
   var ti: TIdentIter
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
   while candidate != nil:
-    if i == 0: err.add " --use "
-    else: err.add " or "
-    err.add candidate.owner.name.s & "." & candidate.name.s
+    if i == 0: err.add " -- use one of the following:\n"
+    else: err.add "\n"
+    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+    err.add ": " & typeToString(candidate.typ)
     candidate = nextIdentIter(ti, c.importTable.symbols)
     inc i
   localError(c.config, info, errGenerated, err)
@@ -259,10 +266,10 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
   var err = "undeclared identifier: '" & name & "'"
   if c.recursiveDep.len > 0:
-    err.add "\nThis might be caused by a recursive module dependency: "
+    err.add "\nThis might be caused by a recursive module dependency:\n"
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
-    c.recursiveDep = nil
+    c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
 proc lookUp*(c: PContext, n: PNode): PSym =

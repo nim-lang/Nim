@@ -10,12 +10,12 @@
 ## implements some little helper passes
 
 import
-  strutils, ast, astalgo, passes, idents, msgs, options, idgen, lineinfos
+  ast, passes, idents, msgs, options, idgen, lineinfos
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  VerboseRef = ref object of TPassContext
+  VerboseRef = ref object of PPassContext
     config: ConfigRef
 
 proc verboseOpen(graph: ModuleGraph; s: PSym): PPassContext =
@@ -30,6 +30,6 @@ proc verboseProcess(context: PPassContext, n: PNode): PNode =
     # system.nim deactivates all hints, for verbosity:3 we want the processing
     # messages nonetheless, so we activate them again unconditionally:
     incl(v.config.notes, hintProcessing)
-    message(v.config, n.info, hintProcessing, $idgen.gFrontendId)
+    message(v.config, n.info, hintProcessing, $idgen.gFrontEndId)
 
 const verbosePass* = makePass(open = verboseOpen, process = verboseProcess)

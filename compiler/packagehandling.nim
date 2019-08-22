@@ -29,21 +29,32 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
       for file in walkFiles(d / "*.nimble"):
         result = file.splitFile.name
         break packageSearch
-      for file in walkFiles(d / "*.babel"):
-        result = file.splitFile.name
-        break packageSearch
   # we also store if we didn't find anything:
-  if result.isNil: result = ""
+  when not defined(nimNoNilSeqs):
+    if result.isNil: result = ""
   for d in myParentDirs(path):
     #echo "set cache ", d, " |", result, "|", parents
     conf.packageCache[d] = result
     dec parents
     if parents <= 0: break
 
-proc withPackageName*(conf: ConfigRef; path: string): string =
-  let x = getPackageName(conf, path)
+proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
+  # foo/../bar becomes foo7_7bar
+  result = relativeTo(path, conf.projectPath, '/').string.multiReplace(
+    {"/": "7", "..": "_", "7": "77", "_": "__", ":": "8", "8": "88"})
+
+proc demanglePackageName*(path: string): string =
+  result = path.multiReplace(
+    {"88": "8", "8": ":", "77": "7", "__": "_", "_7": "../", "7": "/"})
+
+proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
+  let x = getPackageName(conf, path.string)
   if x.len == 0:
     result = path
   else:
     let (p, file, ext) = path.splitFile
-    result = (p / (x & '_' & file)) & ext
+    if x == "stdlib":
+      # Hot code reloading now relies on 'stdlib_system' names etc.
+      result = p / RelativeFile((x & '_' & file) & ext)
+    else:
+      result = p / RelativeFile(fakePackageName(conf, path))

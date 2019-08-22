@@ -19,6 +19,9 @@ type
     c: PContext
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
+  if c.field != nil and isEmptyType(c.field.typ):
+    result = newNode(nkEmpty)
+    return
   case n.kind
   of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
   of nkIdent, nkSym:
@@ -52,7 +55,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
     newSons(result, sonsLen(n))
-    for i in countup(0, sonsLen(n)-1):
+    for i in 0 ..< sonsLen(n):
       result.sons[i] = instFieldLoopBody(c, n.sons[i], forLoop)
 
 type
@@ -70,7 +73,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     openScope(c.c)
     inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
-    father.add(semStmt(c.c, body))
+    father.add(semStmt(c.c, body, {}))
     dec c.c.inUnrolledContext
     closeScope(c.c)
   of nkNilLit: discard
@@ -145,7 +148,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
-      stmts.add(semStmt(c, body))
+      stmts.add(semStmt(c, body, {}))
       dec c.inUnrolledContext
       closeScope(c)
   else:

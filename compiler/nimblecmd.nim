@@ -10,9 +10,9 @@
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
 import parseutils, strutils, strtabs, os, options, msgs, sequtils,
-  lineinfos
+  lineinfos, pathutils
 
-proc addPath*(conf: ConfigRef; path: string, info: TLineInfo) =
+proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   if not conf.searchPaths.contains(path):
     conf.searchPaths.insert(path, 0)
 
@@ -112,9 +112,9 @@ proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
     if not path.isAbsolute():
       path = p / path
 
-  if not contains(conf.searchPaths, path):
+  if not contains(conf.searchPaths, AbsoluteDir path):
     message(conf, info, hintPath, path)
-    conf.lazyPaths.insert(path, 0)
+    conf.lazyPaths.insert(AbsoluteDir path, 0)
 
 proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
@@ -126,9 +126,9 @@ proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   for p in packages.chosen:
     addNimblePath(conf, p, info)
 
-proc nimblePath*(conf: ConfigRef; path: string, info: TLineInfo) =
-  addPathRec(conf, path, info)
-  addNimblePath(conf, path, info)
+proc nimblePath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
+  addPathRec(conf, path.string, info)
+  addNimblePath(conf, path.string, info)
 
 when isMainModule:
   proc v(s: string): Version = s.newVersion
@@ -140,18 +140,19 @@ when isMainModule:
   doAssert v"#aaaqwe" < v"1.1" # We cannot assume that a branch is newer.
   doAssert v"#a111" < v"#head"
 
+  let conf = newConfigRef()
   var rr = newStringTable()
-  addPackage rr, "irc-#a111"
-  addPackage rr, "irc-#head"
-  addPackage rr, "irc-0.1.0"
-  addPackage rr, "irc"
-  addPackage rr, "another"
-  addPackage rr, "another-0.1"
+  addPackage conf, rr, "irc-#a111", unknownLineInfo()
+  addPackage conf, rr, "irc-#head", unknownLineInfo()
+  addPackage conf, rr, "irc-0.1.0", unknownLineInfo()
+  #addPackage conf, rr, "irc", unknownLineInfo()
+  #addPackage conf, rr, "another", unknownLineInfo()
+  addPackage conf, rr, "another-0.1", unknownLineInfo()
 
-  addPackage rr, "ab-0.1.3"
-  addPackage rr, "ab-0.1"
-  addPackage rr, "justone"
+  addPackage conf, rr, "ab-0.1.3", unknownLineInfo()
+  addPackage conf, rr, "ab-0.1", unknownLineInfo()
+  addPackage conf, rr, "justone-1.0", unknownLineInfo()
 
   doAssert toSeq(rr.chosen) ==
-    @["irc-#head", "another-0.1", "ab-0.1.3", "justone"]
+    @["irc-#head", "another-0.1", "ab-0.1.3", "justone-1.0"]
 

@@ -9,29 +9,29 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
 const
-  hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
+  hasSpawnH = true # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
 when defined(linux) and not defined(android):
   # On Linux:
   # timer_{create,delete,settime,gettime},
   # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
-  {.passL: "-lrt".}
+  {.passl: "-lrt".}
 when defined(solaris):
   # On Solaris hstrerror lives in libresolv
-  {.passL: "-lresolv".}
+  {.passl: "-lresolv".}
 
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
     ## A type representing a directory stream.
-{.deprecated: [TDIR: DIR].}
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
-
-{.deprecated: [TSocketHandle: SocketHandle].}
 
 type
   Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
@@ -43,6 +43,9 @@ type
 
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
+    when defined(haiku):
+      d_dev*: Dev ## Device (not POSIX)
+      d_pdev*: Dev ## Parent device (only for queries) (not POSIX)
     d_ino*: Ino  ## File serial number.
     when defined(dragonfly):
       # DragonflyBSD doesn't have `d_reclen` field.
@@ -54,6 +57,9 @@ type
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+    elif defined(haiku):
+      d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
+      d_reclen*: cushort ## Length of this record. (not POSIX)
 
     d_name*: array[0..255, char] ## Name of entry.
 
@@ -278,7 +284,7 @@ type
     sigev_signo*: cint            ## Signal number.
     sigev_value*: SigVal          ## Signal value.
     sigev_notify_function*: proc (x: SigVal) {.noconv.} ## Notification func.
-    sigev_notify_attributes*: ptr PthreadAttr ## Notification attributes.
+    sigev_notify_attributes*: ptr Pthread_attr ## Notification attributes.
 
   SigVal* {.importc: "union sigval",
              header: "<signal.h>", final, pure.} = object ## struct sigval
@@ -350,31 +356,7 @@ type
     uc_stack*: Stack        ## The stack used by this context.
     uc_mcontext*: Mcontext  ## A machine-specific representation of the saved
                             ## context.
-{.deprecated: [TOff: Off, TPid: Pid, TGid: Gid, TMode: Mode, TDev: Dev,
-              TNlink: Nlink, TStack: Stack, TGroup: Group, TMqd: Mqd,
-              TPasswd: Passwd, TClock: Clock, TClockId: ClockId, TKey: Key,
-              TSem: Sem, Tpthread_attr: PthreadAttr, Ttimespec: Timespec,
-              Tdirent: Dirent, TFTW: FTW, TGlob: Glob,
-              # Tflock: Flock, # Naming conflict if we drop the `T`
-              Ticonv: Iconv, Tlconv: Lconv, TMqAttr: MqAttr, Tblkcnt: Blkcnt,
-              Tblksize: Blksize, Tfsblkcnt: Fsblkcnt, Tfsfilcnt: Fsfilcnt,
-              Tid: Id, Tino: Ino, Tpthread_barrier: Pthread_barrier,
-              Tpthread_barrierattr: Pthread_barrierattr, Tpthread_cond: Pthread_cond,
-              TPthread_condattr: Pthread_condattr, Tpthread_key: Pthread_key,
-              Tpthread_mutex: Pthread_mutex, Tpthread_mutexattr: Pthread_mutexattr,
-              Tpthread_once: Pthread_once, Tpthread_rwlock: Pthread_rwlock,
-              Tpthread_rwlockattr: Pthread_rwlockattr, Tpthread_spinlock: Pthread_spinlock,
-              Tpthread: Pthread, Tsuseconds: Suseconds, Ttimer: Timer,
-              Ttrace_attr: Trace_attr, Ttrace_event_id: Trace_event_id,
-              Ttrace_event_set: Trace_event_set, Ttrace_id: Trace_id,
-              Tuid: Uid, Tuseconds: Useconds, Tutsname: Utsname, Tipc_perm: Ipc_perm,
-              TStat: Stat, TStatvfs: Statvfs, Tposix_typed_mem_info: Posix_typed_mem_info,
-              Ttm: Tm, titimerspec: Itimerspec, Tsig_atomic: Sig_atomic, Tsigset: Sigset,
-              TsigEvent: SigEvent, TsigVal: SigVal, TSigaction: Sigaction,
-              TSigStack: SigStack, TsigInfo: SigInfo, Tnl_item: Nl_item,
-              Tnl_catd: Nl_catd, Tsched_param: Sched_param,
-              # TFdSet: FdSet, # Naming conflict if we drop the `T`
-              Tmcontext: Mcontext, Tucontext: Ucontext].}
+
 when hasAioH:
   type
     Taiocb* {.importc: "struct aiocb", header: "<aio.h>",
@@ -403,8 +385,8 @@ else:
   const Sockaddr_un_path_length* = 92
 
 type
-  Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
+  SockLen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
@@ -435,17 +417,17 @@ type
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
-    msg_namelen*: Socklen  ## Size of address.
+    msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
     msg_iovlen*: cint   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
-    msg_controllen*: Socklen ## Ancillary data buffer len.
+    msg_controllen*: SockLen ## Ancillary data buffer len.
     msg_flags*: cint ## Flags on received message.
 
 
   Tcmsghdr* {.importc: "struct cmsghdr", pure, final,
               header: "<sys/socket.h>".} = object ## struct cmsghdr
-    cmsg_len*: Socklen ## Data byte count, including the cmsghdr.
+    cmsg_len*: SockLen ## Data byte count, including the cmsghdr.
     cmsg_level*: cint   ## Originating protocol.
     cmsg_type*: cint    ## Protocol-specific type.
 
@@ -534,7 +516,7 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: Socklen   ## Length of socket address.
+    ai_addrlen*: SockLen   ## Length of socket address.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
@@ -546,13 +528,6 @@ type
     revents*: cshort ## The output event flags (see below).
 
   Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
-
-{.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
-    TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    Tsockaddr_storage: Sockaddr_storage, Tsockaddr_in6: Sockaddr_in6,
-    Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr, TIOVec: IOVec, TInPort: InPort, TInAddrT: InAddrT,
-    TIn6Addr: In6Addr, TInAddrScalar: InAddrScalar, TProtoent: Protoent].}
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -574,7 +549,7 @@ else:
 when defined(linux) or defined(nimdoc):
   when defined(alpha) or defined(mips) or defined(mipsel) or
       defined(mips64) or defined(mips64el) or defined(parisc) or
-      defined(sparc) or defined(nimdoc):
+      defined(sparc) or defined(sparc64) or defined(nimdoc):
     const SO_REUSEPORT* = cint(0x0200)
       ## Multiple binding: load balancing on incoming TCP connections
       ## or UDP packets. (Requires Linux kernel > 3.9)
@@ -598,6 +573,10 @@ else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
       ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+when defined(haiku):
+  const
+    SIGKILLTHR* = 21 ## BeOS specific: Kill just the thread, not team
 
 when hasSpawnH:
   when defined(linux):
@@ -627,3 +606,6 @@ proc WIFSTOPPED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child is currently stopped.
 proc WIFCONTINUED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
+
+when defined(nimHasStyleChecks):
+  {.pop.}

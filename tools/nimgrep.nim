@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "1.2"
+  Version = "1.4"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -21,8 +21,9 @@ Options:
   --find, -f          find the pattern (default)
   --replace, -r       replace the pattern
   --peg               pattern is a peg
-  --re                pattern is a regular expression (default); extended
-                      syntax for the regular expression is always turned on
+  --re                pattern is a regular expression (default)
+  --rex, -x           use the "extended" syntax for the regular expression
+                      so that whitespace is not significant
   --recursive         process directories recursively
   --confirm           confirm each occurrence/replacement; there is a chance
                       to abort any time without touching the file
@@ -33,7 +34,7 @@ Options:
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
   --nocolor           output will be given without any colours.
-  --oneline           show file on each matched line
+  --group             group matches by file
   --verbose           be verbose: list every processed file
   --filenames         find the pattern in the filenames, not in the contents
                       of the file
@@ -44,7 +45,8 @@ Options:
 type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
-    optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames
+    optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames,
+    optRex
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -89,14 +91,14 @@ proc countLines(s: string, first, last: int): int =
 proc beforePattern(s: string, first: int): int =
   result = first-1
   while result >= 0:
-    if s[result] in NewLines: break
+    if s[result] in Newlines: break
     dec(result)
   inc(result)
 
 proc afterPattern(s: string, last: int): int =
   result = last+1
   while result < s.len:
-    if s[result] in NewLines: break
+    if s[result] in Newlines: break
     inc(result)
   dec(result)
 
@@ -160,7 +162,7 @@ proc processFile(pattern; filename: string; counter: var int) =
   var reallyReplace = true
   while i < buffer.len:
     let t = findBounds(buffer, pattern, matches, i)
-    if t.first < 0: break
+    if t.first < 0 or t.last < t.first: break
     inc(line, countLines(buffer, i, t.first-1))
 
     var wholeMatch = buffer.substr(t.first, t.last)
@@ -268,6 +270,7 @@ proc checkOptions(subset: TOptions, a, b: string) =
   if subset <= options:
     quit("cannot specify both '$#' and '$#'" % [a, b])
 
+oneline = true
 for kind, key, val in getopt():
   case kind
   of cmdArgument:
@@ -279,7 +282,7 @@ for kind, key, val in getopt():
       replacement = key
     else:
       filenames.add(key)
-  of cmdLongoption, cmdShortOption:
+  of cmdLongOption, cmdShortOption:
     case normalize(key)
     of "find", "f": incl(options, optFind)
     of "replace", "r": incl(options, optReplace)
@@ -287,6 +290,10 @@ for kind, key, val in getopt():
       excl(options, optRegex)
       incl(options, optPeg)
     of "re":
+      incl(options, optRegex)
+      excl(options, optPeg)
+    of "rex", "x":
+      incl(options, optRex)
       incl(options, optRegex)
       excl(options, optPeg)
     of "recursive": incl(options, optRecursive)
@@ -298,6 +305,7 @@ for kind, key, val in getopt():
     of "ext": extensions.add val.split('|')
     of "nocolor": useWriteStyled = false
     of "oneline": oneline = true
+    of "group": oneline = false
     of "verbose": incl(options, optVerbose)
     of "filenames": incl(options, optFilenames)
     of "help", "h": writeHelp()
@@ -315,7 +323,7 @@ checkOptions({optFilenames, optReplace}, "filenames", "replace")
 
 if optStdin in options:
   pattern = ask("pattern [ENTER to exit]: ")
-  if isNil(pattern) or pattern.len == 0: quit(0)
+  if pattern.len == 0: quit(0)
   if optReplace in options:
     replacement = ask("replacement [supports $1, $# notations]: ")
 
@@ -336,15 +344,15 @@ else:
     for f in items(filenames):
       walker(pegp, f, counter)
   else:
-    var reflags = {reStudy, reExtended}
+    var reflags = {reStudy}
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:
-      pattern = r"\b (:?" & pattern & r") \b"
+      pattern = r"\b(:?" & pattern & r")\b"
     if {optIgnoreCase, optIgnoreStyle} * options != {}:
       reflags.incl reIgnoreCase
-    let rep = re(pattern, reflags)
+    let rep = if optRex in options: rex(pattern, reflags)
+              else: re(pattern, reflags)
     for f in items(filenames):
       walker(rep, f, counter)
-  if not oneline:
-    stdout.write($counter & " matches\n")
+  stdout.write($counter & " matches\n")

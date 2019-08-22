@@ -40,3 +40,7 @@ static:
   assert y isnot tuple
   assert z isnot seq
 
+  # XXX: These cases don't work properly at the moment:
+  # assert type[int] isnot int
+  # assert type(int) isnot int
+

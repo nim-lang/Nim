@@ -15,4 +15,4 @@ iterator fields(a = (0,0), b = (h-1,w-1)): auto =
       yield (y,x)
 
 for y,x in fields():
-  stdout.write disp[univ(x, y)]
+  doAssert disp[univ(x, y)] == disp[Tree]

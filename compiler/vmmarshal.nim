@@ -18,13 +18,13 @@ proc ptrToInt(x: PNode): int {.inline.} =
 proc getField(n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in 0 ..< sonsLen(n):
       result = getField(n.sons[i], position)
       if result != nil: return
   of nkRecCase:
     result = getField(n.sons[0], position)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in 1 ..< sonsLen(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = getField(lastSon(n.sons[i]), position)
@@ -39,7 +39,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet; conf: Confi
 proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet; conf: ConfigRef) =
   assert x.kind == nkObjConstr
   let start = 1
-  for i in countup(start, sonsLen(x) - 1):
+  for i in start ..< sonsLen(x):
     if i > start: s.add(", ")
     var it = x.sons[i]
     if it.kind == nkExprColonExpr:
@@ -127,7 +127,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       storeAny(s, t.lastSon, a, stored, conf)
       s.add("]")
   of tyString, tyCString:
-    if a.kind == nkNilLit or a.strVal.isNil: s.add("null")
+    if a.kind == nkNilLit: s.add("null")
     else: s.add(escapeJson(a.strVal))
   of tyInt..tyInt64, tyUInt..tyUInt64: s.add($a.intVal)
   of tyFloat..tyFloat128: s.add($a.floatVal)

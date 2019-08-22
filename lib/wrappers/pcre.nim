@@ -263,6 +263,8 @@ type
   JitStack16* = object
   JitStack32* = object
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 ## The structure for passing additional data to pcre_exec(). This is defined in
 ## such as way as to be extensible. Always add new fields at the end, in order
@@ -302,6 +304,8 @@ type
     mark*            : pointer    ## Pointer to current mark or NULL
     # ------------------------------------------------------------------
 
+when defined(nimHasStyleChecks):
+  {.pop.}
 
 ## User defined callback which provides a stack just before the match starts.
 type
@@ -466,14 +470,6 @@ proc study*(code: ptr Pcre,
 {.pop.}
 
 
-{.deprecated: [MAJOR: PCRE_MAJOR, MINOR: PCRE_MINOR,
-               PRERELEASE: PCRE_PRERELEASE, DATE: PCRE_DATE].}
-
-{.deprecated: [TPcre: Pcre, TJitStack: JitStack].}
 type
   PPcre* {.deprecated.} = ptr Pcre
   PJitStack* {.deprecated.} = ptr JitStack
-
-{.deprecated: [TExtra: ExtraData].}
-{.deprecated: [TCalloutBlock: CalloutBlock].}
-{.deprecated: [TJitCallback: JitCallback].}

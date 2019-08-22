@@ -15,6 +15,7 @@ proc main =
 
 #[!]#
 discard """
+disabled:true
 $nimsuggest --tester $file
 >chk $1
 chk;;skUnknown;;;;Hint;;???;;-1;;-1;;"tchk1 [Processing]";;0

@@ -14,18 +14,18 @@
 
 import dynlib
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
-{.passC: "-DWIN32_LEAN_AND_MEAN".}
+{.passc: "-DWIN32_LEAN_AND_MEAN".}
 
 const
   useWinUnicode* = not defined(useWinAnsi)
 
 when useWinUnicode:
   type WinChar* = Utf16Char
-  {.deprecated: [TWinChar: WinChar].}
 else:
   type WinChar* = char
-  {.deprecated: [TWinChar: WinChar].}
 
 type
   Handle* = int
@@ -96,10 +96,6 @@ type
     dwPlatformId*: DWORD
     szCSDVersion*: array[0..127, WinChar]
 
-{.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
-    TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
-    TFILETIME: FILETIME, TBY_HANDLE_FILE_INFORMATION: BY_HANDLE_FILE_INFORMATION].}
-
 const
   STARTF_USESHOWWINDOW* = 1'i32
   STARTF_USESTDHANDLES* = 256'i32
@@ -142,11 +138,11 @@ proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion".}
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
 
-proc readFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToRead: int32,
+proc readFile*(hFile: Handle, buffer: pointer, nNumberOfBytesToRead: int32,
                lpNumberOfBytesRead: ptr int32, lpOverlapped: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadFile".}
 
-proc writeFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToWrite: int32,
+proc writeFile*(hFile: Handle, buffer: pointer, nNumberOfBytesToWrite: int32,
                 lpNumberOfBytesWritten: ptr int32,
                 lpOverlapped: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteFile".}
@@ -221,13 +217,13 @@ when useWinUnicode:
   proc formatMessageW*(dwFlags: int32, lpSource: pointer,
                       dwMessageId, dwLanguageId: int32,
                       lpBuffer: pointer, nSize: int32,
-                      Arguments: pointer): int32 {.
+                      arguments: pointer): int32 {.
                       importc: "FormatMessageW", stdcall, dynlib: "kernel32".}
 else:
   proc formatMessageA*(dwFlags: int32, lpSource: pointer,
                     dwMessageId, dwLanguageId: int32,
                     lpBuffer: pointer, nSize: int32,
-                    Arguments: pointer): int32 {.
+                    arguments: pointer): int32 {.
                     importc: "FormatMessageA", stdcall, dynlib: "kernel32".}
 
 proc localFree*(p: pointer) {.
@@ -327,7 +323,6 @@ type
     dwReserved1: int32
     cFileName*: array[0..(MAX_PATH) - 1, WinChar]
     cAlternateFileName*: array[0..13, WinChar]
-{.deprecated: [TWIN32_FIND_DATA: WIN32_FIND_DATA].}
 
 when useWinUnicode:
   proc findFirstFileW*(lpFileName: WideCString,
@@ -396,7 +391,7 @@ else:
 
   proc moveFileA*(lpExistingFileName, lpNewFileName: cstring): WINBOOL {.
     importc: "MoveFileA", stdcall, dynlib: "kernel32".}
-  proc moveFileExA*(lpExistingFileName, lpNewFileName: WideCString,
+  proc moveFileExA*(lpExistingFileName, lpNewFileName: cstring,
                     flags: DWORD): WINBOOL {.
     importc: "MoveFileExA", stdcall, dynlib: "kernel32".}
 
@@ -421,13 +416,13 @@ proc sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
                                     importc: "Sleep".}
 
 when useWinUnicode:
-  proc shellExecuteW*(HWND: Handle, lpOperation, lpFile,
+  proc shellExecuteW*(hwnd: Handle, lpOperation, lpFile,
                      lpParameters, lpDirectory: WideCString,
                      nShowCmd: int32): Handle{.
       stdcall, dynlib: "shell32.dll", importc: "ShellExecuteW".}
 
 else:
-  proc shellExecuteA*(HWND: Handle, lpOperation, lpFile,
+  proc shellExecuteA*(hwnd: Handle, lpOperation, lpFile,
                      lpParameters, lpDirectory: cstring,
                      nShowCmd: int32): Handle{.
       stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
@@ -453,7 +448,6 @@ proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
 type
   SocketHandle* = distinct int
-{.deprecated: [TSocketHandle: SocketHandle].}
 
 type
   WSAData* {.importc: "WSADATA", header: "winsock2.h".} = object
@@ -464,7 +458,7 @@ type
     lpVendorInfo: cstring
 
   SockAddr* {.importc: "SOCKADDR", header: "winsock2.h".} = object
-    sa_family*: int16 # unsigned
+    sa_family*: uint16
     sa_data*: array[0..13, char]
 
   PSockAddr = ptr SockAddr
@@ -474,7 +468,7 @@ type
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
                   header: "winsock2.h".} = object
-    sin_family*: int16
+    sin_family*: uint16
     sin_port*: uint16
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
@@ -484,21 +478,15 @@ type
 
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
                    header: "ws2tcpip.h".} = object
-    sin6_family*: int16
+    sin6_family*: uint16
     sin6_port*: uint16
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
     sin6_scope_id*: int32 # unsigned
 
-  Sockaddr_in6_old* = object
-    sin6_family*: int16
-    sin6_port*: int16 # unsigned
-    sin6_flowinfo*: int32 # unsigned
-    sin6_addr*: In6_addr
-
   Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
                       header: "winsock2.h".} = object
-    ss_family*: int16
+    ss_family*: uint16
     ss_pad1: array[6, byte]
     ss_align: int64
     ss_pad2: array[112, byte]
@@ -524,9 +512,6 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  Timeval* = object
-    tv_sec*, tv_usec*: int32
-
   AddrInfo* = object
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
@@ -538,12 +523,15 @@ type
     ai_next*: ptr AddrInfo ## Pointer to next in list.
 
   SockLen* = cuint
-{.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
-    TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    TWSADATA: WSADATA, Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr, Tin6_addr: In6_addr, Tsockaddr_in6: Sockaddr_in6,
-    Tsockaddr_in6_old: Sockaddr_in6_old].}
 
+when defined(cpp):
+  type
+    Timeval* {.importc: "timeval", header: "<time.h>".} = object
+      tv_sec*, tv_usec*: int32
+else:
+  type
+    Timeval* = object
+      tv_sec*, tv_usec*: int32
 
 var
   SOMAXCONN* {.importc, header: "winsock2.h".}: cint
@@ -668,7 +656,6 @@ const
 type
   WOHandleArray* = array[0..MAXIMUM_WAIT_OBJECTS - 1, Handle]
   PWOHandleArray* = ptr WOHandleArray
-{.deprecated: [TWOHandleArray: WOHandleArray].}
 
 proc waitForMultipleObjects*(nCount: DWORD, lpHandles: PWOHandleArray,
                              bWaitAll: WINBOOL, dwMilliseconds: DWORD): DWORD{.
@@ -692,6 +679,10 @@ const
   FILE_BEGIN* = 0'i32
   INVALID_SET_FILE_POINTER* = -1'i32
   NO_ERROR* = 0'i32
+  PAGE_NOACCESS* = 0x01'i32
+  PAGE_EXECUTE* = 0x10'i32
+  PAGE_EXECUTE_READ* = 0x20'i32
+  PAGE_EXECUTE_READWRITE* = 0x40'i32
   PAGE_READONLY* = 2'i32
   PAGE_READWRITE* = 4'i32
   FILE_MAP_READ* = 4'i32
@@ -712,18 +703,18 @@ const
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
 
-proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
-                      hTargetProcessHandle: HANDLE,
-                      lpTargetHandle: ptr HANDLE,
+proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
+                      hTargetProcessHandle: Handle,
+                      lpTargetHandle: ptr Handle,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
 
-proc setHandleInformation*(hObject: HANDLE, dwMask: DWORD,
+proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
                            dwFlags: DWORD): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "SetHandleInformation".}
 
-proc getCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
+proc getCurrentProcess*(): Handle{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
 when useWinUnicode:
@@ -798,7 +789,6 @@ type
     D2*: int16
     D3*: int16
     D4*: array[0..7, int8]
-{.deprecated: [TOVERLAPPED: OVERLAPPED, TGUID: GUID].}
 
 const
   ERROR_IO_PENDING* = 997 # a.k.a WSA_IO_PENDING
@@ -838,9 +828,9 @@ template hasOverlappedIoCompleted*(lpOverlapped): bool =
   (cast[uint](lpOverlapped.internal) != STATUS_PENDING)
 
 const
- IOC_OUT* = 0x40000000
- IOC_IN*  = 0x80000000
- IOC_WS2* = 0x08000000
+ IOC_OUT* = 0x40000000'i32
+ IOC_IN*  = 0x80000000'i32
+ IOC_WS2* = 0x08000000'i32
  IOC_INOUT* = IOC_IN or IOC_OUT
 
 template WSAIORW*(x,y): untyped = (IOC_INOUT or x or y)
@@ -906,7 +896,7 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
-                      stringBufSize: int32): cstring {.gcsafe, stdcall.}
+                      stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
 
 var inet_ntop_real: inet_ntop_proc = nil
 
@@ -1010,7 +1000,7 @@ const
 type
   WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32): void {.stdcall.}
 
-proc postQueuedCompletionStatus*(CompletionPort: HANDLE,
+proc postQueuedCompletionStatus*(CompletionPort: Handle,
                                 dwNumberOfBytesTransferred: DWORD,
                                 dwCompletionKey: ULONG_PTR,
                                 lpOverlapped: pointer): bool
@@ -1023,7 +1013,7 @@ proc registerWaitForSingleObject*(phNewWaitObject: ptr Handle, hObject: Handle,
                                  dwFlags: ULONG): bool
      {.stdcall, dynlib: "kernel32", importc: "RegisterWaitForSingleObject".}
 
-proc unregisterWait*(WaitHandle: HANDLE): DWORD
+proc unregisterWait*(WaitHandle: Handle): DWORD
      {.stdcall, dynlib: "kernel32", importc: "UnregisterWait".}
 
 proc openProcess*(dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
@@ -1101,7 +1091,7 @@ proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynl
 proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}
+proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
 
 proc toFILETIME*(t: int64): FILETIME =
   ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
@@ -1110,6 +1100,9 @@ proc toFILETIME*(t: int64): FILETIME =
 type
   LPFILETIME* = ptr FILETIME
 
-proc setFileTime*(hFile: HANDLE, lpCreationTime: LPFILETIME,
+proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
                  lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
+
+when defined(nimHasStyleChecks):
+  {.pop.} # {.push styleChecks: off.}

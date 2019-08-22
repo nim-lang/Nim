@@ -5,9 +5,10 @@ nimout: '''
 type mismatch: got <AsyncHttpServer, Port, proc (req: Request): Future[system.void]{.locks: <unknown>.}>
 but expected one of:
 proc serve(server: AsyncHttpServer; port: Port;
-          callback: proc (request: Request): Future[void]; address = ""): Future[void]
+          callback: proc (request: Request): Future[void] {.closure, gcsafe.};
+          address = ""): owned(Future[void])
   first type mismatch at position: 3
-  required type: proc (request: Request): Future[system.void]{.closure, gcsafe.}
+  required type for callback: proc (request: Request): Future[system.void]{.closure, gcsafe.}
   but expression 'cb' is of type: proc (req: Request): Future[system.void]{.locks: <unknown>.}
   This expression is not GC-safe. Annotate the proc with {.gcsafe.} to get extended error information.
 

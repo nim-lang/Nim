@@ -27,10 +27,10 @@ block:
   var global = T(a: 11, b: "foo")
   proc test(): bool =
     var obj = T(a: 11, b: "foo")
-    {. emit: [result, " = (", obj.addr[], "[0].a == 11);"] .}
-    {. emit: [result, " = ", result, " && (", obj.addr[], "[0].b == \"foo\");"] .}
-    {. emit: [result, " = ", result, " && (", global, "[0].a == 11);"] .}
-    {. emit: [result, " = ", result, " && (", global, "[0].b == \"foo\");"] .}
+    {. emit: [result, " = (", obj.addr[], ".a == 11);"] .}
+    {. emit: [result, " = ", result, " && (", obj.addr[], ".b == \"foo\");"] .}
+    {. emit: [result, " = ", result, " && (", global, ".a == 11);"] .}
+    {. emit: [result, " = ", result, " && (", global, ".b == \"foo\");"] .}
   echo test()
 
 # Test addr of field:

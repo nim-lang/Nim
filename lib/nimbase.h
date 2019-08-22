@@ -107,6 +107,8 @@ __clang__
 #  define N_INLINE(rettype, name) rettype __inline name
 #endif
 
+#define N_INLINE_PTR(rettype, name) rettype (*name)
+
 #if defined(__POCC__)
 #  define NIM_CONST /* PCC is really picky with const modifiers */
 #  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is
@@ -129,13 +131,13 @@ __clang__
        defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
+#elif defined(__TINYC__) || defined(__GENODE__)
+#  define NIM_THREADVAR
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
-#elif defined __TINYC__
-#  define NIM_THREADVAR
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif
@@ -164,13 +166,13 @@ __clang__
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
 #  define N_FASTCALL(rettype, name) rettype __fastcall name
-#  define N_SAFECALL(rettype, name) rettype __safecall name
+#  define N_SAFECALL(rettype, name) rettype __stdcall name
 /* function pointers with calling convention: */
 #  define N_CDECL_PTR(rettype, name) rettype (__cdecl *name)
 #  define N_STDCALL_PTR(rettype, name) rettype (__stdcall *name)
 #  define N_SYSCALL_PTR(rettype, name) rettype (__syscall *name)
 #  define N_FASTCALL_PTR(rettype, name) rettype (__fastcall *name)
-#  define N_SAFECALL_PTR(rettype, name) rettype (__safecall *name)
+#  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
 #  ifdef __cplusplus
 #    define N_LIB_EXPORT  extern "C" __declspec(dllexport)
@@ -266,7 +268,7 @@ __clang__
 
 /* wrap all Nim typedefs into namespace Nim */
 #ifdef USE_NIM_NAMESPACE
-namespace Nim {
+namespace USE_NIM_NAMESPACE {
 #endif
 
 /* bool types (C++ has it): */
@@ -278,7 +280,13 @@ namespace Nim {
 #    define NIM_FALSE false
 #  endif
 #  define NIM_BOOL bool
-#  define NIM_NIL 0
+#  if __cplusplus >= 201103L
+#    /* nullptr is more type safe (less implicit conversions than 0) */
+#    define NIM_NIL nullptr
+#  else
+#    /* consider using NULL if comment below for NIM_NIL doesn't apply to C++ */
+#    define NIM_NIL 0
+#  endif
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
@@ -346,7 +354,12 @@ typedef NU8 NU;
 #  endif
 #endif
 
+// for now there isn't an easy way for C code to reach the program result
+// when hot code reloading is ON - users will have to:
+// load the nimhcr.dll, get the hcrGetGlobal proc from there and use it
+#ifndef NIM_HOT_CODE_RELOADING
 extern NI nim_program_result;
+#endif
 
 typedef float NF32;
 typedef double NF64;
@@ -380,8 +393,6 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
      TGenericSeq Sup;                      \
      NIM_CHAR data[(length) + 1];          \
   } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
-
-typedef struct TStringDesc* string;
 
 /* declared size of a sequence/variable length array: */
 #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
@@ -428,43 +439,19 @@ struct TFrame_ {
   NI16 calldepth;
 };
 
-#ifdef NIM_NEW_MANGLING_RULES
-  #define nimfr_(proc, file) \
-    TFrame FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; nimFrame(&FR_);
-
-  #define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; nimFrame((TFrame*)&FR_);
-
-  #define nimln_(n, file) \
-    FR_.line = n; FR_.filename = file;
-#else
-  #define nimfr(proc, file) \
-    TFrame FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
-
-  #define nimfrs(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
-
-  #define nimln(n, file) \
-    FR.line = n; FR.filename = file;
-#endif
-
 #define NIM_POSIX_INIT  __attribute__((constructor))
 
 #ifdef __GNUC__
-#  define likely(x) __builtin_expect(x, 1)
-#  define unlikely(x) __builtin_expect(x, 0)
+#  define NIM_LIKELY(x) __builtin_expect(x, 1)
+#  define NIM_UNLIKELY(x) __builtin_expect(x, 0)
 /* We need the following for the posix wrapper. In particular it will give us
    POSIX_SPAWN_USEVFORK: */
 #  ifndef _GNU_SOURCE
 #    define _GNU_SOURCE
 #  endif
 #else
-#  define likely(x) (x)
-#  define unlikely(x) (x)
+#  define NIM_LIKELY(x) (x)
+#  define NIM_UNLIKELY(x) (x)
 #endif
 
 #if 0 // defined(__GNUC__) || defined(__clang__)

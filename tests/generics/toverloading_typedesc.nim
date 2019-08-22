@@ -10,7 +10,7 @@ type
   LBar = object
 
 
-when isMainModule:
+when true:
   doAssert FBar.new() == 3
 
   proc new(_: typedesc[LFoo]): int = 0

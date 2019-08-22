@@ -59,3 +59,17 @@ block:
     echo "block expression works"
     y*y
   doAssert x == 4
+
+
+# bug 10861
+macro foo(a: untyped): untyped = 
+  a             
+
+let c1 = foo:
+  1 + 1
+
+const c2 = foo:
+  1 + 1
+
+const c3 = 
+  foo: 1 + 1

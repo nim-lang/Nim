@@ -10,7 +10,7 @@
 ## Include file that imports all plugins that are active.
 
 import
-  "../compiler" / [pluginsupport, idents, ast], locals, itersgen
+  ".." / [pluginsupport, idents, ast], locals, itersgen
 
 const
   plugins: array[2, Plugin] = [

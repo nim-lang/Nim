@@ -9,8 +9,8 @@
 
 ## Module that implements ``gorge`` for the compiler.
 
-import msgs, std / sha1, os, osproc, streams, strutils, options,
-  lineinfos
+import msgs, std / sha1, os, osproc, streams, options,
+  lineinfos, pathutils
 
 proc readOutput(p: Process): (string, int) =
   result[0] = ""
@@ -24,18 +24,18 @@ proc readOutput(p: Process): (string, int) =
 
 proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (string, int) =
   let workingDir = parentDir(toFullPath(conf, info))
-  if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
+  if cache.len > 0:
     let h = secureHash(cmd & "\t" & input & "\t" & cache)
-    let filename = options.toGeneratedFile(conf, "gorge_" & $h, "txt")
+    let filename = toGeneratedFile(conf, AbsoluteFile("gorge_" & $h), "txt").string
     var f: File
-    if open(f, filename):
+    if optForceFullMake notin conf.globalOptions and open(f, filename):
       result = (f.readAll, 0)
       f.close
       return
     var readSuccessful = false
     try:
       var p = startProcess(cmd, workingDir,
-                           options={poEvalCommand, poStderrToStdout})
+                           options={poEvalCommand, poStdErrToStdOut})
       if input.len != 0:
         p.inputStream.write(input)
         p.inputStream.close()
@@ -49,7 +49,7 @@ proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (str
   else:
     try:
       var p = startProcess(cmd, workingDir,
-                           options={poEvalCommand, poStderrToStdout})
+                           options={poEvalCommand, poStdErrToStdOut})
       if input.len != 0:
         p.inputStream.write(input)
         p.inputStream.close()

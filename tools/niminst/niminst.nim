@@ -126,13 +126,13 @@ proc skipRoot(f: string): string =
     inc i
   if result.len == 0: result = f
 
-include "inno.tmpl"
-include "nsis.tmpl"
-include "buildsh.tmpl"
-include "makefile.tmpl"
-include "buildbat.tmpl"
-include "install.tmpl"
-include "deinstall.tmpl"
+include "inno.nimf"
+include "nsis.nimf"
+include "buildsh.nimf"
+include "makefile.nimf"
+include "buildbat.nimf"
+include "install.nimf"
+include "deinstall.nimf"
 
 # ------------------------- configuration file -------------------------------
 
@@ -185,7 +185,7 @@ proc parseCmdLine(c: var ConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimArgs = cmdLineRest(p).string
         break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key.string)
       of "help", "h":
         stdout.write(Usage)
@@ -483,7 +483,8 @@ proc deduplicateFiles(c: var ConfigData) =
   let build = getOutputDir(c)
   for osA in countup(1, c.oses.len):
     for cpuA in countup(1, c.cpus.len):
-      if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
+      when not defined(nimNoNilSeqs):
+        if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       for dup in mitems(c.cfiles[osA][cpuA]):
         let key = $secureHashFile(build / dup)
@@ -683,7 +684,7 @@ RunProgram="tools\downloader.exe"
           if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
             echo("External program failed (7z)")
       else:
-        if execShellCmd("gtar cf $1.tar $1 --exclude=.DS_Store" %
+        if execShellCmd("gtar cf $1.tar --exclude=.DS_Store $1" %
                         proj) != 0:
           # try old 'tar' without --exclude feature:
           if execShellCmd("tar cf $1.tar $1" % proj) != 0:
