@@ -4930,7 +4930,7 @@ However, this means that the method call syntax is not available for
 
 
 **Note**: The Nim compiler prior to version 1 was more lenient about this
-requirement. Use the ``--version:0.19`` switch for a transition period.
+requirement. Use the ``--useVersion:0.19`` switch for a transition period.
 
 
 
