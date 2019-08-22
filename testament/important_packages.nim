@@ -7,7 +7,7 @@ var packages*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
 
 pkg "argparse"
 pkg "arraymancer", "nim c -r src/arraymancer.nim", true
-pkg "ast_pattern_matching", "nim c -r tests/test1.nim"
+pkg "ast_pattern_matching", "nim c -r --setversion=0.19 tests/test1.nim"
 pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "blscurve", "", true
 pkg "bncurve", "", true
@@ -61,7 +61,7 @@ pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
 pkg "parsetoml"
 pkg "patty"
-pkg "plotly", "nim c examples/all.nim", true
+pkg "plotly", "nim c --setversion:0.19 examples/all.nim", true
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
 pkg "regex", "nim c src/regex", true
 pkg "result", "nim c -r result.nim"
@@ -71,7 +71,7 @@ pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "snip", "", false, "https://github.com/genotrance/snip"
 pkg "stint", "nim c -o:stintt -r stint.nim"
 pkg "strunicode", "nim c -r src/strunicode.nim", true
-pkg "telebot", "nim c -o:tbot -r telebot.nim", true
+pkg "telebot", "nim c -o:tbot --setversion:0.19 -r telebot.nim", true
 pkg "tiny_sqlite"
 pkg "unicodedb"
 pkg "unicodeplus", "", true
