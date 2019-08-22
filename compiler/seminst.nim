@@ -319,6 +319,42 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   prc.typ = result
   popInfoContext(c.config)
 
+proc generateInstanceEnableIf*(c: PContext, fn: PSym, pt: TIdTable, info: TLineInfo, nCond: PNode): PNode {.exportc.} =
+  let nCond = nCond.copyTree # needed, otherwise subsequent instantiations will
+    # use stale data
+  let n = fn.ast
+  let oldScope = c.currentScope
+  when false:
+    # this would be incorrect, eg when enableIf expression uses a proc in local scope
+    while not isTopLevel(c): c.currentScope = c.currentScope.parent
+  let resultFun = copySym(fn)
+  resultFun.owner = fn
+  resultFun.ast = n
+  pushOwner(c, resultFun)
+  openScope(c)
+  pushInfoContext(c.config, info, fn.detailedInfo)
+  let gp = n.sons[genericParamsPos]
+  if gp.kind != nkEmpty:
+    incl(resultFun.flags, sfFromGeneric)
+    for s in instantiateGenericParamList(c, gp, pt):
+      addDecl(c, s)
+  rawPushProcCon(c, resultFun)
+  instantiateProcType(c, pt, resultFun, info)
+  # adapted from `instantiateBody`
+  if n.sons[bodyPos].kind != nkEmpty:
+    let procParams = resultFun.typ.n
+    for i in 1 ..< procParams.len:
+      addDecl(c, procParams[i].sym)
+    # TODO: would be nice to allow `type(result)` where it makes sense
+    # right now gives: maybeAddResult(c, resultFun, resultFun.ast) # gives: getTypeDescAux(tyProxy) or expr: var not init result_427115
+
+  result = c.semConstExpr(c, nCond)
+  popProcCon(c)
+  popInfoContext(c.config)
+  closeScope(c)
+  popOwner(c)
+  c.currentScope = oldScope
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.

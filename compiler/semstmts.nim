@@ -1400,14 +1400,19 @@ proc copyExcept(n: PNode, i: int): PNode =
     if j != i: result.add(n[j])
 
 proc semProcAnnotation(c: PContext, prc: PNode;
-                       validPragmas: TSpecialWords): PNode =
+                       validPragmas: TSpecialWords, enableIf: var PNode): PNode =
   var n = prc[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
   for i in 0..<n.len:
     var it = n[i]
     var key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
 
-    if whichPragma(it) != wInvalid:
+    let wc = whichPragma(it)
+    if wc == wEnableIf:
+      # this would not be needed if `pragma(..)` were called before `searchForProc`
+      enableIf = semEnableIfPragma(c, it)
+      continue
+    elif wc != wInvalid:
       # Not a custom pragma
       continue
     elif strTableGet(c.userPragmas, considerQuotedIdent(c, key)) != nil:
@@ -1474,7 +1479,8 @@ proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # XXX semProcAux should be good enough for this now, we will eventually
   # remove semLambda
-  result = semProcAnnotation(c, n, lambdaPragmas)
+  var enableIf: PNode
+  result = semProcAnnotation(c, n, lambdaPragmas, enableIf)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1, c.config)
@@ -1781,7 +1787,8 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
                 phase = stepRegisterSymbol): PNode =
-  result = semProcAnnotation(c, n, validPragmas)
+  var enableIf: PNode
+  result = semProcAnnotation(c, n, validPragmas, enableIf)
   if result != nil: return result
   result = n
   checkSonsLen(n, bodyPos + 1, c.config)
@@ -1846,6 +1853,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif s.kind == skFunc:
     incl(s.flags, sfNoSideEffect)
     incl(s.typ.flags, tfNoSideEffect)
+
+  s.enableIf = enableIf
   var proto: PSym = if isAnon: nil
                     else: searchForProc(c, oldScope, s)
   if proto == nil:

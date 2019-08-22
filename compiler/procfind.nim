@@ -68,16 +68,27 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
   result = initIdentIter(it, scope.symbols, fn.name)
   while result != nil:
     if result.kind == fn.kind: #and sameType(result.typ, fn.typ, flags):
-      case equalParams(result.typ.n, fn.typ.n)
+      var status = equalParams(result.typ.n, fn.typ.n)
+      template msgAux(): untyped = [getProcHeader(c.config, result, getDeclarationPath = false), c.config$result.info]
+      template msgAux2(): untyped = [c.config$result.info]
+      if status in {paramsEqual,paramsIncompatible}:
+        if exprStructuralEquivalent(result.enableIf, fn.enableIf):
+          discard
+        elif result.enableIf == nil or fn.enableIf == nil:
+          localError(c.config, fn.info, "enableIf constraint required for each overload with matching types, see overload '$1' " %  msgAux2())
+        else:
+          # different (non-nil) enableIf constraints is ok
+          status = paramsNotEqual
+
+      case status
       of paramsEqual:
         if (sfExported notin result.flags) and (sfExported in fn.flags):
           let message = ("public implementation '$1' has non-public " &
-                         "forward declaration at $2") %
-                        [getProcHeader(c.config, result, getDeclarationPath = false), c.config$result.info]
+                         "forward declaration at $2") %  msgAux()
           localError(c.config, fn.info, message)
         return
       of paramsIncompatible:
-        localError(c.config, fn.info, "overloaded '$1' leads to ambiguous calls" % fn.name.s)
+        localError(c.config, fn.info, "overload '$1' with incompatible types leads to ambiguous calls" % msgAux2())
         return
       of paramsNotEqual:
         discard

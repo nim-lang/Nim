@@ -190,39 +190,44 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     else:
       candidates.add(getProcHeader(c.config, err.sym, prefer))
     candidates.add("\n")
-    let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
-    let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
-    if n.len > 1:
-      candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
-      # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
-      case err.firstMismatch.kind
-      of kUnknownNamedParam: candidates.add("\n  unknown named parameter: " & $nArg[0])
-      of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
-      of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
-      of kExtraArg: candidates.add("\n  extra argument given")
-      of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
-      of kTypeMismatch, kVarNeeded:
-        doAssert nArg != nil
-        var wanted = err.firstMismatch.formal.typ
-        doAssert err.firstMismatch.formal != nil
-        candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.add typeToString(wanted)
-        candidates.add "\n  but expression '"
-        if err.firstMismatch.kind == kVarNeeded:
-          candidates.add renderNotLValue(nArg)
-          candidates.add "' is immutable, not 'var'"
-        else:
-          candidates.add renderTree(nArg)
-          candidates.add "' is of type: "
-          var got = nArg.typ
-          candidates.add typeToString(got)
-          doAssert wanted != nil
-          if got != nil: effectProblem(wanted, got, candidates)
-      of kUnknown: discard "do not break 'nim check'"
-      candidates.add "\n"
-      if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
-          n.kind == nkCommand:
-        maybeWrongSpace = true
+    if err.firstMismatch.kind == kEnableIfFail:
+      let nCond = getEnableIfExpr(err.sym)
+      candidates.add("  enableIf condition failed: " & quoteExpr(renderTree(nCond)) & "\n")
+    else:
+      let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
+      let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
+      if n.len > 1:
+        candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
+        # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
+        case err.firstMismatch.kind
+        of kEnableIfFail: assert(false) # handled above
+        of kUnknownNamedParam: candidates.add("\n  unknown named parameter: " & $nArg[0])
+        of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
+        of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
+        of kExtraArg: candidates.add("\n  extra argument given")
+        of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
+        of kTypeMismatch, kVarNeeded:
+          doAssert nArg != nil
+          var wanted = err.firstMismatch.formal.typ
+          doAssert err.firstMismatch.formal != nil
+          candidates.add("\n  required type for " & nameParam &  ": ")
+          candidates.add typeToString(wanted)
+          candidates.add "\n  but expression '"
+          if err.firstMismatch.kind == kVarNeeded:
+            candidates.add renderNotLValue(nArg)
+            candidates.add "' is immutable, not 'var'"
+          else:
+            candidates.add renderTree(nArg)
+            candidates.add "' is of type: "
+            var got = nArg.typ
+            candidates.add typeToString(got)
+            doAssert wanted != nil
+            if got != nil: effectProblem(wanted, got, candidates)
+        of kUnknown: discard "do not break 'nim check'"
+        candidates.add "\n"
+        if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
+            n.kind == nkCommand:
+          maybeWrongSpace = true
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
   if skipped > 0:

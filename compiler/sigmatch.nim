@@ -18,7 +18,7 @@ import
 type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
-    kMissingParam, kExtraArg, kPositionalAlreadyGiven
+    kMissingParam, kExtraArg, kPositionalAlreadyGiven, kEnableIfFail
 
   MismatchInfo* = object
     kind*: MismatchKind # reason for mismatch
@@ -2292,6 +2292,21 @@ proc incrIndexType(t: PType) =
 template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x[0].kind == tyUntyped
 
+proc getEnableIfExpr*(sym: PSym): PNode {.inline.} =
+  if sym != nil: result = sym.enableIf
+
+proc semEnableIf(c: PContext, m: var TCandidate, n, nOrig: PNode): bool =
+  let nCond = getEnableIfExpr(m.calleeSym)
+  if nCond == nil: return true
+  proc generateInstanceEnableIf(c: PContext, fn: PSym, pt: TIdTable, info: TLineInfo, nCond: PNode): PNode {.importc.}
+  let ok = generateInstanceEnableIf(c, fn = m.calleeSym, pt = m.bindings, info = n.info, nCond)
+  if ok.typ.kind != tyBool:
+    localError(c.config, nCond.info, "enableIf expression must resolve to bool, got " & typeToString(ok.typ))
+  case ok.intVal
+  of 0: return false
+  of 1: return true
+  else: (assert(false, $ok.intVal); return false)
+
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =
   var
@@ -2561,6 +2576,12 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
             put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
+
+  if not semEnableIf(c, m, n, nOrig):
+    m.firstMismatch.kind = kEnableIfFail
+    m.state = csNoMatch
+    return
+
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
     for t in m.inferredTypes:
