@@ -1236,6 +1236,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     result = newSymNode(s, n.info)
   else:
     let info = getCallLineInfo(n)
+    #if efInCall notin flags:
     markUsed(c, info, s)
     onUse(info, s)
     result = newSymNode(s, info)
