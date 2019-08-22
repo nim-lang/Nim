@@ -788,6 +788,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandmacro":
     expectArg(conf, switch, arg, pass, info)
     conf.macrosToExpand[arg] = "T"
+  of "setversion":
+    expectArg(conf, switch, arg, pass, info)
+    case arg
+    of "0.19":
+      conf.globalOptions.incl optNimV019
+    of "1.0":
+      discard "the default"
+    else:
+      localError(conf, info, "unknown Nim --version; currently supported values are: {0.19, 1.0}")
   of "":
     conf.projectName = "-"
   else:

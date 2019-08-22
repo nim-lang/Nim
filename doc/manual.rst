@@ -4893,7 +4893,25 @@ no semantics outside of a template definition and cannot be abstracted over:
 To get rid of hygiene in templates, one can use the `dirty`:idx: pragma for
 a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 
-``gensym``'ed symbols cannot be used
+``gensym``'ed symbols cannot be used as fields in the ``x.field`` syntax.
+The reason for this is that code like
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  type
+    T = object
+      f: int
+
+  template tmp(x: T) =
+    let f = 34
+    echo x.f
+
+
+should work as expected.
+
+**Note**: The Nim compiler prior to version 1 was more lenient about this
+requirement. Use the ``--version:0.19`` switch for a transition period.
 
 
 
