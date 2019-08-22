@@ -372,7 +372,7 @@ when isMainModule:
   doAssert((a+b) == z)
   doAssert((a+b) =~ 0.0)
   doAssert((a/b) == m1)
-  doAssert((1.0/a) == complex(0.2, -0.4))
+  doAssert((1.0/a) =~ complex(0.2, -0.4))
   doAssert((a*b) == complex(3.0, -4.0))
   doAssert(10.0*a == tt)
   doAssert(a*10.0 == tt)
