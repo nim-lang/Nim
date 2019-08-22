@@ -966,8 +966,7 @@ when false:
     else: discard
 
 template isVarargsUntyped(x): untyped =
-  x.kind == tyVarargs and x.sons[0].kind == tyExpr and
-    tfOldSchoolExprStmt notin x.sons[0].flags
+  x.kind == tyVarargs and x.sons[0].kind == tyUntyped
 
 template skipOwned(a) =
   if a.kind == tyOwned: a = a.skipTypes({tyOwned, tyGenericInst})
