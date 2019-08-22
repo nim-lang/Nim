@@ -1,6 +1,6 @@
 discard """
-  file: "strscans.nim"
   errormsg: "type mismatch between pattern '$i' (position: 1) and HourRange var 'hour'"
+  file: "strscans.nim"
 """
 
 import strscans

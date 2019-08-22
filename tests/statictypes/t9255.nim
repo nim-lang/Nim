@@ -8,6 +8,6 @@ type mismatch: got <static[proc (a0: int): string{.noSideEffect, gcsafe, locks: 
 macro fun(a: static float): untyped =
   discard
 
-when isMainModule:
+when true:
   proc bar(a0: int): string = discard
   fun(bar)

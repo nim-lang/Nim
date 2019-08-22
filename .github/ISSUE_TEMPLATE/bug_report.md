@@ -1,37 +1,32 @@
 ---
 name: Bug report
-about: You found an unexpected behaviour? Use this template.
-
+about: Have you found an unexpected behavior? Use this template.
 ---
 
 <!-- Think about the title, twice. -->
 
-<!-- Summarize the Problem here, keep it simple. -->
-<!-- e.g. `echo` outputs the wrong string. -->
+<!-- Summarize the problem here, keep it short and simple. -->
+Function `echo` outputs the wrong string.
 
 
 ### Example
-<!-- This should be a source code block. 
+<!-- Paste your example in the code-block below. -->
 ```nim
 echo "Hello World!"
 ```
--->
 
 
 ### Current Output
-<!--
 ```
 Hola mundo!
 ```
--->
 
 
 ### Expected Output
-<!--
+<!-- What should be the correct output? -->
 ```
 Hello World!
 ```
--->
 
 
 ### Possible Solution
@@ -40,6 +35,12 @@ Hello World!
 
 ### Additional Information
 <!--- For Example:
-   A link to a project where the issue is relevant.
-   A link to a related issue or discussion.
+* Your Nim version (output of `nim -v`).
+* Was it working in the previous Nim releases?
+* A link to a related issue or discussion.
+* A project reference where (and how) the issue causes problems.
 -->
+```
+$ nim -v
+Nim Compiler Version 0.1.2
+```

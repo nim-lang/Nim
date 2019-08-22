@@ -1,9 +1,16 @@
 discard """
   output: '''
+tdistinct
 25
+false
+false
+false
+false
+Foo
 '''
 """
 
+echo "tdistinct"
 
 block tborrowdot:
   type
@@ -17,8 +24,6 @@ block tborrowdot:
   new bb
   bb.a = 90
   bb.s = "abc"
-
-
 
 block tcurrncy:
   template Additive(typ: untyped) =
@@ -53,8 +58,6 @@ block tcurrncy:
   DefineCurrency(TEuro, int)
   echo($( 12.TDollar + 13.TDollar )) #OUT 25
 
-
-
 block tconsts:
   # bug #2641
 
@@ -85,3 +88,21 @@ type
 const d: DistTup = DistTup((
   foo:"FOO", bar:"BAR"
 ))
+
+
+# bug #7167
+
+type Id = distinct range[0..3]
+
+proc `<=`(a, b: Id): bool {.borrow.}
+
+var xs: array[Id, bool]
+
+for x in xs: echo x # type mismatch: got (T) but expected 'bool'
+
+# bug #11715
+
+type FooD = distinct int
+proc `<=`(a, b: FooD): bool {.borrow.}
+
+for f in [FooD(0): "Foo"]: echo f

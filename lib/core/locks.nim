@@ -17,8 +17,6 @@ type
                   ## or not is unspecified!
   Cond* = SysCond ## Nim condition variable
 
-{.deprecated: [TLock: Lock, TCond: Cond].}
-
 {.push stackTrace: off.}
 
 proc initLock*(lock: var Lock) {.inline.} =

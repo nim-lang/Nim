@@ -7,20 +7,26 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``intsets`` module implements an efficient int set implemented as a
+## The ``intsets`` module implements an efficient `int` set implemented as a
 ## `sparse bit set`:idx:.
-## **Note**: Since Nim currently does not allow the assignment operator to
-## be overloaded, ``=`` for int sets performs some rather meaningless shallow
-## copy; use ``assign`` to get a deep copy.
+##
+## **Note**: Currently the assignment operator ``=`` for ``IntSet``
+## performs some rather meaningless shallow copy. Since Nim currently does
+## not allow the assignment operator to be overloaded, use `assign proc
+## <#assign,IntSet,IntSet>`_ to get a deep copy.
+##
+## **See also:**
+## * `sets module <sets.html>`_ for more general hash sets
+
 
 import
-  hashes, math
+  hashes
 
 type
-  BitScalar = int
+  BitScalar = uint
 
 const
-  InitIntSetSize = 8         # must be a power of two!
+  InitIntSetSize = 8              # must be a power of two!
   TrunkShift = 9
   BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and
                                   # divisible by 64
@@ -32,19 +38,17 @@ const
 type
   PTrunk = ref Trunk
   Trunk = object
-    next: PTrunk             # all nodes are connected with this pointer
-    key: int                 # start address at bit 0
+    next: PTrunk                                # all nodes are connected with this pointer
+    key: int                                    # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
   TrunkSeq = seq[PTrunk]
-  IntSet* = object ## an efficient set of 'int' implemented as a sparse bit set
-    elems: int # only valid for small numbers
+  IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
+    elems: int           # only valid for small numbers
     counter, max: int
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
-
-{.deprecated: [TIntSet: IntSet, TTrunk: Trunk, TTrunkSeq: TrunkSeq].}
 
 proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
@@ -95,21 +99,36 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.head = result
   t.data[h] = result
 
-proc contains*(s: IntSet, key: int): bool =
-  ## returns true iff `key` is in `s`.
+proc bitincl(s: var IntSet, key: int) {.inline.} =
+  var t = intSetPut(s, `shr`(key, TrunkShift))
+  var u = key and TrunkMask
+  t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+      (BitScalar(1) shl (u and IntMask))
+
+proc exclImpl(s: var IntSet, key: int) =
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
-      if s.a[i] == key: return true
+      if s.a[i] == key:
+        s.a[i] = s.a[s.elems-1]
+        dec s.elems
+        return
   else:
-    var t = intSetGet(s, `shr`(key, TrunkShift))
+    var t = intSetGet(s, key shr TrunkShift)
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
-    else:
-      result = false
+      t.bits[u shr IntShift] = t.bits[u shr IntShift] and
+          not(BitScalar(1) shl (u and IntMask))
+
+template dollarImpl(): untyped =
+  result = "{"
+  for key in items(s):
+    if result.len > 1: result.add(", ")
+    result.add($key)
+  result.add("}")
+
 
 iterator items*(s: IntSet): int {.inline.} =
-  ## iterates over any included element of `s`.
+  ## Iterates over any included element of `s`.
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       yield s.a[i]
@@ -118,26 +137,75 @@ iterator items*(s: IntSet): int {.inline.} =
     while r != nil:
       var i = 0
       while i <= high(r.bits):
-        var w = r.bits[i]
+        var w: uint = r.bits[i]
         # taking a copy of r.bits[i] here is correct, because
         # modifying operations are not allowed during traversation
         var j = 0
-        while w != 0:         # test all remaining bits for zero
-          if (w and 1) != 0:  # the bit is set!
+        while w != 0: # test all remaining bits for zero
+          if (w and 1) != 0: # the bit is set!
             yield (r.key shl TrunkShift) or (i shl IntShift +% j)
           inc(j)
           w = w shr 1
         inc(i)
       r = r.next
 
-proc bitincl(s: var IntSet, key: int) {.inline.} =
-  var t = intSetPut(s, `shr`(key, TrunkShift))
-  var u = key and TrunkMask
-  t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-      `shl`(1, u and IntMask)
+
+proc initIntSet*: IntSet =
+  ## Returns an empty IntSet.
+  runnableExamples:
+    var a = initIntSet()
+    assert len(a) == 0
+
+  # newSeq(result.data, InitIntSetSize)
+  # result.max = InitIntSetSize-1
+  result = IntSet(
+    elems: 0,
+    counter: 0,
+    max: 0,
+    head: nil,
+    data: when defined(nimNoNilSeqs): @[] else: nil)
+  #  a: array[0..33, int] # profiling shows that 34 elements are enough
+
+proc contains*(s: IntSet, key: int): bool =
+  ## Returns true if `key` is in `s`.
+  ##
+  ## This allows the usage of `in` operator.
+  runnableExamples:
+    var a = initIntSet()
+    for x in [1, 3, 5]:
+      a.incl(x)
+    assert a.contains(3)
+    assert 3 in a
+    assert(not a.contains(8))
+    assert 8 notin a
+
+  if s.elems <= s.a.len:
+    for i in 0..<s.elems:
+      if s.a[i] == key: return true
+  else:
+    var t = intSetGet(s, `shr`(key, TrunkShift))
+    if t != nil:
+      var u = key and TrunkMask
+      result = (t.bits[u shr IntShift] and
+                (BitScalar(1) shl (u and IntMask))) != 0
+    else:
+      result = false
 
 proc incl*(s: var IntSet, key: int) =
-  ## includes an element `key` in `s`.
+  ## Includes an element `key` in `s`.
+  ##
+  ## This doesn't do anything if `key` is already in `s`.
+  ##
+  ## See also:
+  ## * `excl proc <#excl,IntSet,int>`_ for excluding an element
+  ## * `incl proc <#incl,IntSet,IntSet>`_ for including other set
+  ## * `containsOrIncl proc <#containsOrIncl,IntSet,int>`_
+  runnableExamples:
+    var a = initIntSet()
+    a.incl(3)
+    a.incl(3)
+    assert len(a) == 1
+
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key: return
@@ -155,40 +223,42 @@ proc incl*(s: var IntSet, key: int) =
 
 proc incl*(s: var IntSet, other: IntSet) =
   ## Includes all elements from `other` into `s`.
+  ##
+  ## This is the in-place version of `s + other <#+,IntSet,IntSet>`_.
+  ##
+  ## See also:
+  ## * `excl proc <#excl,IntSet,IntSet>`_ for excluding other set
+  ## * `incl proc <#incl,IntSet,int>`_ for including an element
+  ## * `containsOrIncl proc <#containsOrIncl,IntSet,int>`_
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1)
+    b.incl(5)
+    a.incl(b)
+    assert len(a) == 2
+    assert 5 in a
+
   for item in other: incl(s, item)
 
-proc exclImpl(s: var IntSet, key: int) =
-  if s.elems <= s.a.len:
-    for i in 0..<s.elems:
-      if s.a[i] == key:
-        s.a[i] = s.a[s.elems-1]
-        dec s.elems
-        return
-  else:
-    var t = intSetGet(s, `shr`(key, TrunkShift))
-    if t != nil:
-      var u = key and TrunkMask
-      t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
-          not `shl`(1, u and IntMask)
-
-proc excl*(s: var IntSet, key: int) =
-  ## excludes `key` from the set `s`.
-  exclImpl(s, key)
-
-proc excl*(s: var IntSet, other: IntSet) =
-  ## Excludes all elements from `other` from `s`.
-  for item in other: excl(s, item)
-
-proc missingOrExcl*(s: var IntSet, key: int) : bool =
-  ## returns true if `s` does not contain `key`, otherwise
-  ## `key` is removed from `s` and false is returned.
-  var count = s.elems
-  exclImpl(s, key)
-  result = count == s.elems
-
 proc containsOrIncl*(s: var IntSet, key: int): bool =
-  ## returns true if `s` contains `key`, otherwise `key` is included in `s`
-  ## and false is returned.
+  ## Includes `key` in the set `s` and tells if `key` was already in `s`.
+  ##
+  ## The difference with regards to the `incl proc <#incl,IntSet,int>`_ is
+  ## that this proc returns `true` if `s` already contained `key`. The
+  ## proc will return `false` if `key` was added as a new value to `s` during
+  ## this call.
+  ##
+  ## See also:
+  ## * `incl proc <#incl,IntSet,int>`_ for including an element
+  ## * `missingOrExcl proc <#missingOrExcl,IntSet,int>`_
+  runnableExamples:
+    var a = initIntSet()
+    assert a.containsOrIncl(3) == false
+    assert a.containsOrIncl(3) == true
+    assert a.containsOrIncl(4) == false
+
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key:
@@ -199,32 +269,88 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
+      result = (t.bits[u shr IntShift] and BitScalar(1) shl (u and IntMask)) != 0
       if not result:
-        t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-            `shl`(1, u and IntMask)
+        t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+            (BitScalar(1) shl (u and IntMask))
     else:
       incl(s, key)
       result = false
 
-proc initIntSet*: IntSet =
-  ## creates a new int set that is empty.
+proc excl*(s: var IntSet, key: int) =
+  ## Excludes `key` from the set `s`.
+  ##
+  ## This doesn't do anything if `key` is not found in `s`.
+  ##
+  ## See also:
+  ## * `incl proc <#incl,IntSet,int>`_ for including an element
+  ## * `excl proc <#excl,IntSet,IntSet>`_ for excluding other set
+  ## * `missingOrExcl proc <#missingOrExcl,IntSet,int>`_
+  runnableExamples:
+    var a = initIntSet()
+    a.incl(3)
+    a.excl(3)
+    a.excl(3)
+    a.excl(99)
+    assert len(a) == 0
+  exclImpl(s, key)
 
-  #newSeq(result.data, InitIntSetSize)
-  #result.max = InitIntSetSize-1
-  when defined(nimNoNilSeqs):
-    result.data = @[]
-  else:
-    result.data = nil
-  result.max = 0
-  result.counter = 0
-  result.head = nil
-  result.elems = 0
+proc excl*(s: var IntSet, other: IntSet) =
+  ## Excludes all elements from `other` from `s`.
+  ##
+  ## This is the in-place version of `s - other <#-,IntSet,IntSet>`_.
+  ##
+  ## See also:
+  ## * `incl proc <#incl,IntSet,IntSet>`_ for including other set
+  ## * `excl proc <#excl,IntSet,int>`_ for excluding an element
+  ## * `missingOrExcl proc <#missingOrExcl,IntSet,int>`_
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1)
+    a.incl(5)
+    b.incl(5)
+    a.excl(b)
+    assert len(a) == 1
+    assert 5 notin a
+
+  for item in other: excl(s, item)
+
+proc missingOrExcl*(s: var IntSet, key: int): bool =
+  ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
+  ##
+  ## The difference with regards to the `excl proc <#excl,IntSet,int>`_ is
+  ## that this proc returns `true` if `key` was missing from `s`.
+  ## The proc will return `false` if `key` was in `s` and it was removed
+  ## during this call.
+  ##
+  ## See also:
+  ## * `excl proc <#excl,IntSet,int>`_ for excluding an element
+  ## * `excl proc <#excl,IntSet,IntSet>`_ for excluding other set
+  ## * `containsOrIncl proc <#containsOrIncl,IntSet,int>`_
+  runnableExamples:
+    var a = initIntSet()
+    a.incl(5)
+    assert a.missingOrExcl(5) == false
+    assert a.missingOrExcl(5) == true
+
+  var count = s.elems
+  exclImpl(s, key)
+  result = count == s.elems
 
 proc clear*(result: var IntSet) =
-  #setLen(result.data, InitIntSetSize)
-  #for i in 0..InitIntSetSize-1: result.data[i] = nil
-  #result.max = InitIntSetSize-1
+  ## Clears the IntSet back to an empty state.
+  runnableExamples:
+    var a = initIntSet()
+    a.incl(5)
+    a.incl(7)
+    clear(a)
+    assert len(a) == 0
+
+  # setLen(result.data, InitIntSetSize)
+  # for i in 0..InitIntSetSize-1: result.data[i] = nil
+  # result.max = InitIntSetSize-1
   when defined(nimNoNilSeqs):
     result.data = @[]
   else:
@@ -237,8 +363,17 @@ proc clear*(result: var IntSet) =
 proc isNil*(x: IntSet): bool {.inline.} = x.head.isNil and x.elems == 0
 
 proc assign*(dest: var IntSet, src: IntSet) =
-  ## copies `src` to `dest`. `dest` does not need to be initialized by
-  ## `initIntSet`.
+  ## Copies `src` to `dest`.
+  ## `dest` does not need to be initialized by `initIntSet proc <#initIntSet>`_.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    b.incl(5)
+    b.incl(7)
+    a.assign(b)
+    assert len(a) == 2
+
   if src.elems <= src.a.len:
     when defined(nimNoNilSeqs):
       dest.data = @[]
@@ -270,11 +405,33 @@ proc assign*(dest: var IntSet, src: IntSet) =
 
 proc union*(s1, s2: IntSet): IntSet =
   ## Returns the union of the sets `s1` and `s2`.
+  ##
+  ## The same as `s1 + s2 <#+,IntSet,IntSet>`_.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1); a.incl(2); a.incl(3)
+    b.incl(3); b.incl(4); b.incl(5)
+    assert union(a, b).len == 5
+    ## {1, 2, 3, 4, 5}
+
   result.assign(s1)
   incl(result, s2)
 
 proc intersection*(s1, s2: IntSet): IntSet =
   ## Returns the intersection of the sets `s1` and `s2`.
+  ##
+  ## The same as `s1 * s2 <#*,IntSet,IntSet>`_.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1); a.incl(2); a.incl(3)
+    b.incl(3); b.incl(4); b.incl(5)
+    assert intersection(a, b).len == 1
+    ## {3}
+
   result = initIntSet()
   for item in s1:
     if contains(s2, item):
@@ -282,6 +439,17 @@ proc intersection*(s1, s2: IntSet): IntSet =
 
 proc difference*(s1, s2: IntSet): IntSet =
   ## Returns the difference of the sets `s1` and `s2`.
+  ##
+  ## The same as `s1 - s2 <#-,IntSet,IntSet>`_.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1); a.incl(2); a.incl(3)
+    b.incl(3); b.incl(4); b.incl(5)
+    assert difference(a, b).len == 2
+    ## {1, 2}
+
   result = initIntSet()
   for item in s1:
     if not contains(s2, item):
@@ -289,31 +457,50 @@ proc difference*(s1, s2: IntSet): IntSet =
 
 proc symmetricDifference*(s1, s2: IntSet): IntSet =
   ## Returns the symmetric difference of the sets `s1` and `s2`.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1); a.incl(2); a.incl(3)
+    b.incl(3); b.incl(4); b.incl(5)
+    assert symmetricDifference(a, b).len == 4
+    ## {1, 2, 4, 5}
+
   result.assign(s1)
   for item in s2:
     if containsOrIncl(result, item): excl(result, item)
 
 proc `+`*(s1, s2: IntSet): IntSet {.inline.} =
-  ## Alias for `union(s1, s2) <#union>`_.
+  ## Alias for `union(s1, s2) <#union,IntSet,IntSet>`_.
   result = union(s1, s2)
 
 proc `*`*(s1, s2: IntSet): IntSet {.inline.} =
-  ## Alias for `intersection(s1, s2) <#intersection>`_.
+  ## Alias for `intersection(s1, s2) <#intersection,IntSet,IntSet>`_.
   result = intersection(s1, s2)
 
 proc `-`*(s1, s2: IntSet): IntSet {.inline.} =
-  ## Alias for `difference(s1, s2) <#difference>`_.
+  ## Alias for `difference(s1, s2) <#difference,IntSet,IntSet>`_.
   result = difference(s1, s2)
 
 proc disjoint*(s1, s2: IntSet): bool =
-  ## Returns true iff the sets `s1` and `s2` have no items in common.
+  ## Returns true if the sets `s1` and `s2` have no items in common.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1); a.incl(2)
+    b.incl(2); b.incl(3)
+    assert disjoint(a, b) == false
+    b.excl(2)
+    assert disjoint(a, b) == true
+
   for item in s1:
     if contains(s2, item):
       return false
   return true
 
 proc len*(s: IntSet): int {.inline.} =
-  ## Returns the number of keys in `s`.
+  ## Returns the number of elements in `s`.
   if s.elems < s.a.len:
     result = s.elems
   else:
@@ -322,40 +509,58 @@ proc len*(s: IntSet): int {.inline.} =
       inc(result)
 
 proc card*(s: IntSet): int {.inline.} =
-  ## alias for `len() <#len>` _.
+  ## Alias for `len() <#len,IntSet>`_.
   result = s.len()
 
 proc `<=`*(s1, s2: IntSet): bool =
-  ## Returns true iff `s1` is subset of `s2`.
+  ## Returns true if `s1` is subset of `s2`.
+  ##
+  ## A subset `s1` has all of its elements in `s2`, and `s2` doesn't necessarily
+  ## have more elements than `s1`. That is, `s1` can be equal to `s2`.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1)
+    b.incl(1); b.incl(2)
+    assert a <= b
+    a.incl(2)
+    assert a <= b
+    a.incl(3)
+    assert(not (a <= b))
+
   for item in s1:
     if not s2.contains(item):
       return false
   return true
 
 proc `<`*(s1, s2: IntSet): bool =
-  ## Returns true iff `s1` is proper subset of `s2`.
+  ## Returns true if `s1` is proper subset of `s2`.
+  ##
+  ## A strict or proper subset `s1` has all of its elements in `s2`, but `s2` has
+  ## more elements than `s1`.
+  runnableExamples:
+    var
+      a = initIntSet()
+      b = initIntSet()
+    a.incl(1)
+    b.incl(1); b.incl(2)
+    assert a < b
+    a.incl(2)
+    assert(not (a < b))
   return s1 <= s2 and not (s2 <= s1)
 
 proc `==`*(s1, s2: IntSet): bool =
-  ## Returns true if both `s` and `t` have the same members and set size.
+  ## Returns true if both `s1` and `s2` have the same elements and set size.
   return s1 <= s2 and s2 <= s1
-
-template dollarImpl(): untyped =
-  result = "{"
-  for key in items(s):
-    if result.len > 1: result.add(", ")
-    result.add($key)
-  result.add("}")
 
 proc `$`*(s: IntSet): string =
   ## The `$` operator for int sets.
+  ##
+  ## Converts the set `s` to a string, mostly for logging and printing purposes.
   dollarImpl()
 
-proc empty*(s: IntSet): bool {.inline, deprecated.} =
-  ## returns true if `s` is empty. This is safe to call even before
-  ## the set has been initialized with `initIntSet`. Note this never
-  ## worked reliably and so is deprecated.
-  result = s.counter == 0
+
 
 when isMainModule:
   import sequtils, algorithm

@@ -1,8 +1,9 @@
 discard """
   exitcode: 0
-  output: '''3
-2
+  output: '''
 1
+2
+3
 5
 '''
 """

@@ -33,18 +33,20 @@ type
     warnFieldXNotSupported, warnCommentXIgnored,
     warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
-    warnEachIdentIsTuple, warnShadowIdent,
+    warnUnusedImportX,
+    warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnUser,
+    warnInconsistentSpacing, warnCaseTransition, warnUser,
     hintSuccess, hintSuccessX, hintCC,
-    hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
+    hintLineTooLong, hintXDeclaredButNotUsed,
+    hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
-    hintConditionAlwaysTrue, hintName, hintPattern,
+    hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
-    hintGlobalVar,
+    hintGlobalVar, hintExpandMacro,
     hintUser, hintUserRaw,
     hintExtendedContext
 
@@ -65,7 +67,7 @@ const
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
     warnXIsNeverRead: "'$1' is never read",
     warnXmightNotBeenInit: "'$1' might not have been initialized",
-    warnDeprecated: "$1 is deprecated",
+    warnDeprecated: "$1",
     warnConfigDeprecated: "config file '$1' is deprecated",
     warnSmallLshouldNotBeUsed: "'l' should not be used as an identifier; may look like '1' (one)",
     warnUnknownMagic: "unknown magic '$1' might crash the compiler",
@@ -78,8 +80,8 @@ const
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
+    warnUnusedImportX: "imported and not used: '$1'",
     warnEachIdentIsTuple: "each identifier is a tuple",
-    warnShadowIdent: "shadowed identifier: '$1'",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
@@ -91,6 +93,7 @@ const
     warnLockLevel: "$1",
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
+    warnCaseTransition: "Potential object case transition, instantiate new object instead",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
@@ -107,7 +110,8 @@ const
     hintConf: "used config file '$1'",
     hintPath: "added path: '$1'",
     hintConditionAlwaysTrue: "condition is always true: '$1'",
-    hintName: "name should be: '$1'",
+    hintConditionAlwaysFalse: "condition is always false: '$1'",
+    hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
     hintLinking: "",
@@ -117,6 +121,7 @@ const
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
+    hintExpandMacro: "expanded macro: $1",
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
@@ -131,17 +136,18 @@ const
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
+    "UnsafeCode", "UnusedImport", "EachIdentIsTuple",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "User"]
+    "Spacing", "CaseTransition", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",
-    "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
+    "XDeclaredButNotUsed",
+    "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
+    "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
+    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
     "User", "UserRaw", "ExtendedContext",
   ]
 
@@ -166,11 +172,11 @@ type
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
-  result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
+  result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
-    hintProcessing, hintPattern, hintExecuting, hintLinking}
+    hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const
   NotesVerbosity* = computeNotesVerbosity()
@@ -191,7 +197,7 @@ type
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
-    dirtyfile*: AbsoluteFile   # the file that is actually read into memory
+    dirtyFile*: AbsoluteFile   # the file that is actually read into memory
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
@@ -223,23 +229,25 @@ type
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 
-proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
+proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)
 
 const
-  InvalidFileIDX* = FileIndex(-1)
+  InvalidFileIdx* = FileIndex(-1)
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = uint16(0)
   result.col = int16(-1)
-  result.fileIndex = InvalidFileIDX
+  result.fileIndex = InvalidFileIdx
 
 type
   Severity* {.pure.} = enum ## VS Code only supports these three
     Hint, Warning, Error
 
-const trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
-                                   # are produced within comments and string literals
+const
+  trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
+                                          # are produced within comments and string literals
+  commandLineIdx* = FileIndex(-3)
 
 type
   MsgConfig* = object ## does not need to be stored in the incremental cache

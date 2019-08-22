@@ -217,7 +217,7 @@ proc lobbyUpdate*(dt: float) =
   gui.update(dt)
   i = (i + 1) mod 60
   if i == 0:
-    fpsText.setString("FPS: "& ff(1.0/dt))
+    fpsText.setString("FPS: " & ff(1.0/dt))
 
 proc lobbyDraw*(window: PRenderWindow) =
   window.clear(Black)

@@ -10,7 +10,7 @@
 # This module declares some helpers for the C code generator.
 
 import
-  ast, astalgo, ropes, hashes, strutils, types, msgs, wordrecg,
+  ast, hashes, strutils, msgs, wordrecg,
   platform, trees, options
 
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
@@ -28,29 +28,29 @@ proc stmtsContainPragma*(n: PNode, w: TSpecialWord): bool =
   result = getPragmaStmt(n, w) != nil
 
 proc hashString*(conf: ConfigRef; s: string): BiggestInt =
-  # has to be the same algorithm as system.hashString!
+  # has to be the same algorithm as strmantle.hashString!
   if CPU[conf.target.targetCPU].bit == 64:
     # we have to use the same bitwidth
     # as the target CPU
-    var b = 0'i64
-    for i in countup(0, len(s) - 1):
-      b = b +% ord(s[i])
-      b = b +% `shl`(b, 10)
-      b = b xor `shr`(b, 6)
-    b = b +% `shl`(b, 3)
-    b = b xor `shr`(b, 11)
-    b = b +% `shl`(b, 15)
-    result = b
+    var b = 0'u64
+    for i in 0 ..< len(s):
+      b = b + uint(s[i])
+      b = b + (b shl 10)
+      b = b xor (b shr 6)
+    b = b + (b shl 3)
+    b = b xor (b shr 11)
+    b = b + (b shl 15)
+    result = cast[Hash](b)
   else:
-    var a = 0'i32
-    for i in countup(0, len(s) - 1):
-      a = a +% ord(s[i]).int32
-      a = a +% `shl`(a, 10'i32)
-      a = a xor `shr`(a, 6'i32)
-    a = a +% `shl`(a, 3'i32)
-    a = a xor `shr`(a, 11'i32)
-    a = a +% `shl`(a, 15'i32)
-    result = a
+    var a = 0'u32
+    for i in 0 ..< len(s):
+      a = a + uint32(s[i])
+      a = a + (a shl 10)
+      a = a xor (a shr 6)
+    a = a + (a shl 3)
+    a = a xor (a shr 11)
+    a = a + (a shl 15)
+    result = cast[Hash](a)
 
 template getUniqueType*(key: PType): PType = key
 

@@ -1,3 +1,35 @@
+discard """
+output: '''
+############
+#### gt ####
+############
+gt(Foo):	typeDesc[Foo]
+gt(Bar):	typeDesc[Bar]
+gt(Baz):	typeDesc[int]
+gt(foo):	distinct[int]
+gt(bar):	distinct[int]
+gt(baz):	int, int
+gt(v):	seq[int]
+gt(vv):	seq[float]
+gt(t):	distinct[tuple[int, int]]
+gt(tt):	distinct[tuple[float, float]]
+gt(s):	distinct[tuple[int, int]]
+#############
+#### gt2 ####
+#############
+gt2(Foo): 	Foo
+gt2(Bar): 	Bar
+gt2(Baz): 	Baz
+gt2(foo): 	Foo
+gt2(bar): 	Bar
+gt2(baz): 	Baz
+gt2(v): 	seq[int]
+gt2(vv): 	seq[float]
+gt2(t): 	MyType[system.int]
+gt2(tt): 	MyType[system.float]
+gt2(s): 	MySimpleType
+'''
+"""
 
 import macros, typetraits
 

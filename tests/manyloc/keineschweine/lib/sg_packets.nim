@@ -1,4 +1,4 @@
-import genpacket_enet, sockets, md5, enet
+import genpacket_enet, nativesockets, net, md5, enet
 defPacketImports()
 
 type
@@ -92,7 +92,7 @@ defPacket(DsMsg, tuple[msg: string])
 let HVerifyClient* = 'v'
 defPacket(SdVerifyClient, tuple[session: ScLogin])
 
-when isMainModule:
+when true:
 
   var buf = newBuffer(100)
   var m = toMd5("hello there")

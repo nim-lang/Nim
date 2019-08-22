@@ -70,17 +70,17 @@ b failure
 Async traceback:
   tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
   asyncmacro\.nim\(\d+?\)\s+?a
-  asyncmacro\.nim\(\d+?\)\s+?a_continue
+  asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
     ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?aIter
   asyncmacro\.nim\(\d+?\)\s+?b
-  asyncmacro\.nim\(\d+?\)\s+?b_continue
+  asyncmacro\.nim\(\d+?\)\s+?bNimAsyncContinue
     ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?bIter
   #\[
     tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
     asyncmacro\.nim\(\d+?\)\s+?a
-    asyncmacro\.nim\(\d+?\)\s+?a_continue
+    asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
       ## Resumes an async procedure
     tasync_traceback\.nim\(\d+?\)\s+?aIter
     asyncfutures\.nim\(\d+?\)\s+?read
@@ -97,7 +97,7 @@ Async traceback:
   asyncdispatch\.nim\(\d+?\)\s+?runOnce
   asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
     ## Executes pending callbacks
-  asyncmacro\.nim\(\d+?\)\s+?bar_continue
+  asyncmacro\.nim\(\d+?\)\s+?barNimAsyncContinue
     ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?barIter
   #\[
@@ -108,7 +108,7 @@ Async traceback:
     asyncdispatch\.nim\(\d+?\)\s+?runOnce
     asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
       ## Executes pending callbacks
-    asyncmacro\.nim\(\d+?\)\s+?foo_continue
+    asyncmacro\.nim\(\d+?\)\s+?fooNimAsyncContinue
       ## Resumes an async procedure
     tasync_traceback\.nim\(\d+?\)\s+?fooIter
     asyncfutures\.nim\(\d+?\)\s+?read
@@ -122,8 +122,13 @@ let expLines = splitLines(expected.strip)
 
 if resLines.len != expLines.len:
   echo("Not matched! Wrong number of lines!")
-  echo()
-  echo(result)
+  echo expLines.len
+  echo resLines.len
+  echo("Expected: -----------")
+  echo expected
+  echo("Gotten: -------------")
+  echo result
+  echo("---------------------")
   quit(QuitFailure)
 
 var ok = true

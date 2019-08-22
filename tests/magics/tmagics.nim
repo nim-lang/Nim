@@ -8,20 +8,21 @@ true
 false
 true
 '''
+joinable: false
 """
 
 block tlowhigh:
   type myEnum = enum e1, e2, e3, e4, e5
   var a: array[myEnum, int]
-  
+
   for i in low(a) .. high(a):
     a[i] = 0
-  
+
   proc sum(a: openarray[int]): int =
     result = 0
     for i in low(a)..high(a):
       inc(result, a[i])
-  
+
   doAssert sum([1, 2, 3, 4]) == 10
 
 
@@ -43,3 +44,14 @@ block t8693:
   doAssert bar(Foo, Foo)
   doAssert bar(any, Foo)
   doAssert bar(Foo, any) == false
+
+block t9442:
+  var v1: ref char
+  var v2: string
+  var v3: seq[char]
+  GC_ref(v1)
+  GC_unref(v1)
+  GC_ref(v2)
+  GC_unref(v2)
+  GC_ref(v3)
+  GC_unref(v3)

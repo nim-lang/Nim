@@ -1,7 +1,6 @@
 discard """
-  action: "reject"
-  line: 29
   errormsg: "\'vectFunc\' doesn't have a concrete type, due to unspecified generic parameters."
+  line: 28
 """
 
 type

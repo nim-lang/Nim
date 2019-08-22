@@ -1,5 +1,5 @@
 discard """
-  msg: '''1
+  nimout: '''1
 2
 3
 1
@@ -24,7 +24,7 @@ bb
 
 const s = @[1,2,3]
 
-macro foo: typed =
+macro foo() =
   for e in s:
     echo e
 
@@ -55,7 +55,7 @@ static:
   var m2: TData = data
   for x in m2.numbers: echo x
 
-macro ff(d: static[TData]): typed =
+macro ff(d: static[TData]) =
   for x in d.letters:
     echo x
 

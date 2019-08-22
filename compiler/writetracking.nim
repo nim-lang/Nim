@@ -15,8 +15,7 @@
 ##   * Computing an aliasing relation based on the assignments. This relation
 ##     is then used to compute the 'writes' and 'escapes' effects.
 
-import intsets, idents, ast, astalgo, trees, renderer, msgs, types, options,
-  lineinfos
+import intsets, idents, ast, trees, msgs, types, options, lineinfos
 
 const
   debug = false
@@ -122,7 +121,7 @@ proc returnsNewExpr*(n: PNode): NewLocation =
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
     result = returnsNewExpr(n.lastSon)
   of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure,
-      nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt:
+      nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt, nkHiddenTryStmt:
     result = newLit
     for i in ord(n.kind == nkObjConstr) ..< n.len:
       let x = returnsNewExpr(n.sons[i])

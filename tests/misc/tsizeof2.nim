@@ -1,5 +1,5 @@
 discard """
-errormsg: "cannot evaluate 'sizeof/alignof' because its type is not defined completely"
+errormsg: "cannot evaluate 'sizeof' because its type is not defined completely"
 line: 9
 """
 
@@ -9,3 +9,9 @@ type
 const i = sizeof(MyStruct)
 
 echo i
+
+# bug #9868
+proc foo(a: SomeInteger): array[sizeof(a), byte] =
+  discard
+
+discard foo(1)

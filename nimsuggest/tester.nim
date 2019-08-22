@@ -240,6 +240,10 @@ proc skipDisabledTest(test: Test): bool =
 proc runEpcTest(filename: string): int =
   let s = parseTest(filename, true)
   if s.skipDisabledTest: return 0
+  for req, _ in items(s.script):
+    if req.startsWith("highlight"):
+      echo "disabled epc: " & s.filename
+      return 0
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
@@ -247,7 +251,7 @@ proc runEpcTest(filename: string): int =
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
@@ -289,7 +293,7 @@ proc runTest(filename: string): int =
   let cl = parseCmdLine(s.cmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""

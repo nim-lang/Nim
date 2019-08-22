@@ -26,6 +26,20 @@
 ##   smtpConn.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##
 ##
+## Example for starttls use:
+##
+##
+## .. code-block:: Nim
+##   var msg = createMessage("Hello from Nim's SMTP",
+##                           "Hello!.\n Is this awesome or what?",
+##                           @["foo@gmail.com"])
+##   let smtpConn = newSmtp(debug=true)
+##   smtpConn.connect("smtp.mailtrap.io", Port 2525)
+##   smtpConn.starttls()
+##   smtpConn.auth("username", "password")
+##   smtpConn.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
+##
+##
 ## For SSL support this module relies on OpenSSL. If you want to
 ## enable SSL, compile with ``-d:ssl``.
 
@@ -71,7 +85,12 @@ when not defined(ssl):
   type PSSLContext = ref object
   let defaultSSLContext: PSSLContext = nil
 else:
-  let defaultSSLContext = newContext(verifyMode = CVerifyNone)
+  var defaultSSLContext {.threadvar.}: SSLContext
+
+  proc getSSLContext(): SSLContext =
+    if defaultSSLContext == nil:
+      defaultSSLContext = newContext(verifyMode = CVerifyNone)
+    result = defaultSSLContext
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openarray[tuple[name, value: string]]): Message =
@@ -109,20 +128,22 @@ proc `$`*(msg: Message): string =
   result.add(msg.msgBody)
 
 proc newSmtp*(useSsl = false, debug=false,
-              sslContext = defaultSslContext): Smtp =
+              sslContext: SSLContext = nil): Smtp =
   ## Creates a new ``Smtp`` instance.
   new result
   result.debug = debug
-
   result.sock = newSocket()
   if useSsl:
     when compiledWithSsl:
-      sslContext.wrapSocket(result.sock)
+      if sslContext == nil:
+        getSSLContext().wrapSocket(result.sock)
+      else:
+        sslContext.wrapSocket(result.sock)
     else:
       {.error: "SMTP module compiled without SSL support".}
 
 proc newAsyncSmtp*(useSsl = false, debug=false,
-                   sslContext = defaultSslContext): AsyncSmtp =
+                   sslContext: SSLContext = nil): AsyncSmtp =
   ## Creates a new ``AsyncSmtp`` instance.
   new result
   result.debug = debug
@@ -130,7 +151,10 @@ proc newAsyncSmtp*(useSsl = false, debug=false,
   result.sock = newAsyncSocket()
   if useSsl:
     when compiledWithSsl:
-      sslContext.wrapSocket(result.sock)
+      if sslContext == nil:
+        getSSLContext().wrapSocket(result.sock)
+      else:
+        sslContext.wrapSocket(result.sock)
     else:
       {.error: "SMTP module compiled without SSL support".}
 
@@ -139,8 +163,7 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
   var sendFut = smtp.debugSend("QUIT")
   sendFut.callback =
     proc () =
-      # TODO: Fix this in async procs.
-      raise newException(ReplyError, msg)
+      retFuture.fail(newException(ReplyError, msg))
   return retFuture
 
 proc checkReply(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
@@ -157,6 +180,19 @@ proc connect*(smtp: Smtp | AsyncSmtp,
   await smtp.checkReply("220")
   await smtp.debugSend("HELO " & address & "\c\L")
   await smtp.checkReply("250")
+  
+proc starttls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
+  ## Put the SMTP connection in TLS (Transport Layer Security) mode.
+  ## May fail with ReplyError
+  await smtp.debugSend("STARTTLS\c\L")
+  await smtp.checkReply("220")
+  when compiledWithSsl:
+    if sslContext == nil:
+      getSSLContext().wrapConnectedSocket(smtp.sock, handshakeAsClient)
+    else:
+      sslContext.wrapConnectedSocket(smtp.sock, handshakeAsClient)
+  else:
+    {.error: "SMTP module compiled without SSL support".}
 
 proc auth*(smtp: Smtp | AsyncSmtp, username, password: string) {.multisync.} =
   ## Sends an AUTH command to the server to login as the `username`

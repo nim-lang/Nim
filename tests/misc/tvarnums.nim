@@ -1,5 +1,4 @@
 discard """
-  file: "tvarnums.nim"
   output: "Success!"
 """
 # Test variable length binary integers
@@ -23,7 +22,7 @@ proc toVarNum(x: int32, b: var TBuffer) =
     a = abs(x)
   # first 6 bits:
   b[0] = toU8(ord(a >% 63'i32) shl 7 or (ord(x < 0'i32) shl 6) or (int(a) and 63))
-  a = a shr 6'i32 # skip first 6 bits
+  a = (a shr 6'i32) and 0x03ffffff # skip first 6 bits
   var i = 1
   while a != 0'i32:
     b[i] = toU8(ord(a >% 127'i32) shl 7 or (int(a) and 127))
@@ -43,7 +42,7 @@ proc toVarNum64(x: int64, b: var TBuffer) =
     a = abs(x)
   # first 6 bits:
   b[0] = toU8(ord(a >% 63'i64) shl 7 or (ord(x < 0'i64) shl 6) or int(a and 63))
-  a = a shr 6 # skip first 6 bits
+  a = (a shr 6) and 0x03ffffffffffffff # skip first 6 bits
   var i = 1
   while a != 0'i64:
     b[i] = toU8(ord(a >% 127'i64) shl 7 or int(a and 127))
@@ -138,5 +137,3 @@ tm(low(int32))
 tm(high(int32))
 
 writeLine(stdout, "Success!") #OUT Success!
-
-

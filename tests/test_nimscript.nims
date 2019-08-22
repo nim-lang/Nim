@@ -9,7 +9,7 @@ import lists
 import math
 # import marshal
 import options
-import ospaths
+import os
 # import parsecfg
 # import parseopt
 import parseutils
@@ -17,7 +17,6 @@ import parseutils
 import deques
 import sequtils
 import strutils
-import subexes
 import tables
 import unicode
 import uri

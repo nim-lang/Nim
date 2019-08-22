@@ -1,3 +1,7 @@
+discard """
+outputsub: ""
+"""
+
 import net, nativesockets
 import unittest
 

@@ -2,7 +2,7 @@ import macros, macro_dsl, estreams
 from strutils import format
 
 template newLenName() =
-  let lenName {.inject.} = ^("len"& $lenNames)
+  let lenName {.inject.} = ^("len" & $lenNames)
   inc(lenNames)
 
 template defPacketImports*() {.dirty.} =
@@ -18,7 +18,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
   var
     constructorParams = newNimNode(nnkFormalParams).und(typeName)
     constructor = newNimNode(nnkProcDef).und(
-      postfix(^("new"& $typeName.ident), "*"),
+      postfix(^("new" & $typeName.ident), "*"),
       emptyNode(),
       emptyNode(),
       constructorParams,
@@ -41,7 +41,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
       emptyNode(),
       emptyNode())
     read = newNimNode(nnkProcDef).und(
-      newIdentNode("read"& $typeName.ident).postfix("*"),
+      newIdentNode("read" & $typeName.ident).postfix("*"),
       emptyNode(),
       emptyNode(),
       newNimNode(nnkFormalParams).und(
@@ -70,7 +70,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
         let
           item = ^"item"  ## item name in our iterators
           seqType = typeFields[i][1][1] ## type of seq
-          readName = newIdentNode("read"& $seqType.ident)
+          readName = newIdentNode("read" & $seqType.ident)
         readBody.add(newNimNode(nnkLetSection).und(
           newNimNode(nnkIdentDefs).und(
             lenName,
@@ -100,7 +100,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
         #set the default value to @[] (new sequence)
         typeFields[i][2] = "@".prefix(newNimNode(nnkBracket))
       else:
-        error("Unknown type: "& treeRepr(typeFields[i]))
+        error("Unknown type: " & treeRepr(typeFields[i]))
     of nnkIdent: ##normal type
       case $typeFields[i][1].ident
       of "string": # length encoded string
@@ -109,12 +109,12 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
       of "int8", "int16", "int32", "float32", "float64", "char", "bool":
         packBody.add(newCall(
           "writeBE", streamID, dotName))
-        readBody.add(resName := newCall("read"& $typeFields[i][1].ident, streamID))
+        readBody.add(resName := newCall("read" & $typeFields[i][1].ident, streamID))
       else:  ## hopefully the type you specified was another defpacket() type
         packBody.add(newCall("pack", streamID, dotName))
-        readBody.add(resName := newCall("read"& $typeFields[i][1].ident, streamID))
+        readBody.add(resName := newCall("read" & $typeFields[i][1].ident, streamID))
     else:
-      error("I dont know what to do with: "& treerepr(typeFields[i]))
+      error("I dont know what to do with: " & treerepr(typeFields[i]))
 
   var
     toStringFunc = newNimNode(nnkProcDef).und(
@@ -137,7 +137,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
           newNimNode(nnkCall).und(# [6][0][1]
             ^"format",  ## format
             emptyNode()))))  ## "[TypeName   $1   $2]"
-    formatStr = "["& $typeName.ident
+    formatStr = "[" & $typeName.ident
 
   const emptyFields = {nnkEmpty, nnkNilLit}
   var objFields = newNimNode(nnkRecList)
@@ -206,7 +206,7 @@ macro forwardPacket*(typeName: untyped, underlyingType: untyped): untyped =
     streamID = ^"s"
   result = newNimNode(nnkStmtList).und(
     newProc(
-      (^("read"& $typeName.ident)).postfix("*"),
+      (^("read" & $typeName.ident)).postfix("*"),
       [ iddefs("s", "PBuffer", newNimNode(nnkNilLit)) ],
       typeName),
     newProc(
@@ -244,7 +244,7 @@ template forwardPacketT*(typeName: untyped; underlyingType: untyped) {.dirty.} =
     #writeData(s, addr p, sizeof(p))
     buffer.write(underlyingType(ord))
 
-when isMainModule:
+when false:
   type
     SomeEnum = enum
       A = 0'i8,

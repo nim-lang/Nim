@@ -1,65 +1,79 @@
 sudo: false
 language: c
 
-dist: trusty
+dist: xenial
 
 matrix:
+  fast_finish: true
+
   include:
     - os: linux
-      env: NIM_COMPILE_TO_CPP=false
+      env:
+        - NIM_COMPILE_TO_CPP=false
+        - CPU=amd64
+
+    - os: linux
+      env:
+        - NIM_COMPILE_TO_CPP=false
+        - CPU=i386
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - g++-multilib
+            - libcurl4-openssl-dev:i386
+            - libgc-dev:i386
+            - libglib2.0-dev:i386
+            - libpulse-dev:i386
+            - libsdl1.2-dev:i386
+            - libsfml-dev:i386
 
     - os: osx
-      env: NIM_COMPILE_TO_CPP=false
+      env:
+        - NIM_COMPILE_TO_CPP=false
+        - CPU=amd64
 
     - os: osx
-      env: NIM_COMPILE_TO_CPP=true
+      env:
+        - NIM_COMPILE_TO_CPP=true
+        - CPU=amd64
 
-  allow_failures:
-    - env: NIM_COMPILE_TO_CPP=true
+# To allow failures for a failing configuration, use something like:
+#  allow_failures:
+#    - env: NIM_COMPILE_TO_CPP=true
 #    - os: osx
 
 addons:
   apt:
+    # update the list above if more deps are introduced
     packages:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
     - libgc-dev
     - libsfml-dev
+  homebrew:
+    packages:
+    - boehmgc
+    - make
+    - sfml
+    update: true
 
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install boehmgc; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sfml; fi
+install:
+  - if [[ $CPU = i386 ]]; then echo -e "#!/bin/bash\n$(which gcc) -m32 \"\$@\"" > bin/gcc; fi
+  - if [[ $CPU = i386 ]]; then chmod 755 bin/gcc; fi
+  - if [[ $CPU = i386 ]]; then echo -e "#!/bin/bash\n$(which g++) -m32 \"\$@\"" > bin/g++; fi
+  - if [[ $CPU = i386 ]]; then chmod 755 bin/g++; fi
 
 before_script:
-  - set -e
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then unset -f cd; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then shell_session_update() { :; }; fi
   - git clone --depth 1 https://github.com/nim-lang/csources.git
-  - cd csources
-  - sh build.sh
-  - cd ..
-  - export PATH=$(pwd)/bin${PATH:+:$PATH}
+  - export PATH="$PWD/bin${PATH:+:$PATH}"
+  - make -C csources -j 2 LD=$CC ucpu=$CPU
+
 script:
+  - echo "travis_fold:start:nim_c_koch"
   - nim c koch
-  - ./koch boot
-  - ./koch boot -d:release
-  - ./koch nimble
-  - nim e tests/test_nimscript.nims
-  #- nimble install zip -y
-  #- nimble install opengl
-  #- nimble install sdl1
-  #- nimble install jester@#head -y
-  #- nimble install niminst
-  - nim c --taintMode:on -d:nimCoroutines testament/tester
-  - testament/tester --pedantic all -d:nimCoroutines
-  - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
-  - nim c -r nimpretty/tester.nim
-  - ./koch docs --git.commit:devel
-  - ./koch csource
-  - ./koch nimsuggest
-  - nim c -r nimsuggest/tester
-  - nim c -r nimdoc/tester
+  - echo "travis_fold:end:nim_c_koch"
+  - ./koch runCI
 
 before_deploy:
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
@@ -73,3 +87,6 @@ deploy:                         # https://nim-lang.github.io/Nim
   keep-history: false
   on:
     branch: devel
+
+# Extract failed tests
+after_failure: nim c -r tools/ci_testresults.nim

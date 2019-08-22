@@ -5,6 +5,7 @@ my secret
 11
 12
 '''
+  joinable: "false"
 """
 
 ## Example program that demonstrates how to use the
@@ -15,7 +16,7 @@ import std / [os]
 
 proc main() =
   let std = findNimStdLibCompileTime()
-  var intr = createInterpreter("myscript.nim", [std, getAppDir()])
+  var intr = createInterpreter("myscript.nim",[std, parentDir(currentSourcePath)])
   intr.implementRoutine("*", "exposed", "addFloats", proc (a: VmArgs) =
     setResult(a, getFloat(a, 0) + getFloat(a, 1) + getFloat(a, 2))
   )
@@ -51,4 +52,3 @@ block issue9180:
 
   evalString("echo 10+1")
   evalString("echo 10+2")
-

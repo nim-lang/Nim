@@ -1,13 +1,13 @@
 discard """
-  line: 27
   errormsg: "has to be discarded"
+  line: 27
 """
 
 # Page 35.
 
 proc implicit: string =
   "I will be returned"
-  
+
 proc discarded: string =
   discard "I will not be returned"
 
@@ -16,7 +16,7 @@ proc explicit: string =
 
 proc resultVar: string =
   result = "I will be returned"
-  
+
 proc resultVar2: string =
   result = ""
   result.add("I will be ")

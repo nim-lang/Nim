@@ -30,6 +30,7 @@
 ## ending with the extension ``.rst`` and convert them to ``.html``.
 ##
 ## .. code-block:: Nim
+##     :test:
 ##
 ##   import htmlparser
 ##   import xmltree  # To use '$' for XmlNode
@@ -38,12 +39,11 @@
 ##   import strutils # To use cmpIgnoreCase
 ##
 ##   proc transformHyperlinks() =
-##     let html = loadHTML("input.html")
+##     let html = loadHtml("input.html")
 ##
 ##     for a in html.findAll("a"):
-##       let href = a.attrs["href"]
-##       if not href.isNil:
-##         let (dir, filename, ext) = splitFile(href)
+##       if a.attrs.hasKey "href":
+##         let (dir, filename, ext) = splitFile(a.attrs["href"])
 ##         if cmpIgnoreCase(ext, ".rst") == 0:
 ##           a.attrs["href"] = dir / filename & ".html"
 ##
@@ -2014,7 +2014,8 @@ proc parseHtml*(s: Stream, filename: string,
   ## Parses the XML from stream `s` and returns a ``XmlNode``. Every
   ## occurred parsing error is added to the `errors` sequence.
   var x: XmlParser
-  open(x, s, filename, {reportComments, reportWhitespace})
+  open(x, s, filename, {reportComments, reportWhitespace, allowUnquotedAttribs,
+    allowEmptyAttribs})
   next(x)
   # skip the DOCTYPE:
   if x.kind == xmlSpecial: next(x)

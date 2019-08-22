@@ -10,6 +10,35 @@
 ## Source highlighter for programming or markup languages.
 ## Currently only few languages are supported, other languages may be added.
 ## The interface supports one language nested in another.
+##
+## **Note:** Import ``packages/docutils/highlite`` to use this module
+##
+## You can use this to build your own syntax highlighting, check this example:
+##
+## .. code::nim
+##   let code = """for x in $int.high: echo x.ord mod 2 == 0"""
+##   var toknizr: GeneralTokenizer
+##   initGeneralTokenizer(toknizr, code)
+##   while true:
+##     getNextToken(toknizr, langNim)
+##     case toknizr.kind
+##     of gtEof: break  # End Of File (or string)
+##     of gtWhitespace:
+##       echo gtWhitespace # Maybe you want "visible" whitespaces?.
+##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
+##     of gtOperator:
+##       echo gtOperator # Maybe you want Operators to use a specific color?.
+##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
+##     # of gtSomeSymbol: syntaxHighlight("Comic Sans", "bold", "99px", "pink")
+##     else:
+##       echo toknizr.kind # All the kinds of tokens can be processed here.
+##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
+##
+## The proc ``getSourceLanguage`` can get the language ``enum`` from a string:
+##
+## .. code::nim
+##   for l in ["C", "c++", "jAvA", "Nim", "c#"]: echo getSourceLanguage(l)
+##
 
 import
   strutils
@@ -836,7 +865,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
       inc(pos)
       while g.buf[pos] in {'0'..'9', '+', '-'}: inc(pos)
     of '0'..'9': yamlPossibleNumber(g, pos)
-    of '\0': g.kind = gtEOF
+    of '\0': g.kind = gtEof
     else: yamlPlainStrLit(g, pos)
   else:
     # outside document
@@ -854,7 +883,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
     of '#':
       g.kind = gtComment
       while g.buf[pos] notin {'\0', '\x0A', '\x0D'}: inc(pos)
-    of '\0': g.kind = gtEOF
+    of '\0': g.kind = gtEof
     else:
       g.kind = gtNone
       g.state = gtOther

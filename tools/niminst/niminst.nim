@@ -126,13 +126,13 @@ proc skipRoot(f: string): string =
     inc i
   if result.len == 0: result = f
 
-include "inno.tmpl"
-include "nsis.tmpl"
-include "buildsh.tmpl"
-include "makefile.tmpl"
-include "buildbat.tmpl"
-include "install.tmpl"
-include "deinstall.tmpl"
+include "inno.nimf"
+include "nsis.nimf"
+include "buildsh.nimf"
+include "makefile.nimf"
+include "buildbat.nimf"
+include "install.nimf"
+include "deinstall.nimf"
 
 # ------------------------- configuration file -------------------------------
 
@@ -185,7 +185,7 @@ proc parseCmdLine(c: var ConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimArgs = cmdLineRest(p).string
         break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key.string)
       of "help", "h":
         stdout.write(Usage)

@@ -1,5 +1,4 @@
 discard """
-  file: "tnestedbreak.nim"
   output: "1\n2\n3\n4"
 """
 

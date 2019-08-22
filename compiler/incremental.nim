@@ -10,13 +10,14 @@
 ## Basic type definitions the module graph needs in order to support
 ## incremental compilations.
 
-const nimIncremental* = defined(nimIncremental)
+const nimIncremental* = true # defined(nimIncremental)
 
-import options, lineinfos, pathutils
+import options, lineinfos
 
 when nimIncremental:
-  import ast, msgs, intsets, btrees, db_sqlite, std / sha1
+  import ast, msgs, intsets, btrees, db_sqlite, std / sha1, pathutils
   from strutils import parseInt
+  from os import isAbsolute
 
   type
     Writer* = object
@@ -47,7 +48,7 @@ when nimIncremental:
 
   proc hashFileCached*(conf: ConfigRef; fileIdx: FileIndex; fullpath: AbsoluteFile): string =
     result = msgs.getHash(conf, fileIdx)
-    if result.len == 0:
+    if result.len == 0 and isAbsolute(string fullpath):
       result = $secureHashFile(string fullpath)
       msgs.setHash(conf, fileIdx, result)
 
@@ -59,8 +60,8 @@ when nimIncremental:
     let id = row[0]
     let fullhash = hashFileCached(conf, fileIdx, AbsoluteFile fullpath)
     if id.len == 0:
-      result = int incr.db.insertID(sql"insert into filenames(fullpath, fullhash) values (?, ?)",
-        fullpath, fullhash)
+      result = int incr.db.insertID(sql"insert into filenames(nimid, fullpath, fullhash) values (?, ?, ?)",
+        int(fileIdx), fullpath, fullhash)
     else:
       if row[1] != fullhash:
         incr.db.exec(sql"update filenames set fullhash = ? where fullpath = ?", fullhash, fullpath)
@@ -102,6 +103,7 @@ when nimIncremental:
     db.exec(sql"""
       create table if not exists filenames(
         id integer primary key,
+        nimid integer not null,
         fullpath varchar(8000) not null,
         fullHash varchar(256) not null
       );

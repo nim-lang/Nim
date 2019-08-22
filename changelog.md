@@ -1,46 +1,60 @@
-## v0.20.0 - XX/XX/2018
-
-### Changes affecting backwards compatibility
-
-- The ``isLower``, ``isUpper`` family of procs in strutils/unicode
-  operating on **strings** have been
-  deprecated since it was unclear what these do. Note that the much more
-  useful procs that operator on ``char`` or ``Rune`` are not affected.
-
-- `strutils.editDistance` has been deprecated,
-  use `editdistance.editDistance` or `editdistance.editDistanceAscii`
-  instead.
+# v1.1 - XXXX-XX-XX
 
 
-#### Breaking changes in the standard library
+## Changes affecting backwards compatibility
+
+- The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
+  stdin/stdout/stderr are binary files again. This change only affects
+  Windows.
+- On Windows console applications the code-page is set at program startup
+  to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
+  feature.
+
+### Breaking changes in the standard library
 
 
-#### Breaking changes in the compiler
-
-### Library additions
-
-- There is a new stdlib module `editdistance` as a replacement for the
-  deprecated `strutils.editDistance`.
-
-- Added `split`, `splitWhitespace`, `size`, `alignLeft`, `align`,
-  `strip`, `repeat` procs and iterators to `unicode.nim`.
-
-- Added `or` for `NimNode` in `macros`.
-
-### Library changes
+### Breaking changes in the compiler
 
 
-### Language additions
+## Library additions
+
+- `encodings.getCurrentEncoding` now distinguishes between the console's
+  encoding and the OS's encoding. This distinction is only meaningful on
+  Windows.
+- Added `system.getOsFileHandle` which is usually more useful
+  than `system.getFileHandle`. This distinction is only meaningful on
+  Windows.
+
+## Library changes
+
+- Added `os.delEnv` and `nimscript.delEnv`. (#11466)
+
+- Enable Oid usage in hashtables. (#11472)
+
+- Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
+
+- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`,
+  `update` and `finalize` procedures from `sha1` module. (#11694)
+
+- Added the `std/monotimes` module which implements monotonic timestamps.
+
+- Consistent error handling of two `exec` overloads. (#10967)
+
+## Language additions
 
 
-### Language changes
+## Language changes
 
 
 ### Tool changes
-- `jsondoc` now include a `moduleDescription` field with the module
-  description. `jsondoc0` shows comments as it's own objects as shown in the
-  documentation.
+
+- The Nim compiler now does not recompile the Nim project via ``nim c -r`` if
+  no dependent Nim file changed. This feature can be overridden by
+  the ``--forceBuild`` command line option.
 
 ### Compiler changes
 
-### Bugfixes
+- VM can now cast integer type arbitrarily. (#11459)
+
+
+## Bugfixes

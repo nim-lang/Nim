@@ -1,5 +1,4 @@
 discard """
-  file: "tassign.nim"
   output:
 '''
 TEMP=C:\Programs\xyz\bin

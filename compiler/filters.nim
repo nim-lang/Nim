@@ -10,7 +10,7 @@
 # This module implements Nim's simple filters and helpers for filters.
 
 import
-  llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options,
+  llstream, idents, strutils, ast, msgs, options,
   renderer, pathutils
 
 proc invalidPragma(conf: ConfigRef; n: PNode) =
@@ -20,7 +20,7 @@ proc invalidPragma(conf: ConfigRef; n: PNode) =
 proc getArg(conf: ConfigRef; n: PNode, name: string, pos: int): PNode =
   result = nil
   if n.kind in {nkEmpty..nkNilLit}: return
-  for i in countup(1, sonsLen(n) - 1):
+  for i in 1 ..< sonsLen(n):
     if n.sons[i].kind == nkExprEqExpr:
       if n.sons[i].sons[0].kind != nkIdent: invalidPragma(conf, n)
       if cmpIgnoreStyle(n.sons[i].sons[0].ident.s, name) == 0:

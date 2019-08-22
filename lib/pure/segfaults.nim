@@ -17,7 +17,7 @@
 var se: ref NilAccessError
 new(se)
 se.name = "NilAccessError"
-se.msg = ""
+se.msg = "Could not access value because it is nil."
 
 when defined(windows):
   include "../system/ansi_c"
@@ -25,7 +25,7 @@ when defined(windows):
   import winlean
 
   const
-    EXCEPTION_ACCESS_VIOLATION = DWORD(0xc0000005)
+    EXCEPTION_ACCESS_VIOLATION = DWORD(0xc0000005'i32)
     EXCEPTION_CONTINUE_SEARCH = Long(0)
 
   type

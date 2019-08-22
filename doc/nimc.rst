@@ -62,8 +62,6 @@ SmallLshouldNotBeUsed            The letter 'l' should not be used as an
                                  identifier.
 EachIdentIsTuple                 The code contains a confusing ``var``
                                  declaration.
-ShadowIdent                      A local variable shadows another local
-                                 variable of an outer scope.
 User                             Some user defined warning.
 ==========================       ============================================
 
@@ -134,8 +132,8 @@ Through the ``-d:x`` or ``--define:x`` switch you can define compile time
 symbols for conditional compilation. The defined switches can be checked in
 source code with the `when statement <manual.html#when-statement>`_ and
 `defined proc <system.html#defined>`_. The typical use of this switch is to
-enable builds in release mode (``-d:release``) where certain safety checks are
-omitted for better performance. Another common use is the ``-d:ssl`` switch to
+enable builds in release mode (``-d:release``) where optimizations are
+enabled for better performance. Another common use is the ``-d:ssl`` switch to
 activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
@@ -145,6 +143,9 @@ to override symbols during build time.
 
 Compile time symbols are completely **case insensitive** and underscores are
 ignored too. ``--define:FOO`` and ``--define:foo`` are identical.
+
+Compile time symbols starting with the ``nim`` prefix are reserved for the
+implementation and should not be used elsewhere.
 
 
 Configuration files
@@ -170,6 +171,10 @@ The default build of a project is a `debug build`:idx:. To compile a
 `release build`:idx: define the ``release`` symbol::
 
   nim c -d:release myproject.nim
+
+ To compile a `dangerous release build`:idx: define the ``danger`` symbol::
+
+  nim c -d:danger myproject.nim
 
 
 Search path handling
@@ -261,6 +266,21 @@ configuration file should contain something like::
   arm.linux.gcc.exe = "arm-linux-gcc"
   arm.linux.gcc.linkerexe = "arm-linux-gcc"
 
+Cross compilation for Windows
+=============================
+
+To cross compile for Windows from Linux or macOS using the MinGW-w64 toolchain::
+
+  nim c -d:mingw myproject.nim
+
+Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the CPU architecture.
+
+The MinGW-w64 toolchain can be installed as follows::
+
+  Ubuntu: apt install mingw-w64
+  CentOS: yum install mingw32-gcc | mingw64-gcc - requires EPEL
+  OSX: brew install mingw-w64
+
 Cross compilation for Nintendo Switch
 =====================================
 
@@ -331,19 +351,21 @@ complete list.
 ======================   =========================================================
 Define                   Effect
 ======================   =========================================================
-``release``              Turns off runtime checks and turns on the optimizer.
-``useWinAnsi``           Modules like ``os`` and ``osproc`` use the Ansi versions
-                         of the Windows API. The default build uses the Unicode
-                         version.
+``release``              Turns on the optimizer.
+                         More aggressive optimizations are possible, eg:
+                         ``--passC:-ffast-math`` (but see issue #10305)
+``danger``               Turns off all runtime checks and turns on the optimizer.
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
-                         own memory manager, ableit prefixing each allocation with
+                         own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with ``gc:none``.
+                         This only works with ``gc:none`` and
+                         with ``--newruntime``.
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
                          systems. See the documentation of the `gc <gc.html>`_
                          for further information.
+``logGC``                Enable GC logging to stdout.
 ``nodejs``               The JS target is actually ``node.js``.
 ``ssl``                  Enables OpenSSL support for the sockets module.
 ``memProfiler``          Enables memory profiling for the native GC.
@@ -395,46 +417,6 @@ the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
 
-Hot code reloading
-------------------
-**Note:** At the moment hot code reloading is supported only in
-JavaScript projects.
-
-The `hotCodeReloading`:idx: option enables special compilation mode where changes in
-the code can be applied automatically to a running program. The code reloading
-happens at the granularity of an individual module. When a module is reloaded,
-Nim will preserve the state of all global variables which are initialized with
-a standard variable declaration in the code. All other top level code will be
-executed repeatedly on each reload. If you want to prevent this behavior, you
-can guard a block of code with the ``once`` construct:
-
-.. code-block:: Nim
-  var settings = initTable[string, string]()
-
-  once:
-    myInit()
-
-    for k, v in loadSettings():
-      settings[k] = v
-
-If you want to reset the state of a global variable on each reload, just
-re-assign a value anywhere within the top-level code:
-
-.. code-block:: Nim
-  var lastReload: Time
-
-  lastReload = now()
-  resetProgramState()
-
-**Known limitations:** In the JavaScript target, global variables using the
-``codegenDecl`` pragma will be re-initialized on each reload. Please guard the
-initialization with a `once` block to work-around this.
-
-**Usage in JavaScript projects:**
-
-Once your code is compiled for hot reloading, you can use a framework such
-as `LiveReload <http://livereload.com/>` or `BrowserSync <https://browsersync.io/>`
-to implement the actual reloading behavior in your project.
 
 
 DynlibOverride
@@ -450,13 +432,21 @@ on Linux::
   nim c --dynlibOverride:lua --passL:liblua.lib program.nim
 
 
+Cursor pragma
+=============
+
+The ``.cursor`` pragma is a temporary tool for optimization purposes
+and this property will be computed by Nim's optimizer eventually. Thus it
+remains undocumented.
+
+
 Backend language options
 ========================
 
 The typical compiler usage involves using the ``compile`` or ``c`` command to
 transform a ``.nim`` file into one or more ``.c`` files which are then
 compiled with the platform's C compiler into a static binary. However there
-are other commands to compile to C++, Objective-C or Javascript. More details
+are other commands to compile to C++, Objective-C or JavaScript. More details
 can be read in the `Nim Backend Integration document <backends.html>`_.
 
 

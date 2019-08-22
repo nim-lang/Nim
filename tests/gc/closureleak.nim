@@ -1,5 +1,6 @@
 discard """
   outputsub: "true"
+  disabled: "32bit"
 """
 
 from strutils import join

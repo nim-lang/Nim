@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+## To learn about scripting in Nim see `NimScript<nims.html>`_
 
 # Nim's configuration system now uses Nim for scripting. This module provides
 # a few things that are required for this to work.
@@ -32,7 +33,7 @@ proc listFiles*(dir: string): seq[string] =
   ## Lists all the files (non-recursively) in the directory `dir`.
   builtin
 
-proc removeDir(dir: string){.
+proc removeDir(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
@@ -46,7 +47,7 @@ proc copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
-proc getOsError: string = builtin
+proc getError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir*(): string =
   ## Retrieves the current working directory.
@@ -113,15 +114,19 @@ proc cmpic*(a, b: string): int =
   cmpIgnoreCase(a, b)
 
 proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
-  ## Retrieves the environment variable of name `key`.
+  ## Retrieves the environment variable of name ``key``.
   builtin
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
-  ## Checks for the existence of an environment variable named `key`.
+  ## Checks for the existence of an environment variable named ``key``.
   builtin
 
 proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
-  ## Sets the value of the environment variable named key to val.
+  ## Sets the value of the environment variable named ``key`` to ``val``.
+  builtin
+
+proc delEnv*(key: string) {.tags: [WriteIOEffect].} =
+  ## Deletes the environment variable named ``key``.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
@@ -143,6 +148,7 @@ proc existsDir*(dir: string): bool =
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
+  # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
   builtin
 
 proc toExe*(filename: string): string =
@@ -177,9 +183,12 @@ var
   mode*: ScriptMode ## Set this to influence how mkDir, rmDir, rmFile etc.
                     ## behave
 
+template checkError(exc: untyped): untyped =
+  let err = getError()
+  if err.len > 0: raise newException(exc, err)
+
 template checkOsError =
-  let err = getOsError()
-  if err.len > 0: raise newException(OSError, err)
+  checkError(OSError)
 
 template log(msg: string, body: untyped) =
   if mode in {ScriptMode.Verbose, ScriptMode.Whatif}:
@@ -230,8 +239,14 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
     copyDir `from`, to
     checkOsError()
 
-proc exec*(command: string) =
-  ## Executes an external process.
+proc exec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
+  ##
+  ## **Note:** If you need a version of ``exec`` that returns the exit code
+  ## and text output of the command, you can use `system.gorgeEx
+  ## <system.html#gorgeEx,string,string,string>`_.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
@@ -239,11 +254,16 @@ proc exec*(command: string) =
 
 proc exec*(command: string, input: string, cache = "") {.
   raises: [OSError], tags: [ExecIOEffect].} =
-  ## Executes an external process.
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
   log "exec: " & command:
-    echo staticExec(command, input, cache)
+    let (output, exitCode) = gorgeEx(command, input, cache)
+    if exitCode != 0:
+      raise newException(OSError, "FAILED: " & command)
+    echo output
 
-proc selfExec*(command: string) =
+proc selfExec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external command with the current nim/nimble executable.
   ## ``Command`` must not contain the "nim " part.
   let c = selfExe() & " " & command
@@ -331,6 +351,26 @@ proc cppDefine*(define: string) =
   ## needs to be mangled.
   builtin
 
+proc stdinReadLine(): TaintedString {.
+  tags: [ReadIOEffect], raises: [IOError].} =
+  builtin
+
+proc stdinReadAll(): TaintedString {.
+  tags: [ReadIOEffect], raises: [IOError].} =
+  builtin
+
+proc readLineFromStdin*(): TaintedString {.raises: [IOError].} =
+  ## Reads a line of data from stdin - blocks until \n or EOF which happens when stdin is closed
+  log "readLineFromStdin":
+    result = stdinReadLine()
+    checkError(EOFError)
+
+proc readAllFromStdin*(): TaintedString {.raises: [IOError].} =
+  ## Reads all data from stdin - blocks until EOF which happens when stdin is closed
+  log "readAllFromStdin":
+    result = stdinReadAll()
+    checkError(EOFError)
+
 when not defined(nimble):
   template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   template task*(name: untyped; description: string; body: untyped): untyped =
@@ -340,14 +380,15 @@ when not defined(nimble):
     ## .. code-block:: nim
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
-    proc `name Task`*() = body
+    proc `name Task`*() =
+      setCommand "nop"
+      body
 
     let cmd = getCommand()
     if cmd.len == 0 or cmd ==? "help":
       setCommand "help"
       writeTask(astToStr(name), description)
     elif cmd ==? astToStr(name):
-      setCommand "nop"
       `name Task`()
 
   # nimble has its own implementation for these things.

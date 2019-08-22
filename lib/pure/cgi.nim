@@ -77,6 +77,8 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
     var L = parseInt(getEnv("CONTENT_LENGTH").string)
+    if L == 0:
+      return ""
     result = newString(L)
     if readBuffer(stdin, addr(result[0]), L) != L:
       cgiError("cannot read from stdin")
@@ -145,6 +147,12 @@ proc readData*(allowedMethods: set[RequestMethod] =
   ## `allowedMethods` set, an `ECgi` exception is raised.
   result = newStringTable()
   for name, value in decodeData(allowedMethods):
+    result[name.string] = value.string
+
+proc readData*(data: string): StringTableRef =
+  ## Read CGI data from a string.
+  result = newStringTable()
+  for name, value in decodeData(data):
     result[name.string] = value.string
 
 proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
@@ -330,11 +338,6 @@ proc writeErrorMessage*(data: string) =
 proc setStackTraceStdout*() =
   ## Makes Nim output stacktraces to stdout, instead of server log.
   errorMessageWriter = writeErrorMessage
-
-proc setStackTraceNewLine*() {.deprecated.} =
-  ## Makes Nim output stacktraces to stdout, instead of server log.
-  ## Depracated alias for setStackTraceStdout.
-  setStackTraceStdout()
 
 proc setCookie*(name, value: string) =
   ## Sets a cookie.

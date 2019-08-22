@@ -6,6 +6,7 @@ discard """
 4
 2
 88
+timplicit done
 '''
 """
 
@@ -44,3 +45,5 @@ block:
   x.indirect(44)
 
   echo x[]
+
+  echo "timplicit done"

@@ -12,7 +12,7 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 
-when defined(Posix):
+when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
 
 var
@@ -102,7 +102,7 @@ proc feupdateenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## represented by object pointed to by `envp` and raise exceptions
   ## according to saved exceptions.
 
-const 
+const
   FLT_RADIX = 2 ## the radix of the exponent representation
 
   FLT_MANT_DIG = 24 ## the number of base FLT_RADIX digits in the mantissa part of a float
@@ -114,7 +114,7 @@ const
   FLT_MIN = 1.17549435e-38'f32  ## the minimum value of a float
   FLT_MAX = 3.40282347e+38'f32 ## the maximum value of a float
   FLT_EPSILON = 1.19209290e-07'f32  ## the difference between 1 and the least value greater than 1 of a float
- 
+
   DBL_MANT_DIG = 53 ## the number of base FLT_RADIX digits in the mantissa part of a double
   DBL_DIG = 15 ## the number of digits of precision of a double
   DBL_MIN_EXP = -1021 ## the minimum value of base FLT_RADIX in the exponent part of a double
@@ -125,65 +125,65 @@ const
   DBL_MAX = 1.7976931348623157E+308 ## the minimal value of a double
   DBL_EPSILON = 2.2204460492503131E-16 ## the difference between 1 and the least value greater than 1 of a double
 
-template fpRadix* : int = FLT_RADIX
+template fpRadix*: int = FLT_RADIX
   ## The (integer) value of the radix used to represent any floating
   ## point type on the architecture used to build the program.
 
-template mantissaDigits*(T : typedesc[float32]) : int = FLT_MANT_DIG
+template mantissaDigits*(T: typedesc[float32]): int = FLT_MANT_DIG
   ## Number of digits (in base ``floatingPointRadix``) in the mantissa
   ## of 32-bit floating-point numbers.
-template digits*(T : typedesc[float32]) : int = FLT_DIG
+template digits*(T: typedesc[float32]): int = FLT_DIG
   ## Number of decimal digits that can be represented in a
   ## 32-bit floating-point type without losing precision.
-template minExponent*(T : typedesc[float32]) : int = FLT_MIN_EXP
+template minExponent*(T: typedesc[float32]): int = FLT_MIN_EXP
   ## Minimum (negative) exponent for 32-bit floating-point numbers.
-template maxExponent*(T : typedesc[float32]) : int = FLT_MAX_EXP
+template maxExponent*(T: typedesc[float32]): int = FLT_MAX_EXP
   ## Maximum (positive) exponent for 32-bit floating-point numbers.
-template min10Exponent*(T : typedesc[float32]) : int = FLT_MIN_10_EXP
+template min10Exponent*(T: typedesc[float32]): int = FLT_MIN_10_EXP
   ## Minimum (negative) exponent in base 10 for 32-bit floating-point
   ## numbers.
-template max10Exponent*(T : typedesc[float32]) : int = FLT_MAX_10_EXP
+template max10Exponent*(T: typedesc[float32]): int = FLT_MAX_10_EXP
   ## Maximum (positive) exponent in base 10 for 32-bit floating-point
   ## numbers.
-template minimumPositiveValue*(T : typedesc[float32]) : float32 = FLT_MIN
+template minimumPositiveValue*(T: typedesc[float32]): float32 = FLT_MIN
   ## The smallest positive (nonzero) number that can be represented in a
   ## 32-bit floating-point type.
-template maximumPositiveValue*(T : typedesc[float32]) : float32 = FLT_MAX
+template maximumPositiveValue*(T: typedesc[float32]): float32 = FLT_MAX
   ## The largest positive number that can be represented in a 32-bit
   ## floating-point type.
-template epsilon*(T : typedesc[float32]): float32 = FLT_EPSILON
+template epsilon*(T: typedesc[float32]): float32 = FLT_EPSILON
   ## The difference between 1.0 and the smallest number greater than
   ## 1.0 that can be represented in a 32-bit floating-point type.
 
-template mantissaDigits*(T : typedesc[float64]) : int = DBL_MANT_DIG
+template mantissaDigits*(T: typedesc[float64]): int = DBL_MANT_DIG
   ## Number of digits (in base ``floatingPointRadix``) in the mantissa
   ## of 64-bit floating-point numbers.
-template digits*(T : typedesc[float64]) : int = DBL_DIG
+template digits*(T: typedesc[float64]): int = DBL_DIG
   ## Number of decimal digits that can be represented in a
   ## 64-bit floating-point type without losing precision.
-template minExponent*(T : typedesc[float64]) : int = DBL_MIN_EXP
+template minExponent*(T: typedesc[float64]): int = DBL_MIN_EXP
   ## Minimum (negative) exponent for 64-bit floating-point numbers.
-template maxExponent*(T : typedesc[float64]) : int = DBL_MAX_EXP
+template maxExponent*(T: typedesc[float64]): int = DBL_MAX_EXP
   ## Maximum (positive) exponent for 64-bit floating-point numbers.
-template min10Exponent*(T : typedesc[float64]) : int = DBL_MIN_10_EXP
+template min10Exponent*(T: typedesc[float64]): int = DBL_MIN_10_EXP
   ## Minimum (negative) exponent in base 10 for 64-bit floating-point
   ## numbers.
-template max10Exponent*(T : typedesc[float64]) : int = DBL_MAX_10_EXP
+template max10Exponent*(T: typedesc[float64]): int = DBL_MAX_10_EXP
   ## Maximum (positive) exponent in base 10 for 64-bit floating-point
   ## numbers.
-template minimumPositiveValue*(T : typedesc[float64]) : float64 = DBL_MIN
+template minimumPositiveValue*(T: typedesc[float64]): float64 = DBL_MIN
   ## The smallest positive (nonzero) number that can be represented in a
   ## 64-bit floating-point type.
-template maximumPositiveValue*(T : typedesc[float64]) : float64 = DBL_MAX
+template maximumPositiveValue*(T: typedesc[float64]): float64 = DBL_MAX
   ## The largest positive number that can be represented in a 64-bit
   ## floating-point type.
-template epsilon*(T : typedesc[float64]): float64 = DBL_EPSILON
+template epsilon*(T: typedesc[float64]): float64 = DBL_EPSILON
   ## The difference between 1.0 and the smallest number greater than
   ## 1.0 that can be represented in a 64-bit floating-point type.
 
 
 when isMainModule:
-  func is_significant(x: float): bool = 
+  func is_significant(x: float): bool =
     if x > minimumPositiveValue(float) and x < maximumPositiveValue(float): true
     else: false
 

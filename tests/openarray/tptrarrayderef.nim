@@ -1,6 +1,8 @@
 discard """
-  file: "tptrarrayderef.nim"
-  output: "OK"
+  output: '''[1, 2, 3, 4]
+3
+OK
+'''
 """
 
 var
@@ -15,7 +17,7 @@ var
 proc mutate[T](arr:openarray[T], brr: openArray[T]) =
   for i in 0..arr.len-1:
     doAssert(arr[i] == brr[i])
-    
+
 mutate(arr, arr)
 
 #bug #2240
@@ -46,9 +48,22 @@ proc getFilledBuffer(sz: int): ref seq[char] =
   s[] = newSeq[char](sz)
   fillBuffer(s[])
   return s
-  
+
 let aa = getFilledBuffer(3)
 for i in 0..aa[].len-1:
   doAssert(aa[i] == chr(i))
-  
+
+var
+  x = [1, 2, 3, 4]
+  y1 = block: (
+    a: (block:
+      echo x
+      cast[ptr array[2, int]](addr(x[0]))[]),
+    b: 3)
+  y2 = block:
+    echo y1.a[0] + y1.a[1]
+    cast[ptr array[4, int]](addr(x))[]
+doAssert y1 == ([1, 2], 3)
+doAssert y2 == [1, 2, 3, 4]
+
 echo "OK"

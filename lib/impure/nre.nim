@@ -6,22 +6,16 @@
 #    distribution, for details about the copyright.
 #
 
-
-from pcre import nil
-import nre.private.util
-import tables
-from strutils import `%`
-from math import ceil
-import options
-from unicode import runeLenAt
-
-export options
-
-
 ## What is NRE?
 ## ============
 ##
 ## A regular expression library for Nim using PCRE to do the hard work.
+##
+## For documentation on how to write patterns, there exists `the official PCRE
+## pattern documentation
+## <https://www.pcre.org/original/doc/html/pcrepattern.html>`_. You can also
+## search the internet for a wide variety of third-party documentation and
+## tools.
 ##
 ## **Note**: If you love ``sequtils.toSeq`` we have bad news for you. This
 ## library doesn't work with it due to documented compiler limitations. As
@@ -59,8 +53,17 @@ runnableExamples:
   let hasVowel = firstVowel.isSome()
   if hasVowel:
     let matchBounds = firstVowel.get().captureBounds[-1]
-    doAssert matchBounds.get().a == 1
+    doAssert matchBounds.a == 1
 
+from pcre import nil
+import nre/private/util
+import tables
+from strutils import `%`
+from math import ceil
+import options
+from unicode import runeLenAt
+
+export options
 
 # Type definitions {{{
 type
@@ -70,7 +73,10 @@ type
     ## comment".``
     ##
     ## ``pattern: string``
-    ##     the string that was used to create the pattern.
+    ##     the string that was used to create the pattern. For details on how
+    ##     to write a pattern, please see `the official PCRE pattern
+    ##     documentation.
+    ##     <https://www.pcre.org/original/doc/html/pcrepattern.html>`_
     ##
     ## ``captureCount: int``
     ##     the number of captures that the pattern has.
@@ -126,6 +132,12 @@ type
     ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`_
     ## sections of the `PCRE syntax
     ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`_.
+    ##
+    ## Some of these options are not part of PCRE and are converted by nre
+    ## into PCRE flags. These include ``NEVER_UTF``, ``ANCHORED``,
+    ## ``DOLLAR_ENDONLY``, ``FIRSTLINE``, ``NO_AUTO_CAPTURE``,
+    ## ``JAVASCRIPT_COMPAT``, ``U``, ``NO_STUDY``. In other PCRE wrappers, you
+    ## will need to pass these as seperate flags to PCRE.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
@@ -152,14 +164,15 @@ type
     ##     -  ``"abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"``
     ##     -  ``"abc".match(re"(\w)\w").get.captures[-1] == "ab"``
     ##
-    ## ``captureBounds[]: Option[HSlice[int, int]]``
+    ## ``captureBounds[]: HSlice[int, int]``
     ##     gets the bounds of the given capture according to the same rules as
     ##     the above. If the capture is not filled, then ``None`` is returned.
     ##     The bounds are both inclusive.
     ##
-    ##     -  ``"abc".match(re"(\w)").get.captureBounds[0].get == 0 .. 0``
-    ##     -  ``"abc".match(re"").get.captureBounds[-1].get == 0 .. -1``
-    ##     -  ``"abc".match(re"abc").get.captureBounds[-1].get == 0 .. 2``
+    ##     -  ``"abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0``
+    ##     -  ``0 in "abc".match(re"(\w)").get.captureBounds == true``
+    ##     -  ``"abc".match(re"").get.captureBounds[-1] == 0 .. -1``
+    ##     -  ``"abc".match(re"abc").get.captureBounds[-1] == 0 .. 2``
     ##
     ## ``match: string``
     ##     the full text of the match.
@@ -212,9 +225,10 @@ runnableExamples:
     doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
     doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
 
-    doAssert "abc".match(re"(\w)").get.captureBounds[0].get == 0 .. 0
-    doAssert "abc".match(re"").get.captureBounds[-1].get == 0 .. -1
-    doAssert "abc".match(re"abc").get.captureBounds[-1].get == 0 .. 2
+    doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
+    doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
+    doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
+    doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
 # }}}
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
@@ -254,78 +268,99 @@ proc matchesCrLf(pattern: Regex): bool =
 # }}}
 
 # Capture accessors {{{
-proc captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(pattern)
+func captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(pattern)
 
-proc captures*(pattern: RegexMatch): Captures = return Captures(pattern)
+func captures*(pattern: RegexMatch): Captures = return Captures(pattern)
 
-proc `[]`*(pattern: CaptureBounds, i: int): Option[HSlice[int, int]] =
+func contains*(pattern: CaptureBounds, i: int): bool =
   let pattern = RegexMatch(pattern)
-  if pattern.pcreMatchBounds[i + 1].a != -1:
-    let bounds = pattern.pcreMatchBounds[i + 1]
-    return some(int(bounds.a) .. int(bounds.b-1))
-  else:
-    return none(HSlice[int, int])
+  pattern.pcreMatchBounds[i + 1].a != -1
 
-proc `[]`*(pattern: Captures, i: int): string =
+func contains*(pattern: Captures, i: int): bool =
+  i in CaptureBounds(pattern)
+
+func `[]`*(pattern: CaptureBounds, i: int): HSlice[int, int] =
+  let pattern = RegexMatch(pattern)
+  if not (i in pattern.captureBounds):
+    raise newException(IndexError, "Group '" & $i & "' was not captured")
+
+  let bounds = pattern.pcreMatchBounds[i + 1]
+  int(bounds.a)..int(bounds.b-1)
+
+func `[]`*(pattern: Captures, i: int): string =
   let pattern = RegexMatch(pattern)
   let bounds = pattern.captureBounds[i]
 
-  if bounds.isSome:
-    let bounds = bounds.get
-    return pattern.str.substr(bounds.a, bounds.b)
-  else:
-    return ""
+  pattern.str.substr(bounds.a, bounds.b)
 
-proc match*(pattern: RegexMatch): string =
+func match*(pattern: RegexMatch): string =
   return pattern.captures[-1]
 
-proc matchBounds*(pattern: RegexMatch): HSlice[int, int] =
-  return pattern.captureBounds[-1].get
+func matchBounds*(pattern: RegexMatch): HSlice[int, int] =
+  return pattern.captureBounds[-1]
 
-proc `[]`*(pattern: CaptureBounds, name: string): Option[HSlice[int, int]] =
+func contains*(pattern: CaptureBounds, name: string): bool =
   let pattern = RegexMatch(pattern)
-  return pattern.captureBounds[pattern.pattern.captureNameToId.fget(name)]
+  let nameToId = pattern.pattern.captureNameToId
+  if not (name in nameToId):
+      return false
+  nameToId[name] in pattern.captureBounds
 
-proc `[]`*(pattern: Captures, name: string): string =
+func contains*(pattern: Captures, name: string): bool =
+  name in CaptureBounds(pattern)
+
+func checkNamedCaptured(pattern: RegexMatch, name: string): void =
+  if not (name in pattern.captureBounds):
+    raise newException(KeyError, "Group '" & name & "' was not captured")
+
+func `[]`*(pattern: CaptureBounds, name: string): HSlice[int, int] =
   let pattern = RegexMatch(pattern)
-  return pattern.captures[pattern.pattern.captureNameToId.fget(name)]
+  checkNamedCaptured(pattern, name)
+  pattern.captureBounds[pattern.pattern.captureNameToId[name]]
 
-template toTableImpl(cond: untyped) {.dirty.} =
+func `[]`*(pattern: Captures, name: string): string =
+  let pattern = RegexMatch(pattern)
+  checkNamedCaptured(pattern, name)
+  return pattern.captures[pattern.pattern.captureNameToId[name]]
+
+template toTableImpl() {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
-    let nextVal = pattern[key]
-    if cond:
-      result[key] = default
-    else:
-      result[key] = nextVal
+    if key in pattern:
+        result[key] = pattern[key]
 
-proc toTable*(pattern: Captures, default: string = ""): Table[string, string] =
+func toTable*(pattern: Captures): Table[string, string] =
   result = initTable[string, string]()
-  toTableImpl(nextVal.len == 0)
+  toTableImpl()
 
-proc toTable*(pattern: CaptureBounds, default = none(HSlice[int, int])):
-    Table[string, Option[HSlice[int, int]]] =
-  result = initTable[string, Option[HSlice[int, int]]]()
-  toTableImpl(nextVal.isNone)
+func toTable*(pattern: CaptureBounds): Table[string, HSlice[int, int]] =
+  result = initTable[string, HSlice[int, int]]()
+  toTableImpl()
 
-template itemsImpl(cond: untyped) {.dirty.} =
+template itemsImpl() {.dirty.} =
   for i in 0 ..< RegexMatch(pattern).pattern.captureCount:
-    let nextVal = pattern[i]
     # done in this roundabout way to avoid multiple yields (potential code
     # bloat)
-    let nextYieldVal = if cond: default else: nextVal
+    let nextYieldVal = if i in pattern:
+      some(pattern[i])
+    else:
+      default
+
     yield nextYieldVal
 
+iterator items*(pattern: CaptureBounds,
+                default = none(HSlice[int, int])): Option[HSlice[int, int]] =
+  itemsImpl()
 
-iterator items*(pattern: CaptureBounds, default = none(HSlice[int, int])): Option[HSlice[int, int]] =
-  itemsImpl(nextVal.isNone)
+iterator items*(pattern: Captures,
+                default: Option[string] = none(string)): Option[string] =
+  itemsImpl()
 
-iterator items*(pattern: Captures, default: string = ""): string =
-  itemsImpl(nextVal.len == 0)
-
-proc toSeq*(pattern: CaptureBounds, default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
+proc toSeq*(pattern: CaptureBounds,
+            default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
   accumulateResult(pattern.items(default))
 
-proc toSeq*(pattern: Captures, default: string = ""): seq[string] =
+proc toSeq*(pattern: Captures,
+            default: Option[string] = none(string)): seq[Option[string]] =
   accumulateResult(pattern.items(default))
 
 proc `$`*(pattern: RegexMatch): string =
@@ -405,7 +440,6 @@ proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: 
 
 proc destroyRegex(pattern: Regex) =
   pcre.free_substring(cast[cstring](pattern.pcreObj))
-  pattern.pcreObj = nil
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
 
@@ -469,7 +503,8 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   # 1x capture count as slack space for PCRE
   let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
-  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]](ceil(vecsize / 2).int)
+  # plus 1 because we need the ceiling, not the floor
+  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]]((vecsize + 1) div 2)
   myResult.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1
@@ -501,7 +536,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
       raise RegexInternalError(msg : "Unknown internal error: " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
-  ## Like ```find(...)`` <#proc-find>`_, but anchored to the start of the
+  ## Like ` ``find(...)`` <#proc-find>`_, but anchored to the start of the
   ## string.
   ##
   runnableExamples:
@@ -511,11 +546,11 @@ proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[R
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
-  ## Works the same as ```find(...)`` <#proc-find>`_, but finds every
+  ## Works the same as ` ``find(...)`` <#proc-find>`_, but finds every
   ## non-overlapping match. ``"2222".find(re"22")`` is ``"22", "22"``, not
   ## ``"22", "22", "22"``.
   ##
-  ## Arguments are the same as ```find(...)`` <#proc-find>`_
+  ## Arguments are the same as ` ``find(...)`` <#proc-find>`_
   ##
   ## Variants:
   ##
@@ -594,7 +629,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ## Splits the string with the given regex. This works according to the
   ## rules that Perl and Javascript use.
   ##
-  ## ``start`` behaves the same as in ```find(...)`` <#proc-find>`_.
+  ## ``start`` behaves the same as in ` ``find(...)`` <#proc-find>`_.
   ##
   runnableExamples:
     # -  If the match is zero-width, then the string is still split:
@@ -636,7 +671,8 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
 
     for cap in match.captures:
       # if there are captures, include them in the result
-      result.add(cap)
+      if cap.isSome:
+        result.add(cap.get)
 
     if splits == maxSplit - 1:
       break
@@ -690,7 +726,8 @@ proc replace*(str: string, pattern: Regex,
   ## -  ``$#`` - first capture
   ## -  ``$0`` - full match
   ##
-  ## If a given capture is missing, a ``ValueError`` exception is thrown.
+  ## If a given capture is missing, ``IndexError`` thrown for un-named captures
+  ## and ``KeyError`` for named captures.
   replaceImpl(str, pattern, subproc(match))
 
 proc replace*(str: string, pattern: Regex,

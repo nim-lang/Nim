@@ -3,9 +3,6 @@ mode = ScriptMode.Whatif
 
 exec "gcc -v"
 
-# test that ospaths actually compiles:
-import ospaths
-
 --forceBuild
 --path: "../friends"
 
@@ -84,3 +81,8 @@ when false:
 
 rmDir("tempXYZ")
 assert dirExists("tempXYZ") == false
+
+putEnv("dummy", "myval")
+doAssert(existsEnv("dummy") == true)
+delEnv("dummy")
+doAssert(existsEnv("dummy") == false)

@@ -10,11 +10,8 @@
 ## This module contains the data structures for the semantic checking phase.
 
 import
-  strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
-  wordrecg,
-  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, vmdef,
-  modulegraphs, lineinfos
+  intsets, options, ast, astalgo, msgs, idents, renderer,
+  magicsys, vmdef, modulegraphs, lineinfos, sets
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -40,6 +37,7 @@ type
     wasForwarded*: bool       # whether the current proc has a separate header
     mappingExists*: bool
     mapping*: TIdTable
+    caseContext*: seq[tuple[n: PNode, idx: int]]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -72,14 +70,9 @@ type
 
   TExprFlags* = set[TExprFlag]
 
-  TTypeAttachedOp* = enum
-    attachedAsgn,
-    attachedSink,
-    attachedDeepCopy,
-    attachedDestructor
-
   PContext* = ref TContext
-  TContext* = object of TPassContext # a context represents a module
+  TContext* = object of TPassContext # a context represents the module
+                                     # that is currently being compiled
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
@@ -100,8 +93,8 @@ type
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
     compilesContextIdGenerator*: int
     inGenericInst*: int        # > 0 if we are instantiating a generic
-    converters*: TSymSeq       # sequence of converters
-    patterns*: TSymSeq         # sequence of pattern matchers
+    converters*: seq[PSym]
+    patterns*: seq[PSym]       # sequence of pattern matchers
     optionStack*: seq[POptionEntry]
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
@@ -144,6 +137,8 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
+    unusedImports*: seq[(PSym, TLineInfo)]
+    exportIndirections*: HashSet[(int, int)]
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -219,7 +214,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.enforceVoidContext = PType(kind: tyStmt)
+  result.enforceVoidContext = PType(kind: tyTyped)
   result.ambiguousSymbols = initIntSet()
   result.optionStack = @[]
   result.libs = @[]
@@ -239,9 +234,9 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.typesWithOps = @[]
   result.features = graph.config.features
 
-proc inclSym(sq: var TSymSeq, s: PSym) =
+proc inclSym(sq: var seq[PSym], s: PSym) =
   var L = len(sq)
-  for i in countup(0, L - 1):
+  for i in 0 ..< L:
     if sq[i].id == s.id: return
   setLen(sq, L + 1)
   sq[L] = s
@@ -286,15 +281,24 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
     result = newTypeS(kind, c)
     addSonSkipIntLit(result, baseType)
 
+proc makeVarType*(owner: PSym, baseType: PType; kind = tyVar): PType =
+  if baseType.kind == kind:
+    result = baseType
+  else:
+    result = newType(kind, owner)
+    addSonSkipIntLit(result, baseType)
+
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   if typ.kind == tyTypeDesc:
     result = typ
   else:
     result = newTypeS(tyTypeDesc, c)
+    incl result.flags, tfCheckedForDestructor
     result.addSonSkipIntLit(typ)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
+  incl typedesc.flags, tfCheckedForDestructor
   typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
   let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
@@ -364,7 +368,7 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
   result.n = newNode(nkRange, n.info, @[
-    newIntTypeNode(nkIntLit, 0, intType),
+    newIntTypeNode(0, intType),
     makeStaticExpr(c, nMinusOne(c, n))])
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
@@ -373,6 +377,7 @@ template rangeHasUnresolvedStatic*(t: PType): bool =
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
   result = newTypeS(tyError, c)
+  result.flags.incl tfCheckedForDestructor
 
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
@@ -387,8 +392,8 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =
   let intType = if intType != nil: intType else: getSysType(c.graph, info, tyInt)
   var n = newNodeI(nkRange, info)
-  addSon(n, newIntTypeNode(nkIntLit, first, intType))
-  addSon(n, newIntTypeNode(nkIntLit, last, intType))
+  addSon(n, newIntTypeNode(first, intType))
+  addSon(n, newIntTypeNode(last, intType))
   result = newTypeS(tyRange, c)
   result.n = n
   addSonSkipIntLit(result, intType) # basetype of range
@@ -412,3 +417,12 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
+
+proc pushCaseContext*(c: PContext, caseNode: PNode) =
+  add(c.p.caseContext, (caseNode, 0))
+
+proc popCaseContext*(c: PContext) =
+  discard pop(c.p.caseContext)
+
+proc setCaseContextIdx*(c: PContext, idx: int) =
+  c.p.caseContext[^1].idx = idx

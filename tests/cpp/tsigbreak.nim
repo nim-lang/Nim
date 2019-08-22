@@ -1,5 +1,6 @@
 discard """
   targets: "cpp"
+  action: compile
 """
 
 import tables, lists

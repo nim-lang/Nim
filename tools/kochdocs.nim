@@ -25,11 +25,10 @@ proc findNim*(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   let prevPath = getEnv("PATH")
   if additionalPath.len > 0:
-    var absolute = additionalPATH
+    var absolute = additionalPath
     if not absolute.isAbsolute:
       absolute = getCurrentDir() / absolute
     echo("Adding to $PATH: ", absolute)
@@ -38,21 +37,47 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
+template inFold*(desc, body) =
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:start:" & desc.replace(" ", "_")
+
+  body
+
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:end:" & desc.replace(" ", "_")
+
+proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
+  ## Execute shell command. Add log folding on Travis CI.
+  # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
+  inFold(desc):
+    exec(cmd, errorcode, additionalPath)
+
 proc execCleanPath*(cmd: string,
                    additionalPath = ""; errorcode: int = QuitFailure) =
   # simulate a poor man's virtual environment
   let prevPath = getEnv("PATH")
   when defined(windows):
-    let CleanPath = r"$1\system32;$1;$1\System32\Wbem" % getEnv"SYSTEMROOT"
+    let cleanPath = r"$1\system32;$1;$1\System32\Wbem" % getEnv"SYSTEMROOT"
   else:
-    const CleanPath = r"/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin"
-  putEnv("PATH", CleanPath & PathSep & additionalPath)
+    const cleanPath = r"/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin"
+  putEnv("PATH", cleanPath & PathSep & additionalPath)
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
 proc nimexec*(cmd: string) =
+  # Consider using `nimCompile` instead
   exec findNim() & " " & cmd
+
+proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
+  let output = outputDir / input.splitFile.name.exe
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  exec cmd
+
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
+  let output = outputDir / input.splitFile.name.exe
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  execFold(desc, cmd)
 
 const
   pdf = """
@@ -60,6 +85,7 @@ doc/manual.rst
 doc/lib.rst
 doc/tut1.rst
 doc/tut2.rst
+doc/tut3.rst
 doc/nimc.rst
 doc/niminst.rst
 doc/gc.rst
@@ -70,9 +96,13 @@ doc/intern.rst
 doc/apis.rst
 doc/lib.rst
 doc/manual.rst
+doc/manual_experimental.rst
+doc/destructors.rst
 doc/tut1.rst
 doc/tut2.rst
+doc/tut3.rst
 doc/nimc.rst
+doc/hcr.rst
 doc/overview.rst
 doc/filters.rst
 doc/tools.rst
@@ -89,13 +119,19 @@ doc/nep1.rst
 doc/nims.rst
 doc/contributing.rst
 doc/codeowners.rst
+doc/packaging.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
   doc = """
 lib/system.nim
+lib/system/io.nim
 lib/system/nimscript.nim
-lib/pure/ospaths.nim
+lib/system/assertions.nim
+lib/system/iterators.nim
+lib/system/dollars.nim
+lib/system/widestrs.nim
+lib/deprecated/pure/ospaths.nim
 lib/pure/parsejson.nim
 lib/pure/cstrutils.nim
 lib/core/macros.nim
@@ -114,14 +150,16 @@ lib/js/asyncjs.nim
 lib/pure/os.nim
 lib/pure/strutils.nim
 lib/pure/math.nim
-lib/pure/matchers.nim
-lib/pure/editdistance.nim
+lib/std/editdistance.nim
+lib/std/wordwrap.nim
+lib/experimental/diff.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim
 lib/windows/winlean.nim
 lib/pure/random.nim
 lib/pure/complex.nim
 lib/pure/times.nim
+lib/std/monotimes.nim
 lib/pure/osproc.nim
 lib/pure/pegs.nim
 lib/pure/dynlib.nim
@@ -147,10 +185,8 @@ lib/impure/db_mysql.nim
 lib/impure/db_sqlite.nim
 lib/impure/db_odbc.nim
 lib/pure/db_common.nim
-lib/pure/httpserver.nim
 lib/pure/httpclient.nim
 lib/pure/smtp.nim
-lib/impure/ssl.nim
 lib/pure/ropes.nim
 lib/pure/unidecode/unidecode.nim
 lib/pure/xmlparser.nim
@@ -160,25 +196,20 @@ lib/pure/colors.nim
 lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
-lib/pure/scgi.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
-lib/deprecated/pure/sockets.nim
-lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
 lib/pure/collections/sets.nim
 lib/pure/collections/lists.nim
 lib/pure/collections/sharedlist.nim
 lib/pure/collections/sharedtables.nim
 lib/pure/collections/intsets.nim
-lib/pure/collections/queues.nim
 lib/pure/collections/deques.nim
 lib/pure/encodings.nim
 lib/pure/collections/sequtils.nim
 lib/pure/collections/rtarrays.nim
 lib/pure/cookies.nim
 lib/pure/memfiles.nim
-lib/pure/subexes.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim
@@ -204,7 +235,6 @@ lib/pure/selectors.nim
 lib/pure/sugar.nim
 lib/pure/collections/chains.nim
 lib/pure/asyncfile.nim
-lib/deprecated/pure/ftpclient.nim
 lib/pure/asyncftpclient.nim
 lib/pure/lenientops.nim
 lib/pure/md5.nim
@@ -214,7 +244,9 @@ lib/pure/oswalkdir.nim
 lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
+lib/std/sums.nim
 lib/std/varints.nim
+lib/std/time_t.nim
 lib/impure/rdstdin.nim
 lib/wrappers/linenoise/linenoise.nim
 lib/pure/strformat.nim
@@ -226,6 +258,7 @@ lib/pure/bitops.nim
 lib/pure/nimtracker.nim
 lib/pure/punycode.nim
 lib/pure/volatile.nim
+lib/posix/posix_utils.nim
 """.splitWhitespace()
 
   doc0 = """
@@ -249,14 +282,14 @@ lib/wrappers/odbcsql.nim
 lib/js/jscore.nim
 """.splitWhitespace()
 
-proc sexec(cmds: openarray[string]) =
+proc sexec(cmds: openArray[string]) =
   ## Serial queue wrapper around exec.
   for cmd in cmds:
     echo(cmd)
     let (outp, exitCode) = osproc.execCmdEx(cmd)
     if exitCode != 0: quit outp
 
-proc mexec(cmds: openarray[string]) =
+proc mexec(cmds: openArray[string]) =
   ## Multiprocessor version of exec
   let r = execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd})
   if r != 0:
@@ -333,7 +366,7 @@ proc buildDocs*(args: string) =
   let
     a = nimArgs & " " & args
     docHackJs = "dochack.js"
-    docHackJsSource = docHackDir / "nimcache" / docHackJs
+    docHackJsSource = docHackDir / docHackJs
     docHackJsDest = docHtmlOutput / docHackJs
   buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion

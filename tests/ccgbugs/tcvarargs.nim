@@ -12,6 +12,7 @@ discard """
 
 {.emit: """
 #include <stdarg.h>
+#include <stdio.h>
 
 void foo(int n, ...) {
   NI64 k;

@@ -1,6 +1,6 @@
 discard """
-  line: 23
   errormsg: "type mismatch"
+  line: 23
 """
 
 type
@@ -21,4 +21,3 @@ proc raiser(): int =
 
 var o: TObjB
 o.fn = raiser
-

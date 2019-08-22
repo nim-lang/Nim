@@ -11,9 +11,10 @@
 ## language.
 
 import
-  ast, modules, idents, passes, passaux, condsyms,
-  options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos, pathutils
+  ast, modules, idents, passes, condsyms,
+  options, sem, llstream, vm, vmdef, commands, msgs,
+  os, times, osproc, wordrecg, strtabs, modulegraphs,
+  lineinfos, pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -42,14 +43,17 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       proc (a: VmArgs) =
         body
 
-  template cbos(name, body) {.dirty.} =
+  template cbexc(name, exc, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
         errorMsg = ""
         try:
           body
-        except OSError:
+        except exc:
           errorMsg = getCurrentExceptionMsg()
+
+  template cbos(name, body) {.dirty.} =
+    cbexc(name, OSError, body)
 
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
@@ -63,8 +67,10 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     os.removeFile getString(a, 0)
   cbos createDir:
     os.createDir getString(a, 0)
-  cbos getOsError:
-    setResult(a, errorMsg)
+
+  result.registerCallback "stdlib.system.getError",
+    proc (a: VmArgs) = setResult(a, errorMsg)
+
   cbos setCurrentDir:
     os.setCurrentDir getString(a, 0)
   cbos getCurrentDir:
@@ -91,6 +97,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.existsEnv(a.getString 0))
   cbconf putEnv:
     os.putEnv(a.getString 0, a.getString 1)
+  cbconf delEnv:
+    os.delEnv(a.getString 0)
   cbconf dirExists:
     setResult(a, os.dirExists(a.getString 0))
   cbconf fileExists:
@@ -123,6 +131,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf setCommand:
     conf.command = a.getString 0
     let arg = a.getString 1
+    incl(conf.globalOptions, optWasNimscript)
     if arg.len > 0:
       conf.projectName = arg
       let path =
@@ -154,10 +163,18 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.getAppFilename())
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
+  cbexc stdinReadLine, EOFError:
+    setResult(a, "")
+    setResult(a, stdin.readLine())
+  cbexc stdinReadAll, EOFError:
+    setResult(a, "")
+    setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =
   rawMessage(conf, hintConf, scriptName.string)
+  let oldSymbolFiles = conf.symbolFiles
+  conf.symbolFiles = disabledSf
 
   let graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
@@ -183,3 +200,4 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
+  conf.symbolFiles = oldSymbolFiles

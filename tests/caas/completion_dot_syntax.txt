@@ -1,9 +1,0 @@
-completion_dot_syntax_main.nim
-> idetools --track:$TESTNIM,24,15 --def
-def\tskProc\t$MODULE.echoRemainingDollars
-> idetools --trackDirty:completion_dot_syntax_dirty.nim,$TESTNIM,25,12 --suggest
-sug\tskProc\techoRemainingDollars
-# The suggestion should not mention the other echoRemaining* variants.
-!echoRemainingEuros
-!echoRemainingBugs
-

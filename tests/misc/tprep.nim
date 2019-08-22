@@ -1,3 +1,11 @@
+discard """
+nimout: '''
+tprep.nim(25, 9) Hint: Case 2 [User]
+tprep.nim(27, 11) Hint: Case 2.3 [User]
+'''
+outputsub: ""
+"""
+
 # Test the features that used to belong to the preprocessor
 
 import

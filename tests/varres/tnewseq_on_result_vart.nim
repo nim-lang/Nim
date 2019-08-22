@@ -1,7 +1,7 @@
 
 discard """
-  line: 9
   errormsg: "address of 'result' may not escape its stack frame"
+  line: 9
 """
 # bug #5113
 

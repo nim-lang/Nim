@@ -15,7 +15,7 @@
 ## This implementation calls ``math.randomize()`` for the first call of
 ## ``genOid``.
 
-import times, endians
+import hashes, times, endians
 
 type
   Oid* = object ## an OID
@@ -26,6 +26,14 @@ type
 proc `==`*(oid1: Oid, oid2: Oid): bool =
   ## Compare two Mongo Object IDs for equality
   return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and (oid1.count == oid2.count)
+
+proc hash*(oid: Oid): Hash =
+  ## Generate hash of Oid for use in hashtables
+  var h: Hash = 0
+  h = h !& hash(oid.time)
+  h = h !& hash(oid.fuzz)
+  h = h !& hash(oid.count)
+  result = !$h
 
 proc hexbyte*(hex: char): int =
   case hex
@@ -60,23 +68,21 @@ proc `$`*(oid: Oid): string =
   result = newString(24)
   oidToString(oid, result)
 
+proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
+proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
+
+var t = getTime().toUnix.int32
+srand(t)
+
 var
-  incr: int
-  fuzz: int32
+  incr: int = rand()
+  fuzz: int32 = rand()
 
 proc genOid*(): Oid =
   ## generates a new OID.
-  proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
-  proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
-
-  var t = getTime().toUnix.int32
-
+  t = getTime().toUnix.int32
   var i = int32(atomicInc(incr))
 
-  if fuzz == 0:
-    # racy, but fine semantically:
-    srand(t)
-    fuzz = rand()
   bigEndian32(addr result.time, addr(t))
   result.fuzz = fuzz
   bigEndian32(addr result.count, addr(i))

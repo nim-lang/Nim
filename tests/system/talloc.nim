@@ -1,5 +1,8 @@
 discard """
+disabled: "appveyor"
 """
+
+# appveyor is "out of memory"
 
 var x: ptr int
 

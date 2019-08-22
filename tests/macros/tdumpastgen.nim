@@ -1,5 +1,5 @@
 discard """
-msg: '''nnkStmtList.newTree(
+nimout: '''nnkStmtList.newTree(
   nnkVarSection.newTree(
     nnkIdentDefs.newTree(
       newIdentNode("x"),

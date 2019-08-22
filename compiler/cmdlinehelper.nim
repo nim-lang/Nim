@@ -13,6 +13,8 @@ import
   options, idents, nimconf, scriptconfig, extccomp, commands, msgs,
   lineinfos, modulegraphs, condsyms, os, pathutils
 
+from strutils import normalize
+
 type
   NimProg* = ref object
     suggestMode*: bool
@@ -48,9 +50,10 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   if self.suggestMode:
     conf.command = "nimsuggest"
 
-  proc runNimScriptIfExists(path: AbsoluteFile)=
-    if fileExists(path):
-      runNimScript(cache, path, freshDefines = false, conf)
+  template runNimScriptIfExists(path: AbsoluteFile) =
+    let p = path # eval once
+    if fileExists(p):
+      runNimScript(cache, p, freshDefines = false, conf)
 
   # Caution: make sure this stays in sync with `loadConfigs`
   if optSkipSystemConfigFile notin conf.globalOptions:
@@ -71,7 +74,11 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
       runNimScriptIfExists(scriptFile)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if fileExists(scriptFile) and scriptFile == conf.projectFull:
-        return false
+        if conf.command == "":
+          conf.command = "e"
+          return false
+        elif conf.command.normalize == "e":
+          return false
     else:
       if scriptFile != conf.projectFull:
         runNimScriptIfExists(scriptFile)

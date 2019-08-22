@@ -14,7 +14,7 @@
 ## `db_postgres <db_postgres.html>`_.
 ##
 ## Parameter substitution
-## ----------------------
+## ======================
 ##
 ## All ``db_*`` modules support the same form of parameter substitution.
 ## That is, using the ``?`` (question mark) to signify the place where a
@@ -25,10 +25,10 @@
 ##
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Opening a connection to a database
-## ==================================
+## ----------------------------------
 ##
 ## .. code-block:: Nim
 ##     import db_mysql
@@ -36,7 +36,7 @@
 ##     db.close()
 ##
 ## Creating a table
-## ================
+## ----------------
 ##
 ## .. code-block:: Nim
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
@@ -45,14 +45,14 @@
 ##                       name varchar(50) not null)"""))
 ##
 ## Inserting data
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Dominik")
 ##
 ## Larger example
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##
@@ -96,7 +96,6 @@ type
                        ## column text on demand
     row: cstringArray
     len: int
-{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.
@@ -286,6 +285,10 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row.
   $row.row[col]
+
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row.

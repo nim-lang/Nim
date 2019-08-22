@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+import system/indexerrors
+
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
@@ -46,7 +48,7 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result[0] = x
 
 proc isNimException(): bool {.asmNoStackFrame.} =
-  asm "return `lastJSError`.m_type;"
+  asm "return `lastJSError` && `lastJSError`.m_type;"
 
 proc getCurrentException*(): ref Exception {.compilerRtl, benign.} =
   if isNimException(): result = cast[ref Exception](lastJSError)
@@ -118,7 +120,7 @@ proc unhandledException(e: ref Exception) {.
   add(buf, "]\n")
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
-  let cbuf : cstring = buf
+  let cbuf = cstring(buf)
   framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
@@ -157,11 +159,11 @@ proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
 proc raiseRangeError() {.compilerproc, noreturn.} =
   raise newException(RangeError, "value out of range")
 
-proc raiseIndexError() {.compilerproc, noreturn.} =
-  raise newException(IndexError, "index out of bounds")
+proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
+  raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldError, f & " is not accessible")
+  raise newException(FieldError, f)
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -226,36 +228,44 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   return result;
   """.}
 
-proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
-  asm """
-  var len = `s`.length;
-  var asciiPart = new Array(len);
-  var fcc = String.fromCharCode;
-  var nonAsciiPart = null;
-  var nonAsciiOffset = 0;
-  for (var i = 0; i < len; ++i) {
-    if (nonAsciiPart !== null) {
-      var offset = (i - nonAsciiOffset) * 2;
-      var code = `s`[i].toString(16);
-      if (code.length == 1) {
-        code = "0"+code;
-      }
-      nonAsciiPart[offset] = "%";
-      nonAsciiPart[offset + 1] = code;
-    }
-    else if (`s`[i] < 128)
-      asciiPart[i] = fcc(`s`[i]);
-    else {
-      asciiPart.length = i;
-      nonAsciiOffset = i;
-      nonAsciiPart = new Array((len - i) * 2);
-      --i;
-    }
-  }
-  asciiPart = asciiPart.join("");
-  return (nonAsciiPart === null) ?
-      asciiPart : asciiPart + decodeURIComponent(nonAsciiPart.join(""));
-  """
+proc toJSStr(s: string): cstring {.compilerproc.} =
+  proc fromCharCode(c: char): cstring {.importc: "String.fromCharCode".}
+  proc join(x: openArray[cstring]; d = cstring""): cstring {.
+    importcpp: "#.join(@)".}
+  proc decodeURIComponent(x: cstring): cstring {.
+    importc: "decodeURIComponent".}
+
+  proc toHexString(c: char; d = 16): cstring {.importcpp: "#.toString(@)".}
+
+  proc log(x: cstring) {.importc: "console.log".}
+
+  var res = newSeq[cstring](s.len)
+  var i = 0
+  var j = 0
+  while i < s.len:
+    var c = s[i]
+    if c < '\128':
+      res[j] = fromCharCode(c)
+      inc i
+    else:
+      var helper = newSeq[cstring]()
+      while true:
+        let code = toHexString(c)
+        if code.len == 1:
+          helper.add cstring"%0"
+        else:
+          helper.add cstring"%"
+        helper.add code
+        inc i
+        if i >= s.len or s[i] < '\128': break
+        c = s[i]
+      try:
+        res[j] = decodeURIComponent join(helper)
+      except:
+        res[j] = join(helper)
+    inc j
+  setLen(res, j)
+  result = join(res)
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
   asm """
@@ -330,6 +340,8 @@ proc cmp(x, y: string): int =
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   asm """
     if (`a` == `b`) return true;
+    if (`a` === null && `b`.length == 0) return true;
+    if (`b` === null && `a`.length == 0) return true;
     if ((!`a`) || (!`b`)) return false;
     var alen = `a`.length;
     if (alen != `b`.length) return false;
@@ -470,26 +482,27 @@ proc absInt(a: int): int {.compilerproc.} =
 proc absInt64(a: int64): int64 {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
 
-proc ze*(a: int): int {.compilerproc.} =
-  result = a
+when not defined(nimNoZeroExtendMagic):
+  proc ze*(a: int): int {.compilerproc.} =
+    result = a
 
-proc ze64*(a: int64): int64 {.compilerproc.} =
-  result = a
+  proc ze64*(a: int64): int64 {.compilerproc.} =
+    result = a
 
-proc toU8*(a: int): int8 {.asmNoStackFrame, compilerproc.} =
-  asm """
-    return `a`;
-  """
+  proc toU8*(a: int): int8 {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `a`;
+    """
 
-proc toU16*(a: int): int16 {.asmNoStackFrame, compilerproc.} =
-  asm """
-    return `a`;
-  """
+  proc toU16*(a: int): int16 {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `a`;
+    """
 
-proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
-  asm """
-    return `a`;
-  """
+  proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `a`;
+    """
 
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
@@ -516,8 +529,11 @@ proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
     """
   of nkList:
-    for i in 0..n.len-1:
-      nimCopyAux(dest, src, n.sons[i])
+    asm """
+    for (var i = 0; i < `n`.sons.length; i++) {
+      nimCopyAux(`dest`, `src`, `n`.sons[i]);
+    }
+    """
   of nkCase:
     asm """
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
@@ -620,7 +636,7 @@ proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
 
 proc chckIndx(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i
-  else: raiseIndexError()
+  else: raiseIndexError(i, a, b)
 
 proc chckRange(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i

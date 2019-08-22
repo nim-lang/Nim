@@ -1,16 +1,16 @@
 discard """
-  file: "ttables.nim"
-  output: '''
-done
+output: '''
+done tableadds
 And we get here
 1
 2
 3
 '''
+joinable: false
 """
-import hashes, sequtils, tables
+import hashes, sequtils, tables, algorithm
 
-
+# test should not be joined because it takes too long.
 block tableadds:
   proc main =
     var tab = newTable[string, string]()
@@ -18,7 +18,7 @@ block tableadds:
       tab.add "key", "value " & $i
 
   main()
-  echo "done"
+  echo "done tableadds"
 
 
 block tcounttable:
@@ -142,7 +142,7 @@ block tindexby:
   tbl2.add("bar", elem1)
   tbl2.add("baz", elem2)
   doAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
-  
+
 
 block tableconstr:
   # Test if the new table constructor syntax works:
@@ -274,22 +274,30 @@ block tablesref:
   block countTableTest1:
     var s = data.toTable
     var t = newCountTable[string]()
-    for k in s.keys: t.inc(k)
-    for k in t.keys: assert t[k] == 1
-    t.inc("90", 3)
-    t.inc("12", 2)
-    t.inc("34", 1)
+    var r = newCountTable[string]()
+    for x in [t, r]:
+      for k in s.keys:
+        x.inc(k)
+        assert x[k] == 1
+      x.inc("90", 3)
+      x.inc("12", 2)
+      x.inc("34", 1)
     assert t.largest()[0] == "90"
 
     t.sort()
-    var i = 0
-    for k, v in t.pairs:
-      case i
-      of 0: assert k == "90" and v == 4
-      of 1: assert k == "12" and v == 3
-      of 2: assert k == "34" and v == 2
-      else: break
-      inc i
+    r.sort(SortOrder.Ascending)
+    var ps1 = toSeq t.pairs
+    var ps2 = toSeq r.pairs
+    ps2.reverse()
+    for ps in [ps1, ps2]:
+      var i = 0
+      for (k, v) in ps:
+        case i
+        of 0: assert k == "90" and v == 4
+        of 1: assert k == "12" and v == 3
+        of 2: assert k == "34" and v == 2
+        else: break
+        inc i
 
   block SyntaxTest:
     var x = newTable[int, string]({:})
@@ -308,12 +316,19 @@ block tablesref:
     var t = newOrderedTable[string, int](2)
     for key, val in items(data): t[key] = val
     for key, val in items(data): assert t[key] == val
-    t.sort(proc (x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key))
+    proc cmper(x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key)
+    t.sort(cmper)
     var i = 0
     # `pairs` needs to yield in sorted order:
     for key, val in pairs(t):
       doAssert key == sorteddata[i][0]
       doAssert val == sorteddata[i][1]
+      inc(i)
+    t.sort(cmper, order=SortOrder.Descending)
+    i = 0
+    for key, val in pairs(t):
+      doAssert key == sorteddata[high(data)-i][0]
+      doAssert val == sorteddata[high(data)-i][1]
       inc(i)
 
     # check that lookup still works:
