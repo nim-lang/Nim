@@ -53,8 +53,11 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #if x.kind == skParam and x.owner.kind == skModule:
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
-        result.add newIdentNode(getIdent(c.ic, x.name.s & ":nim" & $x.id),
-          if c.instLines: actual.info else: templ.info)
+        if sfGenSym in s.flags and optNimV019 notin c.config.globalOptions:
+          result.add newIdentNode(getIdent(c.ic, x.name.s & ":nim" & $x.id),
+            if c.instLines: actual.info else: templ.info)
+        else:
+          result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
     else:
       result.add copyNode(c, templ, actual)
   of nkNone..nkIdent, nkType..nkNilLit: # atom
