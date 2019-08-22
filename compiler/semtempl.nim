@@ -123,7 +123,7 @@ type
     owner: PSym
     cursorInBody: bool # only for nimsuggest
     scopeN: int
-    isDotField: int
+    noGenSym: int
 
 template withBracketExpr(ctx, x, body: untyped) =
   body
@@ -335,17 +335,17 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       elif contains(c.toBind, s.id):
-        result = symChoice(c.c, n, s, scClosed, c.isDotField > 0)
+        result = symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
       elif contains(c.toMixin, s.name.id):
-        result = symChoice(c.c, n, s, scForceOpen, c.isDotField > 0)
-      elif s.owner == c.owner and sfGenSym in s.flags and c.isDotField == 0:
+        result = symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
+      elif s.owner == c.owner and sfGenSym in s.flags and c.noGenSym == 0:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
-        result = semTemplSymbol(c.c, n, s, c.isDotField > 0)
+        result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
   of nkBind:
     result = semTemplBody(c, n.sons[0])
   of nkBindStmt:
@@ -532,17 +532,25 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         onUse(n.info, s)
         return newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
-        return symChoice(c.c, n, s, scClosed, c.isDotField > 0)
+        return symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
       elif contains(c.toMixin, s.name.id):
-        return symChoice(c.c, n, s, scForceOpen, c.isDotField > 0)
+        return symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
       else:
-        return symChoice(c.c, n, s, scOpen, c.isDotField > 0)
+        return symChoice(c.c, n, s, scOpen, c.noGenSym > 0)
     if n.kind == nkDotExpr:
       result = n
       result.sons[0] = semTemplBody(c, n.sons[0])
-      inc c.isDotField
+      inc c.noGenSym
       result.sons[1] = semTemplBody(c, n.sons[1])
-      dec c.isDotField
+      dec c.noGenSym
+    else:
+      result = semTemplBodySons(c, n)
+  of nkExprColonExpr, nkExprEqExpr:
+    if n.len == 2:
+      inc c.noGenSym
+      result.sons[0] = semTemplBody(c, n.sons[0])
+      dec c.noGenSym
+      result.sons[1] = semTemplBody(c, n.sons[1])
     else:
       result = semTemplBodySons(c, n)
   else:

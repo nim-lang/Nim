@@ -10,6 +10,13 @@
   to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
   feature.
 
+- The language definition and compiler are now stricter about ``gensym``'ed
+  symbols in hygienic templates. See the section in the
+  [manual](https://nim-lang.org/docs/manual.html#templates-hygiene-in-templates)
+  for further details. Use the compiler switch `--setversion:0.19` for a
+  transition period.
+
+
 ### Breaking changes in the standard library
 
 
