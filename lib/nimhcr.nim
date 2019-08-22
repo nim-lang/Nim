@@ -421,7 +421,7 @@ when defined(createNimHcr):
       modules.add(name, newModuleDesc())
 
     let copiedName = name & ".copy." & dllExt
-    copyFile(name, copiedName)
+    copyFileWithPermissions(name, copiedName)
 
     let lib = loadLib(copiedName)
     assert lib != nil

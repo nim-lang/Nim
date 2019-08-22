@@ -956,7 +956,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # handle the 2 options for hotcodereloading codegen - function pointer
-  # (instead of forward declaration) or header for function budy with "_actual" postfix
+  # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name = prc.loc.r
   if isReloadable(m, prc) and not asPtr:
