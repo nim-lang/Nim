@@ -784,7 +784,7 @@ proc cgsym(m: BModule, name: string): Rope =
     rawMessage(m.config, errGenerated, "system module needs: " & name)
   result = sym.loc.r
   if m.hcrOn and sym != nil and sym.kind in {skProc..skIterator}:
-    result.addActualPrefixForHCR(m.module, sym)
+    result.addActualSuffixForHCR(m.module, sym)
 
 proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "\L#include \"nimbase.h\"\L")
@@ -1033,6 +1033,11 @@ proc genProcAux(m: BModule, prc: PSym) =
     generatedProc = ropecg(p.module, "$N$1 {$n$2$3$4}$N$N",
                          [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
   else:
+    if m.hcrOn and isReloadable(m, prc):
+      # Add forward declaration for "_actual"-suffixed functions defined in the same module (or inline).
+      # This fixes the use of methods and also the case when 2 functions within the same module
+      # call each other using directly the "_actual" versions (an optimization) - see issue #11608
+      addf(m.s[cfsProcHeaders], "$1;\n", [header])
     generatedProc = ropecg(p.module, "$N$1 {$N", [header])
     add(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options:
