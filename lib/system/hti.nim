@@ -87,7 +87,7 @@ type
     ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
                        # version
 
-  TNimType {.compilerProc.} = object
+  TNimType {.compilerproc.} = object
     size, align: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
