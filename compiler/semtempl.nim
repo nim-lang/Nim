@@ -330,7 +330,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.ident.id in c.toInject: return n
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and s.kind == skParam:
+      if s.owner == c.owner and s.kind == skParam and
+          (sfGenSym notin s.flags or c.noGenSym == 0):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
