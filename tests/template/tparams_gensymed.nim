@@ -8,6 +8,7 @@ output: '''
 1
 2
 3
+wth
 '''
 """
 # bug #1915
@@ -130,3 +131,17 @@ template test() =
       doAssert(foo.len == 3)
 
 test()
+
+# regression found in PMunch's parser generator
+
+proc namedcall(arg: string) =
+  discard
+
+macro m(): untyped =
+  result = quote do:
+    (proc (arg: string) =
+      namedcall(arg = arg)
+      echo arg)
+
+let meh = m()
+meh("wth")

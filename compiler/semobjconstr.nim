@@ -113,6 +113,13 @@ proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
     for i in 1 .. caseNode.len-2:
       processBranchVals(caseNode[i], excl)
 
+proc rangeTypVals(rangeTyp: PType): IntSet =
+  assert rangeTyp.kind == tyRange
+  let (a, b) = (rangeTyp.n.sons[0].intVal, rangeTyp.n.sons[1].intVal)
+  result = initIntSet()
+  for it in a .. b:
+    result.incl(it.int)
+
 proc formatUnsafeBranchVals(t: PType, diffVals: IntSet): string =
   if diffVals.len <= 32:
     var strs: seq[string]
@@ -228,9 +235,9 @@ proc semConstructFields(c: PContext, recNode: PNode,
       template badDiscriminatorError =
         let fields = fieldsPresentInBranch(selectedBranch)
         localError(c.config, initExpr.info,
-          ("you must provide a compile-time value for the discriminator '$1' " &
-          "in order to prove that it's safe to initialize $2.") %
-          [discriminator.sym.name.s, fields])
+          ("cannot prove that it's safe to initialize $1 with " &
+          "the runtime value for the discriminator '$2' ") %
+          [fields, discriminator.sym.name.s])
         mergeInitStatus(result, initNone)
 
       template wrongBranchError(i) =
@@ -241,30 +248,45 @@ proc semConstructFields(c: PContext, recNode: PNode,
           "are in conflict with this value.",
           [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
 
+      template valuesInConflictError(valsDiff) =
+        localError(c.config, discriminatorVal.info, ("possible values " &
+          "$2are in conflict with discriminator values for " &
+          "selected object branch $1.") % [$selectedBranch,
+          formatUnsafeBranchVals(recNode.sons[0].typ, valsDiff)])
+
       let branchNode = recNode[selectedBranch]
       let flags = flags*{efAllowDestructor} + {efPreferStatic,
                                                efPreferNilResult}
       var discriminatorVal = semConstrField(c, flags,
                                             discriminator.sym, initExpr)
-
       if discriminatorVal != nil:
         discriminatorVal = discriminatorVal.skipHidden
+        if discriminatorVal.kind notin nkLiterals and (
+            not isOrdinalType(discriminatorVal.typ, true) or
+            lengthOrd(c.config, discriminatorVal.typ) > MaxSetElements or
+            lengthOrd(c.config, recNode.sons[0].typ) > MaxSetElements):
+          localError(c.config, discriminatorVal.info,
+            "branch initialization with a runtime discriminator only " &
+            "supports ordinal types with 2^16 elements or less.")
+
       if discriminatorVal == nil:
         badDiscriminatorError()
       elif discriminatorVal.kind == nkSym:
         let (ctorCase, ctorIdx) = findUsefulCaseContext(c, discriminatorVal)
         if ctorCase == nil:
-          badDiscriminatorError()
+          if discriminatorVal.typ.kind == tyRange:
+            let rangeVals = rangeTypVals(discriminatorVal.typ)
+            let recBranchVals = branchVals(c, recNode, selectedBranch, false)
+            let diff = rangeVals - recBranchVals
+            if diff.len != 0:
+              valuesInConflictError(diff)
+          else:
+            badDiscriminatorError()
         elif discriminatorVal.sym.kind notin {skLet, skParam} or
             discriminatorVal.sym.typ.kind == tyVar:
           localError(c.config, discriminatorVal.info,
             "runtime discriminator must be immutable if branch fields are " &
             "initialized, a 'let' binding is required.")
-        elif not isOrdinalType(discriminatorVal.sym.typ, true) or
-            lengthOrd(c.config, discriminatorVal.sym.typ) > MaxSetElements:
-          localError(c.config, discriminatorVal.info,
-            "branch initialization with a runtime discriminator only " &
-            "supports ordinal types with 2^16 elements or less.")
         elif ctorCase[ctorIdx].kind == nkElifBranch:
           localError(c.config, discriminatorVal.info, "branch initialization " &
             "with a runtime discriminator is not supported inside of an " &
@@ -275,20 +297,27 @@ proc semConstructFields(c: PContext, recNode: PNode,
             recBranchVals = branchVals(c, recNode, selectedBranch, false)
             branchValsDiff = ctorBranchVals - recBranchVals
           if branchValsDiff.len != 0:
-            localError(c.config, discriminatorVal.info, ("possible values " &
-              "$2are in conflict with discriminator values for " &
-              "selected object branch $1.") % [$selectedBranch,
-              formatUnsafeBranchVals(recNode.sons[0].typ, branchValsDiff)])
+            valuesInConflictError(branchValsDiff)
       else:
+        var failedBranch = -1
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
-            wrongBranchError(selectedBranch)
+            failedBranch = selectedBranch
         else:
           # With an else clause, check that all other branches don't match:
           for i in 1 .. (recNode.len - 2):
             if recNode[i].caseBranchMatchesExpr(discriminatorVal):
-              wrongBranchError(i)
+              failedBranch = i
               break
+        if failedBranch != -1:
+          if discriminatorVal.typ.kind == tyRange:
+            let rangeVals = rangeTypVals(discriminatorVal.typ)
+            let recBranchVals = branchVals(c, recNode, selectedBranch, false)
+            let diff = rangeVals - recBranchVals
+            if diff.len != 0:
+              valuesInConflictError(diff)
+          else:
+            wrongBranchError(failedBranch)
 
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:

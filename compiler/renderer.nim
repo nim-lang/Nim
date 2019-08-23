@@ -739,13 +739,18 @@ proc gcase(g: var TSrcGen, n: PNode) =
     if longMode(g, n.sons[length - 1]): incl(c.flags, rfLongMode)
     gsub(g, n.sons[length - 1], c)
 
+proc genSymSuffix(result: var string, s: PSym) {.inline.} =
+  if sfGenSym in s.flags:
+    result.add '_'
+    result.addInt s.id
+
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
     let s = n.sons[namePos].sym
-    put(g, tkSymbol, renderDefinitionName(s))
-    if sfGenSym in s.flags:
-      put(g, tkIntLit, $s.id)
+    var ret = renderDefinitionName(s)
+    ret.genSymSuffix(s)
+    put(g, tkSymbol, ret)
   else:
     gsub(g, n.sons[namePos])
 
@@ -839,12 +844,12 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+    s.genSymSuffix(n.sym)
     when defined(debugMagics):
-      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
-    else:
-      put(g, tkIntLit, $n.sym.id)
+      s.add '_'
+      s.add $n.sym.magic
+  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -1575,3 +1580,15 @@ proc getTokSym*(r: TSrcGen): PSym =
     result = r.tokens[r.idx-1].sym
   else:
     result = nil
+
+proc quoteExpr*(a: string): string {.inline.} =
+  ## can be used for quoting expressions in error msgs.
+  "'" & a & "'"
+
+proc genFieldError*(field: PSym, disc: PSym): string =
+  ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
+  ## provide this error msg FieldError; msgs would be better but it does not
+  ## import ast
+  result = field.name.s.quoteExpr & " is not accessible using discriminant " &
+    disc.name.s.quoteExpr & " of type " &
+    disc.owner.name.s.quoteExpr

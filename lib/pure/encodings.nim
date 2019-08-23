@@ -231,6 +231,7 @@ when defined(windows):
     result = ""
 
   proc getACP(): CodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
+  proc getGetConsoleCP(): CodePage {.stdcall, importc: "GetConsoleCP", dynlib: "kernel32".}
 
   proc multiByteToWideChar(
     codePage: CodePage,
@@ -292,10 +293,12 @@ else:
              outbuf: var cstring, outbytesLeft: var int): int {.
     importc: "iconv", importIconv.}
 
-proc getCurrentEncoding*(): string =
+proc getCurrentEncoding*(uiApp = false): string =
   ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
+  ## The `uiApp` parameter is Windows specific. If true, the UI's code-page
+  ## is returned, if false, the Console's code-page is returned.
   when defined(windows):
-    result = codePageToName(getACP())
+    result = codePageToName(if uiApp: getACP() else: getGetConsoleCP())
   else:
     result = "UTF-8"
 
@@ -509,7 +512,7 @@ when not defined(testing) and isMainModule and defined(windows):
     let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
     let result = convert(original, "windows-1251", "utf-16")
     doAssert(result == "\xf2\xe5\xf1\xf2")
-  
+
   block should_convert_from_win1251_to_koi8r:
     let original = "\xf2\xe5\xf1\xf2" # win1251 test string "тест"
     let result = convert(original, "koi8-r", "windows-1251")

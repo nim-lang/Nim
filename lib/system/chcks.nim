@@ -26,7 +26,7 @@ proc raiseIndexError() {.compilerproc, noinline.} =
   sysFatal(IndexError, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
-  sysFatal(FieldError, f, " is not accessible")
+  sysFatal(FieldError, f)
 
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
