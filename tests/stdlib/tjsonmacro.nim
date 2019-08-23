@@ -517,6 +517,24 @@ when true:
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
 
+  block:
+    # bug #12015
+    type
+      Pix = tuple[x, y: uint8, ch: uint16]
+      Cluster = object
+        works: tuple[x, y: uint8, ch: uint16] # working
+        fails: Pix # previously broken
+
+    proc `%`(p: Pix): JsonNode =
+      result = %* { "x" : % p.x,
+                    "y" : % p.y,
+                    "ch" : % p.ch }
+
+    let data = (x: 123'u8, y: 53'u8, ch: 1231'u16)
+    let c = Cluster(works: data, fails: data)
+    let cFromJson = (% c).to(Cluster)
+    doAssert c == cFromJson
+
 # TODO: when the issue with the limeted vm registers is solved, the
 # exact same test as above should be evaluated at compile time as
 # well, to ensure that the vm functionality won't diverge from the
