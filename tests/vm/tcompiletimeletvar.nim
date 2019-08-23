@@ -82,6 +82,7 @@ block:
   proc compileTimeF():int {.compileTime.} = 10
   macro m(f:untyped):untyped =
     let x = f()
+    echo x
     quote:
       const Y = `x`
       Y
