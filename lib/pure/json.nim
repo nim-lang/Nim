@@ -1369,11 +1369,20 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
           for `forLoopI` in 0 ..< `jsonNode`.len: list[`forLoopI`] =`constructorNode`;
           list
         )
-
+    of "tuple":
+      let typeNode = getTypeImpl(typeSym)
+      result = createConstructor(typeNode, jsonNode)
     else:
-      # Generic type.
+      # Generic type or some `seq[T]` alias
       let obj = getType(typeSym)
-      result = processType(typeSym, obj, jsonNode, false)
+      case obj.kind
+      of nnkBracketExpr:
+        # probably a `seq[T]` alias
+        let typeNode = getTypeImpl(typeSym)
+        result = createConstructor(typeNode, jsonNode)
+      else:
+        # generic type
+        result = processType(typeSym, obj, jsonNode, false)
   of nnkSym:
     # Handle JsonNode.
     if ($typeSym).cmpIgnoreStyle("jsonnode") == 0:
@@ -1384,12 +1393,9 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
     let typeNode = getTypeImpl(typeSym)
     if typeNode.typeKind == ntyDistinct:
       result = createConstructor(typeNode, jsonNode)
-    elif obj.kind == nnkBracketExpr and typeNode.kind == nnkRefTy:
-      # When `Sym "Foo"` turns out to be a `ref object`
+    elif obj.kind == nnkBracketExpr:
+      # When `Sym "Foo"` turns out to be a `ref object` or `tuple`
       result = createConstructor(obj, jsonNode)
-    elif obj.kind == nnkBracketExpr and typeNode.kind == nnkTupleTy:
-      # when "Sym "Foo" turns out to be a `tuple`
-      result = processType(typeSym, typeNode, jsonNode, false)
     else:
       result = processType(typeSym, obj, jsonNode, false)
   of nnkTupleTy:
