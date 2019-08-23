@@ -60,11 +60,11 @@ template withLock*(a: Lock, body: untyped) =
   ## Acquires the given lock, executes the statements in body and
   ## releases the lock after the statements finish executing.
   mixin acquire, release
-  a.acquire()
+  acquire(a)
   {.locks: [a].}:
     try:
       body
     finally:
-      a.release()
+      release(a)
 
 {.pop.}

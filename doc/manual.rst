@@ -4899,6 +4899,45 @@ no semantics outside of a template definition and cannot be abstracted over:
 To get rid of hygiene in templates, one can use the `dirty`:idx: pragma for
 a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 
+``gensym``'ed symbols cannot be used as ``field`` in the ``x.field`` syntax.
+Nor can they be used in the ``ObjectConstruction(field: value)``
+and ``namedParameterCall(field = value)`` syntactic constructs.
+
+The reason for this is that code like
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  type
+    T = object
+      f: int
+
+  template tmp(x: T) =
+    let f = 34
+    echo x.f, T(f: 4)
+
+
+should work as expected.
+
+However, this means that the method call syntax is not available for
+``gensym``'ed symbols:
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+  template tmp(x) =
+    type
+      T {.gensym.} = int
+
+    echo x.T # invalid: instead use:  'echo T(x)'.
+
+  tmp(12)
+
+
+**Note**: The Nim compiler prior to version 1 was more lenient about this
+requirement. Use the ``--useVersion:0.19`` switch for a transition period.
+
 
 
 Limitations of the method call syntax
