@@ -216,3 +216,22 @@ block: # test passing function and type symbols
       (z1(), z2(), z3('a'), z4(), $Z1, $Z2, $Z3, $Z4)
   type Z1 = type('c')
   doAssert bar(Z1) == (41, 42, 43, 44, "char", "bool", "uint8", "int8")
+
+block: # fix https://github.com/nim-lang/Nim/issues/11986
+  proc foo(): auto =
+    var s = { 'a', 'b' }
+    # var n = quote do: `s` # would print {97, 98}
+    var n = genAst(s): s
+    n.repr
+  static: doAssert foo() == "{'a', 'b'}"
+
+block: # also from #11986
+  macro foo(): untyped =
+    var s = { 'a', 'b' }
+    # quote do:
+    #   let t = `s`
+    #   $typeof(t) # set[range 0..65535(int)]
+    genAst(s):
+      let t = s
+      $typeof(t)
+  doAssert foo() == "set[char]"
