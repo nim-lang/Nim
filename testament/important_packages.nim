@@ -5,7 +5,7 @@ template pkg(name: string; cmd = "nimble test"; hasDeps = false; url = ""): unty
 var packages*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
 
 
-pkg "argparse"
+#pkg "argparse"
 pkg "arraymancer", "nim c -r src/arraymancer.nim", true
 pkg "ast_pattern_matching", "nim c -r --useVersion=0.19 tests/test1.nim"
 pkg "binaryheap", "nim c -r binaryheap.nim"
