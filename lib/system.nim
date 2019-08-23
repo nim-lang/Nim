@@ -4499,6 +4499,9 @@ when defined(nimconfig):
 when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
+  when defined(nimToOpenArrayCString):
+    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
+      magic: "Slice".}
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}

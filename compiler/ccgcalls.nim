@@ -97,7 +97,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
         result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
       else:
         result = "($1)+(($2)-($4)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first)]
-    of tyOpenArray, tyVarargs, tyUncheckedArray:
+    of tyOpenArray, tyVarargs, tyUncheckedArray, tyCString:
       result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
