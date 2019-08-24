@@ -75,5 +75,13 @@ proc selfAssign =
 
 selfAssign()
 
+# bug #11833
+type FooAt = object
+
+proc testWrongAt() =
+  var x = @[@[FooAt()]]
+
+testWrongAt()
+
 let (a, d) = allocCounters()
 discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)

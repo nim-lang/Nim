@@ -1794,21 +1794,25 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
-proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-  magic: "ArrToSeq", noSideEffect.}
-  ## Turns an array into a sequence.
-  ##
-  ## This most often useful for constructing
-  ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
-  ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
-  ##
-  ## .. code-block:: Nim
-  ##   let
-  ##     a = [1, 3, 5]
-  ##     b = "foo"
-  ##
-  ##   echo @a # => @[1, 3, 5]
-  ##   echo @b # => @['f', 'o', 'o']
+when defined(nimHasDefault):
+  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
+    magic: "ArrToSeq", noSideEffect.}
+    ## Turns an array into a sequence.
+    ##
+    ## This most often useful for constructing
+    ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
+    ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
+    ##
+    ## .. code-block:: Nim
+    ##   let
+    ##     a = [1, 3, 5]
+    ##     b = "foo"
+    ##
+    ##   echo @a # => @[1, 3, 5]
+    ##   echo @b # => @['f', 'o', 'o']
+else:
+  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
+    magic: "ArrToSeq", noSideEffect.}
 
 when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}

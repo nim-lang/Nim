@@ -542,8 +542,6 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
           branch = copyNode(arg[i])
           branch.add pArgIfTyped(arg[i][0])
         result.add branch
-    elif isAnalysableFieldAccess(arg, c.owner) and isLastRead(arg, c):
-      result = destructiveMoveVar(arg, c)
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
