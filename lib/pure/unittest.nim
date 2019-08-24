@@ -89,7 +89,7 @@
 ##     echo "suite teardown: run once after the tests"
 
 import
-  macros, strutils, streams, times, sets
+  macros, strutils, streams, times, sets, sequtils
 
 when declared(stdout):
   import os
@@ -175,6 +175,10 @@ method suiteEnded*(formatter: OutputFormatter) {.base, gcsafe.} =
 
 proc addOutputFormatter*(formatter: OutputFormatter) =
   formatters.add(formatter)
+
+proc delOutputFormatter*(formatter: OutputFormatter) =
+  keepIf(formatters, proc (x: OutputFormatter) : bool =
+    x != formatter)
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
