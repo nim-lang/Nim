@@ -347,7 +347,7 @@ when defined(createNimHcr):
 
   proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get proc: ", module.sanitize, " ", name
-    return modules[$module].procs[$name].jump
+    return modules[$module].procs.getOrDefault($name, ProcSym()).jump
 
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
@@ -421,7 +421,7 @@ when defined(createNimHcr):
       modules.add(name, newModuleDesc())
 
     let copiedName = name & ".copy." & dllExt
-    copyFile(name, copiedName)
+    copyFileWithPermissions(name, copiedName)
 
     let lib = loadLib(copiedName)
     assert lib != nil

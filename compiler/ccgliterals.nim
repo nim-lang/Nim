@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+# included from cgen.nim
+
 ## This include file contains the logic to produce constant string
 ## and seq literals. The code here is responsible that
 ## ``const x = ["a", "b"]`` works without hidden runtime creation code.
@@ -19,7 +21,7 @@ template detectVersion(field, corename) =
     if core == nil or core.kind != skConst:
       m.g.field = 1
     else:
-      m.g.field = int ast.getInt(core.ast)
+      m.g.field = toInt(ast.getInt(core.ast))
   result = m.g.field
 
 proc detectStrVersion(m: BModule): int =

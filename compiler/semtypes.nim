@@ -69,7 +69,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     base = semTypeNode(c, n.sons[0].sons[0], nil)
     if base.kind != tyEnum:
       localError(c.config, n.sons[0].info, "inheritance only works with an enum")
-    counter = lastOrd(c.config, base) + 1
+    counter = toInt64(lastOrd(c.config, base)) + 1
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
   var symbols: TStrTable
@@ -93,7 +93,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
           if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
             if not isOrdinalType(v.sons[0].typ, allowEnumWithHoles=true):
               localError(c.config, v.sons[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v.sons[0].typ, preferDesc))
-            x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
+            x = toInt64(getOrdValue(v.sons[0])) # first tuple part is the ordinal
           else:
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
@@ -104,7 +104,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       else:
         if not isOrdinalType(v.typ, allowEnumWithHoles=true):
           localError(c.config, v.info, errOrdinalTypeExpected & "; given: " & typeToString(v.typ, preferDesc))
-        x = getOrdValue(v)
+        x = toInt64(getOrdValue(v))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter:
@@ -353,7 +353,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     if result.isNil:
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
-      markUsed(c, n.info, result, c.graph.usageSym)
+      markUsed(c, n.info, result)
       onUse(n.info, result)
 
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
@@ -507,7 +507,7 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var Int128): PNode =
   result.add(at)
   result.add(bt)
   if emptyRange(ac, bc): localError(c.config, b.info, "range is empty")
-  else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
+  else: covered = covered + getOrdValue(bc) + 1 - getOrdValue(ac)
 
 proc semCaseBranchRange(c: PContext, t, b: PNode,
                         covered: var Int128): PNode =
@@ -582,7 +582,7 @@ proc toCover(c: PContext, t: PType): Int128 =
     elif t.kind in {tyInt, tyUInt}:
       result = toInt128(1) shl (c.config.target.intSize * 8)
     else:
-      result = toInt128(lengthOrd(c.config, t))
+      result = lengthOrd(c.config, t)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
@@ -1063,7 +1063,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), false))
 
   of tyGenericParam:
-    markUsed(c, paramType.sym.info, paramType.sym, c.graph.usageSym)
+    markUsed(c, paramType.sym.info, paramType.sym)
     onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
@@ -1230,6 +1230,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
         r = newTypeS(tyUntyped, c)
+      elif r.kind == tyStatic:
+        # type allowed should forbid this type
+        discard
       else:
         if r.sym == nil or sfAnon notin r.sym.flags:
           let lifted = liftParamType(c, kind, genericParams, r, "result",
@@ -1751,7 +1754,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         assignType(prev, t)
         result = prev
-      markUsed(c, n.info, n.sym, c.graph.usageSym)
+      markUsed(c, n.info, n.sym)
       onUse(n.info, n.sym)
     else:
       if s.kind != skError:
@@ -1812,14 +1815,11 @@ proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
   if conf.target.targetCPU == cpuI386 and size == 8:
     #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
-    if kind in {tyFloat64, tyFloat} and
-        conf.target.targetOS in {osLinux, osAndroid, osNetbsd, osFreebsd, osOpenbsd, osDragonfly}:
-      m.typ.align = 4
-    # on i386, all known compiler, 64bits ints are aligned to 4bytes (except with -malign-double)
-    elif kind in {tyInt, tyUInt, tyInt64, tyUInt64}:
-      m.typ.align = 4
-  else:
-    discard
+    if conf.target.targetOS != osWindows:
+      if kind in {tyFloat64, tyFloat, tyInt, tyUInt, tyInt64, tyUInt64}:
+        # on i386 for all known POSIX systems, 64bits ints are aligned
+        # to 4bytes (except with -malign-double)
+        m.typ.align = 4
 
 proc setMagicIntegral(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   setMagicType(conf, m, kind, size)

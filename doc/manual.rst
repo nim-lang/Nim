@@ -22,6 +22,10 @@ precise wording. This manual is constantly evolving into a proper specification.
 **Note**: The experimental features of Nim are
 covered `here <manual_experimental.html>`_.
 
+**Note**: Assignments, moves and destruction are specified in
+the `destructors <destructors.html>`_ document.
+
+
 This document describes the lexis, the syntax, and the semantics of the Nim language.
 
 To learn how to compile Nim programs and generate documentation see
@@ -95,8 +99,8 @@ and code execution in the executable.
 
 The compiler parses Nim source code into an internal data structure called the
 `abstract syntax tree`:idx: (`AST`:idx:). Then, before executing the code or
-compiling it into the executable, it transforms the AST through `semantic
-analysis`:idx:. This adds semantic information such as expression types,
+compiling it into the executable, it transforms the AST through
+`semantic analysis`:idx:. This adds semantic information such as expression types,
 identifier meanings, and in some cases expression values. An error detected
 during semantic analysis is called a `static error`:idx:. Errors described in
 this manual are static errors when not otherwise specified.
@@ -1518,8 +1522,10 @@ For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 Object variants
 ---------------
-Often an object hierarchy is overkill in certain situations where simple
-variant types are needed.
+Often an object hierarchy is overkill in certain situations where simple variant
+types are needed. Object variants are tagged unions discriminated via a
+enumerated type used for runtime type flexibility, mirroring the concepts of
+*sum types* and *algebraic data types (ADTs)* as found in other languages.
 
 An example:
 
@@ -1594,7 +1600,9 @@ statement. If possible values of the discriminator variable in a
 ``case`` statement branch are a subset of discriminator values for the selected
 object branch, the initialization is considered valid. This analysis only works
 for immutable discriminators of an ordinal type and disregards ``elif``
-branches.
+branches. For discriminator values with a ``range`` type, the compiler
+checks if the entire range of possible values for the discriminator value is
+valid for the choosen object branch.
 
 A small example:
 
@@ -1612,6 +1620,10 @@ A small example:
     z = Node(kind: unknownKind, leftOp: Node(), rightOp: Node())
   else:
     echo "ignoring: ", unknownKind
+
+  # also valid, since unknownKindBounded can only contain the values nkAdd or nkSub
+  let unknownKindBounded = range[nkAdd..nkSub](unknownKind)
+  z = Node(kind: unknownKindBounded, leftOp: Node(), rightOp: Node())
 
 Set type
 --------
@@ -4406,7 +4418,21 @@ Procedures utilizing type classes in such manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
 combination of param types used within the program.
 
-Nim also allows for type classes and regular types to be specified
+Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
+types in ML-like languages, it should be understood that type classes are static
+constraints to be enforced at type instantations. Type classes are not really
+types in themsleves, but are instead a system of providing generic "checks" that
+ultimately *resolve* to some singular type. Type classes do not allow for
+runtime type dynamism, unlike object variants or methods.
+
+As an example, the following would not compile:
+
+.. code-block:: nim
+  type TypeClass = int | string
+  var foo: TypeClass = 2 # foo's type is resolved to an int here
+  foo = "this will fail" # error here, because foo is an int
+
+Nim allows for type classes and regular types to be specified
 as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nim
@@ -4872,6 +4898,45 @@ no semantics outside of a template definition and cannot be abstracted over:
 
 To get rid of hygiene in templates, one can use the `dirty`:idx: pragma for
 a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
+
+``gensym``'ed symbols cannot be used as ``field`` in the ``x.field`` syntax.
+Nor can they be used in the ``ObjectConstruction(field: value)``
+and ``namedParameterCall(field = value)`` syntactic constructs.
+
+The reason for this is that code like
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  type
+    T = object
+      f: int
+
+  template tmp(x: T) =
+    let f = 34
+    echo x.f, T(f: 4)
+
+
+should work as expected.
+
+However, this means that the method call syntax is not available for
+``gensym``'ed symbols:
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+  template tmp(x) =
+    type
+      T {.gensym.} = int
+
+    echo x.T # invalid: instead use:  'echo T(x)'.
+
+  tmp(12)
+
+
+**Note**: The Nim compiler prior to version 1 was more lenient about this
+requirement. Use the ``--useVersion:0.19`` switch for a transition period.
 
 
 

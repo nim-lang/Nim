@@ -450,7 +450,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   let info = getCallLineInfo(n)
-  markUsed(c, info, sym, c.graph.usageSym)
+  markUsed(c, info, sym)
   onUse(info, sym)
   if sym == c.p.owner:
     globalError(c.config, info, "recursive dependency: '$1'" % sym.name.s)
@@ -523,12 +523,6 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   if sfSystemModule in module.flags:
     graph.systemModule = module
   c.topLevelScope = openScope(c)
-  # don't be verbose unless the module belongs to the main package:
-  if module.owner.id == graph.config.mainPackageId:
-    graph.config.notes = graph.config.mainPackageNotes
-  else:
-    if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
-    graph.config.notes = graph.config.foreignPackageNotes
   result = c
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =

@@ -1,7 +1,6 @@
 discard """
   cmd: "nim c --verbosity:0 --colors:off $file"
   nimout: '''
-Hint: texplain [Processing]
 texplain.nim(158, 10) Hint: Non-matching candidates for e(y)
 proc e(i: int): int
   first type mismatch at position: 1
@@ -105,6 +104,7 @@ expression: f(y)'''
 # proc r[T](a: SomeNumber; b: T; c: auto)
 # proc r(i: string): int
 # proc r(o: RegularConcept): int
+
 
 
 

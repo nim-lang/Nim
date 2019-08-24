@@ -156,28 +156,24 @@ elif defined(windows) or defined(dos):
   # Native Windows Implementation
   # =======================================================================
   #
-  when defined(cpp):
-    type
-      THINSTANCE {.importc: "HINSTANCE".} = object
-        x: pointer
-  else:
-    type
-      THINSTANCE {.importc: "HINSTANCE".} = pointer
+  type
+    HMODULE {.importc: "HMODULE".} = pointer
+    FARPROC  {.importc: "FARPROC".} = pointer
 
-  proc FreeLibrary(lib: THINSTANCE) {.importc, header: "<windows.h>", stdcall.}
-  proc winLoadLibrary(path: cstring): THINSTANCE {.
+  proc FreeLibrary(lib: HMODULE) {.importc, header: "<windows.h>", stdcall.}
+  proc winLoadLibrary(path: cstring): HMODULE {.
       importc: "LoadLibraryA", header: "<windows.h>", stdcall.}
-  proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
+  proc getProcAddress(lib: HMODULE, name: cstring): FARPROC {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
   proc loadLib(path: string, globalSymbols=false): LibHandle =
     result = cast[LibHandle](winLoadLibrary(path))
   proc loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))
-  proc unloadLib(lib: LibHandle) = FreeLibrary(cast[THINSTANCE](lib))
+  proc unloadLib(lib: LibHandle) = FreeLibrary(cast[HMODULE](lib))
 
   proc symAddr(lib: LibHandle, name: cstring): pointer =
-    result = getProcAddress(cast[THINSTANCE](lib), name)
+    result = cast[pointer](getProcAddress(cast[HMODULE](lib), name))
 
 else:
   {.error: "no implementation for dynlib".}

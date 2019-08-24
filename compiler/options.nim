@@ -84,6 +84,7 @@ type                          # please make sure we have under 32 options
     optDynlibOverrideAll
     optNimV2
     optMultiMethods
+    optNimV019
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -134,6 +135,12 @@ type
       ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
+
+  LegacyFeature* = enum
+    allowSemcheckedAstModification,
+      ## Allows to modify a NimNode where the type has already been
+      ## flaged with nfSem. If you actually do this, it will cause
+      ## bugs.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -196,6 +203,7 @@ type
     cppDefines*: HashSet[string] # (*)
     headerFile*: string
     features*: set[Feature]
+    legacyFeatures*: set[LegacyFeature]
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
     ideCmd*: IdeCmd
@@ -315,7 +323,7 @@ proc newConfigRef*(): ConfigRef =
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
+    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     configVars: newStringTable(modeStyleInsensitive),

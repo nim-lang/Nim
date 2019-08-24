@@ -21,7 +21,7 @@ when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
 type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,
-    kMissingParam, kExtraArg
+    kMissingParam, kExtraArg, kPositionalAlreadyGiven
 
   MismatchInfo* = object
     kind*: MismatchKind # reason for mismatch
@@ -107,7 +107,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
-proc markUsed*(c: PContext; info: TLineInfo, s: PSym; usageSym: var PSym)
+proc markUsed*(c: PContext; info: TLineInfo, s: PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
@@ -340,8 +340,6 @@ proc typeRel*(c: var TCandidate, f, aOrig: PType,
 
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   case t.kind
-  of tyNil:
-    result = nil              # what should it be?
   of tyTypeDesc:
     if c.isNoCall: result = t
     else: result = nil
@@ -379,8 +377,8 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     if k == f.kind: result = isSubrange
     elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64,
                                    tyUInt..tyUInt64} and
-        isIntLit(ab) and ab.n.intVal >= firstOrd(nil, f) and
-                         ab.n.intVal <= lastOrd(nil, f):
+        isIntLit(ab) and getInt(ab.n) >= firstOrd(nil, f) and
+                         getInt(ab.n) <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
       # not depent on the target integer size configurations!
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
@@ -904,10 +902,10 @@ proc inferStaticsInRange(c: var TCandidate,
                                           allowUnresolved = true)
   let upperBound = tryResolvingStaticExpr(c, inferred.n[1],
                                           allowUnresolved = true)
-  template doInferStatic(e: PNode, r: BiggestInt) =
+  template doInferStatic(e: PNode, r: Int128) =
     var exp = e
     var rhs = r
-    if inferStaticParam(c, exp, rhs):
+    if inferStaticParam(c, exp, toInt64(rhs)):
       return isGeneric
     else:
       failureToInferStaticParam(c.c.config, exp)
@@ -920,7 +918,7 @@ proc inferStaticsInRange(c: var TCandidate,
         return isNone
     doInferStatic(upperBound, lengthOrd(c.c.config, concrete) + lowerBound.intVal - 1)
   elif upperBound.kind == nkIntLit:
-    doInferStatic(lowerBound, upperBound.intVal + 1 - lengthOrd(c.c.config, concrete))
+    doInferStatic(lowerBound, getInt(upperBound) + 1 - lengthOrd(c.c.config, concrete))
 
 template subtypeCheck() =
   if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {
@@ -1891,7 +1889,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind == tyVar):
-      markUsed(c, arg.info, c.converters[i], c.graph.usageSym)
+      markUsed(c, arg.info, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
@@ -2117,7 +2115,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       # lift do blocks without params to lambdas
       let p = c.graph
       let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
-          params = p.emptyNode, name = p.emptyNode, pattern = p.emptyNode,
+          params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
           genericParams = p.emptyNode, pragmas = p.emptyNode, exceptions = p.emptyNode), {})
       if f.kind == tyBuiltInTypeClass:
         inc m.genericMatches
@@ -2220,7 +2218,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       else: result = nil
     else:
       # only one valid interpretation found:
-      markUsed(m.c, arg.info, arg.sons[best].sym, m.c.graph.usageSym)
+      markUsed(m.c, arg.info, arg.sons[best].sym)
       onUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
@@ -2327,7 +2325,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   m.call = newNodeI(n.kind, n.info)
   m.call.typ = base(m.callee) # may be nil
   var formalLen = m.callee.n.len
-  addSon(m.call, copyTree(n.sons[0]))
+  addSon(m.call, n.sons[0])
   var container: PNode = nil # constructed container
   formal = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
@@ -2434,8 +2432,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         formal = m.callee.n.sons[f].sym
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
-          m.firstMismatch.kind = kAlreadyGiven
-          # already in namedParams: (see above remark)
+          m.firstMismatch.kind = kPositionalAlreadyGiven
+          # positional param already in namedParams: (see above remark)
           when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           noMatch()
           return

@@ -10,7 +10,7 @@
 ## Simple alias analysis for the HLO and the code generators.
 
 import
-  ast, astalgo, types, trees, intsets, msgs
+  ast, astalgo, types, trees, intsets
 
 type
   TAnalysisResult* = enum

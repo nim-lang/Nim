@@ -15,8 +15,8 @@ import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
-  packages/docutils/highlite, json, xmltree, cgi, trees, types,
-  typesrenderer, astalgo, modulepaths, lineinfos, intsets,
+  json, xmltree, cgi, trees, types,
+  typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees
 
 const
@@ -406,6 +406,7 @@ proc runAllExamples(d: PDoc) =
                 elif isDefined(d.conf, "objc"): "objc"
                 else: "c"
   if os.execShellCmd(os.getAppFilename() & " " & backend &
+                    " --warning[UnusedImport]:off" &
                     " --path:" & quoteShell(d.conf.projectPath) &
                     " --nimcache:" & quoteShell(outputDir) &
                     " -r " & quoteShell(outp)) != 0:

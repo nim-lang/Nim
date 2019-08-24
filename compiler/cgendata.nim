@@ -10,7 +10,7 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, passes, options, intsets,
+  ast, ropes, options, intsets,
   tables, ndi, lineinfos, pathutils, modulegraphs
 
 type

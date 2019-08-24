@@ -196,6 +196,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       case err.firstMismatch.kind
       of kUnknownNamedParam: candidates.add("\n  unknown named parameter: " & $nArg[0])
       of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
+      of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
       of kExtraArg: candidates.add("\n  extra argument given")
       of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
       of kTypeMismatch, kVarNeeded:
@@ -474,7 +475,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   let info = getCallLineInfo(n)
-  markUsed(c, info, finalCallee, c.graph.usageSym)
+  markUsed(c, info, finalCallee)
   onUse(info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
@@ -584,7 +585,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   let info = getCallLineInfo(n)
-  markUsed(c, info, s, c.graph.usageSym)
+  markUsed(c, info, s)
   onUse(info, s)
   result = newSymNode(newInst, info)
 
@@ -593,7 +594,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   for i in 1..sonsLen(n)-1:
     let e = semExpr(c, n.sons[i])
     if e.typ == nil:
-      localError(c.config, e.info, "expression has no type")
+      n.sons[i].typ = errorType(c)
     else:
       n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
   var s = s

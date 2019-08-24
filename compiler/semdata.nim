@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
-  magicsys, passes, vmdef, modulegraphs, lineinfos
+  magicsys, vmdef, modulegraphs, lineinfos, sets
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -138,6 +138,7 @@ type
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
+    exportIndirections*: HashSet[(int, int)]
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -367,7 +368,7 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
   result.n = newNode(nkRange, n.info, @[
-    newIntTypeNode(nkIntLit, 0, intType),
+    newIntTypeNode(0, intType),
     makeStaticExpr(c, nMinusOne(c, n))])
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
@@ -391,8 +392,8 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =
   let intType = if intType != nil: intType else: getSysType(c.graph, info, tyInt)
   var n = newNodeI(nkRange, info)
-  addSon(n, newIntTypeNode(nkIntLit, first, intType))
-  addSon(n, newIntTypeNode(nkIntLit, last, intType))
+  addSon(n, newIntTypeNode(first, intType))
+  addSon(n, newIntTypeNode(last, intType))
   result = newTypeS(tyRange, c)
   result.n = n
   addSonSkipIntLit(result, intType) # basetype of range

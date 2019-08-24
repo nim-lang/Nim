@@ -3,6 +3,19 @@
 
 ## Changes affecting backwards compatibility
 
+- The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
+  stdin/stdout/stderr are binary files again. This change only affects
+  Windows.
+- On Windows console applications the code-page is set at program startup
+  to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
+  feature.
+
+- The language definition and compiler are now stricter about ``gensym``'ed
+  symbols in hygienic templates. See the section in the
+  [manual](https://nim-lang.org/docs/manual.html#templates-hygiene-in-templates)
+  for further details. Use the compiler switch `--useVersion:0.19` for a
+  transition period.
+
 
 ### Breaking changes in the standard library
 
@@ -13,6 +26,12 @@
 ## Library additions
 
 - Added `macros.quoteAst` as a candidate to replace `quote do`.
+- `encodings.getCurrentEncoding` now distinguishes between the console's
+  encoding and the OS's encoding. This distinction is only meaningful on
+  Windows.
+- Added `system.getOsFileHandle` which is usually more useful
+  than `system.getFileHandle`. This distinction is only meaningful on
+  Windows.
 
 ## Library changes
 
@@ -22,9 +41,12 @@
 
 - Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
 
-- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`, `update` and `finalize` procedures from `sha1` module. (#11694)
+- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`,
+  `update` and `finalize` procedures from `sha1` module. (#11694)
 
 - Added the `std/monotimes` module which implements monotonic timestamps.
+
+- Consistent error handling of two `exec` overloads. (#10967)
 
 ## Language additions
 

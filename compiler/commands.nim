@@ -30,6 +30,8 @@ import
   wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
   pathutils, strtabs
 
+from incremental import nimIncremental
+
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedNativeStacktrace,
@@ -48,15 +50,16 @@ const
       "Compiled at $4\n" &
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
+proc genFeatureDesc[T: enum](t: typedesc[T]): string {.compileTime.} =
+  var x = ""
+  for f in low(T)..high(T):
+    if x.len > 0: x.add "|"
+    x.add $f
+  x
+
 const
   Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
-  FeatureDesc = block:
-    var x = ""
-    for f in low(Feature)..high(Feature):
-      if x.len > 0: x.add "|"
-      x.add $f
-    x
-  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % FeatureDesc
+  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % [genFeatureDesc(Feature), genFeatureDesc(LegacyFeature)]
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
@@ -669,7 +672,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     helpOnError(conf, pass)
   of "symbolfiles": discard "ignore for backwards compat"
   of "incremental":
-    when not defined(nimIncremental):
+    when not nimIncremental:
       localError(conf, info, "the compiler was not built with " &
         "incremental compilation features; bootstrap with " &
         "-d:nimIncremental to enable")
@@ -742,6 +745,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.features.incl parseEnum[Feature](arg)
       except ValueError:
         localError(conf, info, "unknown experimental feature")
+  of "legacy":
+    try:
+      conf.legacyFeatures.incl parseEnum[LegacyFeature](arg)
+    except ValueError:
+      localError(conf, info, "unknown obsolete feature")
   of "nocppexceptions":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optNoCppExceptions)
@@ -780,6 +788,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandmacro":
     expectArg(conf, switch, arg, pass, info)
     conf.macrosToExpand[arg] = "T"
+  of "useversion":
+    expectArg(conf, switch, arg, pass, info)
+    case arg
+    of "0.19":
+      conf.globalOptions.incl optNimV019
+    of "1.0":
+      discard "the default"
+    else:
+      localError(conf, info, "unknown Nim version; currently supported values are: {0.19, 1.0}")
   of "":
     conf.projectName = "-"
   else:

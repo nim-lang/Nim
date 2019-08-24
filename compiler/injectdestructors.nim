@@ -437,17 +437,6 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc isSinkTypeForParam(t: PType): bool =
-  # a parameter like 'seq[owned T]' must not be used only once, but its
-  # elements must, so we detect this case here:
-  result = t.skipTypes({tyGenericInst, tyAlias}).kind in {tySink, tyOwned}
-  when false:
-    if isSinkType(t):
-      if t.skipTypes({tyGenericInst, tyAlias}).kind in {tyArray, tyVarargs, tyOpenArray, tySequence}:
-        result = false
-      else:
-        result = true
-
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
@@ -553,8 +542,6 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
           branch = copyNode(arg[i])
           branch.add pArgIfTyped(arg[i][0])
         result.add branch
-    elif isAnalysableFieldAccess(arg, c.owner) and isLastRead(arg, c):
-      result = destructiveMoveVar(arg, c)
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
@@ -807,7 +794,11 @@ proc p(n: PNode; c: var Con): PNode =
       result = n
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
-      result = moveOrCopy(n[0], n[1], c)
+      # rule (self-assignment-removal):
+      if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
+        result = newNodeI(nkEmpty, n.info)
+      else:
+        result = moveOrCopy(n[0], n[1], c)
     else:
       result = copyNode(n)
       recurse(n, result)

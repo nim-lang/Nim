@@ -864,7 +864,9 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '
   var c = L.buf[L.bufpos]
   case c
-  of '\0'..pred(' '), '\'': lexMessage(L, errGenerated, "invalid character literal")
+  of '\0'..pred(' '), '\'':
+    lexMessage(L, errGenerated, "invalid character literal")
+    tok.literal = $c
   of '\\': getEscapedChar(L, tok)
   else:
     tok.literal = $c

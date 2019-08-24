@@ -34,7 +34,7 @@ In the construct let/var x = expr() x's type is marked.
 
 In x = y the type of x is marked.
 
-For every sink parameter of type T T is marked. TODO!
+For every sink parameter of type T T is marked.
 
 For every call f() the return type of f() is marked.
 
@@ -977,6 +977,14 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   var t: TEffects
   initEffects(g, effects, s, t, c)
   track(t, body)
+
+  if s.kind != skMacro:
+    let params = s.typ.n
+    for i in 1 ..< params.len:
+      let param = params[i].sym
+      if isSinkTypeForParam(param.typ):
+        createTypeBoundOps(t.graph, t.c, param.typ, param.info)
+
   if not isEmptyType(s.typ.sons[0]) and
       ({tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} or
       s.typ.sons[0].skipTypes(abstractInst).kind == tyVar) and

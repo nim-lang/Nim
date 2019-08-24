@@ -21,13 +21,13 @@
 ## In order to begin any sort of transfer of files you must first
 ## connect to an FTP server. You can do so with the ``connect`` procedure.
 ##
-##   .. code-block::nim
-##      import asyncdispatch, asyncftpclient
-##      proc main() {.async.} =
-##        var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##        await ftp.connect()
-##        echo("Connected")
-##      waitFor(main())
+## .. code-block::nim
+##    import asyncdispatch, asyncftpclient
+##    proc main() {.async.} =
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      await ftp.connect()
+##      echo("Connected")
+##    waitFor(main())
 ##
 ## A new ``main`` async procedure must be declared to allow the use of the
 ## ``await`` keyword. The connection will complete asynchronously and the
@@ -41,16 +41,16 @@
 ## working directory before you do so with the ``pwd`` procedure, you can also
 ## instead specify an absolute path.
 ##
-##   .. code-block::nim
-##      import asyncdispatch, asyncftpclient
-##      proc main() {.async.} =
-##        var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##        await ftp.connect()
-##        let currentDir = await ftp.pwd()
-##        assert currentDir == "/home/user/"
-##        await ftp.store("file.txt", "file.txt")
-##        echo("File finished uploading")
-##      waitFor(main())
+## .. code-block::nim
+##    import asyncdispatch, asyncftpclient
+##    proc main() {.async.} =
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      await ftp.connect()
+##      let currentDir = await ftp.pwd()
+##      assert currentDir == "/home/user/"
+##      await ftp.store("file.txt", "file.txt")
+##      echo("File finished uploading")
+##    waitFor(main())
 ##
 ## Checking the progress of a file transfer
 ## ========================================
@@ -59,20 +59,20 @@
 ## by specifying a ``onProgressChanged`` procedure to the ``store`` or
 ## ``retrFile`` procedures.
 ##
-##   .. code-block::nim
-##      import asyncdispatch, asyncftpclient
+## .. code-block::nim
+##    import asyncdispatch, asyncftpclient
 ##
-##      proc onProgressChanged(total, progress: BiggestInt,
-##                              speed: float): Future[void] =
-##        echo("Uploaded ", progress, " of ", total, " bytes")
-##        echo("Current speed: ", speed, " kb/s")
+##    proc onProgressChanged(total, progress: BiggestInt,
+##                            speed: float): Future[void] =
+##      echo("Uploaded ", progress, " of ", total, " bytes")
+##      echo("Current speed: ", speed, " kb/s")
 ##
-##      proc main() {.async.} =
-##        var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
-##        await ftp.connect()
-##        await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
-##        echo("File finished uploading")
-##      waitFor(main())
+##    proc main() {.async.} =
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      await ftp.connect()
+##      await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
+##      echo("File finished uploading")
+##    waitFor(main())
 
 
 import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
