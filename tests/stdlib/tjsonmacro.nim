@@ -517,9 +517,9 @@ when true:
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
 
-# the type definition for `Pix` and the `%` proc are global, due to
-# #12017
 # bug #12015
+# The definition of the `%` proc needs to be here, since the `% c` calls below
+# can only find our custom `%` proc for `Pix` if defined in global scope.
 type
   Pix = tuple[x, y: uint8, ch: uint16]
 proc `%`(p: Pix): JsonNode =
