@@ -4410,13 +4410,10 @@ more complex type classes:
   # create a type class that will match all tuple and object types
   type RecordType = tuple or object
 
-  proc printFields(rec: RecordType) =
+  proc printFields[T: RecordType](rec: T) =
     for key, value in fieldPairs(rec):
       echo key, " = ", value
 
-Procedures utilizing type classes in such manner are considered to be
-`implicitly generic`:idx:. They will be instantiated once for each unique
-combination of param types used within the program.
 
 Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
 types in ML-like languages, it should be understood that type classes are static
@@ -4441,6 +4438,26 @@ as `type constraints`:idx: of the generic type parameter:
   onlyIntOrString(450, 616) # valid
   onlyIntOrString(5.0, 0.0) # type mismatch
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
+
+
+Implicit generics
+-----------------
+
+A type class can be used directly as the parameter's type.
+
+.. code-block:: nim
+
+  # create a type class that will match all tuple and object types
+  type RecordType = tuple or object
+
+  proc printFields(rec: RecordType) =
+    for key, value in fieldPairs(rec):
+      echo key, " = ", value
+
+
+Procedures utilizing type classes in such manner are considered to be
+`implicitly generic`:idx:. They will be instantiated once for each unique
+combination of param types used within the program.
 
 By default, during overload resolution each named type class will bind to
 exactly one concrete type. We call such type classes `bind once`:idx: types.
@@ -4470,26 +4487,73 @@ the dot syntax:
   proc `[]`(m: Matrix, row, col: int): Matrix.T =
     m.data[col * high(Matrix.Columns) + row]
 
-Alternatively, the `type` operator can be used over the proc params for similar
-effect when anonymous or distinct type classes are used.
 
-When a generic type is instantiated with a type class instead of a concrete
-type, this results in another more specific type class:
+Here are more examples that illustrate implicit generics:
 
 .. code-block:: nim
-  seq[ref object]  # Any sequence storing references to any object type
 
-  type T1 = auto
-  proc foo(s: seq[T1], e: T1)
-    # seq[T1] is the same as just `seq`, but T1 will be allowed to bind
-    # to a single type, while the signature is being matched
+  proc p(t: Table; k: Table.Key): Table.Value
 
-  Matrix[Ordinal] # Any Matrix instantiation using integer values
+  # is roughly the same as:
 
-As seen in the previous example, in such instantiations, it's not necessary to
-supply all type parameters of the generic type, because any missing ones will
-be inferred to have the equivalent of the `any` type class and thus they will
-match anything without discrimination.
+  proc p[Key, Value](t: Table[Key, Value]; k: Key): Value
+
+
+.. code-block:: nim
+
+  proc p(a: Table, b: Table)
+
+  # is roughly the same as:
+
+  proc p[Key, Value](a, b: Table[Key, Value])
+
+
+.. code-block:: nim
+
+  proc p(a: Table, b: distinct Table)
+
+  # is roughly the same as:
+
+  proc p[Key, Value, KeyB, ValueB](a: Table[Key, Value], b: Table[KeyB, ValueB])
+
+
+`typedesc` used as a parameter type also introduces an implicit
+generic. `typedesc` has its own set of rules:
+
+.. code-block:: nim
+
+  proc p(a: typedesc)
+
+  # is roughly the same as:
+
+  proc p[T](a: typedesc[T])
+
+
+`typedesc` is a "bind many" type class:
+
+.. code-block:: nim
+
+  proc p(a, b: typedesc)
+
+  # is roughly the same as:
+
+  proc p[T, T2](a: typedesc[T], b: typedesc[T2])
+
+
+A parameter of type `typedesc` is itself usable as a type. If it is used
+as a type, it's the underlying type. (In other words, one level
+of "typedesc"-ness is stripped off:
+
+.. code-block:: nim
+
+  proc p(a: typedesc; b: a) = discard
+
+  # is roughly the same as:
+  proc p[T](a: typedesc[T]; b: T) = discard
+
+  # hence this is a valid call:
+  p(int, 4)
+  # as parameter 'a' requires a type, but 'b' requires a value.
 
 
 Generic inference restrictions
