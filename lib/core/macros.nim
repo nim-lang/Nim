@@ -1411,9 +1411,9 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
       newEmptyNode()
 
   template newLitMaybe(a): untyped =
-    when type(a) is NimNode: a
-    elif compiles(newLit(a)): newLit(a)
-    else: a
+    when (a is type) or (typeof(a) is (proc | iterator | func | NimNode)):
+      a # `proc` actually also covers template, macro
+    else: newLit(a)
 
   # using `_` as workaround, see https://github.com/nim-lang/Nim/issues/2465#issuecomment-511076669
   let name = genSym(nskTemplate, "_fun")

@@ -235,3 +235,25 @@ block: # also from #11986
       let t = s
       $typeof(t)
   doAssert foo() == "set[char]"
+
+block:
+  macro foo(): untyped =
+    type Foo = object
+    template baz2(a: int): untyped = a*10
+    macro baz3(a: int): untyped = newLit 13
+    result = newStmtList()
+
+    result.add genAst(Foo, baz2, baz3) do: # shows you can pass types, templates etc
+      var x: Foo
+      $($typeof(x), baz2(3), baz3(4))
+
+    let ret = genAst() do: # shows you don't have to, since they're inject'd
+      var x: Foo
+      $($typeof(x), baz2(3), baz3(4))
+  doAssert foo() == """("Foo", 30, 13)"""
+
+block: # illustrates how symbol visiblity can be controlled precisely using `mixin`
+  proc locafun1(): auto = "in locafun1 (caller scope)" # this will be used because of `mixin locafun1` => explicit hijacking is ok
+  proc locafun2(): auto = "in locafun2 (caller scope)" # this won't be used => no hijacking
+  proc locafun3(): auto = "in locafun3 (caller scope)"
+  doAssert mixinExample() == ("in locafun1 (caller scope)", "in locafun2", "in locafun3 (caller scope)")
