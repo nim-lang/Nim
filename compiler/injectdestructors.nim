@@ -507,8 +507,9 @@ proc pExpr(n: PNode; c: var Con): PNode =
     result = copyNode(n)
     result.add n[0] #Destination type
     result.add pExpr(n[1], c) #Analyse inner expression
-  of nkBracketExpr, nkCurly, nkRange, nkChckRange, nkObjDownConv, nkObjUpConv,
-     nkStringToCString, nkCStringToString, nkDotExpr, nkCheckedFieldExpr:
+  of nkBracketExpr, nkCurly, nkRange, nkChckRange, nkChckRange64, nkChckRangeF,
+     nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString,
+     nkDotExpr, nkCheckedFieldExpr:
     result = copyNode(n)
     for son in n:
       result.add pExpr(son, c)
