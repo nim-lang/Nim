@@ -28,6 +28,3 @@ proc rec_1(depth: int) =
 # https://github.com/nim-lang/Nim/issues/11996
 let rec_2_func_ref = rec_2
 rec_2_func_ref(0)
-
-# the following is code which exercises methods in nim - taken from here:
-# https://matthiashager.com/proc-method-nim
