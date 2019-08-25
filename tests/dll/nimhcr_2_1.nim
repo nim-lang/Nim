@@ -13,3 +13,21 @@ echo a.str
 
 beforeCodeReload:
   echo "   2: before!"
+
+# testing a construct of 2 functions in the same module which reference each other
+# https://github.com/nim-lang/Nim/issues/11608
+proc rec_1(depth: int)
+proc rec_2(depth: int) =
+  rec_1(depth + 1)
+proc rec_1(depth: int) =
+  if depth < 3:
+    rec_2(depth)
+  else:
+    echo("max mutual recursion reached!")
+
+# https://github.com/nim-lang/Nim/issues/11996
+let rec_2_func_ref = rec_2
+rec_2_func_ref(0)
+
+# the following is code which exercises methods in nim - taken from here:
+# https://matthiashager.com/proc-method-nim
