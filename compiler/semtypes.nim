@@ -928,20 +928,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = typeClass
     addDecl(c, s)
 
-  # XXX: There are codegen errors if this is turned into a nested proc
-  template liftingWalk(typ: PType, anonFlag = false): untyped =
+  template recurse(typ: PType, anonFlag = false): untyped =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
-  #proc liftingWalk(paramType: PType, anon = false): PType =
 
   var paramTypId = if not anon and paramType.sym != nil: paramType.sym.name
                    else: nil
-
-  template maybeLift(typ: PType): untyped =
-    let lifted = liftingWalk(typ)
-    (if lifted != nil: lifted else: typ)
-
-  template addImplicitGeneric(e): untyped =
-    addImplicitGenericImpl(c, e, paramTypId)
 
   case paramType.kind:
   of tyAnything:
@@ -952,10 +943,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # this is a concrete static value
       return
     if tfUnresolved in paramType.flags: return # already lifted
-    let base = paramType.base.maybeLift
+
+    let lifted = recurse(paramType.base)
+    let base = (if lifted != nil: lifted else: paramType.base)
     if base.isMetaType and procKind == skMacro:
       localError(c.config, info, errMacroBodyDependsOnGenericTypes % paramName)
-    result = addImplicitGeneric(c.newTypeWithSons(tyStatic, @[base]))
+    result = addImplicitGenericImpl(c, c.newTypeWithSons(tyStatic, @[base]), paramTypId)
     if result != nil: result.flags.incl({tfHasStatic, tfUnresolved})
 
   of tyTypeDesc:
@@ -968,15 +961,15 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         paramTypId = nil
       let t = c.newTypeWithSons(tyTypeDesc, @[paramType.base])
       incl t.flags, tfCheckedForDestructor
-      result = addImplicitGeneric(t)
+      result = addImplicitGenericImpl(c, t, paramTypId)
 
   of tyDistinct:
     if paramType.sonsLen == 1:
       # disable the bindOnce behavior for the type class
-      result = liftingWalk(paramType.base, true)
+      result = recurse(paramType.base, true)
 
   of tyAlias, tyOwned:
-    result = liftingWalk(paramType.base)
+    result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
      tyVar, tyLent, tyPtr, tyRef, tyProc:
@@ -989,12 +982,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if paramType.kind == tySequence and paramType.lastSon.kind == tyNone:
       let typ = c.newTypeWithSons(tyBuiltInTypeClass,
                                   @[newTypeS(paramType.kind, c)])
-      result = addImplicitGeneric(typ)
+      result = addImplicitGenericImpl(c, typ, paramTypId)
     else:
       for i in 0 ..< paramType.len:
         if paramType.sons[i] == paramType:
           globalError(c.config, info, errIllegalRecursionInTypeX % typeToString(paramType))
-        var lifted = liftingWalk(paramType.sons[i])
+        var lifted = recurse(paramType.sons[i])
         if lifted != nil:
           paramType.sons[i] = lifted
           result = paramType
@@ -1014,29 +1007,29 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if paramType.lastSon.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
       result.rawAddSon paramType.lastSon
-      return addImplicitGeneric(result)
+      return addImplicitGenericImpl(c, result, paramTypId)
 
     let x = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, x])
     #result = newTypeS(tyCompositeTypeClass, c)
     #for i in 0..<x.len: result.rawAddSon(x.sons[i])
-    result = addImplicitGeneric(result)
+    result = addImplicitGenericImpl(c, result, paramTypId)
 
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
       var cp = copyType(paramType, getCurrOwner(c), false)
       cp.kind = tyUserTypeClassInst
-      return addImplicitGeneric(cp)
+      return addImplicitGenericImpl(c, cp, paramTypId)
 
     for i in 1 .. paramType.len-2:
-      var lifted = liftingWalk(paramType.sons[i])
+      var lifted = recurse(paramType.sons[i])
       if lifted != nil:
         paramType.sons[i] = lifted
         result = paramType
         result.lastSon.shouldHaveMeta
 
-    let liftBody = liftingWalk(paramType.lastSon, true)
+    let liftBody = recurse(paramType.lastSon, true)
     if liftBody != nil:
       result = liftBody
       result.flags.incl tfHasMeta
@@ -1044,7 +1037,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyGenericInvocation:
     for i in 1 ..< paramType.len:
-      let lifted = liftingWalk(paramType.sons[i])
+      let lifted = recurse(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
 
     let body = paramType.base
@@ -1056,11 +1049,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if body.lastSon.kind == tyUserTypeClass:
       let expanded = instGenericContainer(c, info, paramType,
                                           allowMetaTypes = true)
-      result = liftingWalk(expanded, true)
+      result = recurse(expanded, true)
 
   of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot:
-    result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), false))
+    result = addImplicitGenericImpl(c,
+        copyType(paramType, getCurrOwner(c), false), paramTypId)
 
   of tyGenericParam:
     markUsed(c, paramType.sym.info, paramType.sym)
@@ -1071,7 +1065,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   else: discard
 
-  # result = liftingWalk(paramType)
+  # result = recurse(paramType)
 
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   if n.kind == nkCurlyExpr:
