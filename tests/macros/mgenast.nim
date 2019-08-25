@@ -41,3 +41,12 @@ macro bindme6UseExposeFalse*(): untyped =
     var ss = newStringStream("anothertext")
     writeData(ss, tst[0].addr, 2)
     discard readData(ss, tst[0].addr, 2)
+
+
+proc locafun1(): auto = "in locafun1"
+proc locafun2(): auto = "in locafun2"
+# locafun3 in caller scope only
+macro mixinExample*(): untyped =
+  genAst:
+    mixin locafun1
+    (locafun1(), locafun2(), locafun3())
