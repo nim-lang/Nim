@@ -899,34 +899,36 @@ template shouldHaveMeta(t) =
   internalAssert c.config, tfHasMeta in t.flags
   # result.lastSon.flags.incl tfHasMeta
 
+proc addImplicitGeneric(c: PContext; typeClass: PType, typId: PIdent;
+                        info: TLineInfo; genericParams: PNode;
+                        paramName: string): PType =
+  if genericParams == nil:
+    # This happens with anonymous proc types appearing in signatures
+    # XXX: we need to lift these earlier
+    return
+  let finalTypId = if typId != nil: typId
+                    else: getIdent(c.cache, paramName & ":type")
+  # is this a bindOnce type class already present in the param list?
+  for i in 0 ..< genericParams.len:
+    if genericParams.sons[i].sym.name.id == finalTypId.id:
+      return genericParams.sons[i].typ
+
+  let owner = if typeClass.sym != nil: typeClass.sym
+              else: getCurrOwner(c)
+  var s = newSym(skType, finalTypId, owner, info)
+  if sfExplain in owner.flags: s.flags.incl sfExplain
+  if typId == nil: s.flags.incl(sfAnon)
+  s.linkTo(typeClass)
+  typeClass.flags.incl tfImplicitTypeParam
+  s.position = genericParams.len
+  genericParams.addSon(newSymNode(s))
+  result = typeClass
+  addDecl(c, s)
+
 proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    paramType: PType, paramName: string,
                    info: TLineInfo, anon = false): PType =
   if paramType == nil: return # (e.g. proc return type)
-
-  proc addImplicitGenericImpl(c: PContext; typeClass: PType, typId: PIdent): PType =
-    if genericParams == nil:
-      # This happens with anonymous proc types appearing in signatures
-      # XXX: we need to lift these earlier
-      return
-    let finalTypId = if typId != nil: typId
-                     else: getIdent(c.cache, paramName & ":type")
-    # is this a bindOnce type class already present in the param list?
-    for i in 0 ..< genericParams.len:
-      if genericParams.sons[i].sym.name.id == finalTypId.id:
-        return genericParams.sons[i].typ
-
-    let owner = if typeClass.sym != nil: typeClass.sym
-                else: getCurrOwner(c)
-    var s = newSym(skType, finalTypId, owner, info)
-    if sfExplain in owner.flags: s.flags.incl sfExplain
-    if typId == nil: s.flags.incl(sfAnon)
-    s.linkTo(typeClass)
-    typeClass.flags.incl tfImplicitTypeParam
-    s.position = genericParams.len
-    genericParams.addSon(newSymNode(s))
-    result = typeClass
-    addDecl(c, s)
 
   template recurse(typ: PType, anonFlag = false): untyped =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
@@ -936,7 +938,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   case paramType.kind:
   of tyAnything:
-    result = addImplicitGenericImpl(c, newTypeS(tyGenericParam, c), nil)
+    result = addImplicitGeneric(c, newTypeS(tyGenericParam, c), nil, info, genericParams, paramName)
 
   of tyStatic:
     if paramType.base.kind != tyNone and paramType.n != nil:
@@ -948,7 +950,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     let base = (if lifted != nil: lifted else: paramType.base)
     if base.isMetaType and procKind == skMacro:
       localError(c.config, info, errMacroBodyDependsOnGenericTypes % paramName)
-    result = addImplicitGenericImpl(c, c.newTypeWithSons(tyStatic, @[base]), paramTypId)
+    result = addImplicitGeneric(c, c.newTypeWithSons(tyStatic, @[base]),
+        paramTypId, info, genericParams, paramName)
     if result != nil: result.flags.incl({tfHasStatic, tfUnresolved})
 
   of tyTypeDesc:
@@ -961,7 +964,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         paramTypId = nil
       let t = c.newTypeWithSons(tyTypeDesc, @[paramType.base])
       incl t.flags, tfCheckedForDestructor
-      result = addImplicitGenericImpl(c, t, paramTypId)
+      result = addImplicitGeneric(c, t, paramTypId, info, genericParams, paramName)
 
   of tyDistinct:
     if paramType.sonsLen == 1:
@@ -982,7 +985,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if paramType.kind == tySequence and paramType.lastSon.kind == tyNone:
       let typ = c.newTypeWithSons(tyBuiltInTypeClass,
                                   @[newTypeS(paramType.kind, c)])
-      result = addImplicitGenericImpl(c, typ, paramTypId)
+      result = addImplicitGeneric(c, typ, paramTypId, info, genericParams, paramName)
     else:
       for i in 0 ..< paramType.len:
         if paramType.sons[i] == paramType:
@@ -1007,20 +1010,20 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if paramType.lastSon.kind == tyUserTypeClass:
       result.kind = tyUserTypeClassInst
       result.rawAddSon paramType.lastSon
-      return addImplicitGenericImpl(c, result, paramTypId)
+      return addImplicitGeneric(c, result, paramTypId, info, genericParams, paramName)
 
     let x = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, x])
     #result = newTypeS(tyCompositeTypeClass, c)
     #for i in 0..<x.len: result.rawAddSon(x.sons[i])
-    result = addImplicitGenericImpl(c, result, paramTypId)
+    result = addImplicitGeneric(c, result, paramTypId, info, genericParams, paramName)
 
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
       var cp = copyType(paramType, getCurrOwner(c), false)
       cp.kind = tyUserTypeClassInst
-      return addImplicitGenericImpl(c, cp, paramTypId)
+      return addImplicitGeneric(c, cp, paramTypId, info, genericParams, paramName)
 
     for i in 1 .. paramType.len-2:
       var lifted = recurse(paramType.sons[i])
@@ -1053,8 +1056,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot:
-    result = addImplicitGenericImpl(c,
-        copyType(paramType, getCurrOwner(c), false), paramTypId)
+    result = addImplicitGeneric(c,
+        copyType(paramType, getCurrOwner(c), false), paramTypId,
+        info, genericParams, paramName)
 
   of tyGenericParam:
     markUsed(c, paramType.sym.info, paramType.sym)
@@ -1064,8 +1068,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       paramType.sym.kind = skType
 
   else: discard
-
-  # result = recurse(paramType)
 
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   if n.kind == nkCurlyExpr:
