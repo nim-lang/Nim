@@ -472,7 +472,7 @@ proc localZonedTimeFromTime(time: Time): ZonedTime
     {.tags: [], raises: [], benign.}
 proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime
     {.tags: [], raises: [], benign.}
-proc initTime*(unix: int64, nanosecond: NanosecondRange): Time
+proc initTime*(unixTime: int64, nanosecond: NanosecondRange): Time
     {.tags: [], raises: [], benign, noSideEffect.}
 
 proc nanosecond*(time: Time): NanosecondRange =
@@ -577,13 +577,13 @@ proc inNanoseconds*(dur: Duration): int64 =
     doAssert dur.inNanoseconds == -2000000000
   dur.convert(Nanoseconds)
 
-proc fromUnix*(unix: int64): Time
+proc fromUnix*(unixTime: int64): Time
     {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``)
   ## to a ``Time``.
   runnableExamples:
     doAssert $fromUnix(0).utc == "1970-01-01T00:00:00Z"
-  initTime(unix, 0)
+  initTime(unixTime, 0)
 
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
@@ -880,9 +880,9 @@ proc `div`*(a: Duration, b: int64): Duration {.operator.} =
   let carryOver = convert(Seconds, Nanoseconds, a.seconds mod b)
   normalize[Duration](a.seconds div b, (a.nanosecond + carryOver) div b)
 
-proc initTime*(unix: int64, nanosecond: NanosecondRange): Time =
+proc initTime*(unixTime: int64, nanosecond: NanosecondRange): Time =
   ## Create a `Time <#Time>`_ from a unix timestamp and a nanosecond part.
-  result.seconds = unix
+  result.seconds = unixTime
   result.nanosecond = nanosecond
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
@@ -1098,11 +1098,11 @@ else:
     result.inc tm.tm_min * 60
     result.inc tm.tm_sec
 
-  proc getLocalOffsetAndDst(unix: int64): tuple[offset: int, dst: bool] =
+  proc getLocalOffsetAndDst(unixTime: int64): tuple[offset: int, dst: bool] =
     # Windows can't handle unix < 0, so we fall back to unix = 0.
     # FIXME: This should be improved by falling back to the WinAPI instead.
     when defined(windows):
-      if unix < 0:
+      if unixTime < 0:
         var a = 0.CTime
         let tmPtr = localtime(a)
         if not tmPtr.isNil:
@@ -1112,7 +1112,7 @@ else:
 
     # In case of a 32-bit time_t, we fallback to the closest available
     # timezone information.
-    var a = clamp(unix, low(CTime).int64, high(CTime).int64).CTime
+    var a = clamp(unixTime, low(CTime).int64, high(CTime).int64).CTime
     let tmPtr = localtime(a)
     if not tmPtr.isNil:
       let tm = tmPtr[]
