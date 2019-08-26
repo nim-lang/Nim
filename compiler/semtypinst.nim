@@ -260,12 +260,32 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
+  #[
+
+  We cannot naively check for symbol recursions, because otherwise
+  object types A, B whould share their fields!
+
+      import tables
+
+      type
+        Table[S, T] = object
+          x: S
+          y: T
+
+        G[T] = object
+          inodes: Table[int, T] # A
+          rnodes: Table[T, int] # B
+
+      var g: G[string]
+
+  ]#
   result = copySym(s)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
   result.typ = replaceTypeVarsT(cl, s.typ)
-  result.ast = replaceTypeVarsN(cl, s.ast)
+  if result.kind != skType:
+    result.ast = replaceTypeVarsN(cl, s.ast)
 
 proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = cl.typeMap.lookup(t)
@@ -685,6 +705,10 @@ proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
 
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
+  # Given `t` like Foo[T]
+  # pt: Table with type mappings: T -> int
+  # Desired result: Foo[int]
+  # proc (x: T = 0); T -> int ---->  proc (x: int = 0)
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, addr(typeMap), info, nil)
   pushInfoContext(p.config, info)
