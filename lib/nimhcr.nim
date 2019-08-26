@@ -111,6 +111,7 @@
 # - ARM support for the trampolines
 # - investigate:
 #   - soon the system module might be importing other modules - the init order...?
+#     (revert https://github.com/nim-lang/Nim/pull/11971 when working on this)
 #   - rethink the closure iterators
 #     - ability to keep old versions of dynamic libraries alive
 #       - because of async server code
