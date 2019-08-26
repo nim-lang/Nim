@@ -2292,14 +2292,20 @@ proc incrIndexType(t: PType) =
 template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x[0].kind == tyUntyped
 
-proc getEnableIfExpr*(sym: PSym): PNode {.inline.} =
-  if sym != nil: result = sym.enableIf
-
 proc semEnableIf(c: PContext, m: var TCandidate, n, nOrig: PNode): bool =
-  let nCond = getEnableIfExpr(m.calleeSym)
+  let sym = m.calleeSym
+  if sym == nil: return true
+  let nCond = sym.enableIf
   if nCond == nil: return true
-  proc generateInstanceEnableIf(c: PContext, fn: PSym, pt: TIdTable, info: TLineInfo, nCond: PNode): PNode {.importc.}
-  let ok = generateInstanceEnableIf(c, fn = m.calleeSym, pt = m.bindings, info = n.info, nCond)
+  let tryCompiles = true
+    # could customize to also allow a strict mode, which assumes condition
+    # must compile, eg: {.emableIf(bar, strictMode = true).}, but default
+    # is to return false for expressions that do not compile
+  proc generateInstanceEnableIf(c: PContext, fn: PSym, pt: TIdTable, info: TLineInfo, nCond: PNode, tryCompiles: bool): PNode {.importc.}
+  let ok = generateInstanceEnableIf(c, fn = m.calleeSym, pt = m.bindings, info = n.info, nCond, tryCompiles)
+  if ok == nil:
+    assert(tryCompiles)
+    return false # semTryExpr failed
   if ok.typ.kind != tyBool:
     localError(c.config, nCond.info, "enableIf expression must resolve to bool, got " & typeToString(ok.typ))
   case ok.intVal

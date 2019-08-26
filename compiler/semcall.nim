@@ -191,7 +191,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add(getProcHeader(c.config, err.sym, prefer))
     candidates.add("\n")
     if err.firstMismatch.kind == kEnableIfFail:
-      let nCond = getEnableIfExpr(err.sym)
+      let nCond = err.sym.enableIf
       candidates.add("  enableIf condition failed: " & quoteExpr(renderTree(nCond)) & "\n")
     else:
       let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil

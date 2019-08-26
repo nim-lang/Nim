@@ -44,7 +44,7 @@ proc semOpAux(c: PContext, n: PNode)
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
-proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}, isSemConstExpr = false): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
