@@ -1040,6 +1040,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyGenericInvocation:
     for i in 1 ..< paramType.len:
+      #if paramType[i].kind != tyTypeDesc:
       let lifted = recurse(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
 
@@ -1355,7 +1356,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
     for i in 1 ..< m.call.len:
       var typ = m.call[i].typ
-      if typ.kind == tyTypeDesc and typ.sons[0].kind == tyNone:
+      # is this a 'typedesc' *parameter*? If so, use the typedesc type,
+      # unstripped.
+      if m.call[i].kind == nkSym and m.call[i].sym.kind == skParam and
+          typ.kind == tyTypeDesc and containsGenericType(typ):
         isConcrete = false
         addToResult(typ)
       else:
