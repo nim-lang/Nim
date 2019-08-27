@@ -1496,14 +1496,14 @@ proc propagateToOwner*(owner, elem: PType) =
   if tfHasAsgn in elem.flags:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct}:
+                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
 
   if tfHasOwned in elem.flags:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct}:
+                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
       o2.flags.incl tfHasOwned
       owner.flags.incl tfHasOwned
 
