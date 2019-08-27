@@ -845,6 +845,8 @@ proc gident(g: var TSrcGen, n: PNode) =
         t = tkSymbol
       else:
         t = TTokType(n.ident.id + ord(tkSymbol))
+        if not g.inGenericParams:
+          s = "`" & s & "`"
     else:
       t = tkSymbol
   else:

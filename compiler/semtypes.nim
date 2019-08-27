@@ -38,7 +38,7 @@ const
     "because the parameter '$1' has a generic type"
   errIllegalRecursionInTypeX = "illegal recursion in type '$1'"
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
-  errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
+  errInOutFlagNotExtern = "the $1 modifier can be used only with imported types"
 
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   if prev == nil:
