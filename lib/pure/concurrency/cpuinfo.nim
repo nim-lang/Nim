@@ -115,10 +115,11 @@ const
 when onX86 or defined(nimdoc):
   include "./cpuinfo_x86"
 
-let cpuName* = when onX86:
-                 cpuNameX86()
-               else:
-                 ""
+proc cpuName*() =
+  when onX86:
+    cpuNameX86()
+  else:
+    ""
   ## The CPU's full name, for example: `"Intel(R) Core(TM) i3-8350K CPU @
   ## 4.00GHz"`.
   ##
