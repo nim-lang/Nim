@@ -292,6 +292,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result = newFloatNode(nkFloatLit, BiggestFloat r1.intVal)
       result.info = n.info
       result.typ = typ
+      if not floatRangeCheck(result.floatVal, typ):
+        localError(c.config, n.info, errFloatToString % [$n.floatVal, typeToString(typ)])
     else:
       changeType(c, r1, typ, check=true)
       result = r1
