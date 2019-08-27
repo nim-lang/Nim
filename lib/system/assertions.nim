@@ -27,12 +27,12 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   Hide(raiseAssert)(msg)
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
-  const
-    loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
-    ploc = $loc
-  bind instantiationInfo
-  mixin failedAssertImpl
   when enabled:
+    const
+      loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
+      ploc = $loc
+    bind instantiationInfo
+    mixin failedAssertImpl
     {.line: loc.}:
       if not cond:
         failedAssertImpl(ploc & " `" & expr & "` " & msg)
