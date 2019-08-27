@@ -159,3 +159,15 @@ block: # `$`*[T: tuple|object](x: T)
     x2:float
   doAssert $Foo(x:2) == "(x: 2, x2: 0.0)"
   doAssert $() == "()"
+
+
+# this is a call indirection to prevent `toInt` to be resolved at compile time.
+proc testToInt(arg: float64, a: int, b: BiggestInt) =
+  doAssert toInt(arg) == a
+  doAssert toBiggestInt(arg) == b
+
+testToInt(0.45, 0, 0)
+testToInt(0.5, 1, 1)
+testToInt(-0.5, -1, -1)
+testToInt(13.37, 13, 13)
+testToInt(-13.37, -13, -13)
