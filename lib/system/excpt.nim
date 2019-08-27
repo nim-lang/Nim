@@ -59,14 +59,14 @@ var
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
-  currException {.threadvar.}: ref Exception
+  currException {.threadvar.}: ref RootError
   raiseCounter {.threadvar.}: uint
 
   gcFramePtr {.threadvar.}: GcFrame
 
 type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
-                     excHandler: PSafePoint, currException: ref Exception]
+                     excHandler: PSafePoint, currException: ref RootError]
 
 proc getFrameState*(): FrameState {.compilerRtl, inl.} =
   return (gcFramePtr, framePtr, excHandler, currException)
@@ -113,7 +113,7 @@ proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
 proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
-proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
+proc pushCurrentException(e: ref RootError) {.compilerRtl, inl.} =
   e.up = currException
   currException = e
 
@@ -135,7 +135,7 @@ proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
       quitOrDebug()
     prev.up = cur.up
 
-proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
+proc closureIterSetupExc(e: ref RootError) {.compilerproc, inline.} =
   currException = e
 
 # some platforms have native support for stack traces:
@@ -335,7 +335,7 @@ template unhandled(buf, body) =
   else:
     body
 
-proc raiseExceptionAux(e: ref Exception) =
+proc raiseExceptionAux(e: ref RootError) =
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
@@ -395,7 +395,7 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
+proc raiseExceptionEx(e: ref RootError, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     if e.trace.len == 0:
@@ -409,7 +409,7 @@ proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line
       e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
   raiseExceptionAux(e)
 
-proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+proc raiseException(e: ref RootError, ename: cstring) {.compilerRtl.} =
   raiseExceptionEx(e, ename, nil, nil, 0)
 
 proc reraiseException() {.compilerRtl.} =
@@ -433,14 +433,14 @@ proc getStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
-proc getStackTrace(e: ref Exception): string =
+proc getStackTrace(e: ref RootError): string =
   if not isNil(e):
     result = $e.trace
   else:
     result = ""
 
-proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
-  ## Returns the attached stack trace to the exception ``e`` as
+proc getStackTraceEntries*(e: ref RootError): seq[StackTraceEntry] =
+  ## Returns the attached stack trace to the RootError ``e`` as
   ## a ``seq``. This is not yet available for the JS backend.
   when not defined(gcDestructors):
     shallowCopy(result, e.trace)
@@ -492,7 +492,7 @@ when defined(cpp) and appType != "lib" and
     var msg = "Unknown error in unexpected exception handler"
     try:
       raise
-    except Exception:
+    except RootError:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
     except StdException as e:

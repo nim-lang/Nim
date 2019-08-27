@@ -727,37 +727,68 @@ type
     line*: int              ## Line number of the proc that is currently executing.
     filename*: cstring      ## Filename of the proc that is currently executing.
 
-  Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
-    ## Base exception class.
-    ##
-    ## Each exception has to inherit from `Exception`. See the full `exception
-    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-    parent*: ref Exception ## Parent exception (can be used as a stack).
-    name*: cstring         ## The exception's name is its Nim identifier.
-                           ## This field is filled automatically in the
-                           ## ``raise`` statement.
-    msg* {.exportc: "message".}: string ## The exception's message. Not
-                                        ## providing an exception message
-                                        ## is bad style.
-    when defined(js):
-      trace: string
-    else:
-      trace: seq[StackTraceEntry]
-    when defined(nimBoostrapCsources0_19_0):
-      # see #10315, bootstrap with `nim cpp` from csources gave error:
-      # error: no member named 'raise_id' in 'Exception'
-      raise_id: uint # set when exception is raised
-    else:
+when defined(nimRootError):
+  type
+    RootError* {.compilerproc, magic: "Exception".} = object of RootObj ## \
+      ## Base exception class.
+      ##
+      ## Each exception has to inherit from `Exception`. See the full `exception
+      ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+      parent*: ref RootError ## Parent exception (can be used as a stack).
+      name*: cstring         ## The exception's name is its Nim identifier.
+                            ## This field is filled automatically in the
+                            ## ``raise`` statement.
+      msg* {.exportc: "message".}: string ## The exception's message. Not
+                                          ## providing an exception message
+                                          ## is bad style.
+      when defined(js):
+        trace: string
+      else:
+        trace: seq[StackTraceEntry]
       raiseId: uint # set when exception is raised
-    up: ref Exception # used for stacking exceptions. Not exported!
+      up: ref RootError # used for stacking exceptions. Not exported!
 
-  Defect* = object of Exception ## \
-    ## Abstract base class for all exceptions that Nim's runtime raises
-    ## but that are strictly uncatchable as they can also be mapped to
-    ## a ``quit`` / ``trap`` / ``exit`` operation.
+    Defect* = object of RootError ## \
+      ## Abstract base class for all exceptions that Nim's runtime raises
+      ## but that are strictly uncatchable as they can also be mapped to
+      ## a ``quit`` / ``trap`` / ``exit`` operation.
 
-  CatchableError* = object of Exception ## \
-    ## Abstract class for all exceptions that are catchable.
+    Exception* = object of RootError ## \
+      ## Base class custom exceptions should inherit from.
+      ## Abstract class for all exceptions that are catchable.
+    CatchableError* = Exception ## an alias for `Exception`.
+
+else:
+  type
+    Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
+      ## Base exception class.
+      ##
+      ## Each exception has to inherit from `Exception`. See the full `exception
+      ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+      parent*: ref Exception ## Parent exception (can be used as a stack).
+      name*: cstring         ## The exception's name is its Nim identifier.
+                            ## This field is filled automatically in the
+                            ## ``raise`` statement.
+      msg* {.exportc: "message".}: string ## The exception's message. Not
+                                          ## providing an exception message
+                                          ## is bad style.
+      when defined(js):
+        trace: string
+      else:
+        trace: seq[StackTraceEntry]
+      when defined(nimBoostrapCsources0_19_0):
+        # see #10315, bootstrap with `nim cpp` from csources gave error:
+        # error: no member named 'raise_id' in 'Exception'
+        raise_id: uint # set when exception is raised
+      else:
+        raiseId: uint # set when exception is raised
+      up: ref Exception # used for stacking exceptions. Not exported!
+
+    Defect* = object of Exception
+    CatchableError* = object of Exception
+    RootError = Exception
+
+type
   IOError* = object of CatchableError ## \
     ## Raised if an IO error occurred.
   EOFError* = object of IOError ## \
@@ -3342,7 +3373,7 @@ else:
 # of the code
 
 var
-  globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
+  globalRaiseHook*: proc (e: ref RootError): bool {.nimcall, benign.}
     ## With this hook you can influence exception handling on a global level.
     ## If not nil, every 'raise' statement ends up calling this hook.
     ##
@@ -3352,7 +3383,7 @@ var
     ## If ``globalRaiseHook`` returns false, the exception is caught and does
     ## not propagate further through the call stack.
 
-  localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
+  localRaiseHook* {.threadvar.}: proc (e: ref RootError): bool {.nimcall, benign.}
     ## With this hook you can influence exception handling on a
     ## thread local level.
     ## If not nil, every 'raise' statement ends up calling this hook.
@@ -3445,7 +3476,7 @@ else:
                                              tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
+                       parentException: ref RootError = nil): untyped =
   ## Creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
   when declared(owned):
@@ -3681,7 +3712,7 @@ when not defined(JS): #and not defined(nimscript):
         status: int
         context: C_JmpBuf
         hasRaiseAction: bool
-        raiseAction: proc (e: ref Exception): bool {.closure.}
+        raiseAction: proc (e: ref RootError): bool {.closure.}
       SafePoint = TSafePoint
 
   when declared(initAllocator):
@@ -3709,7 +3740,7 @@ when not defined(JS): #and not defined(nimscript):
       proc getStackTrace*(): string {.gcsafe.}
         ## Gets the current stack trace. This only works for debug builds.
 
-      proc getStackTrace*(e: ref Exception): string {.gcsafe.}
+      proc getStackTrace*(e: ref RootError): string {.gcsafe.}
         ## Gets the stack trace associated with `e`, which is the stack that
         ## lead to the ``raise`` statement. This only works for debug builds.
 
@@ -3781,7 +3812,7 @@ when not defined(JS): #and not defined(nimscript):
       include "system/repr"
 
   when hostOS != "standalone" and not defined(nimscript):
-    proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
+    proc getCurrentException*(): ref RootError {.compilerRtl, inl, benign.} =
       ## Retrieves the current exception; if there is none, `nil` is returned.
       result = currException
 
@@ -3791,7 +3822,7 @@ when not defined(JS): #and not defined(nimscript):
       var e = getCurrentException()
       return if e == nil: "" else: e.msg
 
-    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) {.deprecated.} =
+    proc onRaise*(action: proc(e: ref RootError): bool{.closure.}) {.deprecated.} =
       ## **Deprecated since version 0.18.1**: No good usages of this
       ## feature are known.
       ##
@@ -3804,7 +3835,7 @@ when not defined(JS): #and not defined(nimscript):
         excHandler.hasRaiseAction = true
         excHandler.raiseAction = action
 
-    proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
+    proc setCurrentException*(exc: ref RootError) {.inline, benign.} =
       ## Sets the current exception.
       ##
       ## **Warning**: Only use this if you know what you are doing.

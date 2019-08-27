@@ -687,10 +687,16 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:
-      lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
+      let exceptionType =
+        if magicsys.getCompilerProc(p.module.g.graph, "RootError") != nil:
+          "RootError"
+        else:
+          "Exception"
+      lineCg(p, cpsStmts, "#raiseExceptionEx((#$6*)$1, $2, $3, $4, $5);$n",
           [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
-          quotedFilename(p.config, t.info), toLinenumber(t.info)])
+          quotedFilename(p.config, t.info), toLinenumber(t.info),
+          exceptionType])
       if optNimV2 in p.config.globalOptions:
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
@@ -1006,7 +1012,11 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   else:
     p.noSafePoints = true
   genLineDir(p, t)
-  discard cgsym(p.module, "Exception")
+  let rootError = magicsys.getCompilerProc(p.module.g.graph, "RootError")
+  if rootError != nil:
+    discard getTypeDesc(p.module, rootError.typ)
+  else:
+    discard cgsym(p.module, "Exception")
   var safePoint: Rope
   if not quirkyExceptions:
     safePoint = getTempName(p.module)
