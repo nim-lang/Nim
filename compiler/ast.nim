@@ -1059,7 +1059,7 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 when defined(useNodeIds):
-  const nodeIdToDebug* = 2322967# 2322968
+  const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =
