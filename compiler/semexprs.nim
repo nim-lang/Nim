@@ -514,11 +514,8 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
         localError(c.config, n.info, "cannot convert " & $value &
                                          " to " & typeToString(newType))
   of nkFloatLit..nkFloat64Lit:
-    if check:
-      echo newType.kind
-      if not floatRangeCheck(n.floatVal, newType):
-        localError(c.config, n.info, "cannot convert " & $n.floatVal &
-                                         " to " & typeToString(newType))
+    if check and not floatRangeCheck(n.floatVal, newType):
+      localError(c.config, n.info, errFloatToString % [$n.floatVal, typeToString(newType)])
   else: discard
   n.typ = newType
 
