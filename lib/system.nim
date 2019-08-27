@@ -2277,8 +2277,7 @@ type # these work for most platforms:
   PInt64* = ptr int64        ## An alias for ``ptr int64``.
   PInt32* = ptr int32        ## An alias for ``ptr int32``.
 
-proc toFloat*(i: int): float {.
-  magic: "ToFloat", noSideEffect, importc: "toFloat".}
+proc toFloat*(i: int): float {.noSideEffect, inline.} =
   ## Converts an integer `i` into a ``float``.
   ##
   ## If the conversion fails, `ValueError` is raised.
@@ -2290,10 +2289,11 @@ proc toFloat*(i: int): float {.
   ##     b = 3.7
   ##
   ##   echo a.toFloat + b # => 5.7
+  float(i)
 
-proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
-  magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
+proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.noSideEffect, inline.} =
   ## Same as `toFloat <#toFloat,int>`_ but for ``BiggestInt`` to ``BiggestFloat``.
+  BiggestFloat(i)
 
 proc toInt*(f: float): int {.noSideEffect.} =
   ## Converts a floating point number `f` into an ``int``.
