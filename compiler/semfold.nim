@@ -196,7 +196,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mToFloat, mToBiggestFloat:
     result = newFloatNodeT(toFloat64(getInt(a)), n, g)
   # XXX: Hides overflow/underflow
-  of mToInt, mToBiggestInt: result = newIntNodeT(system.toInt(getFloat(a)), n, g)
   of mAbsF64: result = newFloatNodeT(abs(getFloat(a)), n, g)
   of mAbsI: result = foldAbs(getInt(a), n, g)
   of mUnaryLt: result = foldSub(getOrdValue(a), One, n, g)

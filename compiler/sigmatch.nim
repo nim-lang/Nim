@@ -873,7 +873,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     of mUnaryMinusI:
       return inferStaticParam(c, lhs[1], -rhs)
 
-    of mUnaryPlusI, mToInt, mToBiggestInt:
+    of mUnaryPlusI:
       return inferStaticParam(c, lhs[1], rhs)
 
     else: discard

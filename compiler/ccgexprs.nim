@@ -670,10 +670,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     applyFormat("((double) ($1))")
   of mToBiggestFloat:
     applyFormat("((double) ($1))")
-  of mToInt:
-    applyFormat("float64ToInt32($1)")
-  of mToBiggestInt:
-    applyFormat("float64ToInt64($1)")
   else:
     assert false, $op
 
@@ -2094,7 +2090,7 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
-  of mNot..mToBiggestInt: unaryArith(p, e, d, op)
+  of mNot..mToBiggestFloat: unaryArith(p, e, d, op)
   of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)

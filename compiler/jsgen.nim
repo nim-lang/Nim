@@ -433,8 +433,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # AbsF64
     ["", ""],     # ToFloat
     ["", ""],     # ToBiggestFloat
-    ["", ""], # ToInt
-    ["", ""], # ToBiggestInt
     ["nimCharToStr", "nimCharToStr"],
     ["nimBoolToStr", "nimBoolToStr"],
     ["cstrToNimstr", "cstrToNimstr"],
@@ -614,8 +612,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mAbsF64: applyFormat("Math.abs($1)", "Math.abs($1)")
   of mToFloat: applyFormat("$1", "$1")
   of mToBiggestFloat: applyFormat("$1", "$1")
-  of mToInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
-  of mToBiggestInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
   of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")

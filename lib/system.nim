@@ -1132,57 +1132,57 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # built-in operators
 
 when defined(nimNoZeroExtendMagic):
-  proc ze*(x: int8): int =
+  proc ze*(x: int8): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
     cast[int](uint(cast[uint8](x)))
 
-  proc ze*(x: int16): int =
+  proc ze*(x: int16): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int](uint(cast[uint16](x)))
 
-  proc ze64*(x: int8): int64 =
+  proc ze64*(x: int8): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint8](x)))
 
-  proc ze64*(x: int16): int64 =
+  proc ze64*(x: int16): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint16](x)))
 
-  proc ze64*(x: int32): int64 =
+  proc ze64*(x: int32): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint32](x)))
 
-  proc ze64*(x: int): int64 =
+  proc ze64*(x: int): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint](x)))
 
-  proc toU8*(x: int): int8 =
+  proc toU8*(x: int): int8 {.deprecated.} =
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int8](x)
 
-  proc toU16*(x: int): int16 =
+  proc toU16*(x: int): int16 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int16](x)
 
-  proc toU32*(x: int64): int32 =
+  proc toU32*(x: int64): int32 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
@@ -2295,8 +2295,7 @@ proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
   ## Same as `toFloat <#toFloat,int>`_ but for ``BiggestInt`` to ``BiggestFloat``.
 
-proc toInt*(f: float): int {.
-  magic: "ToInt", noSideEffect, importc: "toInt".}
+proc toInt*(f: float): int {.noSideEffect.} =
   ## Converts a floating point number `f` into an ``int``.
   ##
   ## Conversion rounds `f` half away from 0, see
@@ -2310,10 +2309,11 @@ proc toInt*(f: float): int {.
   ##   doAssert toInt(0.49) == 0
   ##   doAssert toInt(0.5) == 1
   ##   doAssert toInt(-0.5) == -1 # rounding is symmetrical
+  if f >= 0: int(f+0.5) else: int(f-0.5)
 
-proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
-  magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
+proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
+  if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
