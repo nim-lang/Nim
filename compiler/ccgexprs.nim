@@ -588,8 +588,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mBitxorI: applyFormat("($4)($1 ^ $2)")
   of mMinI: applyFormat("(($1 <= $2) ? $1 : $2)")
   of mMaxI: applyFormat("(($1 >= $2) ? $1 : $2)")
-  of mMinF64: applyFormat("(($1 <= $2) ? $1 : $2)")
-  of mMaxF64: applyFormat("(($1 >= $2) ? $1 : $2)")
   of mAddU: applyFormat("($4)((NU$3)($1) + (NU$3)($2))")
   of mSubU: applyFormat("($4)((NU$3)($1) - (NU$3)($2))")
   of mMulU: applyFormat("($4)((NU$3)($1) * (NU$3)($2))")
@@ -663,9 +661,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     applyFormat("$1")
   of mUnaryMinusF64:
     applyFormat("-($1)")
-  of mAbsF64:
-    applyFormat("($1 < 0? -($1) : ($1))")
-    # BUGFIX: fabs() makes problems for Tiny C
   else:
     assert false, $op
 
@@ -2086,7 +2081,7 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
-  of mNot..mAbsF64: unaryArith(p, e, d, op)
+  of mNot..mUnaryMinusF64: unaryArith(p, e, d, op)
   of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
