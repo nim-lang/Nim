@@ -517,6 +517,42 @@ when true:
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
 
+# bug #12015
+# The definition of the `%` proc needs to be here, since the `% c` calls below
+# can only find our custom `%` proc for `Pix` if defined in global scope.
+type
+  Pix = tuple[x, y: uint8, ch: uint16]
+proc `%`(p: Pix): JsonNode =
+  result = %* { "x" : % p.x,
+                "y" : % p.y,
+                "ch" : % p.ch }
+block:
+  type
+    Cluster = object
+      works: tuple[x, y: uint8, ch: uint16] # working
+      fails: Pix # previously broken
+
+  let data = (x: 123'u8, y: 53'u8, ch: 1231'u16)
+  let c = Cluster(works: data, fails: data)
+  let cFromJson = (% c).to(Cluster)
+  doAssert c == cFromJson
+
+block:
+  # bug related to #12015
+  type
+    PixInt = tuple[x, y, ch: int]
+    SomePix = Pix | PixInt
+    Cluster[T: SomePix] = seq[T]
+    ClusterObject[T: SomePix] = object
+      data: Cluster[T]
+    RecoEvent[T: SomePix] = object
+      cluster: seq[ClusterObject[T]]
+
+  let data = @[(x: 123'u8, y: 53'u8, ch: 1231'u16)]
+  var c = RecoEvent[Pix](cluster: @[ClusterObject[Pix](data: data)])
+  let cFromJson = (% c).to(RecoEvent[Pix])
+  doAssert c == cFromJson
+
 # TODO: when the issue with the limeted vm registers is solved, the
 # exact same test as above should be evaluated at compile time as
 # well, to ensure that the vm functionality won't diverge from the
