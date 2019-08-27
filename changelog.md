@@ -58,6 +58,10 @@
 - The Nim compiler now does not recompile the Nim project via ``nim c -r`` if
   no dependent Nim file changed. This feature can be overridden by
   the ``--forceBuild`` command line option.
+- The Nim compiler now warns about unused module imports. You can use a
+  top level ``{.used.}`` pragma in the module that you want to be importable
+  without producing this warning.
+
 
 ### Compiler changes
 

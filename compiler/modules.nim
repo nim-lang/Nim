@@ -50,7 +50,6 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
     setLen(graph.modules, int(fileIdx) + 1)
   graph.modules[result.position] = result
 
-  incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
   strTableAdd(packSym.tab, result)
