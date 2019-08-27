@@ -77,14 +77,12 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       discard safeSemExpr(c, n)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
-  result = arg
-  let x = result.skipConv
+  let x = arg.skipConv
   if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
     changeType(c, x, formal, check=true)
-  else:
-    result = skipHiddenSubConv(result)
-    #result.typ = takeType(formal, arg.typ)
-    #echo arg.info, " picked ", result.typ.typeToString
+  result = arg
+  result = skipHiddenSubConv(result)
+
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
