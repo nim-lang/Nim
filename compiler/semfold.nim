@@ -50,7 +50,10 @@ proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
   result.info = n.info
 
 proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode; g: ModuleGraph): PNode =
-  result = newFloatNode(nkFloatLit, floatVal)
+  if n.typ.skipTypes(abstractInst).kind == tyFloat32:
+    result = newFloatNode(nkFloat32Lit, floatVal)
+  else:
+    result = newFloatNode(nkFloatLit, floatVal)
   result.typ = n.typ
   result.info = n.info
 
@@ -176,7 +179,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mOrd: result = newIntNodeT(getOrdValue(a), n, g)
   of mChr: result = newIntNodeT(getInt(a), n, g)
   of mUnaryMinusI, mUnaryMinusI64: result = foldUnarySub(getInt(a), n, g)
-  of mUnaryMinusF64: result = newFloatNodeT(- getFloat(a), n, g)
+  of mUnaryMinusF64: result = newFloatNodeT(-getFloat(a), n, g)
   of mNot: result = newIntNodeT(One - getInt(a), n, g)
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
   of mBitnotI:
