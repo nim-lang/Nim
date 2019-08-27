@@ -488,6 +488,11 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   markUsed(c, info, finalCallee)
   onUse(info, finalCallee)
   assert finalCallee.ast != nil
+  if nfOverloadResolve in n.flags:
+    # CHECKME: see if handling of `hasFauxMatch` is correct
+    let info2 = info
+    return newSymNode(finalCallee, info2)
+
   if x.hasFauxMatch:
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
@@ -533,6 +538,8 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
+  template canError(): bool =
+    efNoUndeclared notin flags and nfOverloadResolve notin n.flags
   if r.state == csMatch:
     # this may be triggered, when the explain pragma is used
     if errors.len > 0:
@@ -560,14 +567,14 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
         # repeat the overload resolution,
         # this time enabling all the diagnostic output (this should fail again)
         discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-      elif efNoUndeclared notin flags:
+      elif canError():
         notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-    elif efNoUndeclared notin flags:
+    elif canError():
       notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =

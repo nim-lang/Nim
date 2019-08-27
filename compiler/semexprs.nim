@@ -832,6 +832,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
   if result != nil:
+    if nfOverloadResolve in n.flags: return
     if result[0].kind != nkSym:
       internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
@@ -980,6 +981,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
+  if nfOverloadResolve in n.flags: return
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
   else: result = errorNode(c, n)
 
@@ -1271,6 +1273,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
+  if nfOverloadResolve in n.flags:
+    if s == nil:
+      localError(c.config, n.info, "builtinFieldAccess: qualifiedLookUp failed")
+    else: result = symChoice(c, n, s, scClosed)
+    return
   if s != nil:
     if s.kind in OverloadableSyms:
       result = symChoice(c, n, s, scClosed)
@@ -2097,11 +2104,35 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
 proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:
-  if n.len != 2: return semDirectOp(c, n, flags)
-
+  if n.len != 2: return semDirectOp(c, n, flags) # why needed?
   result = newIntNode(nkIntLit, ord(tryExpr(c, n[1], flags) != nil))
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
+
+proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  if sonsLen(n) != 2:
+    localError(c.config, n.info, "semOverloadResolve: got" & $sonsLen(n))
+    return
+  doAssert sonsLen(n) == 2, $sonsLen(n)
+  let n1 = n[1]
+  n1.flags.incl nfOverloadResolve
+  case n1.kind
+  of {nkIdent,nkDotExpr,nkAccQuoted} + nkCallKinds - {nkHiddenCallConv}:
+    let flags = flags + {efWantIterator} # so that it also works for iterators
+    result = semExpr(c, n1, flags)
+    # TODO: customize what happens for result == nil
+    if result != nil:
+      doAssert result.kind in {nkSym, nkClosedSymChoice}, $result.kind
+  else:
+    localError(c.config, n.info, "expected routine, got " & $n1.kind)
+  if result == nil:
+    result = newNodeIT(nkNilLit, n.info, getSysType(c.graph, n.info, tyNil))
+  elif result.kind != nkSym:
+    # avoids degenerating symchoice to a sym
+    let typ = newTypeS(tyTuple, c)
+    let result0 = result
+    result = newNodeIT(nkTupleConstr, n.info, typ)
+    addSon(result, result0)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n.len == 3:
@@ -2171,6 +2202,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mCompiles:
     markUsed(c, n.info, s)
     result = semCompiles(c, setMs(n, s), flags)
+  of mOverloadResolve:
+    markUsed(c, n.info, s)
+    result = semOverloadResolve(c, setMs(n, s), flags)
   of mIs:
     markUsed(c, n.info, s)
     result = semIs(c, setMs(n, s), flags)
@@ -2568,7 +2602,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
-    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
+    if nfOverloadResolve in n.flags: result = symChoice(c, n, s, scClosed)
+    elif s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
