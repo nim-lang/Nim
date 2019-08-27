@@ -682,6 +682,7 @@ proc genUnaryABI(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode; imm: BiggestI
   c.gABI(n, opc, dest, tmp, imm)
   c.freeTemp(tmp)
 
+
 proc genBinaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   let
     tmp = c.genx(n.sons[1])
@@ -999,22 +1000,15 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mMulF64: genBinaryABC(c, n, dest, opcMulFloat)
   of mDivF64: genBinaryABC(c, n, dest, opcDivFloat)
   of mShrI:
-    # the idea here is to narrow type if needed before executing right shift
-    # inlined modified: genNarrowU(c, n, dest)
-    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
-    # uint is uint64 in the VM, we we only need to mask the result for
-    # other unsigned types:
+    # modified: genBinaryABC(c, n, dest, opcShrInt)
+    # narrowU is applied to the left operandthe idea here is to narrow the left operand
     let tmp = c.genx(n.sons[1])
-    if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32}:
-      c.gABC(n, opcNarrowU, tmp, TRegister(t.size*8))
-
-    # inlined modified: genBinaryABC(c, n, dest, opcShrInt)
+    c.genNarrowU(n, tmp)
     let tmp2 = c.genx(n.sons[2])
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcShrInt, dest, tmp, tmp2)
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
-
   of mShlI:
     genBinaryABC(c, n, dest, opcShlInt)
     # genNarrowU modified

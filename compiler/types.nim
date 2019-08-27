@@ -158,9 +158,9 @@ proc enumHasHoles*(t: PType): bool =
 proc isOrdinalType*(t: PType, allowEnumWithHoles: bool = false): bool =
   assert(t != nil)
   const
-    baseKinds = {tyChar,tyInt..tyUInt64,tyBool,tyEnum}
+    baseKinds = {tyChar,tyInt..tyInt64,tyUInt..tyUInt64,tyBool,tyEnum}
     parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
-  result = (t.kind in baseKinds and not (t.enumHasHoles and not allowEnumWithHoles)) or
+  result = (t.kind in baseKinds and (not t.enumHasHoles or allowEnumWithHoles)) or
     (t.kind in parentKinds and isOrdinalType(t.lastSon, allowEnumWithHoles))
 
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
