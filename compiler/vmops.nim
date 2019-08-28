@@ -17,6 +17,8 @@ from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getApp
 from md5 import getMD5
 from sighashes import symBodyDigest
 
+from hashes import hash
+
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
@@ -88,6 +90,16 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
+proc hashVmImplByte(a: VmArgs) {.nimcall.} =
+  # nkBracket[...]
+  let sPos = a.getInt(1).int
+  let ePos = a.getInt(2).int
+  let arr = a.getNode(0)
+  var bytes = newSeq[byte](arr.len)
+  for i in 0 ..< arr.len:
+    bytes[i] = byte(arr[i].intVal and 0xff)
+  setResult(a, hashes.hash(bytes, sPos, ePos))
+
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
     let (s, e) = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
@@ -157,3 +169,9 @@ proc registerAdditionalOps*(c: PCtx) =
       stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
                   "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, sfExported in n.sym.flags)
+
+  registerCallback c, "stdlib.hashes.hashVmImpl", proc(a: VmArgs) {.nimcall.} =
+    setResult(a, hashes.hash(a.getString(0), a.getInt(1).int, a.getInt(2).int))
+
+  registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
+  registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte

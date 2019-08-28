@@ -4506,6 +4506,8 @@ when not defined(js):
   when defined(nimToOpenArrayCString):
     proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
       magic: "Slice".}
+    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
+      magic: "Slice".}
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
@@ -4515,7 +4517,12 @@ proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
   magic: "Slice".}
 proc toOpenArray*(x: string; first, last: int): openArray[char] {.
   magic: "Slice".}
+
 proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
 
 type

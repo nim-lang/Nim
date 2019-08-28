@@ -105,13 +105,12 @@ proc hash*(x: pointer): Hash {.inline.} =
   else:
     result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
 
-when not defined(booting):
-  proc hash*[T: proc](x: T): Hash {.inline.} =
-    ## Efficient hashing of proc vars. Closures are supported too.
-    when T is "closure":
-      result = hash(rawProc(x)) !& hash(rawEnv(x))
-    else:
-      result = hash(pointer(x))
+proc hash*[T: proc](x: T): Hash {.inline.} =
+  ## Efficient hashing of proc vars. Closures are supported too.
+  when T is "closure":
+    result = hash(rawProc(x)) !& hash(rawEnv(x))
+  else:
+    result = hash(pointer(x))
 
 proc hash*(x: int): Hash {.inline.} =
   ## Efficient hashing of integers.
@@ -165,14 +164,14 @@ else:
 proc rotl32(x: uint32, r: int): uint32 {.inline.} =
   (x shl r) or (x shr (32 - r))
 
-proc murmurHash[T: char|int8|byte](x: openArray[T]): Hash =
+proc murmurHash(x: openArray[byte]): Hash =
   # https://github.com/PeterScott/murmur3/blob/master/murmur3.c
   const
-    c1 = uint32 0xcc9e2d51
-    c2 = uint32 0x1b873593
-    n1 = uint32 0xe6546b64
-    m1 = uint32 0x85ebca6b
-    m2 = uint32 0xc2b2ae35
+    c1 = 0xcc9e2d51'u32
+    c2 = 0x1b873593'u32
+    n1 = 0xe6546b64'u32
+    m1 = 0x85ebca6b'u32
+    m2 = 0xc2b2ae35'u32
   let
     size = len(x)
     stepSize = 4 # 32-bit
@@ -221,6 +220,15 @@ proc murmurHash[T: char|int8|byte](x: openArray[T]): Hash =
   h1 = h1 xor (h1 shr 16)
   return cast[Hash](h1)
 
+proc hashVmImpl(x: string, sPos, ePos: int): Hash =
+  discard "look at compiler/vmops.nim"
+
+proc hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
+  discard "look at compiler/vmops.nim"
+
+proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
+  discard "look at compiler/vmops.nim"
+
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
@@ -230,7 +238,10 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  murmurHash(x)
+  when nimvm:
+    result = hashVmImpl(x, 0, high(x))
+  else:
+    result = murmurHash(toOpenArrayByte(x, 0, high(x)))
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
@@ -240,9 +251,10 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
   when not defined(JS) and defined(nimToOpenArrayCString):
-    murmurHash(toOpenArray(x, 0, x.high))
+    murmurHash(toOpenArrayByte(x, 0, x.high))
   else:
-    murmurHash($x)
+    let xx = $x
+    murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -253,7 +265,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  murmurHash(toOpenArray(sBuf, sPos, ePos))
+  murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
 
 
 proc hashIgnoreStyle*(x: string): Hash =
@@ -355,8 +367,13 @@ proc hash*[T: tuple](x: T): Hash =
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
-  when A is char|int8|byte:
-    murmurHash(x)
+  when A is byte:
+    result = murmurHash(x)
+  elif A is char:
+    when nimvm:
+      result = hashVmImplChar(x, 0, x.high)
+    else:
+      result = murmurHash(toOpenArrayByte(x, 0, x.high))
   else:
     for a in x:
       result = result !& hash(a)
@@ -371,8 +388,16 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
 
-  when A is char|int8|byte:
-    murmurHash(toOpenArray(aBuf, sPos, ePos))
+  when A is byte:
+    when nimvm:
+      result = hashVmImplByte(aBuf, 0, aBuf.high)
+    else:
+      result = murmurHash(toOpenArray(aBuf, sPos, ePos))
+  elif A is char:
+    when nimvm:
+      result = hashVmImplChar(aBuf, 0, aBuf.high)
+    else:
+      result = murmurHash(toOpenArrayByte(aBuf, sPos, ePos))
   else:
     for i in sPos .. ePos:
       result = result !& hash(aBuf[i])
@@ -408,7 +433,7 @@ when isMainModule:
   block smallSize: # no multibyte hashing
     let
       xx = @['H','i']
-      ii = @[72'i8, 105]
+      ii = @[72'u8, 105]
       ss = "Hi"
     doAssert hash(xx) == hash(ii)
     doAssert hash(xx) == hash(ss)
@@ -426,10 +451,3 @@ when isMainModule:
     doAssert hash(xx) == hash(ssl, 0, 4)
     doAssert hash(xx, 0, 3) == hash(xxl, 0, 3)
     doAssert hash(xx, 0, 3) == hash(ssl, 0, 3)
-  block misc:
-    let
-      a = [1'u8, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4]
-      b = [1'i8, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4]
-    doAssert hash(a) == hash(b)
-    doAssert hash(a, 2, 5) == hash(b, 2, 5)
-    doAssert hash(a, 0, 0) == hash(b, 7, 7)
