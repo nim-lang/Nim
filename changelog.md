@@ -10,6 +10,13 @@
   to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
   feature.
 
+- The language definition and compiler are now stricter about ``gensym``'ed
+  symbols in hygienic templates. See the section in the
+  [manual](https://nim-lang.org/docs/manual.html#templates-hygiene-in-templates)
+  for further details. Use the compiler switch `--useVersion:0.19` for a
+  transition period.
+
+
 ### Breaking changes in the standard library
 
 
@@ -51,6 +58,10 @@
 - The Nim compiler now does not recompile the Nim project via ``nim c -r`` if
   no dependent Nim file changed. This feature can be overridden by
   the ``--forceBuild`` command line option.
+- The Nim compiler now warns about unused module imports. You can use a
+  top level ``{.used.}`` pragma in the module that you want to be importable
+  without producing this warning.
+
 
 ### Compiler changes
 

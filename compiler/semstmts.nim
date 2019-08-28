@@ -1904,6 +1904,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         discard
       popProcCon(c)
   else:
+    if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
+      # `auto` is represented as `tyUntyped` at this point in compilation.
+      localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
+
     if s.kind == skMethod: semMethodPrototype(c, s, n)
     if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:

@@ -49,7 +49,7 @@ const
     wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
-    wInjectStmt, wDeprecated, wExperimental, wThis}
+    wInjectStmt, wDeprecated, wExperimental, wThis, wUsed}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,

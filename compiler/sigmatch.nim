@@ -1654,8 +1654,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyGenericParam:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
-      if c.callee.kind == tyGenericBody and
-         f.kind == tyGenericParam and not c.typedescMatched:
+      if c.callee.kind == tyGenericBody and not c.typedescMatched:
         # XXX: The fact that generic types currently use tyGenericParam for
         # their parameters is really a misnomer. tyGenericParam means "match
         # any value" and what we need is "match any type", which can be encoded
@@ -1700,6 +1699,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             c.inheritancePenalty = oldInheritancePenalty - c.inheritancePenalty -
                                   100 * ord(result == isEqual)
             result = isGeneric
+        elif a.kind == tyTypeDesc:
+          # somewhat special typing rule, the following is illegal:
+          # proc p[T](x: T)
+          # p(int)
+          result = isNone
         else:
           result = isGeneric
 

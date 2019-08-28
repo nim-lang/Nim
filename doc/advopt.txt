@@ -122,7 +122,7 @@ Advanced options:
                             enable experimental language feature
   --legacy:$2
                             enable obsolete/legacy language feature
-                            legacy code.
+  --useVersion:0.19|1.0     emulate Nim version X of the Nim compiler
   --newruntime              use an alternative runtime that uses destructors
                             and that uses a shared heap via -d:useMalloc
   --profiler:on|off         enable profiling; requires `import nimprof`, and

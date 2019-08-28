@@ -176,6 +176,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         filterOnlyFirst = true
         break
 
+  var maybeWrongSpace = false
+
   var candidates = ""
   var skipped = 0
   for err in errors:
@@ -218,11 +220,17 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           if got != nil: effectProblem(wanted, got, candidates)
       of kUnknown: discard "do not break 'nim check'"
       candidates.add "\n"
+      if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
+          n.kind == nkCommand:
+        maybeWrongSpace = true
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
         "suppressed; compile with --showAllMismatches:on to see them\n")
+  if maybeWrongSpace:
+    candidates.add("maybe misplaced space between " & renderTree(n[0]) & " and '(' \n")
+
   result = (prefer, candidates)
 
 const

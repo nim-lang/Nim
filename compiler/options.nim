@@ -84,6 +84,7 @@ type                          # please make sure we have under 32 options
     optDynlibOverrideAll
     optNimV2
     optMultiMethods
+    optNimV019
 
   TGlobalOptions* = set[TGlobalOption]
 

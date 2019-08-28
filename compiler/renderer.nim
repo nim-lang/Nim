@@ -9,6 +9,11 @@
 
 # This module implements the renderer of the standard Nim representation.
 
+when defined(nimHasUsed):
+  # 'import renderer' is so useful for debugging
+  # that Nim shouldn't produce a warning for that:
+  {.used.}
+
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
