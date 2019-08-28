@@ -517,3 +517,8 @@ proc all*[T](futs: varargs[Future[T]]): auto =
       retFuture.complete(retValues)
 
     return retFuture
+
+proc internalRead*[T](fut: Future[T] | FutureVar[T]): T {.inline.} =
+  # For internal use only. Used in asyncmacro
+  when T isnot void:
+    return fut.value
