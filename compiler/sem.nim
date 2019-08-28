@@ -403,7 +403,13 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   if s.typ.sons[0] == nil:
     result = semStmt(c, result, flags)
   else:
-    case s.typ.sons[0].kind
+    var retType = s.typ.sons[0]
+    if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
+        retType.len == 1:
+      # bug #11941: template fails(T: type X, v: auto): T
+      # does not mean we expect a tyTypeDesc.
+      retType = retType[0]
+    case retType.kind
     of tyUntyped:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags)
@@ -421,7 +427,6 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         result.typ = makeTypeDesc(c, typ)
       #result = symNodeFromType(c, typ, n.info)
     else:
-      var retType = s.typ.sons[0]
       if s.ast[genericParamsPos] != nil and retType.isMetaType:
         # The return type may depend on the Macro arguments
         # e.g. template foo(T: typedesc): seq[T]

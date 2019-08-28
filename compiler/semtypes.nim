@@ -1799,7 +1799,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
   else:
-    localError(c.config, n.info, errTypeExpected)
+    localError(c.config, n.info, "type expected, but got: " & renderTree(n))
     result = newOrPrevType(tyError, prev, c)
   n.typ = result
   dec c.inTypeContext
