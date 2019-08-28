@@ -315,6 +315,12 @@ assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
 
+assert "_".validIdentifier
+assert not "x_".validIdentifier
+assert not "_x".validIdentifier
+assert "x_x".validIdentifier
+assert not "x__x".validIdentifier
+
 # bug #11369
 
 var num: int64 = -1

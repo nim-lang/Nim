@@ -2275,8 +2275,10 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
     doAssert "abc_def08".validIdentifier
 
   if s.len > 0 and s[0] in IdentStartChars:
+    if s.len > 1 and '_' in [s[0], s[^1]]: return false
     for i in 1..s.len-1:
       if s[i] notin IdentChars: return false
+      if s[i] == '_' and s[i-1] == '_': return false
     return true
 
 
