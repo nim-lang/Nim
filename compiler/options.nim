@@ -719,3 +719,13 @@ proc `$`*(c: IdeCmd): string =
   of ideOutline: "outline"
   of ideKnown: "known"
   of ideMsg: "msg"
+
+proc floatInt64Align*(conf: ConfigRef): int =
+  ## Returns either 4 or 8 depending on reasons.
+  if conf.target.targetCPU == cpuI386:
+    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
+    if conf.target.targetOS != osWindows:
+      # on i386 for all known POSIX systems, 64bits ints are aligned
+      # to 4bytes (except with -malign-double)
+      return 4
+  return 8
