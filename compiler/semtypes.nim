@@ -1819,13 +1819,8 @@ proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
 
   # FIXME: proper support for clongdouble should be added.
   # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
-  if conf.target.targetCPU == cpuI386 and size == 8:
-    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
-    if conf.target.targetOS != osWindows:
-      if kind in {tyFloat64, tyFloat, tyInt, tyUInt, tyInt64, tyUInt64}:
-        # on i386 for all known POSIX systems, 64bits ints are aligned
-        # to 4bytes (except with -malign-double)
-        m.typ.align = 4
+  if kind in {tyFloat64, tyFloat, tyInt, tyUInt, tyInt64, tyUInt64} and size == 8:
+    m.typ.align = int16(conf.floatInt64Align)
 
 proc setMagicIntegral(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   setMagicType(conf, m, kind, size)
