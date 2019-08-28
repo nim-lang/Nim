@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos
+  lineinfos, int128
 
 type
   TPreferedDesc* = enum
@@ -77,12 +77,35 @@ proc isPureObject*(typ: PType): bool =
     t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getOrdValue*(n: PNode; onError = high(BiggestInt)): BiggestInt =
+proc isUnsigned*(t: PType): bool =
+  t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
+
+proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
+  case n.kind
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
+    # XXX: enable this assert
+    #assert n.typ == nil or isUnsigned(n.typ), $n.typ
+    toInt128(cast[uint64](n.intVal))
+  of nkIntLit..nkInt64Lit:
+    # XXX: enable this assert
+    #assert n.typ == nil or not isUnsigned(n.typ), $n.typ.kind
+    toInt128(n.intVal)
+  of nkNilLit:
+    int128.Zero
+  of nkHiddenStdConv: getOrdValue(n.sons[1], onError)
+  else:
+    # XXX: The idea behind the introduction of int128 was to finally
+    # have all calculations numerically far away from any
+    # overflows. This command just introduces such overflows and
+    # should therefore really be revisited.
+    onError
+
+proc getOrdValue64*(n: PNode): BiggestInt {.deprecated: "use getOrdvalue".} =
   case n.kind
   of nkCharLit..nkUInt64Lit: n.intVal
   of nkNilLit: 0
-  of nkHiddenStdConv: getOrdValue(n.sons[1], onError)
-  else: onError
+  of nkHiddenStdConv: getOrdValue64(n.sons[1])
+  else: high(BiggestInt)
 
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
@@ -96,7 +119,7 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
-proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
+proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
   result = sym.owner.name.s & '.' & sym.name.s
   if sym.kind in routineKinds:
@@ -114,9 +137,10 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
     add(result, ')')
     if n.sons[0].typ != nil:
       result.add(": " & typeToString(n.sons[0].typ, prefer))
-  result.add " [declared in "
-  result.add(conf$sym.info)
-  result.add "]"
+  if getDeclarationPath:
+    result.add " [declared in "
+    result.add(conf$sym.info)
+    result.add "]"
 
 proc elemType*(t: PType): PType =
   assert(t != nil)
@@ -629,10 +653,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
+proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
-    result = 0
+    result = Zero
   of tySet, tyVar: result = firstOrd(conf, t.sons[0])
   of tyArray: result = firstOrd(conf, t.sons[0])
   of tyRange:
@@ -640,20 +664,22 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n.sons[0])
   of tyInt:
-    if conf != nil and conf.target.intSize == 4: result = - (2147483646) - 2
-    else: result = 0x8000000000000000'i64
-  of tyInt8: result = - 128
-  of tyInt16: result = - 32768
-  of tyInt32: result = - 2147483646 - 2
-  of tyInt64: result = 0x8000000000000000'i64
-  of tyUInt..tyUInt64: result = 0
+    if conf != nil and conf.target.intSize == 4:
+      result = toInt128(-2147483648)
+    else:
+      result = toInt128(0x8000000000000000'i64)
+  of tyInt8: result =  toInt128(-128)
+  of tyInt16: result = toInt128(-32768)
+  of tyInt32: result = toInt128(-2147483648)
+  of tyInt64: result = toInt128(0x8000000000000000'i64)
+  of tyUInt..tyUInt64: result = Zero
   of tyEnum:
     # if basetype <> nil then return firstOrd of basetype
     if sonsLen(t) > 0 and t.sons[0] != nil:
       result = firstOrd(conf, t.sons[0])
     else:
       assert(t.n.sons[0].kind == nkSym)
-      result = t.n.sons[0].sym.position
+      result = toInt128(t.n.sons[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses:
     result = firstOrd(conf, lastSon(t))
@@ -661,11 +687,10 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
   of tyUncheckedArray:
-    result = 0
+    result = Zero
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-    result = 0
-
+    result = Zero
 
 proc firstFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -682,10 +707,10 @@ proc firstFloat*(t: PType): BiggestFloat =
     internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
     NaN
 
-proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
+proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
-  of tyBool: result = 1
-  of tyChar: result = 255
+  of tyBool: result = toInt128(1'u)
+  of tyChar: result = toInt128(255'u)
   of tySet, tyVar: result = lastOrd(conf, t.sons[0])
   of tyArray: result = lastOrd(conf, t.sons[0])
   of tyRange:
@@ -693,38 +718,37 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n.sons[1])
   of tyInt:
-    if conf != nil and conf.target.intSize == 4: result = 0x7FFFFFFF
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyInt8: result = 0x0000007F
-  of tyInt16: result = 0x00007FFF
-  of tyInt32: result = 0x7FFFFFFF
-  of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+    if conf != nil and conf.target.intSize == 4: result = toInt128(0x7FFFFFFF)
+    else: result = toInt128(0x7FFFFFFFFFFFFFFF'u64)
+  of tyInt8: result = toInt128(0x0000007F)
+  of tyInt16: result = toInt128(0x00007FFF)
+  of tyInt32: result = toInt128(0x7FFFFFFF)
+  of tyInt64: result = toInt128(0x7FFFFFFFFFFFFFFF'u64)
   of tyUInt:
-    if conf != nil and conf.target.intSize == 4: result = 0xFFFFFFFF
-    elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyUInt8: result = 0xFF
-  of tyUInt16: result = 0xFFFF
-  of tyUInt32: result = 0xFFFFFFFF
+    if conf != nil and conf.target.intSize == 4:
+      result = toInt128(0xFFFFFFFF)
+    else:
+      result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
+  of tyUInt8: result = toInt128(0xFF)
+  of tyUInt16: result = toInt128(0xFFFF)
+  of tyUInt32: result = toInt128(0xFFFFFFFF)
   of tyUInt64:
-    if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
+    result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
   of tyEnum:
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
-    result = t.n.sons[sonsLen(t.n) - 1].sym.position
+    result = toInt128(t.n.sons[sonsLen(t.n) - 1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses:
     result = lastOrd(conf, lastSon(t))
-  of tyProxy: result = 0
+  of tyProxy: result = Zero
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
   of tyUncheckedArray:
-    result = high(BiggestInt)
+    result = Zero
   else:
     internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
-    result = 0
-
+    result = Zero
 
 proc lastFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -758,7 +782,7 @@ proc floatRangeCheck*(x: BiggestFloat, t: PType): bool =
     internalError(newPartialConfigRef(), "invalid kind for floatRangeCheck:" & $t.kind)
     false
 
-proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
+proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.skipTypes(tyUserTypeClasses).kind
   of tyInt64, tyInt32, tyInt:
     # XXX: this is just wrong
@@ -767,11 +791,7 @@ proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
   else:
     let last = lastOrd(conf, t)
     let first = firstOrd(conf, t)
-    # XXX use a better overflow check here:
-    if last == high(BiggestInt) and first <= 0:
-      result = last
-    else:
-      result = last - first + 1
+    result = last - first + One
 
 # -------------- type equality -----------------------------------------------
 
@@ -1244,7 +1264,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyUntyped, tyTyped:
     if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
   of tyStatic:
-    if kind notin {skParam, skResult}: result = t
+    if kind notin {skParam}: result = t
   of tyVoid:
     if taField notin flags: result = t
   of tyTypeClasses:
@@ -1585,3 +1605,14 @@ proc isException*(t: PType): bool =
     if t.sons[0] == nil: break
     t = skipTypes(t.sons[0], abstractPtrs)
   return false
+
+proc isSinkTypeForParam*(t: PType): bool =
+  # a parameter like 'seq[owned T]' must not be used only once, but its
+  # elements must, so we detect this case here:
+  result = t.skipTypes({tyGenericInst, tyAlias}).kind in {tySink, tyOwned}
+  when false:
+    if isSinkType(t):
+      if t.skipTypes({tyGenericInst, tyAlias}).kind in {tyArray, tyVarargs, tyOpenArray, tySequence}:
+        result = false
+      else:
+        result = true

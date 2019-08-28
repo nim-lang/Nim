@@ -13,7 +13,7 @@
 # Todo:
 # - use openArray instead of array to avoid over-specializations
 
-import modulegraphs, lineinfos, idents, ast, astalgo, renderer, semdata,
+import modulegraphs, lineinfos, idents, ast, renderer, semdata,
   sighashes, lowerings, options, types, msgs, magicsys, tables
 
 type
@@ -288,7 +288,7 @@ proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
   result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  let i = declareCounter(c, body, firstOrd(c.g.config, t))
+  let i = declareCounter(c, body, toInt64(firstOrd(c.g.config, t)))
   let whileLoop = genWhileLoop(c, i, x)
   let elemType = t.lastSon
   fillBody(c, elemType, whileLoop.sons[1], x.at(i, elemType),
@@ -506,7 +506,11 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
-    localError(c.g.config, c.info, "cannot copy openArray")
+    if c.kind == attachedDestructor:
+      forallElements(c, t, body, x, y)
+    else:
+      discard "cannot copy openArray"
+
   of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
@@ -626,7 +630,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   var canon = g.canonTypes.getOrDefault(h)
   var overwrite = false
   if canon == nil:
-    let typ = orig.skipTypes({tyGenericInst, tyAlias})
+    let typ = orig.skipTypes({tyGenericInst, tyAlias, tySink})
     g.canonTypes[h] = typ
     canon = typ
   elif canon != orig:

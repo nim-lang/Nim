@@ -169,7 +169,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode,
       align = n.sym.typ.align.int
 
     result.align = align
-    if initialOffset == szUnknownSize or size == szUnknownSize:
+    if initialOffset == szUnknownSize or size == szUnknownSize or align == szUnknownSize:
       n.sym.offset = szUnknownSize
       result.offset = szUnknownSize
     else:
@@ -332,7 +332,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = elemSize
       typ.align = int16(elemSize)
     else:
-      typ.size = lengthOrd(conf, typ.sons[0]) * elemSize
+      typ.size = toInt64(lengthOrd(conf, typ.sons[0]) * int32(elemSize))
       typ.align = typ.sons[1].align
 
   of tyUncheckedArray:
@@ -341,11 +341,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.size = 0
     typ.align = base.align
   of tyEnum:
-    if firstOrd(conf, typ) < 0:
+    if firstOrd(conf, typ) < Zero:
       typ.size = 4              # use signed int32
       typ.align = 4
     else:
-      length = lastOrd(conf, typ)   # BUGFIX: use lastOrd!
+      length = toInt64(lastOrd(conf, typ))   # BUGFIX: use lastOrd!
       if length + 1 < `shl`(1, 8):
         typ.size = 1
         typ.align = 1
@@ -363,7 +363,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize # in original version this was 1
     else:
-      length = lengthOrd(conf, typ.sons[0])
+      length = toInt64(lengthOrd(conf, typ.sons[0]))
       if length <= 8:
         typ.size = 1
       elif length <= 16:

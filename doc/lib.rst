@@ -185,7 +185,10 @@ Generic Operating System Services
   Module for process communication beyond ``os.execShellCmd``.
 
 * `times <times.html>`_
-  The ``times`` module contains basic support for working with time.
+  The ``times`` module contains support for working with time.
+
+* `std/monotimes <monotimes.html>`_
+  The `monotimes` module implements monotonic timestamps.
 
 * `dynlib <dynlib.html>`_
   This module implements the ability to access symbols from shared libraries.

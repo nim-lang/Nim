@@ -199,7 +199,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
   # Called by return and break stmts.
   # Deals with issues faced when jumping out of try/except/finally stmts,
 
-  var stack = newSeq[tuple[n: PNode, inExcept: bool]](0)
+  var stack = newSeq[tuple[fin: PNode, inExcept: bool]](0)
 
   for i in 1 .. howManyTrys:
     let tryStmt = p.nestedTryStmts.pop
@@ -214,9 +214,9 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
     # Find finally-stmt for this try-stmt
     # and generate a copy of its sons
-    var finallyStmt = lastSon(tryStmt.n)
-    if finallyStmt.kind == nkFinally:
-      genStmts(p, finallyStmt.sons[0])
+    var finallyStmt = tryStmt.fin
+    if finallyStmt != nil:
+      genStmts(p, finallyStmt[0])
 
   # push old elements again:
   for i in countdown(howManyTrys-1, 0):
@@ -246,10 +246,10 @@ proc genGotoState(p: BProc, n: PNode) =
   lineF(p, cpsStmts, " goto BeforeRet_;$n", [])
   var statesCounter = lastOrd(p.config, n.sons[0].typ)
   if n.len >= 2 and n[1].kind == nkIntLit:
-    statesCounter = n[1].intVal
+    statesCounter = getInt(n[1])
   let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
                else: rope"STATE"
-  for i in 0i64 .. statesCounter:
+  for i in 0i64 .. toInt64(statesCounter):
     lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
@@ -494,7 +494,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
       if aSize > 10_000:
         localError(p.config, it.info,
             "case statement has too many cases for computed goto"); return
-      arraySize = aSize.int
+      arraySize = toInt(aSize)
       if firstOrd(p.config, it.sons[0].typ) != 0:
         localError(p.config, it.info,
             "case statement has to start at 0 for computed goto"); return
@@ -527,7 +527,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
 
       let val = getOrdValue(it.sons[j])
-      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
+      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(toInt64(val)+id+1)])
 
     genStmts(p, it.lastSon)
 
@@ -675,8 +675,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
-    var finallyBlock = p.nestedTryStmts[^1].n[^1]
-    if finallyBlock.kind == nkFinally:
+    let finallyBlock = p.nestedTryStmts[^1].fin
+    if finallyBlock != nil:
       genSimpleBlock(p, finallyBlock[0])
   if t[0].kind != nkEmpty:
     var a: TLoc
@@ -924,7 +924,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
   genLineDir(p, t)
   discard cgsym(p.module, "popCurrentExceptionEx")
-  add(p.nestedTryStmts, (t, false))
+  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
+  add(p.nestedTryStmts, (fin, false))
   startBlock(p, "try {$n")
   expr(p, t[0], d)
   endBlock(p)
@@ -1021,8 +1022,9 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
     startBlock(p, "if ($1.status == 0) {$n", [safePoint])
-  var length = sonsLen(t)
-  add(p.nestedTryStmts, (t, quirkyExceptions))
+  let length = sonsLen(t)
+  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
+  add(p.nestedTryStmts, (fin, quirkyExceptions))
   expr(p, t.sons[0], d)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
@@ -1211,7 +1213,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
   discard genTypeInfo(p.module, t, a.lode.info)
-  var L = lengthOrd(p.config, field.typ)
+  var L = toInt64(lengthOrd(p.config, field.typ))
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])
@@ -1266,11 +1268,13 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
+    a.flags.incl(lfPrepareForMutation)
     expr(p, le, a)
+    a.flags.excl(lfPrepareForMutation)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
     genLineDir(p, ri)
-    loadInto(p, e.sons[0], ri, a)
+    loadInto(p, le, ri, a)
   else:
     genLineDir(p, e)
     asgnFieldDiscriminant(p, e)

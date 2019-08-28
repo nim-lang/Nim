@@ -10,7 +10,7 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
+  ast, ropes, options, intsets,
   tables, ndi, lineinfos, pathutils, modulegraphs
 
 type
@@ -73,7 +73,7 @@ type
     noSafePoints*: bool       # the proc doesn't use safe points in exception handling
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # bool is true when are in the except part of a try block

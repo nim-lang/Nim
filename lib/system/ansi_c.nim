@@ -30,7 +30,7 @@ proc c_strcmp*(a, b: cstring): cint {.
 proc c_strlen*(a: cstring): csize {.
   importc: "strlen", header: "<string.h>", noSideEffect.}
 proc c_abort*() {.
-  importc: "abort", header: "<stdlib.h>", noSideEffect.}
+  importc: "abort", header: "<stdlib.h>", noSideEffect, noreturn.}
 
 
 when defined(linux) and defined(amd64):

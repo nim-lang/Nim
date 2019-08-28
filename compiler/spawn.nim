@@ -9,8 +9,8 @@
 
 ## This module implements threadpool's ``spawn``.
 
-import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
-  lineinfos, lowerings
+import ast, types, idents, magicsys, msgs, options, modulegraphs,
+  lowerings
 from trees import getMagic
 
 proc callProc(a: PNode): PNode =
@@ -65,7 +65,7 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   vpart.sons[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
-    if useShallowCopy and typeNeedsNoDeepCopy(typ):
+    if useShallowCopy and typeNeedsNoDeepCopy(typ) or optNimV2 in g.config.globalOptions:
       varInit.add newFastAsgnStmt(newSymNode(result), v)
     else:
       let deepCopyCall = newNodeI(nkCall, varInit.info, 3)

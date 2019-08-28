@@ -949,6 +949,8 @@ proc callCCompiler*(conf: ConfigRef) =
 #from json import escapeJson
 import json, std / sha1
 
+template hashNimExe(): string = $secureHashFile(os.getAppFilename())
+
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: untyped) = f.write x
   template str(x: untyped) =
@@ -1028,7 +1030,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       str conf.commandLine
       lit ",\L\"nimfiles\":[\L"
       nimfiles(conf, f)
-      lit "]\L"
+      lit "],\L\"nimexe\": \L"
+      str hashNimExe()
+      lit "\L"
 
     lit "\L}\L"
     close(f)
@@ -1044,6 +1048,8 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
       return true
     let oldCmdLine = data["cmdline"].getStr
     if conf.commandLine != oldCmdLine:
+      return true
+    if hashNimExe() != data["nimexe"].getStr:
       return true
     let nimfilesPairs = data["nimfiles"]
     doAssert nimfilesPairs.kind == JArray

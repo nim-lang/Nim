@@ -186,6 +186,10 @@
   day has passed. The ``Duration`` type on the other hand normalizes everything
   to seconds, and will therefore say that 90000 seconds has passed, which is
   the same as 25 hours.
+
+  See also
+  ========
+  * `monotimes module <monotimes.html>`_
 ]##
 
 import strutils, math, options
@@ -502,17 +506,20 @@ template convert(dur: Duration, unit: static[FixedTimeUnit]): int64 =
   # The correction is required due to how durations are normalized.
   # For example,` initDuration(nanoseconds = -1)` is stored as
   # { seconds = -1, nanoseconds = 999999999 }.
-  let correction = dur.seconds < 0 and dur.nanosecond > 0
-  when unit >= Seconds:
-    convert(Seconds, unit, dur.seconds + ord(correction))
+  when unit == Nanoseconds:
+    dur.seconds * 1_000_000_000 + dur.nanosecond
   else:
-    if correction:
-      convert(Seconds, unit, dur.seconds + 1) -
-        convert(Nanoseconds, unit,
-          convert(Seconds, Nanoseconds, 1) - dur.nanosecond)
+    let correction = dur.seconds < 0 and dur.nanosecond > 0
+    when unit >= Seconds:
+      convert(Seconds, unit, dur.seconds + ord(correction))
     else:
-      convert(Seconds, unit, dur.seconds) +
-        convert(Nanoseconds, unit, dur.nanosecond)
+      if correction:
+        convert(Seconds, unit, dur.seconds + 1) -
+          convert(Nanoseconds, unit,
+            convert(Seconds, Nanoseconds, 1) - dur.nanosecond)
+      else:
+        convert(Seconds, unit, dur.seconds) +
+          convert(Nanoseconds, unit, dur.nanosecond)
 
 proc inWeeks*(dur: Duration): int64 =
   ## Convert the duration to the number of whole weeks.

@@ -47,7 +47,8 @@ type
   TSymChoiceRule = enum
     scClosed, scOpen, scForceOpen
 
-proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
+proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
+               isField = false): PNode =
   var
     a: PSym
     o: TOverloadIter
@@ -63,9 +64,12 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
-    result = newSymNode(s, info)
-    markUsed(c.config, info, s, c.graph.usageSym)
-    onUse(info, s)
+    if not isField or sfGenSym notin s.flags:
+      result = newSymNode(s, info)
+      markUsed(c, info, s)
+      onUse(info, s)
+    else:
+      result = n
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -74,7 +78,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
-      if a.kind != skModule:
+      if a.kind != skModule and (not isField or sfGenSym notin s.flags):
         incl(a.flags, sfUsed)
         addSon(result, newSymNode(a, info))
         onUse(info, a)
@@ -119,6 +123,7 @@ type
     owner: PSym
     cursorInBody: bool # only for nimsuggest
     scopeN: int
+    noGenSym: int
 
 template withBracketExpr(ctx, x, body: untyped) =
   body
@@ -228,7 +233,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     else:
       replaceIdentBySym(c.c, n, ident)
 
-proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
+proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   incl(s.flags, sfUsed)
   # we do not call onUse here, as the identifier is not really
   # resolved here. We will fixup the used identifiers later.
@@ -237,15 +242,18 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
     # Introduced in this pass! Leave it as an identifier.
     result = n
   of OverloadableSyms:
-    result = symChoice(c, n, s, scOpen)
+    result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
-    result = newSymNodeTypeDesc(s, n.info)
+    if isField: result = n
+    else: result = newSymNodeTypeDesc(s, n.info)
   of skParam:
     result = n
   of skType:
-    result = newSymNodeTypeDesc(s, n.info)
+    if isField: result = n
+    else: result = newSymNodeTypeDesc(s, n.info)
   else:
-    result = newSymNode(s, n.info)
+    if isField: result = n
+    else: result = newSymNode(s, n.info)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -322,22 +330,23 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.ident.id in c.toInject: return n
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and s.kind == skParam:
+      if s.owner == c.owner and s.kind == skParam and
+          (sfGenSym notin s.flags or c.noGenSym == 0):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       elif contains(c.toBind, s.id):
-        result = symChoice(c.c, n, s, scClosed)
+        result = symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
       elif contains(c.toMixin, s.name.id):
-        result = symChoice(c.c, n, s, scForceOpen)
-      elif s.owner == c.owner and sfGenSym in s.flags:
+        result = symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
+      elif s.owner == c.owner and sfGenSym in s.flags and c.noGenSym == 0:
         # template tmp[T](x: var seq[T]) =
         # var yz: T
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
       else:
-        result = semTemplSymbol(c.c, n, s)
+        result = semTemplSymbol(c.c, n, s, c.noGenSym > 0)
   of nkBind:
     result = semTemplBody(c, n.sons[0])
   of nkBindStmt:
@@ -524,12 +533,27 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         onUse(n.info, s)
         return newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
-        return symChoice(c.c, n, s, scClosed)
+        return symChoice(c.c, n, s, scClosed, c.noGenSym > 0)
       elif contains(c.toMixin, s.name.id):
-        return symChoice(c.c, n, s, scForceOpen)
+        return symChoice(c.c, n, s, scForceOpen, c.noGenSym > 0)
       else:
-        return symChoice(c.c, n, s, scOpen)
-    result = semTemplBodySons(c, n)
+        return symChoice(c.c, n, s, scOpen, c.noGenSym > 0)
+    if n.kind == nkDotExpr:
+      result = n
+      result.sons[0] = semTemplBody(c, n.sons[0])
+      inc c.noGenSym
+      result.sons[1] = semTemplBody(c, n.sons[1])
+      dec c.noGenSym
+    else:
+      result = semTemplBodySons(c, n)
+  of nkExprColonExpr, nkExprEqExpr:
+    if n.len == 2:
+      inc c.noGenSym
+      result.sons[0] = semTemplBody(c, n.sons[0])
+      dec c.noGenSym
+      result.sons[1] = semTemplBody(c, n.sons[1])
+    else:
+      result = semTemplBodySons(c, n)
   else:
     result = semTemplBodySons(c, n)
 

@@ -12,8 +12,7 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer, options,
-  pathutils, layouter]
+import ../compiler / [idents, msgs, syntaxes, options, pathutils, layouter]
 
 import parseopt, strutils, os
 
@@ -25,7 +24,7 @@ const
 Usage:
   nimpretty [options] file.nim
 Options:
-  --output:file         set the output file (default: overwrite the input file)
+  --out:file            set the output file (default: overwrite the input file)
   --indent:N[=0]        set the number of spaces that is used for indentation
                         --indent:0 means autodetection (default behaviour)
   --maxLineLen:N        set the desired maximum line length (default: 80)
@@ -79,7 +78,7 @@ proc main =
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)
-      of "output", "o": outfile = val
+      of "output", "o", "out": outfile = val
       of "indent": opt.indWidth = parseInt(val)
       of "maxlinelen": opt.maxLineLen = parseInt(val)
       else: writeHelp()

@@ -292,6 +292,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result = newFloatNode(nkFloatLit, BiggestFloat r1.intVal)
       result.info = n.info
       result.typ = typ
+      if not floatRangeCheck(result.floatVal, typ):
+        localError(c.config, n.info, errFloatToString % [$n.floatVal, typeToString(typ)])
     else:
       changeType(c, r1, typ, check=true)
       result = r1
@@ -812,7 +814,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
                            errors, false)
   if r.state == csMatch:
     var match = r.calleeSym
-    markUsed(c.config, n[0].info, match, c.graph.usageSym)
+    markUsed(c, n[0].info, match)
     onUse(n[0].info, match)
 
     # but pass 'n' to the 'match' macro, not 'n[0]':
@@ -1904,6 +1906,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         discard
       popProcCon(c)
   else:
+    if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
+      # `auto` is represented as `tyUntyped` at this point in compilation.
+      localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
+
     if s.kind == skMethod: semMethodPrototype(c, s, n)
     if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
@@ -2035,6 +2041,8 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   for i in 0 ..< sonsLen(n):
     var imp: PNode
     let it = n.sons[i]
+    if it.kind == nkInfix and it.len == 3 and it[0].ident.s != "/":
+      localError(c.config, it.info, "Cannot use '" & it[0].ident.s & "' in 'include'.")
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
       let sep = it[0]
       let dir = it[1]

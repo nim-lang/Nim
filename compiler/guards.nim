@@ -10,7 +10,7 @@
 ## This module implements the 'implies' relation for guards.
 
 import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
-  saturate, modulegraphs, options, lineinfos
+  saturate, modulegraphs, options, lineinfos, int128
 
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
@@ -522,7 +522,7 @@ proc geImpliesIn(x, c, aSet: PNode): TImplication =
     var value = newIntNode(c.kind, c.intVal)
     let max = lastOrd(nil, x.typ)
     # don't iterate too often:
-    if max - value.intVal < 1000:
+    if max - getInt(value) < toInt128(1000):
       var i, pos, neg: int
       while value.intVal <= max:
         if inSet(aSet, value): inc pos

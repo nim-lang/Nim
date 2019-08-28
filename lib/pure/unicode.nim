@@ -31,11 +31,6 @@ type
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
-  Rune16* = distinct int16 ## \
-    ## Type that can hold a single UTF-16 encoded character.
-    ##
-    ## A single Rune16 may not be enough to hold an arbitrary Unicode code point.
-
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
@@ -388,7 +383,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  s[o.. (o+runeLenAt(s, o)-1)]
+  s[o .. (o+runeLenAt(s, o)-1)]
 
 proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   ## Returns the UTF-8 substring starting at code point ``pos``
@@ -1281,7 +1276,7 @@ when isMainModule:
     compared = (someString == $someRunes)
   doAssert compared == true
 
-  proc test_replacements(word: string): string =
+  proc testReplacements(word: string): string =
     case word
     of "two":
       return "2"
@@ -1294,8 +1289,8 @@ when isMainModule:
     else:
       return "12345"
 
-  doAssert translate("two not alpha foo βeta", test_replacements) == "2 12345 αlpha BAR beta"
-  doAssert translate("  two not foo βeta  ", test_replacements) == "  2 12345 BAR beta  "
+  doAssert translate("two not alpha foo βeta", testReplacements) == "2 12345 αlpha BAR beta"
+  doAssert translate("  two not foo βeta  ", testReplacements) == "  2 12345 BAR beta  "
 
   doAssert title("foo bar") == "Foo Bar"
   doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"

@@ -608,7 +608,7 @@ proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
   ## If this is not the case, compilation aborts with an error message.
   ## This is useful for writing macros that check its number of arguments.
   if n.len < min or n.len > max:
-    error("macro expects a node with " & $min & ".." & $max " children", n)
+    error("macro expects a node with " & $min & ".." & $max & " children", n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
@@ -1420,7 +1420,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
 
-macro expandMacros*(body: typed): typed =
+macro expandMacros*(body: typed): untyped =
   ## Expands one level of macro - useful for debugging.
   ## Can be used to inspect what happens when a macro call is expanded,
   ## without altering its result.
@@ -1611,3 +1611,6 @@ when defined(nimMacrosSizealignof):
     ## from a field of a type. Therefore it only requires one argument
     ## instead of two. Returns a negative value if the Nim compiler
     ## does not know the offset.
+
+proc isExported*(n: NimNode): bool {.noSideEffect.} =
+  ## Returns whether the symbol is exported or not.

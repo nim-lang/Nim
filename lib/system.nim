@@ -70,13 +70,13 @@ proc `not`*(a: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `not` meta class.
 
 type
-  Ordinal* {.magic: Ordinal.}[T] ## Generic ordinal type. Includes integer,
+  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
                                  ## bool, character, and enumeration types
                                  ## as well as their subtypes. Note `uint`
                                  ## and `uint64` are not ordinal types for
                                  ## implementation reasons.
-  `ptr`* {.magic: Pointer.}[T]   ## Built-in generic untraced pointer type.
-  `ref`* {.magic: Pointer.}[T]   ## Built-in generic traced pointer type.
+  `ptr`*[T] {.magic: Pointer.}   ## Built-in generic untraced pointer type.
+  `ref`*[T] {.magic: Pointer.}   ## Built-in generic traced pointer type.
 
   `nil` {.magic: "Nil".}
 
@@ -128,7 +128,7 @@ when defined(nimHasRunnableExamples):
     ##   a ``runnableExamples`` section is ignored.
     ## - The documentation generator is aware of these examples and considers them
     ##   part of the ``##`` doc comment. As the last step of documentation
-    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   generation each runnableExample is put in its own file ``$file_examples$i.nim``,
     ##   compiled and tested. The collected examples are
     ##   put into their own module to ensure the examples do not refer to
     ##   non-exported symbols.
@@ -136,11 +136,13 @@ when defined(nimHasRunnableExamples):
     ## Usage:
     ##
     ## .. code-block:: Nim
-    ##   proc double(x: int): int =
+    ##   proc double*(x: int): int =
     ##     ## This proc doubles a number.
     ##     runnableExamples:
+    ##       ## at module scope
     ##       assert double(5) == 10
-    ##       assert double(21) == 42
+    ##       block: ## at block scope
+    ##         defer: echo "done"
     ##
     ##     result = 2 * x
 else:
@@ -200,13 +202,13 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
 
 when defined(nimNewTypedesc):
   type
-    `static`* {.magic: "Static".}[T]
+    `static`*[T] {.magic: "Static".}
       ## Meta type representing all values that can be evaluated at compile-time.
       ##
       ## The type coercion ``static(x)`` can be used to force the compile-time
       ## evaluation of the given expression ``x``.
 
-    `type`* {.magic: "Type".}[T]
+    `type`*[T] {.magic: "Type".}
       ## Meta type representing the type of all type values.
       ##
       ## The coercion ``type(x)`` can be used to obtain the type of the given
@@ -286,28 +288,28 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   wasMoved(x)
 
 type
-  range*{.magic: "Range".}[T]         ## Generic type to construct range types.
-  array*{.magic: "Array".}[I, T]      ## Generic type to construct
+  range*[T]{.magic: "Range".}         ## Generic type to construct range types.
+  array*[I, T]{.magic: "Array".}      ## Generic type to construct
                                       ## fixed-length arrays.
-  openArray*{.magic: "OpenArray".}[T] ## Generic type to construct open arrays.
+  openArray*[T]{.magic: "OpenArray".} ## Generic type to construct open arrays.
                                       ## Open arrays are implemented as a
                                       ## pointer to the array data and a
                                       ## length field.
-  varargs*{.magic: "Varargs".}[T]     ## Generic type to construct a varargs type.
-  seq*{.magic: "Seq".}[T]             ## Generic type to construct sequences.
-  set*{.magic: "Set".}[T]             ## Generic type to construct bit sets.
+  varargs*[T]{.magic: "Varargs".}     ## Generic type to construct a varargs type.
+  seq*[T]{.magic: "Seq".}             ## Generic type to construct sequences.
+  set*[T]{.magic: "Set".}             ## Generic type to construct bit sets.
 
 when defined(nimUncheckedArrayTyp):
   type
-    UncheckedArray*{.magic: "UncheckedArray".}[T]
+    UncheckedArray*[T]{.magic: "UncheckedArray".}
     ## Array with no bounds checking.
 else:
   type
-    UncheckedArray*{.unchecked.}[T] = array[0,T]
+    UncheckedArray*[T]{.unchecked.} = array[0,T]
     ## Array with no bounds checking.
 
-type sink*{.magic: "BuiltinType".}[T]
-type lent*{.magic: "BuiltinType".}[T]
+type sink*[T]{.magic: "BuiltinType".}
+type lent*[T]{.magic: "BuiltinType".}
 
 proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
   ## Returns the highest possible value of an ordinal value `x`.
@@ -1109,6 +1111,9 @@ proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ##   var a = {1, 3, 5, 7}
   ##   echo card(a) # => 4
 
+proc len*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
+  ## An alias for `card(x)`.
+
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
   ## Returns the internal `int` value of an ordinal value ``x``.
   ##
@@ -1127,57 +1132,57 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # built-in operators
 
 when defined(nimNoZeroExtendMagic):
-  proc ze*(x: int8): int =
+  proc ze*(x: int8): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
     cast[int](uint(cast[uint8](x)))
 
-  proc ze*(x: int16): int =
+  proc ze*(x: int16): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int](uint(cast[uint16](x)))
 
-  proc ze64*(x: int8): int64 =
+  proc ze64*(x: int8): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint8](x)))
 
-  proc ze64*(x: int16): int64 =
+  proc ze64*(x: int16): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint16](x)))
 
-  proc ze64*(x: int32): int64 =
+  proc ze64*(x: int32): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint32](x)))
 
-  proc ze64*(x: int): int64 =
+  proc ze64*(x: int): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint](x)))
 
-  proc toU8*(x: int): int8 =
+  proc toU8*(x: int): int8 {.deprecated.} =
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int8](x)
 
-  proc toU16*(x: int): int16 =
+  proc toU16*(x: int): int16 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int16](x)
 
-  proc toU32*(x: int64): int32 =
+  proc toU32*(x: int64): int32 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
@@ -1698,7 +1703,7 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
   ##   assert @[1, 2] isnot enum
 
 when (defined(nimV2) and not defined(nimscript)) or defined(nimFixedOwned):
-  type owned*{.magic: "BuiltinType".}[T] ## type constructor to mark a ref/ptr or a closure as `owned`.
+  type owned*[T]{.magic: "BuiltinType".} ## type constructor to mark a ref/ptr or a closure as `owned`.
 else:
   template owned*(t: typedesc): typedesc = t
 
@@ -1789,21 +1794,25 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
-proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-  magic: "ArrToSeq", noSideEffect.}
-  ## Turns an array into a sequence.
-  ##
-  ## This most often useful for constructing
-  ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
-  ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
-  ##
-  ## .. code-block:: Nim
-  ##   let
-  ##     a = [1, 3, 5]
-  ##     b = "foo"
-  ##
-  ##   echo @a # => @[1, 3, 5]
-  ##   echo @b # => @['f', 'o', 'o']
+when defined(nimHasDefault):
+  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
+    magic: "ArrToSeq", noSideEffect.}
+    ## Turns an array into a sequence.
+    ##
+    ## This most often useful for constructing
+    ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
+    ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
+    ##
+    ## .. code-block:: Nim
+    ##   let
+    ##     a = [1, 3, 5]
+    ##     b = "foo"
+    ##
+    ##   echo @a # => @[1, 3, 5]
+    ##   echo @b # => @['f', 'o', 'o']
+else:
+  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
+    magic: "ArrToSeq", noSideEffect.}
 
 when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
@@ -2111,6 +2120,13 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
+when defined(nimV2):
+  template movingCopy(a, b) =
+    a = move(b)
+else:
+  template movingCopy(a, b) =
+    shallowCopy(a, b)
+
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## Deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ##
@@ -2123,7 +2139,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##  var i = @[1, 2, 3, 4, 5]
   ##  i.del(2) # => @[1, 2, 5, 4]
   let xl = x.len - 1
-  shallowCopy(x[i], x[xl])
+  movingCopy(x[i], x[xl])
   setLen(x, xl)
 
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
@@ -2139,7 +2155,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##  i.delete(2) # => @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
-    for j in i.int..xl-2: shallowCopy(x[j], x[j+1])
+    for j in i.int..xl-2: movingCopy(x[j], x[j+1])
     setLen(x, xl-1)
 
   when nimvm:
@@ -2161,7 +2177,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
     setLen(x, xl+1)
     var j = xl-1
     while j >= i:
-      shallowCopy(x[j+1], x[j])
+      movingCopy(x[j+1], x[j])
       dec(j)
   when nimvm:
     defaultImpl()
@@ -2265,8 +2281,7 @@ type # these work for most platforms:
   PInt64* = ptr int64        ## An alias for ``ptr int64``.
   PInt32* = ptr int32        ## An alias for ``ptr int32``.
 
-proc toFloat*(i: int): float {.
-  magic: "ToFloat", noSideEffect, importc: "toFloat".}
+proc toFloat*(i: int): float {.noSideEffect, inline.} =
   ## Converts an integer `i` into a ``float``.
   ##
   ## If the conversion fails, `ValueError` is raised.
@@ -2278,13 +2293,13 @@ proc toFloat*(i: int): float {.
   ##     b = 3.7
   ##
   ##   echo a.toFloat + b # => 5.7
+  float(i)
 
-proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
-  magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
+proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.noSideEffect, inline.} =
   ## Same as `toFloat <#toFloat,int>`_ but for ``BiggestInt`` to ``BiggestFloat``.
+  BiggestFloat(i)
 
-proc toInt*(f: float): int {.
-  magic: "ToInt", noSideEffect, importc: "toInt".}
+proc toInt*(f: float): int {.noSideEffect.} =
   ## Converts a floating point number `f` into an ``int``.
   ##
   ## Conversion rounds `f` half away from 0, see
@@ -2298,10 +2313,11 @@ proc toInt*(f: float): int {.
   ##   doAssert toInt(0.49) == 0
   ##   doAssert toInt(0.5) == 1
   ##   doAssert toInt(-0.5) == -1 # rounding is symmetrical
+  if f >= 0: int(f+0.5) else: int(f-0.5)
 
-proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
-  magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
+proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
+  if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
@@ -3912,9 +3928,9 @@ template spliceImpl(s, a, L, b: untyped): untyped =
   if shift > 0:
     # enlarge:
     setLen(s, newLen)
-    for i in countdown(newLen-1, a+b.len): shallowCopy(s[i], s[i-shift])
+    for i in countdown(newLen-1, a+b.len): movingCopy(s[i], s[i-shift])
   else:
-    for i in countup(a+b.len, newLen-1): shallowCopy(s[i], s[i-shift])
+    for i in countup(a+b.len, newLen-1): movingCopy(s[i], s[i-shift])
     # cut down:
     setLen(s, newLen)
   # fill the hole:
@@ -4048,7 +4064,8 @@ proc gorge*(command: string, input = "", cache = ""): string {.
 
 proc staticExec*(command: string, input = "", cache = ""): string {.
   magic: "StaticExec".} = discard
-  ## Executes an external process at compile-time.
+  ## Executes an external process at compile-time and returns its text output
+  ## (stdout + stderr).
   ##
   ## If `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
@@ -4060,7 +4077,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## `gorge <#gorge,string,string,string>`_ is an alias for ``staticExec``.
   ##
   ## Note that you can use this proc inside a pragma like
-  ## `passC <nimc.html#passc-pragma>`_ or `passL <nimc.html#passl-pragma>`_.
+  ## `passc <nimc.html#passc-pragma>`_ or `passl <nimc.html#passl-pragma>`_.
   ##
   ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
   ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
@@ -4482,11 +4499,6 @@ proc substr*(s: string, first = 0): string =
 
 when defined(nimconfig):
   include "system/nimscript"
-
-when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage) and not defined(nimscript):
-  proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
-    importc: "SetConsoleOutputCP".}
-  discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
 when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
