@@ -10,7 +10,7 @@
 # This module handles the conditional symbols.
 
 import
-  strtabs, platform, strutils, idents
+  strtabs
 
 from options import Feature
 from lineinfos import HintsToStr, WarningsToStr
@@ -97,3 +97,4 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimFixedOwned")
   defineSymbol("nimHasStyleChecks")
+  defineSymbol("nimHasUsed")

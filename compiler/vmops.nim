@@ -79,6 +79,9 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
                else: a.currentException.sons[3].skipColon.strVal)
 
+proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
+  setResult(a, a.currentException)
+
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
   for k, f in walkDir(path, relative):
@@ -132,6 +135,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
+    systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     systemop gorgeEx
@@ -142,5 +146,14 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) {.nimcall.} =
     let n = getNode(a, 0)
-    if n.kind != nkSym: raise newException(ValueError, "node is not a symbol")
+    if n.kind != nkSym:
+      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
+                  "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, $symBodyDigest(c.graph, n.sym))
+
+  registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) {.nimcall.} =
+    let n = getNode(a, 0)
+    if n.kind != nkSym:
+      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
+                  "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+    setResult(a, sfExported in n.sym.flags)

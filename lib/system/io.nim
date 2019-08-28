@@ -194,9 +194,30 @@ proc writeChars*(f: File, a: openArray[char], start, len: Natural): int {.
   var x = cast[ptr UncheckedArray[int8]](a)
   result = writeBuffer(f, addr(x[int(start)]), len)
 
+when defined(windows):
+  proc writeWindows(f: File; s: string; doRaise = false) =
+    # Don't ask why but the 'printf' family of function is the only thing
+    # that writes utf-8 strings reliably on Windows. At least on my Win 10
+    # machine. We also enable `setConsoleOutputCP(65001)` now by default.
+    # But we cannot call printf directly as the string might contain \0.
+    # So we have to loop over all the sections separated by potential \0s.
+    var i = c_fprintf(f, "%s", s)
+    while i < s.len:
+      if s[i] == '\0':
+        inc i
+      else:
+        let w = c_fprintf(f, "%s", unsafeAddr s[i])
+        if w <= 0:
+          if doRaise: raiseEIO("cannot write string to file")
+          break
+        inc i, w
+
 proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.} =
-  if writeBuffer(f, cstring(s), s.len) != s.len:
-    raiseEIO("cannot write string to file")
+  when defined(windows):
+    writeWindows(f, s, doRaise = true)
+  else:
+    if writeBuffer(f, cstring(s), s.len) != s.len:
+      raiseEIO("cannot write string to file")
 {.pop.}
 
 when NoFakeVars:
@@ -236,9 +257,22 @@ proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
   discard c_fflush(f)
 
 proc getFileHandle*(f: File): FileHandle =
+  ## returns the file handle of the file ``f``. This is only useful for
+  ## platform specific programming.
+  ## Note that on Windows this doesn't return the Windows-specific handle,
+  ## but the C library's notion of a handle, whatever that means.
+  ## Use `getOsFileHandle` instead.
+  c_fileno(f)
+
+proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
-  c_fileno(f)
+  when defined(windows):
+    proc getOsfhandle(fd: cint): FileHandle {.
+      importc: "_get_osfhandle", header: "<io.h>".}
+    result = getOsfhandle(getFileHandle(f))
+  else:
+    result = c_fileno(f)
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -559,8 +593,11 @@ when declared(stdout):
     when defined(windows) and compileOption("threads"):
       acquireSys echoLock
     for s in args:
-      discard c_fwrite(s.cstring, s.len, 1, stdout)
-    const linefeed = "\n" # can be 1 or more chars
+      when defined(windows):
+        writeWindows(stdout, s)
+      else:
+        discard c_fwrite(s.cstring, s.len, 1, stdout)
+    const linefeed = "\n"
     discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
     discard c_fflush(stdout)
     when not defined(windows) and not defined(android) and not defined(nintendoswitch):
@@ -569,7 +606,7 @@ when declared(stdout):
       releaseSys echoLock
 
 
-when defined(windows) and not defined(nimscript) and defined(nimBinaryStdFiles):
+when defined(windows) and not defined(nimscript):
   # work-around C's sucking abstraction:
   # BUGFIX: stdin and stdout should be binary files!
   proc c_setmode(handle, mode: cint) {.
@@ -583,6 +620,16 @@ when defined(windows) and not defined(nimscript) and defined(nimBinaryStdFiles):
   c_setmode(c_fileno(stdout), O_BINARY)
   c_setmode(c_fileno(stderr), O_BINARY)
 
+when defined(windows) and appType == "console" and
+    not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleOutputCP".}
+  proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleCP".}
+
+  const Utf8codepage = 65001
+  discard setConsoleOutputCP(Utf8codepage)
+  discard setConsoleCP(Utf8codepage)
 
 proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll

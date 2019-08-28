@@ -84,7 +84,7 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       dealloc(p -! sizeof(RefHeader))
     if allocs > 0:
       when hasThreadSupport:
-        atomicDec allocs
+        discard atomicDec(allocs)
       else:
         dec allocs
     else:

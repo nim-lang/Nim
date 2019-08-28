@@ -120,7 +120,7 @@ proc unhandledException(e: ref Exception) {.
   add(buf, "]\n")
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
-  let cbuf : cstring = buf
+  let cbuf = cstring(buf)
   framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
@@ -163,7 +163,7 @@ proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
   raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldError, f & " is not accessible")
+  raise newException(FieldError, f)
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -228,37 +228,44 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   return result;
   """.}
 
-proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
-  asm """
-  if (`s` === null) return "";
-  var len = `s`.length;
-  var asciiPart = new Array(len);
-  var fcc = String.fromCharCode;
-  var nonAsciiPart = null;
-  var nonAsciiOffset = 0;
-  for (var i = 0; i < len; ++i) {
-    if (nonAsciiPart !== null) {
-      var offset = (i - nonAsciiOffset) * 2;
-      var code = `s`[i].toString(16);
-      if (code.length == 1) {
-        code = "0"+code;
-      }
-      nonAsciiPart[offset] = "%";
-      nonAsciiPart[offset + 1] = code;
-    }
-    else if (`s`[i] < 128)
-      asciiPart[i] = fcc(`s`[i]);
-    else {
-      asciiPart.length = i;
-      nonAsciiOffset = i;
-      nonAsciiPart = new Array((len - i) * 2);
-      --i;
-    }
-  }
-  asciiPart = asciiPart.join("");
-  return (nonAsciiPart === null) ?
-      asciiPart : asciiPart + decodeURIComponent(nonAsciiPart.join(""));
-  """
+proc toJSStr(s: string): cstring {.compilerproc.} =
+  proc fromCharCode(c: char): cstring {.importc: "String.fromCharCode".}
+  proc join(x: openArray[cstring]; d = cstring""): cstring {.
+    importcpp: "#.join(@)".}
+  proc decodeURIComponent(x: cstring): cstring {.
+    importc: "decodeURIComponent".}
+
+  proc toHexString(c: char; d = 16): cstring {.importcpp: "#.toString(@)".}
+
+  proc log(x: cstring) {.importc: "console.log".}
+
+  var res = newSeq[cstring](s.len)
+  var i = 0
+  var j = 0
+  while i < s.len:
+    var c = s[i]
+    if c < '\128':
+      res[j] = fromCharCode(c)
+      inc i
+    else:
+      var helper = newSeq[cstring]()
+      while true:
+        let code = toHexString(c)
+        if code.len == 1:
+          helper.add cstring"%0"
+        else:
+          helper.add cstring"%"
+        helper.add code
+        inc i
+        if i >= s.len or s[i] < '\128': break
+        c = s[i]
+      try:
+        res[j] = decodeURIComponent join(helper)
+      except:
+        res[j] = join(helper)
+    inc j
+  setLen(res, j)
+  result = join(res)
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
   asm """

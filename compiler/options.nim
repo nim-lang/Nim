@@ -8,7 +8,7 @@
 #
 
 import
-  os, strutils, strtabs, osproc, sets, lineinfos, platform,
+  os, strutils, strtabs, sets, lineinfos, platform,
   prefixmatches, pathutils
 
 from terminal import isatty
@@ -84,6 +84,7 @@ type                          # please make sure we have under 32 options
     optDynlibOverrideAll
     optNimV2
     optMultiMethods
+    optNimV019
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -134,6 +135,12 @@ type
       ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
+
+  LegacyFeature* = enum
+    allowSemcheckedAstModification,
+      ## Allows to modify a NimNode where the type has already been
+      ## flaged with nfSem. If you actually do this, it will cause
+      ## bugs.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -196,6 +203,7 @@ type
     cppDefines*: HashSet[string] # (*)
     headerFile*: string
     features*: set[Feature]
+    legacyFeatures*: set[LegacyFeature]
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
     ideCmd*: IdeCmd
@@ -315,7 +323,7 @@ proc newConfigRef*(): ConfigRef =
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
+    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     configVars: newStringTable(modeStyleInsensitive),
@@ -711,3 +719,13 @@ proc `$`*(c: IdeCmd): string =
   of ideOutline: "outline"
   of ideKnown: "known"
   of ideMsg: "msg"
+
+proc floatInt64Align*(conf: ConfigRef): int16 =
+  ## Returns either 4 or 8 depending on reasons.
+  if conf.target.targetCPU == cpuI386:
+    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
+    if conf.target.targetOS != osWindows:
+      # on i386 for all known POSIX systems, 64bits ints are aligned
+      # to 4bytes (except with -malign-double)
+      return 4
+  return 8

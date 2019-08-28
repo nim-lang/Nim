@@ -25,9 +25,9 @@ proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
+  let retFutUnown = unown retFutureSym
 
   var nameIterVar = iteratorNameSym
-  #{.push stackTrace: off.}
   proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
@@ -39,7 +39,7 @@ template createCb(retFutureSym, iteratorNameSym,
             break
 
         if next == nil:
-          if not retFutureSym.finished:
+          if not retFutUnown.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
                     "`nil` Future?"
             raise newException(AssertionError, msg % strName)
@@ -50,16 +50,13 @@ template createCb(retFutureSym, iteratorNameSym,
             {.pop.}
     except:
       futureVarCompletions
-
-      if retFutureSym.finished:
+      if retFutUnown.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
         # That test explains it better than I can here.
         raise
       else:
-        retFutureSym.fail(getCurrentException())
-
+        retFutUnown.fail(getCurrentException())
   identName()
-  #{.pop.}
 
 template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
                 rootReceiver: untyped, fromNode: NimNode) =
@@ -132,7 +129,7 @@ proc processBody(node, retFutureSym: NimNode,
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
   of nnkCommand, nnkCall:
-    if node[0].kind == nnkIdent and node[0].eqIdent("await"):
+    if node[0].eqIdent("await"):
       case node[1].kind
       of nnkIdent, nnkInfix, nnkDotExpr, nnkCall, nnkCommand:
         # await x
@@ -145,7 +142,7 @@ proc processBody(node, retFutureSym: NimNode,
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
     elif node.len > 1 and node[1].kind == nnkCommand and
-         node[1][0].kind == nnkIdent and node[1][0].eqIdent("await"):
+         node[1][0].eqIdent("await"):
       # foo await x
       var newCommand = node
       result.createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
@@ -154,7 +151,7 @@ proc processBody(node, retFutureSym: NimNode,
   of nnkVarSection, nnkLetSection:
     case node[0][^1].kind
     of nnkCommand:
-      if node[0][^1][0].kind == nnkIdent and node[0][^1][0].eqIdent("await"):
+      if node[0][^1][0].eqIdent("await"):
         # var x = await y
         var newVarSection = node # TODO: Should this use copyNimNode?
         result.createVar("future" & node[0][0].strVal, node[0][^1][1],
@@ -170,7 +167,7 @@ proc processBody(node, retFutureSym: NimNode,
     else: discard
   of nnkDiscardStmt:
     # discard await x
-    if node[0].kind == nnkCommand and node[0][0].kind == nnkIdent and
+    if node[0].kind == nnkCommand and
           node[0][0].eqIdent("await"):
       var newDiscard = node
       result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
@@ -361,16 +358,15 @@ proc stripAwait(node: NimNode): NimNode =
 
   case node.kind
   of nnkCommand, nnkCall:
-    if node[0].kind == nnkIdent and node[0].eqIdent("await"):
+    if node[0].eqIdent("await"):
       node[0] = emptyNoopSym
-    elif node.len > 1 and node[1].kind == nnkCommand and
-         node[1][0].kind == nnkIdent and node[1][0].eqIdent("await"):
+    elif node.len > 1 and node[1].kind == nnkCommand and node[1][0].eqIdent("await"):
       # foo await x
       node[1][0] = emptyNoopSym
   of nnkVarSection, nnkLetSection:
     case node[0][^1].kind
     of nnkCommand:
-      if node[0][^1][0].kind == nnkIdent and node[0][^1][0].eqIdent("await"):
+      if node[0][^1][0].eqIdent("await"):
         # var x = await y
         node[0][^1][0] = emptyNoopSym
     else: discard
@@ -383,8 +379,7 @@ proc stripAwait(node: NimNode): NimNode =
     else: discard
   of nnkDiscardStmt:
     # discard await x
-    if node[0].kind == nnkCommand and node[0][0].kind == nnkIdent and
-          node[0][0].eqIdent("await"):
+    if node[0].kind == nnkCommand and node[0][0].eqIdent("await"):
       node[0][0] = emptyNoopSym
   else: discard
 
@@ -444,3 +439,8 @@ macro multisync*(prc: untyped): untyped =
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))
   result.add(sync)
+
+proc await*[T](x: T) =
+  ## The 'await' keyword is also defined here for technical
+  ## reasons. (Generic symbol lookup prepass.)
+  {.error: "Await only available within .async".}

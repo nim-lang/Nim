@@ -19,7 +19,7 @@
 import macros
 import strformat
 from strutils import toLowerAscii, `%`
-import colors, tables
+import colors
 
 when defined(windows):
   import winlean

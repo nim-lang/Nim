@@ -10,7 +10,7 @@
 ## This module implements code generation for multi methods.
 
 import
-  intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
+  intsets, options, ast, msgs, idents, renderer, types, magicsys,
   sempass2, strutils, modulegraphs, lineinfos
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =

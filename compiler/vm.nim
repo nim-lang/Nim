@@ -13,10 +13,10 @@
 import ast except getstr
 
 import
-  strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
+  strutils, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  modulegraphs, sighashes
+  modulegraphs, sighashes, int128
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -102,7 +102,8 @@ template stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, "unhandled exception: " &
-             c.currentExceptionA.sons[3].skipColon.strVal)
+             c.currentExceptionA.sons[3].skipColon.strVal &
+             " [" & c.currentExceptionA.sons[2].skipColon.strVal & "]")
 
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
@@ -401,7 +402,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     else:
       internalError(c.config, "cannot convert to string " & desttyp.typeToString)
   else:
-    case skipTypes(desttyp, abstractRange).kind
+    case skipTypes(desttyp, abstractVarRange).kind
     of tyInt..tyInt64:
       if dest.kind != rkInt:
         myreset(dest); dest.kind = rkInt
@@ -410,7 +411,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal
-      if dest.intVal < firstOrd(c.config, desttyp) or dest.intVal > lastOrd(c.config, desttyp):
+      if toInt128(dest.intVal) < firstOrd(c.config, desttyp) or toInt128(dest.intVal) > lastOrd(c.config, desttyp):
         return true
     of tyUInt..tyUInt64:
       if dest.kind != rkInt:
@@ -439,7 +440,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       else:
         dest.floatVal = src.floatVal
     of tyObject:
-      if srctyp.skipTypes(abstractRange).kind != tyObject:
+      if srctyp.skipTypes(abstractVarRange).kind != tyObject:
         internalError(c.config, "invalid object-to-object conversion")
       # A object-to-object conversion is essentially a no-op
       moveConst(dest, src)
@@ -1136,7 +1137,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
-        var a = evalTemplate(macroCall, prc, genSymOwner, c.config)
+        var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
         a.recSetFlagIsRef
         ensureKind(rkNode)
@@ -1199,8 +1200,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           tos = savedFrame
           move(regs, tos.slots)
     of opcRaise:
-      let raised = regs[ra].node
+      let raised =
+        # Empty `raise` statement - reraise current exception
+        if regs[ra].kind == rkNone:
+          c.currentExceptionA
+        else:
+          regs[ra].node
       c.currentExceptionA = raised
+      # Set the `name` field of the exception
+      c.currentExceptionA.sons[2].skipColon.strVal = c.currentExceptionA.typ.sym.name.s
       c.exceptionInstr = pc
 
       var frame = tos
@@ -1304,7 +1312,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
-        msgQuit(int8(getOrdValue(regs[ra].regToNode)))
+        msgQuit(int8(toInt(getOrdValue(regs[ra].regToNode))))
       else:
         return TFullReg(kind: rkNone)
     of opcSetLenStr:
@@ -1384,27 +1392,32 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
-      if dest.kind notin {nkEmpty..nkNilLit} and idx <% dest.len:
-        dest.sons[idx] = regs[rc].node
-      else:
+      if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif dest.kind in {nkEmpty..nkNilLit} or idx >=% dest.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
+      else:
+        dest.sons[idx] = regs[rc].node
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit}:
-        u.add(regs[rc].node)
-      else:
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+      else:
+        u.add(regs[rc].node)
       regs[ra].node = u
     of opcNAddMultiple:
       decodeBC(rkNode)
       let x = regs[rc].node
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit}:
-        # XXX can be optimized:
-        for i in 0..<x.len: u.add(x.sons[i])
-      else:
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+      else:
+        for i in 0 ..< x.len: u.add(x.sons[i])
       regs[ra].node = u
     of opcNKind:
       decodeB(rkInt)
@@ -2061,13 +2074,21 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   for i in 0 ..< gp.len:
     let genericParam = gp[i].sym
     let posInCall = macroSym.typ.len + i
-    yield (genericParam, call[posInCall])
+    if posInCall < call.len:
+      yield (genericParam, call[posInCall])
 
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
 
+proc errorNode(owner: PSym, n: PNode): PNode =
+  result = newNodeI(nkEmpty, n.info)
+  result.typ = newType(tyError, owner)
+  result.typ.flags.incl tfCheckedForDestructor
+
 proc evalMacroCall*(module: PSym; g: ModuleGraph;
                     n, nOrig: PNode, sym: PSym): PNode =
+  if g.config.errorCounter > 0: return errorNode(module, n)
+
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(g.config.evalMacroCounter)
   if g.config.evalMacroCounter > evalMacroLimit:

@@ -20,7 +20,7 @@
 
 
 import
-  hashes, math
+  hashes
 
 type
   BitScalar = uint

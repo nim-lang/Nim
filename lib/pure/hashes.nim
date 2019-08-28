@@ -44,10 +44,6 @@
 ## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
 ## * `tables module <tables.html>`_ for hash tables
 
-
-import
-  strutils
-
 type
   Hash* = int  ## A hash value. Hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
@@ -126,7 +122,7 @@ proc hash*(x: int): Hash {.inline.} =
 
 proc hash*(x: int64): Hash {.inline.} =
   ## Efficient hashing of `int64` integers.
-  result = toU32(x)
+  result = cast[int](x)
 
 proc hash*(x: uint): Hash {.inline.} =
   ## Efficient hashing of unsigned integers.
@@ -134,7 +130,7 @@ proc hash*(x: uint): Hash {.inline.} =
 
 proc hash*(x: uint64): Hash {.inline.} =
   ## Efficient hashing of `uint64` integers.
-  result = toU32(cast[int](x))
+  result = cast[int](x)
 
 proc hash*(x: char): Hash {.inline.} =
   ## Efficient hashing of characters.

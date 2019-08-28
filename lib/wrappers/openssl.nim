@@ -20,7 +20,7 @@
 ##
 ## .. code-block::
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
-##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passL:-lcrypto --passL:-lssl -r tests/untestable/tssl.nim
+##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 
 {.deadCodeElim: on.}  # dce option deprecated
 when defined(nimHasStyleChecks):
@@ -427,11 +427,11 @@ when not useWinVersion and not defined(macosx) and not defined(android) and not 
     dynlib: DLLUtilName, importc.}
 
   proc allocWrapper(size: int): pointer {.cdecl.} = allocShared(size)
-  proc reallocWrapper(p: pointer; newsize: int): pointer {.cdecl.} =
+  proc reallocWrapper(p: pointer; newSize: int): pointer {.cdecl.} =
     if p == nil:
-      if newSize > 0: result = allocShared(newsize)
-    elif newsize == 0: deallocShared(p)
-    else: result = reallocShared(p, newsize)
+      if newSize > 0: result = allocShared(newSize)
+    elif newSize == 0: deallocShared(p)
+    else: result = reallocShared(p, newSize)
   proc deallocWrapper(p: pointer) {.cdecl.} =
     if p != nil: deallocShared(p)
 

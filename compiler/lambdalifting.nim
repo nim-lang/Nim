@@ -10,7 +10,7 @@
 # This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs,
+  intsets, strutils, options, ast, astalgo, msgs,
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
   transf, liftdestructors
 
@@ -344,7 +344,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
   # This seems to be generally correct but since it's a bit risky it's only
   # enabled for gcDestructors.
-  let fieldType = if c.graph.config.selectedGC == gcDestructors:
+  let fieldType = if false: # c.graph.config.selectedGC == gcDestructors:
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)
@@ -933,7 +933,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
-  whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(g, body.info, tyBool))
+  whileLoop.sons[0] = newIntTypeNode(1, getSysType(g, body.info, tyBool))
   whileLoop.sons[1] = loopBody
   result.add whileLoop
 

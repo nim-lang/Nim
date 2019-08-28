@@ -29,11 +29,11 @@ implements the required case distinction.
 
 
 import
-  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
-  nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
-  times, ropes, math, passes, ccgutils, wordrecg, renderer,
+  ast, strutils, trees, magicsys, options,
+  nversion, msgs, idents, types, tables,
+  ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  pathutils, transf
+  transf
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -431,10 +431,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # UnaryPlusF64
     ["", ""], # UnaryMinusF64
     ["", ""], # AbsF64
-    ["", ""],     # ToFloat
-    ["", ""],     # ToBiggestFloat
-    ["", ""], # ToInt
-    ["", ""], # ToBiggestInt
     ["nimCharToStr", "nimCharToStr"],
     ["nimBoolToStr", "nimBoolToStr"],
     ["cstrToNimstr", "cstrToNimstr"],
@@ -612,10 +608,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mUnaryPlusF64: applyFormat("+($1)", "+($1)")
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
   of mAbsF64: applyFormat("Math.abs($1)", "Math.abs($1)")
-  of mToFloat: applyFormat("$1", "$1")
-  of mToBiggestFloat: applyFormat("$1", "$1")
-  of mToInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
-  of mToBiggestInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
   of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
@@ -1157,9 +1149,10 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
 
   useMagic(p, "raiseFieldError")
   useMagic(p, "makeNimstrLit")
+  let msg = genFieldError(field, disc)
   lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError(makeNimstrLit($5)); }$n",
     setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
-    makeJSString(field.name.s))
+    makeJSString(msg))
 
   if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
     r.typ = etyBaseIndex
@@ -1173,7 +1166,7 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b: TCompRes
-    first: BiggestInt
+    first: Int128
   r.typ = etyBaseIndex
   let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
   gen(p, m.sons[0], a)
@@ -1182,8 +1175,8 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   let (x, tmp) = maybeMakeTemp(p, m[0], a)
   r.address = x
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
-  if typ.kind == tyArray: first = firstOrd(p.config, typ.sons[0])
-  else: first = 0
+  if typ.kind == tyArray:
+    first = firstOrd(p.config, typ.sons[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     r.res = "chckIndx($1, $2, $3.length+$2-1)-$2" % [b.res, rope(first), tmp]
@@ -1612,7 +1605,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyBool:
     result = putToSeq("false", indirect)
   of tyArray:
-    let length = int(lengthOrd(p.config, t))
+    let length = toInt(lengthOrd(p.config, t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
     if jsTyp.len > 0:

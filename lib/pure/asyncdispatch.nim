@@ -169,7 +169,7 @@
 include "system/inclrtl"
 
 import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
-import options, math
+import options, math, std/monotimes
 import asyncfutures except callSoon
 
 import nativesockets, net, deques
@@ -184,7 +184,7 @@ export asyncstreams
 
 type
   PDispatcherBase = ref object of RootRef
-    timers*: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
+    timers*: HeapQueue[tuple[finishAt: MonoTime, fut: Future[void]]]
     callbacks*: Deque[proc () {.gcsafe.}]
 
 proc processTimers(
@@ -192,7 +192,7 @@ proc processTimers(
 ): Option[int] {.inline.} =
   # Pop the timers in the order in which they will expire (smaller `finishAt`).
   var count = p.timers.len
-  let t = epochTime()
+  let t = getMonoTime()
   while count > 0 and t >= p.timers[0].finishAt:
     p.timers.pop().fut.complete()
     dec count
@@ -201,8 +201,8 @@ proc processTimers(
   # Return the number of miliseconds in which the next timer will expire.
   if p.timers.len == 0: return
 
-  let milisecs = (p.timers[0].finishAt - epochTime()) * 1000
-  return some(ceil(milisecs).int)
+  let millisecs = (p.timers[0].finishAt - getMonoTime()).inMilliseconds
+  return some(millisecs.int + 1)
 
 proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
   while p.callbacks.len > 0:
@@ -1778,7 +1778,11 @@ proc sleepAsync*(ms: int | float): owned(Future[void]) =
   ## ``ms`` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
   let p = getGlobalDispatcher()
-  p.timers.push((epochTime() + (ms / 1000), retFuture))
+  when ms is int:
+    p.timers.push((getMonoTime() + initDuration(milliseconds = ms), retFuture))
+  elif ms is float:
+    let ns = (ms * 1_000_000).int64
+    p.timers.push((getMonoTime() + initDuration(nanoseconds = ns), retFuture))
   return retFuture
 
 proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =

@@ -237,6 +237,7 @@ block splitFile:
   doAssert splitFile("abc/.") == ("abc", ".", "")
   doAssert splitFile("..") == ("", "..", "")
   doAssert splitFile("a/..") == ("a", "..", "")
+  doAssert splitFile("/foo/abc....txt") == ("/foo", "abc...", ".txt")
 
 # execShellCmd is tested in tosproc
 

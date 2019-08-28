@@ -469,7 +469,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     add(params, param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
-    if arr.kind in {tyVar, tyLent}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
@@ -477,7 +477,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       # need to pass hidden parameter:
       addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
-      arr = arr.sons[0]
+      arr = arr.sons[0].skipTypes({tySink})
   if t.sons[0] != nil and isInvalidReturnType(m.config, t.sons[0]):
     var arr = t.sons[0]
     if params != nil: add(params, ", ")
@@ -805,7 +805,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t.sons[0], check)
       addf(m.s[cfsTypes], "typedef $1 $2[1];$n", [foo, result])
   of tyArray:
-    var n: BiggestInt = lengthOrd(m.config, t)
+    var n: BiggestInt = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
@@ -956,7 +956,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # handle the 2 options for hotcodereloading codegen - function pointer
-  # (instead of forward declaration) or header for function budy with "_actual" postfix
+  # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")
   var name = prc.loc.r
   if isReloadable(m, prc) and not asPtr:
@@ -1047,6 +1047,8 @@ proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype)), rope(d.name.s.mangle)]
 
+proc rope(arg: Int128): Rope = rope($arg)
+
 proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
   discard cgsym(m, "TNimNode")
   var tmp = discriminatorTableName(m, objtype, d)
@@ -1105,8 +1107,8 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
         for j in 0 .. sonsLen(b) - 2:
           if b.sons[j].kind == nkRange:
-            var x = int(getOrdValue(b.sons[j].sons[0]))
-            var y = int(getOrdValue(b.sons[j].sons[1]))
+            var x = toInt(getOrdValue(b.sons[j].sons[0]))
+            var y = toInt(getOrdValue(b.sons[j].sons[1]))
             while x <= y:
               addf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, rope(x), tmp2])
               inc(x)

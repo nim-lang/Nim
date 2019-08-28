@@ -5,4 +5,5 @@ discard """
 """
 # todo: remove `target: "c"` workaround once #10343 is properly fixed
 close stdmsg
-writeLine stdmsg, "exception!"
+const m = "exception!"
+discard writeBuffer(stdmsg, cstring(m), m.len)

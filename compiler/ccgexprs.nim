@@ -30,6 +30,9 @@ proc intLiteral(i: BiggestInt): Rope =
   else:
     result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
+proc intLiteral(i: Int128): Rope =
+  intLiteral(toInt64(i))
+
 proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   case n.kind
   of nkCharLit..nkUInt64Lit:
@@ -663,14 +666,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAbsF64:
     applyFormat("($1 < 0? -($1) : ($1))")
     # BUGFIX: fabs() makes problems for Tiny C
-  of mToFloat:
-    applyFormat("((double) ($1))")
-  of mToBiggestFloat:
-    applyFormat("((double) ($1))")
-  of mToInt:
-    applyFormat("float64ToInt32($1)")
-  of mToBiggestInt:
-    applyFormat("float64ToInt64($1)")
   else:
     assert false, $op
 
@@ -822,7 +817,8 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
-    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, field.name.s))
+    let msg = genFieldError(field, disc.sym)
+    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
     if op.magic == mNot:
       linefmt(p, cpsStmts,
               "if ($1) #raiseFieldError($2);$n",
@@ -941,6 +937,10 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", [a.r])
+
+  if lfPrepareForMutation in d.flags and ty.kind == tyString and
+      p.config.selectedGC == gcDestructors:
+    linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   putIntoDest(p, d, n,
               ropecg(p.module, "$1$3[$2]", [rdLoc(a), rdCharLoc(b), dataField(p)]), a.storage)
 
@@ -1436,7 +1436,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   if d.k == locNone:
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  let L = int(lengthOrd(p.config, n.sons[1].typ))
+  let L = toInt(lengthOrd(p.config, n.sons[1].typ))
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
@@ -2086,7 +2086,7 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
-  of mNot..mToBiggestInt: unaryArith(p, e, d, op)
+  of mNot..mAbsF64: unaryArith(p, e, d, op)
   of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
@@ -2244,8 +2244,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNLen..mNError, mSlurp..mQuoteAst:
     localError(p.config, e.info, strutils.`%`(errXMustBeCompileTime, e.sons[0].sym.name.s))
   of mSpawn:
-    let n = lowerings.wrapProcForSpawn(p.module.g.graph, p.module.module, e, e.typ, nil, nil)
-    expr(p, n, d)
+    when defined(leanCompiler):
+      quit "compiler built without support for the 'spawn' statement"
+    else:
+      let n = spawn.wrapProcForSpawn(p.module.g.graph, p.module.module, e, e.typ, nil, nil)
+      expr(p, n, d)
   of mParallel:
     when defined(leanCompiler):
       quit "compiler built without support for the 'parallel' statement"
@@ -2706,9 +2709,14 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   of tyBool: result = rope"NIM_FALSE"
   of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result = rope"0"
   of tyFloat..tyFloat128: result = rope"0.0"
-  of tyCString, tyString, tyVar, tyLent, tyPointer, tyPtr, tySequence, tyUntyped,
+  of tyCString, tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
      tyTyped, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = rope"NIM_NIL"
+  of tyString, tySequence:
+    if p.config.selectedGC == gcDestructors:
+      result = rope"{0, NIM_NIL}"
+    else:
+      result = rope"NIM_NIL"
   of tyProc:
     if t.callConv != ccClosure:
       result = rope"NIM_NIL"

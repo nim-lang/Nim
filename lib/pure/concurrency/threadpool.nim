@@ -287,7 +287,10 @@ proc `^`*[T](fv: FlowVar[ref T]): ref T =
   ## Blocks until the value is available and then returns this value.
   blockUntil(fv)
   let src = cast[ref T](fv.data)
-  deepCopy result, src
+  when defined(nimV2):
+    result = src
+  else:
+    deepCopy result, src
   finito(fv)
 
 proc `^`*[T](fv: FlowVar[T]): T =
@@ -295,7 +298,10 @@ proc `^`*[T](fv: FlowVar[T]): T =
   blockUntil(fv)
   when T is string or T is seq:
     let src = cast[T](fv.data)
-    deepCopy result, src
+    when defined(nimV2):
+      result = src
+    else:
+      deepCopy result, src
   else:
     result = fv.blob
   finito(fv)

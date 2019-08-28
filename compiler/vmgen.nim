@@ -28,10 +28,8 @@
 # this copy depends on the involved types.
 
 import
-  strutils, ast, astalgo, types, msgs, renderer, vmdef,
-  trees, intsets, magicsys, options, lowerings, lineinfos, transf
-import platform
-from os import splitFile
+  strutils, ast, types, msgs, renderer, vmdef,
+  intsets, magicsys, options, lowerings, lineinfos, transf
 
 const
   debugEchoCode* = defined(nimVMDebug)
@@ -598,12 +596,12 @@ proc genField(c: PCtx; n: PNode): TRegister =
 
 proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
   if arr.skipTypes(abstractInst).kind == tyArray and (let x = firstOrd(c.config, arr);
-      x != 0):
+      x != Zero):
     let tmp = c.genx(n)
     # freeing the temporary here means we can produce:  regA = regA - Imm
     c.freeTemp(tmp)
     result = c.getTemp(n.typ)
-    c.gABI(n, opcSubImmInt, result, tmp, x.int)
+    c.gABI(n, opcSubImmInt, result, tmp, toInt(x))
   else:
     result = c.genx(n)
 
@@ -1060,8 +1058,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
     if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
       c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
-  of mToFloat, mToBiggestFloat, mToInt,
-     mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
+  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
     genConv(c, n, n.sons[1], dest)
   of mEqStr, mEqCString: genBinaryABC(c, n, dest, opcEqStr)
@@ -1769,7 +1766,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     getNullValueAux(t, t.n, result, conf, currPosition)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in 0 ..< int(lengthOrd(conf, t)):
+    for i in 0 ..< toInt(lengthOrd(conf, t)):
       addSon(result, getNullValue(elemType(t), info, conf))
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
@@ -2162,7 +2159,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       var d = i + c.code[i].jmpDiff
       for iters in countdown(maxIterations, 0):
         case c.code[d].opcode
-        of opcJmp, opcJmpBack:
+        of opcJmp:
           d = d + c.code[d].jmpDiff
         of opcTJmp, opcFJmp:
           if c.code[d].regA != reg: break
