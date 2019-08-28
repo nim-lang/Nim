@@ -104,7 +104,6 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   if result <= 0: result = 0
 
 # TODO(awr1): get cache line size
-# TODO(awr1): get processor name
 # TODO(awr1): ARM processor exts
 # TODO(awr1): on ARM, probe /proc/cpuinfo, but what about windows on arm?
 
@@ -116,12 +115,12 @@ when onX86 or defined(nimdoc):
   include "./cpuinfo_x86"
 
 proc cpuName*(): string =
-  return when onX86:
-           cpuNameX86()
-         else:
-           ""
   ## The CPU's full name, for example: `"Intel(R) Core(TM) i3-8350K CPU @
   ## 4.00GHz"`.
   ##
   ## **NOTE:** If a CPU's name is somehow not retrievable, the value will just
   ## be the empty string.
+  return when onX86:
+           cpuNameX86()
+         else:
+           ""
