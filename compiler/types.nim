@@ -1206,8 +1206,8 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       of nkNone..nkNilLit:
         discard
       else:
-        if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
-          return n[0].typ
+        #if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
+        #  return n[0].typ
         for i in 0 ..< sonsLen(n):
           let it = n.sons[i]
           result = typeAllowedNode(marker, it, kind, flags)
