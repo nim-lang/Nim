@@ -506,7 +506,11 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
-    localError(c.g.config, c.info, "cannot copy openArray")
+    if c.kind == attachedDestructor:
+      forallElements(c, t, body, x, y)
+    else:
+      discard "cannot copy openArray"
+
   of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
@@ -626,7 +630,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   var canon = g.canonTypes.getOrDefault(h)
   var overwrite = false
   if canon == nil:
-    let typ = orig.skipTypes({tyGenericInst, tyAlias})
+    let typ = orig.skipTypes({tyGenericInst, tyAlias, tySink})
     g.canonTypes[h] = typ
     canon = typ
   elif canon != orig:
