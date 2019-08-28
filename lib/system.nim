@@ -2681,6 +2681,7 @@ when defined(nimNewRoof):
     ##
     ##   for i in countup(2, 9, 3):
     ##     echo i # => 2; 5; 8
+    mixin inc
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
@@ -2701,6 +2702,7 @@ when defined(nimNewRoof):
     ## .. code-block:: Nim
     ##   for i in 3 .. 7:
     ##     echo i # => 3; 4; 5; 6; 7
+    mixin inc
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
@@ -2730,6 +2732,7 @@ when defined(nimNewRoof):
   dotdotImpl(uint32)
 
   iterator `..<`*[T](a, b: T): T {.inline.} =
+    mixin inc
     var i = T(a)
     while i < b:
       yield i
@@ -2785,6 +2788,7 @@ else:
     ## .. code-block:: Nim
     ##   for i in 3 .. 7:
     ##     echo i # => 3; 4; 5; 6; 7
+    mixin inc
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
@@ -2797,6 +2801,7 @@ else:
         inc(res)
 
   iterator `..<`*[S, T](a: S, b: T): T {.inline.} =
+    mixin inc
     var i = T(a)
     while i < b:
       yield i
