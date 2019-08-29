@@ -1188,7 +1188,9 @@ type
   TTypeAllowedFlag* = enum
     taField,
     taHeap,
-    taConcept
+    taConcept,
+    taIsOpenArray,
+    taNoUntyped
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
@@ -1204,8 +1206,8 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       of nkNone..nkNilLit:
         discard
       else:
-        if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
-          return n[0].typ
+        #if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
+        #  return n[0].typ
         for i in 0 ..< sonsLen(n):
           let it = n.sons[i]
           result = typeAllowedNode(marker, it, kind, flags)
@@ -1240,28 +1242,29 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       case t2.kind
       of tyVar, tyLent:
         if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
-      of tyOpenArray, tyUncheckedArray:
+      of tyOpenArray:
+        if kind != skParam or taIsOpenArray in flags: result = t
+        else: result = typeAllowedAux(marker, t2.sons[0], kind, flags+{taIsOpenArray})
+      of tyUncheckedArray:
         if kind != skParam: result = t
-        else: result = typeAllowedAux(marker, t2.sons[0], skParam, flags)
+        else: result = typeAllowedAux(marker, t2.sons[0], kind, flags)
       else:
         if kind notin {skParam, skResult}: result = t
         else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
-    if kind == skConst and t.callConv == ccClosure:
-      result = t
-    else:
-      for i in 1 ..< sonsLen(t):
-        result = typeAllowedAux(marker, t.sons[i], skParam, flags)
-        if result != nil: break
-      if result.isNil and t.sons[0] != nil:
-        result = typeAllowedAux(marker, t.sons[0], skResult, flags)
+    let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
+    for i in 1 ..< sonsLen(t):
+      result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
+      if result != nil: break
+    if result.isNil and t.sons[0] != nil:
+      result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:
     # XXX: This is still a horrible idea...
     result = nil
+  of tyUntyped, tyTyped:
+    if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
   of tyStatic:
     if kind notin {skParam}: result = t
-  of tyUntyped, tyTyped:
-    if kind notin {skParam, skResult}: result = t
   of tyVoid:
     if taField notin flags: result = t
   of tyTypeClasses:
@@ -1286,30 +1289,31 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
       {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
   of tyOpenArray, tyVarargs, tySink:
-    if kind != skParam:
+    # you cannot nest openArrays/sinks/etc.
+    if kind != skParam or taIsOpenArray in flags:
       result = t
     else:
-      result = typeAllowedAux(marker, t.sons[0], skVar, flags)
+      result = typeAllowedAux(marker, t.sons[0], kind, flags+{taIsOpenArray})
   of tyUncheckedArray:
     if kind != skParam and taHeap notin flags:
       result = t
     else:
-      result = typeAllowedAux(marker, lastSon(t), kind, flags)
+      result = typeAllowedAux(marker, lastSon(t), kind, flags-{taHeap})
   of tySequence, tyOpt:
     if t.sons[0].kind != tyEmpty:
-      result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
+      result = typeAllowedAux(marker, t.sons[0], kind, flags+{taHeap})
     elif kind in {skVar, skLet}:
       result = t.sons[0]
   of tyArray:
     if t.sons[1].kind != tyEmpty:
-      result = typeAllowedAux(marker, t.sons[1], skVar, flags)
+      result = typeAllowedAux(marker, t.sons[1], kind, flags)
     elif kind in {skVar, skLet}:
       result = t.sons[1]
   of tyRef:
     if kind == skConst: result = t
-    else: result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+    else: result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
   of tyPtr:
-    result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+    result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
   of tySet:
     for i in 0 ..< sonsLen(t):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
@@ -1333,7 +1337,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOwned:
     if t.len == 1 and t.sons[0].skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
-      result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+      result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
     else:
       result = t
 

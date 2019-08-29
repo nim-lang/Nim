@@ -1,6 +1,7 @@
 discard """
   output: '''[1, 2, 3, 4]
 3
+['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C']
 OK
 '''
 """
@@ -65,5 +66,19 @@ var
     cast[ptr array[4, int]](addr(x))[]
 doAssert y1 == ([1, 2], 3)
 doAssert y2 == [1, 2, 3, 4]
+
+template newOpenArray(x: var string, size: int): openArray[char] =
+  var z = 1
+  toOpenArray(x, z, size)
+
+template doSomethingAndCreate(x: var string): openArray[char] =
+  let size = 12
+  newOpenArray(x, size)
+
+proc sinkk(x: openArray[char]) =
+  echo x
+
+var xArrayDeref = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+sinkk doSomethingAndCreate(xArrayDeref)
 
 echo "OK"

@@ -2268,7 +2268,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
-      " 'toOpenArray' is only valid within a call expression")
+      "'toOpenArray' is only valid within a call expression")
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind

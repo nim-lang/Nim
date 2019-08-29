@@ -899,6 +899,7 @@ type
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
+    paddingAtEnd*: int16      #
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this

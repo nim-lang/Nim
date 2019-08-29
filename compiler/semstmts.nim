@@ -293,7 +293,7 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result.info = n.info
       result.typ = typ
       if not floatRangeCheck(result.floatVal, typ):
-        localError(c.config, n.info, errFloatToString % [$n.floatVal, typeToString(typ)])
+        localError(c.config, n.info, errFloatToString % [$result.floatVal, typeToString(typ)])
     else:
       changeType(c, r1, typ, check=true)
       result = r1
@@ -1880,7 +1880,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       pushProcCon(c, s)
       if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
-        if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
+        if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)

@@ -816,12 +816,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
         case size
-        of 1, 2, 4, 8:
+        of 1, 2, 4:
           sym.typ.size = size
-          if size == 8 and c.config.target.targetCPU == cpuI386:
-            sym.typ.align = 4
-          else:
-            sym.typ.align = int16(size)
+          sym.typ.align = int16 size
+        of 8:
+          sym.typ.size = 8
+          sym.typ.align = floatInt64Align(c.config)
         else:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wNodecl:

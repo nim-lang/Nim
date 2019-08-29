@@ -224,7 +224,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ## **Warning**: This really transforms the 'for' and unrolls the loop.
   ## The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: untyped] {.
+iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a, b: RootObj] {.
   magic: "Fields", noSideEffect.}
   ## Iterates over every field of `x` and `y`.
   ##
@@ -266,7 +266,7 @@ iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   ## loop body.
 
 iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
-  a, b: untyped] {.
+  a, b: RootObj] {.
   magic: "FieldPairs", noSideEffect.}
   ## Iterates over every field of `x` and `y`.
   ##
