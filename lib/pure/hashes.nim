@@ -183,7 +183,7 @@ proc murmurHash(x: openArray[byte]): Hash =
   # body
   while i < n * stepSize:
     var k1: uint32
-    when nimvm:
+    when defined(js):
       var j = stepSize
       while j > 0:
         dec j
@@ -221,13 +221,13 @@ proc murmurHash(x: openArray[byte]): Hash =
   return cast[Hash](h1)
 
 proc hashVmImpl(x: string, sPos, ePos: int): Hash =
-  discard "look at compiler/vmops.nim"
+  doAssert false, "implementation override in compiler/vmops.nim"
 
 proc hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
-  discard "look at compiler/vmops.nim"
+  doAssert false, "implementation override in compiler/vmops.nim"
 
 proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
-  discard "look at compiler/vmops.nim"
+  doAssert false, "implementation override in compiler/vmops.nim"
 
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
