@@ -5,7 +5,7 @@ discard """
 hello
 hello
 hello
-1 1  alloc/dealloc pairs: 0'''
+2 2  alloc/dealloc pairs: 0'''
 """
 
 import core / allocators
