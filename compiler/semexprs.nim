@@ -513,6 +513,9 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
       if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
                                          " to " & typeToString(newType))
+  of nkFloatLit..nkFloat64Lit:
+    if check and not floatRangeCheck(n.floatVal, newType):
+      localError(c.config, n.info, errFloatToString % [$n.floatVal, typeToString(newType)])
   else: discard
   n.typ = newType
 

@@ -17,8 +17,8 @@ const
   ## This is to weight function signatures and descriptions over module titles.
 
 
-type 
-  ScoreCard = enum 
+type
+  ScoreCard = enum
     StartMatch           = -100 ## Start matching.
     LeadingCharDiff      = -3   ## An unmatched, leading character was found.
     CharDiff             = -1   ## An unmatched character was found.
@@ -58,19 +58,19 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
     if strChar in {'_', ' ', '.'}:
       strIndex += 1
       continue
-    
+
     # Since this algorithm will be used to search against Nim documentation,
     # the below logic prioritizes headers.
     if not headerMatched and strChar == ':':
       headerMatched = true
       scoreState = StartMatch
-      score = toInt(floor(HeadingScaleFactor * toFloat(score)))
+      score = int(floor(HeadingScaleFactor * float(score)))
       patIndex = 0
       strIndex += 1
       continue
 
     if strChar == patternChar:
-      case scoreState 
+      case scoreState
       of StartMatch, WordBoundryMatch:
         scoreState = LeadingCharMatch
 
@@ -84,7 +84,7 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
 
         if scoreState == LeadingCharMatch:
           score += ord(LeadingCharMatch)
-          
+
         var onBoundary = (patIndex == high(pattern))
         if not onBoundary and strIndex < high(str):
           let
@@ -95,7 +95,7 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
             nextStrChar notin {'a'..'z'} and
             nextStrChar != nextPatternChar
           )
-        
+
         if onBoundary:
           transition(WordBoundryMatch)
 
@@ -115,7 +115,7 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
       patIndex += 1
 
     else:
-      case scoreState 
+      case scoreState
       of StartMatch:
         transition(LeadingCharDiff)
 

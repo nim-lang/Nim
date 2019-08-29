@@ -622,8 +622,6 @@ type
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
-    mToFloat, mToBiggestFloat,
-    mToInt, mToBiggestInt,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
@@ -692,8 +690,6 @@ const
     mEqRef, mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
-    mToFloat, mToBiggestFloat,
-    mToInt, mToBiggestInt,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
@@ -1500,14 +1496,14 @@ proc propagateToOwner*(owner, elem: PType) =
   if tfHasAsgn in elem.flags:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct}:
+                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
 
   if tfHasOwned in elem.flags:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct}:
+                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
       o2.flags.incl tfHasOwned
       owner.flags.incl tfHasOwned
 

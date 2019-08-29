@@ -31,11 +31,6 @@ type
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
-  Rune16* = distinct int16 ## \
-    ## Type that can hold a single UTF-16 encoded character.
-    ##
-    ## A single Rune16 may not be enough to hold an arbitrary Unicode code point.
-
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
