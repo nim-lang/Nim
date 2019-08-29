@@ -30,6 +30,11 @@
 
 ## Language additions
 
+- Inline iterators returning `lent T` types are now supported, similarly to iterators returning `var T`:
+```nim
+iterator myitems[T](x: openarray[T]): lent T
+iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
+```
 
 ## Language changes
 
