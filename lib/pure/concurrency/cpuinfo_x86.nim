@@ -330,10 +330,8 @@ proc hasMmxExt*(): bool {.inline.} =
   ##
   ## Reports `true` if the hardware can use "Extended MMX" SIMD instructions.
   ##
-  ## By virtue of SSE2 enforced compliance on AMD64 CPUs, this should always be
-  ## `true` on 64-bit x86 processors. It should be noted that support of these
-  ## instructions is deprecated on 64-bit versions of Windows (see MSDN_ for
-  ## more info).
+  ## It should be noted that support of these instructions is deprecated on
+  ## 64-bit versions of Windows (see MSDN_ for more info).
   ##
   ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
 
