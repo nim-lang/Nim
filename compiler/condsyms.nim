@@ -87,7 +87,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDefault")
   defineSymbol("nimMacrosSizealignof")
   defineSymbol("nimNoZeroExtendMagic")
-  defineSymbol("nimHasLentIterators")
   for f in low(Feature)..high(Feature):
     defineSymbol("nimHas" & $f)
 
