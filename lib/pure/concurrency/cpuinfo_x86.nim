@@ -1,25 +1,23 @@
 
-proc cpuidX86(leaf: int32): tuple[eax, ebx, ecx, edx: int32] =
+proc cpuidX86(eaxi, ecxi: int32): tuple[eax, ebx, ecx, edx: int32] =
   when defined(vcc):
     # limited inline asm support in vcc, so intrinsics, here we go:
     proc cpuidVcc(cpuInfo: ptr int32; functionID: int32)
-      {.cdecl, importc: "__cpuid", header: "intrin.h".}
-    cpuidVcc(addr result.eax, leaf)
+      {.cdecl, importc: "__cpuidex", header: "intrin.h".}
+    cpuidVcc(addr result.eax, eaxi, ecxi)
   else:
     var (eaxr, ebxr, ecxr, edxr) = (0'i32, 0'i32, 0'i32, 0'i32)
-    # zero ecx first!
     asm """
-      xorl %%ecx, %%ecx
       cpuid
       :"=a"(`eaxr`), "=b"(`ebxr`), "=c"(`ecxr`), "=d"(`edxr`)
-      :"a"(`leaf`) """
+      :"a"(`eaxi`), "c"(`ecxi`)"""
     (eaxr, ebxr, ecxr, edxr)
 
 proc cpuNameX86(): string =
   var leaves {.global.} = cast[array[48, char]]([
-    cpuidX86(leaf = 0x80000002'i32),
-    cpuidX86(leaf = 0x80000003'i32),
-    cpuidX86(leaf = 0x80000004'i32)])
+    cpuidX86(eaxi = 0x80000002'i32, ecxi = 0),
+    cpuidX86(eaxi = 0x80000003'i32, ecxi = 0),
+    cpuidX86(eaxi = 0x80000004'i32, ecxi = 0)])
   result = $cast[cstring](addr leaves[0])
 
 type
@@ -34,15 +32,15 @@ type
     Gfni, Aes, Vaes, Vpclmulqdq, Pclmulqdq, NxBit, Float16c, Sha, Clflush,
     ClflushOpt, Clwb, PrefetchWT1, Mpx
 
+let
+  leaf1 = cpuidX86(eaxi = 1, ecxi = 0)
+  leaf7 = cpuidX86(eaxi = 7, ecxi = 0)
+  leaf8 = cpuidX86(eaxi = 0x80000001'i32, ecxi = 0)
+
 # The reason why we don't just evaluate these directly in the `let` variable
 # list is so that we can internally organize features by their input (leaf)
 # and output registers.
 proc testX86Feature(feature: X86Feature): bool =
-  let
-    leaf1 {.global.} = cpuidX86(leaf = 1)
-    leaf7 {.global.} = cpuidX86(leaf = 7)
-    leaf8 {.global.} = cpuidX86(leaf = 0x80000001'i32)
-
   proc test(input, bit: int): bool =
     ((1 shl bit) and input) != 0
 
@@ -468,7 +466,7 @@ proc hasAvx512ifma*(): bool {.inline.} =
   ## **(x86 Only)**
   ##
   ## Reports `true` if the hardware can use AVX (Advanced Vector Extensions)
-  ## 512-bit IFMA (Integer Fused-Multiply-Accumulation) instructions.
+  ## 512-bit IFMA (Integer Fused Multiply Accumulation) instructions.
 
 proc hasAvx512pf*(): bool {.inline.} =
   return hasAvx512pfImpl
