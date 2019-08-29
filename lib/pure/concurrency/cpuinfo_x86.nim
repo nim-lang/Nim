@@ -346,7 +346,7 @@ proc has3DNow*(): bool {.inline.} =
   ## It should be noted that support of these instructions is deprecated on
   ## 64-bit versions of Windows (see MSDN_ for more info), and that the 3DNow!
   ## instructions (with an exception made for the prefetch instructions, see the
-  ## `hasPrefetch` variable) have been phased out of AMD processors since 2010
+  ## `hasPrefetch` procedure) have been phased out of AMD processors since 2010
   ## (see `AMD Developer Central`_ for more info).
   ##
   ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
@@ -361,7 +361,7 @@ proc has3DNowEnhanced*(): bool {.inline.} =
   ## It should be noted that support of these instructions is deprecated on
   ## 64-bit versions of Windows (see MSDN_ for more info), and that the 3DNow!
   ## instructions (with an exception made for the prefetch instructions, see the
-  ## `hasPrefetch` variable) have been phased out of AMD processors since 2010
+  ## `hasPrefetch` procedure) have been phased out of AMD processors since 2010
   ## (see `AMD Developer Central`_ for more info).
   ##
   ## .. _MSDN: https://docs.microsoft.com/en-us/windows/win32/dxtecharts/sixty-four-bit-programming-for-game-developers#porting-applications-to-64-bit-platforms
