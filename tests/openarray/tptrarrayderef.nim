@@ -78,7 +78,7 @@ template doSomethingAndCreate(x: var string): openArray[char] =
 proc sinkk(x: openArray[char]) =
   echo x
 
-var x = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-sinkk doSomethingAndCreate(x)
+var xArrayDeref = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+sinkk doSomethingAndCreate(xArrayDeref)
 
 echo "OK"
