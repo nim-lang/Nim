@@ -1880,7 +1880,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       pushProcCon(c, s)
       if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
-        if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
+        if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
