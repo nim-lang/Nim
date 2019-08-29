@@ -1254,7 +1254,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyProc:
     let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
     for i in 1 ..< sonsLen(t):
-      result = typeAllowedAux(marker, t.sons[i], skParam, f)
+      result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
       if result != nil: break
     if result.isNil and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
