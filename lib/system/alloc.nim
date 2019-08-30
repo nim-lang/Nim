@@ -984,7 +984,7 @@ when defined(nimTypeNames):
 
 # ---------------------- thread memory region -------------------------------
 
-template instantiateForRegion(allocator: untyped) =
+template instantiateForRegion(allocator: untyped) {.dirty.} =
   {.push stackTrace: off.}
 
   when defined(fulldebug):
@@ -1006,7 +1006,7 @@ template instantiateForRegion(allocator: untyped) =
   proc dealloc(p: pointer) =
     dealloc(allocator, p)
 
-  proc realloc(p: pointer, newsize: Natural): pointer =
+  proc realloc(p: pointer, newSize: Natural): pointer =
     result = realloc(allocator, p, newSize)
 
   when false:
@@ -1054,10 +1054,10 @@ template instantiateForRegion(allocator: untyped) =
     else:
       dealloc(p)
 
-  proc reallocShared(p: pointer, newsize: Natural): pointer =
+  proc reallocShared(p: pointer, newSize: Natural): pointer =
     when hasThreadSupport:
       acquireSys(heapLock)
-      result = realloc(sharedHeap, p, newsize)
+      result = realloc(sharedHeap, p, newSize)
       releaseSys(heapLock)
     else:
       result = realloc(p, newSize)

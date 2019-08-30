@@ -115,7 +115,7 @@ const
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
     ## the set of characters an identifier can start with
 
-  NewLines* = {'\13', '\10'}
+  Newlines* = {'\13', '\10'}
     ## the set of characters a newline terminator can start with (carriage
     ## return, line feed)
 
@@ -1494,8 +1494,11 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     a.delete(1, 6)
     doAssert a == "ara"
 
+    a.delete(2, 999)
+    doAssert a == "ar"
+
   var i = first
-  var j = last+1
+  var j = min(len(s), last+1)
   var newLen = len(s)-j+i
   while i < newLen:
     s[i] = s[j]
@@ -1850,9 +1853,11 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,int>`_
+  ## * `rfind proc<#rfind,string,char,int,int>`_
   ## * `replace proc<#replace,string,char,char>`_
   let last = if last==0: s.high else: last
   when nimvm:
@@ -1876,9 +1881,11 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],int>`_
+  ## * `rfind proc<#rfind,string,set[char],int,int>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
   let last = if last==0: s.high else: last
   for i in int(start)..last:
@@ -1891,9 +1898,11 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,int>`_
+  ## * `rfind proc<#rfind,string,string,int,int>`_
   ## * `replace proc<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
@@ -1901,45 +1910,59 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   initSkipTable(a, sub)
   result = find(a, s, sub, start, last)
 
-proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
-  rtl.} =
-  ## Searches for characer `sub` in `s` in reverse, starting at position `start`
-  ## (default: the last character) and going backwards to the first character.
+proc rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.noSideEffect,
+  rtl, extern: "nsuRFindChar".} =
+  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+  ## in reverse -- starting at high indexes and moving lower to the first
+  ## character or ``start``.  If `last` is unspecified, it defaults to `s.high`
+  ## (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
   ## * `find proc<#find,string,char,int,int>`_
-  let realStart = if start == -1: s.len-1 else: start
-  for i in countdown(realStart, 0):
+  let last = if last == -1: s.high else: last
+  for i in countdown(last, start):
     if sub == s[i]: return i
   return -1
 
-proc rfind*(s: string, chars: set[char], start: int = -1): int {.noSideEffect.} =
-  ## Searches for `chars` in `s` in reverse, starting at position `start`
-  ## (default: the last character) and going backwards to the first character.
+proc rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.noSideEffect,
+  rtl, extern: "nsuRFindCharSet".} =
+  ## Searches for `chars` in `s` inside range ``start..last`` (both ends
+  ## included) in reverse -- starting at high indexes and moving lower to the
+  ## first character or ``start``.  If `last` is unspecified, it defaults to
+  ## `s.high` (the last element).
   ##
-  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## If `s` contains none of the characters in `chars`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
   ## * `find proc<#find,string,set[char],Natural,int>`_
-  let realStart = if start == -1: s.len-1 else: start
-  for i in countdown(realStart, 0):
+  let last = if last == -1: s.high else: last
+  for i in countdown(last, start):
     if s[i] in chars: return i
   return -1
 
-proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
-  ## Searches for string `sub` in `s` in reverse, starting at position `start`
-  ## (default: the last character) and going backwards to the first character.
+proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
+  rtl, extern: "nsuRFindStr".} =
+  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+  ## included) in reverse -- starting at high indexes and moving lower to the
+  ## first character or ``start``.   If `last` is unspecified, it defaults to
+  ## `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
+  ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
   ## * `find proc<#find,string,string,Natural,int>`_
   if sub.len == 0:
     return -1
-  let realStart = if start == -1: s.len else: start
-  for i in countdown(realStart-sub.len, 0):
+  let last = if last == -1: s.high else: last
+  for i in countdown(last - sub.len + 1, start):
     for j in 0..sub.len-1:
       result = i
       if sub[j] != s[i+j]:
@@ -2337,7 +2360,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,
       # but nothing else is possible:
-      if buf[i] in {'.', ','}: result[i] = decimalsep
+      if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
     when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
@@ -2424,7 +2447,7 @@ proc formatSize*(bytes: int64,
   var
     xb: int64 = bytes
     fbytes: float
-    last_xb: int64 = bytes
+    lastXb: int64 = bytes
     matchedIndex: int
     prefixes: array[9, string]
   if prefix == bpColloquial:
@@ -2435,11 +2458,11 @@ proc formatSize*(bytes: int64,
   # Iterate through prefixes seeing if value will be greater than
   # 0 in each case
   for index in 1..<prefixes.len:
-    last_xb = xb
+    lastXb = xb
     xb = bytes div (1'i64 shl (index*10))
     matchedIndex = index
     if xb == 0:
-      xb = last_xb
+      xb = lastXb
       matchedIndex = index - 1
       break
   # xb has the integer number for the latest value; index should be correct
@@ -2836,8 +2859,6 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
 proc editDistance*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuEditDistance",
   deprecated: "use editdistance.editDistanceAscii instead".} =
-  ## **Deprecated**: Use `editdistance module<editdistance.html>`_
-  ##
   ## Returns the edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
@@ -2881,7 +2902,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   for i in 1 .. len1 - 1:
     var char1 = a[i + s - 1]
     var char2p: int
-    var D, x: int
+    var diff, x: int
     var p: int
     if i >= len1 - half:
       # skip the upper triangle:
@@ -2892,33 +2913,33 @@ proc editDistance*(a, b: string): int {.noSideEffect,
       inc(p)
       inc(char2p)
       x = row[p] + 1
-      D = x
+      diff = x
       if x > c3: x = c3
       row[p] = x
       inc(p)
     else:
       p = 1
       char2p = 0
-      D = i
+      diff = i
       x = i
     if i <= half + 1:
       # skip the lower triangle:
       e = len2 + i - half - 2
     # main:
     while p <= e:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
+      dec(diff)
+      var c3 = diff + ord(char1 != b[char2p + s])
       inc(char2p)
       inc(x)
       if x > c3: x = c3
-      D = row[p] + 1
-      if x > D: x = D
+      diff = row[p] + 1
+      if x > diff: x = diff
       row[p] = x
       inc(p)
     # lower triangle sentinel:
     if i <= half:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
+      dec(diff)
+      var c3 = diff + ord(char1 != b[char2p + s])
       inc(x)
       if x > c3: x = c3
       row[p] = x
@@ -2928,8 +2949,6 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl,
                                       extern: "nsuIsNilOrEmpty",
                                       deprecated: "use 'x.len == 0' instead".} =
-  ## **Deprecated**: use 'x.len == 0'
-  ##
   ## Checks if `s` is nil or empty.
   result = len(s) == 0
 
@@ -2949,8 +2968,6 @@ template isImpl(call) =
 proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsAlphaAsciiStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -2967,8 +2984,6 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsAlphaNumericStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -2985,8 +3000,6 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsDigitStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is a numeric value.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -3001,8 +3014,6 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsSpaceAsciiStr",
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -3029,8 +3040,6 @@ template isCaseImpl(s, charProc, skipNonAlpha) =
 
 proc isLowerAscii*(s: string, skipNonAlpha: bool): bool {.
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether ``s`` is lower case.
   ##
   ## This checks ASCII characters only.
@@ -3053,8 +3062,6 @@ proc isLowerAscii*(s: string, skipNonAlpha: bool): bool {.
 
 proc isUpperAscii*(s: string, skipNonAlpha: bool): bool {.
   deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated**: Deprecated since version 0.20 since its semantics are unclear
-  ##
   ## Checks whether ``s`` is upper case.
   ##
   ## This checks ASCII characters only.
@@ -3081,8 +3088,6 @@ proc wordWrap*(s: string, maxLineWidth = 80,
                newLine = "\n"): string {.
                noSideEffect, rtl, extern: "nsuWordWrap",
                deprecated: "use wrapWords in std/wordwrap instead".} =
-  ## **Deprecated**: use wrapWords in std/wordwrap instead
-  ##
   ## Word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
   var spaceLeft = maxLineWidth

@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos
+  lineinfos, int128
 
 type
   TPreferedDesc* = enum
@@ -77,11 +77,34 @@ proc isPureObject*(typ: PType): bool =
     t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getOrdValue*(n: PNode): BiggestInt =
+proc isUnsigned*(t: PType): bool =
+  t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
+
+proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
+  case n.kind
+  of nkCharLit, nkUIntLit..nkUInt64Lit:
+    # XXX: enable this assert
+    #assert n.typ == nil or isUnsigned(n.typ), $n.typ
+    toInt128(cast[uint64](n.intVal))
+  of nkIntLit..nkInt64Lit:
+    # XXX: enable this assert
+    #assert n.typ == nil or not isUnsigned(n.typ), $n.typ.kind
+    toInt128(n.intVal)
+  of nkNilLit:
+    int128.Zero
+  of nkHiddenStdConv: getOrdValue(n.sons[1], onError)
+  else:
+    # XXX: The idea behind the introduction of int128 was to finally
+    # have all calculations numerically far away from any
+    # overflows. This command just introduces such overflows and
+    # should therefore really be revisited.
+    onError
+
+proc getOrdValue64*(n: PNode): BiggestInt {.deprecated: "use getOrdvalue".} =
   case n.kind
   of nkCharLit..nkUInt64Lit: n.intVal
   of nkNilLit: 0
-  of nkHiddenStdConv: getOrdValue(n.sons[1])
+  of nkHiddenStdConv: getOrdValue64(n.sons[1])
   else: high(BiggestInt)
 
 proc getFloatValue*(n: PNode): BiggestFloat =
@@ -96,7 +119,7 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
-proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
+proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
   result = sym.owner.name.s & '.' & sym.name.s
   if sym.kind in routineKinds:
@@ -114,9 +137,10 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
     add(result, ')')
     if n.sons[0].typ != nil:
       result.add(": " & typeToString(n.sons[0].typ, prefer))
-  result.add " [declared in "
-  result.add(conf$sym.info)
-  result.add "]"
+  if getDeclarationPath:
+    result.add " [declared in "
+    result.add(conf$sym.info)
+    result.add "]"
 
 proc elemType*(t: PType): PType =
   assert(t != nil)
@@ -168,7 +192,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
       for i in 0 ..< sonsLen(t):
         result = iterOverTypeAux(marker, t.sons[i], iter, closure)
         if result: return
-      if t.n != nil: result = iterOverNode(marker, t.n, iter, closure)
+      if t.n != nil and t.kind != tyProc: result = iterOverNode(marker, t.n, iter, closure)
 
 proc iterOverType(t: PType, iter: TTypeIter, closure: RootRef): bool =
   var marker = initIntSet()
@@ -629,10 +653,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
+proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
-    result = 0
+    result = Zero
   of tySet, tyVar: result = firstOrd(conf, t.sons[0])
   of tyArray: result = firstOrd(conf, t.sons[0])
   of tyRange:
@@ -640,20 +664,22 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n.sons[0])
   of tyInt:
-    if conf != nil and conf.target.intSize == 4: result = - (2147483646) - 2
-    else: result = 0x8000000000000000'i64
-  of tyInt8: result = - 128
-  of tyInt16: result = - 32768
-  of tyInt32: result = - 2147483646 - 2
-  of tyInt64: result = 0x8000000000000000'i64
-  of tyUInt..tyUInt64: result = 0
+    if conf != nil and conf.target.intSize == 4:
+      result = toInt128(-2147483648)
+    else:
+      result = toInt128(0x8000000000000000'i64)
+  of tyInt8: result =  toInt128(-128)
+  of tyInt16: result = toInt128(-32768)
+  of tyInt32: result = toInt128(-2147483648)
+  of tyInt64: result = toInt128(0x8000000000000000'i64)
+  of tyUInt..tyUInt64: result = Zero
   of tyEnum:
     # if basetype <> nil then return firstOrd of basetype
     if sonsLen(t) > 0 and t.sons[0] != nil:
       result = firstOrd(conf, t.sons[0])
     else:
       assert(t.n.sons[0].kind == nkSym)
-      result = t.n.sons[0].sym.position
+      result = toInt128(t.n.sons[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses:
     result = firstOrd(conf, lastSon(t))
@@ -661,11 +687,10 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
   of tyUncheckedArray:
-    result = 0
+    result = Zero
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-    result = 0
-
+    result = Zero
 
 proc firstFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -682,10 +707,10 @@ proc firstFloat*(t: PType): BiggestFloat =
     internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
     NaN
 
-proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
+proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.kind
-  of tyBool: result = 1
-  of tyChar: result = 255
+  of tyBool: result = toInt128(1'u)
+  of tyChar: result = toInt128(255'u)
   of tySet, tyVar: result = lastOrd(conf, t.sons[0])
   of tyArray: result = lastOrd(conf, t.sons[0])
   of tyRange:
@@ -693,38 +718,37 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n.sons[1])
   of tyInt:
-    if conf != nil and conf.target.intSize == 4: result = 0x7FFFFFFF
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyInt8: result = 0x0000007F
-  of tyInt16: result = 0x00007FFF
-  of tyInt32: result = 0x7FFFFFFF
-  of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+    if conf != nil and conf.target.intSize == 4: result = toInt128(0x7FFFFFFF)
+    else: result = toInt128(0x7FFFFFFFFFFFFFFF'u64)
+  of tyInt8: result = toInt128(0x0000007F)
+  of tyInt16: result = toInt128(0x00007FFF)
+  of tyInt32: result = toInt128(0x7FFFFFFF)
+  of tyInt64: result = toInt128(0x7FFFFFFFFFFFFFFF'u64)
   of tyUInt:
-    if conf != nil and conf.target.intSize == 4: result = 0xFFFFFFFF
-    elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyUInt8: result = 0xFF
-  of tyUInt16: result = 0xFFFF
-  of tyUInt32: result = 0xFFFFFFFF
+    if conf != nil and conf.target.intSize == 4:
+      result = toInt128(0xFFFFFFFF)
+    else:
+      result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
+  of tyUInt8: result = toInt128(0xFF)
+  of tyUInt16: result = toInt128(0xFFFF)
+  of tyUInt32: result = toInt128(0xFFFFFFFF)
   of tyUInt64:
-    if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
+    result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
   of tyEnum:
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
-    result = t.n.sons[sonsLen(t.n) - 1].sym.position
+    result = toInt128(t.n.sons[sonsLen(t.n) - 1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses:
     result = lastOrd(conf, lastSon(t))
-  of tyProxy: result = 0
+  of tyProxy: result = Zero
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
   of tyUncheckedArray:
-    result = high(BiggestInt)
+    result = Zero
   else:
     internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
-    result = 0
-
+    result = Zero
 
 proc lastFloat*(t: PType): BiggestFloat =
   case t.kind
@@ -758,18 +782,16 @@ proc floatRangeCheck*(x: BiggestFloat, t: PType): bool =
     internalError(newPartialConfigRef(), "invalid kind for floatRangeCheck:" & $t.kind)
     false
 
-proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
+proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
   case t.skipTypes(tyUserTypeClasses).kind
-  of tyInt64, tyInt32, tyInt: result = lastOrd(conf, t)
+  of tyInt64, tyInt32, tyInt:
+    # XXX: this is just wrong
+    result = lastOrd(conf, t)
   of tyDistinct: result = lengthOrd(conf, t.sons[0])
   else:
     let last = lastOrd(conf, t)
     let first = firstOrd(conf, t)
-    # XXX use a better overflow check here:
-    if last == high(BiggestInt) and first <= 0:
-      result = last
-    else:
-      result = last - first + 1
+    result = last - first + One
 
 # -------------- type equality -----------------------------------------------
 
@@ -1166,7 +1188,9 @@ type
   TTypeAllowedFlag* = enum
     taField,
     taHeap,
-    taConcept
+    taConcept,
+    taIsOpenArray,
+    taNoUntyped
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
@@ -1182,8 +1206,8 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       of nkNone..nkNilLit:
         discard
       else:
-        if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
-          return n[0].typ
+        #if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
+        #  return n[0].typ
         for i in 0 ..< sonsLen(n):
           let it = n.sons[i]
           result = typeAllowedNode(marker, it, kind, flags)
@@ -1204,35 +1228,43 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   # if we have already checked the type, return true, because we stop the
   # evaluation if something is wrong:
   result = nil
-  if typ == nil: return
-  if containsOrIncl(marker, typ.id): return
+  if typ == nil: return nil
+  if containsOrIncl(marker, typ.id): return nil
   var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   case t.kind
   of tyVar, tyLent:
-    if kind in {skProc, skFunc, skConst}: return t
-    elif t.kind == tyLent and kind != skResult: return t
-    var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
-    case t2.kind
-    of tyVar, tyLent:
-      if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
-    of tyOpenArray, tyUncheckedArray:
-      if kind != skParam: result = t
-      else: result = typeAllowedAux(marker, t2.sons[0], skParam, flags)
+    if kind in {skProc, skFunc, skConst}:
+      result = t
+    elif t.kind == tyLent and kind != skResult:
+      result = t
     else:
-      if kind notin {skParam, skResult}: result = t
-      else: result = typeAllowedAux(marker, t2, kind, flags)
+      var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
+      case t2.kind
+      of tyVar, tyLent:
+        if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
+      of tyOpenArray:
+        if kind != skParam or taIsOpenArray in flags: result = t
+        else: result = typeAllowedAux(marker, t2.sons[0], kind, flags+{taIsOpenArray})
+      of tyUncheckedArray:
+        if kind != skParam: result = t
+        else: result = typeAllowedAux(marker, t2.sons[0], kind, flags)
+      else:
+        if kind notin {skParam, skResult}: result = t
+        else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
-    if kind == skConst and t.callConv == ccClosure: return t
+    let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
     for i in 1 ..< sonsLen(t):
-      result = typeAllowedAux(marker, t.sons[i], skParam, flags)
+      result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
       if result != nil: break
     if result.isNil and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:
     # XXX: This is still a horrible idea...
     result = nil
-  of tyUntyped, tyTyped, tyStatic:
-    if kind notin {skParam, skResult}: result = t
+  of tyUntyped, tyTyped:
+    if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
+  of tyStatic:
+    if kind notin {skParam}: result = t
   of tyVoid:
     if taField notin flags: result = t
   of tyTypeClasses:
@@ -1257,43 +1289,46 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
       {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
   of tyOpenArray, tyVarargs, tySink:
-    if kind != skParam:
+    # you cannot nest openArrays/sinks/etc.
+    if kind != skParam or taIsOpenArray in flags:
       result = t
     else:
-      result = typeAllowedAux(marker, t.sons[0], skVar, flags)
+      result = typeAllowedAux(marker, t.sons[0], kind, flags+{taIsOpenArray})
   of tyUncheckedArray:
     if kind != skParam and taHeap notin flags:
       result = t
     else:
-      result = typeAllowedAux(marker, lastSon(t), kind, flags)
+      result = typeAllowedAux(marker, lastSon(t), kind, flags-{taHeap})
   of tySequence, tyOpt:
     if t.sons[0].kind != tyEmpty:
-      result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
+      result = typeAllowedAux(marker, t.sons[0], kind, flags+{taHeap})
     elif kind in {skVar, skLet}:
       result = t.sons[0]
   of tyArray:
     if t.sons[1].kind != tyEmpty:
-      result = typeAllowedAux(marker, t.sons[1], skVar, flags)
+      result = typeAllowedAux(marker, t.sons[1], kind, flags)
     elif kind in {skVar, skLet}:
       result = t.sons[1]
   of tyRef:
     if kind == skConst: result = t
-    else: result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+    else: result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
   of tyPtr:
-    result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+    result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
   of tySet:
     for i in 0 ..< sonsLen(t):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if result != nil: break
   of tyObject, tyTuple:
     if kind in {skProc, skFunc, skConst} and
-        t.kind == tyObject and t.sons[0] != nil: return t
-    let flags = flags+{taField}
-    for i in 0 ..< sonsLen(t):
-      result = typeAllowedAux(marker, t.sons[i], kind, flags)
-      if result != nil: break
-    if result.isNil and t.n != nil:
-      result = typeAllowedNode(marker, t.n, kind, flags)
+        t.kind == tyObject and t.sons[0] != nil:
+      result = t
+    else:
+      let flags = flags+{taField}
+      for i in 0 ..< sonsLen(t):
+        result = typeAllowedAux(marker, t.sons[i], kind, flags)
+        if result != nil: break
+      if result.isNil and t.n != nil:
+        result = typeAllowedNode(marker, t.n, kind, flags)
   of tyEmpty:
     if kind in {skVar, skLet}: result = t
   of tyProxy:
@@ -1302,7 +1337,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOwned:
     if t.len == 1 and t.sons[0].skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
-      result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+      result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
     else:
       result = t
 
@@ -1570,3 +1605,14 @@ proc isException*(t: PType): bool =
     if t.sons[0] == nil: break
     t = skipTypes(t.sons[0], abstractPtrs)
   return false
+
+proc isSinkTypeForParam*(t: PType): bool =
+  # a parameter like 'seq[owned T]' must not be used only once, but its
+  # elements must, so we detect this case here:
+  result = t.skipTypes({tyGenericInst, tyAlias}).kind in {tySink, tyOwned}
+  when false:
+    if isSinkType(t):
+      if t.skipTypes({tyGenericInst, tyAlias}).kind in {tyArray, tyVarargs, tyOpenArray, tySequence}:
+        result = false
+      else:
+        result = true

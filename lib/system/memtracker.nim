@@ -70,7 +70,7 @@ proc addEntry(entry: LogEntry) =
     if interesting:
       gLog.disabled = true
       cprintf("interesting %s:%ld %s\n", entry.file, entry.line, entry.op)
-      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0.}](writeStackTrace)
+      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0, raises: [].}](writeStackTrace)
       x()
       quit 1
       #if gLog.count > high(gLog.data):

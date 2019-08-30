@@ -186,7 +186,9 @@ proc semOrd(c: PContext, n: PNode): PNode =
   if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   elif parType.kind == tySet:
-    result.typ = makeRangeType(c, firstOrd(c.config, parType), lastOrd(c.config, parType), n.info)
+    let a = toInt64(firstOrd(c.config, parType))
+    let b = toInt64(lastOrd(c.config, parType))
+    result.typ = makeRangeType(c, a, b, n.info)
   else:
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
@@ -273,7 +275,7 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
     # executed like 'normal' VM callback
     idx = vm.registerCallback("bindSymImpl", bindSymWrapper)
     # dummy node to carry idx information to VM
-    idxNode = newIntTypeNode(nkIntLit, idx, c.graph.getSysType(TLineInfo(), tyInt))
+    idxNode = newIntTypeNode(idx, c.graph.getSysType(TLineInfo(), tyInt))
 
   result = copyNode(n)
   for x in n: result.add x
@@ -355,6 +357,8 @@ proc semUnown(c: PContext; n: PNode): PNode =
 
   result = copyTree(n[1])
   result.typ = unownedType(c, result.typ)
+  # little hack for injectdestructors.nim (see bug #11350):
+  #result.sons[0].typ = nil
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
@@ -373,52 +377,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mTypeOf:
     result = semTypeOf(c, n)
   of mSizeOf:
-    # TODO there is no proper way to find out if a type cannot be queried for the size.
-    let size = getSize(c.config, n[1].typ)
-    # We just assume here that the type might come from the c backend
-    if size == szUnknownSize:
-      # Forward to the c code generation to emit a `sizeof` in the C code.
-      result = n
-    elif size >= 0:
-      result = newIntNode(nkIntLit, size)
-      result.info = n.info
-      result.typ = n.typ
-    else:
-      localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely, type: " & n[1].typ.typeToString)
-      result = n
+    result = foldSizeOf(c.config, n, n)
   of mAlignOf:
-    # this is 100% analog to mSizeOf, could be made more dry.
-    let align = getAlign(c.config, n[1].typ)
-    if align == szUnknownSize:
-      result = n
-    elif align >= 0:
-      result = newIntNode(nkIntLit, align)
-      result.info = n.info
-      result.typ = n.typ
-    else:
-      localError(c.config, n.info, "cannot evaluate 'alignof' because its type is not defined completely, type: " & n[1].typ.typeToString)
-      result = n
+    result = foldAlignOf(c.config, n, n)
   of mOffsetOf:
-    var dotExpr: PNode
-
-    block findDotExpr:
-      if n[1].kind == nkDotExpr:
-        dotExpr = n[1]
-      elif n[1].kind == nkCheckedFieldExpr:
-        dotExpr = n[1][0]
-      else:
-        illFormedAst(n, c.config)
-
-    assert dotExpr != nil
-
-    let value = dotExpr[0]
-    let member = dotExpr[1]
-
-    discard computeSize(c.config, value.typ)
-
-    result = newIntNode(nkIntLit, member.sym.offset)
-    result.info = n.info
-    result.typ = n.typ
+    result = foldOffsetOf(c.config, n, n)
   of mArrGet:
     result = semArrGet(c, n, flags)
   of mArrPut:

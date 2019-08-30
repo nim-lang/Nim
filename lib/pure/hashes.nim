@@ -44,10 +44,6 @@
 ## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
 ## * `tables module <tables.html>`_ for hash tables
 
-
-import
-  strutils
-
 type
   Hash* = int  ## A hash value. Hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
@@ -126,7 +122,7 @@ proc hash*(x: int): Hash {.inline.} =
 
 proc hash*(x: int64): Hash {.inline.} =
   ## Efficient hashing of `int64` integers.
-  result = toU32(x)
+  result = cast[int](x)
 
 proc hash*(x: uint): Hash {.inline.} =
   ## Efficient hashing of unsigned integers.
@@ -134,7 +130,7 @@ proc hash*(x: uint): Hash {.inline.} =
 
 proc hash*(x: uint64): Hash {.inline.} =
   ## Efficient hashing of `uint64` integers.
-  result = toU32(cast[int](x))
+  result = cast[int](x)
 
 proc hash*(x: char): Hash {.inline.} =
   ## Efficient hashing of characters.
@@ -148,6 +144,12 @@ proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   var y = x + 1.0
   result = cast[ptr Hash](addr(y))[]
+
+
+# Forward declarations before methods that hash containers. This allows
+# containers to contain other containers
+proc hash*[A](x: openArray[A]): Hash
+proc hash*[A](x: set[A]): Hash
 
 template bytewiseHashing(result: Hash, x: typed, start, stop: int) =
   for i in start .. stop:
@@ -163,7 +165,7 @@ template hashImpl(result: Hash, x: typed, start, stop: int) =
     var n = 0
     when nimvm:
       # we cannot cast in VM, so we do it manually
-      for j in countdown(stepsize-1, 0):
+      for j in countdown(stepSize-1, 0):
         n = (n shl (8*elementSize)) or ord(x[i+j])
     else:
       n = cast[ptr Hash](unsafeAddr x[i])[]
@@ -290,12 +292,6 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
     h = h !& ord(c)
   result = !$h
-
-
-# Forward declarations before methods that hash containers. This allows
-# containers to contain other containers
-proc hash*[A](x: openArray[A]): Hash
-proc hash*[A](x: set[A]): Hash
 
 
 proc hash*[T: tuple](x: T): Hash =

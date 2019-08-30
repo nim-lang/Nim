@@ -1,3 +1,7 @@
+discard """
+  output: ''''''
+"""
+
 import system
 
 type Bar[T] = ref object
@@ -11,3 +15,18 @@ proc Foo[T: Bar[types]](): T =
 
 discard Foo[Bar[int32]]()
 #bug #6073
+
+# bug #11479
+
+import tables
+
+proc test() =
+  discard readfile("temp.nim")
+  echo "ho"
+
+const
+  map = {
+    "test": test,
+  }.toTable
+
+#map["test"]()

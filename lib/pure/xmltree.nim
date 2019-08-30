@@ -392,7 +392,7 @@ proc clear*(n: var XmlNode) =
 
 
 iterator items*(n: XmlNode): XmlNode {.inline.} =
-  ## Iterates over any child of `n`.
+  ## Iterates over all direct children of `n`.
   ##
   ## **Examples:**
   ##
@@ -417,7 +417,7 @@ iterator items*(n: XmlNode): XmlNode {.inline.} =
   for i in 0 .. n.len-1: yield n[i]
 
 iterator mitems*(n: var XmlNode): var XmlNode {.inline.} =
-  ## Iterates over any child of `n` so that it can be modified.
+  ## Iterates over all direct children of `n` so that they can be modified.
   assert n.k == xnElement
   for i in 0 .. n.len-1: yield n[i]
 
@@ -441,7 +441,7 @@ proc attrs*(n: XmlNode): XmlAttributes {.inline.} =
   ##
   ## See also:
   ## * `attrs= proc <#attrs=,XmlNode,XmlAttributes>`_ for XmlAttributes setter
-  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for numbef of attributes
+  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   ## * `attr proc <#attr,XmlNode,string>`_ for finding an attribute
   runnableExamples:
     var j = newElement("myTag")
@@ -458,7 +458,7 @@ proc `attrs=`*(n: XmlNode, attr: XmlAttributes) {.inline.} =
   ##
   ## See also:
   ## * `attrs proc <#attrs,XmlNode>`_ for XmlAttributes getter
-  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for numbef of attributes
+  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   ## * `attr proc <#attr,XmlNode,string>`_ for finding an attribute
   runnableExamples:
     var j = newElement("myTag")
@@ -494,7 +494,7 @@ proc attr*(n: XmlNode, name: string): string =
   ## See also:
   ## * `attrs proc <#attrs,XmlNode>`_ for XmlAttributes getter
   ## * `attrs= proc <#attrs=,XmlNode,XmlAttributes>`_ for XmlAttributes setter
-  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for numbef of attributes
+  ## * `attrsLen proc <#attrsLen,XmlNode>`_ for number of attributes
   runnableExamples:
     var j = newElement("myTag")
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes

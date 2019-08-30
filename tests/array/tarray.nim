@@ -28,6 +28,13 @@ dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajsdf
 kgdchlfniambejop
 fjpmholcibdgeakn
 2.0
+a:1
+a:2
+a:3
+ret:
+ret:1
+ret:12
+123
 '''
 joinable: false
 """
@@ -548,3 +555,30 @@ block t3899:
     x.a[i]
   const c = O(a: [1.0,2.0])
   echo c[2]
+
+block arrayLiterals:
+  type ABC = enum A, B, C
+  template Idx[IdxT, ElemT](arr: array[IdxT, ElemT]): untyped = IdxT
+  doAssert [A: 0, B: 1].Idx is range[A..B]
+  doAssert [A: 0, 1, 3].Idx is ABC
+  doAssert [1: 2][1] == 2
+  doAssert [-1'i8: 2][-1] == 2
+  doAssert [-1'i8: 2, 3, 4, 5].Idx is range[-1'i8..2'i8]
+
+
+
+# bug #8316
+
+proc myAppend[T](a:T):string=
+  echo "a:", a
+  return $a
+
+template append2*(args: varargs[string, myAppend]): string =
+  var ret:string
+  for a in args:
+    echo "ret:", ret
+    ret.add(a)
+  ret
+
+let foo = append2("1", "2", "3")
+echo foo

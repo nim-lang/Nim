@@ -6,6 +6,7 @@ output: '''
 a
 hi
 Hello, World!
+(e: 42)
 '''
 """
 
@@ -220,3 +221,17 @@ block t5235:
 
   outer:
     test("Hello, World!")
+
+
+# bug #11941
+type X = object
+  e: int
+
+proc works(T: type X, v: auto): T = T(e: v)
+template fails(T: type X, v: auto): T = T(e: v)
+
+var
+  w = X.works(42)
+  x = X.fails(42)
+
+echo x

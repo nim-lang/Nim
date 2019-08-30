@@ -17,7 +17,7 @@ include "system/inclrtl"
 type
   NodeObj[T] {.acyclic.} = object
     byte: int ## byte index of the difference
-    otherbits: char
+    otherBits: char
     case isLeaf: bool
     of false: child: array[0..1, ref NodeObj[T]]
     of true:
@@ -69,14 +69,14 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     var newOtherBits = 0
     var newByte = 0
     block blockX:
-      while newbyte < key.len:
-        let ch = if newbyte < it.key.len: it.key[newbyte] else: '\0'
-        if ch != key[newbyte]:
-          newotherbits = ch.ord xor key[newbyte].ord
+      while newByte < key.len:
+        let ch = if newByte < it.key.len: it.key[newByte] else: '\0'
+        if ch != key[newByte]:
+          newOtherBits = ch.ord xor key[newByte].ord
           break blockX
-        inc newbyte
-      if newbyte < it.key.len:
-        newotherbits = it.key[newbyte].ord
+        inc newByte
+      if newByte < it.key.len:
+        newOtherBits = it.key[newByte].ord
       else:
         return it
     while (newOtherBits and (newOtherBits-1)) != 0:
@@ -105,7 +105,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     wherep[] = inner
   inc c.count
 
-proc exclImpl[T](c: var CritBitTree[T], key: string) : int =
+proc exclImpl[T](c: var CritBitTree[T], key: string): int =
   var p = c.root
   var wherep = addr(c.root)
   var whereq: ptr Node[T] = nil
@@ -237,7 +237,8 @@ iterator mpairs*[T](c: var CritBitTree[T]): tuple[key: string, val: var T] =
   ## yields all (key, value)-pairs of `c`. The yielded values can be modified.
   for x in leaves(c.root): yield (x.key, x.val)
 
-proc allprefixedAux[T](c: CritBitTree[T], key: string; longestMatch: bool): Node[T] =
+proc allprefixedAux[T](c: CritBitTree[T], key: string;
+                       longestMatch: bool): Node[T] =
   var p = c.root
   var top = p
   if p != nil:
@@ -253,27 +254,27 @@ proc allprefixedAux[T](c: CritBitTree[T], key: string; longestMatch: bool): Node
     result = top
 
 iterator itemsWithPrefix*[T](c: CritBitTree[T], prefix: string;
-                             longestMatch=false): string =
+                             longestMatch = false): string =
   ## yields all keys starting with `prefix`. If `longestMatch` is true,
   ## the longest match is returned, it doesn't have to be a complete match then.
   let top = allprefixedAux(c, prefix, longestMatch)
   for x in leaves(top): yield x.key
 
 iterator keysWithPrefix*[T](c: CritBitTree[T], prefix: string;
-                            longestMatch=false): string =
+                            longestMatch = false): string =
   ## yields all keys starting with `prefix`.
   let top = allprefixedAux(c, prefix, longestMatch)
   for x in leaves(top): yield x.key
 
 iterator valuesWithPrefix*[T](c: CritBitTree[T], prefix: string;
-                              longestMatch=false): T =
+                              longestMatch = false): T =
   ## yields all values of `c` starting with `prefix` of the
   ## corresponding keys.
   let top = allprefixedAux(c, prefix, longestMatch)
   for x in leaves(top): yield x.val
 
 iterator mvaluesWithPrefix*[T](c: var CritBitTree[T], prefix: string;
-                               longestMatch=false): var T =
+                               longestMatch = false): var T =
   ## yields all values of `c` starting with `prefix` of the
   ## corresponding keys. The values can be modified.
   let top = allprefixedAux(c, prefix, longestMatch)
@@ -281,14 +282,14 @@ iterator mvaluesWithPrefix*[T](c: var CritBitTree[T], prefix: string;
 
 iterator pairsWithPrefix*[T](c: CritBitTree[T],
                              prefix: string;
-                             longestMatch=false): tuple[key: string, val: T] =
+                             longestMatch = false): tuple[key: string, val: T] =
   ## yields all (key, value)-pairs of `c` starting with `prefix`.
   let top = allprefixedAux(c, prefix, longestMatch)
   for x in leaves(top): yield (x.key, x.val)
 
 iterator mpairsWithPrefix*[T](c: var CritBitTree[T],
                               prefix: string;
-                             longestMatch=false): tuple[key: string, val: var T] =
+                             longestMatch = false): tuple[key: string, val: var T] =
   ## yields all (key, value)-pairs of `c` starting with `prefix`.
   ## The yielded values can be modified.
   let top = allprefixedAux(c, prefix, longestMatch)

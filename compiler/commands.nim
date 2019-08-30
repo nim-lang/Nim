@@ -17,6 +17,7 @@ template bootSwitch(name, expr, userString) =
   const name = if expr: " " & userString else: ""
 
 bootSwitch(usedRelease, defined(release), "-d:release")
+bootSwitch(usedDanger, defined(danger), "-d:danger")
 bootSwitch(usedGnuReadline, defined(useLinenoise), "-d:useLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
@@ -26,8 +27,10 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos,
+  wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
   pathutils, strtabs
+
+from incremental import nimIncremental
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -47,15 +50,16 @@ const
       "Compiled at $4\n" &
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
+proc genFeatureDesc[T: enum](t: typedesc[T]): string {.compileTime.} =
+  var x = ""
+  for f in low(T)..high(T):
+    if x.len > 0: x.add "|"
+    x.add $f
+  x
+
 const
   Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
-  FeatureDesc = block:
-    var x = ""
-    for f in low(Feature)..high(Feature):
-      if x.len > 0: x.add "|"
-      x.add $f
-    x
-  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % FeatureDesc
+  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % [genFeatureDesc(Feature), genFeatureDesc(LegacyFeature)]
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
@@ -96,7 +100,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
     when gitHash.len == 40:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
-    msgWriteln(conf, "active boot switches:" & usedRelease &
+    msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & usedGnuReadline & usedNativeStacktrace &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
@@ -275,8 +279,9 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "fieldchecks": result = contains(conf.options, optFieldCheck)
   of "rangechecks": result = contains(conf.options, optRangeCheck)
   of "boundchecks": result = contains(conf.options, optBoundsCheck)
+  of "refchecks": result = contains(conf.options, optRefCheck)
   of "overflowchecks": result = contains(conf.options, optOverflowCheck)
-  of "movechecks": result = contains(conf.options, optMoveCheck)
+  of "stylechecks": result = contains(conf.options, optStyleCheck)
   of "linedir": result = contains(conf.options, optLineDir)
   of "assertions", "a": result = contains(conf.options, optAssert)
   of "run", "r": result = contains(conf.globalOptions, optRun)
@@ -529,8 +534,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "fieldchecks": processOnOffSwitch(conf, {optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch(conf, {optRangeCheck}, arg, pass, info)
   of "boundchecks": processOnOffSwitch(conf, {optBoundsCheck}, arg, pass, info)
+  of "refchecks": processOnOffSwitch(conf, {optRefCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch(conf, {optOverflowCheck}, arg, pass, info)
-  of "movechecks": processOnOffSwitch(conf, {optMoveCheck}, arg, pass, info)
+  of "stylechecks": processOnOffSwitch(conf, {optStyleCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
   of "deadcodeelim": discard # deprecated, dead code elim always on
@@ -666,7 +672,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     helpOnError(conf, pass)
   of "symbolfiles": discard "ignore for backwards compat"
   of "incremental":
-    when not defined(nimIncremental):
+    when not nimIncremental:
       localError(conf, info, "the compiler was not built with " &
         "incremental compilation features; bootstrap with " &
         "-d:nimIncremental to enable")
@@ -739,6 +745,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.features.incl parseEnum[Feature](arg)
       except ValueError:
         localError(conf, info, "unknown experimental feature")
+  of "legacy":
+    try:
+      conf.legacyFeatures.incl parseEnum[LegacyFeature](arg)
+    except ValueError:
+      localError(conf, info, "unknown obsolete feature")
   of "nocppexceptions":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optNoCppExceptions)
@@ -777,13 +788,22 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandmacro":
     expectArg(conf, switch, arg, pass, info)
     conf.macrosToExpand[arg] = "T"
+  of "useversion":
+    expectArg(conf, switch, arg, pass, info)
+    case arg
+    of "0.19":
+      conf.globalOptions.incl optNimV019
+    of "1.0":
+      discard "the default"
+    else:
+      localError(conf, info, "unknown Nim version; currently supported values are: {0.19, 1.0}")
   of "":
     conf.projectName = "-"
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)
 
-template gCmdLineInfo*(): untyped = newLineInfo(config, AbsoluteFile"command line", 1, 1)
+template gCmdLineInfo*(): untyped = newLineInfo(commandLineIdx, 1, 1)
 
 proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
   var cmd, arg: string
@@ -806,7 +826,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int; config: ConfigRef): bool =
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
-    if p.key.endswith(".nims"):
+    if p.key.endsWith(".nims"):
       config.command = "e"
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)

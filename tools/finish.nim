@@ -17,6 +17,12 @@ type
     Manual,
     Success
 
+proc expand(s: string): string =
+  try:
+    result = expandFilename(s)
+  except OSError, IOError:
+    result = s
+
 proc unzip(): bool =
   if not fileExists("dist" / mingw):
     echo "Could not find ", "dist" / mingw
@@ -192,18 +198,21 @@ when defined(windows):
     let bits = $(sizeof(pointer)*8)
     for d in dirs:
       if dirExists d:
-        let x = expandFilename(d / "bin")
-        if checkGccArch(x): return x
-        else: incompat.add x
+        let x = expand(d / "bin")
+        if x.len != 0:
+          if checkGccArch(x): return x
+          else: incompat.add x
       elif dirExists(d & bits):
-        let x = expandFilename((d & bits) / "bin")
-        if checkGccArch(x): return x
-        else: incompat.add x
+        let x = expand((d & bits) / "bin")
+        if x.len != 0:
+          if checkGccArch(x): return x
+          else: incompat.add x
 
 proc main() =
   when defined(windows):
-    let nimDesiredPath = expandFilename(getCurrentDir() / "bin")
-    let nimbleDesiredPath = expandFilename(getEnv("USERPROFILE") / ".nimble" / "bin")
+    let nimDesiredPath = expand(getCurrentDir() / "bin")
+    let nimbleBin = getEnv("USERPROFILE") / ".nimble" / "bin"
+    let nimbleDesiredPath = expand(nimbleBin)
     let p = tryGetUnicodeValue(r"Environment", "Path",
       HKEY_CURRENT_USER) & ";" & tryGetUnicodeValue(
         r"System\CurrentControlSet\Control\Session Manager\Environment", "Path",

@@ -4,6 +4,10 @@ Tools available with Nim
 
 The standard distribution ships with the following tools:
 
+- | `Hot code reloading <hcr.html>`_
+  | The "Hot code reloading" feature is built into the compiler but has its own
+    document explaining how it works.
+
 - | `Documentation generator <docgen.html>`_
   | The builtin document generator ``nim doc`` generates HTML documentation
     from ``.nim`` source files.
@@ -16,5 +20,12 @@ The standard distribution ships with the following tools:
 - | `C2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_
   | C to Nim source converter. Translates C header files to Nim.
 
+- | `niminst <https://nim-lang.org/docs/niminst.html>`_
+  | niminst is a tool to generate an installer for a Nim program.
+
 - | `nimgrep <nimgrep.html>`_
   | Nim search and replace utility.
+
+- | nimpretty
+  | ``nimpretty`` is a Nim source code beautifier,
+    to format code according to the official style guide.

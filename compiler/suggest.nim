@@ -32,11 +32,11 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, lineinfos, pathutils, parseutils
+import algorithm, sets, prefixmatches, lineinfos, parseutils, linter
 from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
-  import passes, tables # importer
+  import passes, tables, pathutils # importer
 
 const
   sep = '\t'
@@ -261,15 +261,15 @@ proc getQuality(s: PSym): range[0..100] =
     if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
   return 100
 
-template wholeSymTab(cond, section: untyped) =
+template wholeSymTab(cond, section: untyped) {.dirty.} =
   var isLocal = true
   var scopeN = 0
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
     dec scopeN
     for item in scope.symbols:
-      let it {.inject.} = item
-      var pm {.inject.}: PrefixMatch
+      let it = item
+      var pm: PrefixMatch
       if cond:
         outputs.add(symToSuggest(c.config, it, isLocal = isLocal, section, info, getQuality(it),
                                  pm, c.inTypeContext > 0, scopeN))
@@ -362,7 +362,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         # error: no known module name:
         typ = nil
       else:
-        let m = c.graph.importModuleCallback(c.graph, c.module, fileInfoIdx(c.config, fullpath))
+        let m = c.graph.importModuleCallback(c.graph, c.module, fileInfoIdx(c.config, fullPath))
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):
@@ -528,7 +528,22 @@ proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
         return
   localError(conf, info, "usage of '$1' is a user-defined error" % s.name.s)
 
-proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
+proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
+  var module = s
+  while module != nil and module.kind != skModule:
+    module = module.owner
+  if module != nil and module != c.module:
+    var i = 0
+    while i <= high(c.unusedImports):
+      let candidate = c.unusedImports[i][0]
+      if candidate == module or c.exportIndirections.contains((candidate.id, s.id)):
+        # mark it as used:
+        c.unusedImports.del(i)
+      else:
+        inc i
+
+proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
+  let conf = c.config
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
@@ -538,7 +553,10 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
     if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
     if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
-    suggestSym(conf, info, s, usageSym, false)
+    suggestSym(conf, info, s, c.graph.usageSym, false)
+  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
+    styleCheckUse(conf, info, s)
+  markOwnerModuleAsUsed(c, s)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!

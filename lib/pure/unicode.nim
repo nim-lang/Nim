@@ -31,11 +31,6 @@ type
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
-  Rune16* = distinct int16 ## \
-    ## Type that can hold a single UTF-16 encoded character.
-    ##
-    ## A single Rune16 may not be enough to hold an arbitrary Unicode code point.
-
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
@@ -169,7 +164,7 @@ proc runeAt*(s: string, i: Natural): Rune =
     doAssert a.runeAt(3) == "y".runeAt(0)
   fastRuneAt(s, i, result, false)
 
-proc validateUTF8*(s: string): int =
+proc validateUtf8*(s: string): int =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
   ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
   ##
@@ -211,7 +206,7 @@ template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
   ## with an additional amount equal to the byte length of ``c``.
   ##
   ## See also:
-  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `validateUtf8 proc <#validateUtf8,string>`_
   ## * `toUTF8 proc <#toUTF8,Rune>`_
   ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
   var i = RuneImpl(c)
@@ -261,7 +256,7 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
   ## Converts a rune into its UTF-8 representation.
   ##
   ## See also:
-  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `validateUtf8 proc <#validateUtf8,string>`_
   ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
   ## * `utf8 iterator <#utf8.i,string>`_
   ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
@@ -287,7 +282,7 @@ proc `$`*(rune: Rune): string =
   ## An alias for `toUTF8 <#toUTF8,Rune>`_.
   ##
   ## See also:
-  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `validateUtf8 proc <#validateUtf8,string>`_
   ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   rune.toUTF8
 
@@ -388,7 +383,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   let o = runeOffset(s, pos)
-  s[o.. (o+runeLenAt(s, o)-1)]
+  s[o .. (o+runeLenAt(s, o)-1)]
 
 proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   ## Returns the UTF-8 substring starting at code point ``pos``
@@ -487,12 +482,12 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## * `toTitle proc <#toTitle,Rune>`_
   ## * `isLower proc <#isLower,Rune>`_
   var c = RuneImpl(c)
-  var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
-  if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
-    return Rune(c + tolowerRanges[p+2] - 500)
-  p = binarySearch(c, tolowerSinglets, len(tolowerSinglets) div 2, 2)
-  if p >= 0 and c == tolowerSinglets[p]:
-    return Rune(c + tolowerSinglets[p+1] - 500)
+  var p = binarySearch(c, toLowerRanges, len(toLowerRanges) div 3, 3)
+  if p >= 0 and c >= toLowerRanges[p] and c <= toLowerRanges[p+1]:
+    return Rune(c + toLowerRanges[p+2] - 500)
+  p = binarySearch(c, toLowerSinglets, len(toLowerSinglets) div 2, 2)
+  if p >= 0 and c == toLowerSinglets[p]:
+    return Rune(c + toLowerSinglets[p+1] - 500)
   return Rune(c)
 
 proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
@@ -505,12 +500,12 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## * `toTitle proc <#toTitle,Rune>`_
   ## * `isUpper proc <#isUpper,Rune>`_
   var c = RuneImpl(c)
-  var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
-  if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
-    return Rune(c + toupperRanges[p+2] - 500)
-  p = binarySearch(c, toupperSinglets, len(toupperSinglets) div 2, 2)
-  if p >= 0 and c == toupperSinglets[p]:
-    return Rune(c + toupperSinglets[p+1] - 500)
+  var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
+  if p >= 0 and c >= toUpperRanges[p] and c <= toUpperRanges[p+1]:
+    return Rune(c + toUpperRanges[p+2] - 500)
+  p = binarySearch(c, toUpperSinglets, len(toUpperSinglets) div 2, 2)
+  if p >= 0 and c == toUpperSinglets[p]:
+    return Rune(c + toUpperSinglets[p+1] - 500)
   return Rune(c)
 
 proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
@@ -537,11 +532,11 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## * `isTitle proc <#isTitle,Rune>`_
   var c = RuneImpl(c)
   # Note: toUpperRanges is correct here!
-  var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
-  if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
+  var p = binarySearch(c, toUpperRanges, len(toUpperRanges) div 3, 3)
+  if p >= 0 and c >= toUpperRanges[p] and c <= toUpperRanges[p+1]:
     return true
-  p = binarySearch(c, toupperSinglets, len(toupperSinglets) div 2, 2)
-  if p >= 0 and c == toupperSinglets[p]:
+  p = binarySearch(c, toUpperSinglets, len(toUpperSinglets) div 2, 2)
+  if p >= 0 and c == toUpperSinglets[p]:
     return true
 
 proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
@@ -557,11 +552,11 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## * `isWhiteSpace proc <#isWhiteSpace,Rune>`_
   var c = RuneImpl(c)
   # Note: toLowerRanges is correct here!
-  var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
-  if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
+  var p = binarySearch(c, toLowerRanges, len(toLowerRanges) div 3, 3)
+  if p >= 0 and c >= toLowerRanges[p] and c <= toLowerRanges[p+1]:
     return true
-  p = binarySearch(c, tolowerSinglets, len(tolowerSinglets) div 2, 2)
-  if p >= 0 and c == tolowerSinglets[p]:
+  p = binarySearch(c, toLowerSinglets, len(toLowerSinglets) div 2, 2)
+  if p >= 0 and c == toLowerSinglets[p]:
     return true
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
@@ -805,7 +800,7 @@ iterator utf8*(s: string): string =
   ## Iterates over any rune of the string ``s`` returning utf8 values.
   ##
   ## See also:
-  ## * `validateUTF8 proc <#validateUTF8,string>`_
+  ## * `validateUtf8 proc <#validateUtf8,string>`_
   ## * `toUTF8 proc <#toUTF8,Rune>`_
   ## * `$ proc <#$,Rune>`_ alias for `toUTF8`
   ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
@@ -928,7 +923,7 @@ proc size*(r: Rune): int {.noSideEffect.} =
   else: result = 1
 
 # --------- Private templates for different split separators -----------
-proc stringHasSep(s: string, index: int, seps: openarray[Rune]): bool =
+proc stringHasSep(s: string, index: int, seps: openArray[Rune]): bool =
   var rune: Rune
   fastRuneAt(s, index, rune, false)
   return seps.contains(rune)
@@ -960,7 +955,7 @@ template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
       else:
         inc(last, if last < len(s): runeLenAt(s, last) else: 1)
 
-iterator split*(s: string, seps: openarray[Rune] = unicodeSpaces,
+iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   maxsplit: int = -1): string =
   ## Splits the unicode string ``s`` into substrings using a group of separators.
   ##
@@ -1044,7 +1039,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##
   splitCommon(s, sep, maxsplit, sep.size)
 
-proc split*(s: string, seps: openarray[Rune] = unicodeSpaces, maxsplit: int = -1): seq[string] {.
+proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nucSplitRunes".} =
   ## The same as the `split iterator <#split.i,string,openArray[Rune],int>`_,
   ## but is a proc that returns a sequence of substrings.
@@ -1057,7 +1052,7 @@ proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffec
   accResult(split(s, sep, maxsplit))
 
 proc strip*(s: string, leading = true, trailing = true,
-            runes: openarray[Rune] = unicodeSpaces): string {.noSideEffect,
+            runes: openArray[Rune] = unicodeSpaces): string {.noSideEffect,
             rtl, extern: "nucStrip".} =
   ## Strips leading or trailing ``runes`` from ``s`` and returns
   ## the resulting string.
@@ -1072,46 +1067,46 @@ proc strip*(s: string, leading = true, trailing = true,
     doAssert a.strip(trailing = false) == "áñyóng   "
 
   var
-    s_i = 0 ## starting index into string ``s``
-    e_i = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
+    sI = 0 ## starting index into string ``s``
+    eI = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
   if leading:
     var
       i = 0
-      l_i: int ## value of ``s_i`` at the beginning of the iteration
+      xI: int ## value of ``sI`` at the beginning of the iteration
       rune: Rune
     while i < len(s):
-      l_i = i
+      xI = i
       fastRuneAt(s, i, rune)
-      s_i = i # Assume to start from next rune
+      sI = i # Assume to start from next rune
       if not runes.contains(rune):
-        s_i = l_i # Go back to where the current rune starts
+        sI = xI # Go back to where the current rune starts
         break
   if trailing:
     var
-      i = e_i
-      l_i: int
+      i = eI
+      xI: int
       rune: Rune
     while i >= 0:
-      l_i = i
-      fastRuneAt(s, l_i, rune)
-      var p_i = i - 1
-      while p_i >= 0:
+      xI = i
+      fastRuneAt(s, xI, rune)
+      var yI = i - 1
+      while yI >= 0:
         var
-          p_i_end = p_i
-          p_rune: Rune
-        fastRuneAt(s, p_i_end, p_rune)
-        if p_i_end < l_i: break
-        i = p_i
-        rune = p_rune
-        dec(p_i)
+          yIend = yI
+          pRune: Rune
+        fastRuneAt(s, yIend, pRune)
+        if yIend < xI: break
+        i = yI
+        rune = pRune
+        dec(yI)
       if not runes.contains(rune):
-        e_i = l_i - 1
+        eI = xI - 1
         break
       dec(i)
-  let newLen = e_i - s_i + 1
+  let newLen = eI - sI + 1
   result = newStringOfCap(newLen)
   if newLen > 0:
-    result.add s[s_i .. e_i]
+    result.add s[sI .. eI]
 
 proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
   rtl, extern: "nucRepeatRune".} =
@@ -1281,7 +1276,7 @@ when isMainModule:
     compared = (someString == $someRunes)
   doAssert compared == true
 
-  proc test_replacements(word: string): string =
+  proc testReplacements(word: string): string =
     case word
     of "two":
       return "2"
@@ -1294,8 +1289,8 @@ when isMainModule:
     else:
       return "12345"
 
-  doAssert translate("two not alpha foo βeta", test_replacements) == "2 12345 αlpha BAR beta"
-  doAssert translate("  two not foo βeta  ", test_replacements) == "  2 12345 BAR beta  "
+  doAssert translate("two not alpha foo βeta", testReplacements) == "2 12345 αlpha BAR beta"
+  doAssert translate("  two not foo βeta  ", testReplacements) == "  2 12345 BAR beta  "
 
   doAssert title("foo bar") == "Foo Bar"
   doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"

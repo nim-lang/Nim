@@ -10,7 +10,7 @@
 # This module handles the conditional symbols.
 
 import
-  strtabs, platform, strutils, idents
+  strtabs
 
 from options import Feature
 from lineinfos import HintsToStr, WarningsToStr
@@ -86,6 +86,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasSignatureHashInMacro")
   defineSymbol("nimHasDefault")
   defineSymbol("nimMacrosSizealignof")
+  defineSymbol("nimNoZeroExtendMagic")
   for f in low(Feature)..high(Feature):
     defineSymbol("nimHas" & $f)
 
@@ -93,3 +94,7 @@ proc initDefines*(symbols: StringTableRef) =
     defineSymbol("nimHasWarning" & s)
   for s in HintsToStr:
     defineSymbol("nimHasHint" & s)
+
+  defineSymbol("nimFixedOwned")
+  defineSymbol("nimHasStyleChecks")
+  defineSymbol("nimHasUsed")

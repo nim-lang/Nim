@@ -61,7 +61,7 @@ when not defined(nimhygiene):
 type
   KeyValuePair[A] = tuple[hcode: Hash, key: A]
   KeyValuePairSeq[A] = seq[KeyValuePair[A]]
-  HashSet* {.myShallow.} [A] = object ## \
+  HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
     ## Use `init proc <#init,HashSet[A],int>`_ or `initHashSet proc <#initHashSet,int>`_
@@ -73,7 +73,7 @@ type
   OrderedKeyValuePair[A] = tuple[
     hcode: Hash, next: int, key: A]
   OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
-  OrderedSet* {.myShallow.} [A] = object ## \
+  OrderedSet*[A] {.myShallow.} = object ## \
     ## A generic hash set that remembers insertion order.
     ##
     ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc
@@ -600,17 +600,17 @@ proc rightSize*(count: Natural): int {.inline.} =
   ## expected extra amount to the parameter before calling this.
   ##
   ## Internally, we want `mustRehash(rightSize(x), x) == false`.
-  result = nextPowerOfTwo(count * 3 div 2  +  4)
+  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use 'initHashSet'"} = initHashSet[A](initialSize)
+     "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
 
 proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use 'toHashSet'"} = toHashSet[A](keys)
+     "Deprecated since v0.20, use 'toHashSet'".} = toHashSet[A](keys)
 
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default"} =
+     "Deprecated since v0.20; sets are initialized by default".} =
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
   ##
@@ -937,7 +937,7 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
 
 proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default"} =
+     "Deprecated since v0.20; sets are initialized by default".} =
   ##
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
@@ -1162,8 +1162,8 @@ when isMainModule and not defined(release):
       var aa = initOrderedSet[pair]()
       var bb = initOrderedSet[pair]()
 
-      var x = (a:1,b:2)
-      var y = (a:3,b:4)
+      var x = (a: 1, b: 2)
+      var y = (a: 3, b: 4)
 
       aa.incl(x)
       aa.incl(y)

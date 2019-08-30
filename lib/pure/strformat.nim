@@ -415,7 +415,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
     raise newException(ValueError,
       "invalid format string, cannot parse: " & s[i..^1])
 
-proc formatValue*(result: var string; value: SomeInteger; specifier: string) =
+proc formatValue*[T: SomeInteger](result: var string; value: T; specifier: string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
@@ -505,11 +505,11 @@ proc formatValue*(result: var string; value: string; specifier: string) =
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
   if spec.precision != -1:
-    if spec.precision < runelen(value):
+    if spec.precision < runeLen(value):
       setLen(value, runeOffset(value, spec.precision))
   result.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
-proc formatValue[T](result: var string; value: T; specifier: string) =
+proc formatValue[T: not SomeInteger](result: var string; value: T; specifier: string) =
   mixin `$`
   formatValue(result, $value, specifier)
 

@@ -79,9 +79,19 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 proc openArrayLoc(p: BProc, n: PNode): Rope =
   var a: TLoc
 
-  let q = skipConv(n)
+  var q = skipConv(n)
+  var skipped = false
+  while q.kind == nkStmtListExpr and q.len > 0:
+    skipped = true
+    q = q.lastSon
   if getMagic(q) == mSlice:
     # magic: pass slice to openArray:
+    if skipped:
+      q = skipConv(n)
+      while q.kind == nkStmtListExpr and q.len > 0:
+        for i in 0..q.len-2:
+          genStmts(p, q[i])
+        q = q.lastSon
     var b, c: TLoc
     initLocExpr(p, q[1], a)
     initLocExpr(p, q[2], b)
@@ -92,7 +102,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     let ty = skipTypes(a.t, abstractVar+{tyPtr})
     case ty.kind
     of tyArray:
-      let first = firstOrd(p.config, ty)
+      let first = toInt64(firstOrd(p.config, ty))
       if first == 0:
         result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
       else:
@@ -156,7 +166,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call.sons[0]
     if callee.kind == nkSym and
-        {sfImportC, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportC} and
+        {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
       result = addrLoc(p.config, a)
     else:
@@ -184,8 +194,8 @@ template genParamLoop(params) {.dirty.} =
     if params != nil: add(params, ~", ")
     add(params, genArgNoParam(p, ri.sons[i]))
 
-proc addActualPrefixForHCR(res: var Rope, module: PSym, sym: PSym) =
-  if sym.flags * {sfImportc, sfNonReloadable} == {} and
+proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
+  if sym.flags * {sfImportc, sfNonReloadable} == {} and sym.loc.k == locProc and
       (sym.typ.callConv == ccInline or sym.owner.id == module.id):
     res = res & "_actual".rope
 
@@ -203,7 +213,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genParamLoop(params)
   var callee = rdLoc(op)
   if p.hcrOn and ri.sons[0].kind == nkSym:
-    callee.addActualPrefixForHCR(p.module.module, ri.sons[0].sym)
+    callee.addActualSuffixForHCR(p.module.module, ri.sons[0].sym)
   fixupCall(p, le, ri, d, callee, params)
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =

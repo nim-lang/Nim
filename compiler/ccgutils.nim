@@ -10,7 +10,7 @@
 # This module declares some helpers for the C code generator.
 
 import
-  ast, astalgo, ropes, hashes, strutils, types, msgs, wordrecg,
+  ast, hashes, strutils, msgs, wordrecg,
   platform, trees, options
 
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =

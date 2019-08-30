@@ -189,14 +189,21 @@ proc testFind =
 
 proc testRFind =
   assert "0123456789ABCDEFGAH".rfind('A') == 17
-  assert "0123456789ABCDEFGAH".rfind('A', 13) == 10
-  assert "0123456789ABCDEFGAH".rfind('H', 13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind('H', last=13) == -1
   assert "0123456789ABCDEFGAH".rfind("A") == 17
-  assert "0123456789ABCDEFGAH".rfind("A", 13) == 10
-  assert "0123456789ABCDEFGAH".rfind("H", 13) == -1
+  assert "0123456789ABCDEFGAH".rfind("A", last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind("H", last=13) == -1
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}) == 17
-  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
-  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
+  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, last=13) == 12
+  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, last=13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=18) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=11, last=17) == 17
+  assert "0123456789ABCDEFGAH".rfind("0", start=0) == 0
+  assert "0123456789ABCDEFGAH".rfind("0", start=1) == -1
+  assert "0123456789ABCDEFGAH".rfind("H", start=11) == 18
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=5) == 9
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=10) == -1
 
 proc testSplitLines() =
   let fixture = "a\nb\rc\r\nd"
@@ -276,7 +283,7 @@ assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
 assert(editDistance("main", "malign") == 2)
 
 assert "/1/2/3".rfind('/') == 4
-assert "/1/2/3".rfind('/', 1) == 0
+assert "/1/2/3".rfind('/', last=1) == 0
 assert "/1/2/3".rfind('0') == -1
 
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")

@@ -10,7 +10,7 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
+  ast, ropes, options, intsets,
   tables, ndi, lineinfos, pathutils, modulegraphs
 
 type
@@ -73,7 +73,7 @@ type
     noSafePoints*: bool       # the proc doesn't use safe points in exception handling
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # bool is true when are in the except part of a try block
@@ -100,7 +100,7 @@ type
   TypeCache* = Table[SigHash, Rope]
   TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
 
-  Codegenflag* = enum
+  CodegenFlag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
     usesThreadVars,     # true if the module uses a thread var
     frameDeclared,      # hack for ROD support so that we don't declare
@@ -114,7 +114,7 @@ type
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
-    modules_closed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
+    modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
     breakPointId*: int
@@ -137,7 +137,7 @@ type
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
-    flags*: set[Codegenflag]
+    flags*: set[CodegenFlag]
     module*: PSym
     filename*: AbsoluteFile
     cfilename*: AbsoluteFile  # filename of the module (including path,
@@ -196,6 +196,6 @@ proc newModuleList*(g: ModuleGraph): BModuleList =
     config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
-  for m in g.modules_closed:
+  for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m

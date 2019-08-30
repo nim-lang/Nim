@@ -398,7 +398,7 @@ proc sexp*(elements: openArray[SexpNode]): SexpNode =
 proc sexp*(s: SexpNode): SexpNode =
   result = s
 
-proc toSexp(x: NimNode): NimNode {.compiletime.} =
+proc toSexp(x: NimNode): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket:
     result = newNimNode(nnkBracket)

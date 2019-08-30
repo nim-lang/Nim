@@ -14,9 +14,9 @@ import times, nativesockets
 when defined(windows):
   import winlean
   when defined(gcc):
-    {.passL: "-lws2_32".}
+    {.passl: "-lws2_32".}
   elif defined(vcc):
-    {.passL: "ws2_32.lib".}
+    {.passl: "ws2_32.lib".}
   const platformHeaders = """#include <winsock2.h>
                              #include <windows.h>"""
   const EAGAIN = WSAEWOULDBLOCK

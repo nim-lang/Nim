@@ -47,7 +47,7 @@
 ## * `random module<random.html>`_ for fast and tiny random number generator
 ## * `mersenne module<mersenne.html>`_ for Mersenne twister random number generator
 ## * `stats module<stats.html>`_ for statistical analysis
-## * `strformat module<strformat>`_ for formatting floats for print
+## * `strformat module<strformat.html>`_ for formatting floats for print
 
 
 include "system/inclrtl"
@@ -297,6 +297,9 @@ when not defined(JS): # C
 else: # JS
   proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
   proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
+
+  proc cbrt*(x: float32): float32 {.importc: "Math.cbrt", nodecl.}
+  proc cbrt*(x: float64): float64 {.importc: "Math.cbrt", nodecl.}
 
   proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
   proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
@@ -578,12 +581,18 @@ when not defined(JS): # C
     proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
     proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
       ## Computes the `error function <https://en.wikipedia.org/wiki/Error_function>`_ for ``x``.
+      ##
+      ## Note: Not available for JS backend.
     proc erfc*(x: float32): float32 {.importc: "erfcf", header: "<math.h>".}
     proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
       ## Computes the `complementary error function <https://en.wikipedia.org/wiki/Error_function#Complementary_error_function>`_ for ``x``.
+      ##
+      ## Note: Not available for JS backend.
     proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
     proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
       ## Computes the the `gamma function <https://en.wikipedia.org/wiki/Gamma_function>`_ for ``x``.
+      ##
+      ## Note: Not available for JS backend.
       ##
       ## See also:
       ## * `lgamma proc <#lgamma,float64>`_ for a natural log of gamma function
@@ -601,6 +610,8 @@ when not defined(JS): # C
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
       ## Computes the natural log of the gamma function for ``x``.
+      ##
+      ## Note: Not available for JS backend.
       ##
       ## See also:
       ## * `gamma proc <#gamma,float64>`_ for gamma function

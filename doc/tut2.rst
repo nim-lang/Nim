@@ -605,7 +605,7 @@ performed before the expression is passed to the template.
 If the template has no explicit return type,
 ``void`` is used for consistency with procs and methods.
 
-To pass a block of statements to a template, use 'untyped' for the last parameter:
+To pass a block of statements to a template, use ``untyped`` for the last parameter:
 
 .. code-block:: nim
     :test: "nim c $1"

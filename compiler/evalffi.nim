@@ -289,7 +289,7 @@ proc unpackArray(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
   if n.isNil:
     result = newNode(nkBracket)
     result.typ = typ
-    newSeq(result.sons, lengthOrd(conf, typ).int)
+    newSeq(result.sons, lengthOrd(conf, typ).toInt)
   else:
     result = n
     if result.kind != nkBracket:

@@ -132,7 +132,7 @@ type
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     sockType: SockType = SOCK_STREAM,
-    protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
+    protocol: Protocol = IPPROTO_TCP, buffered = true): owned(AsyncSocket) =
   ## Creates a new ``AsyncSocket`` based on the supplied params.
   ##
   ## The supplied ``fd``'s non-blocking state will be enabled implicitly.
@@ -152,7 +152,7 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     result.currPos = 0
 
 proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-    protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
+    protocol: Protocol = IPPROTO_TCP, buffered = true): owned(AsyncSocket) =
   ## Creates a new asynchronous socket.
   ##
   ## This procedure will also create a brand new file descriptor for
@@ -175,7 +175,7 @@ proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
   getPeerAddr(socket.fd, socket.domain)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
-    buffered = true): AsyncSocket =
+    buffered = true): owned(AsyncSocket) =
   ## Creates a new asynchronous socket.
   ##
   ## This procedure will also create a brand new file descriptor for
@@ -216,7 +216,7 @@ when defineSsl:
       await socket.fd.AsyncFd.send(data, flags)
 
   proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
-                  sslError: cint): Future[bool] {.async.} =
+                  sslError: cint): owned(Future[bool]) {.async.} =
     ## Returns ``true`` if ``socket`` is still connected, otherwise ``false``.
     result = true
     case sslError
@@ -257,12 +257,13 @@ when defineSsl:
         if not fut.read():
           # Socket disconnected.
           if SocketFlag.SafeDisconn in flags:
+            opResult = 0.cint
             break
           else:
             raiseSSLError("Socket has been disconnected")
 
 proc dial*(address: string, port: Port, protocol = IPPROTO_TCP,
-           buffered = true): Future[AsyncSocket] {.async.} =
+           buffered = true): owned(Future[AsyncSocket]) {.async.} =
   ## Establishes connection to the specified ``address``:``port`` pair via the
   ## specified protocol. The procedure iterates through possible
   ## resolutions of the ``address`` until it succeeds, meaning that it
@@ -317,7 +318,7 @@ template readIntoBuf(socket: AsyncSocket,
   size
 
 proc recvInto*(socket: AsyncSocket, buf: pointer, size: int,
-           flags = {SocketFlag.SafeDisconn}): Future[int] {.async.} =
+           flags = {SocketFlag.SafeDisconn}): owned(Future[int]) {.async.} =
   ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``.
   ##
   ## For buffered sockets this function will attempt to read all the requested
@@ -365,7 +366,7 @@ proc recvInto*(socket: AsyncSocket, buf: pointer, size: int,
     result = readInto(buf, size, socket, flags)
 
 proc recv*(socket: AsyncSocket, size: int,
-           flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
+           flags = {SocketFlag.SafeDisconn}): owned(Future[string]) {.async.} =
   ## Reads **up to** ``size`` bytes from ``socket``.
   ##
   ## For buffered sockets this function will attempt to read all the requested
@@ -445,7 +446,7 @@ proc send*(socket: AsyncSocket, data: string,
     await send(socket.fd.AsyncFD, data, flags)
 
 proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
-      Future[tuple[address: string, client: AsyncSocket]] =
+      owned(Future[tuple[address: string, client: AsyncSocket]]) =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
@@ -464,7 +465,7 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
   return retFuture
 
 proc accept*(socket: AsyncSocket,
-    flags = {SocketFlag.SafeDisconn}): Future[AsyncSocket] =
+    flags = {SocketFlag.SafeDisconn}): owned(Future[AsyncSocket]) =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
@@ -573,7 +574,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
 
 proc recvLine*(socket: AsyncSocket,
     flags = {SocketFlag.SafeDisconn},
-    maxLength = MaxLineLength): Future[string] {.async.} =
+    maxLength = MaxLineLength): owned(Future[string]) {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##
@@ -625,14 +626,14 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
         "Unknown socket address family and no address specified to bindAddr")
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
-  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
-    freeAddrInfo(aiList)
+  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
+    freeaddrinfo(aiList)
     raiseOSError(osLastError())
-  freeAddrInfo(aiList)
+  freeaddrinfo(aiList)
 
 when defined(posix):
 
-  proc connectUnix*(socket: AsyncSocket, path: string): Future[void] =
+  proc connectUnix*(socket: AsyncSocket, path: string): owned(Future[void]) =
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     when not defined(nimdoc):
@@ -652,7 +653,7 @@ when defined(posix):
 
       var socketAddr = makeUnixAddr(path)
       let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                       (sizeof(socketAddr.sun_family) + path.len).Socklen)
+                       (sizeof(socketAddr.sun_family) + path.len).SockLen)
       if ret == 0:
         # Request to connect completed immediately.
         retFuture.complete()
@@ -663,19 +664,19 @@ when defined(posix):
         else:
           retFuture.fail(newException(OSError, osErrorMsg(lastError)))
 
-  proc bindUnix*(socket: AsyncSocket, path: string)  {.
+  proc bindUnix*(socket: AsyncSocket, path: string) {.
     tags: [ReadIOEffect].} =
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
+                            (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 elif defined(nimdoc):
 
-  proc connectUnix*(socket: AsyncSocket, path: string): Future[void] =
+  proc connectUnix*(socket: AsyncSocket, path: string): owned(Future[void]) =
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     discard

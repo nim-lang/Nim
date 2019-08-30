@@ -9,7 +9,6 @@ Advanced commands:
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
-  //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
                           module dependency graph
   //dump                    dump all defined conditionals and search paths
@@ -26,6 +25,7 @@ Runtime checks (see -x):
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
   --nilChecks:on|off        turn nil checks on|off
+  --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
@@ -120,6 +120,11 @@ Advanced options:
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --experimental:$1
                             enable experimental language feature
-  --profiler:on|off         Enable profiling; requires `import nimprof`, and
+  --legacy:$2
+                            enable obsolete/legacy language feature
+  --useVersion:0.19|1.0     emulate Nim version X of the Nim compiler
+  --newruntime              use an alternative runtime that uses destructors
+                            and that uses a shared heap via -d:useMalloc
+  --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html

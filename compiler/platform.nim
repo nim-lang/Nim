@@ -21,7 +21,7 @@ type
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osAix, osPalmos, osQnx,
-    osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osAndroid, osVxworks
+    osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osAndroid, osVxWorks
     osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch
 
 type

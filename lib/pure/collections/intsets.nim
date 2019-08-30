@@ -20,13 +20,13 @@
 
 
 import
-  hashes, math
+  hashes
 
 type
   BitScalar = uint
 
 const
-  InitIntSetSize = 8         # must be a power of two!
+  InitIntSetSize = 8              # must be a power of two!
   TrunkShift = 9
   BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and
                                   # divisible by 64
@@ -38,13 +38,13 @@ const
 type
   PTrunk = ref Trunk
   Trunk = object
-    next: PTrunk             # all nodes are connected with this pointer
-    key: int                 # start address at bit 0
+    next: PTrunk                                # all nodes are connected with this pointer
+    key: int                                    # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
   TrunkSeq = seq[PTrunk]
-  IntSet* = object ## An efficient set of `int` implemented as a sparse bit set.
-    elems: int # only valid for small numbers
+  IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
+    elems: int           # only valid for small numbers
     counter, max: int
     head: PTrunk
     data: TrunkSeq
@@ -141,8 +141,8 @@ iterator items*(s: IntSet): int {.inline.} =
         # taking a copy of r.bits[i] here is correct, because
         # modifying operations are not allowed during traversation
         var j = 0
-        while w != 0:         # test all remaining bits for zero
-          if (w and 1) != 0:  # the bit is set!
+        while w != 0: # test all remaining bits for zero
+          if (w and 1) != 0: # the bit is set!
             yield (r.key shl TrunkShift) or (i shl IntShift +% j)
           inc(j)
           w = w shr 1
@@ -186,7 +186,8 @@ proc contains*(s: IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[u shr IntShift] and (BitScalar(1) shl (u and IntMask))) != 0
+      result = (t.bits[u shr IntShift] and
+                (BitScalar(1) shl (u and IntMask))) != 0
     else:
       result = false
 
@@ -316,7 +317,7 @@ proc excl*(s: var IntSet, other: IntSet) =
 
   for item in other: excl(s, item)
 
-proc missingOrExcl*(s: var IntSet, key: int) : bool =
+proc missingOrExcl*(s: var IntSet, key: int): bool =
   ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
   ##
   ## The difference with regards to the `excl proc <#excl,IntSet,int>`_ is

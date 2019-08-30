@@ -10,8 +10,8 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, std / sha1, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
+  ast, astalgo, magicsys, msgs, options,
+  idents, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
   lineinfos, pathutils, tables
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
@@ -50,7 +50,6 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
     setLen(graph.modules, int(fileIdx) + 1)
   graph.modules[result.position] = result
 
-  incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
   strTableAdd(packSym.tab, result)
@@ -77,8 +76,6 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     if result == nil:
       result = newModule(graph, fileIdx)
       result.flags = result.flags + flags
-      if sfMainModule in result.flags:
-        graph.config.mainPackageId = result.owner.id
       result.id = id
       registerModule(graph, result)
     else:
@@ -133,12 +130,12 @@ proc wantMainModule*(conf: ConfigRef) =
         "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
-proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
+proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
   let systemFileIdx = fileInfoIdx(conf, conf.libpath / RelativeFile"system.nim")
-  let projectFile = if projectFileIdx == InvalidFileIDX: conf.projectMainIdx else: projectFileIdx
+  let projectFile = if projectFileIdx == InvalidFileIdx: conf.projectMainIdx else: projectFileIdx
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:
     discard graph.compileModule(projectFile, {sfMainModule, sfSystemModule})

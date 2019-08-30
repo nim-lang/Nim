@@ -260,12 +260,32 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
+  #[
+
+  We cannot naively check for symbol recursions, because otherwise
+  object types A, B whould share their fields!
+
+      import tables
+
+      type
+        Table[S, T] = object
+          x: S
+          y: T
+
+        G[T] = object
+          inodes: Table[int, T] # A
+          rnodes: Table[T, int] # B
+
+      var g: G[string]
+
+  ]#
   result = copySym(s)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
   result.typ = replaceTypeVarsT(cl, s.typ)
-  result.ast = replaceTypeVarsN(cl, s.ast)
+  if result.kind != skType:
+    result.ast = replaceTypeVarsN(cl, s.ast)
 
 proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = cl.typeMap.lookup(t)
@@ -539,7 +559,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil:
       result = lookup
-      if tfUnresolved in t.flags or cl.skipTypedesc: result = result.base
+      if result.kind != tyTypeDesc:
+        result = makeTypeDesc(cl.c, result)
+      elif tfUnresolved in t.flags or cl.skipTypedesc:
+        result = result.base
     elif t.sons[0].kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
 
@@ -595,7 +618,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       of tySequence:
-        if cl.isReturnType and cl.c.config.selectedGc == gcDestructors and
+        if cl.isReturnType and cl.c.config.selectedGC == gcDestructors and
             result.attachedOps[attachedDestructor].isNil and
             result[0].kind != tyEmpty and optNimV2 notin cl.c.config.globalOptions:
           let s = cl.c.graph.sysTypes[tySequence]
@@ -664,13 +687,37 @@ proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;
   result = replaceTypeVarsN(cl, n)
   popInfoContext(p.config)
 
+proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
+  if t != nil and t.len > 0 and t.sons[0] != nil:
+    let b = skipTypes(t.sons[0], skipPtrs)
+    recomputeFieldPositions(b, b.n, currPosition)
+  case obj.kind
+  of nkRecList:
+    for i in 0 ..< sonsLen(obj): recomputeFieldPositions(nil, obj.sons[i], currPosition)
+  of nkRecCase:
+    recomputeFieldPositions(nil, obj.sons[0], currPosition)
+    for i in 1 ..< sonsLen(obj):
+      recomputeFieldPositions(nil, lastSon(obj.sons[i]), currPosition)
+  of nkSym:
+    obj.sym.position = currPosition
+    inc currPosition
+  else: discard "cannot happen"
+
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
+  # Given `t` like Foo[T]
+  # pt: Table with type mappings: T -> int
+  # Desired result: Foo[int]
+  # proc (x: T = 0); T -> int ---->  proc (x: int = 0)
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, addr(typeMap), info, nil)
   pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
   popInfoContext(p.config)
+  let objType = result.skipTypes(abstractInst)
+  if objType.kind == tyObject:
+    var position = 0
+    recomputeFieldPositions(objType, objType.n, position)
 
 proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
                                  t: PType): PType =

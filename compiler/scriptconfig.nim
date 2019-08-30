@@ -11,9 +11,10 @@
 ## language.
 
 import
-  ast, modules, idents, passes, passaux, condsyms,
-  options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos, pathutils
+  ast, modules, idents, passes, condsyms,
+  options, sem, llstream, vm, vmdef, commands, msgs,
+  os, times, osproc, wordrecg, strtabs, modulegraphs,
+  lineinfos, pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -96,6 +97,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.existsEnv(a.getString 0))
   cbconf putEnv:
     os.putEnv(a.getString 0, a.getString 1)
+  cbconf delEnv:
+    os.delEnv(a.getString 0)
   cbconf dirExists:
     setResult(a, os.dirExists(a.getString 0))
   cbconf fileExists:

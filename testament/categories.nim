@@ -10,8 +10,9 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+# included from tester.nim
+
 import important_packages
-import sequtils
 
 const
   specialCategories = [
@@ -24,6 +25,7 @@ const
     "gc",
     "io",
     "js",
+    "ic",
     "lib",
     "longgc",
     "manyloc",
@@ -41,58 +43,52 @@ const
     "dir with space"
   ]
 
-# included from tester.nim
-# ---------------- ROD file tests ---------------------------------------------
+proc isTestFile*(file: string): bool =
+  let (_, name, ext) = splitFile(file)
+  result = ext == ".nim" and name.startsWith("t")
 
-const
-  rodfilesDir = "tests/rodfiles"
+# ---------------- IC tests ---------------------------------------------
 
-proc delNimCache(filename, options: string) =
-  for target in low(TTarget)..high(TTarget):
-    let dir = nimcacheDir(filename, options, target)
-    try:
-      removeDir(dir)
-    except OSError:
-      echo "[Warning] could not delete: ", dir
+proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
+  const
+    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    writeOnly = " --incremental:writeonly "
+    readOnly = " --incremental:readonly "
+    incrementalOn = " --incremental:on "
 
-proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: string, clearCacheFirst=false) =
-    if clearCacheFirst: delNimCache(filename, options)
-    testSpec r, makeTest(rodfilesDir / filename, options, cat)
+  template test(x: untyped) =
+    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
 
+  template editedTest(x: untyped) =
+    var test = makeTest(file, x & options, cat)
+    test.spec.targets = {getTestSpecTarget()}
+    testSpecWithNimcache(r, test, nimcache)
 
-  # test basic recompilation scheme:
-  test "hallo", true
-  test "hallo"
-  when false:
-    # test incremental type information:
-    test "hallo2"
+  const tempExt = "_temp.nim"
+  for it in walkDirRec(testsDir / "ic"):
+    if isTestFile(it) and not it.endsWith(tempExt):
+      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
+      removeDir(nimcache)
 
-  # test type converters:
-  test "aconv", true
-  test "bconv"
+      let content = readFile(it)
+      for fragment in content.split("#!EDIT!#"):
+        let file = it.replace(".nim", tempExt)
+        writeFile(file, fragment)
+        let oldPassed = r.passed
+        editedTest incrementalOn
+        if r.passed != oldPassed+1: break
 
-  # test G, A, B example from the documentation; test init sections:
-  test "deada", true
-  test "deada2"
+  for file in tooltests:
+    let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+    removeDir(nimcache)
 
-  when false:
-    # test method generation:
-    test "bmethods", true
-    test "bmethods2"
+    let oldPassed = r.passed
+    test writeOnly
 
-    # test generics:
-    test "tgeneric1", true
-    test "tgeneric2"
-
-proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped, clearCacheFirst=true) =
-    if clearCacheFirst: delNimCache(filename, options)
-    testSpec r, makeTest(rodfilesDir / filename, options, cat)
-
-  # test DLL interfacing:
-  test "gtkex1", true
-  test "gtkex2"
+    if r.passed == oldPassed+1:
+      test readOnly
+      if r.passed == oldPassed+2:
+        test readOnly & "-d:nimBackendAssumesChange "
 
 # --------------------- flags tests -------------------------------------------
 
@@ -115,12 +111,6 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
   testExec r, makeTest(filename, " " & nimcache / "tgenscript", cat)
 
 # --------------------- DLL generation tests ----------------------------------
-
-proc safeCopyFile(src, dest: string) =
-  try:
-    copyFile(src, dest)
-  except OSError:
-    echo "[Warning] could not copy: ", src, " to ", dest
 
 proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   const rpath = when defined(macosx):
@@ -153,11 +143,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
 
   if "boehm" notin options:
     # force build required - see the comments in the .nim file for more details
-    var hcr_integration = makeTest("tests/dll/nimhcr_integration.nim",
+    var hcri = makeTest("tests/dll/nimhcr_integration.nim",
                                    options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
-    hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd, hcr_integration.name,
-                                           hcr_integration.options, getTestSpecTarget())
-    testSpec r, hcr_integration
+    let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
+    hcri.args = prepareTestArgs(hcri.spec.getCmd, hcri.name,
+                                hcri.options, nimcache, getTestSpecTarget())
+    testSpec r, hcri
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
@@ -363,7 +354,8 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
   for i, test in tests:
     let filename = testsDir / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
-    doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed: " & $(i: i, testHash: testHash, refHash: refHashes[i])
+    doAssert testHash == refHashes[i], "Nim in Action test " & filename &
+        " was changed: " & $(i: i, testHash: testHash, refHash: refHashes[i])
   # Run the tests.
   for testfile in tests:
     test "tests/" & testfile & ".nim"
@@ -449,44 +441,21 @@ let
   nimbleExe = findExe("nimble")
   packageIndex = nimbleDir / "packages_official.json"
 
-proc waitForExitEx(p: Process): int =
-  var outp = outputStream(p)
-  var line = newStringOfCap(120).TaintedString
-  while true:
-    if outp.readLine(line):
-      discard
-    else:
-      result = peekExitCode(p)
-      if result != -1: break
-  close(p)
-
-proc getPackageDir(package: string): string =
-  ## TODO - Replace this with dom's version comparison magic.
-  let commandOutput = execCmdEx("nimble path $#" % package)
-  if commandOutput.exitCode != QuitSuccess:
-    return ""
-  else:
-    result = commandOutput[0].string
-
 iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
   let defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
   for n, cmd, hasDeps, url in important_packages.packages.items:
     let cmd = if cmd.len == 0: defaultCmd else: cmd
     if url.len != 0:
-      if hasDeps:
-        # use url instead of name, so we can do 'nimble install'
-        yield (url, url, cmd, hasDeps)
-      else:
-        yield (n, url, cmd, hasDeps)
+      yield (n, url, cmd, hasDeps)
     else:
       var found = false
       for package in packageList.items:
         let name = package["name"].str
         if name == n:
           found = true
-          let p_url = package["url"].str
-          yield (name, p_url, cmd, hasDeps)
+          let pUrl = package["url"].str
+          yield (name, pUrl, cmd, hasDeps)
           break
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
@@ -515,7 +484,8 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       let buildPath = packagesDir / name
       if not existsDir(buildPath):
         if hasDep:
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", name])
+          let installName = if url.len != 0: url else: name
+          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
           if nimbleStatus != QuitSuccess:
             let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
             r.addResult(test, targetC, "", message, reInstallFailed)
@@ -554,7 +524,7 @@ proc testNimblePackages(r: var TResults, cat: Category) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib"]
+const AdditionalCategories = ["debugger", "examples", "lib", "ic"]
 const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
@@ -587,16 +557,11 @@ proc isJoinableSpec(spec: TSpec): bool =
     (spec.targets == {} or spec.targets == {targetC})
 
 proc norm(s: var string) =
-  # equivalent of s/\n+/\n/g (could use a single pass over input if needed)
   while true:
     let tmp = s.replace("\n\n", "\n")
     if tmp == s: break
     s = tmp
   s = s.strip
-
-proc isTestFile*(file: string): bool =
-  let (_, name, ext) = splitFile(file)
-  result = ext == ".nim" and name.startsWith("t")
 
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
@@ -610,10 +575,10 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     let cat = dir[testsDir.len .. ^1]
     if kind == pcDir and cat notin specialCategories:
       for file in walkDirRec(testsDir / cat):
-        if not isTestFile(file): continue
-        let spec = parseSpec(file)
-        if isJoinableSpec(spec):
-          specs.add spec
+        if isTestFile(file):
+          let spec = parseSpec(file)
+          if isJoinableSpec(spec):
+            specs.add spec
 
   proc cmp(a: TSpec, b:TSpec): auto = cmp(a.file, b.file)
   sort(specs, cmp=cmp) # reproducible order
@@ -649,14 +614,13 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
               "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
-  proc onStdout(line: string) = echo line
+
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ ", cmdLine
     echo buf.string
     quit("megatest compilation failed")
 
-  # Could also use onStdout here.
   (buf, exitCode) = execCmdEx("./megatest")
   if exitCode != 0:
     echo buf.string
@@ -693,6 +657,8 @@ proc processCategory(r: var TResults, cat: Category,
     when false:
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
+  of "ic":
+    icTests(r, testsDir, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:

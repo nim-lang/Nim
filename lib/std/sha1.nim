@@ -40,11 +40,11 @@ from endians import bigEndian32, bigEndian64
 const Sha1DigestSize = 20
 
 type
-  Sha1Digest = array[0 .. Sha1DigestSize-1, uint8]
+  Sha1Digest* = array[0 .. Sha1DigestSize-1, uint8]
   SecureHash* = distinct Sha1Digest
 
 type
-  Sha1State = object
+  Sha1State* = object
     count: int
     state: array[5, uint32]
     buf:   array[64, byte]
@@ -52,7 +52,7 @@ type
 # This implementation of the SHA1 algorithm was ported from the Chromium OS one
 # with minor modifications that should not affect its functionality.
 
-proc newSha1State(): Sha1State =
+proc newSha1State*(): Sha1State =
   result.count = 0
   result.state[0] = 0x67452301'u32
   result.state[1] = 0xEFCDAB89'u32
@@ -65,87 +65,87 @@ template ror2 (val: uint32): uint32 = (val shr  2) or (val shl 30)
 template ror31(val: uint32): uint32 = (val shr 31) or (val shl  1)
 
 proc transform(ctx: var Sha1State) =
-  var W: array[80, uint32]
-  var A, B, C, D, E: uint32
+  var w: array[80, uint32]
+  var a, b, c, d, e: uint32
   var t = 0
 
-  A = ctx.state[0]
-  B = ctx.state[1]
-  C = ctx.state[2]
-  D = ctx.state[3]
-  E = ctx.state[4]
+  a = ctx.state[0]
+  b = ctx.state[1]
+  c = ctx.state[2]
+  d = ctx.state[3]
+  e = ctx.state[4]
 
-  template SHA_F1(A, B, C, D, E, t: untyped) =
-    bigEndian32(addr W[t], addr ctx.buf[t * 4])
-    E += ror27(A) + W[t] + (D xor (B and (C xor D))) + 0x5A827999'u32
-    B = ror2(B)
+  template shaF1(a, b, c, d, e, t: untyped) =
+    bigEndian32(addr w[t], addr ctx.buf[t * 4])
+    e += ror27(a) + w[t] + (d xor (b and (c xor d))) + 0x5A827999'u32
+    b = ror2(b)
 
   while t < 15:
-    SHA_F1(A, B, C, D, E, t + 0)
-    SHA_F1(E, A, B, C, D, t + 1)
-    SHA_F1(D, E, A, B, C, t + 2)
-    SHA_F1(C, D, E, A, B, t + 3)
-    SHA_F1(B, C, D, E, A, t + 4)
+    shaF1(a, b, c, d, e, t + 0)
+    shaF1(e, a, b, c, d, t + 1)
+    shaF1(d, e, a, b, c, t + 2)
+    shaF1(c, d, e, a, b, t + 3)
+    shaF1(b, c, d, e, a, t + 4)
     t += 5
-  SHA_F1(A, B, C, D, E, t + 0) # 16th one, t == 15
+  shaF1(a, b, c, d, e, t + 0) # 16th one, t == 15
 
-  template SHA_F11(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + (D xor (B and (C xor D))) + 0x5A827999'u32
-    B = ror2(B)
+  template shaF11(a, b, c, d, e, t: untyped) =
+    w[t] = ror31(w[t-3] xor w[t-8] xor w[t-14] xor w[t-16])
+    e += ror27(a) + w[t] + (d xor (b and (c xor d))) + 0x5A827999'u32
+    b = ror2(b)
 
-  SHA_F11(E, A, B, C, D, t + 1)
-  SHA_F11(D, E, A, B, C, t + 2)
-  SHA_F11(C, D, E, A, B, t + 3)
-  SHA_F11(B, C, D, E, A, t + 4)
+  shaF11(e, a, b, c, d, t + 1)
+  shaF11(d, e, a, b, c, t + 2)
+  shaF11(c, d, e, a, b, t + 3)
+  shaF11(b, c, d, e, a, t + 4)
 
-  template SHA_F2(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + (B xor C xor D) + 0x6ED9EBA1'u32
-    B = ror2(B)
+  template shaF2(a, b, c, d, e, t: untyped) =
+    w[t] = ror31(w[t-3] xor w[t-8] xor w[t-14] xor w[t-16])
+    e += ror27(a) + w[t] + (b xor c xor d) + 0x6ED9EBA1'u32
+    b = ror2(b)
 
   t = 20
   while t < 40:
-    SHA_F2(A, B, C, D, E, t + 0)
-    SHA_F2(E, A, B, C, D, t + 1)
-    SHA_F2(D, E, A, B, C, t + 2)
-    SHA_F2(C, D, E, A, B, t + 3)
-    SHA_F2(B, C, D, E, A, t + 4)
+    shaF2(a, b, c, d, e, t + 0)
+    shaF2(e, a, b, c, d, t + 1)
+    shaF2(d, e, a, b, c, t + 2)
+    shaF2(c, d, e, a, b, t + 3)
+    shaF2(b, c, d, e, a, t + 4)
     t += 5
 
-  template SHA_F3(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + ((B and C) or (D and (B or C))) + 0x8F1BBCDC'u32
-    B = ror2(B)
+  template shaF3(a, b, c, d, e, t: untyped) =
+    w[t] = ror31(w[t-3] xor w[t-8] xor w[t-14] xor w[t-16])
+    e += ror27(a) + w[t] + ((b and c) or (d and (b or c))) + 0x8F1BBCDC'u32
+    b = ror2(b)
 
   while t < 60:
-    SHA_F3(A, B, C, D, E, t + 0)
-    SHA_F3(E, A, B, C, D, t + 1)
-    SHA_F3(D, E, A, B, C, t + 2)
-    SHA_F3(C, D, E, A, B, t + 3)
-    SHA_F3(B, C, D, E, A, t + 4)
+    shaF3(a, b, c, d, e, t + 0)
+    shaF3(e, a, b, c, d, t + 1)
+    shaF3(d, e, a, b, c, t + 2)
+    shaF3(c, d, e, a, b, t + 3)
+    shaF3(b, c, d, e, a, t + 4)
     t += 5
 
-  template SHA_F4(A, B, C, D, E, t: untyped) =
-    W[t] = ror31(W[t-3] xor W[t-8] xor W[t-14] xor W[t-16])
-    E += ror27(A) + W[t] + (B xor C xor D) + 0xCA62C1D6'u32
-    B = ror2(B)
+  template shaF4(a, b, c, d, e, t: untyped) =
+    w[t] = ror31(w[t-3] xor w[t-8] xor w[t-14] xor w[t-16])
+    e += ror27(a) + w[t] + (b xor c xor d) + 0xCA62C1D6'u32
+    b = ror2(b)
 
   while t < 80:
-    SHA_F4(A, B, C, D, E, t + 0)
-    SHA_F4(E, A, B, C, D, t + 1)
-    SHA_F4(D, E, A, B, C, t + 2)
-    SHA_F4(C, D, E, A, B, t + 3)
-    SHA_F4(B, C, D, E, A, t + 4)
+    shaF4(a, b, c, d, e, t + 0)
+    shaF4(e, a, b, c, d, t + 1)
+    shaF4(d, e, a, b, c, t + 2)
+    shaF4(c, d, e, a, b, t + 3)
+    shaF4(b, c, d, e, a, t + 4)
     t += 5
 
-  ctx.state[0] += A
-  ctx.state[1] += B
-  ctx.state[2] += C
-  ctx.state[3] += D
-  ctx.state[4] += E
+  ctx.state[0] += a
+  ctx.state[1] += b
+  ctx.state[2] += c
+  ctx.state[3] += d
+  ctx.state[4] += e
 
-proc update(ctx: var Sha1State, data: openArray[char]) =
+proc update*(ctx: var Sha1State, data: openArray[char]) =
   var i = ctx.count mod 64
   var j = 0
   var len = data.len
@@ -176,9 +176,9 @@ proc update(ctx: var Sha1State, data: openArray[char]) =
       i = 0
   ctx.count += data.len
 
-proc finalize(ctx: var Sha1State): Sha1Digest =
+proc finalize*(ctx: var Sha1State): Sha1Digest =
   var cnt = uint64(ctx.count * 8)
-  # A 1 bit
+  # a 1 bit
   update(ctx, "\x80")
   # Add padding until we reach a complexive size of 64 - 8 bytes
   while (ctx.count mod 64) != (64 - 8):

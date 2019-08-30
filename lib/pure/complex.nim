@@ -7,10 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-
-
-
-
 ## This module implements complex numbers.
 ## Complex numbers are currently implemented as generic on a 64-bit or 32-bit float.
 
@@ -42,8 +38,8 @@ proc complex64*(re: float64; im: float64 = 0.0): Complex[float64] =
 
 template im*(arg: typedesc[float32]): Complex32 = complex[float32](0, 1)
 template im*(arg: typedesc[float64]): Complex64 = complex[float64](0, 1)
-template im*(arg : float32): Complex32 = complex[float32](0, arg)
-template im*(arg : float64): Complex64 = complex[float64](0, arg)
+template im*(arg: float32): Complex32 = complex[float32](0, arg)
+template im*(arg: float64): Complex64 = complex[float64](0, arg)
 
 proc abs*[T](z: Complex[T]): T =
   ## Return the distance from (0,0) to ``z``.
@@ -376,7 +372,7 @@ when isMainModule:
   doAssert((a+b) == z)
   doAssert((a+b) =~ 0.0)
   doAssert((a/b) == m1)
-  doAssert((1.0/a) == complex(0.2, -0.4))
+  doAssert((1.0/a) =~ complex(0.2, -0.4))
   doAssert((a*b) == complex(3.0, -4.0))
   doAssert(10.0*a == tt)
   doAssert(a*10.0 == tt)

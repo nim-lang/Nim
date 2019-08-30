@@ -11,8 +11,7 @@
 ## macro support.
 
 import
-  ast, astalgo, types, semdata, sigmatch, msgs, idents, aliases, parampatterns,
-  trees
+  ast, types, semdata, sigmatch, idents, aliases, parampatterns, trees
 
 type
   TPatternContext = object
@@ -296,7 +295,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
         # constraint not fulfilled:
         if not ok: return nil
 
-  markUsed(c.config, n.info, s, c.graph.usageSym)
+  markUsed(c, n.info, s)
   if ctx.subMatch:
     assert m.len == 3
     m.sons[1] = result

@@ -100,7 +100,7 @@ proc fillBaseLexer(L: var BaseLexer, pos: int): int =
     result = 0
 
 proc handleCR*(L: var BaseLexer, pos: int): int =
-  ## Call this if you scanned over '\c' in the buffer; it returns the the
+  ## Call this if you scanned over '\c' in the buffer; it returns the
   ## position to continue the scanning from. `pos` must be the position
   ## of the '\c'.
   assert(L.buf[pos] == '\c')
@@ -111,7 +111,7 @@ proc handleCR*(L: var BaseLexer, pos: int): int =
   L.lineStart = result
 
 proc handleLF*(L: var BaseLexer, pos: int): int =
-  ## Call this if you scanned over '\L' in the buffer; it returns the the
+  ## Call this if you scanned over '\L' in the buffer; it returns the
   ## position to continue the scanning from. `pos` must be the position
   ## of the '\L'.
   assert(L.buf[pos] == '\L')
@@ -120,7 +120,8 @@ proc handleLF*(L: var BaseLexer, pos: int): int =
   L.lineStart = result
 
 proc handleRefillChar*(L: var BaseLexer, pos: int): int =
-  ## To be documented.
+  ## Call this if a terminator character other than a new line is scanned
+  ## at `pos`; it returns the position to continue the scanning from.
   assert(L.buf[pos] in L.refillChars)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
 

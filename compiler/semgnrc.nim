@@ -282,7 +282,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     # in threads.nim: the subtle preprocessing here binds 'globalsSlot' which
     # is not exported and yet the generic 'threadProcWrapper' works correctly.
     let flags = if mixinContext: flags+{withinMixin} else: flags
-    for i in first ..< sonsLen(result):
+    for i in first ..< safeLen(result):
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, ctx)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
@@ -497,13 +497,13 @@ proc semGenericStmt(c: PContext, n: PNode,
 
 proc semGenericStmt(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
-  ctx.toMixin = initIntset()
+  ctx.toMixin = initIntSet()
   result = semGenericStmt(c, n, {}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 
 proc semConceptBody(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
-  ctx.toMixin = initIntset()
+  ctx.toMixin = initIntSet()
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 

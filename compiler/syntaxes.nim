@@ -10,7 +10,7 @@
 ## Implements the dispatcher for the different parsers.
 
 import
-  strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser,
+  strutils, llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
 type
@@ -72,7 +72,7 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
       i = 0
       inc linenumber
     if i+1 < line.len and line[i] == '#' and line[i+1] == '?':
-      when defined(nimpretty2):
+      when defined(nimpretty):
         # XXX this is a bit hacky, but oh well...
         quit "can't nimpretty a source code filter"
       else:

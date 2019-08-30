@@ -10,7 +10,7 @@
 # This module handles the reading of the config file.
 
 import
-  llstream, nversion, commands, os, strutils, msgs, platform, condsyms, lexer,
+  llstream, commands, os, strutils, msgs, lexer,
   options, idents, wordrecg, strtabs, lineinfos, pathutils
 
 # ---------------- configuration file parser -----------------------------
@@ -123,31 +123,31 @@ proc parseDirective(L: var TLexer, tok: var TToken; config: ConfigRef; condStack
   of wEnd: doEnd(L, tok, condStack)
   of wWrite:
     ppGetTok(L, tok)
-    msgs.msgWriteln(config, strtabs.`%`(tokToStr(tok), config.configVars,
+    msgs.msgWriteln(config, strtabs.`%`($tok, config.configVars,
                                 {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
     case tok.ident.s.normalize
     of "putenv":
       ppGetTok(L, tok)
-      var key = tokToStr(tok)
+      var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, tokToStr(tok))
+      os.putEnv(key, $tok)
       ppGetTok(L, tok)
     of "prependenv":
       ppGetTok(L, tok)
-      var key = tokToStr(tok)
+      var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, tokToStr(tok) & os.getEnv(key))
+      os.putEnv(key, $tok & os.getEnv(key))
       ppGetTok(L, tok)
     of "appendenv":
       ppGetTok(L, tok)
-      var key = tokToStr(tok)
+      var key = $tok
       ppGetTok(L, tok)
-      os.putEnv(key, os.getEnv(key) & tokToStr(tok))
+      os.putEnv(key, os.getEnv(key) & $tok)
       ppGetTok(L, tok)
     else:
-      lexMessage(L, errGenerated, "invalid directive: '$1'" % tokToStr(tok))
+      lexMessage(L, errGenerated, "invalid directive: '$1'" % $tok)
 
 proc confTok(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var seq[bool]) =
   ppGetTok(L, tok)
@@ -156,7 +156,7 @@ proc confTok(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var s
 
 proc checkSymbol(L: TLexer, tok: TToken) =
   if tok.tokType notin {tkSymbol..tkInt64Lit, tkStrLit..tkTripleStrLit}:
-    lexMessage(L, errGenerated, "expected identifier, but got: " & tokToStr(tok))
+    lexMessage(L, errGenerated, "expected identifier, but got: " & $tok)
 
 proc parseAssignment(L: var TLexer, tok: var TToken;
                      config: ConfigRef; condStack: var seq[bool]) =
@@ -164,21 +164,21 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     confTok(L, tok, config, condStack)           # skip unnecessary prefix
   var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
-  var s = tokToStr(tok)
+  var s = $tok
   confTok(L, tok, config, condStack)             # skip symbol
   var val = ""
   while tok.tokType == tkDot:
     add(s, '.')
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
-    add(s, tokToStr(tok))
+    add(s, $tok)
     confTok(L, tok, config, condStack)
   if tok.tokType == tkBracketLe:
     # BUGFIX: val, not s!
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
     add(val, '[')
-    add(val, tokToStr(tok))
+    add(val, $tok)
     confTok(L, tok, config, condStack)
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
     else: lexMessage(L, errGenerated, "expected closing ']'")
@@ -188,12 +188,12 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     if len(val) > 0: add(val, ':')
     confTok(L, tok, config, condStack)           # skip ':' or '=' or '%'
     checkSymbol(L, tok)
-    add(val, tokToStr(tok))
+    add(val, $tok)
     confTok(L, tok, config, condStack)           # skip symbol
     while tok.ident != nil and tok.ident.s == "&":
       confTok(L, tok, config, condStack)
       checkSymbol(L, tok)
-      add(val, tokToStr(tok))
+      add(val, $tok)
       confTok(L, tok, config, condStack)
   if percent:
     processSwitch(s, strtabs.`%`(val, config.configVars,

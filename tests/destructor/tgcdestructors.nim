@@ -6,7 +6,11 @@ ha
 @["arg", "asdfklasdfkl", "asdkfj", "dfasj", "klfjl"]
 @[1, 2, 3]
 @["red", "yellow", "orange", "rtrt1", "pink"]
-30 30'''
+a: @[4, 2, 3]
+0
+30
+true
+41 41'''
 """
 
 import allocators
@@ -168,6 +172,35 @@ proc testWarm =
   echo w
 
 testWarm()
+
+proc mutConstSeq() =
+  # bug #11524
+  var a = @[1,2,3]
+  a[0] = 4
+  echo "a: ", a
+
+mutConstSeq()
+
+proc mainSeqOfCap =
+  # bug #11098
+  var s = newSeqOfCap[int](10)
+  echo s.len
+
+  var s2 = newSeqUninitialized[int](30)
+  echo s2.len
+
+mainSeqOfCap()
+
+# bug #11614
+
+let ga = "foo"
+
+proc takeAinArray =
+  let b = [ga]
+
+takeAinArray()
+echo ga == "foo"
+
 
 #echo s
 let (a, d) = allocCounters()
