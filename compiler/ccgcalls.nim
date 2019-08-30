@@ -100,23 +100,23 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     if optBoundsCheck in p.options:
       genBoundsCheck(p, a, b, c)
     let ty = skipTypes(a.t, abstractVar+{tyPtr})
-    let dest = getTypeDesc(p.module, n.typ)
+    let dest = getTypeDesc(p.module, n.typ.sons[0])
     case ty.kind
     of tyArray:
       let first = toInt64(firstOrd(p.config, ty))
       if first == 0:
-        result = "($4)(($1)+($2)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+        result = "($4*)(($1)+($2)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
       else:
-        result = "($5)($1)+(($2)-($4)), ($3)-($2)+1" %
+        result = "($5*)($1)+(($2)-($4)), ($3)-($2)+1" %
           [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first), dest]
     of tyOpenArray, tyVarargs, tyUncheckedArray, tyCString:
-      result = "($4)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+      result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
           not compileToCpp(p.module):
-        result = "($5)(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
+        result = "($5*)(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
       else:
-        result = "($5)$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
+        result = "($5*)$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
     else:
       internalError(p.config, "openArrayLoc: " & typeToString(a.t))
   else:
