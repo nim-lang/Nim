@@ -717,3 +717,15 @@ proc processCategory(r: var TResults, cat: Category,
       inc testsRun
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
+
+proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
+  var testsRun = 0
+  for name in walkPattern(pattern):
+    if simulate:
+      echo "Detected test: ", name
+    else:
+      var test = makeTest(name, options, Category"pattern")
+      testSpec r, test
+    inc testsRun
+  if testsRun == 0:
+    echo "no tests were found for pattern: ", pattern

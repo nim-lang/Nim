@@ -73,6 +73,9 @@ type
 - The Nim compiler now warns about unused module imports. You can use a
   top level ``{.used.}`` pragma in the module that you want to be importable
   without producing this warning.
+- The "testament" testing tool's name was changed
+  from `tester` to `testament` and is generally available as a tool to run Nim
+  tests automatically.
 
 
 ### Compiler changes
