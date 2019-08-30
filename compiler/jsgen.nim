@@ -658,11 +658,7 @@ proc genLineDir(p: PProc, n: PNode) =
   if optLineDir in p.options:
     lineF(p, "// line $2 \"$1\"$n",
          [rope(toFilename(p.config, n.info)), rope(line)])
-  if {optStackTrace, optEndb} * p.options == {optStackTrace, optEndb} and
-      ((p.prc == nil) or sfPure notin p.prc.flags):
-    useMagic(p, "endb")
-    lineF(p, "endb($1);$n", [rope(line)])
-  elif hasFrameInfo(p):
+  if hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
 
 proc genWhileStmt(p: PProc, n: PNode) =

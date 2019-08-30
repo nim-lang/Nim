@@ -3639,10 +3639,6 @@ when not defined(JS): #and not defined(nimscript):
         if result == 0:
           result = x.len - y.len
 
-  when not defined(nimscript) and hostOS != "standalone":
-    when defined(endb):
-      proc endbStep()
-
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## Converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
@@ -3816,9 +3812,6 @@ when not defined(JS): #and not defined(nimscript):
       currException = exc
 
   {.push stack_trace: off, profiler:off.}
-  when defined(endb) and not defined(nimscript):
-    include "system/debugger"
-
   when (defined(profiler) or defined(memProfiler)) and not defined(nimscript):
     include "system/profiler"
   {.pop.} # stacktrace
