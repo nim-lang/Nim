@@ -1622,7 +1622,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         else: break
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
         obj = canonType(c, obj)
-        if obj.destructor.isNil:
+        if obj.attachedOps[attachedDestructor] == s:
+          discard "forward declared destructor"
+        elif obj.destructor.isNil and tfCheckedForDestructor notin obj.flags:
           obj.attachedOps[attachedDestructor] = s
         else:
           prevDestructor(c, obj.destructor, obj, n.info)
@@ -1687,7 +1689,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let k = if name == "=": attachedAsgn else: attachedSink
-        if obj.attachedOps[k].isNil:
+        if obj.attachedOps[k] == s:
+          discard "forward declared op"
+        elif obj.attachedOps[k].isNil and tfCheckedForDestructor notin obj.flags:
           obj.attachedOps[k] = s
         else:
           prevDestructor(c, obj.attachedOps[k], obj, n.info)
