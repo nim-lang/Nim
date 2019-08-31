@@ -34,6 +34,8 @@ type
 
 ### Breaking changes in the compiler
 
+- A bug allowing `int` to be implicitly converted to range types of smaller size (e.g `range[0'i8..10'i8]`) has been fixed.
+
 
 ## Library additions
 
