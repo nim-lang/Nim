@@ -423,7 +423,7 @@ proc rangeToStr(n: PNode): string =
 
 const
   typeToStr: array[TTypeKind, string] = ["None", "bool", "char", "empty",
-    "Alias", "nil", "untyped", "typed", "typeDesc",
+    "Alias", "typeof(nil)", "untyped", "typed", "typeDesc",
     "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
@@ -1310,7 +1310,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
      tyNone, tyForward, tyFromExpr:
     result = t
   of tyNil:
-    if kind != skConst and kind != skParam: result = t
+    if kind != skConst and kind != skParam and kind != skResult: result = t
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString, tyPointer:
     result = nil
   of tyOrdinal:
