@@ -21,8 +21,8 @@ proc newDeref*(n: PNode): PNode {.inline.} =
 
 proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
   if tup.kind == nkHiddenAddr:
-    result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}))
-    result.addSon(newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar}).sons[i]))
+    result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar, tyLent}))
+    result.addSon(newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar, tyLent}).sons[i]))
     addSon(result[0], tup[0])
     var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
     lit.intVal = i

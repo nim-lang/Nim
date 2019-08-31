@@ -1781,21 +1781,21 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst, tyAlias, tySink})
   case t.kind
   of tyVar, tyLent:
-    if t.kind == tyVar: t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+    t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n.sons[0] = n.sons[0].sons[1]
     n.sons[0] = takeImplicitAddr(c, n.sons[0], t.kind == tyLent)
   of tyTuple:
     for i in 0..<t.sonsLen:
-      var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
+      let e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
-        if e.kind == tyVar: e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+        e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         if n.sons[0].kind in {nkPar, nkTupleConstr}:
           n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i], e.kind == tyLent)
         elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
              n.sons[0].sons[1].kind in {nkPar, nkTupleConstr}:
           var a = n.sons[0].sons[1]
-          a.sons[i] = takeImplicitAddr(c, a.sons[i], false)
+          a.sons[i] = takeImplicitAddr(c, a.sons[i], e.kind == tyLent)
         else:
           localError(c.config, n.sons[0].info, errXExpected, "tuple constructor")
   else: discard

@@ -85,7 +85,7 @@ iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
     yield (i, a[i])
     inc(i)
 
-iterator mpairs*[T](a: var openArray[T]): tuple[key:int, val:var T]{.inline.} =
+iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} =
   ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = 0
@@ -102,7 +102,7 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
       if i >= high(IX): break
       inc(i)
 
-iterator mpairs*[IX, T](a:var array[IX, T]):tuple[key:IX,val:var T] {.inline.} =
+iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
   ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = low(IX)
@@ -178,7 +178,6 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
     while a[i] != '\0':
       yield (i, a[i])
       inc(i)
-
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## Iterates over each item of `a`.
