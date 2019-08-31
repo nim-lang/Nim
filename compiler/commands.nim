@@ -266,7 +266,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "threadanalysis": result = contains(conf.globalOptions, optThreadAnalysis)
   of "stacktrace": result = contains(conf.options, optStackTrace)
   of "linetrace": result = contains(conf.options, optLineTrace)
-  of "debugger": result = contains(conf.options, optEndb)
+  of "debugger": result = contains(conf.globalOptions, optCDebug)
   of "profiler": result = contains(conf.options, optProfiler)
   of "memtracker": result = contains(conf.options, optMemTracker)
   of "checks", "x": result = conf.options * ChecksOptions == ChecksOptions
@@ -473,24 +473,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":
     case arg.normalize
-    of "on", "endb":
-      conf.options.incl optEndb
-      defineSymbol(conf.symbols, "endb")
-    of "off":
-      conf.options.excl optEndb
-      undefSymbol(conf.symbols, "endb")
-    of "native", "gdb":
-      incl(conf.globalOptions, optCDebug)
-      conf.options = conf.options + {optLineDir} - {optEndb}
+    of "on", "native", "gdb":
+      conf.globalOptions.incl optCDebug
+      conf.options.incl optLineDir
       #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
-      undefSymbol(conf.symbols, "endb")
+    of "off":
+      conf.globalOptions.excl optCDebug
     else:
-      localError(conf, info, "expected endb|gdb but found " & arg)
+      localError(conf, info, "expected native|gdb|on|off but found " & arg)
   of "g": # alias for --debugger:native
-    incl(conf.globalOptions, optCDebug)
-    conf.options = conf.options + {optLineDir} - {optEndb}
+    conf.globalOptions.incl optCDebug
+    conf.options.incl optLineDir
     #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
-    undefSymbol(conf.symbols, "endb")
   of "profiler":
     processOnOffSwitch(conf, {optProfiler}, arg, pass, info)
     if optProfiler in conf.options: defineSymbol(conf.symbols, "profiler")

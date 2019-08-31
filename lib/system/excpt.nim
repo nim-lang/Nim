@@ -38,10 +38,7 @@ proc showErrorMessage(data: cstring) {.gcsafe.} =
       writeToStdErr(data)
 
 proc quitOrDebug() {.inline.} =
-  when defined(endb):
-    endbStep() # call the debugger
-  else:
-    quit(1)
+  quit(1)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
@@ -469,10 +466,6 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl.} =
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
-when defined(endb):
-  var
-    dbgAborting: bool # whether the debugger wants to abort
-
 when defined(cpp) and appType != "lib" and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
@@ -515,8 +508,6 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       elif s == SIGSEGV:
         action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
       elif s == SIGABRT:
-        when defined(endb):
-          if dbgAborting: return # the debugger wants to abort
         action("SIGABRT: Abnormal termination.\n")
       elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
       elif s == SIGILL: action("SIGILL: Illegal operation.\n")
@@ -546,7 +537,6 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
         msg = y
       processSignal(sign, asgn)
       showErrorMessage(msg)
-    when defined(endb): dbgAborting = true
     quit(1) # always quit when SIGABRT
 
   proc registerSignalHandler() =

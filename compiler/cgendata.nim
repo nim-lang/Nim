@@ -117,8 +117,6 @@ type
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
-    breakPointId*: int
-    breakpoints*: Rope # later the breakpoints are inserted into the main proc
     typeInfoMarker*: TypeCacheWithOwner
     config*: ConfigRef
     graph*: ModuleGraph

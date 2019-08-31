@@ -1161,36 +1161,10 @@ proc genEmit(p: BProc, t: PNode) =
     genLineDir(p, t)
     line(p, cpsStmts, s)
 
-proc genBreakPoint(p: BProc, t: PNode) =
-  var name: string
-  if optEndb in p.options:
-    if t.kind == nkExprColonExpr:
-      assert(t.sons[1].kind in {nkStrLit..nkTripleStrLit})
-      name = normalize(t.sons[1].strVal)
-    else:
-      inc(p.module.g.breakPointId)
-      name = "bp" & $p.module.g.breakPointId
-    genLineDir(p, t)          # BUGFIX
-    appcg(p.module, p.module.g.breakpoints,
-         "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
-        toLinenumber(t.info), makeCString(toFilename(p.config, t.info)),
-        makeCString(name)])
-
-proc genWatchpoint(p: BProc, n: PNode) =
-  if optEndb notin p.options: return
-  var a: TLoc
-  initLocExpr(p, n.sons[1], a)
-  let typ = skipTypes(n.sons[1].typ, abstractVarRange)
-  lineCg(p, cpsStmts, "#dbgRegisterWatchpoint($1, (NCSTRING)$2, $3);$n",
-        [addrLoc(p.config, a), makeCString(renderTree(n.sons[1])),
-        genTypeInfo(p.module, typ, n.info)])
-
 proc genPragma(p: BProc, n: PNode) =
   for it in n.sons:
     case whichPragma(it)
     of wEmit: genEmit(p, it)
-    of wBreakpoint: genBreakPoint(p, it)
-    of wWatchPoint: genWatchpoint(p, it)
     of wInjectStmt:
       var p = newProc(nil, p.module)
       p.options = p.options - {optLineTrace, optStackTrace}
