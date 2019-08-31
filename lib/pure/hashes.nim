@@ -238,10 +238,16 @@ proc hash*(x: string): Hash =
   runnableExamples:
     doAssert hash("abracadabra") != hash("AbracadabrA")
 
-  when nimvm:
-    result = hashVmImpl(x, 0, high(x))
+  when not defined(nimToOpenArrayCString):
+    result = 0
+    for c in x:
+      result = result !& ord(c)
+    result = !$result
   else:
-    result = murmurHash(toOpenArrayByte(x, 0, high(x)))
+    when nimvm:
+      result = hashVmImpl(x, 0, high(x))
+    else:
+      result = murmurHash(toOpenArrayByte(x, 0, high(x)))
 
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
@@ -250,11 +256,19 @@ proc hash*(x: cstring): Hash =
     doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
     doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
-  when not defined(JS) and defined(nimToOpenArrayCString):
-    murmurHash(toOpenArrayByte(x, 0, x.high))
+  when not defined(nimToOpenArrayCString):
+    result = 0
+    var i = 0
+    while x[i] != '\0':
+      result = result !& ord(x[i])
+      inc i
+    result = !$result
   else:
-    let xx = $x
-    murmurHash(toOpenArrayByte(xx, 0, high(xx)))
+    when not defined(JS) and defined(nimToOpenArrayCString):
+      murmurHash(toOpenArrayByte(x, 0, x.high))
+    else:
+      let xx = $x
+      murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
@@ -265,8 +279,13 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
 
-  murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
-
+  when not defined(nimToOpenArrayCString):
+    result = 0
+    for i in sPos..ePos:
+      result = result !& ord(sBuf[i])
+    result = !$result
+  else:
+    murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
 
 proc hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
@@ -390,12 +409,12 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
 
   when A is byte:
     when nimvm:
-      result = hashVmImplByte(aBuf, 0, aBuf.high)
+      result = hashVmImplByte(aBuf, sPos, ePos)
     else:
       result = murmurHash(toOpenArray(aBuf, sPos, ePos))
   elif A is char:
     when nimvm:
-      result = hashVmImplChar(aBuf, 0, aBuf.high)
+      result = hashVmImplChar(aBuf, sPos, ePos)
     else:
       result = murmurHash(toOpenArrayByte(aBuf, sPos, ePos))
   else:

@@ -48,7 +48,7 @@ type
 
 - Added `os.delEnv` and `nimscript.delEnv`. (#11466)
 
-- Enable Oid usage in hashtables. (#11472)
+- Enabled Oid usage in hashtables. (#11472)
 
 - Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
 
