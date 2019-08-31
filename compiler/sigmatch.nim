@@ -414,9 +414,10 @@ proc isConvertibleToRange(f, a: PType): bool =
     of tyUInt16: result = a.kind in {tyUInt8, tyUInt16, tyUInt}
     of tyUInt32: result = a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
     else: result = false
-  elif f.kind in {tyFloat..tyFloat128} and
-       a.kind in {tyFloat..tyFloat128}:
-    result = true
+  elif f.kind in {tyFloat..tyFloat128}:
+    # `isIntLit` is correct and should be used above as well, see PR:
+    # https://github.com/nim-lang/Nim/pull/11197
+    result = isIntLit(a) or a.kind in {tyFloat..tyFloat128}
 
 proc handleFloatRange(f, a: PType): TTypeRelation =
   if a.kind == f.kind:
@@ -873,7 +874,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     of mUnaryMinusI:
       return inferStaticParam(c, lhs[1], -rhs)
 
-    of mUnaryPlusI, mToInt, mToBiggestInt:
+    of mUnaryPlusI:
       return inferStaticParam(c, lhs[1], rhs)
 
     else: discard

@@ -19,6 +19,18 @@
 
 ### Breaking changes in the standard library
 
+- We removed `unicode.Rune16` without any deprecation period as the name
+  was wrong (see the [RFC](https://github.com/nim-lang/RFCs/issues/151) for details)
+  and we didn't find any usages of it in the wild. If you still need it, add this
+  piece of code to your project:
+
+```nim
+
+type
+  Rune16* = distinct int16
+
+```
+
 
 ### Breaking changes in the compiler
 
@@ -61,6 +73,9 @@
 - The Nim compiler now warns about unused module imports. You can use a
   top level ``{.used.}`` pragma in the module that you want to be importable
   without producing this warning.
+- The "testament" testing tool's name was changed
+  from `tester` to `testament` and is generally available as a tool to run Nim
+  tests automatically.
 
 
 ### Compiler changes

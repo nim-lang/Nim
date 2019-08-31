@@ -77,14 +77,12 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       discard safeSemExpr(c, n)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
-  result = arg
-  let x = result.skipConv
+  let x = arg.skipConv
   if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
     changeType(c, x, formal, check=true)
-  else:
-    result = skipHiddenSubConv(result)
-    #result.typ = takeType(formal, arg.typ)
-    #echo arg.info, " picked ", result.typ.typeToString
+  result = arg
+  result = skipHiddenSubConv(result)
+
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
@@ -405,7 +403,13 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   if s.typ.sons[0] == nil:
     result = semStmt(c, result, flags)
   else:
-    case s.typ.sons[0].kind
+    var retType = s.typ.sons[0]
+    if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
+        retType.len == 1:
+      # bug #11941: template fails(T: type X, v: auto): T
+      # does not mean we expect a tyTypeDesc.
+      retType = retType[0]
+    case retType.kind
     of tyUntyped:
       # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags)
@@ -423,7 +427,6 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         result.typ = makeTypeDesc(c, typ)
       #result = symNodeFromType(c, typ, n.info)
     else:
-      var retType = s.typ.sons[0]
       if s.ast[genericParamsPos] != nil and retType.isMetaType:
         # The return type may depend on the Macro arguments
         # e.g. template foo(T: typedesc): seq[T]
@@ -444,6 +447,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
 
 const
   errMissingGenericParamsForTemplate = "'$1' has unspecified generic parameters"
+  errFloatToString = "cannot convert '$1' to '$2'"
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =

@@ -469,7 +469,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     add(params, param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
-    if arr.kind in {tyVar, tyLent}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
@@ -477,7 +477,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       # need to pass hidden parameter:
       addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
-      arr = arr.sons[0]
+      arr = arr.sons[0].skipTypes({tySink})
   if t.sons[0] != nil and isInvalidReturnType(m.config, t.sons[0]):
     var arr = t.sons[0]
     if params != nil: add(params, ", ")

@@ -607,14 +607,9 @@ proc aliases(obj, field: PNode): bool =
     if sameTrees(obj, n): return true
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenDeref, nkDerefExpr:
+       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr, nkBracketExpr,
+       nkHiddenDeref, nkDerefExpr:
       n = n[0]
-    of nkBracketExpr:
-      let x = n[0]
-      if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:
-        n = x
-      else:
-        break
     else:
       break
   return false
@@ -652,7 +647,7 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   while true:
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv:
+       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr, nkBracketExpr:
       n = n[0]
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
@@ -660,12 +655,6 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       n = n[0]
       return n.kind == nkSym and n.sym.owner == owner and (isSinkParam(n.sym) or
           n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
-    of nkBracketExpr:
-      let x = n[0]
-      if x.typ != nil and x.typ.skipTypes(abstractInst).kind == tyTuple:
-        n = x
-      else:
-        break
     else:
       break
   # XXX Allow closure deref operations here if we know

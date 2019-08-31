@@ -10,6 +10,8 @@
 # this module does the semantic checking of type declarations
 # included from sem.nim
 
+import math
+
 const
   errStringOrIdentNodeExpected = "string or ident node expected"
   errStringLiteralExpected = "string literal expected"
@@ -235,6 +237,10 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
       result.flags.incl tfUnresolved
     else:
       result.n.addSon semConstExpr(c, range[i])
+
+  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[0].floatVal) == fcNan) or
+      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[1].floatVal) == fcNan):
+    localError(c.config, n.info, "NaN is not a valid start or end for a range")
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(c.config, n.info, "range is empty")
@@ -1793,7 +1799,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
   else:
-    localError(c.config, n.info, errTypeExpected)
+    localError(c.config, n.info, "type expected, but got: " & renderTree(n))
     result = newOrPrevType(tyError, prev, c)
   n.typ = result
   dec c.inTypeContext
@@ -1813,13 +1819,8 @@ proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
 
   # FIXME: proper support for clongdouble should be added.
   # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
-  if conf.target.targetCPU == cpuI386 and size == 8:
-    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
-    if conf.target.targetOS != osWindows:
-      if kind in {tyFloat64, tyFloat, tyInt, tyUInt, tyInt64, tyUInt64}:
-        # on i386 for all known POSIX systems, 64bits ints are aligned
-        # to 4bytes (except with -malign-double)
-        m.typ.align = 4
+  if kind in {tyFloat64, tyFloat, tyInt, tyUInt, tyInt64, tyUInt64} and size == 8:
+    m.typ.align = int16(conf.floatInt64Align)
 
 proc setMagicIntegral(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   setMagicType(conf, m, kind, size)

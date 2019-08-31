@@ -79,9 +79,19 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 proc openArrayLoc(p: BProc, n: PNode): Rope =
   var a: TLoc
 
-  let q = skipConv(n)
+  var q = skipConv(n)
+  var skipped = false
+  while q.kind == nkStmtListExpr and q.len > 0:
+    skipped = true
+    q = q.lastSon
   if getMagic(q) == mSlice:
     # magic: pass slice to openArray:
+    if skipped:
+      q = skipConv(n)
+      while q.kind == nkStmtListExpr and q.len > 0:
+        for i in 0..q.len-2:
+          genStmts(p, q[i])
+        q = q.lastSon
     var b, c: TLoc
     initLocExpr(p, q[1], a)
     initLocExpr(p, q[2], b)

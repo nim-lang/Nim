@@ -199,7 +199,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
   # Called by return and break stmts.
   # Deals with issues faced when jumping out of try/except/finally stmts,
 
-  var stack = newSeq[tuple[n: PNode, inExcept: bool]](0)
+  var stack = newSeq[tuple[fin: PNode, inExcept: bool]](0)
 
   for i in 1 .. howManyTrys:
     let tryStmt = p.nestedTryStmts.pop
@@ -214,9 +214,9 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
     # Find finally-stmt for this try-stmt
     # and generate a copy of its sons
-    var finallyStmt = lastSon(tryStmt.n)
-    if finallyStmt.kind == nkFinally:
-      genStmts(p, finallyStmt.sons[0])
+    var finallyStmt = tryStmt.fin
+    if finallyStmt != nil:
+      genStmts(p, finallyStmt[0])
 
   # push old elements again:
   for i in countdown(howManyTrys-1, 0):
@@ -675,8 +675,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
-    var finallyBlock = p.nestedTryStmts[^1].n[^1]
-    if finallyBlock.kind == nkFinally:
+    let finallyBlock = p.nestedTryStmts[^1].fin
+    if finallyBlock != nil:
       genSimpleBlock(p, finallyBlock[0])
   if t[0].kind != nkEmpty:
     var a: TLoc
@@ -924,7 +924,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
   genLineDir(p, t)
   discard cgsym(p.module, "popCurrentExceptionEx")
-  add(p.nestedTryStmts, (t, false))
+  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
+  add(p.nestedTryStmts, (fin, false))
   startBlock(p, "try {$n")
   expr(p, t[0], d)
   endBlock(p)
@@ -1021,8 +1022,9 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
     startBlock(p, "if ($1.status == 0) {$n", [safePoint])
-  var length = sonsLen(t)
-  add(p.nestedTryStmts, (t, quirkyExceptions))
+  let length = sonsLen(t)
+  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
+  add(p.nestedTryStmts, (fin, quirkyExceptions))
   expr(p, t.sons[0], d)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
@@ -1159,36 +1161,10 @@ proc genEmit(p: BProc, t: PNode) =
     genLineDir(p, t)
     line(p, cpsStmts, s)
 
-proc genBreakPoint(p: BProc, t: PNode) =
-  var name: string
-  if optEndb in p.options:
-    if t.kind == nkExprColonExpr:
-      assert(t.sons[1].kind in {nkStrLit..nkTripleStrLit})
-      name = normalize(t.sons[1].strVal)
-    else:
-      inc(p.module.g.breakPointId)
-      name = "bp" & $p.module.g.breakPointId
-    genLineDir(p, t)          # BUGFIX
-    appcg(p.module, p.module.g.breakpoints,
-         "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
-        toLinenumber(t.info), makeCString(toFilename(p.config, t.info)),
-        makeCString(name)])
-
-proc genWatchpoint(p: BProc, n: PNode) =
-  if optEndb notin p.options: return
-  var a: TLoc
-  initLocExpr(p, n.sons[1], a)
-  let typ = skipTypes(n.sons[1].typ, abstractVarRange)
-  lineCg(p, cpsStmts, "#dbgRegisterWatchpoint($1, (NCSTRING)$2, $3);$n",
-        [addrLoc(p.config, a), makeCString(renderTree(n.sons[1])),
-        genTypeInfo(p.module, typ, n.info)])
-
 proc genPragma(p: BProc, n: PNode) =
   for it in n.sons:
     case whichPragma(it)
     of wEmit: genEmit(p, it)
-    of wBreakpoint: genBreakPoint(p, it)
-    of wWatchPoint: genWatchpoint(p, it)
     of wInjectStmt:
       var p = newProc(nil, p.module)
       p.options = p.options - {optLineTrace, optStackTrace}
