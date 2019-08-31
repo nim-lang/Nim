@@ -35,18 +35,18 @@ type
     x: int
 
 
-proc `=destroy`(o: var NonCopyable) = 
+proc `=destroy`(o: var NonCopyable) =
   discard
 
 proc `=copy`(dst: var NonCopyable, src: NonCopyable) {.error.}
 
-proc `=sink`(dst: var NonCopyable, src: NonCopyable) = 
+proc `=sink`(dst: var NonCopyable, src: NonCopyable) =
   dst.x = src.x
 
 iterator lentItems[T](a: openarray[T]): lent T =
   for i in 0..a.high:
     yield a[i]
-  
+
 iterator lentPairs[T](a: array[0..1, T]): tuple[key: int, val: lent T] =
   for i in 0..a.high:
     yield (i, a[i])
@@ -55,7 +55,7 @@ iterator lentPairs[T](a: array[0..1, T]): tuple[key: int, val: lent T] =
 let arr1 = [1, 2, 3]
 let arr2 = @["a", "b", "c"]
 let arr3 = [NonCopyable(x: 1), NonCopyable(x: 2)]
-
+let arr4 = @[(1, "a"), (2, "b"), (3, "c")]
 
 var accum: string
 for x in lentItems(arr1):
@@ -76,3 +76,13 @@ accum = ""
 for i, val in lentPairs(arr3):
   accum &= $i & "-" & $val.x & " "
 doAssert(accum == "0-1 1-2 ")
+
+accum = ""
+for i, val in lentItems(arr4):
+  accum &= $i & "-" & $val & " "
+doAssert(accum == "1-a 2-b 3-c ")
+
+accum = ""
+for (i, val) in lentItems(arr4):
+  accum &= $i & "-" & $val & " "
+doAssert(accum == "1-a 2-b 3-c ")
