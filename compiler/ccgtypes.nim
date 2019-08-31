@@ -155,6 +155,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
   of tyNone, tyTyped: result = ctVoid
   of tyBool: result = ctBool
   of tyChar: result = ctChar
+  of tyNil: result = ctPtr
   of tySet: result = mapSetType(conf, typ)
   of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctArray
   of tyObject, tyTuple: result = ctStruct

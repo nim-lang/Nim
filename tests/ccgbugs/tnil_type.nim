@@ -13,3 +13,6 @@ f3(typeof(nil))
 
 proc f4[T](_: T) = discard
 f4(nil)
+
+proc f5(): typeof(nil) = nil
+discard f5()

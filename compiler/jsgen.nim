@@ -1600,6 +1600,8 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("{}", indirect)
   of tyBool:
     result = putToSeq("false", indirect)
+  of tyNil:
+    result = putToSeq("null", indirect)
   of tyArray:
     let length = toInt(lengthOrd(p.config, t))
     let e = elemType(t)
