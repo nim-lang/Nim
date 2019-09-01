@@ -2028,7 +2028,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
-  if optNimV2 in p.config.globalOptions:
+  if p.config.selectedGC == gcDestructors:
     let arg = n[1].skipAddr
     let t = arg.typ.skipTypes(abstractInst)
     case t.kind

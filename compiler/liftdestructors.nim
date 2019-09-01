@@ -129,7 +129,7 @@ proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
 
 proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
-  result = optNimV2 in c.g.config.globalOptions and
+  result = c.g.config.selectedGC == gcDestructors and
     ({tfHasGCedMem, tfHasOwned} * t.flags != {} or t.isGCedMem)
 
 proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
@@ -563,7 +563,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   typ.attachedOps[kind] = result
 
   var tk: TTypeKind
-  if optNimV2 in g.config.globalOptions:
+  if g.config.selectedGC == gcDestructors:
     tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
   else:
     tk = tyNone # no special casing for strings and seqs

@@ -437,30 +437,31 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optWholeProject}, arg, pass, info)
   of "gc":
     expectArg(conf, switch, arg, pass, info)
-    case arg.normalize
-    of "boehm":
-      conf.selectedGC = gcBoehm
-      defineSymbol(conf.symbols, "boehmgc")
-    of "refc":
-      conf.selectedGC = gcRefc
-    of "v2":
-      message(conf, info, warnDeprecated, "--gc:v2 is deprecated; using default gc")
-    of "markandsweep":
-      conf.selectedGC = gcMarkAndSweep
-      defineSymbol(conf.symbols, "gcmarkandsweep")
-    of "destructors":
-      conf.selectedGC = gcDestructors
-      defineSymbol(conf.symbols, "gcdestructors")
-    of "go":
-      conf.selectedGC = gcGo
-      defineSymbol(conf.symbols, "gogc")
-    of "none":
-      conf.selectedGC = gcNone
-      defineSymbol(conf.symbols, "nogc")
-    of "stack", "regions":
-      conf.selectedGC= gcRegions
-      defineSymbol(conf.symbols, "gcregions")
-    else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
+    if pass in {passCmd2, passPP}:
+      case arg.normalize
+      of "boehm":
+        conf.selectedGC = gcBoehm
+        defineSymbol(conf.symbols, "boehmgc")
+      of "refc":
+        conf.selectedGC = gcRefc
+      of "v2":
+        message(conf, info, warnDeprecated, "--gc:v2 is deprecated; using default gc")
+      of "markandsweep":
+        conf.selectedGC = gcMarkAndSweep
+        defineSymbol(conf.symbols, "gcmarkandsweep")
+      of "destructors":
+        conf.selectedGC = gcDestructors
+        defineSymbol(conf.symbols, "gcdestructors")
+      of "go":
+        conf.selectedGC = gcGo
+        defineSymbol(conf.symbols, "gogc")
+      of "none":
+        conf.selectedGC = gcNone
+        defineSymbol(conf.symbols, "nogc")
+      of "stack", "regions":
+        conf.selectedGC= gcRegions
+        defineSymbol(conf.symbols, "gcregions")
+      else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
