@@ -9,18 +9,14 @@ sources:
 environment:
   CC: /usr/bin/clang
 tasks:
-- build_csources: |
+- setup: |
     cd Nim
     git clone --depth 1 https://github.com/nim-lang/csources.git
     cd csources
     sh build.sh
-- build_koch: |
-    cd Nim
     bin/nim c --skipUserCfg --skipParentCfg koch
-- configure_nim_and_add_to_path: |
-    cd Nim
     sed -i 's/cc = gcc/cc = clang/g' config/nim.cfg
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
-- run_ci: |
+- test: |
     cd Nim
     ./koch runCI
