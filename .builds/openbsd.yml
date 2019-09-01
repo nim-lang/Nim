@@ -14,6 +14,7 @@ tasks:
     git clone --depth 1 https://github.com/nim-lang/csources.git
     cd csources
     sh build.sh
+    cd ../
     bin/nim c --skipUserCfg --skipParentCfg koch
     sed -i 's/cc = gcc/cc = clang/g' config/nim.cfg
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
