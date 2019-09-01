@@ -25,7 +25,7 @@
 include "system/inclrtl"
 
 type
-  RuneImpl = range[0..0x10FFFF] # underlying type of Rune
+  RuneImpl = range[0'i32..0x10FFFF'i32] # underlying type of Rune
   Rune* = distinct RuneImpl ## \
     ## Type that can hold a single Unicode code point.
     ##
@@ -36,7 +36,7 @@ type
     ## A single Rune16 may not be enough to hold an arbitrary Unicode code point.
 
 const InvalidChars = {'\xC0', '\xC1', '\xF5' .. '\xFF'} ## \
-  ## These bytes can never occur in a valid UTF-8 sequence
+  ## These bytes are never valid UTF-8 code units.
 const ReplacementRune* = Rune(0xFFFD) ## \
   ## The replacement rune (U+FFFD) is used as a replacement for invalid bytes
   ## in a UTF-8 string.
@@ -72,8 +72,7 @@ proc runeAndSizeAt*(s: string, i: Natural): tuple[rune: Rune, size: int] =
   ## Retrieve the rune starting at the byte inedx `i` as well as the
   ## number of bytes taken up by the rune.
   ##
-  ## If there's no valid byte starting at `s[i]`,
-  ## returns `(ReplacementRune, 1)`.
+  ## If s[i] is an invalid UTF-8 byte, returns `(ReplacementRune, 1)`.
   if ord(s[i]) <=% 127:
     return (Rune(s[i]), 1)
   elif s[i] in InvalidChars or ord(s[i]) shr 6 == 0b10:
@@ -121,6 +120,8 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
 
 proc runeSizeAt*(s: string, i: Natural): int =
   ## Returns the number of bytes the rune starting at ``s[i]`` takes.
+  ##
+  ## If s[i] is an invalid UTF-8 byte, returns `1`.
   runnableExamples:
     let a = "añyóng"
     doAssert a.runeLenAt(0) == 1
@@ -141,6 +142,8 @@ template fastRuneAt*(s: string, i: int, result: untyped, doInc = true)
 proc runeAt*(s: string, i: Natural): Rune =
   ## Returns the rune in ``s`` at **byte index** ``i``.
   ##
+  ## If s[i] is an invalid UTF-8 byte, returns `ReplacementRune`.
+  ##
   ## See also:
   ## * `runeAtPos proc <#runeAtPos,string,int>`_
   ## * `runeStrAtPos proc <#runeStrAtPos,string,Natural>`_
@@ -153,10 +156,11 @@ proc runeAt*(s: string, i: Natural): Rune =
   runeAndSizeAt(s, i).rune
 
 proc validateUtf8*(s: string): int =
-  ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
-  ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
+  ## Returns the index of the first invalid byte in ``s`` if the string ``s``
+  ## contains any invalid UTF-8 bytes. Otherwise ``-1`` is returned.
   ##
   ## See also:
+  ## * `sanitizeUtf8 proc <#sanitizeUtf8,string>`_
   ## * `toUtf8 proc <#toUtf8,Rune>`_
   ## * `$ proc <#$,Rune>`_ alias for `toUtf8`
   ## * `add proc<#add,string,Rune>`_
@@ -219,6 +223,11 @@ proc `$`*(rune: Rune): string =
   rune.toUtf8
 
 proc sanitizeUtf8*(s: string): string =
+  ## Replaces all invalid UTF-8 bytes in `s` with `ReplacementRune`.
+  ## The result is guaranteed to be valid UTF-8.
+  ##
+  ## See also:
+  ## * `validateUtf8 proc <#validateUtf8,string>`_
   result = newStringOfCap(s.len)
   var i = 0
   while i < s.len:
@@ -787,7 +796,7 @@ proc reversed*(s: string): string =
 
   reverseUntil(len(s))
 
-proc graphemeLen*(s: string; i: Natural): Natural =
+proc combiningLen*(s: string, i: Natural): Natural =
   ## The number of bytes belonging to byte index ``s[i]``,
   ## including following combining code unit.
   runnableExamples:
@@ -795,7 +804,6 @@ proc graphemeLen*(s: string; i: Natural): Natural =
     doAssert a.graphemeLen(1) == 2 ## ñ
     doAssert a.graphemeLen(2) == 1
     doAssert a.graphemeLen(4) == 2 ## ó
-
   var j = i.int
   var r, r2: Rune
   if j < s.len:
@@ -1216,6 +1224,17 @@ template fastToUtf8Copy*(c: Rune, s: var string, pos: int, doInc = true)
     when doInc: inc(pos, 4)
   else:
     discard # error, exception?
+
+proc graphemeLen*(s: string; i: Natural): Natural
+    {.deprecated: "use combiningLen instead".} =
+  ## The number of bytes belonging to byte index ``s[i]``,
+  ## including following combining code unit.
+  runnableExamples:
+    let a = "añyóng"
+    doAssert a.graphemeLen(1) == 2 ## ñ
+    doAssert a.graphemeLen(2) == 1
+    doAssert a.graphemeLen(4) == 2 ## ó
+  combiningLen(s, i)
 
 proc `<%`*(a, b: Rune): bool {.deprecated: "use < instead".} =
   a < b
