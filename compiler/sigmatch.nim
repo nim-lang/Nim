@@ -380,7 +380,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
         isIntLit(ab) and getInt(ab.n) >= firstOrd(nil, f) and
                          getInt(ab.n) <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
-      # not depent on the target integer size configurations!
+      # not depend on the target integer size configurations!
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
       # ``int16`` operation so we declare the ``4`` pseudo-equal to int16
       result = isFromIntLit
@@ -396,7 +396,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
        f.kind in {tyUInt8..tyUInt32} and a[0].kind in {tyUInt8..tyInt32}) and
       a.n[0].intVal >= firstOrd(nil, f) and a.n[1].intVal <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
-      # not depent on the target integer size configurations!
+      # not depend on the target integer size configurations!
       result = isConvertible
     else: result = isNone
 
@@ -408,13 +408,13 @@ proc isConvertibleToRange(f, a: PType): bool =
     of tyInt16: result = isIntLit(a) or a.kind in {tyInt8, tyInt16}
     of tyInt32: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32}
     # This is wrong, but seems like there's a lot of code that relies on it :(
-    of tyInt: result = true
+    of tyInt, tyUInt, tyUInt64: result = true
     of tyInt64: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32, tyInt, tyInt64}
     of tyUInt8: result = isIntLit(a) or a.kind in {tyUInt8}
     of tyUInt16: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16}
     of tyUInt32: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32}
-    of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
-    of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt, tyUInt64}
+    #of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
+    #of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt, tyUInt64}
     else: result = false
   elif f.kind in {tyFloat..tyFloat128}:
     # `isIntLit` is correct and should be used above as well, see PR:

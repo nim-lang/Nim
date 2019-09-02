@@ -136,3 +136,9 @@ block:
     const x11: range[0'f..1'f] = 2'f
   reject:
     const x12: range[0'f..1'f] = 2
+
+# ensure unsigned array indexing is remains lenient:
+var a: array[4'u, string]
+
+for i in 0..<a.len:
+  a[i] = "foo"
