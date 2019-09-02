@@ -108,6 +108,7 @@ const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
 proc markUsed*(c: PContext; info: TLineInfo, s: PSym)
+proc markOwnerModuleAsUsed*(c: PContext; s: PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
