@@ -3641,7 +3641,7 @@ when not defined(JS): #and not defined(nimscript):
         let minlen = min(x.len, y.len)
         result = int(nimCmpMem(x.cstring, y.cstring, minlen.csize))
         if result == 0:
-          result = x.len - y.len
+          result = cmp(x.len, y.len)
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
