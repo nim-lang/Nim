@@ -129,7 +129,7 @@ proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
 
 proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
-  result = optNimV2 in c.g.config.globalOptions and
+  result = c.g.config.selectedGC == gcDestructors and
     ({tfHasGCedMem, tfHasOwned} * t.flags != {} or t.isGCedMem)
 
 proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
@@ -506,7 +506,11 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
-    localError(c.g.config, c.info, "cannot copy openArray")
+    if c.kind == attachedDestructor:
+      forallElements(c, t, body, x, y)
+    else:
+      discard "cannot copy openArray"
+
   of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
@@ -559,7 +563,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   typ.attachedOps[kind] = result
 
   var tk: TTypeKind
-  if optNimV2 in g.config.globalOptions:
+  if g.config.selectedGC == gcDestructors:
     tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
   else:
     tk = tyNone # no special casing for strings and seqs
@@ -626,7 +630,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   var canon = g.canonTypes.getOrDefault(h)
   var overwrite = false
   if canon == nil:
-    let typ = orig.skipTypes({tyGenericInst, tyAlias})
+    let typ = orig.skipTypes({tyGenericInst, tyAlias, tySink})
     g.canonTypes[h] = typ
     canon = typ
   elif canon != orig:

@@ -292,6 +292,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result = newFloatNode(nkFloatLit, BiggestFloat r1.intVal)
       result.info = n.info
       result.typ = typ
+      if not floatRangeCheck(result.floatVal, typ):
+        localError(c.config, n.info, errFloatToString % [$result.floatVal, typeToString(typ)])
     else:
       changeType(c, r1, typ, check=true)
       result = r1
@@ -676,25 +678,30 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var length = sonsLen(n)
   let iterBase = n.sons[length-2].typ
   var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink})
+  var iterAfterVarLent = iter.skipTypes({tyLent, tyVar})
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
-  if iter.kind != tyTuple or length == 3:
+  if iterAfterVarLent.kind != tyTuple or length == 3:
     if length == 3:
       if n.sons[0].kind == nkVarTuple:
-        var mutable = false
-        if iter.kind == tyVar:
-          iter = iter.skipTypes({tyVar})
-          mutable = true
-        if sonsLen(n[0])-1 != sonsLen(iter):
+        if sonsLen(n[0])-1 != sonsLen(iterAfterVarLent):
           localError(c.config, n[0].info, errWrongNumberOfVariables)
         for i in 0 ..< sonsLen(n[0])-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-          if mutable:
-            v.typ = newTypeS(tyVar, c)
-            v.typ.sons.add iter[i]
-          else:
-            v.typ = iter.sons[i]
+          case iter.kind
+            of tyVar:
+              v.typ = newTypeS(tyVar, c)
+              v.typ.sons.add iterAfterVarLent[i]
+              if tfVarIsPtr in iter.flags:
+                v.typ.flags.incl tfVarIsPtr
+            of tyLent:
+              v.typ = newTypeS(tyLent, c)
+              v.typ.sons.add iterAfterVarLent[i]
+              if tfVarIsPtr in iter.flags:
+                v.typ.flags.incl tfVarIsPtr
+            else:
+              v.typ = iter.sons[i]
           n.sons[0][i] = newSymNode(v)
           if sfGenSym notin v.flags: addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
@@ -710,15 +717,22 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)
-  elif length-2 != sonsLen(iter):
+  elif length-2 != sonsLen(iterAfterVarLent):
     localError(c.config, n.info, errWrongNumberOfVariables)
   else:
     for i in 0 .. length - 3:
       if n.sons[i].kind == nkVarTuple:
         var mutable = false
-        if iter[i].kind == tyVar:
-          iter[i] = iter[i].skipTypes({tyVar})
-          mutable = true
+        var isLent = false
+        iter[i] = case iter[i].kind
+          of tyVar:
+            mutable = true
+            iter[i].skipTypes({tyVar})
+          of tyLent:
+            isLent = true
+            iter[i].skipTypes({tyLent})
+          else: iter[i]
+
         if sonsLen(n[i])-1 != sonsLen(iter[i]):
           localError(c.config, n[i].info, errWrongNumberOfVariables)
         for j in 0 ..< sonsLen(n[i])-1:
@@ -726,6 +740,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
           if mutable:
             v.typ = newTypeS(tyVar, c)
+            v.typ.sons.add iter[i][j]
+          elif isLent:
+            v.typ = newTypeS(tyLent, c)
             v.typ.sons.add iter[i][j]
           else:
             v.typ = iter[i][j]
@@ -735,7 +752,19 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       else:
         var v = symForVar(c, n.sons[i])
         if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-        v.typ = iter.sons[i]
+        case iter.kind
+        of tyVar:
+          v.typ = newTypeS(tyVar, c)
+          v.typ.sons.add iterAfterVarLent[i]
+          if tfVarIsPtr in iter.flags:
+            v.typ.flags.incl tfVarIsPtr
+        of tyLent:
+          v.typ = newTypeS(tyLent, c)
+          v.typ.sons.add iterAfterVarLent[i]
+          if tfVarIsPtr in iter.flags:
+            v.typ.flags.incl tfVarIsPtr
+        else:
+          v.typ = iter.sons[i]
         n.sons[i] = newSymNode(v)
         if sfGenSym notin v.flags:
           if not isDiscardUnderscore(v): addDecl(c, v)
@@ -1593,7 +1622,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         else: break
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
         obj = canonType(c, obj)
-        if obj.destructor.isNil:
+        if obj.attachedOps[attachedDestructor] == s:
+          discard "forward declared destructor"
+        elif obj.destructor.isNil and tfCheckedForDestructor notin obj.flags:
           obj.attachedOps[attachedDestructor] = s
         else:
           prevDestructor(c, obj.destructor, obj, n.info)
@@ -1658,7 +1689,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let k = if name == "=": attachedAsgn else: attachedSink
-        if obj.attachedOps[k].isNil:
+        if obj.attachedOps[k] == s:
+          discard "forward declared op"
+        elif obj.attachedOps[k].isNil and tfCheckedForDestructor notin obj.flags:
           obj.attachedOps[k] = s
         else:
           prevDestructor(c, obj.attachedOps[k], obj, n.info)
@@ -1878,7 +1911,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       pushProcCon(c, s)
       if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
-        if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
+        if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
@@ -1904,6 +1937,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         discard
       popProcCon(c)
   else:
+    if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
+      # `auto` is represented as `tyUntyped` at this point in compilation.
+      localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
+
     if s.kind == skMethod: semMethodPrototype(c, s, n)
     if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:

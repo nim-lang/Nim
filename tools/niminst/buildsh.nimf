@@ -154,7 +154,14 @@ case $ucpu in
     fi
     mycpu="powerpc64" ;;
   *power*|*ppc* )
-    mycpu="powerpc" ;;
+    if [ "$myos" = "freebsd" ] ; then
+      COMP_FLAGS="$COMP_FLAGS -m64"
+      LINK_FLAGS="$LINK_FLAGS -m64"
+      mycpu=`uname -p`
+	else
+      mycpu="powerpc"
+    fi
+    ;;
   *ia64*)
     mycpu="ia64" ;;
   *m68k*)

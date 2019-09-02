@@ -30,7 +30,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   # Note: This is n.info on purpose. It prevents template from creating an info
   # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
-  result = evalTemplate(n, s, getCurrOwner(c), c.config, efFromHlo in flags)
+  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
@@ -513,6 +513,9 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
       if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
                                          " to " & typeToString(newType))
+  of nkFloatLit..nkFloat64Lit:
+    if check and not floatRangeCheck(n.floatVal, newType):
+      localError(c.config, n.info, errFloatToString % [$n.floatVal, typeToString(newType)])
   else: discard
   n.typ = newType
 
@@ -1236,6 +1239,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     result = newSymNode(s, n.info)
   else:
     let info = getCallLineInfo(n)
+    #if efInCall notin flags:
     markUsed(c, info, s)
     onUse(info, s)
     result = newSymNode(s, info)
@@ -1777,21 +1781,21 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst, tyAlias, tySink})
   case t.kind
   of tyVar, tyLent:
-    if t.kind == tyVar: t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+    t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n.sons[0] = n.sons[0].sons[1]
     n.sons[0] = takeImplicitAddr(c, n.sons[0], t.kind == tyLent)
   of tyTuple:
     for i in 0..<t.sonsLen:
-      var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
+      let e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
-        if e.kind == tyVar: e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+        e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         if n.sons[0].kind in {nkPar, nkTupleConstr}:
           n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i], e.kind == tyLent)
         elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
              n.sons[0].sons[1].kind in {nkPar, nkTupleConstr}:
           var a = n.sons[0].sons[1]
-          a.sons[i] = takeImplicitAddr(c, a.sons[i], false)
+          a.sons[i] = takeImplicitAddr(c, a.sons[i], e.kind == tyLent)
         else:
           localError(c.config, n.sons[0].info, errXExpected, "tuple constructor")
   else: discard
@@ -2398,11 +2402,9 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
   for i in 0 ..< sonsLen(n):
-    if n[i].kind != nkExprColonExpr or n[i][0].kind notin {nkSym, nkIdent}:
+    if n[i].kind != nkExprColonExpr:
       illFormedAst(n.sons[i], c.config)
-    var id: PIdent
-    if n.sons[i].sons[0].kind == nkIdent: id = n.sons[i].sons[0].ident
-    else: id = n.sons[i].sons[0].sym.name
+    let id = considerQuotedIdent(c, n[i][0])
     if containsOrIncl(ids, id.id):
       localError(c.config, n.sons[i].info, errFieldInitTwice % id.s)
     n.sons[i].sons[1] = semExprWithType(c, n.sons[i].sons[1],

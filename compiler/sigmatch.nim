@@ -401,22 +401,25 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     else: result = isNone
 
 proc isConvertibleToRange(f, a: PType): bool =
-  # be less picky for tyRange, as that it is used for array indexing:
   if f.kind in {tyInt..tyInt64, tyUInt..tyUInt64} and
      a.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
     case f.kind
-    of tyInt, tyInt64: result = true
-    of tyInt8: result = a.kind in {tyInt8, tyInt}
-    of tyInt16: result = a.kind in {tyInt8, tyInt16, tyInt}
-    of tyInt32: result = a.kind in {tyInt8, tyInt16, tyInt32, tyInt}
-    of tyUInt, tyUInt64: result = true
-    of tyUInt8: result = a.kind in {tyUInt8, tyUInt}
-    of tyUInt16: result = a.kind in {tyUInt8, tyUInt16, tyUInt}
-    of tyUInt32: result = a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
+    of tyInt8: result = isIntLit(a) or a.kind in {tyInt8}
+    of tyInt16: result = isIntLit(a) or a.kind in {tyInt8, tyInt16}
+    of tyInt32: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32}
+    # This is wrong, but seems like there's a lot of code that relies on it :(
+    of tyInt: result = true
+    of tyInt64: result = isIntLit(a) or a.kind in {tyInt8, tyInt16, tyInt32, tyInt, tyInt64}
+    of tyUInt8: result = isIntLit(a) or a.kind in {tyUInt8}
+    of tyUInt16: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16}
+    of tyUInt32: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32}
+    of tyUInt: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
+    of tyUInt64: result = isIntLit(a) or a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt, tyUInt64}
     else: result = false
-  elif f.kind in {tyFloat..tyFloat128} and
-       a.kind in {tyFloat..tyFloat128}:
-    result = true
+  elif f.kind in {tyFloat..tyFloat128}:
+    # `isIntLit` is correct and should be used above as well, see PR:
+    # https://github.com/nim-lang/Nim/pull/11197
+    result = isIntLit(a) or a.kind in {tyFloat..tyFloat128}
 
 proc handleFloatRange(f, a: PType): TTypeRelation =
   if a.kind == f.kind:
@@ -873,7 +876,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     of mUnaryMinusI:
       return inferStaticParam(c, lhs[1], -rhs)
 
-    of mUnaryPlusI, mToInt, mToBiggestInt:
+    of mUnaryPlusI:
       return inferStaticParam(c, lhs[1], rhs)
 
     else: discard
@@ -1654,8 +1657,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyGenericParam:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
-      if c.callee.kind == tyGenericBody and
-         f.kind == tyGenericParam and not c.typedescMatched:
+      if c.callee.kind == tyGenericBody and not c.typedescMatched:
         # XXX: The fact that generic types currently use tyGenericParam for
         # their parameters is really a misnomer. tyGenericParam means "match
         # any value" and what we need is "match any type", which can be encoded
@@ -1700,6 +1702,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             c.inheritancePenalty = oldInheritancePenalty - c.inheritancePenalty -
                                   100 * ord(result == isEqual)
             result = isGeneric
+        elif a.kind == tyTypeDesc:
+          # somewhat special typing rule, the following is illegal:
+          # proc p[T](x: T)
+          # p(int)
+          result = isNone
         else:
           result = isGeneric
 

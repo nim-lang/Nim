@@ -1,6 +1,6 @@
 #
 #
-#            Nim Tester
+#            Nim Testament
 #        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -25,9 +25,10 @@ const
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
   Usage = """Usage:
-  tester [options] command [arguments]
+  testament [options] command [arguments]
 
 Command:
+  p|pat|pattern <glob>        run all the tests matching the given pattern
   all                         run all tests
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
@@ -435,6 +436,10 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
           if isJsTarget:
             exeCmd = nodejs
             args = concat(@[exeFile], args)
+          elif defined(posix) and not exeFile.contains('/'):
+            # "security" in Posix is actually just a euphemism
+            # for "unproductive arbitrary shit"
+            exeCmd = "./" & exeFile
           else:
             exeCmd = exeFile
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
@@ -594,7 +599,7 @@ proc main() =
 
   var p = initOptParser()
   p.next()
-  while p.kind == cmdLongoption:
+  while p.kind in {cmdLongoption, cmdShortOption}:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
@@ -646,7 +651,7 @@ proc main() =
   of "all":
     #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
 
-    var myself = quoteShell(findExe("testament" / "tester"))
+    var myself = quoteShell(findExe("testament" / "testament"))
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
@@ -694,6 +699,11 @@ proc main() =
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
+  of "p", "pat", "pattern":
+    skips = loadSkipFrom(skipFrom)
+    let pattern = p.key
+    p.next
+    processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
     # at least one directory is required in the path, to use as a category name
     let pathParts = split(p.key.string, {DirSep, AltSep})

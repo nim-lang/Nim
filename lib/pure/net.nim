@@ -530,8 +530,12 @@ when defineSsl:
     ##
     ## The last two parameters specify the certificate file path and the key file
     ## path, a server socket will most likely not work without these.
+    ##
     ## Certificates can be generated using the following command:
-    ## ``openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout mycert.pem -out mycert.pem``.
+    ## - ``openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout mykey.pem -out mycert.pem``
+    ## or using ECDSA:
+    ## - ``openssl ecparam -out mykey.pem -name secp256k1 -genkey``
+    ## - ``openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem``
     var newCTX: SSL_CTX
     case protVersion
     of protSSLv23:

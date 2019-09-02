@@ -264,13 +264,7 @@ proc genLineDir(p: BProc, t: PNode) =
   if optEmbedOrigSrc in p.config.globalOptions:
     add(p.s(cpsStmts), ~"//" & sourceLine(p.config, t.info) & "\L")
   genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p.config)
-  if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
-      (p.prc == nil or sfPure notin p.prc.flags):
-    if freshLineInfo(p, t.info):
-      linefmt(p, cpsStmts, "#endb($1, $2);$N",
-              [line, makeCString(toFilename(p.config, t.info))])
-  elif ({optLineTrace, optStackTrace} * p.options ==
-      {optLineTrace, optStackTrace}) and
+  if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
     if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
@@ -479,19 +473,6 @@ proc deinitGCFrame(p: BProc): Rope =
     result = ropecg(p.module,
                     "if (((NU)&GCFRAME_) < 4096) #nimGCFrame(&GCFRAME_);$n", [])
 
-proc localDebugInfo(p: BProc, s: PSym, retType: PType) =
-  if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return
-  # XXX work around a bug: No type information for open arrays possible:
-  if skipTypes(s.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: return
-  var a = "&" & s.loc.r
-  if s.kind == skParam and ccgIntroducedPtr(p.config, s, retType): a = s.loc.r
-  lineF(p, cpsInit,
-       "FR_.s[$1].address = (void*)$3; FR_.s[$1].typ = $4; FR_.s[$1].name = $2;$n",
-       [p.maxFrameLen.rope, makeCString(normalize(s.name.s)), a,
-        genTypeInfo(p.module, s.loc.t, s.info)])
-  inc(p.maxFrameLen)
-  inc p.blocks[p.blocks.len-1].frameLen
-
 proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
@@ -515,7 +496,6 @@ proc assignLocalVar(p: BProc, n: PNode) =
   let nl = if optLineDir in p.config.options: "" else: "\L"
   let decl = localVarDecl(p, n) & ";" & nl
   line(p, cpsLocals, decl)
-  localDebugInfo(p, n.sym, nil)
 
 include ccgthreadvars
 
@@ -562,17 +542,10 @@ proc assignGlobalVar(p: BProc, n: PNode) =
   if p.withinLoop > 0:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
-  if p.module.module.options * {optStackTrace, optEndb} ==
-                               {optStackTrace, optEndb}:
-    appcg(p.module, p.module.s[cfsDebugInit],
-          "#dbgRegisterGlobal($1, &$2, $3);$n",
-         [makeCString(normalize(s.owner.name.s & '.' & s.name.s)),
-          s.loc.r, genTypeInfo(p.module, s.typ, n.info)])
 
 proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != nil)
   scopeMangledParam(p, s)
-  localDebugInfo(p, s, retType)
 
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
@@ -689,7 +662,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
             [loadlib, genStringLiteral(m, lib.path)])
     else:
       var p = newProc(nil, m)
-      p.options = p.options - {optStackTrace, optEndb}
+      p.options = p.options - {optStackTrace}
       var dest: TLoc
       initLoc(dest, locTemp, lib.path, OnStack)
       dest.r = getTempName(m)
@@ -784,7 +757,7 @@ proc cgsym(m: BModule, name: string): Rope =
     rawMessage(m.config, errGenerated, "system module needs: " & name)
   result = sym.loc.r
   if m.hcrOn and sym != nil and sym.kind in {skProc..skIterator}:
-    result.addActualPrefixForHCR(m.module, sym)
+    result.addActualSuffixForHCR(m.module, sym)
 
 proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "\L#include \"nimbase.h\"\L")
@@ -1033,6 +1006,11 @@ proc genProcAux(m: BModule, prc: PSym) =
     generatedProc = ropecg(p.module, "$N$1 {$n$2$3$4}$N$N",
                          [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
   else:
+    if m.hcrOn and isReloadable(m, prc):
+      # Add forward declaration for "_actual"-suffixed functions defined in the same module (or inline).
+      # This fixes the use of methods and also the case when 2 functions within the same module
+      # call each other using directly the "_actual" versions (an optimization) - see issue #11608
+      addf(m.s[cfsProcHeaders], "$1;\n", [header])
     generatedProc = ropecg(p.module, "$N$1 {$N", [header])
     add(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options:
@@ -1313,7 +1291,6 @@ proc genMainProc(m: BModule) =
     PreMainBody = "$N" &
       "void PreMainInner(void) {$N" &
       "$2" &
-      "$3" &
       "}$N$N" &
       PosixCmdLine &
       "void PreMain(void) {$N" &
@@ -1403,17 +1380,11 @@ proc genMainProc(m: BModule) =
   elif m.config.target.targetOS == osGenode:
     m.includeHeader("<libc/component.h>")
 
-  if optEndb in m.config.options:
-    for i in 0..<m.config.m.fileInfos.len:
-      m.g.breakpoints.addf("dbgRegisterFilename($1);$N",
-        [m.config.m.fileInfos[i].projPath.string.makeCString])
-
   let initStackBottomCall =
     if m.config.target.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", [])
   inc(m.labels)
-  appcg(m, m.s[cfsProcs], PreMainBody, [
-    m.g.mainDatInit, m.g.breakpoints, m.g.otherModsInit])
+  appcg(m, m.s[cfsProcs], PreMainBody, [m.g.mainDatInit, m.g.otherModsInit])
 
   if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
@@ -2018,11 +1989,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
         discard cgsym(m, "initStackBottomWith")
       if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
         discard cgsym(m, "initThreadVarsEmulation")
-
-      if m.g.breakpoints != nil:
-        discard cgsym(m, "dbgRegisterBreakpoint")
-      if optEndb in m.config.options:
-        discard cgsym(m, "dbgRegisterFilename")
 
       if m.g.forwardedProcs.len == 0:
         incl m.flags, objHasKidsValid

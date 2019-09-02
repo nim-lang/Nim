@@ -44,12 +44,12 @@ const
     wWarnings, wHints,
     wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
-    wBreakpoint, wWatchPoint, wPassl, wPassc,
+    wPassl, wPassc,
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
-    wInjectStmt, wDeprecated, wExperimental, wThis}
+    wInjectStmt, wDeprecated, wExperimental, wThis, wUsed}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
@@ -345,7 +345,7 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wLineDir: {optLineDir}
   of wStackTrace: {optStackTrace}
   of wLineTrace: {optLineTrace}
-  of wDebugger: {optEndb}
+  of wDebugger: {optNone}
   of wProfiler: {optProfiler, optMemTracker}
   of wMemTracker: {optMemTracker}
   of wByRef: {optByRef}
@@ -512,15 +512,6 @@ proc processLink(c: PContext, n: PNode) =
   let found = relativeFile(c, n, CC[c.config.cCompiler].objExt)
   extccomp.addExternalFileToLink(c.config, found)
   recordPragma(c, n, "link", found.string)
-
-proc pragmaBreakpoint(c: PContext, n: PNode) =
-  discard getOptionalStr(c, n, "")
-
-proc pragmaWatchpoint(c: PContext, n: PNode) =
-  if n.kind in nkPragmaCallKinds and n.len == 2:
-    n.sons[1] = c.semExpr(c, n.sons[1])
-  else:
-    invalidPragma(c, n)
 
 proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n.sons[1].kind
@@ -816,12 +807,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
         case size
-        of 1, 2, 4, 8:
+        of 1, 2, 4:
           sym.typ.size = size
-          if size == 8 and c.config.target.targetCPU == cpuI386:
-            sym.typ.align = 4
-          else:
-            sym.typ.align = int16(size)
+          sym.typ.align = int16 size
+        of 8:
+          sym.typ.size = 8
+          sym.typ.align = floatInt64Align(c.config)
         else:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wNodecl:
@@ -996,8 +987,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         let s = expectStrLit(c, it)
         extccomp.addCompileOption(c.config, s)
         recordPragma(c, it, "passc", s)
-      of wBreakpoint: pragmaBreakpoint(c, it)
-      of wWatchPoint: pragmaWatchpoint(c, it)
       of wPush:
         processPush(c, n, i + 1)
         result = true

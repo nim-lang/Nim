@@ -431,10 +431,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # UnaryPlusF64
     ["", ""], # UnaryMinusF64
     ["", ""], # AbsF64
-    ["", ""],     # ToFloat
-    ["", ""],     # ToBiggestFloat
-    ["", ""], # ToInt
-    ["", ""], # ToBiggestInt
     ["nimCharToStr", "nimCharToStr"],
     ["nimBoolToStr", "nimBoolToStr"],
     ["cstrToNimstr", "cstrToNimstr"],
@@ -612,10 +608,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mUnaryPlusF64: applyFormat("+($1)", "+($1)")
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
   of mAbsF64: applyFormat("Math.abs($1)", "Math.abs($1)")
-  of mToFloat: applyFormat("$1", "$1")
-  of mToBiggestFloat: applyFormat("$1", "$1")
-  of mToInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
-  of mToBiggestInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
   of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
@@ -666,11 +658,7 @@ proc genLineDir(p: PProc, n: PNode) =
   if optLineDir in p.options:
     lineF(p, "// line $2 \"$1\"$n",
          [rope(toFilename(p.config, n.info)), rope(line)])
-  if {optStackTrace, optEndb} * p.options == {optStackTrace, optEndb} and
-      ((p.prc == nil) or sfPure notin p.prc.flags):
-    useMagic(p, "endb")
-    lineF(p, "endb($1);$n", [rope(line)])
-  elif hasFrameInfo(p):
+  if hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
 
 proc genWhileStmt(p: PProc, n: PNode) =
@@ -1612,6 +1600,8 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("{}", indirect)
   of tyBool:
     result = putToSeq("false", indirect)
+  of tyNil:
+    result = putToSeq("null", indirect)
   of tyArray:
     let length = toInt(lengthOrd(p.config, t))
     let e = elemType(t)

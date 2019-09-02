@@ -143,5 +143,5 @@ block tsubrange:
   var level: n16 = 1
   let maxLevel: n16 = 1
 
-  level = min(level + 2, maxLevel)
+  level = min(level + 2, maxLevel).n16
   doAssert level == 1

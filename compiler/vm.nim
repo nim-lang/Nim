@@ -1137,7 +1137,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
-        var a = evalTemplate(macroCall, prc, genSymOwner, c.config)
+        var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
         a.recSetFlagIsRef
         ensureKind(rkNode)
@@ -2102,8 +2102,9 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
 
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
+  let oldMode = c.mode
+  c.mode = emStaticStmt
   c.comesFromHeuristic.line = 0'u16
-
   c.callsite = nOrig
   let start = genProc(c, sym)
 
@@ -2142,3 +2143,4 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")
   dec(g.config.evalMacroCounter)
   c.callsite = nil
+  c.mode = oldMode

@@ -1132,57 +1132,57 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # built-in operators
 
 when defined(nimNoZeroExtendMagic):
-  proc ze*(x: int8): int =
+  proc ze*(x: int8): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
     cast[int](uint(cast[uint8](x)))
 
-  proc ze*(x: int16): int =
+  proc ze*(x: int16): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int](uint(cast[uint16](x)))
 
-  proc ze64*(x: int8): int64 =
+  proc ze64*(x: int8): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint8](x)))
 
-  proc ze64*(x: int16): int64 =
+  proc ze64*(x: int16): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint16](x)))
 
-  proc ze64*(x: int32): int64 =
+  proc ze64*(x: int32): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint32](x)))
 
-  proc ze64*(x: int): int64 =
+  proc ze64*(x: int): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint](x)))
 
-  proc toU8*(x: int): int8 =
+  proc toU8*(x: int): int8 {.deprecated.} =
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int8](x)
 
-  proc toU16*(x: int): int16 =
+  proc toU16*(x: int): int16 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int16](x)
 
-  proc toU32*(x: int64): int32 =
+  proc toU32*(x: int64): int32 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
@@ -1794,21 +1794,25 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
-proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-  magic: "ArrToSeq", noSideEffect.}
-  ## Turns an array into a sequence.
-  ##
-  ## This most often useful for constructing
-  ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
-  ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
-  ##
-  ## .. code-block:: Nim
-  ##   let
-  ##     a = [1, 3, 5]
-  ##     b = "foo"
-  ##
-  ##   echo @a # => @[1, 3, 5]
-  ##   echo @b # => @['f', 'o', 'o']
+when defined(nimHasDefault):
+  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
+    magic: "ArrToSeq", noSideEffect.}
+    ## Turns an array into a sequence.
+    ##
+    ## This most often useful for constructing
+    ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
+    ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
+    ##
+    ## .. code-block:: Nim
+    ##   let
+    ##     a = [1, 3, 5]
+    ##     b = "foo"
+    ##
+    ##   echo @a # => @[1, 3, 5]
+    ##   echo @b # => @['f', 'o', 'o']
+else:
+  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
+    magic: "ArrToSeq", noSideEffect.}
 
 when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
@@ -2089,7 +2093,7 @@ when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
 when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
-when not defined(gcDestructors):
+when not defined(gcDestructors) or defined(nimscript):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
@@ -2277,8 +2281,7 @@ type # these work for most platforms:
   PInt64* = ptr int64        ## An alias for ``ptr int64``.
   PInt32* = ptr int32        ## An alias for ``ptr int32``.
 
-proc toFloat*(i: int): float {.
-  magic: "ToFloat", noSideEffect, importc: "toFloat".}
+proc toFloat*(i: int): float {.noSideEffect, inline.} =
   ## Converts an integer `i` into a ``float``.
   ##
   ## If the conversion fails, `ValueError` is raised.
@@ -2290,13 +2293,13 @@ proc toFloat*(i: int): float {.
   ##     b = 3.7
   ##
   ##   echo a.toFloat + b # => 5.7
+  float(i)
 
-proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
-  magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
+proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.noSideEffect, inline.} =
   ## Same as `toFloat <#toFloat,int>`_ but for ``BiggestInt`` to ``BiggestFloat``.
+  BiggestFloat(i)
 
-proc toInt*(f: float): int {.
-  magic: "ToInt", noSideEffect, importc: "toInt".}
+proc toInt*(f: float): int {.noSideEffect.} =
   ## Converts a floating point number `f` into an ``int``.
   ##
   ## Conversion rounds `f` half away from 0, see
@@ -2310,10 +2313,11 @@ proc toInt*(f: float): int {.
   ##   doAssert toInt(0.49) == 0
   ##   doAssert toInt(0.5) == 1
   ##   doAssert toInt(-0.5) == -1 # rounding is symmetrical
+  if f >= 0: int(f+0.5) else: int(f-0.5)
 
-proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
-  magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
+proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
+  if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
@@ -2677,6 +2681,7 @@ when defined(nimNewRoof):
     ##
     ##   for i in countup(2, 9, 3):
     ##     echo i # => 2; 5; 8
+    mixin inc
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
@@ -2697,6 +2702,7 @@ when defined(nimNewRoof):
     ## .. code-block:: Nim
     ##   for i in 3 .. 7:
     ##     echo i # => 3; 4; 5; 6; 7
+    mixin inc
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
@@ -2726,6 +2732,7 @@ when defined(nimNewRoof):
   dotdotImpl(uint32)
 
   iterator `..<`*[T](a, b: T): T {.inline.} =
+    mixin inc
     var i = T(a)
     while i < b:
       yield i
@@ -2781,6 +2788,7 @@ else:
     ## .. code-block:: Nim
     ##   for i in 3 .. 7:
     ##     echo i # => 3; 4; 5; 6; 7
+    mixin inc
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
@@ -2793,6 +2801,7 @@ else:
         inc(res)
 
   iterator `..<`*[S, T](a: S, b: T): T {.inline.} =
+    mixin inc
     var i = T(a)
     while i < b:
       yield i
@@ -3630,10 +3639,6 @@ when not defined(JS): #and not defined(nimscript):
         if result == 0:
           result = x.len - y.len
 
-  when not defined(nimscript) and hostOS != "standalone":
-    when defined(endb):
-      proc endbStep()
-
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## Converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
@@ -3807,9 +3812,6 @@ when not defined(JS): #and not defined(nimscript):
       currException = exc
 
   {.push stack_trace: off, profiler:off.}
-  when defined(endb) and not defined(nimscript):
-    include "system/debugger"
-
   when (defined(profiler) or defined(memProfiler)) and not defined(nimscript):
     include "system/profiler"
   {.pop.} # stacktrace
@@ -4499,6 +4501,11 @@ when defined(nimconfig):
 when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
+  when defined(nimToOpenArrayCString):
+    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
+      magic: "Slice".}
+    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
+      magic: "Slice".}
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
@@ -4508,7 +4515,12 @@ proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
   magic: "Slice".}
 proc toOpenArray*(x: string; first, last: int): openArray[char] {.
   magic: "Slice".}
+
 proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
 
 type

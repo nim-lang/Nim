@@ -202,7 +202,7 @@ when false:
     assert i < x.len
     x.data[i] = y
 
-  proc `@`*[T](elems: openArray[T]): NimSeqV2[T] =
+  proc `@`*[T](elems: sink openArray[T]): NimSeqV2[T] =
     result.cap = elems.len
     result.len = elems.len
     result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))

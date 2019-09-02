@@ -176,6 +176,7 @@ proc bundleWinTools(args: string) =
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
   bundleC2nim(args)
+  nimCompile("testament/testament.nim", options = args)
   when false:
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim",
@@ -216,6 +217,8 @@ proc buildTools(args: string = "") =
   nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim",
                  options = "-d:release " & args)
   nimCompileFold("Compile nimfind", "tools/nimfind.nim",
+                 options = "-d:release " & args)
+  nimCompileFold("Compile testament", "testament/testament.nim",
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
@@ -417,8 +420,8 @@ proc winRelease*() =
 template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
-  nimexec "cc --opt:speed testament/tester"
-  let tester = quoteShell(getCurrentDir() / "testament/tester".exe)
+  nimexec "cc --opt:speed testament/testament"
+  let tester = quoteShell(getCurrentDir() / "testament/testament".exe)
   let success = tryExec tester & " " & (args|"all")
   if not success:
     quit("tests failed", QuitFailure)
@@ -482,7 +485,7 @@ proc runCI(cmd: string) =
     kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
-    execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-packages")
+    execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
   else:
     buildTools() # altenatively, kochExec "tools --toolsNoNimble"
 
@@ -490,10 +493,10 @@ proc runCI(cmd: string) =
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
     when defined(windows):
       # note: will be over-written below
-      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester")
+      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines")
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
