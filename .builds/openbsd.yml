@@ -11,7 +11,7 @@ environment:
 tasks:
 - setup: |
     cd Nim
-    git clone --depth 1 https://github.com/nim-lang/csources.git
+    git clone --depth 1 -q https://github.com/nim-lang/csources.git
     cd csources
     sh build.sh
     cd ../
