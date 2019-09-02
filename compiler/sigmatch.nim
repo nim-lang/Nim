@@ -2363,7 +2363,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         localError(c.config, n.sons[a].info, "named parameter has to be an identifier")
         noMatch()
         return
-      formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
+      formal = getNamedParamFromList(m.callee.n, n.sons[a].sons[0].ident)
       if formal == nil:
         # no error message!
         noMatch()
