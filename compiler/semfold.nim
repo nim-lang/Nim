@@ -396,13 +396,13 @@ proc leValueConv*(a, b: PNode): bool =
   case a.kind
   of nkCharLit..nkUInt64Lit:
     case b.kind
-    of nkCharLit..nkUInt64Lit: result = a.intVal <= b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.getInt <= b.getInt
     of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal).int
     else: result = false #internalError(a.info, "leValueConv")
   of nkFloatLit..nkFloat128Lit:
     case b.kind
     of nkFloatLit..nkFloat128Lit: result = a.floatVal <= b.floatVal
-    of nkCharLit..nkUInt64Lit: result = a.floatVal <= toFloat(int(b.intVal))
+    of nkCharLit..nkUInt64Lit: result = a.floatVal <= toFloat64(b.getInt)
     else: result = false # internalError(a.info, "leValueConv")
   else: result = false # internalError(a.info, "leValueConv")
 
