@@ -2880,17 +2880,21 @@ proc max*[T](x: openArray[T]): T =
   for i in 1..high(x):
     if result < x[i]: result = x[i]
 
-proc abs*(x: float): float {.magic: "AbsF64", noSideEffect.} =
+proc abs*(x: float64): float64 {.noSideEffect, inline.} =
   if x < 0.0: -x else: x
-proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.} =
+proc abs*(x: float32): float32 {.noSideEffect, inline.} =
+  if x < 0.0: -x else: x
+proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if x <= y or y != y: x else: y
+proc max*(x, y: float32): float32 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc max*(x, y: float64): float64 {.noSideEffect, inline.} =
+  if y <= x or y != y: x else: y
+proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
   if x <= y: x else: y
-proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
-  if y <= x: x else: y
-
-proc min*[T](x, y: T): T {.inline.}=
-  if x <= y: x else: y
-
-proc max*[T](x, y: T): T {.inline.}=
+proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
   if y <= x: x else: y
 {.pop.}
 

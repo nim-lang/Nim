@@ -389,8 +389,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # BitxorI
     ["nimMin", "nimMin"], # MinI
     ["nimMax", "nimMax"], # MaxI
-    ["nimMin", "nimMin"], # MinF64
-    ["nimMax", "nimMax"], # MaxF64
     ["", ""], # addU
     ["", ""], # subU
     ["", ""], # mulU
@@ -430,7 +428,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # BitnotI
     ["", ""], # UnaryPlusF64
     ["", ""], # UnaryMinusF64
-    ["", ""], # AbsF64
     ["nimCharToStr", "nimCharToStr"],
     ["nimBoolToStr", "nimBoolToStr"],
     ["cstrToNimstr", "cstrToNimstr"],
@@ -566,8 +563,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
   of mMinI: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
   of mMaxI: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
-  of mMinF64: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
-  of mMaxF64: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
   of mAddU: applyFormat("", "")
   of mSubU: applyFormat("", "")
   of mMulU: applyFormat("", "")
@@ -607,7 +602,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mBitnotI: applyFormat("~($1)", "~($1)")
   of mUnaryPlusF64: applyFormat("+($1)", "+($1)")
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
-  of mAbsF64: applyFormat("Math.abs($1)", "Math.abs($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
   of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
