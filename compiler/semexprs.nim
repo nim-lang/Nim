@@ -149,7 +149,7 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
       (srcBaseTyp.kind in IntegralTypes):
     if targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and
-          src.intVal notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
+          src.getInt notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
           (classify(src.floatVal) in {fcNan, fcNegInf, fcInf} or

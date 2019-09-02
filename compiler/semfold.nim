@@ -206,8 +206,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mSubI: result = foldSub(getInt(a), getInt(b), n, g)
   of mMulI: result = foldMul(getInt(a), getInt(b), n, g)
   of mMinI:
-    if getInt(a) > getInt(b): result = newIntNodeT(getInt64(b), n, g)
-    else: result = newIntNodeT(getInt64(a), n, g)
+    let argA = getInt(a)
+    let argB = getInt(b)
+    result = newIntNodeT(if argA < argB: argA else: argB, n, g)
   of mMaxI:
     let argA = getInt(a)
     let argB = getInt(b)
