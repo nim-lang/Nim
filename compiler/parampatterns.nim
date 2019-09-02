@@ -224,14 +224,14 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
         result = arLocalLValue
       else:
         result = arLValue
-    elif n.sym.kind == skParam and n.sym.typ.kind == tyVar:
+    elif n.sym.kind == skParam and n.sym.typ.kind in {tyVar, tySink}:
       result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
       if t.kind == tyVar: result = arStrange
   of nkDotExpr:
     let t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
-    if t.kind in {tyVar, tyPtr, tyRef}:
+    if t.kind in {tyVar, tySink, tyPtr, tyRef}:
       result = arLValue
     elif isUnsafeAddr and t.kind == tyLent:
       result = arLValue
@@ -242,7 +242,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       result = arDiscriminant
   of nkBracketExpr:
     let t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
-    if t.kind in {tyVar, tyPtr, tyRef}:
+    if t.kind in {tyVar, tySink, tyPtr, tyRef}:
       result = arLValue
     elif isUnsafeAddr and t.kind == tyLent:
       result = arLValue
