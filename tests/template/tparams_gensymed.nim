@@ -9,6 +9,11 @@ output: '''
 2
 3
 wth
+3
+2
+1
+0
+(total: 6)
 '''
 """
 # bug #1915
@@ -145,3 +150,17 @@ macro m(): untyped =
 
 let meh = m()
 meh("wth")
+
+
+macro foo(body: untyped): untyped =
+  result = body
+
+template baz(): untyped =
+  foo:
+    proc bar2(b: int): int =
+      echo b
+      if b > 0: b + bar2(b = b - 1)
+      else: 0
+  echo (total: bar2(3))
+
+baz()
