@@ -60,6 +60,7 @@ proc test_string_cmp() =
   let earth = "hello\0earth"
   let short = "hello\0"
   let hello = "hello"
+  let hello1 = "hello1"
   let goodbye = "goodbye"
 
   doAssert world == world
@@ -72,6 +73,7 @@ proc test_string_cmp() =
   doAssert cmp(world, earth) > 0
   doAssert cmp(world, short) > 0
   doAssert cmp(world, hello) > 0
+  doAssert cmp(hello1, hello) > 0
   doAssert cmp(world, goodbye) > 0
 
 test_string_slice()
