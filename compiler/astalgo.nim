@@ -77,7 +77,6 @@ proc idNodeTablePut*(t: var TIdNodeTable, key: PIdObj, val: PNode)
 
 # ---------------------------------------------------------------------------
 
-proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
 proc mustRehash*(length, counter: int): bool
 proc nextTry*(h, maxHash: Hash): Hash {.inline.}
@@ -174,13 +173,52 @@ proc getModule*(s: PSym): PSym =
   assert((result.kind == skModule) or (result.owner != result))
   while result != nil and result.kind != skModule: result = result.owner
 
-proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
+proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
   for i in start ..< sonsLen(list):
     if list.sons[i].kind == nkSym:
       result = list.sons[i].sym
       if result.name.id == ident.id: return
     else: return nil
   result = nil
+
+proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
+  if a[0] != b[0]: return false
+  var last = a.len - 1
+  while last > 0 and a[last] != '`': dec(last)
+
+  var i = 1
+  var j = 1
+  while true:
+    while i < last and a[i] == '_': inc i
+    while j < b.len and b[j] == '_': inc j
+    var aa = if i < last: toLowerAscii(a[i]) else: '\0'
+    var bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
+    if aa != bb: return false
+
+    # the characters are identical:
+    if i >= last:
+      # both cursors at the end:
+      if j >= b.len: return true
+      # not yet at the end of 'b':
+      return false
+    elif j >= b.len:
+      return false
+    inc i
+    inc j
+
+proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
+  ## Named parameters are special because a named parameter can be
+  ## gensym'ed and then they have '`<number>' suffix that we need to
+  ## ignore, see compiler / evaltempl.nim, snippet:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
+  ##            if c.instLines: actual.info else: templ.info)
+  for i in 1 ..< len(list):
+    let it = list[i].sym
+    if it.name.id == ident.id or
+        sameIgnoreBacktickGensymInfo(it.name.s, ident.s): return it
 
 proc hashNode(p: RootRef): Hash =
   result = hash(cast[pointer](p))

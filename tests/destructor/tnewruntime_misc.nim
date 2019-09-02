@@ -85,3 +85,16 @@ testWrongAt()
 
 let (a, d) = allocCounters()
 discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)
+
+#-------------------------------------------------
+type
+  Table[A, B] = object
+    x: seq[(A, B)]
+
+
+proc toTable[A,B](p: sink openArray[(A, B)]): Table[A, B] = 
+  for zz in mitems(p):
+    result.x.add move(zz)
+
+
+let table = {"a": new(int)}.toTable()

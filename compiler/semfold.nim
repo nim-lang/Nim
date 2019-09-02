@@ -197,7 +197,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
       result = newIntNodeT(toInt128(sonsLen(a)), n, g)
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   # XXX: Hides overflow/underflow
-  of mAbsF64: result = newFloatNodeT(abs(getFloat(a)), n, g)
   of mAbsI: result = foldAbs(getInt(a), n, g)
   of mUnaryLt: result = foldSub(getOrdValue(a), One, n, g)
   of mSucc: result = foldAdd(getOrdValue(a), getInt(b), n, g)
@@ -277,12 +276,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
   of mDivF64:
     result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
-  of mMaxF64:
-    if getFloat(a) > getFloat(b): result = newFloatNodeT(getFloat(a), n, g)
-    else: result = newFloatNodeT(getFloat(b), n, g)
-  of mMinF64:
-    if getFloat(a) > getFloat(b): result = newFloatNodeT(getFloat(b), n, g)
-    else: result = newFloatNodeT(getFloat(a), n, g)
   of mIsNil: result = newIntNodeT(ord(a.kind == nkNilLit), n, g)
   of mLtI, mLtB, mLtEnum, mLtCh:
     result = newIntNodeT(ord(getOrdValue(a) < getOrdValue(b)), n, g)

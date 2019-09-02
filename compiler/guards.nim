@@ -35,8 +35,8 @@ const
   someMul = {mMulI, mMulF64}
   someDiv = {mDivI, mDivF64}
   someMod = {mModI}
-  someMax = {mMaxI, mMaxF64}
-  someMin = {mMinI, mMinF64}
+  someMax = {mMaxI}
+  someMin = {mMinI}
   someBinaryOp = someAdd+someSub+someMul+someMax+someMin
 
 proc isValue(n: PNode): bool = n.kind in {nkCharLit..nkNilLit}

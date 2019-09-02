@@ -1309,7 +1309,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
      tyNone, tyForward, tyFromExpr:
     result = t
   of tyNil:
-    if kind != skConst and kind != skParam and kind != skResult: result = t
+    if kind != skConst and kind != skParam: result = t
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString, tyPointer:
     result = nil
   of tyOrdinal:

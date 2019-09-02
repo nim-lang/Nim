@@ -80,6 +80,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     while a != nil:
       if a.kind != skModule and (not isField or sfGenSym notin s.flags):
         incl(a.flags, sfUsed)
+        markOwnerModuleAsUsed(c, a)
         addSon(result, newSymNode(a, info))
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
