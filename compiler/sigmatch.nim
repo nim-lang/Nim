@@ -1961,10 +1961,6 @@ proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   of isEqual: inc(m.exactMatches)
   of isNone: discard
 
-template matchesVoidProc(t: PType): bool =
-  (t.kind == tyProc and t.len == 1 and t.sons[0] == nil) or
-    (t.kind == tyBuiltInTypeClass and t.sons[0].kind == tyProc)
-
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
@@ -2119,17 +2115,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       inc(m.genericMatches)
       m.fauxMatch = a.kind
       return arg
-    elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
-      # lift do blocks without params to lambdas
-      let p = c.graph
-      let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
-          params = nkFormalParams.newTree(p.emptyNode), name = p.emptyNode, pattern = p.emptyNode,
-          genericParams = p.emptyNode, pragmas = p.emptyNode, exceptions = p.emptyNode), {})
-      if f.kind == tyBuiltInTypeClass:
-        inc m.genericMatches
-        put(m, f, lifted.typ)
-      inc m.convMatches
-      return implicitConv(nkHiddenStdConv, f, lifted, m, c)
     result = userConvMatch(c, m, f, a, arg)
     # check for a base type match, which supports varargs[T] without []
     # constructor in a call:

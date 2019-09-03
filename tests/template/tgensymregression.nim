@@ -61,7 +61,7 @@ macro makeProc(): typed =
   # Make a template tree
   result = quote do:
     proc someProc* =
-      wrap do:
+      wrap:
         let x = 123
         # Implicit conversion here
         let s: string = x

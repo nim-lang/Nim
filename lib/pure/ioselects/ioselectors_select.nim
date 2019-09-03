@@ -440,7 +440,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
         break
       inc(i)
     if i != FD_SETSIZE:
-      body
+      stripDoNode(body)
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
                       body1, body2: untyped) =
@@ -456,10 +456,9 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
           break
         inc(i)
       if i != FD_SETSIZE:
-        body1
+        stripDoNode(body1)
       else:
-        body2
-
+        stripDoNode(body2)
 
 proc getFd*[T](s: Selector[T]): int =
   return -1

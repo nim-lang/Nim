@@ -1090,9 +1090,6 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     getTok(p)
     optInd(p, result)
     result.sons[0] = parseTypeDesc(p)
-  elif not retColon and not hasParLe:
-    # Mark as "not there" in order to mark for deprecation in the semantic pass:
-    result = p.emptyNode
   when defined(nimpretty):
     dec p.em.doIndentMore
     dec p.em.keepIndents
@@ -1108,11 +1105,10 @@ proc parseDoBlock(p: var TParser; info: TLineInfo): PNode =
   let params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
   colcom(p, result)
-  result = parseStmt(p)
-  if params.kind != nkEmpty:
-    result = newProcNode(nkDo, info,
-      body = result, params = params, name = p.emptyNode, pattern = p.emptyNode,
-      genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
+  let body = parseStmt(p)
+  result = newProcNode(nkDo, info,
+    body = body, params = params, name = p.emptyNode, pattern = p.emptyNode,
+    genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
 
 proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
   #| procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
@@ -1355,7 +1351,8 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
     openingParams = p.emptyNode
     openingPragmas = p.emptyNode
 
-  if p.tok.tokType == tkDo:
+  let doToken = p.tok.tokType == tkDo
+  if doToken:
     getTok(p)
     openingParams = parseParamList(p, retColon=false)
     openingPragmas = optPragmas(p)
@@ -1371,7 +1368,7 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
       if stmtList[0].kind == nkStmtList: stmtList = stmtList[0]
 
       stmtList.flags.incl nfBlockArg
-      if openingParams.kind != nkEmpty:
+      if doToken:
         result.add newProcNode(nkDo, stmtList.info, body = stmtList,
                                params = openingParams,
                                name = p.emptyNode, pattern = p.emptyNode,

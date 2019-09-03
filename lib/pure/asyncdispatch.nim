@@ -1185,7 +1185,7 @@ else:
     var curList: seq[Callback]
 
     let selector = getGlobalDispatcher().selector
-    withData(selector, fd.int, fdData):
+    withData(selector, fd.int, fdData) do:
       case event
       of Event.Read:
         shallowCopy(curList, fdData.readList)

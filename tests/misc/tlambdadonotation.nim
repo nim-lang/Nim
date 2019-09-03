@@ -29,7 +29,7 @@ proc foo(x: proc {.closure.}) =
 proc bar =
   var x = 123
   # foo proc = echo x     #[ ok ]#
-  foo: echo x             #[ SIGSEGV: Illegal storage access. (Attempt to read from nil?) ]#
+  foo do: echo x             #[ SIGSEGV: Illegal storage access. (Attempt to read from nil?) ]#
 
 bar()
 

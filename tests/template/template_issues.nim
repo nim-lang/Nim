@@ -21,9 +21,9 @@ block t2057:
   template toFloatHelper(result, tooSmall, tooLarge: untyped) =
     result = mpf_get_d(a)
     if result == 0.0 and mpf_cmp_d(a,0.0) != 0:
-      tooSmall
+      stripDoNode(tooSmall)
     if result == Inf:
-      tooLarge
+      stripDoNode(tooLarge)
 
   proc toFloat(a: int): float =
     toFloatHelper(result) do:

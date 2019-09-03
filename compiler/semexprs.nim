@@ -1995,7 +1995,8 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     ids = newSeq[PNode](1)
       # this will store the generated param names
       # leave some room for the result symbol
-
+  if quotedBlock.kind == nkDo:
+    quotedBlock = quotedBlock[^1]
   if quotedBlock.kind != nkStmtList:
     localError(c.config, n.info, errXExpected, "block")
 

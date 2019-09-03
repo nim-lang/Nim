@@ -5,15 +5,17 @@ true
 true inner B'''
 """
 
+import macros
+
 template withValue(a, b, c, d, e: untyped) =
   if c:
-    d
+    stripDoNode(d)
   else:
-    e
+    stripDoNode(e)
 
 template withValue(a, b, c, d: untyped) =
   if c:
-    d
+    stripDoNode(d)
 
 const
   EVENT_READ = 1

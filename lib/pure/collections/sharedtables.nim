@@ -78,7 +78,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     let hasKey = index >= 0
     if hasKey:
       var value {.inject.} = addr(t.data[index].val)
-      body
+      stripDoNode(body)
   finally:
     release(t.lock)
 
@@ -105,9 +105,9 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     let hasKey = index >= 0
     if hasKey:
       var value {.inject.} = addr(t.data[index].val)
-      body1
+      stripDoNode(body1)
     else:
-      body2
+      stripDoNode(body2)
   finally:
     release(t.lock)
 

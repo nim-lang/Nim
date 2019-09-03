@@ -512,6 +512,8 @@ proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
     s.fds[fdi].data = data
     result = true
 
+import macros
+
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
                         body: untyped) =
   mixin checkFd
@@ -519,7 +521,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   s.checkFd(fdi)
   if fdi in s:
     var value = addr(s.getData(fdi))
-    body
+    stripDoNode(body)
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
                         body2: untyped) =
@@ -528,9 +530,9 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   s.checkFd(fdi)
   if fdi in s:
     var value = addr(s.getData(fdi))
-    body1
+    stripDoNode(body1)
   else:
-    body2
+    stripDoNode(body2)
 
 proc getFd*[T](s: Selector[T]): int =
   return s.epollFd.int

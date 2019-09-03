@@ -1595,6 +1595,18 @@ proc getProjectPath*(): string = discard
   ## be confused with ``system.currentSourcePath`` which returns
   ## the path of the current module.
 
+macro stripDoNode*(arg: untyped): untyped =
+  ## for templates that expect multiple blocks of code with the do
+  ## notation, this macro will strip the do lambda node to inline the
+  ## body.
+  if arg.kind == nnkDo:
+    expectLen(arg[3], 1)
+    expectKind(arg[3][0], nnkEmpty)
+    result = arg[6]
+  else:
+    result = arg
+
+
 when defined(nimMacrosSizealignof):
   proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
     ## Returns the same result as ``system.sizeof`` if the size is
