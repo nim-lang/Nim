@@ -658,7 +658,8 @@ proc processCategory(r: var TResults, cat: Category,
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
   of "ic":
-    icTests(r, testsDir, cat, options)
+    when false:
+      icTests(r, testsDir, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:
