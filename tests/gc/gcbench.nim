@@ -97,8 +97,8 @@ proc makeTree(iDepth: int): PNode =
     return newNode(makeTree(iDepth-1), makeTree(iDepth-1))
 
 proc printDiagnostics() =
-  echo("Total memory available: " & $getTotalMem() & " bytes")
-  echo("Free memory: " & $getFreeMem() & " bytes")
+  echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
+  echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
 
 proc timeConstruction(depth: int) =
   var
