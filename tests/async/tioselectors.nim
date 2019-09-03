@@ -321,7 +321,7 @@ elif not defined(windows):
       discard selector.select(0)
 
       # chmod testDirectory to 0777
-      chmodPath(testDirectory, 0x1FF)
+      chmodPath(testDirectory, 0777)
       res = selector.select(0)
       doAssert(len(res) == 1)
       doAssert(len(selector.select(0)) == 0)
@@ -378,7 +378,7 @@ elif not defined(windows):
       doAssert(len(selector.select(0)) == 0)
 
       # chmod test file with 0666
-      chmodPath(testDirectory & "/testfile", 0x1B6)
+      chmodPath(testDirectory & "/testfile", 0666)
       doAssert(len(selector.select(0)) == 0)
 
       testfd = openWatch(testDirectory & "/testfile")
