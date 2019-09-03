@@ -97,7 +97,7 @@ type
   SomeInteger* = SomeSignedInt|SomeUnsignedInt
     ## Type class matching all integer types.
 
-  SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint8|uint16|uint32
+  SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint|uint8|uint16|uint32|uint64
     ## Type class matching all ordinal types; however this includes enums with
     ## holes.
 
