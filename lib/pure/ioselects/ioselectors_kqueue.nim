@@ -9,7 +9,7 @@
 
 #  This module implements BSD kqueue().
 
-import posix, times, kqueue
+import posix, times, kqueue, macros
 
 const
   # Maximum number of events that can be returned.

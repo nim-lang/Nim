@@ -9,7 +9,7 @@
 
 # This module implements Posix and Windows select().
 
-import times, nativesockets
+import times, nativesockets, macros
 
 when defined(windows):
   import winlean

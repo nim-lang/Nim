@@ -9,7 +9,7 @@
 
 # This module implements Linux epoll().
 
-import posix, times, epoll
+import posix, times, epoll, macros
 
 # Maximum number of events that can be returned
 const MAX_EPOLL_EVENTS = 64
@@ -511,8 +511,6 @@ proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   if fdi in s:
     s.fds[fdi].data = data
     result = true
-
-import macros
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
                         body: untyped) =

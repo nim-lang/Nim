@@ -9,7 +9,7 @@
 
 # This module implements Posix poll().
 
-import posix, times
+import posix, times, macros
 
 # Maximum number of events that can be returned
 const MAX_POLL_EVENTS = 64
