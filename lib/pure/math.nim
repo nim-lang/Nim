@@ -114,6 +114,7 @@ const
                                            ## after the decimal point
                                            ## for Nim's ``float`` type.
   RadPerDeg = PI / 180.0 ## Number of radians per degree
+include mathconstants  # File containing only mathematical constants.
 
 type
   FloatClass* = enum ## Describes the class a floating point value belongs to.
