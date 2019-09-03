@@ -129,6 +129,8 @@
 ##
 ## For objects it may be desirable to avoid serialization of one or more object
 ## fields. This can be achieved by using the ``{.doNotSerialize.}`` pragma.
+## On the other hand sometimes it is desired to (de)serialize fields, but under a
+## different name. For this use the ``{.jsonName: "myName".}`` pragma.
 ##
 ## .. code-block:: nim
 ##   import json
@@ -136,12 +138,13 @@
 ##   type
 ##     User = object
 ##       name: string
-##       age: int
+##       age {.jsonName: "userAge".}: int
 ##       uid {.doNotSerialize.}: int
 ##
 ##    let user = User(name: "Siri", age: 7, uid: 1234)
 ##    let uJson = % user
 ##    doAssert not uJson.hasKey("uid")
+##    doAssert uJson["userAge"].num == 7
 ##    echo uJson
 ##
 ## This module can also be used to comfortably create JSON using the ``%*``
@@ -396,23 +399,32 @@ template doNotSerialize*() {.pragma.}
   ## serialization of said field to a `JsonNode` via `%`. See the `%` proc for
   ## objects below for an example.
 
+template jsonName*(name: string) {.pragma.}
+  ## The `{.jsonName: "myName".}` pragma can be attached to a field of an object
+  ## to change the (de)serialization name of that field. See the `%` proc for
+  ## objects or the `to` macro below for examples.
+
 proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
   ##
   ## An object field annotated with the `{.doNotSerialize.}` pragma will not appear
-  ## in the serialized JsonNode.
+  ## in the serialized JsonNode. A field annotated with the `{.jsonName: "myName".}`
+  ## pragma however, will be serialized under that name instead.
   runnableExamples:
     type
       User = object
         name: string
-        age: int
+        age {.jsonName: "userAge".} : int
         uid {.doNotSerialize.}: int
     let user = User(name: "Siri", age: 7, uid: 1234)
     let uJson = % user
     doAssert not uJson.hasKey("uid")
+    doAssert uJson["userAge"].num == 7
   result = newJObject()
   for k, v in o.fieldPairs:
-    when not hasCustomPragma(v, doNotSerialize):
+    when hasCustomPragma(v, jsonName):
+      result[getCustomPragmaVal(v, jsonName)] = %v
+    elif not hasCustomPragma(v, doNotSerialize):
       result[k] = %v
 
 proc `%`*(o: ref object): JsonNode =
@@ -1512,7 +1524,6 @@ proc postProcessExprColonExpr(exprColonExpr, resIdent: NimNode): NimNode =
       quote do:
         `resIdent`.`fieldName` = `fieldValue`
 
-
 proc postProcess(node: NimNode): NimNode =
   ## The ``createConstructor`` proc creates a ObjConstr node which contains
   ## if statements for fields that may not be assignable (due to an object
@@ -1549,9 +1560,80 @@ proc postProcess(node: NimNode): NimNode =
   # Return the `res` variable.
   result.add(resIdent)
 
+proc extractJsonName(node: NimNode): tuple[field: string, fieldAs: string] =
+  ## extracts the field name and its replacement for the `jsonName` pragma
+  expectKind(node, nnkPragmaExpr)
+  doAssert node.len == 2
+  doAssert node[1][0].kind == nnkExprColonExpr
+  doAssert node[1][0][0].strVal == "jsonName"
+  case node[0].kind
+  of nnkIdent, nnkSym:
+    result = (field: node[0].strVal, fieldAs: node[1][0][1].strVal)
+  of nnkPostfix:
+    # for exported fields
+    result = (field: node[0][1].strVal, fieldAs: node[1][0][1].strVal)
+  else:
+    assert false, "unsupported node kind " & $node.kind
+
+proc findJsonNamePragma(typeNode: NimNode):
+  seq[tuple[field: string, fieldAs: string]] =
+  ## recurses the whole `typeNode` and searches for appearences of the
+  ## `jsonName` pragma to rename fields for (de)serialization.
+  for ch in typeNode:
+    case ch.kind
+    of nnkPragmaExpr:
+      result.add extractJsonName(ch)
+    of nnkSym:
+      if typeNode.kind != nnkTypeDef:
+        # if it was an nnkTypeDef, we'd recurse on ourselves
+        let impl = getTypeImpl(ch)
+        if impl.kind == nnkObjectTy:
+          result.add findJsonNamePragma(ch.getImpl)
+    else:
+      result.add findJsonNamePragma(ch)
+
+proc findReplace(node: NimNode,
+                 replace: seq[tuple[field: string, fieldAs: string]]): NimNode =
+  ## performs replacement according to `jsonName` values of `nnkBracketExpr` nodes
+  ## appearing in the `to` macro's generated code.
+  expectKind(node, nnkBracketExpr)
+  if node.len == 2:
+    result = nnkBracketExpr.newTree()
+    if node[0].kind == nnkBracketExpr:
+      # if child itself bracketExpr, recurse
+      result.add findReplace(node[0], replace)
+    else:
+      result.add node[0]
+    for i, el in replace:
+      # check if child 1 is literal string and matches an element of `replace`
+      if node[1].kind == nnkStrLit and
+         node[1].strVal == el[0]:
+        result.add newLit(el[1])
+        return result
+    # not found, keep as is
+    result.add node[1]
+  else:
+    # for literal arrays, e.g. `array[2, float]` don't touch
+    result = node
+
+proc replaceNames(node: NimNode,
+                  replace: seq[tuple[field: string, fieldAs: string]]): NimNode =
+  ## replaces all appearences of `field` by `fieldAs` in `node` if
+  ## `field` appears in `nnkBracketExpr` as `nnkStrLit`
+  result = node.kind.newTree()
+  for ch in node:
+    case ch.kind
+    of nnkBracketExpr:
+      result.add findReplace(ch, replace)
+    of nnkIdent, nnkSym, nnkLiterals, nnkEmpty:
+      result.add ch
+    else:
+      result.add replaceNames(ch, replace)
 
 macro to*(node: JsonNode, T: typedesc): untyped =
   ## `Unmarshals`:idx: the specified node into the object type specified.
+  ## If the JSON contains field names differing from the Nim object field
+  ## names, use the ``{.jsonName: "myName".}`` pragma as below.
   ##
   ## Known limitations:
   ##
@@ -1566,7 +1648,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##        {
   ##          "person": {
   ##            "name": "Nimmer",
-  ##            "age": 21
+  ##            "personAge": 21
   ##          },
   ##          "list": [1, 2, 3, 4]
   ##        }
@@ -1575,7 +1657,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##     type
   ##       Person = object
   ##         name: string
-  ##         age: int
+  ##         age {.jsonName: "personAge".}: int
   ##
   ##       Data = object
   ##         person: Person
@@ -1597,9 +1679,13 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   result.add quote do:
     let `temp` = `node`
 
-  let constructor = createConstructor(typeNode[1], temp)
-  result.add(postProcessValue(constructor))
+  var constructor = createConstructor(typeNode[1], temp)
+  if typeNode[1].kind == nnkSym:
+    # if more complex type, check if implementation has pragmas attached
+    let pragmaReplace = findJsonNamePragma(getTypeImpl(T)[1].getImpl)
+    constructor = constructor.replaceNames(pragmaReplace)
 
+  result.add(postProcessValue(constructor))
   # echo(treeRepr(result))
   # echo(toStrLit(result))
 

@@ -593,6 +593,73 @@ block:
     doAssert not hasKey(node, "anotherPos")
     doAssert not hasKey(node, "foodPos")
 
+  # deserialize into specific fieldname
+  block:
+    let exp = parseJson("""
+    {
+        "_nodes": {
+                "total": 1,
+                "successful": 1,
+                "failed": 0
+        }
+    }""")
+    type
+      Node = object
+        total: int
+        successful: int
+        failed: int
+      Response {.jsonName: "response".} = object
+        nodes {.jsonName: "_nodes".}: Node
+    let response = to(exp, Response)
+    doAssert response.nodes.total == 1
+    doAssert response.nodes.successful == 1
+    doAssert response.nodes.failed == 0
+    # check serialization
+    let respJson = % response
+    doAssert respJson == exp
+
+  # serialize into specific fieldname, nested with variant
+  block:
+    let exp = parseJson("""
+    {
+      "response": {
+        "_foobar": 1
+      },
+      "myKind": "mkOne",
+      "one": 2
+    }""")
+    type
+      KindEnum = enum
+        mkOne, mkTwo
+      Resp = object
+        myField {.jsonName: "_foobar".}: int
+      SerializeMe = object
+        someObj {.jsonName: "response".}: Resp
+        case kind {.jsonName: "myKind".}: KindEnum
+        of mkOne:
+          one: int
+        of mkTwo:
+          two: string
+    let obj = SerializeMe(someObj: Resp(myField: 1), kind: mkOne, one: 2)
+    doAssert (% to(exp, SerializeMe)) == exp
+    let objJson = % obj
+    doAssert objJson["response"]["_foobar"].num == 1
+    doAssert objJson["myKind"].str == "mkOne"
+    doAssert objJson["one"].num == 2
+
+  # serialize a field with nnkPostfix node
+  block:
+    let exp = parseJson("""
+    {
+      "customName": 3
+    }""")
+    type
+      AndAnotherObject = object
+        afield* {.jsonName: "customName".}: int
+    let obj = AndAnotherObject(afield: 3)
+    doAssert (% obj) == exp
+    doAssert obj == to(exp, AndAnotherObject)
+
 # TODO: when the issue with the limeted vm registers is solved, the
 # exact same test as above should be evaluated at compile time as
 # well, to ensure that the vm functionality won't diverge from the
