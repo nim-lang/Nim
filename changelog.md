@@ -13,7 +13,7 @@
 - The language definition and compiler are now stricter about ``gensym``'ed
   symbols in hygienic templates. See the section in the
   [manual](https://nim-lang.org/docs/manual.html#templates-hygiene-in-templates)
-  for further details. Use the compiler switch `--useVersion:0.19` for a
+  for further details. Use the compiler switch `--oldgensym:on` for a
   transition period.
 
 
