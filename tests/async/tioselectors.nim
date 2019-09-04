@@ -260,8 +260,8 @@ elif not defined(windows):
       if err == -1:
         raiseOsError(osLastError())
 
-    proc chmodPath(name: string, mode: cint) =
-      let err = posix.chmod(cstring(name), Mode(mode))
+    proc chmodPath(name: string, mode: Mode) =
+      let err = posix.chmod(cstring(name), mode)
       if err == -1:
         raiseOsError(osLastError())
 
@@ -321,7 +321,7 @@ elif not defined(windows):
       discard selector.select(0)
 
       # chmod testDirectory to 0777
-      chmodPath(testDirectory, 0777)
+      chmodPath(testDirectory, Mode(0x1FF))
       res = selector.select(0)
       doAssert(len(res) == 1)
       doAssert(len(selector.select(0)) == 0)
@@ -378,7 +378,7 @@ elif not defined(windows):
       doAssert(len(selector.select(0)) == 0)
 
       # chmod test file with 0666
-      chmodPath(testDirectory & "/testfile", 0666)
+      chmodPath(testDirectory & "/testfile", Mode(0x1B6))
       doAssert(len(selector.select(0)) == 0)
 
       testfd = openWatch(testDirectory & "/testfile")
