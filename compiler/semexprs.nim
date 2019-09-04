@@ -1896,7 +1896,6 @@ proc expectString(c: PContext, n: PNode): string =
 
 proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
   result = newSym(kind, c.cache.idAnon, getCurrOwner(c), info)
-  result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
