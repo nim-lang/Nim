@@ -641,7 +641,7 @@ proc suggestSentinel*(c: PContext) =
       var pm: PrefixMatch
       if filterSymNoOpr(it, nil, pm):
         outputs.add(symToSuggest(c.config, it, isLocal = isLocal, ideSug,
-            newLineInfo(c.config.m.trackPos.fileIndex, -1, -1), 0,
+            newLineInfo(c.config.m.trackPos.fileIndex, 0, -1), 0,
             PrefixMatch.None, false, scopeN))
 
   dec(c.compilesContextId)
