@@ -2,10 +2,14 @@ discard """
   targets: "c cpp"
 """
 
-var fun2 {.importc.}: int
-proc fun1(){.importc.}
+var fun0 {.importc.}: int
+proc fun1() {.importc.}
+proc fun2() {.importc: "$1".}
+proc fun3() {.importc: "fun3Bis".}
 
+doAssert fun0 == 10
 fun1()
-doAssert fun2 == 10
+fun2()
+fun3()
 
 import ./mexportc
