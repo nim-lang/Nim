@@ -839,7 +839,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCompileTime:
         noVal(c, it)
         incl(sym.flags, sfCompileTime)
-        incl(sym.loc.flags, lfNoDecl)
+        #incl(sym.loc.flags, lfNoDecl)
       of wGlobal:
         noVal(c, it)
         incl(sym.flags, sfGlobal)
@@ -1131,7 +1131,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     elif comesFromPush and whichKeyword(ident) in {wTags, wRaises}:
       discard "ignore the .push pragma; it doesn't apply"
     else:
-      if sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam,
+      if sym == nil or (sym.kind in {skVar, skLet, skParam,
                         skField, skProc, skFunc, skConverter, skMethod, skType}):
         n.sons[i] = semCustomPragma(c, it)
       elif sym != nil:

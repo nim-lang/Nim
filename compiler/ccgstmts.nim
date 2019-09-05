@@ -271,19 +271,16 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
-proc genSingleVar(p: BProc, a: PNode) =
-  let vn = a.sons[0]
-  let v = vn.sym
-  if sfCompileTime in v.flags: return
+proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
-    genGotoVar(p, a.sons[2])
+    genGotoVar(p, value)
     return
   var targetProc = p
   var traverseProc: Rope
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
-        a.sons[2].kind == nkEmpty and
+        value.kind == nkEmpty and
         v.loc.flags * {lfHeader, lfNoDecl} != {}:
       return
     if sfPure in v.flags:
@@ -313,14 +310,13 @@ proc genSingleVar(p: BProc, a: PNode) =
     if traverseProc != nil and not p.hcrOn:
       registerTraverseProc(p, v, traverseProc)
   else:
-    let value = a.sons[2]
     let imm = isAssignedImmediately(p.config, value)
     if imm and p.module.compileToCpp and p.splitDecls == 0 and
         not containsHiddenPointer(v.typ):
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
       # parameterless constructor followed by an assignment operator. So we
       # generate better code here: 'Foo f = x;'
-      genLineDir(p, a)
+      genLineDir(p, vn)
       let decl = localVarDecl(p, vn)
       var tmp: TLoc
       if value.kind in nkCallKinds and value[0].kind == nkSym and
@@ -363,11 +359,16 @@ proc genSingleVar(p: BProc, a: PNode) =
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     startBlock(targetProc)
-  if a.sons[2].kind != nkEmpty:
-    genLineDir(targetProc, a)
-    loadInto(targetProc, a.sons[0], a.sons[2], v.loc)
+  if value.kind != nkEmpty:
+    genLineDir(targetProc, vn)
+    loadInto(targetProc, vn, value, v.loc)
   if forHcr:
     endBlock(targetProc)
+
+proc genSingleVar(p: BProc, a: PNode) =
+  let v = a[0].sym
+  if sfCompileTime in v.flags: return
+  genSingleVar(p, v, a[0], a.sons[2])
 
 proc genClosureVar(p: BProc, a: PNode) =
   var immediateAsgn = a.sons[2].kind != nkEmpty
