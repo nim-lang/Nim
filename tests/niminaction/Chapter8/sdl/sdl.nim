@@ -4,6 +4,12 @@ elif defined(Linux):
   const libName* = "libSDL2.so"
 elif defined(MacOsX):
   const libName* = "libSDL2.dylib"
+elif defined(openbsd):
+  const libName* = "libSDL.so.8.0"
+elif defined(freebsd):
+  const libName* = "libSDL.so"
+else:
+  {.error: "SDL library name not set for this platform".}
 
 type
   SdlWindow = object
