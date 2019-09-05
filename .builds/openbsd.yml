@@ -5,7 +5,7 @@ packages:
 - boehm-gc
 - pcre
 - sfml
-- sdl
+- sdl2
 sources:
 - https://github.com/nim-lang/Nim.git
 environment:
