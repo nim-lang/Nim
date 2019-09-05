@@ -223,6 +223,9 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
   if t.lockLevel.ord != UnspecifiedLockLevel.ord:
     add(result, '\14')
     encodeVInt(t.lockLevel.int16, result)
+  if t.paddingAtEnd != 0:
+    add(result, '\15')
+    encodeVInt(t.paddingAtEnd, result)
   for a in t.attachedOps:
     add(result, '\16')
     if a == nil:
@@ -630,6 +633,10 @@ proc loadType(g; id: int; info: TLineInfo): PType =
     result.lockLevel = decodeVInt(b.s, b.pos).TLockLevel
   else:
     result.lockLevel = UnspecifiedLockLevel
+
+  if b.s[b.pos] == '\15':
+    inc(b.pos)
+    result.paddingAtEnd = decodeVInt(b.s, b.pos).int16
 
   for a in low(result.attachedOps)..high(result.attachedOps):
     if b.s[b.pos] == '\16':
