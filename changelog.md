@@ -32,6 +32,7 @@ type
 ```
 
 - `exportc` now uses C instead of C++ mangling with `nim cpp`, matching behavior of `importc`, see #10578
+  Use the new `exportcpp` to mangle as C++ when using `nim cpp`.
 
 ### Breaking changes in the compiler
 
