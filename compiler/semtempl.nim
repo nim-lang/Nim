@@ -251,15 +251,15 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of OverloadableSyms:
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
-    if isField: result = n
+    if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, n.info)
   of skParam:
     result = n
   of skType:
-    if isField: result = n
+    if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, n.info)
   else:
-    if isField: result = n
+    if isField and sfGenSym in s.flags: result = n
     else: result = newSymNode(s, n.info)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =

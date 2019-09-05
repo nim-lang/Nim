@@ -7,6 +7,7 @@ a
 hi
 Hello, World!
 (e: 42)
+hey
 '''
 """
 
@@ -235,3 +236,12 @@ var
   x = X.fails(42)
 
 echo x
+
+import mtempl5
+
+
+proc foo(): auto =
+  trap "foo":
+    echo "hey"
+
+discard foo()
