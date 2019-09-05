@@ -125,6 +125,7 @@ type
     cursorInBody: bool # only for nimsuggest
     scopeN: int
     noGenSym: int
+    inTemplateHeader: int
 
 template withBracketExpr(ctx, x, body: untyped) =
   body
@@ -144,9 +145,12 @@ proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
     illFormedAst(n, c.c.config)
     result = n
 
+template oldCheck(cx: TemplCtx; cond: bool): bool =
+  (optNimV019 notin cx.c.config.globalOptions or cond)
+
 proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
   result = n.kind == nkSym and n.sym.kind == skParam and
-           n.sym.owner == c.owner and sfGenSym notin n.sym.flags
+           n.sym.owner == c.owner and sfTemplateParam in n.sym.flags
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode
 
@@ -231,6 +235,8 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         styleCheckDef(c.c.config, n.info, local)
         onDef(n.info, local)
         replaceIdentBySym(c.c, n, newSymNode(local, n.info))
+        if k == skParam and c.inTemplateHeader > 0:
+          local.flags.incl sfTemplateParam
     else:
       replaceIdentBySym(c.c, n, ident)
 
@@ -288,7 +294,14 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
     n.sons[namePos] = semRoutineInTemplName(c, n.sons[namePos])
   # open scope for parameters
   openScope(c)
-  for i in patternPos..miscPos:
+  for i in patternPos..paramsPos-1:
+    n.sons[i] = semTemplBody(c, n.sons[i])
+
+  if k == skTemplate: inc(c.inTemplateHeader)
+  n.sons[paramsPos] = semTemplBody(c, n.sons[paramsPos])
+  if k == skTemplate: dec(c.inTemplateHeader)
+
+  for i in paramsPos+1..miscPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
   # open scope for locals
   inc c.scopeN
@@ -331,8 +344,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.ident.id in c.toInject: return n
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and s.kind == skParam and
-          (sfGenSym notin s.flags or c.noGenSym == 0):
+      if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
+        # oldCheck(c, sfGenSym notin s.flags or c.noGenSym == 0):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
@@ -542,16 +555,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr:
       result = n
       result.sons[0] = semTemplBody(c, n.sons[0])
-      inc c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
       result.sons[1] = semTemplBody(c, n.sons[1])
-      dec c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:
     if n.len == 2:
-      inc c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
       result.sons[0] = semTemplBody(c, n.sons[0])
-      dec c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
       result.sons[1] = semTemplBody(c, n.sons[1])
     else:
       result = semTemplBodySons(c, n)
@@ -625,7 +638,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # body by the absence of the sfGenSym flag:
     for i in 1 .. s.typ.n.len-1:
       let param = s.typ.n.sons[i].sym
-      param.flags.excl sfGenSym
+      param.flags.incl sfTemplateParam
+      if optNimV019 in c.config.globalOptions:
+        param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
     if sonsLen(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:

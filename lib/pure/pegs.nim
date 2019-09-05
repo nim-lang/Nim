@@ -890,12 +890,13 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   #           <handler code block>
   #   ...
   proc mkEnter(hdName, body: NimNode): NimNode =
-    quote do:
-      template `hdName`(s, p, start) =
+    template helper(hdName, body) {.dirty.} =
+      template hdName(s, p, start) =
         let s {.inject.} = s
         let p {.inject.} = p
         let start {.inject.} = start
-        `body`
+        body
+    result = getAst(helper(hdName, body))
 
   template mkLeave(hdPostf, body) {.dirty.} =
     # this has to be dirty to be able to capture *result* as *length* in
