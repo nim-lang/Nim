@@ -1039,7 +1039,8 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
            m.config.cmd != cmdCompileToCpp) or (
-           sym.flags * {sfImportc, sfInfixCall, sfCompilerProc} == {sfImportc} and
+           sym.flags * {sfInfixCall, sfCompilerProc} == {} and
+           sym.flags * {sfImportc, sfExportc} != {} and
            sym.magic == mNone and
            m.config.cmd == cmdCompileToCpp)
 
