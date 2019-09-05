@@ -97,6 +97,8 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
 
 when (defined(linux) and not defined(android)) and defined(amd64):
   include posix_linux_amd64
+elif defined(openbsd) and defined(amd64):
+  include posix_openbsd_amd64
 elif (defined(macos) or defined(macosx) or defined(bsd)) and defined(cpu64):
   include posix_macos_amd64
 elif defined(nintendoswitch):
