@@ -1435,17 +1435,17 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
     var a: Stat
     if stat(filename, a) < 0'i32: raiseOSError(osLastError())
     result = {}
-    if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
-    if (a.st_mode and S_IWUSR) != 0'i32: result.incl(fpUserWrite)
-    if (a.st_mode and S_IXUSR) != 0'i32: result.incl(fpUserExec)
+    if (a.st_mode and S_IRUSR.Mode) != 0.Mode: result.incl(fpUserRead)
+    if (a.st_mode and S_IWUSR.Mode) != 0.Mode: result.incl(fpUserWrite)
+    if (a.st_mode and S_IXUSR.Mode) != 0.Mode: result.incl(fpUserExec)
 
-    if (a.st_mode and S_IRGRP) != 0'i32: result.incl(fpGroupRead)
-    if (a.st_mode and S_IWGRP) != 0'i32: result.incl(fpGroupWrite)
-    if (a.st_mode and S_IXGRP) != 0'i32: result.incl(fpGroupExec)
+    if (a.st_mode and S_IRGRP.Mode) != 0.Mode: result.incl(fpGroupRead)
+    if (a.st_mode and S_IWGRP.Mode) != 0.Mode: result.incl(fpGroupWrite)
+    if (a.st_mode and S_IXGRP.Mode) != 0.Mode: result.incl(fpGroupExec)
 
-    if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
-    if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
-    if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
+    if (a.st_mode and S_IROTH.Mode) != 0.Mode: result.incl(fpOthersRead)
+    if (a.st_mode and S_IWOTH.Mode) != 0.Mode: result.incl(fpOthersWrite)
+    if (a.st_mode and S_IXOTH.Mode) != 0.Mode: result.incl(fpOthersExec)
   else:
     when useWinUnicode:
       wrapUnary(res, getFileAttributesW, filename)
@@ -1470,18 +1470,18 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
   ## * `getFilePermissions <#getFilePermissions,string>`_
   ## * `FilePermission enum <#FilePermission>`_
   when defined(posix):
-    var p = 0'i32
-    if fpUserRead in permissions: p = p or S_IRUSR
-    if fpUserWrite in permissions: p = p or S_IWUSR
-    if fpUserExec in permissions: p = p or S_IXUSR
+    var p = 0.Mode
+    if fpUserRead in permissions: p = p or S_IRUSR.Mode
+    if fpUserWrite in permissions: p = p or S_IWUSR.Mode
+    if fpUserExec in permissions: p = p or S_IXUSR.Mode
 
-    if fpGroupRead in permissions: p = p or S_IRGRP
-    if fpGroupWrite in permissions: p = p or S_IWGRP
-    if fpGroupExec in permissions: p = p or S_IXGRP
+    if fpGroupRead in permissions: p = p or S_IRGRP.Mode
+    if fpGroupWrite in permissions: p = p or S_IWGRP.Mode
+    if fpGroupExec in permissions: p = p or S_IXGRP.Mode
 
-    if fpOthersRead in permissions: p = p or S_IROTH
-    if fpOthersWrite in permissions: p = p or S_IWOTH
-    if fpOthersExec in permissions: p = p or S_IXOTH
+    if fpOthersRead in permissions: p = p or S_IROTH.Mode
+    if fpOthersWrite in permissions: p = p or S_IWOTH.Mode
+    if fpOthersExec in permissions: p = p or S_IXOTH.Mode
 
     if chmod(filename, cast[Mode](p)) != 0: raiseOSError(osLastError())
   else:
@@ -2854,7 +2854,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
 
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
-      if (rawInfo.st_mode and rawMode) != 0'i32:
+      if (rawInfo.st_mode and rawMode.Mode) != 0.Mode:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
