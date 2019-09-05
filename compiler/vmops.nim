@@ -77,6 +77,14 @@ template wrap2svoid(op, modop) {.dirty.} =
     op(getString(a, 0), getString(a, 1))
   modop op
 
+template wrapDangerous(op, modop) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+      discard
+    else:
+      op(getString(a, 0), getString(a, 1))
+  modop op
+
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
                else: a.currentException.sons[3].skipColon.strVal)
@@ -133,7 +141,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
-    wrap2svoid(writeFile, ioop)
+    wrapDangerous(writeFile, ioop)
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg

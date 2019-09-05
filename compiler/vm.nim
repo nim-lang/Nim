@@ -1549,17 +1549,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module, c.config)
     of opcGorge:
-      when defined(nimcore):
-        decodeBC(rkNode)
-        inc pc
-        let rd = c.code[pc].regA
-
-        createStr regs[ra]
-        regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                      regs[rc].node.strVal, regs[rd].node.strVal,
-                                      c.debug[pc], c.config)[0]
+      if defined(nimsuggest) or c.config.cmd == cmdCheck:
+        discard "don't run staticExec for 'nim suggest'"
       else:
-        globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
+        when defined(nimcore):
+          decodeBC(rkNode)
+          inc pc
+          let rd = c.code[pc].regA
+
+          createStr regs[ra]
+          regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
+                                        regs[rc].node.strVal, regs[rd].node.strVal,
+                                        c.debug[pc], c.config)[0]
+        else:
+          globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError, opcNWarning, opcNHint:
       decodeB(rkNode)
       let a = regs[ra].node
