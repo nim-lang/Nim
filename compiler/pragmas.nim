@@ -19,25 +19,27 @@ const
   LastCallConv* = wNoconv
 
 const
-  procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
+  declPragmas = {wImportc, wImportObjC, wImportCpp, wExportc, wExportCpp,
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
+    ## common pragmas for declarations, to a good approximation
+  procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
-    wCompilerProc, wNonReloadable, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
-    wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
+    wCompilerProc, wNonReloadable, wCore, wProcVar, wVarargs, wCompileTime, wMerge,
+    wBorrow, wImportCompilerProc, wThread,
+    wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wConstructor, wExportNims, wUsed, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy}
+    wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy}
   converterPragmas* = procPragmas - {wNoDestroy}
   methodPragmas* = procPragmas+{wBase}-{wImportCpp, wNoDestroy}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
-  macroPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc,
-    wNodecl, wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore, wDeprecated, wExtern,
-    wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
-    wExportNims, wUsed}
-  iteratorPragmas* = {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
-    wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
-    wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
-    wTags, wLocks, wGcSafe, wExportNims, wUsed}
+  macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
+    wMagic, wNoSideEffect, wCompilerProc, wNonReloadable, wCore,
+    wDiscardable, wGensym, wInject, wDelegator}
+  iteratorPragmas* = declPragmas + {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
+    wMagic, wBorrow,
+    wDiscardable, wGensym, wInject, wRaises,
+    wTags, wLocks, wGcSafe}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks, wStyleChecks, wAssertions,
@@ -49,25 +51,25 @@ const
     wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
-    wInjectStmt, wDeprecated, wExperimental, wThis, wUsed}
-  lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
+    wInjectStmt, wExperimental, wThis, wUsed}
+  lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
-    wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
-    wRaises, wLocks, wTags, wGcSafe, wCodegenDecl}
-  typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl,
-    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wExtern, wShallow,
-    wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
+    wThread, wAsmNoStackFrame,
+    wRaises, wLocks, wTags, wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
+  typePragmas* = declPragmas + {wMagic, wAcyclic,
+    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
+    wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain, wPackage}
-  fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
-    wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed}
-  varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
-    wMagic, wHeader, wDeprecated, wCompilerProc, wCore, wDynlib, wExtern,
-    wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed, wCursor}
-  constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine, wBoolDefine, wUsed, wCompilerProc, wCore}
+    wBorrow, wGcSafe, wPartial, wExplain, wPackage}
+  fieldPragmas* = declPragmas + {
+    wGuard, wBitsize} - {wExportNims, wNodecl} # why exclude these?
+  varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
+    wMagic, wHeader, wCompilerProc, wCore, wDynlib,
+    wNoInit, wCompileTime, wGlobal,
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
+  constPragmas* = declPragmas + {wHeader, wMagic,
+    wGensym, wInject,
+    wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -775,8 +777,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
         checkPragmaUse(c.config, key.info, k, ident.s)
       case k
-      of wExportc:
+      of wExportc, wExportCpp:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
+        if k == wExportCpp:
+          if c.config.cmd != cmdCompileToCpp:
+            localError(c.config, it.info, "exportcpp requires `nim cpp`, got " & $c.config.cmd)
+          else:
+            incl(sym.flags, sfMangleCpp)
         incl(sym.flags, sfUsed) # avoid wrong hints
       of wImportc:
         let name = getOptionalStr(c, it, "$1")

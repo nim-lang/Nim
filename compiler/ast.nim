@@ -239,6 +239,7 @@ type
     sfForward,        # symbol is forward declared
     sfImportc,        # symbol is external; imported
     sfExportc,        # symbol is exported (under a specified name)
+    sfMangleCpp,      # mangle as cpp (combines with `sfExportc`)
     sfVolatile,       # variable is volatile
     sfRegister,       # variable should be placed in a register
     sfPure,           # object is "pure" that means it has no type-information
