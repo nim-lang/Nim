@@ -1193,6 +1193,8 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
+proc trivialDestructor(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
   let typ = a.t
@@ -1210,7 +1212,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
-    if bt.destructor != nil:
+    if bt.destructor != nil and not trivialDestructor(bt.destructor):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:

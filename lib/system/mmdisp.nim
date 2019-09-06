@@ -112,8 +112,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
-    proc realloc(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc realloc(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: pointer) = boehmDealloc(p)
 
@@ -122,8 +122,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
       result = allocShared(size)
-    proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc reallocShared(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = boehmDealloc(p)
 
