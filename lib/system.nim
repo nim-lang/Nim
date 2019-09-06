@@ -1989,6 +1989,8 @@ when defined(boehmgc):
       const boehmLib = "boehmgc.dll"
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
+  elif defined(openbsd):
+    const boehmLib = "libgc.so.4.0"
   else:
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
