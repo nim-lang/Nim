@@ -319,7 +319,6 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   prc.typ = result
   popInfoContext(c.config)
 
-{.emit: "NIM_EXTERNC".}
 proc generateInstanceEnableIf*(c: PContext, fn: PSym, pt: TIdTable, info: TLineInfo, nCond: PNode, tryCompiles: bool): PNode {.exportc.} =
   let nCond = nCond.copyTree # needed, otherwise subsequent instantiations will
     # use stale data
