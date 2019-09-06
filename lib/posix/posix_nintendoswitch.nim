@@ -123,7 +123,7 @@ type
   Id* {.importc: "id_t", header: "<sys/types.h>".} = cuint
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = culong
   Key* {.importc: "key_t", header: "<sys/types.h>".} = cint
-  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint # cuint really!
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = uint16
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = culong
   Off* {.importc: "off_t", header: "<sys/types.h>".} = clong
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = cint

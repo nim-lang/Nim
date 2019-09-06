@@ -149,7 +149,13 @@ type
   Id* {.importc: "id_t", header: "<sys/types.h>".} = int
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
-  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
+    when defined(android) or defined(macos) or defined(macosx) or
+        (defined(bsd) and not defined(openbsd) and not defined(netbsd)):
+      uint16
+    else:
+      uint32
+  )
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
