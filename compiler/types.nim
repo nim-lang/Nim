@@ -132,13 +132,13 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
   if sym.kind in routineKinds:
     result.add '('
     var n = sym.typ.n
-    for i in 1 ..< sonsLen(n):
+    for i in 1 ..< len(n):
       let p = n.sons[i]
       if p.kind == nkSym:
         add(result, p.sym.name.s)
         add(result, ": ")
         add(result, typeToString(p.sym.typ, prefer))
-        if i != sonsLen(n)-1: add(result, ", ")
+        if i != len(n)-1: add(result, ", ")
       else:
         result.add renderTree(p)
     add(result, ')')
@@ -180,7 +180,7 @@ proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
       # a leaf
       result = iterOverTypeAux(marker, n.typ, iter, closure)
     else:
-      for i in 0 ..< sonsLen(n):
+      for i in 0 ..< len(n):
         result = iterOverNode(marker, n.sons[i], iter, closure)
         if result: return
 
@@ -195,7 +195,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
     of tyGenericInst, tyGenericBody, tyAlias, tySink, tyInferred:
       result = iterOverTypeAux(marker, lastSon(t), iter, closure)
     else:
-      for i in 0 ..< sonsLen(t):
+      for i in 0 ..< len(t):
         result = iterOverTypeAux(marker, t.sons[i], iter, closure)
         if result: return
       if t.n != nil and t.kind != tyProc: result = iterOverNode(marker, t.n, iter, closure)
@@ -212,14 +212,14 @@ proc searchTypeNodeForAux(n: PNode, p: TTypePredicate,
   result = false
   case n.kind
   of nkRecList:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       result = searchTypeNodeForAux(n.sons[i], p, marker)
       if result: return
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
     result = searchTypeNodeForAux(n.sons[0], p, marker)
     if result: return
-    for i in 1 ..< sonsLen(n):
+    for i in 1 ..< len(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = searchTypeNodeForAux(lastSon(n.sons[i]), p, marker)
@@ -245,7 +245,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = searchTypeForAux(lastSon(t), predicate, marker)
   of tyArray, tySet, tyTuple:
-    for i in 0 ..< sonsLen(t):
+    for i in 0 ..< len(t):
       result = searchTypeForAux(t.sons[i], predicate, marker)
       if result: return
   else:
@@ -282,7 +282,7 @@ proc analyseObjectWithTypeFieldAux(t: PType,
     if t.n != nil:
       if searchTypeNodeForAux(t.n, isObjectWithTypeFieldPredicate, marker):
         return frEmbedded
-    for i in 0 ..< sonsLen(t):
+    for i in 0 ..< len(t):
       var x = t.sons[i]
       if x != nil: x = x.skipTypes(skipPtrs)
       res = analyseObjectWithTypeFieldAux(x, marker)
@@ -294,7 +294,7 @@ proc analyseObjectWithTypeFieldAux(t: PType,
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = analyseObjectWithTypeFieldAux(lastSon(t), marker)
   of tyArray, tyTuple:
-    for i in 0 ..< sonsLen(t):
+    for i in 0 ..< len(t):
       res = analyseObjectWithTypeFieldAux(t.sons[i], marker)
       if res != frNone:
         return frEmbedded
@@ -344,7 +344,7 @@ proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool =
       of nkNone..nkNilLit:
         discard
       else:
-        for i in 0 ..< sonsLen(n):
+        for i in 0 ..< len(n):
           result = canFormAcycleNode(marker, n.sons[i], startId)
           if result: return
 
@@ -355,7 +355,7 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyOpenArray, tyVarargs:
     if not containsOrIncl(marker, t.id):
-      for i in 0 ..< sonsLen(t):
+      for i in 0 ..< len(t):
         result = canFormAcycleAux(marker, t.sons[i], startId)
         if result: return
       if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
@@ -391,7 +391,7 @@ proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator,
       # a leaf
       discard
     else:
-      for i in 0 ..< sonsLen(n):
+      for i in 0 ..< len(n):
         addSon(result, mutateNode(marker, n.sons[i], iter, closure))
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
@@ -400,7 +400,7 @@ proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
   if t == nil: return
   result = iter(t, closure)
   if not containsOrIncl(marker, t.id):
-    for i in 0 ..< sonsLen(t):
+    for i in 0 ..< len(t):
       result.sons[i] = mutateTypeAux(marker, result.sons[i], iter, closure)
     if t.n != nil: result.n = mutateNode(marker, t.n, iter, closure)
   assert(result != nil)
@@ -491,7 +491,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
         # note: should probably be: {preferName, preferTypeName, preferGenericArg}
         result = t.sym.name.s
-        if t.kind == tyGenericParam and t.sonsLen > 0:
+        if t.kind == tyGenericParam and t.len > 0:
           result.add ": "
           var first = true
           for son in t.sons:
@@ -513,13 +513,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           result = "int literal(" & $t.n.intVal & ")"
     of tyGenericInst, tyGenericInvocation:
       result = typeToString(t.sons[0]) & '['
-      for i in 1 ..< sonsLen(t)-ord(t.kind != tyGenericInvocation):
+      for i in 1 ..< len(t)-ord(t.kind != tyGenericInvocation):
         if i > 1: add(result, ", ")
         add(result, typeToString(t.sons[i], preferGenericArg))
       add(result, ']')
     of tyGenericBody:
       result = typeToString(t.lastSon) & '['
-      for i in 0 .. sonsLen(t)-2:
+      for i in 0 .. len(t)-2:
         if i > 0: add(result, ", ")
         add(result, typeToString(t.sons[i], preferTypeName))
       add(result, ']')
@@ -560,7 +560,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyUserTypeClassInst:
       let body = t.base
       result = body.sym.name.s & "["
-      for i in 1 .. sonsLen(t) - 2:
+      for i in 1 .. len(t) - 2:
         if i > 1: add(result, ", ")
         add(result, typeToString(t.sons[i]))
       result.add "]"
@@ -610,29 +610,29 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       # we iterate over t.sons here, because t.n may be nil
       if t.n != nil:
         result = "tuple["
-        assert(sonsLen(t.n) == sonsLen(t))
-        for i in 0 ..< sonsLen(t.n):
+        assert(len(t.n) == len(t))
+        for i in 0 ..< len(t.n):
           assert(t.n.sons[i].kind == nkSym)
           add(result, t.n.sons[i].sym.name.s & ": " & typeToString(t.sons[i]))
-          if i < sonsLen(t.n) - 1: add(result, ", ")
+          if i < len(t.n) - 1: add(result, ", ")
         add(result, ']')
-      elif sonsLen(t) == 0:
+      elif len(t) == 0:
         result = "tuple[]"
       else:
         if prefer == preferTypeName: result = "("
         else: result = "tuple of ("
-        for i in 0 ..< sonsLen(t):
+        for i in 0 ..< len(t):
           add(result, typeToString(t.sons[i]))
-          if i < sonsLen(t) - 1: add(result, ", ")
+          if i < len(t) - 1: add(result, ", ")
         add(result, ')')
     of tyPtr, tyRef, tyVar, tyLent:
       result = typeToStr[t.kind]
       if t.len >= 2:
         setLen(result, result.len-1)
         result.add '['
-        for i in 0 ..< sonsLen(t):
+        for i in 0 ..< len(t):
           add(result, typeToString(t.sons[i]))
-          if i < sonsLen(t) - 1: add(result, ", ")
+          if i < len(t) - 1: add(result, ", ")
         result.add ']'
       else:
         result.add typeToString(t.sons[0])
@@ -654,12 +654,12 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
                 "proc "
       if tfUnresolved in t.flags: result.add "[*missing parameters*]"
       result.add "("
-      for i in 1 ..< sonsLen(t):
+      for i in 1 ..< len(t):
         if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
           add(result, t.n[i].sym.name.s)
           add(result, ": ")
         add(result, typeToString(t.sons[i]))
-        if i < sonsLen(t) - 1: add(result, ", ")
+        if i < len(t) - 1: add(result, ", ")
       add(result, ')')
       if t.len > 0 and t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
       var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
@@ -706,7 +706,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUInt..tyUInt64: result = Zero
   of tyEnum:
     # if basetype <> nil then return firstOrd of basetype
-    if sonsLen(t) > 0 and t.sons[0] != nil:
+    if len(t) > 0 and t.sons[0] != nil:
       result = firstOrd(conf, t.sons[0])
     else:
       assert(t.n.sons[0].kind == nkSym)
@@ -766,8 +766,8 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUInt64:
     result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
   of tyEnum:
-    assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
-    result = toInt128(t.n.sons[sonsLen(t.n) - 1].sym.position)
+    assert(t.n.sons[len(t.n) - 1].kind == nkSym)
+    result = toInt128(t.n.sons[len(t.n) - 1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses:
     result = lastOrd(conf, lastSon(t))
@@ -908,8 +908,8 @@ proc sameConstraints(a, b: PNode): bool =
 
 proc equalParams(a, b: PNode): TParamsEquality =
   result = paramsEqual
-  var length = sonsLen(a)
-  if length != sonsLen(b):
+  var length = len(a)
+  if length != len(b):
     result = paramsNotEqual
   else:
     for i in 1 ..< length:
@@ -939,9 +939,9 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   # two tuples are equivalent iff the names, types and positions are the same;
   # however, both types may not have any field names (t.n may be nil) which
   # complicates the matter a bit.
-  if sonsLen(a) == sonsLen(b):
+  if len(a) == len(b):
     result = true
-    for i in 0 ..< sonsLen(a):
+    for i in 0 ..< len(a):
       var x = a.sons[i]
       var y = b.sons[i]
       if IgnoreTupleFields in c.flags:
@@ -951,7 +951,7 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
       result = sameTypeAux(x, y, c)
       if not result: return
     if a.n != nil and b.n != nil and IgnoreTupleFields notin c.flags:
-      for i in 0 ..< sonsLen(a.n):
+      for i in 0 ..< len(a.n):
         # check field names:
         if a.n.sons[i].kind == nkSym and b.n.sons[i].kind == nkSym:
           var x = a.n.sons[i].sym
@@ -1014,23 +1014,23 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
       of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
       of nkEmpty, nkNilLit, nkType: result = true
       else:
-        if sonsLen(a) == sonsLen(b):
-          for i in 0 ..< sonsLen(a):
+        if len(a) == len(b):
+          for i in 0 ..< len(a):
             if not sameObjectTree(a.sons[i], b.sons[i], c): return
           result = true
 
 proc sameObjectStructures(a, b: PType, c: var TSameTypeClosure): bool =
   # check base types:
-  if sonsLen(a) != sonsLen(b): return
-  for i in 0 ..< sonsLen(a):
+  if len(a) != len(b): return
+  for i in 0 ..< len(a):
     if not sameTypeOrNilAux(a.sons[i], b.sons[i], c): return
   if not sameObjectTree(a.n, b.n, c): return
   result = true
 
 proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
-  if sonsLen(a) != sonsLen(b): return false
+  if len(a) != len(b): return false
   result = true
-  for i in 0 ..< sonsLen(a):
+  for i in 0 ..< len(a):
     result = sameTypeOrNilAux(a.sons[i], b.sons[i], c)
     if not result: return
 
@@ -1239,7 +1239,7 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       else:
         #if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
         #  return n[0].typ
-        for i in 0 ..< sonsLen(n):
+        for i in 0 ..< len(n):
           let it = n.sons[i]
           result = typeAllowedNode(marker, it, kind, flags)
           if result != nil: break
@@ -1249,7 +1249,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
   var a = a
   for k, i in pattern.items:
     if a.kind != k: return false
-    if i >= a.sonsLen or a.sons[i] == nil: return false
+    if i >= a.len or a.sons[i] == nil: return false
     a = a.sons[i]
   result = a.kind == last
 
@@ -1284,7 +1284,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
     let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
-    for i in 1 ..< sonsLen(t):
+    for i in 1 ..< len(t):
       result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
       if result != nil: break
     if result.isNil and t.sons[0] != nil:
@@ -1346,7 +1346,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyPtr:
     result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
   of tySet:
-    for i in 0 ..< sonsLen(t):
+    for i in 0 ..< len(t):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if result != nil: break
   of tyObject, tyTuple:
@@ -1355,7 +1355,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = t
     else:
       let flags = flags+{taField}
-      for i in 0 ..< sonsLen(t):
+      for i in 0 ..< len(t):
         result = typeAllowedAux(marker, t.sons[i], kind, flags)
         if result != nil: break
       if result.isNil and t.n != nil:
@@ -1490,7 +1490,7 @@ proc isCompileTimeOnly*(t: PType): bool {.inline.} =
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
-  for i in 0 ..< t.sonsLen:
+  for i in 0 ..< t.len:
     if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
       return true
   return false

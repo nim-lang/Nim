@@ -380,7 +380,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   # Collect the exceptions caught by the except branches
   for i in 1 ..< n.len:
     let b = n.sons[i]
-    let blen = sonsLen(b)
+    let blen = len(b)
     if b.kind == nkExceptBranch:
       inc branches
       if blen == 1:
@@ -398,7 +398,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   # Add any other exception raised in the except bodies
   for i in 1 ..< n.len:
     let b = n.sons[i]
-    let blen = sonsLen(b)
+    let blen = len(b)
     if b.kind == nkExceptBranch:
       setLen(tracked.init, oldState)
       track(tracked, b.sons[blen-1])
@@ -430,7 +430,7 @@ proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
 proc trackPragmaStmt(tracked: PEffects, n: PNode) =
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     var it = n.sons[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:
