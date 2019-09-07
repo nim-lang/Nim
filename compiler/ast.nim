@@ -1023,7 +1023,9 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-proc len*(n: PNode): int {.inline.} =
+type Indexable = PNode | PType
+
+proc len*(n: Indexable): int {.inline.} =
   when defined(nimNoNilSeqs):
     result = len(n.sons)
   else:
@@ -1046,8 +1048,6 @@ proc add*(father, son: PNode) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
-
-type Indexable = PNode | PType
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
 template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
@@ -1238,7 +1238,7 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: PType): PType = n.sons[^1]
+proc lastSon*(n: Indexable): Indexable = n.sons[^1]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1342,7 +1342,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
 
-proc newSons*(father: PNode, length: int) =
+proc newSons*(father: Indexable, length: int) =
   when defined(nimNoNilSeqs):
     setLen(father.sons, length)
   else:
@@ -1350,18 +1350,6 @@ proc newSons*(father: PNode, length: int) =
       newSeq(father.sons, length)
     else:
       setLen(father.sons, length)
-
-proc newSons*(father: PType, length: int) =
-  when defined(nimNoNilSeqs):
-    setLen(father.sons, length)
-  else:
-    if isNil(father.sons):
-      newSeq(father.sons, length)
-    else:
-      setLen(father.sons, length)
-
-proc len*(n: PType): int = n.sons.len
-proc lastSon*(n: PNode): PNode = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
