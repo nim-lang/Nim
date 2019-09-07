@@ -105,7 +105,7 @@ proc open*(my: var JsonParser, input: Stream, filename: string;
            rawStringLiterals = false) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. If `rawStringLiterals` is true, string literals
-  ## are kepts with their surrounding quotes and escape sequences in them are
+  ## are kept with their surrounding quotes and escape sequences in them are
   ## left untouched too.
   lexbase.open(my, input)
   my.filename = filename
