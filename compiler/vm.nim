@@ -1384,17 +1384,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
-        regs[ra].node = src.sons[idx]
-      else:
+      if src.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot get child of node kind: n" & $src.kind)
+      elif idx >=% src.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+      else:
+        regs[ra].node = src.sons[idx]
     of opcNSetChild:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
       if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
-      elif dest.kind in {nkEmpty..nkNilLit} or idx >=% dest.len:
+      elif dest.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot set child of node kind: n" & $dest.kind)
+      elif idx >=% dest.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
       else:
         dest.sons[idx] = regs[rc].node
@@ -1404,7 +1408,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         u.add(regs[rc].node)
       regs[ra].node = u
@@ -1415,7 +1419,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         for i in 0 ..< x.len: u.add(x.sons[i])
       regs[ra].node = u
