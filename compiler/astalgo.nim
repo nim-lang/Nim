@@ -31,6 +31,15 @@ when declared(echo):
   proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
   proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
+  proc typekinds*(t: PType) {.deprecated.} =
+    var t = t
+    var s = ""
+    while t != nil and t.len > 0:
+      s.add $t.kind
+      s.add " "
+      t = t.lastSon
+    echo s
+
   template debug*(x: PSym|PType|PNode) {.deprecated.} =
     when compiles(c.config):
       debug(c.config, x)
