@@ -412,7 +412,6 @@ template isExpression(n: PNode): bool =
   (not isEmptyType(n.typ)) or (n.kind in nkLiterals + {nkNilLit, nkRange})
 
 proc recurse(n: PNode, c: var Con, processProc: proc): PNode =
-  if n.sons.len == 0: return n
   case n.kind:
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
@@ -438,6 +437,8 @@ proc recurse(n: PNode, c: var Con, processProc: proc): PNode =
     for i in 0..<n.len-1:
       result.add pStmt(n[i], c)
     result.add processProc(n[^1], c)
+  of nkRaiseStmt:
+    result = pStmt(n, c)
   of nkBlockStmt, nkBlockExpr:
     result = copyNode(n)
     result.add n[0]
@@ -471,10 +472,9 @@ proc recurse(n: PNode, c: var Con, processProc: proc): PNode =
           branch.add processProc(n[i][0], c)
       result.add branch
   else:
-    assert(false, $n.kind)
+    result = copyTree(n)
 
 proc pExpr(n: PNode; c: var Con): PNode =
-  assert(isExpression(n), $n.kind)
   case n.kind
   of nkCallKinds:
     let parameters = n[0].typ
