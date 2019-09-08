@@ -850,6 +850,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
+    var isOwned = false
     # check every except the last is an object:
     for i in isCall .. n.len-2:
       let ni = n[i]
@@ -857,7 +858,9 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
         isNilable = true
       else:
         let region = semTypeNode(c, ni, nil)
-        if region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
+        if region.kind == tyOwned:
+          isOwned = true
+        elif region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
               tyError, tyObject}:
           message c.config, n[i].info, errGenerated, "region needs to be an object type"
         else:
@@ -867,6 +870,11 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
     #if not isNilable: result.flags.incl tfNotNil
+    if isOwned and optNimV2 in c.config.globalOptions:
+      let t = newTypeS(tyOwned, c)
+      t.flags.incl tfHasOwned
+      t.rawAddSonNoPropagationOfTypeFlags result
+      result = t
 
 proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,
