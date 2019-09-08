@@ -110,7 +110,7 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
     gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned

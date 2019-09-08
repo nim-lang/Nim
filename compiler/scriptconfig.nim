@@ -214,12 +214,26 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   conf.searchPaths.add(conf.libpath)
 
+  let oldGlobalOptions = conf.globalOptions
+  let oldSelectedGC = conf.selectedGC
+  undefSymbol(conf.symbols, "nimv2")
+  conf.globalOptions.excl optNimV2
+  conf.selectedGC = gcUnselected
+
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
   graph.vm = setupVM(m, cache, scriptName.string, graph)
 
   graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
+
+  # watch out, "newruntime" can be set within NimScript itself and then we need
+  # to remember this:
+  if optNimV2 in oldGlobalOptions:
+    conf.globalOptions.incl optNimV2
+    defineSymbol(conf.symbols, "nimv2")
+  if conf.selectedGC == gcUnselected:
+    conf.selectedGC = oldSelectedGC
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)
