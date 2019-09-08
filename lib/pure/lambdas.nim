@@ -25,8 +25,8 @@ template lambdaIt*(a: untyped): untyped =
 
 macro `~>`*(lhs, rhs: untyped): untyped =
   #[
-  TODO: allow param constraints, eg: (a, b: int, c) ~> a*b+c
-  side effect safe (ie, arguments will be evaluated just once, unlike templates)
+  note: side effect safe (ie, arguments will be evaluated just once, unlike templates)
+  could also allow param constraints, eg: (a, b: int, c) ~> a*b+c
   ]#
   let name = genSym(nskTemplate, "lambdaArrow")
   let formatParams2 = nnkFormalParams.newTree()
@@ -34,7 +34,13 @@ macro `~>`*(lhs, rhs: untyped): untyped =
   var body2 = newStmtList()
 
   template addArg(argInject) =
-    let arg = genSym(nskParam, argInject.strVal)
+    # this doesn't work since new gensym, see #12020
+    # let arg = genSym(nskParam, argInject.strVal)
+    # so using this workaround instead:
+    var count {.threadvar.}: int
+    count.inc
+    let arg = newIdentNode(argInject.strVal & "_fakegensym_" & $count)
+
     formatParams2.add newTree(nnkIdentDefs, arg, ident("untyped"), newEmptyNode())
     # CHECKME: let or var?, eg var could be needed?
     body2.add newLetStmt(argInject, arg)
@@ -52,7 +58,6 @@ macro `~>`*(lhs, rhs: untyped): untyped =
     error("expected " & ${nnkPar,nnkIdent} & " got `" & $kind & "`")
 
   body2.add rhs
-  
   body2 = quote do: # TODO: option whether to use a block?
     block: `body2`
 
