@@ -68,7 +68,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in 0 ..< sonsLen(templ):
+      for i in 0 ..< len(templ):
         evalTemplateAux(templ.sons[i], actual, c, res)
       result.add res
     else:
@@ -82,7 +82,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       c.isDeclarative = true
       isDeclarative = true
     var res = copyNode(c, templ, actual)
-    for i in 0 ..< sonsLen(templ):
+    for i in 0 ..< len(templ):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
     if isDeclarative: c.isDeclarative = false

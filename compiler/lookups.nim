@@ -430,7 +430,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimOtherModule:
     result = nextIdentIter(o.it, o.m.tab).skipAlias(n, c.config)
   of oimSymChoice:
-    if o.symChoiceIndex < sonsLen(n):
+    if o.symChoiceIndex < len(n):
       result = n.sons[o.symChoiceIndex].sym
       incl(o.inSymChoice, result.id)
       inc o.symChoiceIndex

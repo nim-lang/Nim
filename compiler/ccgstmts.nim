@@ -62,7 +62,7 @@ proc endBlock(p: BProc)
 proc genVarTuple(p: BProc, n: PNode) =
   var tup, field: TLoc
   if n.kind != nkVarTuple: internalError(p.config, n.info, "genVarTuple")
-  var L = sonsLen(n)
+  var L = len(n)
 
   # if we have a something that's been captured, use the lowering instead:
   for i in 0 .. L-3:
@@ -326,7 +326,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
         assert(typ.kind == tyProc)
         for i in 1..<value.len:
           if params != nil: params.add(~", ")
-          assert(sonsLen(typ) == sonsLen(typ.n))
+          assert(len(typ) == len(typ.n))
           add(params, genOtherArg(p, value, i, typ))
         if params == nil:
           lineF(p, cpsStmts, "$#;$n", [decl])
@@ -429,7 +429,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
       else:
         expr(p, it.sons[1], d)
       endBlock(p)
-      if sonsLen(n) > 1:
+      if len(n) > 1:
         lineF(p, cpsStmts, "goto $1;$n", [lend])
       fixLabel(p, lelse)
     elif it.len == 1:
@@ -437,7 +437,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
       expr(p, it.sons[0], d)
       endBlock(p)
     else: internalError(p.config, n.info, "genIf()")
-  if sonsLen(n) > 1: fixLabel(p, lend)
+  if len(n) > 1: fixLabel(p, lend)
 
 proc genReturnStmt(p: BProc, t: PNode) =
   if nfPreventCg in t.flags: return
@@ -565,7 +565,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
   # significantly worse code
   var
     a: TLoc
-  assert(sonsLen(t) == 2)
+  assert(len(t) == 2)
   inc(p.withinLoop)
   genLineDir(p, t)
 
@@ -612,7 +612,7 @@ proc genBlock(p: BProc, n: PNode, d: var TLoc) =
     endBlock(p)
 
 proc genParForStmt(p: BProc, t: PNode) =
-  assert(sonsLen(t) == 3)
+  assert(len(t) == 3)
   inc(p.withinLoop)
   genLineDir(p, t)
 
@@ -623,12 +623,12 @@ proc genParForStmt(p: BProc, t: PNode) =
     #initLoc(forLoopVar.loc, locLocalVar, forLoopVar.typ, onStack)
     #discard mangleName(forLoopVar)
     let call = t.sons[1]
-    assert(sonsLen(call) in {4, 5})
+    assert(len(call) in {4, 5})
     initLocExpr(p, call.sons[1], rangeA)
     initLocExpr(p, call.sons[2], rangeB)
 
     # $n at the beginning because of #9710
-    if call.sonsLen == 4: # `||`(a, b, annotation)
+    if call.len == 4: # `||`(a, b, annotation)
       lineF(p, cpsStmts, "$n#pragma omp $4$n" &
                           "for ($1 = $2; $1 <= $3; ++$1)",
                           [forLoopVar.loc.rdLoc,
@@ -706,7 +706,7 @@ template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =
   var
     x, y: TLoc
-  var length = sonsLen(b)
+  var length = len(b)
   for i in 0 .. length - 2:
     if b.sons[i].kind == nkRange:
       initLocExpr(p, b.sons[i].sons[0], x)
@@ -725,7 +725,7 @@ proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
     lineF(p, cpsStmts, "LA$1_: ;$n", [rope(labId + i)])
     if t.sons[i].kind == nkOfBranch:
-      var length = sonsLen(t.sons[i])
+      var length = len(t.sons[i])
       exprBlock(p, t.sons[i].sons[length - 1], d)
       lineF(p, cpsStmts, "goto $1;$n", [lend])
     else:
@@ -759,13 +759,13 @@ template genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
                     rangeFormat, eqFormat: FormatStr) =
   var a: TLoc
   initLocExpr(p, t.sons[0], a)
-  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
+  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, len(t)-1, a)
   fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
                          branches: var openArray[Rope]) =
   var x: TLoc
-  var length = sonsLen(b)
+  var length = len(b)
   for i in 0 .. length - 2:
     assert(b.sons[i].kind != nkRange)
     initLocExpr(p, b.sons[i], x)
@@ -777,8 +777,8 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
 proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
   # count how many constant strings there are in the case:
   var strings = 0
-  for i in 1 ..< sonsLen(t):
-    if t.sons[i].kind == nkOfBranch: inc(strings, sonsLen(t.sons[i]) - 1)
+  for i in 1 ..< len(t):
+    if t.sons[i].kind == nkOfBranch: inc(strings, len(t.sons[i]) - 1)
   if strings > stringCaseThreshold:
     var bitMask = math.nextPowerOfTwo(strings) - 1
     var branches: seq[Rope]
@@ -786,7 +786,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, t.sons[0], a) # fist pass: gnerate ifs+goto:
     var labId = p.labels
-    for i in 1 ..< sonsLen(t):
+    for i in 1 ..< len(t):
       inc(p.labels)
       if t.sons[i].kind == nkOfBranch:
         genCaseStringBranch(p, t.sons[i], a, "LA" & rope(p.labels) & "_",
@@ -802,16 +802,16 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
              [intLiteral(j), branches[j]])
     lineF(p, cpsStmts, "}$n", []) # else statement:
-    if t.sons[sonsLen(t)-1].kind != nkOfBranch:
+    if t.sons[len(t)-1].kind != nkOfBranch:
       lineF(p, cpsStmts, "goto LA$1_;$n", [rope(p.labels)])
     # third pass: generate statements
-    var lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
+    var lend = genCaseSecondPass(p, t, d, labId, len(t)-1)
     fixLabel(p, lend)
   else:
     genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
 
 proc branchHasTooBigRange(b: PNode): bool =
-  for i in 0 .. sonsLen(b)-2:
+  for i in 0 .. len(b)-2:
     # last son is block
     if (b.sons[i].kind == nkRange) and
         b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit:
@@ -1023,7 +1023,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
     startBlock(p, "if ($1.status == 0) {$n", [safePoint])
-  let length = sonsLen(t)
+  let length = len(t)
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   add(p.nestedTryStmts, (fin, quirkyExceptions))
   expr(p, t.sons[0], d)
@@ -1042,7 +1042,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
-    var blen = sonsLen(t.sons[i])
+    var blen = len(t.sons[i])
     if blen == 1:
       # general except section:
       if i > 1: lineF(p, cpsStmts, "else", [])

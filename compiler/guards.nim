@@ -442,8 +442,8 @@ proc sameTree*(a, b: PNode): bool =
     of nkType: result = a.typ == b.typ
     of nkEmpty, nkNilLit: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in 0 ..< sonsLen(a):
+      if len(a) == len(b):
+        for i in 0 ..< len(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 

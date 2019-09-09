@@ -405,7 +405,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     elif c.config.errorCounter == 0:
       # don't cascade errors
       var args = "("
-      for i in 1 ..< sonsLen(n):
+      for i in 1 ..< len(n):
         if i > 1: add(args, ", ")
         add(args, typeToString(n.sons[i].typ))
       add(args, ")")
@@ -577,7 +577,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   # binding has to stay 'nil' for this to work!
   initCandidate(c, m, s, nil)
 
-  for i in 1..sonsLen(n)-1:
+  for i in 1..len(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
     var arg = n[i].typ
     # try transforming the argument into a static one before feeding it into
@@ -599,7 +599,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
-  for i in 1..sonsLen(n)-1:
+  for i in 1..len(n)-1:
     let e = semExpr(c, n.sons[i])
     if e.typ == nil:
       n.sons[i].typ = errorType(c)

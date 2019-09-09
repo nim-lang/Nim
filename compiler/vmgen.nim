@@ -377,7 +377,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
           elsePos = c.xjmp(it.sons[0], opcFJmp, tmp) # if false
       c.clearDest(n, dest)
       c.gen(it.sons[1], dest) # then part
-      if i < sonsLen(n)-1:
+      if i < len(n)-1:
         endings.add(c.xjmp(it.sons[1], opcJmp, 0))
       c.patch(elsePos)
     else:
@@ -433,8 +433,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkType, nkNilLit: result = a.typ == b.typ
     of nkEmpty: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in 0 ..< sonsLen(a):
+      if len(a) == len(b):
+        for i in 0 ..< len(a):
           if not sameConstant(a.sons[i], b.sons[i]): return
         result = true
 
@@ -479,7 +479,7 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
         c.gABx(it, opcBranch, tmp, b)
         let elsePos = c.xjmp(it.lastSon, opcFJmp, tmp)
         c.gen(it.lastSon, dest)
-        if i < sonsLen(n)-1:
+        if i < len(n)-1:
           endings.add(c.xjmp(it.lastSon, opcJmp, 0))
         c.patch(elsePos)
       c.clearDest(n, dest)
@@ -517,7 +517,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
         c.gABx(it, opcExcept, 0, 0)
       c.gen(it.lastSon, dest)
       c.clearDest(n, dest)
-      if i < sonsLen(n):
+      if i < len(n):
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
   let fin = lastSon(n)
@@ -564,7 +564,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n.sons[0].typ, abstractInst)
   for i in 0..<n.len:
-    #if i > 0 and i < sonsLen(fntyp):
+    #if i > 0 and i < len(fntyp):
     #  let paramType = fntyp.n.sons[i]
     #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
@@ -1716,10 +1716,10 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     getNullValueAux(b, b.n, result, conf, currPosition)
   case obj.kind
   of nkRecList:
-    for i in 0 ..< sonsLen(obj): getNullValueAux(nil, obj.sons[i], result, conf, currPosition)
+    for i in 0 ..< len(obj): getNullValueAux(nil, obj.sons[i], result, conf, currPosition)
   of nkRecCase:
     getNullValueAux(nil, obj.sons[0], result, conf, currPosition)
-    for i in 1 ..< sonsLen(obj):
+    for i in 1 ..< len(obj):
       getNullValueAux(nil, lastSon(obj.sons[i]), result, conf, currPosition)
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info)
@@ -1764,7 +1764,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       addSon(result, getNullValue(elemType(t), info, conf))
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
-    for i in 0 ..< sonsLen(t):
+    for i in 0 ..< len(t):
       addSon(result, getNullValue(t.sons[i], info, conf))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
