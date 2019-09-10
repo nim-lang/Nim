@@ -601,7 +601,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         result.add(n)
         result.add(ctx.newEnvVarAccess(tmp))
 
-  of nkCallKinds, nkChckRange:
+  of nkCallKinds, nkChckRange, nkChckRangeF, nkChckRange64:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
