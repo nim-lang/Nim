@@ -601,7 +601,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         result.add(n)
         result.add(ctx.newEnvVarAccess(tmp))
 
-  of nkCallKinds:
+  of nkCallKinds, nkChckRange:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -1286,7 +1286,7 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   ctx.fn = fn
 
   if getEnvParam(fn).isNil:
-    # Lambda lifting was not done yet. Use temporary :state sym, which
+    # Lambda lifting was not done yet. Use temporary :state sym, which will
     # be handled specially by lambda lifting. Local temp vars (if needed)
     # should folllow the same logic.
     ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), fn, fn.info)
