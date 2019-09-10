@@ -234,7 +234,7 @@ quoted string literal. It is not an identifier yet. Then the strformat
 macro creates the ``arg`` identifier from the string literal. An
 identifier that cannot be resolved anymore.
 
-The workaround for this is to bind template argument to a new local variable.
+The workaround for this is to bind the template argument to a new local variable.
 
 .. code-block:: nim
 
