@@ -4,7 +4,10 @@ discard """
 Indeed
 axc
 (v: 10)
-0  new: 0'''
+0  new: 0
+...
+destroying GenericObj[T] GenericObj[system.int]
+'''
 """
 
 import core / allocators
@@ -92,9 +95,25 @@ type
     x: seq[(A, B)]
 
 
-proc toTable[A,B](p: sink openArray[(A, B)]): Table[A, B] = 
+proc toTable[A,B](p: sink openArray[(A, B)]): Table[A, B] =
   for zz in mitems(p):
     result.x.add move(zz)
 
 
 let table = {"a": new(int)}.toTable()
+
+# bug # #12051
+
+type
+  GenericObj[T] = object
+    val: T
+  Generic[T] = owned ref GenericObj[T]
+
+proc `=destroy`[T](x: var GenericObj[T]) =
+  echo "destroying GenericObj[T] ", x.typeof # to know when its being destroyed
+
+proc main12() =
+  let gnrc = Generic[int](val: 42)
+  echo "..."
+
+main12()

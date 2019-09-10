@@ -182,8 +182,16 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     body.add newAsgnCall(c.g, op, x, y)
     result = true
 
-proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode) =
+proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
+  let t = orig.skipTypes(abstractInst)
   var op = t.destructor
+
+  if op != nil and sfOverriden in op.flags:
+    if op.ast[genericParamsPos].kind != nkEmpty:
+      # patch generic destructor:
+      op = instantiateGeneric(c, op, t, t.typeInst)
+      t.attachedOps[attachedDestructor] = op
+
   if op == nil and useNoGc(c, t):
     op = produceSym(c.g, c.c, t, attachedDestructor, c.info)
     doAssert op != nil
