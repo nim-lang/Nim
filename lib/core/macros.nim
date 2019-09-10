@@ -1191,17 +1191,23 @@ proc `params=`* (someProc: NimNode; params: NimNode) {.compileTime.}=
 proc pragma*(someProc: NimNode): NimNode {.compileTime.} =
   ## Get the pragma of a proc type
   ## These will be expanded
-  someProc.expectRoutine
-  result = someProc[4]
-proc `pragma=`*(someProc: NimNode; val: NimNode){.compileTime.}=
+  if someProc.kind == nnkProcTy:
+    result = someProc[1]
+  else:
+    someProc.expectRoutine
+    result = someProc[4]
+proc `pragma=`*(someProc: NimNode; val: NimNode) {.compileTime.}=
   ## Set the pragma of a proc type
-  someProc.expectRoutine
   expectKind(val, {nnkEmpty, nnkPragma})
-  someProc[4] = val
+  if someProc.kind == nnkProcTy:
+    someProc[1] = val
+  else:
+    someProc.expectRoutine
+    someProc[4] = val
 
 proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
   ## Adds pragma to routine definition
-  someProc.expectRoutine
+  someProc.expectKind(RoutineNodes + {nnkProcTy})
   var pragmaNode = someProc.pragma
   if pragmaNode.isNil or pragmaNode.kind == nnkEmpty:
     pragmaNode = newNimNode(nnkPragma)
