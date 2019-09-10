@@ -22,4 +22,9 @@ tasks:
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
     cd Nim
-    ./koch runCI
+    ./koch runCI && exitcode=$? || exitcode=$?
+    if [[ $exitcode -ne 0 ]]; then
+      nim c -r tools/ci_testresults.nim
+    fi
+
+    exit $exitcode
