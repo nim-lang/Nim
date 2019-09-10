@@ -332,7 +332,7 @@ proc generatedFile(test: TTest, target: TTarget): string =
   else:
     let (_, name, _) = test.name.splitFile
     let ext = targetToExt[target]
-    result = nimcacheDir(test.name, test.options, target) / name.changeFileExt(ext)
+    result = nimcacheDir(test.name, test.options, target) / "@" & name.changeFileExt(ext)
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
