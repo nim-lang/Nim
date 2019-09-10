@@ -35,5 +35,5 @@ proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
     inc(result, countBits64((cast[ptr uint64](s[i].unsafeAddr))[]))
     j = i + 7
 
-  for i in (j+1)..<len:
+  for i in (j + 1) ..< len:
     inc(result, countBits32(uint32(s[i])))
