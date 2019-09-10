@@ -1,4 +1,5 @@
 discard """
+  disabled: "openbsd"
   disabled: "macosx"
   output: '''
 main: HELLO!
