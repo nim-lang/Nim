@@ -841,9 +841,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfCompileTime)
         incl(sym.loc.flags, lfNoDecl)
       of wGlobal:
-        noVal(c, it)
-        incl(sym.flags, sfGlobal)
-        incl(sym.flags, sfPure)
+        if c.config.target.targetCPU == cpuJS:
+          localError(c.config, it.info, " {.global.} not implemented for js backend.")
+        else:
+          noVal(c, it)
+          incl(sym.flags, sfGlobal)
+          incl(sym.flags, sfPure)
       of wMerge:
         # only supported for backwards compat, doesn't do anything anymore
         noVal(c, it)
