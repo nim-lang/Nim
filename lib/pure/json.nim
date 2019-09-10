@@ -841,10 +841,27 @@ proc parseJson(p: var JsonParser): JsonNode =
     raiseParseErr(p, "{")
 
 when not defined(js):
+  iterator parseJsonFragments*(s: Stream, filename: string = ""): JsonNode =
+    ## Parses from a stream `s` into `JsonNodes`. `filename` is only needed
+    ## for nice error messages.
+    ## The JSON fragments are separated by whitespace. This can be substantially
+    ## faster than the comparable loop
+    ## ``for x in splitWhitespace(s): yield parseJson(x)``.
+    ## This closes the stream `s` after it's done.
+    var p: JsonParser
+    p.open(s, filename)
+    try:
+      discard getTok(p) # read first token
+      while p.tok != tkEof:
+        yield p.parseJson()
+    finally:
+      p.close()
+
   proc parseJson*(s: Stream, filename: string = ""): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
     ## If `s` contains extra data, it will raise `JsonParsingError`.
+    ## This closes the stream `s` after it's done.
     var p: JsonParser
     p.open(s, filename)
     try:
@@ -1778,3 +1795,10 @@ when isMainModule:
     )
 
     doAssert(obj == to(%obj, type(obj)))
+
+    const fragments = """[1,2,3] {"hi":3} 12 [] """
+    var res = ""
+    for x in parseJsonFragments(newStringStream(fragments)):
+      res.add($x)
+      res.add " "
+    doAssert res == fragments
