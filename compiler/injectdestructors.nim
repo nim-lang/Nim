@@ -472,7 +472,9 @@ proc recurse(n: PNode, c: var Con, processProc: proc): PNode =
           branch.add processProc(n[i][0], c)
       result.add branch
   else:
-    result = copyTree(n)
+    result = copyNode(n)
+    for i in 0..<n.len:
+      result[i] = processProc(n[i], c)
 
 proc pExpr(n: PNode; c: var Con): PNode =
   case n.kind
@@ -483,7 +485,7 @@ proc pExpr(n: PNode; c: var Con): PNode =
       n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
     result = n
   of nkBracket:
-    result = copyTree(n)
+    result = copyNode(n)
     for i in 0..<n.len:
       # everything that is passed to an array constructor is consumed,
       # so these all act like 'sink' parameters:
