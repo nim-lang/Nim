@@ -430,8 +430,8 @@ proc rangeCheck(n: PNode, value: Int128; g: ModuleGraph) =
                                     " to " & typeToString(n.typ))
 
 proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
-  let dstTyp = skipTypes(n.typ, abstractRange)
-  let srcTyp = skipTypes(a.typ, abstractRange)
+  let dstTyp = skipTypes(n.typ, abstractRange - {tyTypeDesc})
+  let srcTyp = skipTypes(a.typ, abstractRange - {tyTypeDesc})
 
 
   # if srcTyp.kind == tyUInt64 and "FFFFFF" in $n:
