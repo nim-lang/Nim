@@ -506,6 +506,29 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
+
+    # no nimble stuff
+    block tensorDsl:
+      let buildPath = "nopackage" / "tensordsl"
+      let url = "https://krux02@bitbucket.org/krux02/tensordslnim.git"
+      inc r.total
+      var test = makeSupTest(url, "", cat)
+      if not existsDir(buildPath):
+        let (gitCmdLine, gitOutput, gitStatus) = execCmdEx2("git", ["clone", url, buildPath])
+        if gitStatus != QuitSuccess:
+          let message = "git clone failed:\n$ " & gitCmdLine & "\n" & gitOutput
+          r.addResult(test, targetC, "", message, reInstallFailed)
+          break tensorDsl
+
+      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2("nim", ["c", "-r", "tests/tests.nim"], workingDir=buildPath)
+      if buildStatus != QuitSuccess:
+        let message = "package test failed\n$ " & buildCmdLine & "\n" & buildOutput
+        r.addResult(test, targetC, "", message, reBuildFailed)
+        break tensorDsl
+
+      inc r.passed
+      r.addResult(test, targetC, "", "", reSuccess)
+
     errors = r.total - r.passed
     if errors == 0:
       r.addResult(packageFileTest, targetC, "", "", reSuccess)
