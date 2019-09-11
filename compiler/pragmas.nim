@@ -85,7 +85,8 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
         it[0].ident.id == ord(name):
       return it[1]
 
-proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
+proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
+            isStatement: bool = false)
 
 proc recordPragma(c: PContext; n: PNode; key, val: string; val2 = "") =
   var recorded = newNodeI(nkCommentStmt, n.info)
@@ -747,7 +748,8 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     result.kind = n.kind
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
-                  validPragmas: TSpecialWords, comesFromPush: bool) : bool =
+                  validPragmas: TSpecialWords,
+                  comesFromPush, isStatement: bool) : bool =
   var it = n.sons[i]
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it.sons[0] else: it
   if key.kind == nkBracketExpr:
@@ -767,7 +769,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     if c.instCounter > 100:
       globalError(c.config, it.info, "recursive dependency: " & userPragma.name.s)
 
-    pragma(c, sym, userPragma.ast, validPragmas)
+    pragma(c, sym, userPragma.ast, validPragmas, isStatement)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
     dec c.instCounter
@@ -969,7 +971,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         recordPragma(c, it, "warning", s)
         message(c.config, it.info, warnUser, s)
       of wError:
-        if sym != nil and (sym.isRoutine or sym.kind == skType) and wUsed in validPragmas:
+        if sym != nil and (sym.isRoutine or sym.kind == skType) and not isStatement:
           # This is subtle but correct: the error *statement* is only
           # allowed when 'wUsed' is not in validPragmas. Here this is the easiest way to
           # distinguish properly between
@@ -1168,7 +1170,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
         pushInfoContext(c.config, n.info)
         var i = 0
         while i < o.len:
-          if singlePragma(c, sym, o, i, validPragmas, true):
+          if singlePragma(c, sym, o, i, validPragmas, true, false):
             internalError(c.config, n.info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
@@ -1193,14 +1195,16 @@ proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
 
   return false
 
-proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
+proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
+               isStatement: bool) =
   if n == nil: return
   var i = 0
   while i < n.len:
-    if singlePragma(c, sym, n, i, validPragmas, false): break
+    if singlePragma(c, sym, n, i, validPragmas, false, isStatement): break
     inc i
 
-proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
+proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
+            isStatement: bool) =
   if n == nil: return
-  pragmaRec(c, sym, n, validPragmas)
+  pragmaRec(c, sym, n, validPragmas, isStatement)
   implicitPragmas(c, sym, n, validPragmas)
