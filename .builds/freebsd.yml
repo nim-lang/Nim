@@ -7,7 +7,7 @@ packages:
 - sfml
 - sdl2
 sources:
-- https://github.com/nim-lang/Nim.git
+- https://github.com/nim-lang/Nim
 environment:
   CC: /usr/bin/clang
 tasks:
