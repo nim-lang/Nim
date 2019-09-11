@@ -13,7 +13,6 @@ environment:
 tasks:
 - setup: |
     cd Nim
-    git show --name-status
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
     cd csources
     sh build.sh
