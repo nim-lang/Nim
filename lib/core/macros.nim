@@ -446,7 +446,7 @@ proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
 
 {.pop.}
 
-proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
+proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect, compilerproc.}
   ## creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
 
