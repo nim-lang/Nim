@@ -1796,9 +1796,10 @@ when isMainModule:
 
     doAssert(obj == to(%obj, type(obj)))
 
-    const fragments = """[1,2,3] {"hi":3} 12 [] """
-    var res = ""
-    for x in parseJsonFragments(newStringStream(fragments)):
-      res.add($x)
-      res.add " "
-    doAssert res == fragments
+    when not defined(js):
+      const fragments = """[1,2,3] {"hi":3} 12 [] """
+      var res = ""
+      for x in parseJsonFragments(newStringStream(fragments)):
+        res.add($x)
+        res.add " "
+      doAssert res == fragments
