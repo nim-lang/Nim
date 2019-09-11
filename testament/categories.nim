@@ -506,6 +506,7 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
+
     errors = r.total - r.passed
     if errors == 0:
       r.addResult(packageFileTest, targetC, "", "", reSuccess)
