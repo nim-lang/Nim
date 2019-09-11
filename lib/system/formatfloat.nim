@@ -43,3 +43,9 @@ proc writeFloatToBuffer*(buf: var array[64, char]; value: BiggestFloat): int =
     elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
       # When the output is for example "1e10", we also don't want to append a ".0" postfix.
       hasDot = true
+
+  if not hasDot:
+    # append ".0", to convert "0" to "0.0", "1" to "1.0", etc.
+    return n + c_sprintf(buf[n].addr, ".0")
+  else:
+    return n
