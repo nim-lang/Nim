@@ -2722,7 +2722,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
           result.setLen(0) # error!
           break
       else:
-        result.setLen(pathLength)
+        result.setLen(pathLength-1)
         break
 
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
