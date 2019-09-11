@@ -28,3 +28,7 @@ tasks:
     fi
 
     exit $exitcode
+triggers:
+- action: email
+  condition: failure
+  to: Andreas Rumpf <rumpf_a@web.de>
