@@ -30,11 +30,12 @@ proc countBits64(n: uint64): int {.compilerproc, inline.} =
   result = ((v * 0x0101010101010101'u64) shr 56'u64).int
 
 proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
-  var j = -1
+  var i = 0
   when defined(x86) or defined(amd64):
-    for i in countup(0, len - 8, 8):
+    while i < len - 8:
       inc(result, countBits64((cast[ptr uint64](s[i].unsafeAddr))[]))
-      j = i + 7
+      inc(i, 8)
 
-  for i in (j + 1) ..< len:
+  while i < len:
     inc(result, countBits32(uint32(s[i])))
+    inc(i, 1)
