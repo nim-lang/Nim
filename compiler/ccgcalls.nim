@@ -394,11 +394,14 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
   while i < pat.len:
     case pat[i]
     of '@':
-      if j < ri.len:
-        result.add genOtherArg(p, ri, j, typ)
-        for k in j+1 ..< ri.len:
-          result.add(~", ")
-          result.add genOtherArg(p, ri, k, typ)
+      var first = true
+      for k in j ..< ri.len:
+        let arg = genOtherArg(p, ri, k, typ)
+        if arg.len > 0:
+          if not first:
+            result.add(~", ")
+          first = false
+          result.add arg
       inc i
     of '#':
       if i+1 < pat.len and pat[i+1] in {'+', '@'}:
