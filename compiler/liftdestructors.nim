@@ -641,7 +641,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     let typ = orig.skipTypes({tyGenericInst, tyAlias, tySink})
     g.canonTypes[h] = typ
     canon = typ
-  elif canon != orig:
+  if canon != orig:
     overwrite = true
 
   # multiple cases are to distinguish here:

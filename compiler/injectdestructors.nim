@@ -134,7 +134,7 @@ to do it.
 ]#
 
 import
-  intsets, ast, msgs, renderer, magicsys, types, idents,
+  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes
 
@@ -322,7 +322,7 @@ proc makePtrType(c: Con, baseType: PType): PType =
 proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = t.attachedOps[kind]
 
-  if op == nil:
+  if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
