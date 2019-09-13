@@ -1080,7 +1080,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
       add(cmds, c[1].getStr)
       let (_, name, _) = splitFile(c[0].getStr)
-      add(prettyCmds, "CC: " & name)
+      add(prettyCmds, "CC: " & demanglePackageName(name))
 
     let prettyCb = proc (idx: int) =
       when declared(echo):
