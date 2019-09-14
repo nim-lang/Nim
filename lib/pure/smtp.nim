@@ -65,12 +65,12 @@ type
   Smtp* = SmtpBase[Socket]
   AsyncSmtp* = SmtpBase[AsyncSocket]
 
-proc debugSend(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
+proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
   if smtp.debug:
     echo("C:" & cmd)
   await smtp.sock.send(cmd)
 
-proc debugRecv(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
+proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
   result = await smtp.sock.recvLine()
   if smtp.debug:
     echo("S:" & result.string)
