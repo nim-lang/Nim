@@ -166,7 +166,7 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
       retFuture.fail(newException(ReplyError, msg))
   return retFuture
 
-proc checkReply(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
+proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
   var line = await smtp.debugRecv()
   if not line.startswith(reply):
     await quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
