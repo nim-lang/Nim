@@ -617,20 +617,6 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         eraseVoidParams(result)
         skipIntLiteralParams(result)
 
-      of tySequence:
-        if cl.isReturnType and cl.c.config.selectedGC == gcDestructors and
-            result.attachedOps[attachedDestructor].isNil and
-            result[0].kind != tyEmpty and optNimV2 notin cl.c.config.globalOptions:
-          let s = cl.c.graph.sysTypes[tySequence]
-          var old = copyType(s, s.owner, keepId=false)
-          # Remove the 'T' parameter from tySequence:
-          old.sons.setLen 0
-          old.n = nil
-          old.flags = {tfHasAsgn}
-          old.addSonSkipIntLit result[0]
-          result.attachedOps = old.attachedOps
-          cl.c.typesWithOps.add((result, old))
-
       else: discard
     else:
       # If this type doesn't refer to a generic type we may still want to run it

@@ -142,7 +142,7 @@ proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
 
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
-  if optNimV2 in c.g.config.globalOptions:
+  if c.g.config.selectedGC == gcDestructors:
     let op = field
     if field != nil and sfOverriden in field.flags:
       if sfError in op.flags:
