@@ -2019,8 +2019,14 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
   # This adds a call to newIdentNode("result") as the first argument to the template call
-  let identNode = getCompilerProc(c.graph, "newIdentNode")
-  quotes[1] = newNode(nkCall, n.info, @[identNode.newSymNode, newStrNode(nkStrLit, "result")])
+  let identNodeSym = getCompilerProc(c.graph, "newIdentNode")
+  # so that new Nim compilers can compile old macros.nim versions, we check for 'nil'
+  # here and provide the old fallback solution:
+  let identNode = if identNodeSym == nil:
+                    newIdentNode(getIdent(c.cache, "newIdentNode"), n.info)
+                  else:
+                    identNodeSym.newSymNode
+  quotes[1] = newNode(nkCall, n.info, @[identNode, newStrNode(nkStrLit, "result")])
   result = newNode(nkCall, n.info, @[
      createMagic(c.graph, "getAst", mExpandToAst).newSymNode,
     newNode(nkCall, n.info, quotes)])
