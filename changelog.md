@@ -25,18 +25,19 @@
   piece of code to your project:
 
 ```nim
-
 type
   Rune16* = distinct int16
-
 ```
 
-- `exportc` now uses C instead of C++ mangling with `nim cpp`, matching behavior of `importc`, see #10578
-  Use the new `exportcpp` to mangle as C++ when using `nim cpp`.
+- `exportc` now uses C instead of C++ mangling with `nim cpp`, matching behavior
+  of `importc`, see #10578. Use the new `exportcpp` to mangle as C++ when using
+  `nim cpp`.
+
 
 ### Breaking changes in the compiler
 
-- A bug allowing `int` to be implicitly converted to range types of smaller size (e.g `range[0'i8..10'i8]`) has been fixed.
+- A bug allowing `int` to be implicitly converted to range types of smaller size
+  (e.g `range[0'i8..10'i8]`) has been fixed.
 
 
 ## Library additions
@@ -67,13 +68,19 @@ type
 
 - Consistent error handling of two `exec` overloads. (#10967)
 
+- Fixed bug in `CountTable` which, in some special cases, might cause erroneous
+  zero values for keys with non-zero values.
+
+
 ## Language additions
 
-- Inline iterators returning `lent T` types are now supported, similarly to iterators returning `var T`:
+- Inline iterators returning `lent T` types are now supported, similarly to
+  iterators returning `var T`:
 ```nim
 iterator myitems[T](x: openarray[T]): lent T
 iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
 ```
+
 
 ## Language changes
 

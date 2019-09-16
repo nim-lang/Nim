@@ -2172,9 +2172,11 @@ proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
   var h: Hash = hash(key) and high(t.data) # start with real hash value
-  while t.data[h].val != 0:
+  let fh = h
+  while true:
     if t.data[h].key == key: return h
     h = nextTry(h, high(t.data))
+    if h == fh: break
   result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 template ctget(t, key, default: untyped): untyped =
