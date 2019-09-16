@@ -639,8 +639,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     for i in 1 .. s.typ.n.len-1:
       let param = s.typ.n.sons[i].sym
       param.flags.incl sfTemplateParam
-      if optNimV019 in c.config.globalOptions:
-        param.flags.excl sfGenSym
+      param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
     if len(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:
