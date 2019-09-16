@@ -3226,7 +3226,7 @@ when not defined(nimscript) and hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-  when not defined(JS) and not defined(nimV2):
+  when not defined(JS) and not defined(gcDestructors):
     proc GC_disable*() {.rtl, inl, benign.}
       ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
       ## are needed to reactivate the GC.
@@ -3589,7 +3589,7 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
-    when not defined(gcRegions) and not defined(nimV2):
+    when not defined(gcRegions) and not defined(gcDestructors):
       proc initGC() {.gcsafe.}
 
     proc initStackBottom() {.inline, compilerproc.} =

@@ -226,7 +226,7 @@ when not defined(useNimRtl):
                cl: var ReprClosure) =
     # we know that p is not nil here:
     when declared(CellSet):
-      when defined(boehmGC) or defined(gogc) or defined(nogc):
+      when defined(boehmGC) or defined(gogc) or defined(nogc) or defined(gcDestructors):
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)

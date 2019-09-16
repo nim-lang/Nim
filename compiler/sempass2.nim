@@ -751,6 +751,7 @@ proc track(tracked: PEffects, n: PNode) =
           discard
         else:
           message(tracked.config, arg.info, warnProveInit, $arg)
+      createTypeBoundOps(tracked.graph, tracked.c, n[1].typ.lastSon, n.info)
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:
