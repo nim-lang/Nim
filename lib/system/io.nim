@@ -112,6 +112,13 @@ proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
 proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
 
+## When running nim in android app stdout goes no where, so echo gets ignored
+## To redreict echo to the android logcat use -d:echoToAndroidLog
+when defined(echoToAndroidLog):
+  const ANDROID_LOG_VERBOSE = 2.cint
+  proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
+    {.importc: "__android_log_print", header: "<android/log.h>", varargs, discardable.}
+
 template sysFatal(exc, msg) =
   raise newException(exc, msg)
 
@@ -585,25 +592,31 @@ when declared(stdout):
     initSysLock echoLock
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
-    # flockfile deadlocks some versions of Android 5.x.x
-    when not defined(windows) and not defined(android) and not defined(nintendoswitch):
-      proc flockfile(f: File) {.importc, nodecl.}
-      proc funlockfile(f: File) {.importc, nodecl.}
-      flockfile(stdout)
-    when defined(windows) and compileOption("threads"):
-      acquireSys echoLock
-    for s in args:
-      when defined(windows):
-        writeWindows(stdout, s)
-      else:
-        discard c_fwrite(s.cstring, s.len, 1, stdout)
-    const linefeed = "\n"
-    discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
-    discard c_fflush(stdout)
-    when not defined(windows) and not defined(android) and not defined(nintendoswitch):
-      funlockfile(stdout)
-    when defined(windows) and compileOption("threads"):
-      releaseSys echoLock
+    when defined(echoToAndroidLog):
+      var s = ""
+      for arg in args:
+        s.add arg
+      android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
+    else:
+      # flockfile deadlocks some versions of Android 5.x.x
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+        proc flockfile(f: File) {.importc, nodecl.}
+        proc funlockfile(f: File) {.importc, nodecl.}
+        flockfile(stdout)
+      when defined(windows) and compileOption("threads"):
+        acquireSys echoLock
+      for s in args:
+        when defined(windows):
+          writeWindows(stdout, s)
+        else:
+          discard c_fwrite(s.cstring, s.len, 1, stdout)
+      const linefeed = "\n"
+      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+      discard c_fflush(stdout)
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+        funlockfile(stdout)
+      when defined(windows) and compileOption("threads"):
+        releaseSys echoLock
 
 
 when defined(windows) and not defined(nimscript):
