@@ -2755,7 +2755,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkUsingStmt: result = semUsing(c, n)
   of nkAsmStmt: result = semAsm(c, n)
   of nkYieldStmt: result = semYield(c, n)
-  of nkPragma: pragma(c, c.p.owner, n, stmtPragmas)
+  of nkPragma: pragma(c, c.p.owner, n, stmtPragmas, true)
   of nkIteratorDef: result = semIterator(c, n)
   of nkProcDef: result = semProc(c, n)
   of nkFuncDef: result = semFunc(c, n)

@@ -194,6 +194,7 @@ proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
   if a[0] != b[0]: return false
   var last = a.len - 1
   while last > 0 and a[last] != '`': dec(last)
+  if last == 0: last = a.len - 1
 
   var i = 1
   var j = 1

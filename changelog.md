@@ -47,6 +47,10 @@ type
 - Added `system.getOsFileHandle` which is usually more useful
   than `system.getFileHandle`. This distinction is only meaningful on
   Windows.
+- Added a `json.parseJsonFragments` iterator that can be used to speedup
+  JSON processing substantially when there are JSON fragments separated
+  by whitespace.
+
 
 ## Library changes
 
