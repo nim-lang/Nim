@@ -1,11 +1,12 @@
 image: freebsd/latest
 packages:
-- sqlite3
-- node
-- boehm-gc
-- pcre
-- sfml
-- sdl2
+- databases/sqlite3
+- devel/boehm-gc
+- devel/boehm-gc-threaded
+- devel/pcre
+- devel/sdl20
+- devel/sfml
+- www/node
 sources:
 - https://github.com/nim-lang/Nim
 environment:
