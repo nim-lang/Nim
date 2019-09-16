@@ -192,21 +192,21 @@ proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
 
 proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
   if a[0] != b[0]: return false
-  var last = a.len - 1
-  while last > 0 and a[last] != '`': dec(last)
-  if last == 0: last = a.len - 1
+  var alen = a.len - 1
+  while alen > 0 and a[alen] != '`': dec(alen)
+  if alen <= 0: alen = a.len
 
   var i = 1
   var j = 1
   while true:
-    while i < last and a[i] == '_': inc i
+    while i < alen and a[i] == '_': inc i
     while j < b.len and b[j] == '_': inc j
-    var aa = if i < last: toLowerAscii(a[i]) else: '\0'
+    var aa = if i < alen: toLowerAscii(a[i]) else: '\0'
     var bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
     if aa != bb: return false
 
     # the characters are identical:
-    if i >= last:
+    if i >= alen:
       # both cursors at the end:
       if j >= b.len: return true
       # not yet at the end of 'b':
