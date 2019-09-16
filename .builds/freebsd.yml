@@ -1,7 +1,6 @@
 image: freebsd/latest
 packages:
 - databases/sqlite3
-- devel/boehm-gc
 - devel/boehm-gc-threaded
 - devel/pcre
 - devel/sdl20
@@ -27,7 +26,6 @@ tasks:
     if [[ $exitcode -ne 0 ]]; then
       nim c -r tools/ci_testresults.nim
     fi
-
     exit $exitcode
 triggers:
 - action: email
