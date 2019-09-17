@@ -113,8 +113,8 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
 
 ## When running nim in android app stdout goes no where, so echo gets ignored
-## To redreict echo to the android logcat use -d:echoToAndroidLog
-when defined(echoToAndroidLog):
+## To redreict echo to the android logcat use -d:androidNDK
+when defined(androidNDK):
   const ANDROID_LOG_VERBOSE = 2.cint
   proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
     {.importc: "__android_log_print", header: "<android/log.h>", varargs, discardable.}
@@ -592,7 +592,7 @@ when declared(stdout):
     initSysLock echoLock
 
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
-    when defined(echoToAndroidLog):
+    when defined(androidNDK):
       var s = ""
       for arg in args:
         s.add arg
