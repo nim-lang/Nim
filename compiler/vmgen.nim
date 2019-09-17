@@ -43,6 +43,7 @@ type
   TGenFlag = enum
     gfNode # Affects how variables are loaded - always loads as rkNode
     gfNodeAddr # Affects how variables are loaded - always loads as rkNodeAddr
+    gfIsParam # do not deepcopy parameters, they are immutable
   TGenFlags = set[TGenFlag]
 
 proc debugInfo(c: PCtx; info: TLineInfo): string =
@@ -568,7 +569,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
     #  let paramType = fntyp.n.sons[i]
     #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
-    c.gen(n.sons[i], r)
+    c.gen(n.sons[i], r, {gfIsParam})
     if i >= fntyp.len:
       internalAssert c.config, tfVarargs in fntyp.flags
       c.gABx(n, opcSetType, r, c.genType(n.sons[i].typ))
@@ -917,20 +918,16 @@ proc ldNullOpcode(t: PType): TOpcode =
   assert t != nil
   if fitsRegister(t): opcLdNullReg else: opcLdNull
 
-proc whichAsgnOpc(n: PNode): TOpcode =
+proc whichAsgnOpc(n: PNode; requiresCopy = true): TOpcode =
   case n.typ.skipTypes(abstractRange+{tyOwned}-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     opcAsgnInt
-  of tyString, tyCString:
-    opcAsgnStr
   of tyFloat..tyFloat128:
     opcAsgnFloat
   of tyRef, tyNil, tyVar, tyLent, tyPtr:
     opcAsgnRef
   else:
-    opcAsgnComplex
-
-proc whichAsgnOpc(n: PNode; opc: TOpcode): TOpcode = opc
+    (if requiresCopy: opcAsgnComplex else: opcFastAsgnComplex)
 
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
@@ -1317,7 +1314,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let a = c.genx(arg)
     assert dest >= 0
     if dest < 0: dest = c.getTemp(arg.typ)
-    gABC(c, arg, whichAsgnOpc(arg), dest, a, 1)
+    gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     # XXX use ldNullOpcode() here?
     c.gABx(n, opcLdNull, a, c.genType(arg.typ))
     c.gABx(n, opcNodeToReg, a, a)
@@ -1419,7 +1416,7 @@ proc genDeref(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
 proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   let tmp = c.genx(ri)
   assert dest >= 0
-  gABC(c, ri, whichAsgnOpc(ri), dest, tmp, 1-ord(requiresCopy))
+  gABC(c, ri, whichAsgnOpc(ri, requiresCopy), dest, tmp)
   c.freeTemp(tmp)
 
 proc setSlot(c: PCtx; v: PSym) =
@@ -1465,7 +1462,7 @@ template needsAdditionalCopy(n): untyped =
 proc genAdditionalCopy(c: PCtx; n: PNode; opc: TOpcode;
                        dest, idx, value: TRegister) =
   var cc = c.getTemp(n.typ)
-  c.gABC(n, whichAsgnOpc(n), cc, value, 0)
+  c.gABC(n, whichAsgnOpc(n), cc, value)
   c.gABC(n, opc, dest, idx, cc)
   c.freeTemp(cc)
 
@@ -1529,7 +1526,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
       if needsAdditionalCopy(le) and s.kind in {skResult, skVar, skParam}:
         var cc = c.getTemp(le.typ)
         gen(c, ri, cc)
-        c.gABC(le, whichAsgnOpc(le), dest, cc, 1)
+        c.gABC(le, whichAsgnOpc(le), dest, cc)
         c.freeTemp(cc)
       else:
         gen(c, ri, dest)
@@ -1608,7 +1605,9 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
         internalAssert(c.config, c.prc.slots[dest].kind < slotSomeTemp)
       else:
         # we need to generate an assignment:
-        genAsgn(c, dest, n, c.prc.slots[dest].kind >= slotSomeTemp)
+        let requiresCopy = c.prc.slots[dest].kind >= slotSomeTemp and
+          gfIsParam notin flags
+        genAsgn(c, dest, n, requiresCopy)
     else:
       # see tests/t99bott for an example that triggers it:
       cannotEval(c, n)
@@ -1818,7 +1817,7 @@ proc genVarSection(c: PCtx; n: PNode) =
           if not fitsRegister(le.typ) and s.kind in {skResult, skVar, skParam}:
             var cc = c.getTemp(le.typ)
             gen(c, a.sons[2], cc)
-            c.gABC(le, whichAsgnOpc(le), s.position.TRegister, cc, 1)
+            c.gABC(le, whichAsgnOpc(le), s.position.TRegister, cc)
             c.freeTemp(cc)
           else:
             gen(c, a.sons[2], s.position.TRegister)
@@ -1849,7 +1848,7 @@ proc genArrayConstr(c: PCtx, n: PNode, dest: var TDest) =
     c.gABx(n, opcLdNullReg, tmp, c.genType(intType))
     for x in n:
       let a = c.genx(x)
-      c.preventFalseAlias(n, whichAsgnOpc(x, opcWrArr), dest, tmp, a)
+      c.preventFalseAlias(n, opcWrArr, dest, tmp, a)
       c.gABI(n, opcAddImmInt, tmp, tmp, 1)
       c.freeTemp(a)
     c.freeTemp(tmp)
@@ -1881,7 +1880,7 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
     if it.kind == nkExprColonExpr and it.sons[0].kind == nkSym:
       let idx = genField(c, it.sons[0])
       let tmp = c.genx(it.sons[1])
-      c.preventFalseAlias(it.sons[1], whichAsgnOpc(it.sons[1], opcWrObj),
+      c.preventFalseAlias(it.sons[1], opcWrObj,
                           dest, idx, tmp)
       c.freeTemp(tmp)
     else:
@@ -1896,12 +1895,12 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
     if it.kind == nkExprColonExpr:
       let idx = genField(c, it.sons[0])
       let tmp = c.genx(it.sons[1])
-      c.preventFalseAlias(it.sons[1], whichAsgnOpc(it.sons[1], opcWrObj),
+      c.preventFalseAlias(it.sons[1], opcWrObj,
                           dest, idx, tmp)
       c.freeTemp(tmp)
     else:
       let tmp = c.genx(it)
-      c.preventFalseAlias(it, whichAsgnOpc(it, opcWrObj), dest, i.TRegister, tmp)
+      c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
       c.freeTemp(tmp)
 
 proc genProc*(c: PCtx; s: PSym): int
@@ -2065,7 +2064,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     if dest >= 0:
-      gABC(c, n, whichAsgnOpc(n), dest, tmp0, 1)
+      gABC(c, n, whichAsgnOpc(n), dest, tmp0)
       c.freeTemp(tmp0)
     else:
       dest = tmp0

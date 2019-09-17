@@ -31,7 +31,6 @@ type
     opcYldVal,      # yield with a value
 
     opcAsgnInt,
-    opcAsgnStr,
     opcAsgnFloat,
     opcAsgnRef,
     opcAsgnIntFromFloat32,    # int and float must be of the same byte size
@@ -39,6 +38,7 @@ type
     opcAsgnFloat32FromInt,    # int and float must be of the same byte size
     opcAsgnFloat64FromInt,    # int and float must be of the same byte size
     opcAsgnComplex,
+    opcFastAsgnComplex,
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
