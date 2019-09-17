@@ -860,7 +860,7 @@ proc reverseDestroys(destroys: PNode) =
   destroys.sons = reversed
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  if sfGeneratedOp in owner.flags or isInlineIterator(owner): return n
+  if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)): return n
   var c: Con
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)

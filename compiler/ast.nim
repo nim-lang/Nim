@@ -1814,11 +1814,11 @@ template getBody*(s: PSym): PNode = s.ast[bodyPos]
 template detailedInfo*(sym: PSym): string =
   sym.name.s
 
-proc isInlineIterator*(s: PSym): bool {.inline.} =
-  s.kind == skIterator and s.typ.callConv != ccClosure
+proc isInlineIterator*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
 
-proc isClosureIterator*(s: PSym): bool {.inline.} =
-  s.kind == skIterator and s.typ.callConv == ccClosure
+proc isClosureIterator*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)

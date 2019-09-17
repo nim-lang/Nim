@@ -1283,10 +1283,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         if kind notin {skParam, skResult}: result = t
         else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
+    if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
+      # only closure iterators my be assigned to anything.
+      result = t
     let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
     for i in 1 ..< len(t):
-      result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
       if result != nil: break
+      result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
     if result.isNil and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:
