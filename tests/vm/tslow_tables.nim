@@ -11,8 +11,7 @@ done'''
 import tables
 
 type Flop = object
-  a: int
-  #array[128, int]  # <-- compile time is proportional to array size
+  a: array[128, int]  # <-- compile time is proportional to array size
 
 proc hop(): bool =
   var v: Table[int, Flop]
