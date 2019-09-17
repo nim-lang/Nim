@@ -1909,19 +1909,7 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
   if result.htmlTag in SingleTags:
     if x.kind != xmlElementEnd or cmpIgnoreCase(x.elemName, result.tag) != 0:
       return
-
-  # if result.htmlTag in {tagScript}:
-  #   while true:
-  #     case x.kind
-  #     of xmlElementEnd:
-  #       case result.htmlTag
-  #       of tagScript:
-  #       else: next(x)
-  #     else: next(x)
-  #   return
-
   while true:
-    echo ("untilElementEnd", x.kind)
     case x.kind
     of xmlElementStart, xmlElementOpen:
       case result.htmlTag
@@ -1969,14 +1957,12 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
       result.addNode(parse(x, errors))
 
 proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
-  echo ("parse.1", x.kind, x.elemName, x.a, x.b, x.c)
   case x.kind
   of xmlComment:
     result = newComment(x.rawData)
     next(x)
   of xmlScriptLike:
-    echo ("parse.2", x.rawData)
-    result = newText(x.rawData) # CHECKME
+    adderr(errorMsg(x, "unexpected script like tag: " & x.elemName))
     next(x)
   of xmlCharData, xmlWhitespace:
     result = newText(x.rawData)
@@ -1998,8 +1984,6 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     next(x)
     result.attrs = newStringTable()
     while true:
-      echo ("parse.3", x.kind)
-
       case x.kind
       of xmlAttribute:
         result.attrs[x.rawData] = x.rawData2
@@ -2016,7 +2000,6 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
         next(x)
         break
       else:
-        echo ("parse.4")
         adderr(errorMsg(x, "'>' expected"))
         next(x)
         break

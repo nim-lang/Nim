@@ -182,6 +182,7 @@ type
     errQuoteExpected,        ## ``"`` or ``'`` expected
     errEndOfCommentExpected  ## ``-->`` expected
     errAttributeValueExpected ## non-empty attribute value expected
+    errClosingScriptLikeExpected ## </script> expected
 
   ParserState = enum
     stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
@@ -193,7 +194,7 @@ type
     allowEmptyAttribs      ## allow empty attributes (without explicit value)
 
   XmlParser* = object of BaseLexer ## the parser object.
-    a*, b*, c*: string
+    a, b, c: string
     kind: XmlEventKind
     err: XmlErrorKind
     state: ParserState
@@ -212,7 +213,8 @@ const
     "'=' expected",
     "'\"' or \"'\" expected",
     "'-->' expected",
-    "attribute value expected"
+    "attribute value expected",
+    "</script> expected"
   ]
 
 proc continuesWith(my: var XmlParser, suffix: string): bool =
@@ -226,8 +228,8 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   ## a whitespace token is reported as an ``xmlWhitespace`` event.
   ## If `options` contains ``reportComments`` a comment token is reported as an
   ## ``xmlComment`` event.
-  # lexbase.open(my, input, 8192, {'\c', '\L', '/'})
-  lexbase.open(my, input, 819200, {'\c', '\L', '/'}) # PRTEMP
+  # WAS: lexbase.open(my, input, 8192, {'\c', '\L', '/'})
+  lexbase.openConsumeAll(my, input)
   my.filename = filename
   my.state = stateStart
   my.kind = xmlError
@@ -411,27 +413,14 @@ proc parseScriptLike(my: var XmlParser) =
   ]#
   let suffix = "</script>"
   var oldPos = my.bufpos
-  # pos = lexbase.handleRefillChar(my, pos)
+  my.kind = xmlScriptLike
   while my.bufpos < my.buf.len:
     if continuesWith(my, suffix):
-      echo ("parseScriptLike", my.a)
-      my.a = my.buf[oldPos ..< my.bufpos]
-      my.kind = xmlScriptLike
-      when false:
-        my.bufpos += suffix.len
+      my.a.add my.buf[oldPos ..< my.bufpos]
       return
     else:
-      if my.buf[my.bufpos] in my.refillChars:
-        # my.a.add my.buf[oldPos ..< my.bufpos]
-        # BUG: wouldn't be correct for / in "</script>"
-        my.bufpos = lexbase.handleRefillChar(my, my.bufpos)
-      else:
-        my.bufpos.inc
-
-  echo my.bufpos
-  echo my.buf
-  doAssert false # TODO
-  # echo ("rawGetTok",my.a, my.kind)
+      my.bufpos.inc
+  markError(my, errClosingScriptLikeExpected)
 
 proc parseWhitespace(my: var XmlParser, skip=false) =
   var pos = my.bufpos
@@ -791,14 +780,12 @@ proc next*(my: var XmlParser) =
     if my.kind == xmlPI and my.a == "xml":
       # just skip the first ``<?xml >`` processing instruction
       getTok(my)
-      echo ("next.1", my.a)
   of stateAttr:
     # parse an attribute key-value pair:
     if my.buf[my.bufpos] == '>':
       my.kind = xmlElementClose
       inc(my.bufpos)
-      echo ("next.2", my.a, my.b, my.c)
-      if my.c == "script": # PRTEMP tagScript
+      if my.c == "script":
         parseScriptLike(my)
       my.state = stateNormal
     elif my.buf[my.bufpos] == '/':

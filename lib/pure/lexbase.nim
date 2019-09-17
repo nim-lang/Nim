@@ -35,6 +35,7 @@ type
     lineStart: int            # index of last line start in buffer
     offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
     refillChars*: set[char]
+    isGreedy*: bool
 
 proc close*(L: var BaseLexer) =
   ## closes the base lexer. This closes `L`'s associated stream too.
@@ -122,7 +123,7 @@ proc handleLF*(L: var BaseLexer, pos: int): int =
 proc handleRefillChar*(L: var BaseLexer, pos: int): int =
   ## Call this if a terminator character other than a new line is scanned
   ## at `pos`; it returns the position to continue the scanning from.
-  assert(L.buf[pos] in L.refillChars)
+  assert(L.isGreedy or L.buf[pos] in L.refillChars)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
 
 proc skipUtf8Bom(L: var BaseLexer) =
@@ -145,6 +146,14 @@ proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
   L.lineNumber = 1            # lines start at 1
   fillBuffer(L)
   skipUtf8Bom(L)
+
+proc openConsumeAll*(L: var BaseLexer, input: Stream) =
+  ## greedy version of `open`, avoids complications related to buffer management
+  ## for applications where buffering is not needed
+  let s = readAll(input)
+  let bufLen = s.len + 1
+  open(L, newStringStream(s), bufLen = s.len + 1, {})
+  L.isGreedy = true
 
 proc getColNumber*(L: BaseLexer, pos: int): int =
   ## retrieves the current column.

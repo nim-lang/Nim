@@ -591,8 +591,6 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
       else: result.add(c)
 
   if n == nil: return
-  # echo ("xmltree.add", n.k)
-  # result.add("{" & $n.k & "}")
   case n.k
   of xnElement:
     result.add('<')
@@ -626,7 +624,7 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
     else:
       result.add(" />")
   of xnText:
-    result.addEscaped2(n.fText) # TODO: why escaped? ditto w xnComment
+    result.addEscaped2(n.fText)
   of xnComment:
     result.add("<!-- ")
     result.addEscaped2(n.fText)
