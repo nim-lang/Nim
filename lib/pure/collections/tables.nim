@@ -2181,7 +2181,7 @@ template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1)
+proc inc*[A](t: var CountTable[A], key: A, val: Natural = 1)
 
 # ----------------------------------------------------------------------
 
@@ -2246,8 +2246,11 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   else:
     insertImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val: Natural = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
+  ##
+  ## ``val`` cannot be a negative number. If you need to decrement a value,
+  ## use a regular ``Table`` instead.
   runnableExamples:
     var a = toCountTable("aab")
     a.inc('a')
