@@ -558,7 +558,7 @@ proc noWhitespace(n: XmlNode): bool =
     if n[i].kind in {xnText, xnEntity}: return true
 
 proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
-          addNewLines=true) =
+          addNewLines=true, doEscape = true) =
   ## Adds the textual representation of `n` to string `result`.
   runnableExamples:
     var
@@ -570,10 +570,18 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
     s.add(a)
     s.add(b)
     assert s == "<!-- my comment --><firstTag />my text"
+  proc addEscaped2(result: var string, s: string) =
+    if not doEscape:
+      result.add s
+    else:
+      addEscaped(result, s)
 
   proc addEscapedAttr(result: var string, s: string) =
     # `addEscaped` alternative with less escaped characters.
     # Only to be used for escaping attribute values enclosed in double quotes!
+    if not doEscape:
+      result.add s
+      return
     for c in items(s):
       case c
       of '<': result.add("&lt;")
@@ -583,6 +591,8 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
       else: result.add(c)
 
   if n == nil: return
+  # echo ("xmltree.add", n.k)
+  # result.add("{" & $n.k & "}")
   case n.k
   of xnElement:
     result.add('<')
@@ -602,24 +612,24 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
           # because this would be wrong. For example: ``a<b>b</b>`` is
           # different from ``a <b>b</b>``.
           for i in 0..n.len-1:
-            result.add(n[i], indent+indWidth, indWidth, addNewLines)
+            result.add(n[i], indent+indWidth, indWidth, addNewLines, doEscape)
         else:
           for i in 0..n.len-1:
             result.addIndent(indent+indWidth, addNewLines)
-            result.add(n[i], indent+indWidth, indWidth, addNewLines)
+            result.add(n[i], indent+indWidth, indWidth, addNewLines, doEscape)
           result.addIndent(indent, addNewLines)
       else:
-        result.add(n[0], indent+indWidth, indWidth, addNewLines)
+        result.add(n[0], indent+indWidth, indWidth, addNewLines, doEscape)
       result.add("</")
       result.add(n.fTag)
       result.add(">")
     else:
       result.add(" />")
   of xnText:
-    result.addEscaped(n.fText)
+    result.addEscaped2(n.fText) # TODO: why escaped? ditto w xnComment
   of xnComment:
     result.add("<!-- ")
-    result.addEscaped(n.fText)
+    result.addEscaped2(n.fText)
     result.add(" -->")
   of xnCData:
     result.add("<![CDATA[")

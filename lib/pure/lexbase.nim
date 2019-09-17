@@ -34,7 +34,7 @@ type
     sentinel: int
     lineStart: int            # index of last line start in buffer
     offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
-    refillChars: set[char]
+    refillChars*: set[char]
 
 proc close*(L: var BaseLexer) =
   ## closes the base lexer. This closes `L`'s associated stream too.

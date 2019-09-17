@@ -82,6 +82,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
         next(x)
         break
       else:
+        echo ("xmlparser.parse.1")
         errors.add(errorMsg(x, "'>' expected"))
         next(x)
         break
