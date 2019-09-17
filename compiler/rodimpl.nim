@@ -156,7 +156,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       encodeNode(g, n.info, n.sons[i], result)
   add(result, ')')
 
@@ -223,6 +223,9 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
   if t.lockLevel.ord != UnspecifiedLockLevel.ord:
     add(result, '\14')
     encodeVInt(t.lockLevel.int16, result)
+  if t.paddingAtEnd != 0:
+    add(result, '\15')
+    encodeVInt(t.paddingAtEnd, result)
   for a in t.attachedOps:
     add(result, '\16')
     if a == nil:
@@ -241,7 +244,7 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     add(result, '\21')
     encodeVInt(t.typeInst.uniqueId, result)
     pushType(w, t.typeInst)
-  for i in 0 ..< sonsLen(t):
+  for i in 0 ..< len(t):
     if t.sons[i] == nil:
       add(result, "^()")
     else:
@@ -630,6 +633,10 @@ proc loadType(g; id: int; info: TLineInfo): PType =
     result.lockLevel = decodeVInt(b.s, b.pos).TLockLevel
   else:
     result.lockLevel = UnspecifiedLockLevel
+
+  if b.s[b.pos] == '\15':
+    inc(b.pos)
+    result.paddingAtEnd = decodeVInt(b.s, b.pos).int16
 
   for a in low(result.attachedOps)..high(result.attachedOps):
     if b.s[b.pos] == '\16':

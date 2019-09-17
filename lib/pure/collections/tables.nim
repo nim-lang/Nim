@@ -307,6 +307,22 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
 
+proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toTable
+
+  putImpl(enlarge)
+
 proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## Creates a new hash table that contains the given ``pairs``.
   ##
@@ -361,22 +377,6 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
-  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -1285,6 +1285,22 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
 
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
+  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initOrderedTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
+
+  putImpl(enlarge)
+
 proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given ``pairs``.
   ##
@@ -1341,22 +1357,6 @@ proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
-  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initOrderedTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -2181,7 +2181,7 @@ template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1)
+proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
 
 # ----------------------------------------------------------------------
 
@@ -2246,8 +2246,11 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   else:
     insertImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
+  ##
+  ## ``val`` must be a positive number. If you need to decrement a value,
+  ## use a regular ``Table`` instead.
   runnableExamples:
     var a = toCountTable("aab")
     a.inc('a')

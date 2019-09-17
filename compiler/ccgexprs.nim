@@ -797,7 +797,7 @@ proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
 proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
   var test, u, v: TLoc
-  for i in 1 ..< sonsLen(e):
+  for i in 1 ..< len(e):
     var it = e.sons[i]
     assert(it.kind in nkCallKinds)
     assert(it.sons[0].kind == nkSym)
@@ -1087,7 +1087,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in 0 .. sonsLen(e) - 2:
+  for i in 0 .. len(e) - 2:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
     if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -1126,7 +1126,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e.sons[1], dest)
-  for i in 0 .. sonsLen(e) - 3:
+  for i in 0 .. len(e) - 3:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 2], a)
     if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -1193,6 +1193,8 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
+proc trivialDestructor(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
   let typ = a.t
@@ -1210,7 +1212,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
-    if bt.destructor != nil:
+    if bt.destructor != nil and not trivialDestructor(bt.destructor):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
@@ -1400,7 +1402,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   elif d.k == locNone:
     getTemp(p, n.typ, d)
 
-  let l = intLiteral(sonsLen(n))
+  let l = intLiteral(len(n))
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
@@ -1410,7 +1412,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     # generate call to newSeq before adding the elements per hand:
     genNewSeqAux(p, dest[], l,
       optNilSeqs notin p.options and n.len == 0)
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), intLiteral(i), dataField(p)])
     arr.storage = OnHeap            # we know that sequences are on the heap
@@ -1726,7 +1728,7 @@ proc fewCmps(conf: ConfigRef; s: PNode): bool =
   elif elemType(s.typ).kind in {tyInt, tyInt16..tyInt64}:
     result = true             # better not emit the set if int is basetype!
   else:
-    result = sonsLen(s) <= 8  # 8 seems to be a good value
+    result = len(s) <= 8  # 8 seems to be a good value
 
 template binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
   putIntoDest(p, d, e, frmt % [rdLoc(a), rdSetElemLoc(p.config, b, a.t)])
@@ -1759,7 +1761,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
                e.sons[2]
     initLocExpr(p, ea, a)
     initLoc(b, locExpr, e, OnUnknown)
-    var length = sonsLen(e.sons[1])
+    var length = len(e.sons[1])
     if length > 0:
       b.r = rope("(")
       for i in 0 ..< length:
@@ -2321,7 +2323,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     if d.k == locNone: getTemp(p, t, d)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
       initLoc(rec, locExpr, it, d.storage)
@@ -2363,7 +2365,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n.sons[i], arr)
@@ -2533,6 +2535,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
         genVarPrototype(p.module, n)
+        if sfCompileTime in sym.flags:
+          genSingleVar(p, sym, n, astdef(sym))
+
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
@@ -2743,7 +2748,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
       getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj.sons[0], cons, result, count)
-    for i in 1 ..< sonsLen(obj):
+    for i in 1 ..< len(obj):
       getNullValueAux(p, t, lastSon(obj.sons[i]), cons, result, count)
   of nkSym:
     if count > 0: result.add ", "
@@ -2791,7 +2796,7 @@ proc genConstObjConstr(p: BProc; n: PNode): Rope =
     result = "{$1}$n" % [result]
 
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
-  var length = sonsLen(n)
+  var length = len(n)
   result = rope("{")
   for i in 0 .. length - 2:
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])

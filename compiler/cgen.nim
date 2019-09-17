@@ -990,7 +990,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
 
-  for i in 1 ..< sonsLen(prc.typ.n):
+  for i in 1 ..< len(prc.typ.n):
     let param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param, prc.typ[0])
@@ -1039,7 +1039,8 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
            m.config.cmd != cmdCompileToCpp) or (
-           sym.flags * {sfImportc, sfInfixCall, sfCompilerProc} == {sfImportc} and
+           sym.flags * {sfInfixCall, sfCompilerProc, sfMangleCpp} == {} and
+           sym.flags * {sfImportc, sfExportc} != {} and
            sym.magic == mNone and
            m.config.cmd == cmdCompileToCpp)
 

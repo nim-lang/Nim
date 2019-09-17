@@ -244,13 +244,16 @@ proc `$`(x: TResults): string =
             [$x.passed, $x.skipped, $x.total]
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
-               expected, given: string, success: TResultEnum) =
+               expected, given: string, successOrig: TResultEnum) =
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshouldfail.nim
   var name = test.name.replace(DirSep, '/')
   name.add " " & $target & test.options
 
   let duration = epochTime() - test.startTime
+  let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
+                else: successOrig
+
   let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
   if backendLogging:
     backend.writeTestResult(name = name,
@@ -332,8 +335,7 @@ proc generatedFile(test: TTest, target: TTarget): string =
   else:
     let (_, name, _) = test.name.splitFile
     let ext = targetToExt[target]
-    result = nimcacheDir(test.name, test.options, target) /
-              name.replace("_", "__").changeFileExt(ext)
+    result = nimcacheDir(test.name, test.options, target) / "@m" & name.changeFileExt(ext)
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0

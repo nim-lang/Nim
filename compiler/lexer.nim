@@ -565,7 +565,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       case result.tokType
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
-      of tkUInt64Lit:
+      of tkUInt64Lit, tkUIntLit:
         var iNumber: uint64
         var len: int
         try:

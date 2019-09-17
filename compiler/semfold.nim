@@ -104,7 +104,7 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
     result = $chr(toInt64(x) and 0xff)
   of tyEnum:
     var n = t.n
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.sons[i].kind != nkSym: internalError(g.config, a.info, "ordinalValToString")
       var field = n.sons[i].sym
       if field.position == x:
@@ -194,7 +194,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     elif a.kind in {nkStrLit..nkTripleStrLit}:
       result = newIntNodeT(toInt128(a.strVal.len), n, g)
     else:
-      result = newIntNodeT(toInt128(sonsLen(a)), n, g)
+      result = newIntNodeT(toInt128(len(a)), n, g)
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   # XXX: Hides overflow/underflow
   of mAbsI: result = foldAbs(getInt(a), n, g)
@@ -205,8 +205,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mSubI: result = foldSub(getInt(a), getInt(b), n, g)
   of mMulI: result = foldMul(getInt(a), getInt(b), n, g)
   of mMinI:
-    if getInt(a) > getInt(b): result = newIntNodeT(getInt64(b), n, g)
-    else: result = newIntNodeT(getInt64(a), n, g)
+    let argA = getInt(a)
+    let argB = getInt(b)
+    result = newIntNodeT(if argA < argB: argA else: argB, n, g)
   of mMaxI:
     let argA = getInt(a)
     let argB = getInt(b)
@@ -370,7 +371,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
 
 proc getConstIfExpr(c: PSym, n: PNode; g: ModuleGraph): PNode =
   result = nil
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     var it = n.sons[i]
     if it.len == 2:
       var e = getConstExpr(c, it.sons[0], g)
@@ -388,27 +389,27 @@ proc leValueConv*(a, b: PNode): bool =
   case a.kind
   of nkCharLit..nkUInt64Lit:
     case b.kind
-    of nkCharLit..nkUInt64Lit: result = a.intVal <= b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.getInt <= b.getInt
     of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal).int
     else: result = false #internalError(a.info, "leValueConv")
   of nkFloatLit..nkFloat128Lit:
     case b.kind
     of nkFloatLit..nkFloat128Lit: result = a.floatVal <= b.floatVal
-    of nkCharLit..nkUInt64Lit: result = a.floatVal <= toFloat(int(b.intVal))
+    of nkCharLit..nkUInt64Lit: result = a.floatVal <= toFloat64(b.getInt)
     else: result = false # internalError(a.info, "leValueConv")
   else: result = false # internalError(a.info, "leValueConv")
 
 proc magicCall(m: PSym, n: PNode; g: ModuleGraph): PNode =
-  if sonsLen(n) <= 1: return
+  if len(n) <= 1: return
 
   var s = n.sons[0].sym
   var a = getConstExpr(m, n.sons[1], g)
   var b, c: PNode
   if a == nil: return
-  if sonsLen(n) > 2:
+  if len(n) > 2:
     b = getConstExpr(m, n.sons[2], g)
     if b == nil: return
-    if sonsLen(n) > 3:
+    if len(n) > 3:
       c = getConstExpr(m, n.sons[3], g)
       if c == nil: return
   result = evalOp(s.magic, n, a, b, c, g)
@@ -429,8 +430,8 @@ proc rangeCheck(n: PNode, value: Int128; g: ModuleGraph) =
                                     " to " & typeToString(n.typ))
 
 proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
-  let dstTyp = skipTypes(n.typ, abstractRange)
-  let srcTyp = skipTypes(a.typ, abstractRange)
+  let dstTyp = skipTypes(n.typ, abstractRange - {tyTypeDesc})
+  let srcTyp = skipTypes(a.typ, abstractRange - {tyTypeDesc})
 
 
   # if srcTyp.kind == tyUInt64 and "FFFFFF" in $n:
@@ -488,11 +489,11 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
   var idx = toInt64(getOrdValue(y))
   case x.kind
   of nkPar, nkTupleConstr:
-    if idx >= 0 and idx < sonsLen(x):
+    if idx >= 0 and idx < len(x):
       result = x.sons[idx]
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
-      localError(g.config, n.info, formatErrorIndexBound(idx, sonsLen(x)-1) & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, len(x)-1) & $n)
   of nkBracket:
     idx = idx - toInt64(firstOrd(g.config, x.typ))
     if idx >= 0 and idx < x.len: result = x.sons[int(idx)]
@@ -513,7 +514,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
   var field = n.sons[1].sym
-  for i in ord(x.kind == nkObjConstr) ..< sonsLen(x):
+  for i in ord(x.kind == nkObjConstr) ..< len(x):
     var it = x.sons[i]
     if it.kind != nkExprColonExpr:
       # lookup per index:
@@ -528,7 +529,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
 proc foldConStrStr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
   result.strVal = ""
-  for i in 1 ..< sonsLen(n):
+  for i in 1 ..< len(n):
     let a = getConstExpr(m, n.sons[i], g)
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
@@ -630,12 +631,12 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           var a = getArrayConstr(m, n.sons[1], g)
           if a.kind == nkBracket:
             # we can optimize it away:
-            result = newIntNodeT(sonsLen(a)-1, n, g)
+            result = newIntNodeT(len(a)-1, n, g)
       of mLengthOpenArray:
         var a = getArrayConstr(m, n.sons[1], g)
         if a.kind == nkBracket:
           # we can optimize it away! This fixes the bug ``len(134)``.
-          result = newIntNodeT(sonsLen(a), n, g)
+          result = newIntNodeT(len(a), n, g)
         else:
           result = magicCall(m, n, g)
       of mLengthArray:
@@ -684,7 +685,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     addSon(result, b)
   #of nkObjConstr:
   #  result = copyTree(n)
-  #  for i in 1 ..< sonsLen(n):
+  #  for i in 1 ..< len(n):
   #    var a = getConstExpr(m, n.sons[i].sons[1])
   #    if a == nil: return nil
   #    result.sons[i].sons[1] = a
@@ -692,7 +693,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   of nkPar, nkTupleConstr:
     # tuple constructor
     result = copyNode(n)
-    if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr):
+    if (len(n) > 0) and (n.sons[0].kind == nkExprColonExpr):
       for i, expr in n.pairs:
         let exprNew = copyNode(expr) # nkExprColonExpr
         exprNew.add expr[0]

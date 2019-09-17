@@ -13,7 +13,7 @@
 - The language definition and compiler are now stricter about ``gensym``'ed
   symbols in hygienic templates. See the section in the
   [manual](https://nim-lang.org/docs/manual.html#templates-hygiene-in-templates)
-  for further details. Use the compiler switch `--useVersion:0.19` for a
+  for further details. Use the compiler switch `--oldgensym:on` for a
   transition period.
 
 
@@ -31,6 +31,8 @@ type
 
 ```
 
+- `exportc` now uses C instead of C++ mangling with `nim cpp`, matching behavior of `importc`, see #10578
+  Use the new `exportcpp` to mangle as C++ when using `nim cpp`.
 
 ### Breaking changes in the compiler
 
@@ -45,6 +47,10 @@ type
 - Added `system.getOsFileHandle` which is usually more useful
   than `system.getFileHandle`. This distinction is only meaningful on
   Windows.
+- Added a `json.parseJsonFragments` iterator that can be used to speedup
+  JSON processing substantially when there are JSON fragments separated
+  by whitespace.
+
 
 ## Library changes
 
@@ -70,6 +76,9 @@ iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
 ```
 
 ## Language changes
+
+- `uint64` is now finally a regular ordinal type. This means `high(uint64)` compiles
+  and yields the correct value.
 
 
 ### Tool changes

@@ -39,13 +39,11 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     if parents <= 0: break
 
 proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
-  # foo/../bar becomes foo7_7bar
-  result = relativeTo(path, conf.projectPath, '/').string.multiReplace(
-    {"/": "7", "..": "_", "7": "77", "_": "__", ":": "8", "8": "88"})
+  # foo-#head/../bar becomes @foo-@hhead@s..@sbar
+  result = "@m" & relativeTo(path, conf.projectPath, '/').string.multiReplace({"/": "@s", "#": "@h", "@": "@@"})
 
 proc demanglePackageName*(path: string): string =
-  result = path.multiReplace(
-    {"88": "8", "8": ":", "77": "7", "__": "_", "_7": "../", "7": "/"})
+  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": ""})
 
 proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   let x = getPackageName(conf, path.string)

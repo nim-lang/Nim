@@ -5928,6 +5928,31 @@ Is the same as:
   proc astHelper(n: NimNode): NimNode {.compileTime.} =
     result = n
 
+``compileTime`` variables are available at runtime too. This simplifies certain
+idioms where variables are filled at compile-time (for example, lookup tables)
+but accessed at runtime:
+
+.. code-block:: nim
+    :test: "nim c -r $1"
+
+  import macros
+
+  var nameToProc {.compileTime.}: seq[(string, proc (): string {.nimcall.})]
+
+  macro registerProc(p: untyped): untyped =
+    result = newTree(nnkStmtList, p)
+
+    let procName = p[0]
+    let procNameAsStr = $p[0]
+    result.add quote do:
+      nameToProc.add((`procNameAsStr`, `procName`))
+
+  proc foo: string {.registerProc.} = "foo"
+  proc bar: string {.registerProc.} = "bar"
+  proc baz: string {.registerProc.} = "baz"
+
+  doAssert nameToProc[2][1]() == "baz"
+
 
 noReturn pragma
 ---------------

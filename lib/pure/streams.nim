@@ -127,7 +127,7 @@ type
     peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int)
-        {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
     flushImpl*: proc (s: Stream)
       {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}

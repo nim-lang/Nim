@@ -31,15 +31,14 @@ type
     opcYldVal,      # yield with a value
 
     opcAsgnInt,
-    opcAsgnStr,
     opcAsgnFloat,
     opcAsgnRef,
     opcAsgnComplex,
-
     opcCastIntToFloat32,    # int and float must be of the same byte size
     opcCastIntToFloat64,    # int and float must be of the same byte size
     opcCastFloatToInt32,    # int and float must be of the same byte size
     opcCastFloatToInt64,    # int and float must be of the same byte size
+    opcFastAsgnComplex,
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]

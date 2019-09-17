@@ -200,8 +200,8 @@ proc copyValue(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in 0 ..< sonsLen(src):
+    newSeq(result.sons, len(src))
+    for i in 0 ..< len(src):
       result.sons[i] = copyValue(src.sons[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
@@ -213,6 +213,18 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkInt: x.intVal = y.intVal
   of rkFloat: x.floatVal = y.floatVal
   of rkNode: x.node = copyValue(y.node)
+  of rkRegisterAddr: x.regAddr = y.regAddr
+  of rkNodeAddr: x.nodeAddr = y.nodeAddr
+
+proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
+  if x.kind != y.kind:
+    myreset(x)
+    x.kind = y.kind
+  case x.kind
+  of rkNone: discard
+  of rkInt: x.intVal = y.intVal
+  of rkFloat: x.floatVal = y.floatVal
+  of rkNode: x.node = y.node
   of rkRegisterAddr: x.regAddr = y.regAddr
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
@@ -535,10 +547,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAsgnInt:
       decodeB(rkInt)
       regs[ra].intVal = regs[rb].intVal
-    of opcAsgnStr:
-      decodeBC(rkNode)
-      createStrKeepNode regs[ra], rc != 0
-      regs[ra].node.strVal = regs[rb].node.strVal
     of opcAsgnFloat:
       decodeB(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal
@@ -560,6 +568,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
+    of opcFastAsgnComplex:
+      fastAsgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
       asgnRef(regs[ra], regs[instr.regB])
     of opcNodeToReg:
@@ -782,7 +792,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       addSon(b, regs[rb].regToNode)
       var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
-      for i in 0 ..< sonsLen(r): addSon(regs[ra].node, r.sons[i])
+      for i in 0 ..< len(r): addSon(regs[ra].node, r.sons[i])
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
@@ -976,11 +986,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal.add getstr(regs[i])
     of opcAddStrCh:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].intVal.chr)
     of opcAddStrStr:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].node.strVal)
     of opcAddSeqElem:
       decodeB(rkNode)
@@ -1164,7 +1172,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in 0 .. sonsLen(branch) - 2:
+      for j in 0 .. len(branch) - 2:
         if overlap(regs[ra].regToNode, branch.sons[j]):
           cond = true
           break
@@ -1384,17 +1392,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
-        regs[ra].node = src.sons[idx]
-      else:
+      if src.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot get child of node kind: n" & $src.kind)
+      elif idx >=% src.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+      else:
+        regs[ra].node = src.sons[idx]
     of opcNSetChild:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
       if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
-      elif dest.kind in {nkEmpty..nkNilLit} or idx >=% dest.len:
+      elif dest.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot set child of node kind: n" & $dest.kind)
+      elif idx >=% dest.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
       else:
         dest.sons[idx] = regs[rc].node
@@ -1404,7 +1416,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         u.add(regs[rc].node)
       regs[ra].node = u
@@ -1415,7 +1427,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         for i in 0 ..< x.len: u.add(x.sons[i])
       regs[ra].node = u
@@ -1549,17 +1561,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module, c.config)
     of opcGorge:
-      when defined(nimcore):
-        decodeBC(rkNode)
-        inc pc
-        let rd = c.code[pc].regA
-
-        createStr regs[ra]
-        regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                      regs[rc].node.strVal, regs[rd].node.strVal,
-                                      c.debug[pc], c.config)[0]
+      if defined(nimsuggest) or c.config.cmd == cmdCheck:
+        discard "don't run staticExec for 'nim suggest'"
       else:
-        globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
+        when defined(nimcore):
+          decodeBC(rkNode)
+          inc pc
+          let rd = c.code[pc].regA
+
+          createStr regs[ra]
+          regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
+                                        regs[rc].node.strVal, regs[rd].node.strVal,
+                                        c.debug[pc], c.config)[0]
+        else:
+          globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError, opcNWarning, opcNHint:
       decodeB(rkNode)
       let a = regs[ra].node
@@ -1582,7 +1597,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
-      elif sonsLen(ast) != 1:
+      elif len(ast) != 1:
         c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
           "expected expression, but got multiple statements")
       else:

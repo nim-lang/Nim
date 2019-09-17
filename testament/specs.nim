@@ -34,6 +34,7 @@ type
     reLinesDiffer,      # expected and given line numbers differ
     reOutputsDiffer,
     reExitcodesDiffer,
+    reTimeout,
     reInvalidPeg,
     reCodegenFailure,
     reCodeNotFound,
@@ -70,6 +71,8 @@ type
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
+    timeout*: float # in seconds, fractions possible,
+                    # but don't rely on much precision
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
@@ -225,6 +228,11 @@ proc parseSpec*(filename: string): TSpec =
         result.ccodeCheck = e.value
       of "maxcodesize":
         discard parseInt(e.value, result.maxCodeSize)
+      of "timeout":
+        try:
+          result.timeout = parseFloat(e.value)
+        except ValueError:
+          result.parseErrors.addLine "cannot interpret as a float: ", e.value
       of "target", "targets":
         for v in e.value.normalize.splitWhitespace:
           case v

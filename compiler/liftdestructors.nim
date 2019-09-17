@@ -142,7 +142,7 @@ proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
 
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
-  if optNimV2 in c.g.config.globalOptions:
+  if c.g.config.selectedGC == gcDestructors:
     let op = field
     if field != nil and sfOverriden in field.flags:
       if sfError in op.flags:
@@ -182,8 +182,16 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     body.add newAsgnCall(c.g, op, x, y)
     result = true
 
-proc addDestructorCall(c: var TLiftCtx; t: PType; body, x: PNode) =
+proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
+  let t = orig.skipTypes(abstractInst)
   var op = t.destructor
+
+  if op != nil and sfOverriden in op.flags:
+    if op.ast[genericParamsPos].kind != nkEmpty:
+      # patch generic destructor:
+      op = instantiateGeneric(c, op, t, t.typeInst)
+      t.attachedOps[attachedDestructor] = op
+
   if op == nil and useNoGc(c, t):
     op = produceSym(c.g, c.c, t, attachedDestructor, c.info)
     doAssert op != nil
@@ -633,7 +641,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     let typ = orig.skipTypes({tyGenericInst, tyAlias, tySink})
     g.canonTypes[h] = typ
     canon = typ
-  elif canon != orig:
+  if canon != orig:
     overwrite = true
 
   # multiple cases are to distinguish here:

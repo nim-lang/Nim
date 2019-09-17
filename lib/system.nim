@@ -97,7 +97,7 @@ type
   SomeInteger* = SomeSignedInt|SomeUnsignedInt
     ## Type class matching all integer types.
 
-  SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint8|uint16|uint32
+  SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint|uint8|uint16|uint32|uint64
     ## Type class matching all ordinal types; however this includes enums with
     ## holes.
 
@@ -1989,6 +1989,8 @@ when defined(boehmgc):
       const boehmLib = "boehmgc.dll"
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
+  elif defined(openbsd):
+    const boehmLib = "libgc.so.4.0"
   else:
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
@@ -3224,7 +3226,7 @@ when not defined(nimscript) and hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-  when not defined(JS) and not defined(nimV2):
+  when not defined(JS) and not defined(gcDestructors):
     proc GC_disable*() {.rtl, inl, benign.}
       ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
       ## are needed to reactivate the GC.
@@ -3587,7 +3589,7 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
-    when not defined(gcRegions) and not defined(nimV2):
+    when not defined(gcRegions) and not defined(gcDestructors):
       proc initGC() {.gcsafe.}
 
     proc initStackBottom() {.inline, compilerproc.} =

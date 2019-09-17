@@ -228,7 +228,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 36 flags!
+  TSymFlag* = enum    # already 38 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -239,6 +239,7 @@ type
     sfForward,        # symbol is forward declared
     sfImportc,        # symbol is external; imported
     sfExportc,        # symbol is exported (under a specified name)
+    sfMangleCpp,      # mangle as cpp (combines with `sfExportc`)
     sfVolatile,       # variable is volatile
     sfRegister,       # variable should be placed in a register
     sfPure,           # object is "pure" that means it has no type-information
@@ -282,6 +283,7 @@ type
     sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
                       # variable is generated closure environment; requires early
                       # destruction for --newruntime.
+    sfTemplateParam   # symbol is a template parameter
 
 
   TSymFlags* = set[TSymFlag]
@@ -1021,7 +1023,9 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-proc len*(n: PNode): int {.inline.} =
+type Indexable = PNode | PType
+
+proc len*(n: Indexable): int {.inline.} =
   when defined(nimNoNilSeqs):
     result = len(n.sons)
   else:
@@ -1044,8 +1048,6 @@ proc add*(father, son: PNode) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
-
-type Indexable = PNode | PType
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
 template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
@@ -1236,7 +1238,7 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: PType): PType = n.sons[^1]
+proc lastSon*(n: Indexable): Indexable = n.sons[^1]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1340,7 +1342,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
 
-proc newSons*(father: PNode, length: int) =
+proc newSons*(father: Indexable, length: int) =
   when defined(nimNoNilSeqs):
     setLen(father.sons, length)
   else:
@@ -1348,20 +1350,6 @@ proc newSons*(father: PNode, length: int) =
       newSeq(father.sons, length)
     else:
       setLen(father.sons, length)
-
-proc newSons*(father: PType, length: int) =
-  when defined(nimNoNilSeqs):
-    setLen(father.sons, length)
-  else:
-    if isNil(father.sons):
-      newSeq(father.sons, length)
-    else:
-      setLen(father.sons, length)
-
-proc sonsLen*(n: PType): int = n.sons.len
-proc len*(n: PType): int = n.sons.len
-proc sonsLen*(n: PNode): int = n.sons.len
-proc lastSon*(n: PNode): PNode = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1380,8 +1368,8 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, sonsLen(src))
-  for i in 0 ..< sonsLen(src): dest.sons[i] = src.sons[i]
+  newSons(dest, len(src))
+  for i in 0 ..< len(src): dest.sons[i] = src.sons[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1535,7 +1523,7 @@ proc delSon*(father: PNode, idx: int) =
     if father.len == 0: return
   else:
     if isNil(father.sons): return
-  var length = sonsLen(father)
+  var length = len(father)
   for i in idx .. length - 2: father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)
 
@@ -1576,7 +1564,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, sonsLen(src))
+  else: newSeq(result.sons, len(src))
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
@@ -1597,12 +1585,12 @@ proc copyTree*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in 0 ..< sonsLen(src):
+    newSeq(result.sons, len(src))
+    for i in 0 ..< len(src):
       result.sons[i] = copyTree(src.sons[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     if n.sons[i].kind == kind:
       return true
   result = false
@@ -1620,14 +1608,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.kind in kinds or containsNode(n.sons[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
         return true
     result = false

@@ -17,7 +17,7 @@ proc inSet*(s: PNode, elem: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "inSet")
     return false
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
       if leValue(s.sons[i].sons[0], elem) and
           leValue(elem, s.sons[i].sons[1]):
@@ -47,7 +47,7 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "SomeInSet")
     return false
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
       if leValue(s.sons[i].sons[0], b) and leValue(b, s.sons[i].sons[1]) or
           leValue(s.sons[i].sons[0], a) and leValue(a, s.sons[i].sons[1]):
@@ -62,7 +62,7 @@ proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
   var first, j: Int128
   first = firstOrd(conf, s.typ.sons[0])
   bitSetInit(b, int(getSize(conf, s.typ)))
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
       j = getOrdValue(s.sons[i].sons[0], first)
       while j <= getOrdValue(s.sons[i].sons[1], first):
@@ -149,7 +149,7 @@ proc setHasRange*(s: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
     return false
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
       return true
   result = false

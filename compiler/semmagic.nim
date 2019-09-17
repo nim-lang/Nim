@@ -180,7 +180,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2, c.config)
   let t = n.sons[1].typ
   internalAssert c.config, t != nil and t.kind == tyTypeDesc
-  if t.sonsLen > 0:
+  if t.len > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
     result = evalTypeTrait(c, n, t, getCurrOwner(c))
@@ -293,7 +293,7 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semOf(c: PContext, n: PNode): PNode =
-  if sonsLen(n) == 3:
+  if len(n) == 3:
     n.sons[1] = semExprWithType(c, n.sons[1])
     n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
     #restoreOldStyleType(n.sons[1])

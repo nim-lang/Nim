@@ -472,16 +472,19 @@ proc parseEntity(my: var XmlParser, dest: var string) =
     inc(pos, 4)
   else:
     my.bufpos = pos
-    parseName(my, dest)
+    var name = ""
+    parseName(my, name)
     pos = my.bufpos
-    if my.err != errNameExpected:
+    if my.err != errNameExpected and my.buf[pos] == ';':
       my.kind = xmlEntity
     else:
       add(dest, '&')
+    add(dest, name)
   if my.buf[pos] == ';':
     inc(pos)
   else:
-    markError(my, errSemicolonExpected)
+    my.err = errSemicolonExpected
+    # do not overwrite 'my.state' here, it's a benign error
   my.bufpos = pos
 
 proc parsePI(my: var XmlParser) =

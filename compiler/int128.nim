@@ -16,13 +16,6 @@ template sdata(arg: Int128, idx: int): int32 =
 
 # encoding least significant int first (like LittleEndian)
 
-type
-  InvalidArgument = object of Exception
-
-template require(cond: bool) =
-  if unlikely(not cond):
-    raise newException(InvalidArgument, "")
-
 const
   Zero* = Int128(udata: [0'u32,0,0,0])
   One* = Int128(udata: [1'u32,0,0,0])
@@ -378,7 +371,6 @@ proc `*`*(lhs,rhs: Int128): Int128 =
   result = result + toInt128(a00 * b32) shl 32
 
   if isNegative != isNegative(result):
-    echo result
     assert(false, "overflow")
 
 proc `*=`*(a: var Int128, b: Int128) =

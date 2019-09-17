@@ -62,9 +62,15 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos listDirs:
     listDirs(a, {pcDir})
   cbos removeDir:
-    os.removeDir getString(a, 0)
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.removeDir getString(a, 0)
   cbos removeFile:
-    os.removeFile getString(a, 0)
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.removeFile getString(a, 0)
   cbos createDir:
     os.createDir getString(a, 0)
 
@@ -76,20 +82,35 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos getCurrentDir:
     setResult(a, os.getCurrentDir())
   cbos moveFile:
-    os.moveFile(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.moveFile(getString(a, 0), getString(a, 1))
   cbos moveDir:
-    os.moveDir(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.moveDir(getString(a, 0), getString(a, 1))
   cbos copyFile:
-    os.copyFile(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.copyFile(getString(a, 0), getString(a, 1))
   cbos copyDir:
-    os.copyDir(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.copyDir(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
     setResult(a, getLastModificationTime(getString(a, 0)).toUnix)
   cbos findExe:
     setResult(a, os.findExe(getString(a, 0)))
 
   cbos rawExec:
-    setResult(a, osproc.execCmd getString(a, 0))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      setResult(a, osproc.execCmd getString(a, 0))
 
   cbconf getEnv:
     setResult(a, os.getEnv(a.getString 0, a.getString 1))
@@ -164,11 +185,17 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
-    setResult(a, "")
-    setResult(a, stdin.readLine())
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      setResult(a, "")
+      setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
-    setResult(a, "")
-    setResult(a, stdin.readAll())
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      setResult(a, "")
+      setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =
@@ -187,12 +214,26 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   conf.searchPaths.add(conf.libpath)
 
+  let oldGlobalOptions = conf.globalOptions
+  let oldSelectedGC = conf.selectedGC
+  undefSymbol(conf.symbols, "nimv2")
+  conf.globalOptions.excl optNimV2
+  conf.selectedGC = gcUnselected
+
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
   graph.vm = setupVM(m, cache, scriptName.string, graph)
 
   graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
+
+  # watch out, "newruntime" can be set within NimScript itself and then we need
+  # to remember this:
+  if optNimV2 in oldGlobalOptions:
+    conf.globalOptions.incl optNimV2
+    defineSymbol(conf.symbols, "nimv2")
+  if conf.selectedGC == gcUnselected:
+    conf.selectedGC = oldSelectedGC
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

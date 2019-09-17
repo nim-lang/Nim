@@ -34,7 +34,7 @@ type
     spNone, spGenSym, spInject
 
 proc symBinding(n: PNode): TSymBinding =
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     var it = n.sons[i]
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     if key.kind == nkIdent:
@@ -125,6 +125,7 @@ type
     cursorInBody: bool # only for nimsuggest
     scopeN: int
     noGenSym: int
+    inTemplateHeader: int
 
 template withBracketExpr(ctx, x, body: untyped) =
   body
@@ -144,9 +145,12 @@ proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
     illFormedAst(n, c.c.config)
     result = n
 
+template oldCheck(cx: TemplCtx; cond: bool): bool =
+  (optNimV019 notin cx.c.config.globalOptions or cond)
+
 proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
   result = n.kind == nkSym and n.sym.kind == skParam and
-           n.sym.owner == c.owner and sfGenSym notin n.sym.flags
+           n.sym.owner == c.owner and sfTemplateParam in n.sym.flags
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode
 
@@ -203,7 +207,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     else:
       replaceIdentBySym(c.c, n, ident)
   else:
-    if (n.kind == nkPragmaExpr and sonsLen(n) >= 2 and n.sons[1].kind == nkPragma):
+    if (n.kind == nkPragmaExpr and len(n) >= 2 and n.sons[1].kind == nkPragma):
       let pragmaNode = n.sons[1]
       for i in 0..<pragmaNode.sons.len:
         openScope(c)
@@ -231,6 +235,8 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         styleCheckDef(c.c.config, n.info, local)
         onDef(n.info, local)
         replaceIdentBySym(c.c, n, newSymNode(local, n.info))
+        if k == skParam and c.inTemplateHeader > 0:
+          local.flags.incl sfTemplateParam
     else:
       replaceIdentBySym(c.c, n, ident)
 
@@ -245,15 +251,15 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   of OverloadableSyms:
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
-    if isField: result = n
+    if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, n.info)
   of skParam:
     result = n
   of skType:
-    if isField: result = n
+    if isField and sfGenSym in s.flags: result = n
     else: result = newSymNodeTypeDesc(s, n.info)
   else:
-    if isField: result = n
+    if isField and sfGenSym in s.flags: result = n
     else: result = newSymNode(s, n.info)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
@@ -288,7 +294,14 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
     n.sons[namePos] = semRoutineInTemplName(c, n.sons[namePos])
   # open scope for parameters
   openScope(c)
-  for i in patternPos..miscPos:
+  for i in patternPos..paramsPos-1:
+    n.sons[i] = semTemplBody(c, n.sons[i])
+
+  if k == skTemplate: inc(c.inTemplateHeader)
+  n.sons[paramsPos] = semTemplBody(c, n.sons[paramsPos])
+  if k == skTemplate: dec(c.inTemplateHeader)
+
+  for i in paramsPos+1..miscPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
   # open scope for locals
   inc c.scopeN
@@ -301,12 +314,12 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   closeScope(c)
 
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
-  for i in start ..< sonsLen(n):
+  for i in start ..< len(n):
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a, c.c.config)
     checkMinSonsLen(a, 3, c.c.config)
-    var L = sonsLen(a)
+    var L = len(a)
     when defined(nimsuggest):
       inc c.c.inTypeContext
     a.sons[L-2] = semTemplBody(c, a.sons[L-2])
@@ -331,8 +344,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.ident.id in c.toInject: return n
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
-      if s.owner == c.owner and s.kind == skParam and
-          (sfGenSym notin s.flags or c.noGenSym == 0):
+      if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
+        # oldCheck(c, sfGenSym notin s.flags or c.noGenSym == 0):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
@@ -358,7 +371,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkEmpty, nkSym..nkNilLit, nkComesFrom:
     discard
   of nkIfStmt:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       var it = n.sons[i]
       if it.len == 2:
         openScope(c)
@@ -369,27 +382,27 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         n.sons[i] = semTemplBodyScope(c, it)
   of nkWhileStmt:
     openScope(c)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       n.sons[i] = semTemplBody(c, n.sons[i])
     closeScope(c)
   of nkCaseStmt:
     openScope(c)
     n.sons[0] = semTemplBody(c, n.sons[0])
-    for i in 1 ..< sonsLen(n):
+    for i in 1 ..< len(n):
       var a = n.sons[i]
       checkMinSonsLen(a, 1, c.c.config)
-      var L = sonsLen(a)
+      var L = len(a)
       for j in 0 .. L-2:
         a.sons[j] = semTemplBody(c, a.sons[j])
       a.sons[L-1] = semTemplBodyScope(c, a.sons[L-1])
     closeScope(c)
   of nkForStmt, nkParForStmt:
-    var L = sonsLen(n)
+    var L = len(n)
     openScope(c)
     n.sons[L-2] = semTemplBody(c, n.sons[L-2])
     for i in 0 .. L - 3:
       if n[i].kind == nkVarTuple:
-        for j in 0 ..< sonsLen(n[i])-1:
+        for j in 0 ..< len(n[i])-1:
           addLocalDecl(c, n[i][j], skForVar)
       else:
         addLocalDecl(c, n.sons[i], skForVar)
@@ -414,10 +427,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkTryStmt, nkHiddenTryStmt:
     checkMinSonsLen(n, 2, c.c.config)
     n.sons[0] = semTemplBodyScope(c, n.sons[0])
-    for i in 1 ..< sonsLen(n):
+    for i in 1 ..< len(n):
       var a = n.sons[i]
       checkMinSonsLen(a, 1, c.c.config)
-      var L = sonsLen(a)
+      var L = len(a)
       openScope(c)
       for j in 0 .. L-2:
         if a.sons[j].isInfixAs():
@@ -434,7 +447,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     n.sons[0] = semTemplBody(c, n.sons[0])
     semTemplSomeDecl(c, n, skParam, 1)
   of nkConstSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkConstDef): illFormedAst(a, c.c.config)
@@ -443,13 +456,13 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       a.sons[1] = semTemplBody(c, a.sons[1])
       a.sons[2] = semTemplBody(c, a.sons[2])
   of nkTypeSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkTypeDef): illFormedAst(a, c.c.config)
       checkSonsLen(a, 3, c.c.config)
       addLocalDecl(c, a.sons[0], skType)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkTypeDef): illFormedAst(a, c.c.config)
@@ -542,16 +555,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr:
       result = n
       result.sons[0] = semTemplBody(c, n.sons[0])
-      inc c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
       result.sons[1] = semTemplBody(c, n.sons[1])
-      dec c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:
     if n.len == 2:
-      inc c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
       result.sons[0] = semTemplBody(c, n.sons[0])
-      dec c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
       result.sons[1] = semTemplBody(c, n.sons[1])
     else:
       result = semTemplBodySons(c, n)
@@ -583,7 +596,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
       if s != nil and contains(c.toBind, s.id):
         return symChoice(c.c, n, s, scClosed)
     result = n
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       result.sons[i] = semTemplBodyDirty(c, n.sons[i])
 
 proc semTemplateDef(c: PContext, n: PNode): PNode =
@@ -625,9 +638,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     # body by the absence of the sfGenSym flag:
     for i in 1 .. s.typ.n.len-1:
       let param = s.typ.n.sons[i].sym
+      param.flags.incl sfTemplateParam
       param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
-    if sonsLen(gp) > 0:
+    if len(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
         n.sons[genericParamsPos] = gp
@@ -740,7 +754,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     if stupidStmtListExpr(n):
       result = semPatternBody(c, n.lastSon)
     else:
-      for i in 0 ..< sonsLen(n):
+      for i in 0 ..< len(n):
         result.sons[i] = semPatternBody(c, n.sons[i])
   of nkCallKinds:
     let s = qualifiedLookUp(c.c, n.sons[0], {})
@@ -773,7 +787,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
         result.sons[1] = semPatternBody(c, n.sons[1])
         return
 
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       result.sons[i] = semPatternBody(c, n.sons[i])
   else:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
@@ -789,7 +803,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     of nkPar:
       if n.len == 1: return semPatternBody(c, n.sons[0])
     else: discard
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       result.sons[i] = semPatternBody(c, n.sons[i])
 
 proc semPattern(c: PContext, n: PNode): PNode =
