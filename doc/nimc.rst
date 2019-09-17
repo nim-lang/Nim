@@ -284,14 +284,14 @@ The MinGW-w64 toolchain can be installed as follows::
 Cross compilation for Android
 =============================
 
-There are two ways to compile for Android. Terminal programs (Termux) and with NDK (Android Native Development Kit).
+There are two ways to compile for Android: terminal programs (Termux) and with the NDK (Android Native Development Kit).
 
-First one is to treat Android as a simple linux and use https://wiki.termux.com to connect and run the nim compiler directly on android as if it was linux. These programs are console only apps
+First one is to treat Android as a simple linux and use `Termux <https://wiki.termux.com>`_ to connect and run the nim compiler directly on android as if it was linux. These programs are console only apps
 that can’t be distributed in the Play Store.
 
 Use regular ``nim c`` inside termux to make Android terminal apps.
 
-Android apps are written in Java, to use Nim inside an android app you need a small Java shim that calls out to a native library written in Nim using the NDK (https://developer.android.com/ndk). You can also use native-acitivty to have the Java shim be auto generated for you.
+Android apps are written in Java, to use Nim inside an Android app you need a small Java stub that calls out to a native library written in Nim using the `NDK <https://developer.android.com/ndk>`_. You can also use `native-acitivty <https://developer.android.com/ndk/samples/sample_na>`_ to have the Java stub be auto generated for you.
 
 Use ``nim c -c --cpu:arm --os:android -d:androidNDK`` to generate the C source files you need to include in your Android Studio project. Add the generated C files to CMake build script. Then do the final compile with Android Studio which uses gradle to call CMake to compile the project.
 
