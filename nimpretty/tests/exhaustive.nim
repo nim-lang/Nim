@@ -822,3 +822,12 @@ proc f =
   # doesn't break the code, but leaving indentation as is would be nice.
   let x = if true: callingProcWhatever()
           else: callingADifferentProc()
+
+
+# unicode-aware length
+if 7 > 5:
+  if 7 < 10:
+    if len("this（is （some ＄＄ text（here") < len("some （more ＄（（e") + 5:
+      let a = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9] # here we go, a regular comment
+      let b = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9] # here ＄we ＄go ＄with ＄some_
+      echo "yeah"

@@ -10,6 +10,7 @@
 ## Layouter for nimpretty.
 
 import idents, lexer, lineinfos, llstream, options, msgs, strutils, pathutils
+from unicode import width
 
 const
   MinLineLen = 15
@@ -99,7 +100,7 @@ proc isLongEnough(lineLen, startPos, endPos: int): bool =
 
 proc findNewline(em: Emitter; p, lineLen: var int) =
   while p < em.tokens.len and em.kinds[p] notin {ltCrucialNewline, ltSplittingNewline}:
-    inc lineLen, em.tokens[p].len
+    inc lineLen, em.tokens[p].width
     inc p
 
 proc countNewlines(s: string): int =
@@ -148,7 +149,7 @@ proc lenOfNextTokens(em: Emitter; pos: int): int =
   result = 0
   for i in 1 ..< em.tokens.len-pos:
     if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
-    inc result, em.tokens[pos+i].len
+    inc result, em.tokens[pos+i].width
 
 proc guidingInd(em: Emitter; pos: int): int =
   var i = pos - 1
@@ -163,7 +164,7 @@ proc guidingInd(em: Emitter; pos: int): int =
 proc closeEmitter*(em: var Emitter) =
   template defaultCase() =
     content.add em.tokens[i]
-    inc lineLen, em.tokens[i].len
+    inc lineLen, em.tokens[i].width
 
   let outFile = em.config.absOutFile
 
@@ -230,7 +231,7 @@ proc closeEmitter*(em: var Emitter) =
         em.calcCol(em.tokens[i])
         lineLen = em.col
       else:
-        inc lineLen, em.tokens[i].len
+        inc lineLen, em.tokens[i].width
       content.add em.tokens[i]
     of ltSomeParLe:
       inc openPars
