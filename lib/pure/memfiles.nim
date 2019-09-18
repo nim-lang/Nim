@@ -60,7 +60,7 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
       if readonly: FILE_MAP_READ else: FILE_MAP_READ or FILE_MAP_WRITE,
       int32(offset shr 32),
       int32(offset and 0xffffffff),
-      if mappedSize == -1: 0 else: mappedSize,
+      WinSizeT(if mappedSize == -1: 0 else: mappedSize),
       nil)
     if result == nil:
       raiseOSError(osLastError())
