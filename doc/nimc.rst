@@ -284,23 +284,61 @@ The MinGW-w64 toolchain can be installed as follows::
 Cross compilation for Android
 =============================
 
-There are two ways to compile for Android: terminal programs (Termux) and with the NDK (Android Native Development Kit).
+There are two ways to compile for Android: terminal programs (Termux) and with
+the NDK (Android Native Development Kit).
 
-First one is to treat Android as a simple linux and use `Termux <https://wiki.termux.com>`_ to connect and run the nim compiler directly on android as if it was linux. These programs are console only apps
-that can’t be distributed in the Play Store.
+First one is to treat Android as a simple linux and use
+`Termux <https://wiki.termux.com>`_ to connect and run the nim compiler
+directly on android as if it was linux. These programs are console only
+programs that can’t be distributed in the Play Store.
 
-Use regular ``nim c`` inside termux to make Android terminal apps.
+Use regular ``nim c`` inside termux to make Android terminal programs.
 
-Android apps are written in Java, to use Nim inside an Android app you need a small Java stub that calls out to a native library written in Nim using the `NDK <https://developer.android.com/ndk>`_. You can also use `native-acitivty <https://developer.android.com/ndk/samples/sample_na>`_ to have the Java stub be auto generated for you.
+Normal Android apps are written in Java, to use Nim inside an Android app
+you need a small Java stub that calls out to a native library written in
+Nim using the `NDK <https://developer.android.com/ndk>`_. You can also use
+`native-acitivty <https://developer.android.com/ndk/samples/sample_na>`_
+to have the Java stub be auto generated for you.
 
-Use ``nim c -c --cpu:arm --os:android -d:androidNDK`` to generate the C source files you need to include in your Android Studio project. Add the generated C files to CMake build script. Then do the final compile with Android Studio which uses gradle to call CMake to compile the project.
+Use ``nim c -c --cpu:arm --os:android -d:androidNDK --noMain:on`` to
+generate the C source files you need to include in your Android Studio
+project. Add the generated C files to CMake build script in your Android
+project. Then do the final compile with Android Studio which uses gradle
+to call CMake to compile the project.
+
+Because nim is part of a library it can’t have its own c style `main()`
+so you would need to define your own `android_main` and init the java
+environment, or use a library like SDL2 or GLFM to do it. After android
+stuff is done, It’s very important to call `NimMain()` to nim’s initialize
+garbage collector memory, types and stack.
+
+.. code-block:: Nim
+  proc NimMain() {.importc.}
+  proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
+    NimMain() # initialize garbage collector memory, types and stack
 
 Cross compilation for iOS
 =========================
 
-To cross compile for iOS you need to be on a MacOS computer use XCode. Normal languages for iOS development is Swift or Objective C. Both of these use llvm and can be compiled into object files linked together with C, C++ or Objective C code produced by Nim.
+To cross compile for iOS you need to be on a MacOS computer use XCode.
+Normal languages for iOS development is Swift or Objective C. Both of these
+use llvm and can be compiled into object files linked together with C, C++
+or Objective C code produced by Nim.
 
-Use ``nim c -c --os:ios`` to generate C files and include them in your XCode project. Then you can use XCode to compile, link, package and code sign everything.
+Use ``nim c -c --os:ios --noMain:on`` to generate C files and include them in
+your XCode project. Then you can use XCode to compile, link, package and code
+sign everything.
+
+Because nim is part of a library it can’t have its own c style `main()` so you
+would need to define `main` that calls `autoreleasepool` and
+`UIApplicationMain` to do it, or use a library like SDL2 or GLFM. After iOS
+stuff is done, it's very important to call `NimMain()` to nim’s initialize
+garbage collector memory, types and stack.
+
+.. code-block:: Nim
+  proc NimMain() {.importc.}
+  proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
+    NimMain() # initialize garbage collector memory, types and stack
 
 Cross compilation for Nintendo Switch
 =====================================
