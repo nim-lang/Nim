@@ -320,7 +320,7 @@ garbage collector memory, types and stack.
 Cross compilation for iOS
 =========================
 
-To cross compile for iOS you need to be on a MacOS computer use XCode.
+To cross compile for iOS you need to be on a MacOS computer and use XCode.
 Normal languages for iOS development is Swift or Objective C. Both of these
 use llvm and can be compiled into object files linked together with C, C++
 or Objective C code produced by Nim.
@@ -339,6 +339,9 @@ garbage collector memory, types and stack.
   proc NimMain() {.importc.}
   proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
     NimMain() # initialize garbage collector memory, types and stack
+
+Note: XCodes "make clean" gets confused about the genreated nim.c files,
+so you need to clean those with `rm` manually to do a clean build.
 
 Cross compilation for Nintendo Switch
 =====================================
