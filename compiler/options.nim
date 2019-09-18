@@ -397,7 +397,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osDragonfly, osMacosx,
+                            osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
                             osAndroid, osNintendoSwitch}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
@@ -407,8 +407,10 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = platform.OS[conf.target.targetOS].props.contains(ospLacksThreadVars)
     of "msdos": result = conf.target.targetOS == osDos
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
-    of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
-    of "osx": result = conf.target.targetOS == osMacosx
+    of "macintosh":
+      result = conf.target.targetOS in {osMacos, osMacosx, osIos}
+    of "osx":
+      result = conf.target.targetOS in {osMacosx, osIos}
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch

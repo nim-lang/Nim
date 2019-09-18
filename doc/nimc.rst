@@ -295,6 +295,13 @@ Android apps are written in Java, to use Nim inside an Android app you need a sm
 
 Use ``nim c -c --cpu:arm --os:android -d:androidNDK`` to generate the C source files you need to include in your Android Studio project. Add the generated C files to CMake build script. Then do the final compile with Android Studio which uses gradle to call CMake to compile the project.
 
+Cross compilation for iOS
+=========================
+
+To cross compile for iOS you need to be on a MacOS computer use XCode. Normal languages for iOS development is Swift or Objective C. Both of these use llvm and can be compiled into object files linked together with C, C++ or Objective C code produced by Nim.
+
+Use ``nim c -c --os:ios`` to generate C files and include them in your XCode project. Then you can use XCode to compile, link, package and code sign everything.
+
 Cross compilation for Nintendo Switch
 =====================================
 
