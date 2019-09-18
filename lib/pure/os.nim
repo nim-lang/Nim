@@ -1740,8 +1740,8 @@ template walkCommon(pattern: string, filter) =
           # that the file extensions have the same length ...
           let ff = getFilename(f)
           let idx = ff.len - pattern.len + dotPos
-          if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
-              pattern[dotPos+1] == '*':
+          if dotPos < 0 or idx >= ff.len or (idx >= 0 and ff[idx] == '.') or
+              (dotPos >= 0 and dotPos+1 < pattern.len and pattern[dotPos+1] == '*'):
             yield splitFile(pattern).dir / extractFilename(ff)
         if findNextFile(res, f) == 0'i32:
           let errCode = getLastError()
