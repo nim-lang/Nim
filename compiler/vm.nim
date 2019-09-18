@@ -1472,6 +1472,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = copyNode(a)
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "ident")
+    of opcNodeId:
+      decodeB(rkInt)
+      when defined(useNodeIds):
+        regs[ra].intVal = regs[rb].node.id
+      else:
+        regs[ra].intVal = -1
     of opcNGetType:
       let rb = instr.regB
       let rc = instr.regC

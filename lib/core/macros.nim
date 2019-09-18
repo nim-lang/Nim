@@ -1426,6 +1426,12 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
 
+when defined(nimMacrosGetNodeId):
+  proc nodeID*(n: NimNode): int {.magic: NodeId.}
+    ## Returns the id of ``n``, when the compiler has been compiled
+    ## with the flag ``-d:useNodeids``, otherwise returns ``-1``. This
+    ## proc is for the purpose to debug the compiler only.
+
 macro expandMacros*(body: typed): untyped =
   ## Expands one level of macro - useful for debugging.
   ## Can be used to inspect what happens when a macro call is expanded,
