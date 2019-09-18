@@ -843,9 +843,9 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if dst.kind == tyFloat32:
-      c.gABC(n, opcAsgnFloat32FromInt, dest, tmp)
+      c.gABC(n, opcCastIntToFloat32, dest, tmp)
     else:
-      c.gABC(n, opcAsgnFloat64FromInt, dest, tmp)
+      c.gABC(n, opcCastIntToFloat64, dest, tmp)
     c.freeTemp(tmp)
 
   elif srcSize == dstSize and src.kind in {tyFloat, tyFloat32, tyFloat64} and
@@ -853,11 +853,15 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if src.kind == tyFloat32:
-      c.gABC(n, opcAsgnIntFromFloat32, dest, tmp)
+      c.gABC(n, opcCastFloatToInt32, dest, tmp)
+      if dst.kind in unsignedIntegers:
+        # integers are sign extended by default.
+        # since there is no opcCastFloatToUInt32, narrowing should do the trick.
+        c.gABC(n, opcNarrowU, dest, TRegister(32))
     else:
-      c.gABC(n, opcAsgnIntFromFloat64, dest, tmp)
+      c.gABC(n, opcCastFloatToInt64, dest, tmp)
+      # narrowing for 64 bits not needed (no extended sign bits available).
     c.freeTemp(tmp)
-
   else:
     globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size")
 

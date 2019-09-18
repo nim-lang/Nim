@@ -33,11 +33,11 @@ type
     opcAsgnInt,
     opcAsgnFloat,
     opcAsgnRef,
-    opcAsgnIntFromFloat32,    # int and float must be of the same byte size
-    opcAsgnIntFromFloat64,    # int and float must be of the same byte size
-    opcAsgnFloat32FromInt,    # int and float must be of the same byte size
-    opcAsgnFloat64FromInt,    # int and float must be of the same byte size
     opcAsgnComplex,
+    opcCastIntToFloat32,    # int and float must be of the same byte size
+    opcCastIntToFloat64,    # int and float must be of the same byte size
+    opcCastFloatToInt32,    # int and float must be of the same byte size
+    opcCastFloatToInt64,    # int and float must be of the same byte size
     opcFastAsgnComplex,
     opcNodeToReg,
 
