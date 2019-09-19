@@ -353,12 +353,12 @@ proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
   else: write(f, "false")
 
 proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[64, char]
+  var buffer: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[64, char]
+  var buffer: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 

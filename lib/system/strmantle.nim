@@ -94,7 +94,7 @@ proc addFloat*(result: var string; x: float) =
   when nimvm:
     result.add $x
   else:
-    var buffer: array[64, char]
+    var buffer: array[65, char]
     let n = writeFloatToBuffer(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
 
