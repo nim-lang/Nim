@@ -1363,6 +1363,9 @@ proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 
 proc canElimAddr(n: PNode): PNode =
+  if n.sons[0].typ.skipTypes(abstractInst).kind in {tyObject, tyTuple, tyArray}:
+    # objects are reference types in the VM
+    return n[0]
   case n.sons[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     var m = n.sons[0].sons[0]
@@ -2234,7 +2237,7 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "main":
+    #if s.name.s == "main" or s.name.s == "[]":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc
