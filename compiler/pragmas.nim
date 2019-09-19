@@ -161,6 +161,7 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
 proc processImportJs(c: PContext; s: PSym, pattern: string, info: TLineInfo) =
   setExternName(c, s, pattern, info)
   incl(s.flags, sfImportc)
+  incl(s.flags, sfInfixCall)
   if c.config.cmd != cmdCompileToJS:
     localError(c.config, info, "importjs pragma only supported when compiling to js.")
 
