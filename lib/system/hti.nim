@@ -89,14 +89,14 @@ type
   TNimType {.compilerproc.} = object
     when defined(gcDestructors):
       head*: pointer
-    size: int
+    size*: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
-    base: ptr TNimType
+    base*: ptr TNimType
     node: ptr TNimNode # valid for tyRecord, tyObject, tyTuple, tyEnum
     finalizer*: pointer # the finalizer for the type
-    marker*: proc (p: pointer, op: int) {.nimcall, benign.} # marker proc for GC
-    deepcopy: proc (p: pointer): pointer {.nimcall, benign.}
+    marker*: proc (p: pointer, op: int) {.nimcall, benign, tags: [], raises: [].} # marker proc for GC
+    deepcopy: proc (p: pointer): pointer {.nimcall, benign, tags: [], raises: [].}
     when defined(nimTypeNames):
       name: cstring
       nextType: ptr TNimType
