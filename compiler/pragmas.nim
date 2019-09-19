@@ -19,7 +19,7 @@ const
   LastCallConv* = wNoconv
 
 const
-  declPragmas = {wImportc, wImportObjC, wImportCpp, wExportc, wExportCpp,
+  declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
     wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
@@ -157,6 +157,12 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
     let m = s.getModule()
     incl(m.flags, sfCompileToCpp)
   incl c.config.globalOptions, optMixedMode
+
+proc processImportJs(c: PContext; s: PSym, pattern: string, info: TLineInfo) =
+  setExternName(c, s, pattern, info)
+  incl(s.flags, sfImportc)
+  if c.config.cmd != cmdCompileToJS:
+    localError(c.config, info, "importjs pragma only supported when compiling to js.")
 
 proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
@@ -803,6 +809,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
+      of wImportJs:
+        processImportJs(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:

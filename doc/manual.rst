@@ -6596,6 +6596,14 @@ this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
 
 
+ImportJs pragma
+---------------
+
+Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+the ``importjs`` pragma can be used to import Javascript methods or
+symbols in general. The generated code then uses the Javascript method
+calling syntax: ``obj.method(arg)``.
+
 Namespaces
 ~~~~~~~~~~
 
@@ -6993,13 +7001,14 @@ spelled*:
 .. code-block::
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
-Note that this pragma is somewhat of a misnomer: Other backends do provide
-the same feature under the same name. Also, if one is interfacing with C++
-the `ImportCpp pragma <manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
-interfacing with Objective-C the `ImportObjC pragma
-<manual.html#implementation-specific-pragmas-importobjc-pragma>`_ can be used.
+Note that this pragma has been abused in the past to also work in the
+js backand for js objects and functions. : Other backends do provide
+the same feature under the same name. Also, when the target language
+is not set to C, other pragmas are available:
 
-The string literal passed to ``importc`` can be a format string:
+ * `importcpp <manual.html#implementation-specific-pragmas-importcpp-pragma>`_
+ * `importobjc <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
+ * `importjs <manul.html#implementation-specific-pragmas-importjs-pragma>`_
 
 .. code-block:: Nim
   proc p(s: cstring) {.importc: "prefix$1".}
