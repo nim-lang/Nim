@@ -805,20 +805,20 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportJs:
         if c.config.cmd != cmdCompileToJS:
-          localError(c.config, info, "importjs pragma only supported when compiling to js.")
-        var strArg: NimNode = nil
-        if n.kind in nkPragmaCallKinds:
-          strArg = n[1]
+          localError(c.config, it.info, "importjs pragma only supported when compiling to js.")
+        var strArg: PNode = nil
+        if it.kind in nkPragmaCallKinds:
+          strArg = it[1]
           if strArg.kind notin {nkStrLit..nkTripleStrLit}:
-            localError(c.config, n.info, errStringLiteralExpected)
+            localError(c.config, it.info, errStringLiteralExpected)
         incl(sym.flags, sfImportc)
         incl(sym.flags, sfInfixCall)
         if strArg == nil:
-          if s.kind in skProcKinds:
-            message(c.config, info, warnDeprecated, "procedure import should have an import pattern")
-          setExternName(c, s, s.name.s, info)
+          if sym.kind in skProcKinds:
+            message(c.config, n.info, warnDeprecated, "procedure import should have an import pattern")
+          setExternName(c, sym, sym.name.s, it.info)
         else:
-          setExternName(c, s, strArg.strVal, info)
+          setExternName(c, sym, strArg.strVal, it.info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:
