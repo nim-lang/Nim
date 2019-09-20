@@ -132,6 +132,9 @@ Collections
 String handling
 ---------------
 
+* `cstrutils <cstrutils.html>`_
+  Utilities for ``cstring`` handling.
+
 * `std/editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
   Unicode strings.
@@ -261,6 +264,9 @@ Math libraries
 
 * `stats <stats.html>`_
   Statistical analysis
+
+* `std/sums <sums.html>`_
+  Fast sumation functions.
 
 
 Internet Protocols and Support
@@ -444,6 +450,9 @@ Miscellaneous
 * `logging <logging.html>`_
   This module implements a simple logger.
 
+* `quitprocs <quitprocs>`_
+  Better implementation of ``system.addQuitProc``.
+
 * `segfaults <segfaults.html>`_
   Turns access violations or segfaults into a ``NilAccessError`` exception.
 
@@ -452,6 +461,9 @@ Miscellaneous
 
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
+
+* `std/varints <varints.html>`_
+  Decode variable length integers that are compatible with SQLite.
 
 
 Modules for JS backend
@@ -510,6 +522,8 @@ Windows specific
 
 * `winlean <winlean.html>`_
   Contains a wrapper for a small subset of the Win32 API.
+* `registry <registry.html>`_
+  Windows registry support.
 
 
 UNIX specific
@@ -517,8 +531,6 @@ UNIX specific
 
 * `posix <posix.html>`_
   Contains a wrapper for the POSIX standard.
-* `linux <linux.html>`_
-  Contains a wrapper for Linux's APIs.
 
 
 Regular expressions
