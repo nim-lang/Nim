@@ -26,7 +26,7 @@
 ##   smtpConn.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##
 ##
-## Example for starttls use:
+## Example for startTls use:
 ##
 ##
 ## .. code-block:: Nim
@@ -35,7 +35,7 @@
 ##                           @["foo@gmail.com"])
 ##   let smtpConn = newSmtp(debug=true)
 ##   smtpConn.connect("smtp.mailtrap.io", Port 2525)
-##   smtpConn.starttls()
+##   smtpConn.startTls()
 ##   smtpConn.auth("username", "password")
 ##   smtpConn.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##
@@ -180,8 +180,8 @@ proc connect*(smtp: Smtp | AsyncSmtp,
   await smtp.checkReply("220")
   await smtp.debugSend("HELO " & address & "\c\L")
   await smtp.checkReply("250")
-  
-proc starttls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
+
+proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
   ## Put the SMTP connection in TLS (Transport Layer Security) mode.
   ## May fail with ReplyError
   await smtp.debugSend("STARTTLS\c\L")
