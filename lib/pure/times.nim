@@ -811,27 +811,27 @@ proc `$`*(dur: Duration): string =
 
   result = humanizeParts(parts)
 
-proc `+`*(a, b: Duration): Duration {.operator.} =
+proc `+`*(a, b: Duration): Duration {.operator, extern: "ntAddDuration".} =
   ## Add two durations together.
   runnableExamples:
     doAssert initDuration(seconds = 1) + initDuration(days = 1) ==
       initDuration(seconds = 1, days = 1)
   addImpl[Duration](a, b)
 
-proc `-`*(a, b: Duration): Duration {.operator.} =
+proc `-`*(a, b: Duration): Duration {.operator, extern: "ntSubDuration".} =
   ## Subtract a duration from another.
   runnableExamples:
     doAssert initDuration(seconds = 1, days = 1) - initDuration(seconds = 1) ==
       initDuration(days = 1)
   subImpl[Duration](a, b)
 
-proc `-`*(a: Duration): Duration {.operator.} =
+proc `-`*(a: Duration): Duration {.operator, extern: "ntReverseDuration".} =
   ## Reverse a duration.
   runnableExamples:
     doAssert -initDuration(seconds = 1) == initDuration(seconds = -1)
   normalize[Duration](-a.seconds, -a.nanosecond)
 
-proc `<`*(a, b: Duration): bool {.operator.} =
+proc `<`*(a, b: Duration): bool {.operator, extern: "ntLtDuration".} =
   ## Note that a duration can be negative,
   ## so even if ``a < b`` is true ``a`` might
   ## represent a larger absolute duration.
@@ -843,10 +843,10 @@ proc `<`*(a, b: Duration): bool {.operator.} =
     doAssert initDuration(seconds = -2).abs < initDuration(seconds = 1).abs == false
   ltImpl(a, b)
 
-proc `<=`*(a, b: Duration): bool {.operator.} =
+proc `<=`*(a, b: Duration): bool {.operator, extern: "ntLeDuration".} =
   lqImpl(a, b)
 
-proc `==`*(a, b: Duration): bool {.operator.} =
+proc `==`*(a, b: Duration): bool {.operator, extern: "ntEqDuration".} =
   runnableExamples:
     let
       d1 = initDuration(weeks = 1)
@@ -854,21 +854,21 @@ proc `==`*(a, b: Duration): bool {.operator.} =
     doAssert d1 == d2
   eqImpl(a, b)
 
-proc `*`*(a: int64, b: Duration): Duration {.operator.} =
+proc `*`*(a: int64, b: Duration): Duration {.operator, extern: "ntMulInt64Duration".} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
     doAssert 3 * initDuration(minutes = 45) == initDuration(hours = 2, minutes = 15)
   normalize[Duration](a * b.seconds, a * b.nanosecond)
 
-proc `*`*(a: Duration, b: int64): Duration {.operator.} =
+proc `*`*(a: Duration, b: int64): Duration {.operator, extern: "ntMulDuration".} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert initDuration(seconds = 1) * 5 == initDuration(seconds = 5)
     doAssert initDuration(minutes = 45) * 3 == initDuration(hours = 2, minutes = 15)
   b * a
 
-proc `div`*(a: Duration, b: int64): Duration {.operator.} =
+proc `div`*(a: Duration, b: int64): Duration {.operator, extern: "ntDivDuration".} =
   ## Integer division for durations.
   runnableExamples:
     doAssert initDuration(seconds = 3) div 2 ==
