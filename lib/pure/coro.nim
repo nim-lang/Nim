@@ -6,6 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
 ## Nim coroutines implementation, supports several context switching methods:
 ## --------  ------------
 ## ucontext  available on unix and alike (default)
@@ -17,6 +18,8 @@
 ## -d:nimCoroutinesUcontext       Use ucontext backend.
 ## -d:nimCoroutinesSetjmp         Use setjmp backend.
 ## -d:nimCoroutinesSetjmpBundled  Use bundled setjmp implementation.
+##
+## Unstable API.
 
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):

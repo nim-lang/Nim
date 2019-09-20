@@ -57,4 +57,4 @@ proc `<=`*[I: SomeInteger, F: SomeFloat](f: F, i: I): bool {.noSideEffect, inlin
 
 # Note that we must not defined `>=` and `>`, because system.nim already has a
 # template with signature (x, y: untyped): untyped, which would lead to
-# ambigous calls.
+# ambiguous calls.

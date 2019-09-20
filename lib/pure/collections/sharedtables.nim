@@ -11,6 +11,8 @@
 ## you'll be in trouble. Uses a single lock to protect the table, lockfree
 ## implementations welcome but if lock contention is so high that you need a
 ## lockfree hash table, you're doing it wrong.
+##
+## Unstable API.
 
 import
   hashes, math, locks

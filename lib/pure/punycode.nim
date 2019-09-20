@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+## Implements a representation of Unicode with the limited
+## ASCII character subset.
+
 import strutils
 import unicode
 
@@ -23,7 +26,7 @@ const
   Delimiter = '-'
 
 type
-  PunyError* = object of Exception
+  PunyError* = object of ValueError
 
 proc decodeDigit(x: char): int {.raises: [PunyError].} =
   if '0' <= x and x <= '9':

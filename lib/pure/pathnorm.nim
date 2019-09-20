@@ -8,8 +8,9 @@
 #
 
 ## OS-Path normalization. Used by ``os.nim`` but also
-## generally useful for dealing with paths. Note that this module
-## does not provide a stable API.
+## generally useful for dealing with paths.
+##
+## Unstable API.
 
 # Yes, this uses import here, not include so that
 # we don't end up exporting these symbols from pathnorm and os:

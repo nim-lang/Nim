@@ -296,7 +296,7 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     if not retry: break
 
 proc serve*(server: AsyncHttpServer, port: Port,
-            callback: proc (request: Request): Future[void] {.closure,gcsafe.},
+            callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.

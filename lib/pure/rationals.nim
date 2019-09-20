@@ -18,7 +18,7 @@ type Rational*[T] = object
   ## a rational number, consisting of a numerator and denominator
   num*, den*: T
 
-proc initRational*[T:SomeInteger](num, den: T): Rational[T] =
+proc initRational*[T: SomeInteger](num, den: T): Rational[T] =
   ## Create a new rational number.
   assert(den != 0, "a denominator of zero value is invalid")
   result.num = num
@@ -34,7 +34,7 @@ proc `$`*[T](x: Rational[T]): string =
   ## Turn a rational number into a string.
   result = $x.num & "/" & $x.den
 
-proc toRational*[T:SomeInteger](x: T): Rational[T] =
+proc toRational*[T: SomeInteger](x: T): Rational[T] =
   ## Convert some integer `x` to a rational number.
   result.num = x
   result.den = 1
@@ -82,7 +82,7 @@ proc toInt*[T](x: Rational[T]): int =
   ## `x` does not contain an integer value.
   x.num div x.den
 
-proc reduce*[T:SomeInteger](x: var Rational[T]) =
+proc reduce*[T: SomeInteger](x: var Rational[T]) =
   ## Reduce rational `x`.
   let common = gcd(x.num, x.den)
   if x.den > 0:
@@ -288,20 +288,20 @@ when isMainModule:
     m1 = -1 // 1
     tt = 10 // 2
 
-  assert( a     == a )
+  assert( a == a )
   assert( (a-a) == z )
   assert( (a+b) == o )
   assert( (a/b) == o )
   assert( (a*b) == 1 // 4 )
   assert( (3/a) == 6 // 1 )
   assert( (a/3) == 1 // 6 )
-  assert( a*b   == 1 // 4 )
-  assert( tt*z  == z )
-  assert( 10*a  == tt )
-  assert( a*10  == tt )
+  assert( a*b == 1 // 4 )
+  assert( tt*z == z )
+  assert( 10*a == tt )
+  assert( a*10 == tt )
   assert( tt/10 == a  )
-  assert( a-m1  == 3 // 2 )
-  assert( a+m1  == -1 // 2 )
+  assert( a-m1 == 3 // 2 )
+  assert( a+m1 == -1 // 2 )
   assert( m1+tt == 16 // 4 )
   assert( m1-tt == 6 // -1 )
 
