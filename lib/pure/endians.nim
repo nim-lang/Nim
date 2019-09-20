@@ -9,6 +9,8 @@
 
 ## This module contains helpers that deal with different byte orders
 ## (`endian`:idx:).
+##
+## Unstable API.
 
 when defined(gcc) or defined(llvm_gcc) or defined(clang):
   const useBuiltinSwap = true

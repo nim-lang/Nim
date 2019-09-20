@@ -9,6 +9,11 @@
 
 ## :Author: Zahary Karadjov
 ##
+## **Note**: Instead of ``unittest.nim``, please consider to use
+## the ``testament`` tool which offers process isolation for your tests.
+## Also ``when isMainModule: doAssert conditionHere`` is usually a
+## much simpler solution for testing purposes.
+##
 ## This module implements boilerplate to make unit testing easy.
 ##
 ## The test status and name is printed after any output or traceback.
@@ -306,7 +311,7 @@ method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
   let time = epochTime() - formatter.testStartTime
   let timeStr = time.formatFloat(ffDecimal, precision = 8)
   formatter.stream.writeLine("\t\t<testcase name=\"$#\" time=\"$#\">" % [xmlEscape(testResult.testName), timeStr])
-  case testResult.status:
+  case testResult.status
   of OK:
     discard
   of SKIPPED:

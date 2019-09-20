@@ -8,6 +8,8 @@
 #
 
 ## Types and operations for atomic operations and lockless algorithms.
+##
+## Unstable API.
 
 import macros
 
@@ -18,7 +20,7 @@ when defined(cpp) or defined(nimdoc):
 
   type
     MemoryOrder* {.importcpp: "std::memory_order".} = enum
-      ## Specifies how non-atomic operations can be reordered around atomic 
+      ## Specifies how non-atomic operations can be reordered around atomic
       ## operations.
 
       moRelaxed
@@ -131,7 +133,7 @@ else:
   # Since MSVC does not implement C11, we fall back to MS intrinsics
   # where available.
 
-  type 
+  type
     Trivial = SomeNumber | bool | ptr | pointer
       # A type that is known to be atomic and whose size is known at
       # compile time to be 8 bytes or less
@@ -144,7 +146,7 @@ else:
     elif sizeof(T) == 8: int64
 
   when defined(vcc):
-    
+
     # TODO: Trivial types should be volatile and use VC's special volatile
     # semantics for store and loads.
 
@@ -231,7 +233,7 @@ else:
       cast[T](interlockedOr(addr(location.value), cast[nonAtomicType(T)](value)))
     proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](interlockedXor(addr(location.value), cast[nonAtomicType(T)](value)))
-    
+
   else:
     {.push, header: "<stdatomic.h>".}
 
@@ -275,22 +277,22 @@ else:
     proc atomic_exchange_explicit[T, A](location: ptr A; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.importc.}
     proc atomic_compare_exchange_strong_explicit[T, A](location: ptr A; expected: ptr T; desired: T; success, failure: MemoryOrder): bool {.importc.}
     proc atomic_compare_exchange_weak_explicit[T, A](location: ptr A; expected: ptr T; desired: T; success, failure: MemoryOrder): bool {.importc.}
-      
+
     # Numerical operations
     proc atomic_fetch_add_explicit[T, A](location: ptr A; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importc.}
     proc atomic_fetch_sub_explicit[T, A](location: ptr A; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importc.}
     proc atomic_fetch_and_explicit[T, A](location: ptr A; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importc.}
     proc atomic_fetch_or_explicit[T, A](location: ptr A; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importc.}
     proc atomic_fetch_xor_explicit[T, A](location: ptr A; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.importc.}
-  
+
     # Flag operations
     # var ATOMIC_FLAG_INIT {.importc, nodecl.}: AtomicFlag
     # proc init*(location: var AtomicFlag) {.inline.} = location = ATOMIC_FLAG_INIT
     proc testAndSet*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent): bool {.importc: "atomic_flag_test_and_set_explicit".}
     proc clear*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent) {.importc: "atomic_flag_clear_explicit".}
-  
+
     proc fence*(order: MemoryOrder) {.importc: "atomic_thread_fence".}
-    proc signalFence*(order: MemoryOrder) {.importc: "atomic_signal_fence".}  
+    proc signalFence*(order: MemoryOrder) {.importc: "atomic_signal_fence".}
 
     {.pop.}
 
@@ -309,7 +311,7 @@ else:
       atomic_compare_exchange_weak_explicit(addr(location.value), cast[ptr nonAtomicType(T)](addr(expected)), cast[nonAtomicType(T)](desired), success, failure)
     proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
       compareExchangeWeak(location, expected, desired, order, order)
-  
+
     # Numerical operations
     proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       cast[T](atomic_fetch_add_explicit(addr(location.value), cast[nonAtomicType(T)](value), order))
@@ -327,11 +329,11 @@ else:
     body
     location.guard.clear(moRelease)
 
-  proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =      
+  proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     withLock(location, order):
       result = location.nonAtomicValue
 
-  proc store*[T: not Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =      
+  proc store*[T: not Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
     withLock(location, order):
       location.nonAtomicValue = desired
 
@@ -375,4 +377,3 @@ proc `+=`*[T: SomeInteger](location: var Atomic[T]; value: T) {.inline.} =
 proc `-=`*[T: SomeInteger](location: var Atomic[T]; value: T) {.inline.} =
   ## Atomically decrements the atomic integer by some `value`.
   discard location.fetchSub(value)
-  

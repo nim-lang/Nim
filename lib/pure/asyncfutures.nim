@@ -1,3 +1,12 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 # TODO: This shouldn't need to be included, but should ideally be exported.

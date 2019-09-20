@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module parses an HTML document and creates its XML tree representation.
-## It is supposed to handle the *wild* HTML the real world uses.
+## **NOTE**: The behaviour might change in future versions as it is not
+## clear what "*wild* HTML the real world uses" really implies.
 ##
 ## It can be used to parse a wild HTML document and output it as valid XHTML
 ## document (well, if you are lucky):

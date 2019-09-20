@@ -9,6 +9,8 @@
 
 ## This module implements a helper for a thread pool to determine whether
 ## creating a thread is a good idea.
+##
+## Unstable API.
 
 when defined(windows):
   import winlean, os, strutils, math

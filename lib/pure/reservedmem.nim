@@ -15,6 +15,8 @@
 ## is guaranteed to remain in the same memory location. The buffer
 ## will be able to grow up to the size of the initially reserved
 ## portion of the address space.
+##
+## Unstable API.
 
 from ospaths import raiseOSError, osLastError
 

@@ -13,6 +13,8 @@
 ##
 ## Tested on these OSes: Linux, Windows, OSX
 
+{.used.}
+
 # do allocate memory upfront:
 var se: ref NilAccessError
 new(se)

@@ -14,6 +14,8 @@
 ## * `channels module <channels.html>`_
 ## * `locks module <locks.html>`_
 ## * `asyncdispatch module <asyncdispatch.html>`_
+##
+## Unstable API.
 
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}

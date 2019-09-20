@@ -156,6 +156,7 @@ lib/experimental/diff.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim
 lib/windows/winlean.nim
+lib/windows/registry.nim
 lib/pure/random.nim
 lib/pure/complex.nim
 lib/pure/times.nim

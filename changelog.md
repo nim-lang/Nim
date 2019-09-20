@@ -67,6 +67,31 @@ type
 
 - Consistent error handling of two `exec` overloads. (#10967)
 
+- Officially the following modules now have an unstable API:
+
+  - std/varints
+  - core/allocators
+  - core/hotcodereloading
+  - asyncstreams
+  - base64
+  - browsers
+  - collections/rtarrays
+  - collections/sharedlist
+  - collections/sharedtable
+  - concurrency/atomics
+  - concurrency/cpuload
+  - concurrency/threadpool
+  - coro
+  - endians
+  - httpcore
+  - parsesql
+  - pathnorm
+  - reservedmem
+  - typetraits
+
+  Every other stdlib module is API stable with respect to version 1.
+
+
 ## Language additions
 
 - Inline iterators returning `lent T` types are now supported, similarly to iterators returning `var T`:

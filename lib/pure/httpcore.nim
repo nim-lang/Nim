@@ -9,6 +9,8 @@
 
 ## Contains functionality shared between the ``httpclient`` and
 ## ``asynchttpserver`` modules.
+##
+## Unstable API.
 
 import tables, strutils, parseutils
 
