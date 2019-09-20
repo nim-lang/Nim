@@ -1314,7 +1314,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     argIsType = isTypeExpr(n.sons[0])
 
   if argIsType:
-    ty = ty.skipTypes(tyDotOpTransparent)
+    ty = ty.skipTypes(tyDotOpTransparent+{tyGenericInst})
     case ty.kind
     of tyEnum:
       # look up if the identifier belongs to the enum:
