@@ -198,6 +198,9 @@ proc processTimers(
     dec count
     didSomeWork = true
 
+  # Ensure that an awaited timer that's been completed is promptly handled
+  if didSomeWork: return some(0)
+
   # Return the number of miliseconds in which the next timer will expire.
   if p.timers.len == 0: return
 
