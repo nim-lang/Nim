@@ -32,7 +32,7 @@ true
 '''
 """
 
-import macros, jsffi, jsconsole
+import jsffi, jsconsole
 
 # Tests for JsObject
 # Test JsObject []= and []
@@ -283,7 +283,7 @@ block:
 
 block:
   {.emit: "function jsProc(n) { return n; }" .}
-  proc jsProc(x: int32): JsObject {.importjs: "jsProc".}
+  proc jsProc(x: int32): JsObject {.importjs: "jsProc(#)".}
 
   proc test() =
     var x = jsProc(1)
@@ -295,8 +295,6 @@ block:
     console.log x
 
   test()
-
-import macros
 
 block:
   {.emit:
@@ -310,7 +308,7 @@ block:
   type Event = object
     name: cstring
 
-  proc on(event: cstring, handler: proc) {.importjs: "on".}
+  proc on(event: cstring, handler: proc) {.importjs: "on(#,#)".}
   var jslib {.importjs: "jslib", nodecl.}: JsObject
 
   on("click") do (e: Event):

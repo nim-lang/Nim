@@ -158,13 +158,6 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
     incl(m.flags, sfCompileToCpp)
   incl c.config.globalOptions, optMixedMode
 
-proc processImportJs(c: PContext; s: PSym, pattern: string, info: TLineInfo) =
-  setExternName(c, s, pattern, info)
-  incl(s.flags, sfImportc)
-  incl(s.flags, sfInfixCall)
-  if c.config.cmd != cmdCompileToJS:
-    localError(c.config, info, "importjs pragma only supported when compiling to js.")
-
 proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
   incl(s.flags, sfImportc)
@@ -811,7 +804,21 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportJs:
-        processImportJs(c, sym, getOptionalStr(c, it, "$1"), it.info)
+        if c.config.cmd != cmdCompileToJS:
+          localError(c.config, info, "importjs pragma only supported when compiling to js.")
+        var strArg: NimNode = nil
+        if n.kind in nkPragmaCallKinds:
+          strArg = n[1]
+          if strArg.kind notin {nkStrLit..nkTripleStrLit}:
+            localError(c.config, n.info, errStringLiteralExpected)
+        incl(sym.flags, sfImportc)
+        incl(sym.flags, sfInfixCall)
+        if strArg == nil:
+          if s.kind in skProcKinds:
+            message(c.config, info, warnDeprecated, "procedure import should have an import pattern")
+          setExternName(c, s, s.name.s, info)
+        else:
+          setExternName(c, s, strArg.strVal, info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:
