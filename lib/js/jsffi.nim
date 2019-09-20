@@ -292,8 +292,8 @@ macro `.()`*(obj: JsObject,
       {.importcpp: `importString`, gensym, discardable.}
     helper(`obj`)
   for idx in 0 ..< args.len:
-    let paramName = newIdentNode(!("param" & $idx))
-    result[0][3].add newIdentDefs(paramName, newIdentNode(!"JsObject"))
+    let paramName = newIdentNode("param" & $idx)
+    result[0][3].add newIdentDefs(paramName, newIdentNode("JsObject"))
     result[1].add args[idx].copyNimTree
 
 macro `.`*[K: cstring, V](obj: JsAssoc[K, V],
@@ -425,7 +425,7 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
   ##  # This generates roughly the same JavaScript as:
   ##  {.emit: "var obj = {a: 1, k: "foo", d: 42};".}
   ##
-  let a = !"a"
+  let a = ident"a"
   var body = quote do:
     var `a` {.noinit.}: `typ`
     {.emit: "`a` = {};".}
@@ -488,7 +488,7 @@ macro bindMethod*(procedure: typed): auto =
     error("Argument has to be a proc or a symbol corresponding to a proc.")
   var
     rawProc = if procedure.kind == nnkSym:
-        getImpl(procedure.symbol)
+        getImpl(procedure)
       else:
         procedure
     args = rawProc[3]

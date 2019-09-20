@@ -75,10 +75,13 @@ iterator myitems[T](x: openarray[T]): lent T
 iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
 ```
 
+- `importjs` can now be used to import for ffi on the JS target
+
 ## Language changes
 
 - `uint64` is now finally a regular ordinal type. This means `high(uint64)` compiles
   and yields the correct value.
+
 
 
 ### Tool changes

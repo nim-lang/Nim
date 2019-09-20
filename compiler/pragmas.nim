@@ -19,7 +19,7 @@ const
   LastCallConv* = wNoconv
 
 const
-  declPragmas = {wImportc, wImportObjC, wImportCpp, wExportc, wExportCpp,
+  declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
     wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
@@ -803,6 +803,22 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
+      of wImportJs:
+        if c.config.cmd != cmdCompileToJS:
+          localError(c.config, it.info, "importjs pragma only supported when compiling to js.")
+        var strArg: PNode = nil
+        if it.kind in nkPragmaCallKinds:
+          strArg = it[1]
+          if strArg.kind notin {nkStrLit..nkTripleStrLit}:
+            localError(c.config, it.info, errStringLiteralExpected)
+        incl(sym.flags, sfImportc)
+        incl(sym.flags, sfInfixCall)
+        if strArg == nil:
+          if sym.kind in skProcKinds:
+            message(c.config, n.info, warnDeprecated, "procedure import should have an import pattern")
+          setExternName(c, sym, sym.name.s, it.info)
+        else:
+          setExternName(c, sym, strArg.strVal, it.info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:

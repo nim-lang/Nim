@@ -32,7 +32,10 @@ true
 '''
 """
 
-import jsffi, jsconsole
+## same as tjsffi, but this test uses the old names: importc and
+## importcpp. This test is for backwards compatibility.
+
+import macros, jsffi, jsconsole
 
 # Tests for JsObject
 # Test JsObject []= and []
@@ -127,7 +130,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    var comparison {. importjs, nodecl .}: JsObject
+    var comparison {. importc, nodecl .}: JsObject
     let obj = newJsObject()
     obj.a = 22
     obj.b = "test".cstring
@@ -138,7 +141,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    var comparison {. importjs, nodecl .}: JsObject
+    var comparison {. importc, nodecl .}: JsObject
     let obj = JsObject{ a: 22, b: "test".cstring }
     obj.a == comparison.a and obj.b == comparison.b
   echo test()
@@ -233,7 +236,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
+    var comparison {. importcpp, nodecl .}: JsAssoc[cstring, int]
     let obj = newJsAssoc[cstring, int]()
     obj.a = 22
     obj.b = 55
@@ -244,7 +247,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
+    var comparison {. importcpp, nodecl .}: JsAssoc[cstring, int]
     let obj = JsAssoc[cstring, int]{ a: 22, b: 55 }
     var working = true
     working = working and
@@ -264,7 +267,7 @@ block:
     b: cstring
   proc test(): bool =
     {. emit: "var comparison = {a: 1};" .}
-    var comparison {. importjs, nodecl .}: TestObject
+    var comparison {. importc, nodecl .}: TestObject
     let obj = TestObject{ a: 1 }
     obj == comparison
   echo test()
@@ -283,7 +286,7 @@ block:
 
 block:
   {.emit: "function jsProc(n) { return n; }" .}
-  proc jsProc(x: int32): JsObject {.importjs: "jsProc(#)".}
+  proc jsProc(x: int32): JsObject {.importc: "jsProc".}
 
   proc test() =
     var x = jsProc(1)
@@ -295,6 +298,8 @@ block:
     console.log x
 
   test()
+
+import macros
 
 block:
   {.emit:
@@ -308,8 +313,8 @@ block:
   type Event = object
     name: cstring
 
-  proc on(event: cstring, handler: proc) {.importjs: "on(#,#)".}
-  var jslib {.importjs: "jslib", nodecl.}: JsObject
+  proc on(event: cstring, handler: proc) {.importc: "on".}
+  var jslib {.importc: "jslib", nodecl.}: JsObject
 
   on("click") do (e: Event):
     console.log e
