@@ -278,4 +278,3 @@ const
     0x30000, 0x3FFFD,
   ]
 
-  combiningChars = [0x00300, 0x0036F]

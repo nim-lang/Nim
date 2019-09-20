@@ -54,11 +54,5 @@ output.createHeader()
 outputSeq(wideSinglets, "wideSinglets", output)
 outputSeq(wideRanges, "wideRanges", output)
 
-# manually add combining characters with the width of zero:
-output.add("""
-  combiningChars = [0x00300, 0x0036F]
-""")
-
-
 let outfile = "lib/pure/includes/unicode_wide.nim"
 outfile.writeFile(output)

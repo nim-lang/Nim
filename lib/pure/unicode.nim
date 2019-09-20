@@ -934,10 +934,10 @@ proc width*(r: Rune): int =
     assert width("a\u0300".runeAt(0)) == 1
     assert width("a\u0300".runeAt(1)) == 0
 
-  let c = RuneImpl(r)
 
-  if c >= combiningChars[0] and c <= combiningChars[1]:
-    return 0
+  if isCombining(r): return 0
+
+  let c = RuneImpl(r)
   var p = binarySearch(c, wideRanges, len(wideRanges) div 2, 2)
   if p >= 0 and c >= wideRanges[p] and c <= wideRanges[p+1]:
     return 2
