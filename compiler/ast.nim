@@ -853,7 +853,6 @@ type
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
-                              # for routines a superop-ID
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
