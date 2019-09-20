@@ -304,6 +304,7 @@ when defined(windows) or defined(nimdoc):
 
   proc verifyPresence(fd: AsyncFD) =
     ## Ensures that file descriptor has been registered with the dispatcher.
+    ## Raises ValueError if `fd` has not been registered.
     let p = getGlobalDispatcher()
     if fd notin p.handles:
       raise newException(ValueError,
@@ -1872,8 +1873,3 @@ proc waitFor*[T](fut: Future[T]): T =
     poll()
 
   fut.read
-
-proc setEvent*(ev: AsyncEvent) {.deprecated:
-  "Deprecated since v0.18.0: Use 'trigger' instead.".} =
-  ## Set event ``ev`` to signaled state.
-  ev.trigger()
