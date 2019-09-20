@@ -9,6 +9,8 @@
 
 ## :Author: Alexander Mitchell-Robinson (Amrykid)
 ##
+## Unstable API.
+##
 ## This module implements an event system that is not dependent on external
 ## graphical toolkits. It was originally called ``NimEE`` because
 ## it was inspired by Python's PyEE module. There are two ways you can use
