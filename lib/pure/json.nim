@@ -153,11 +153,6 @@ export
   open, close, str, getInt, getFloat, kind, getColumn, getLine, getFilename,
   errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr
 
-when defined(nimJsonGet):
-  {.pragma: deprecatedGet, deprecated.}
-else:
-  {.pragma: deprecatedGet.}
-
 type
   JsonNodeKind* = enum ## possible JSON node types
     JNull,
@@ -475,13 +470,9 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode {.inline, deprecatedGet.} =
+proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, raises KeyError.
-  ##
-  ## **Note:** The behaviour of this procedure changed in version 0.14.0. To
-  ## get a list of usages and to restore the old behaviour of this procedure,
-  ## compile with the ``-d:nimJsonGet`` flag.
   assert(not isNil(node))
   assert(node.kind == JObject)
   when defined(nimJsonGet):
