@@ -198,9 +198,6 @@ proc processTimers(
     dec count
     didSomeWork = true
 
-  # Ensure that an awaited timer that's been completed is promptly handled
-  if didSomeWork: return some(0)
-
   # Return the number of miliseconds in which the next timer will expire.
   if p.timers.len == 0: return
 
@@ -213,7 +210,12 @@ proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
     cb()
     didSomeWork = true
 
-proc adjustTimeout(pollTimeout: int, nextTimer: Option[int]): int {.inline.} =
+proc adjustTimeout(
+  p: PDispatcherBase, pollTimeout: int, nextTimer: Option[int]
+): int {.inline.} =
+  if p.callbacks.len != 0:
+    return 0
+
   if nextTimer.isNone() or pollTimeout == -1:
     return pollTimeout
 
@@ -326,7 +328,7 @@ when defined(windows) or defined(nimdoc):
 
     result = false
     let nextTimer = processTimers(p, result)
-    let at = adjustTimeout(timeout, nextTimer)
+    let at = adjustTimeout(p, timeout, nextTimer)
     var llTimeout =
       if at == -1: winlean.INFINITE
       else: at.int32
@@ -1286,7 +1288,8 @@ else:
     result = false
     var keys: array[64, ReadyKey]
     let nextTimer = processTimers(p, result)
-    var count = p.selector.selectInto(adjustTimeout(timeout, nextTimer), keys)
+    var count =
+      p.selector.selectInto(adjustTimeout(p, timeout, nextTimer), keys)
     for i in 0..<count:
       let fd = keys[i].fd.AsyncFD
       let events = keys[i].events
