@@ -1561,11 +1561,11 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   of nkBracketExpr:
     if len(n) == 1: return n.sons[0]
   else: discard
-  let valid = isAssignable(c, n)
+  let valid = isAssignable(c, n, isLent)
   if valid != arLValue:
     if valid == arLocalLValue:
       localError(c.config, n.info, errXStackEscape % renderTree(n, {renderNoComments}))
-    elif not isLent:
+    else:
       localError(c.config, n.info, errExprHasNoAddress)
   result = newNodeIT(nkHiddenAddr, n.info, makePtrType(c, n.typ))
   result.add(n)
