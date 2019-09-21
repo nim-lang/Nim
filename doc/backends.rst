@@ -332,55 +332,6 @@ name for the directory depends on the used backend and on your OS but you can
 use the ``--nimcache`` `compiler switch <nimc.html#command-line-switches>`_ to
 change it.
 
-Nimcache and C like targets
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The C like backends will place their temporary ``.c``, ``.cpp`` or ``.m`` files
-in the ``nimcache`` directory. The naming of these files follows the pattern
-``nimblePackageName_`` + ``nimSource``:
-
-* Filenames for modules imported from `nimble packages
-  <https://github.com/nim-lang/nimble>`_ will end up with
-  ``nimblePackageName_module.c``. For example, if you import the
-  ``argument_parser`` module from the same name nimble package you
-  will end up with a ``argument_parser_argument_parser.c`` file
-  under ``nimcache``.  The name of the nimble package comes from the
-  ``proj.nimble`` file, the actual contents are not read by the
-  compiler.
-
-* Filenames for non nimble packages (like your project) will be
-  renamed from ``.nim`` to have the extension of your target backend
-  (from now on ``.c`` for these examples), but otherwise nothing
-  else will change. This will quickly break if your project consists
-  of a main ``proj.nim`` file which includes a ``utils/proj.nim``
-  file: both ``proj.nim`` files will generate the same name ``proj.c``
-  output in the ``nimcache`` directory overwriting themselves!
-
-* Filenames for modules found in the standard library will be named
-  ``stdlib_module.c``. Unless you are doing something special, you
-  will end up with at least ``stdlib_system.c``, since the `system
-  module <system.html>`_ is always imported automatically. Same for
-  the `hashes module <hashes.html>`_ which will be named
-  ``stdlib_hashes.c``. The ``stdlib_`` prefix comes from the *fake*
-  ``lib/stdlib.nimble`` file.
-
-To find the name of a nimble package the compiler searches for a ``*.nimble``
-file in the parent directory hierarchy of whatever module you are compiling.
-Even if you are in a subdirectory of your project, a parent ``*.nimble`` file
-will influence the naming of the nimcache name. This means that on Unix systems
-creating the file ``~/foo.nimble`` will automatically prefix all nimcache files
-not part of another package with the string ``foo_``.
-
-
-Nimcache and the Javascript target
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Unless you explicitly use the ``-o:filename.js`` switch as mentioned in the
-previous examples, the compiler will create a ``filename.js`` file in the
-``nimcache`` directory using the name of your input nim file. There are no
-other temporary files generated, the output is always a single self contained
-``.js`` file.
-
 
 Memory management
 =================
