@@ -437,10 +437,14 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
   result.add(" HTTP/1.1\c\L")
 
   # Host header.
-  if requestUrl.port == "":
-    add(result, "Host: " & requestUrl.hostname & "\c\L")
+  var host: string
+  if headers.hasKey("host"):
+    host = $headers["host"]
   else:
-    add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
+    host = requestUrl.hostname
+    if requestUrl.port != "":
+      host &= ":" & requestUrl.port
+  add(result, "Host: " & host & "\c\L")
 
   # Connection header.
   if not headers.hasKey("Connection"):
@@ -454,11 +458,26 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
 
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
-    let auth = base64.encode(proxy.auth, newline = "")
-    add(result, "Proxy-Authorization: basic " & auth & "\c\L")
+    if not headers.hasKey("Proxy-Authorization"):
+      let auth = base64.encode(proxy.auth, newline = "")
+      add(result, "Proxy-Authorization: basic " & auth & "\c\L")
 
   for key, val in headers:
-    add(result, key & ": " & val & "\c\L")
+    if key == "host":
+      continue
+    # clients really shouldn't be sending `set-cookie` headers, but...
+    if key == "set-cookie":
+      for v in val:
+        add(result, key & ": " & $v & "\c\L")
+    elif key == "cookie":
+      add(result, key & ": ")
+      for i in val.low .. val.high:
+        if i != 0:
+          add(result, "; ")
+        add(result, $val[i])
+      add(result, "\c\L")
+    else:
+      add(result, key & ": " & $val & "\c\L")
 
   add(result, "\c\L")
 

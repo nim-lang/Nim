@@ -14,9 +14,12 @@ import tables, strutils, parseutils
 
 type
   HttpHeaders* = ref object
-    table*: TableRef[string, seq[string]]
+    table*: TableRef[string, HttpHeaderValues]
 
   HttpHeaderValues* = distinct seq[string]
+
+  HttpHeaderPair* = tuple[key: string; value: HttpHeaderValues]
+  KeyVal = tuple[key: string; val: string]
 
   # The range starts at '0' so that we don't have to explicitly initialise
   # it. See: http://irclogs.nim-lang.org/19-09-2016.html#19:48:27 for context.
@@ -99,18 +102,27 @@ const headerLimit* = 10_000
 
 proc newHttpHeaders*(): HttpHeaders =
   new result
-  result.table = newTable[string, seq[string]]()
+  result.table = newTable[string, HttpHeaderValues]()
 
 proc newHttpHeaders*(keyValuePairs:
-    openArray[tuple[key: string, val: string]]): HttpHeaders =
-  var pairs: seq[tuple[key: string, val: seq[string]]] = @[]
+    openArray[KeyVal]): HttpHeaders =
+  var pairs: seq[HttpHeaderPair] = @[]
   for pair in keyValuePairs:
-    pairs.add((pair.key.toLowerAscii(), @[pair.val]))
+    pairs.add((key: pair.key.toLowerAscii(), value: @[pair.val].HttpHeaderValues))
   new result
-  result.table = newTable[string, seq[string]](pairs)
+  result.table = newTable[string, HttpHeaderValues](pairs)
+
+converter toString*(values: HttpHeaderValues): string =
+  result = seq[string](values).join(",")
+
+proc `$`*(header: HttpHeaderPair): string =
+  result = header.key & ": " & header.value
 
 proc `$`*(headers: HttpHeaders): string =
-  return $headers.table
+  for pair in headers.table.pairs:
+    if result.len > 0:
+      result &= "\n"
+    result &= $pair
 
 proc clear*(headers: HttpHeaders) =
   headers.table.clear()
@@ -123,10 +135,10 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  return headers.table[key.toLowerAscii].HttpHeaderValues
+  return headers.table[key.toLowerAscii]
 
-converter toString*(values: HttpHeaderValues): string =
-  return seq[string](values)[0]
+proc `[]`*(values: HttpHeaderValues, i: int): string =
+  result = seq[string](values)[i]
 
 proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
@@ -137,19 +149,31 @@ proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
   ## Replaces any existing values.
-  headers.table[key.toLowerAscii] = @[value]
+  headers.table[key.toLowerAscii] = @[value].HttpHeaderValues
 
-proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
+proc `[]=`*(headers: HttpHeaders, key: string, value: HttpHeaderValues) =
   ## Sets the header entries associated with ``key`` to the specified list of
   ## values.
   ## Replaces any existing values.
   headers.table[key.toLowerAscii] = value
 
+proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
+  ## Sets the header entries associated with ``key`` to the specified list of
+  ## values.
+  ## Replaces any existing values.
+  headers[key] = value.HttpHeaderValues
+
+proc add*(values: var HttpHeaderValues, value: string) =
+  ## Adds the specified value to the specified header values.
+  var sequence = seq[string](values)
+  sequence.add value
+  values = sequence.HttpHeaderValues
+
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
   ## values associated with the key.
   if not headers.table.hasKey(key.toLowerAscii):
-    headers.table[key.toLowerAscii] = @[value]
+    headers.table[key.toLowerAscii] = @[value].HttpHeaderValues
   else:
     headers.table[key.toLowerAscii].add(value)
 
@@ -157,11 +181,16 @@ proc del*(headers: HttpHeaders, key: string) =
   ## Delete the header entries associated with ``key``
   headers.table.del(key.toLowerAscii)
 
-iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
+iterator items*(values: HttpHeaderValues): string =
+  var sequence = seq[string](values)
+  for s in sequence:
+    yield s
+
+iterator pairs*(headers: HttpHeaders): KeyVal =
   ## Yields each key, value pair.
-  for k, v in headers.table:
-    for value in v:
-      yield (k, value)
+  for key, values in headers.table.pairs:
+    for v in values:
+      yield (key: key, val: v)
 
 proc contains*(values: HttpHeaderValues, value: string): bool =
   ## Determines if ``value`` is one of the values inside ``values``. Comparison
@@ -181,9 +210,11 @@ proc getOrDefault*(headers: HttpHeaders, key: string,
   else:
     return default
 
+proc len*(values: HttpHeaderValues): int = return seq[string](values).len
+
 proc len*(headers: HttpHeaders): int = return headers.table.len
 
-proc parseList(line: string, list: var seq[string], start: int): int =
+proc parseList(line: string, list: var HttpHeaderValues, start: int): int =
   var i = 0
   var current = ""
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
@@ -194,21 +225,21 @@ proc parseList(line: string, list: var seq[string], start: int): int =
       i.inc # Skip ,
     current.setLen(0)
 
-proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
+proc parseHeader*(line: string): HttpHeaderPair =
   ## Parses a single raw header HTTP line into key value pairs.
   ##
   ## Used by ``asynchttpserver`` and ``httpclient`` internally and should not
   ## be used by you.
-  result.value = @[]
+  result.value = @[].HttpHeaderValues
   var i = 0
   i = line.parseUntil(result.key, ':')
   inc(i) # skip :
   if i < len(line):
     i += parseList(line, result.value, i)
   elif result.key.len > 0:
-    result.value = @[""]
+    result.value = @[""].HttpHeaderValues
   else:
-    result.value = @[]
+    result.value = @[].HttpHeaderValues
 
 proc `==`*(protocol: tuple[orig: string, major, minor: int],
            ver: HttpVersion): bool =
@@ -280,6 +311,12 @@ proc `$`*(code: HttpCode): string =
   of 504: "504 Gateway Timeout"
   of 505: "505 HTTP Version Not Supported"
   else: $(int(code))
+
+proc `==`*(a: HttpHeaderValues, b: seq[string]): bool =
+  return seq[string](a) == b
+
+proc `==`*(a: HttpHeaderPair, b: tuple[key: string; value: seq[string]]): bool =
+  return a.key == b.key and a.value == b.value
 
 proc `==`*(a, b: HttpCode): bool {.borrow.}
 
