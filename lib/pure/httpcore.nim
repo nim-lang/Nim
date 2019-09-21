@@ -152,7 +152,11 @@ proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
   ## values associated with the key.
-  HeadersImpl(headers)[key.toLowerAscii].add(value)
+  let k = key.toLowerAscii
+  if not HeadersImpl(headers).hasKey(k):
+    HeadersImpl(headers)[k] = @[value]
+  else:
+    HeadersImpl(headers)[k].add(value)
 
 proc del*(headers: HttpHeaders, key: string) =
   ## Delete the header entries associated with ``key``
