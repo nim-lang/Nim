@@ -473,12 +473,16 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
-  conf.outDir / conf.outFile
+  result = conf.outDir / conf.outFile
+  if dirExists(result.string):
+    result.string.add ".out"
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
   createDir conf.outDir
-  return conf.outDir / conf.outFile
+  result = conf.outDir / conf.outFile
+  if dirExists(result.string):
+    result.string.add ".out"
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
