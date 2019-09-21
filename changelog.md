@@ -100,7 +100,10 @@ iterator myitems[T](x: openarray[T]): lent T
 iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
 ```
 
-- `importjs` can now be used to import for ffi on the JS target
+- Added an `importjs` pragma that can now be used instead of `importcpp`
+  and `importc` to import symbols from JavaScript. `importjs` for routines always
+  takes a "pattern" for maximum flexibility.
+
 
 ## Language changes
 
