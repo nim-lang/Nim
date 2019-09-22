@@ -4,6 +4,14 @@ int32
 int32
 1280
 1280
+3
+1
+2
+2
+3
+4294967295
+2
+0
 '''
 """
 
@@ -145,3 +153,17 @@ block tsubrange:
 
   level = min(level + 2, maxLevel).n16
   doAssert level == 1
+
+block tissue12177:
+  var a: uint16 = 1
+  var b: uint32 = 2
+
+  echo(b + a)
+  echo(b - a)
+  echo(b * a)
+  echo(b div a)
+
+  echo(a + b)
+  echo(a - b)
+  echo(a * b)
+  echo(a div b)
