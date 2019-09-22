@@ -388,6 +388,8 @@ proc flush*[T](s: Selector[T]) = discard
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
+proc numHandles*[T](s: Selector[T]): int = s.count
+
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
   s.withSelectLock():
     result = false

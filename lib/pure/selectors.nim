@@ -191,6 +191,10 @@ when defined(nimdoc):
   template isEmpty*[T](s: Selector[T]): bool = # TODO: Why is this a template?
     ## Returns ``true``, if there are no registered events or descriptors
     ## in selector.
+    ##
+  proc numHandles*[T](s: Selector[T]): int =
+    ## Returns the number of registered events or descriptors
+    ## in selector.
 
   template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
                         body: untyped) =

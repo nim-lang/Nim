@@ -496,6 +496,8 @@ proc select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
+proc numHandles*[T](s: Selector[T]): int = s.count
+
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
   return s.fds[fd.int].ident != InvalidIdent
 
