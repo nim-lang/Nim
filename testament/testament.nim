@@ -558,6 +558,10 @@ const disabledFilesDefault = @[
   "setimpl.nim",
   "hashcommon.nim",
 
+  # Requires compiling with '--threads:on`
+  "sharedlist.nim",
+  "sharedtables.nim",
+
   # Error: undeclared identifier: 'hasThreadSupport'
   "ioselectors_epoll.nim",
   "ioselectors_kqueue.nim",
