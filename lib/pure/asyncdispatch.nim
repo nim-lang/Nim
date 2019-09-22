@@ -251,7 +251,7 @@ when defined(windows) or defined(nimdoc):
       handles: HashSet[AsyncFD]
       virtualHandles: Table[VirtualFD, AsyncEvent] # pseudo handles for custom AsyncEvents.
       nextVirtualHandle: VirtualFD
-      virtualMuxHandle: AsyncFD     # all the virtual handles get multiplexed through a single real handle.
+      virtualMuxHandle: Handle     # all the virtual handles get multiplexed through a single real handle.
       virtualPCD: PostCallbackDataPtr # needed for the selector callback plumbing.
 
     CustomOverlapped = object of OVERLAPPED
@@ -284,6 +284,52 @@ when defined(windows) or defined(nimdoc):
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
   proc hash(x: VirtualFD): Hash {.borrow.}
   proc `==`*(x: VirtualFD, y: VirtualFD): bool {.borrow.}
+
+  {.push stackTrace:off.}
+  proc waitableCallback(param: pointer,
+                        timerOrWaitFired: WINBOOL): void {.stdcall.} =
+    var p = cast[PostCallbackDataPtr](param)
+    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
+                                       ULONG_PTR(p.handleFd),
+                                       cast[pointer](p.ovl))
+  {.pop.}
+
+  template registerWaitableHandle(p, hEvent, flags, pcd, timeout,
+                                  handleCallback) =
+    let handleFD = AsyncFD(hEvent)
+    pcd.ioPort = p.ioPort
+    pcd.handleFd = handleFD
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
+    ol.data.fd = handleFD
+    ol.data.cb = handleCallback
+    # We need to protect our callback environment value, so GC will not free it
+    # accidentally.
+    ol.data.cell = system.protect(rawEnv(ol.data.cb))
+
+    pcd.ovl = ol
+    if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
+                                    cast[WAITORTIMERCALLBACK](waitableCallback),
+                                    cast[pointer](pcd), timeout.DWORD, flags):
+      let err = osLastError()
+      GC_unref(ol)
+      deallocShared(cast[pointer](pcd))
+      discard closeHandle(hEvent)
+      raiseOSError(err)
+    p.handles.incl(handleFD)
+
+  proc unregister*(ev: AsyncEvent) =
+    ## Unregisters event ``ev``.
+    doAssert(ev.vFD != VirtualFD(-1), "Event is not registered in the queue!")
+    when compileOption("threads"):
+      withRLock ev.eventLock:
+        ev.p.virtualHandles.del ev.vFD
+        ev.p = nil
+        ev.vFD = VirtualFD(-1)
+    else:
+      ev.p.virtualHandles.del ev.vFD
+      ev.p = nil
+      ev.vFD = VirtualFD(-1)
 
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
@@ -869,15 +915,6 @@ when defined(windows) or defined(nimdoc):
   proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
     return fd in disp.handles
 
-  {.push stackTrace: off.}
-  proc waitableCallback(param: pointer,
-                        timerOrWaitFired: WINBOOL): void {.stdcall.} =
-    var p = cast[PostCallbackDataPtr](param)
-    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
-                                       ULONG_PTR(p.handleFd),
-                                       cast[pointer](p.ovl))
-  {.pop.}
-
   proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: DWORD) =
     let p = getGlobalDispatcher()
     var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).DWORD
@@ -997,30 +1034,6 @@ when defined(windows) or defined(nimdoc):
     ## watch of `write` notifications, and ``false``, if you want to continue
     ## receiving notifications.
     registerWaitableEvent(fd, cb, FD_WRITE or FD_CONNECT or FD_CLOSE)
-
-  template registerWaitableHandle(p, hEvent, flags, pcd, timeout,
-                                  handleCallback) =
-    let handleFD = AsyncFD(hEvent)
-    pcd.ioPort = p.ioPort
-    pcd.handleFd = handleFD
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
-    ol.data.fd = handleFD
-    ol.data.cb = handleCallback
-    # We need to protect our callback environment value, so GC will not free it
-    # accidentally.
-    ol.data.cell = system.protect(rawEnv(ol.data.cb))
-
-    pcd.ovl = ol
-    if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
-                                    cast[WAITORTIMERCALLBACK](waitableCallback),
-                                    cast[pointer](pcd), timeout.DWORD, flags):
-      let err = osLastError()
-      GC_unref(ol)
-      deallocShared(cast[pointer](pcd))
-      discard closeHandle(hEvent)
-      raiseOSError(err)
-    p.handles.incl(handleFD)
 
   template closeWaitable(handle: untyped) =
     let waitFd = pcd.waitFd
