@@ -122,6 +122,9 @@ type
     readDataStrImpl*: proc (s: Stream, buffer: var string, slice: Slice[int]): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
 
+    readLineImpl*: proc(s: Stream, line: var TaintedString): bool
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+
     readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
@@ -876,19 +879,23 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     doAssert strm.readLine(line) == false
     doAssert line == ""
     strm.close()
-
-  line.string.setLen(0)
-  while true:
-    var c = readChar(s)
-    if c == '\c':
-      c = readChar(s)
-      break
-    elif c == '\L': break
-    elif c == '\0':
-      if line.len > 0: break
-      else: return false
-    line.string.add(c)
-  result = true
+  
+  if s.readLineImpl != nil:
+    result = s.readLineImpl(s, line)
+  else:
+    # fallback
+    line.string.setLen(0)
+    while true:
+      var c = readChar(s)
+      if c == '\c':
+        c = readChar(s)
+        break
+      elif c == '\L': break
+      elif c == '\0':
+        if line.len > 0: break
+        else: return false
+      line.string.add(c)
+    result = true
 
 proc peekLine*(s: Stream, line: var TaintedString): bool =
   ## Peeks a line of text from the stream `s` into `line`. `line` must not be
@@ -1131,6 +1138,9 @@ when not defined(js):
     if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
       raise newEIO("cannot write to stream")
 
+  proc fsReadLine(s: Stream, line: var TaintedString): bool =
+    result = readLine(FileStream(s).f, line)
+
   proc newFileStream*(f: File): owned FileStream =
     ## Creates a new stream from the file `f`.
     ##
@@ -1169,6 +1179,7 @@ when not defined(js):
     result.getPositionImpl = fsGetPosition
     result.readDataStrImpl = fsReadDataStr
     result.readDataImpl = fsReadData
+    result.readLineImpl = fsReadLine
     result.peekDataImpl = fsPeekData
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
