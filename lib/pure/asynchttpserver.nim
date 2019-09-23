@@ -78,7 +78,7 @@ proc sendHeaders*(req: Request, headers: HttpHeaders): Future[void] =
   return req.client.send(msg)
 
 proc respond*(req: Request, code: HttpCode, content: string,
-              headers: HttpHeaders = nil): Future[void] =
+              headers = EmptyHttpHeaders): Future[void] =
   ## Responds to the request with the specified ``HttpCode``, headers and
   ## content.
   ##
@@ -97,7 +97,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ##        await req.respond(Http404, "Not Found")
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
-  if headers != nil:
+  if isEmpty(headers):
     msg.addHeaders(headers)
   msg.add("Content-Length: ")
   # this particular way saves allocations:
