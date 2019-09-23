@@ -10,7 +10,7 @@
 ## This module contains Nim's support for locks and condition vars.
 
 
-when not compileOption("threads"):
+when not compileOption("threads") and not defined(nimdoc):
   {.error: "Locks requires --threads:on option.".}
 
 const insideRLocksModule = false
