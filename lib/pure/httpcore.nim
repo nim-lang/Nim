@@ -184,7 +184,8 @@ proc getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If there are no
   ## values associated with the key, then ``default`` is returned.
-  result = HttpHeaderValues(HeadersImpl(headers).getOrDefault(key, seq[string](default)))
+  result = HttpHeaderValues(HeadersImpl(headers).getOrDefault(
+    key.toLowerAscii, seq[string](default)))
 
 proc len*(headers: HttpHeaders): int = result = HeadersImpl(headers).len
 
