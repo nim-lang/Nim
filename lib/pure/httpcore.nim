@@ -9,8 +9,6 @@
 
 ## Contains functionality shared between the ``httpclient`` and
 ## ``asynchttpserver`` modules.
-##
-## Unstable API.
 
 import tables, strutils, parseutils
 
@@ -97,7 +95,12 @@ const
   Http504* = HttpCode(504)
   Http505* = HttpCode(505)
 
-const headerLimit* = 10_000
+const
+  headerLimit* = 10_000 ## The limit of HTTP headers in bytes. This limit
+                        ## is not enforced by httpcore but by modules using
+                        ## httpcore.
+  EmptyHttpHeaders* = HttpHeaders(nil) ## Constant that represents empty
+                                       ## http headers.
 
 template table*(x: HttpHeaders): TableRef[string, seq[string]] {.
     deprecated: "use the other accessor procs instead".} =
@@ -181,7 +184,7 @@ proc getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If there are no
   ## values associated with the key, then ``default`` is returned.
-  result = HttpHeaderValues HeadersImpl(headers).getOrDefault(key, seq[string](default))
+  result = HttpHeaderValues(HeadersImpl(headers).getOrDefault(key, seq[string](default)))
 
 proc len*(headers: HttpHeaders): int = result = HeadersImpl(headers).len
 

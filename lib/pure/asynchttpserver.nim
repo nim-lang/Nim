@@ -78,7 +78,7 @@ proc sendHeaders*(req: Request, headers: HttpHeaders): Future[void] =
   return req.client.send(msg)
 
 proc respond*(req: Request, code: HttpCode, content: string,
-              headers = HttpHeaders(nil)): Future[void] =
+              headers = EmptyHttpHeaders): Future[void] =
   ## Responds to the request with the specified ``HttpCode``, headers and
   ## content.
   ##
