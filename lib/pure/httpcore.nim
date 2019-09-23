@@ -9,12 +9,14 @@
 
 ## Contains functionality shared between the ``httpclient`` and
 ## ``asynchttpserver`` modules.
+##
+## Unstable API.
 
 import tables, strutils, parseutils
 
 type
-  HeadersImpl = TableRef[string, seq[string]]
-  HttpHeaders* = distinct HeadersImpl
+  HttpHeaders* = ref object
+    table*: TableRef[string, seq[string]]
 
   HttpHeaderValues* = distinct seq[string]
 
@@ -95,32 +97,25 @@ const
   Http504* = HttpCode(504)
   Http505* = HttpCode(505)
 
-const
-  headerLimit* = 10_000 ## The limit of HTTP headers in bytes. This limit
-                        ## is not enforced by httpcore but by modules using
-                        ## httpcore.
-  EmptyHttpHeaders* = HttpHeaders(nil) ## Constant that represents empty
-                                       ## http headers.
-
-template table*(x: HttpHeaders): TableRef[string, seq[string]] {.
-    deprecated: "use the other accessor procs instead".} =
-  TableRef[string, seq[string]](x)
+const headerLimit* = 10_000
 
 proc newHttpHeaders*(): HttpHeaders =
-  result = HttpHeaders newTable[string, seq[string]]()
+  new result
+  result.table = newTable[string, seq[string]]()
 
 proc newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]]): HttpHeaders =
-  result = HttpHeaders newTable[string, seq[string]]()
+  var pairs: seq[tuple[key: string, val: seq[string]]] = @[]
   for pair in keyValuePairs:
-    HeadersImpl(result)[pair.key.toLowerAscii()] = @[pair.val]
+    pairs.add((pair.key.toLowerAscii(), @[pair.val]))
+  new result
+  result.table = newTable[string, seq[string]](pairs)
 
-proc `$`*(headers: HttpHeaders): string = $(HeadersImpl(headers))
-
-proc isEmpty*(a: HttpHeaders): bool = HeadersImpl(a) == nil
+proc `$`*(headers: HttpHeaders): string =
+  return $headers.table
 
 proc clear*(headers: HttpHeaders) =
-  HeadersImpl(headers).clear()
+  headers.table.clear()
 
 proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If the returned
@@ -130,44 +125,43 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  result = HeadersImpl(headers)[key.toLowerAscii].HttpHeaderValues
+  return headers.table[key.toLowerAscii].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
-  result = seq[string](values)[0]
+  return seq[string](values)[0]
 
 proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
-  result = HeadersImpl(headers)[key.toLowerAscii][i]
+  return headers.table[key.toLowerAscii][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
   ## Replaces any existing values.
-  HeadersImpl(headers)[key.toLowerAscii] = @[value]
+  headers.table[key.toLowerAscii] = @[value]
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of
   ## values.
   ## Replaces any existing values.
-  HeadersImpl(headers)[key.toLowerAscii] = value
+  headers.table[key.toLowerAscii] = value
 
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
   ## values associated with the key.
-  let k = key.toLowerAscii
-  if not HeadersImpl(headers).hasKey(k):
-    HeadersImpl(headers)[k] = @[value]
+  if not headers.table.hasKey(key.toLowerAscii):
+    headers.table[key.toLowerAscii] = @[value]
   else:
-    HeadersImpl(headers)[k].add(value)
+    headers.table[key.toLowerAscii].add(value)
 
 proc del*(headers: HttpHeaders, key: string) =
   ## Delete the header entries associated with ``key``
-  HeadersImpl(headers).del(key.toLowerAscii)
+  headers.table.del(key.toLowerAscii)
 
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
   ## Yields each key, value pair.
-  for k, v in HeadersImpl(headers):
+  for k, v in headers.table:
     for value in v:
       yield (k, value)
 
@@ -178,15 +172,18 @@ proc contains*(values: HttpHeaderValues, value: string): bool =
     if val.toLowerAscii == value.toLowerAscii: return true
 
 proc hasKey*(headers: HttpHeaders, key: string): bool =
-  result = HeadersImpl(headers).hasKey(key.toLowerAscii())
+  return headers.table.hasKey(key.toLowerAscii())
 
 proc getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If there are no
   ## values associated with the key, then ``default`` is returned.
-  result = HttpHeaderValues(HeadersImpl(headers).getOrDefault(key, seq[string](default)))
+  if headers.hasKey(key):
+    return headers[key]
+  else:
+    return default
 
-proc len*(headers: HttpHeaders): int = result = HeadersImpl(headers).len
+proc len*(headers: HttpHeaders): int = return headers.table.len
 
 proc parseList(line: string, list: var seq[string], start: int): int =
   var i = 0
@@ -227,7 +224,7 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
   result = protocol.major == major and protocol.minor == minor
 
 proc contains*(methods: set[HttpMethod], x: string): bool =
-  result = parseEnum[HttpMethod](x) in methods
+  return parseEnum[HttpMethod](x) in methods
 
 proc `$`*(code: HttpCode): string =
   ## Converts the specified ``HttpCode`` into a HTTP status.
@@ -289,26 +286,26 @@ proc `$`*(code: HttpCode): string =
 proc `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool =
-  result = cmpIgnoreCase(rawCode, $code) == 0
+  return cmpIgnoreCase(rawCode, $code) == 0
 
 proc is2xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 2xx HTTP status code.
-  result = code.int in {200 .. 299}
+  return code.int in {200 .. 299}
 
 proc is3xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 3xx HTTP status code.
-  result = code.int in {300 .. 399}
+  return code.int in {300 .. 399}
 
 proc is4xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 4xx HTTP status code.
-  result = code.int in {400 .. 499}
+  return code.int in {400 .. 499}
 
 proc is5xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 5xx HTTP status code.
-  result = code.int in {500 .. 599}
+  return code.int in {500 .. 599}
 
 proc `$`*(httpMethod: HttpMethod): string =
-  result = (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
+  return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
 
 when isMainModule:
   var test = newHttpHeaders()

@@ -847,7 +847,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
 
 proc override(fallback, override: HttpHeaders): HttpHeaders =
   # Right-biased map union for `HttpHeaders`
-  if override.isEmpty:
+  if override.isNil:
     return fallback
 
   result = newHttpHeaders()
@@ -858,7 +858,7 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
 
 proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 httpMethod: string, body = "",
-                headers = EmptyHttpHeaders): Future[Response | AsyncResponse]
+                headers: HttpHeaders = nil): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
   let requestUrl = parseUri(url)
@@ -892,7 +892,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod: string, body = "",
-              headers = EmptyHttpHeaders): Future[Response | AsyncResponse]
+              headers: HttpHeaders = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the custom method string specified by ``httpMethod``.
@@ -917,7 +917,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod = HttpGet, body = "",
-              headers = EmptyHttpHeaders): Future[Response | AsyncResponse]
+              headers: HttpHeaders = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.

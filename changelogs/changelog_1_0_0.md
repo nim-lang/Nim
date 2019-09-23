@@ -85,6 +85,7 @@ type
   - concurrency/threadpool
   - coro
   - endians
+  - httpcore
   - parsesql
   - pathnorm
   - reservedmem
