@@ -157,10 +157,10 @@ when defined(logGC):
           typName = c.typ.name
 
     when leakDetector:
-      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
+      c_printf("[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
                 msg, c, kind, typName, c.refcount shr rcShift, c.filename, c.line)
     else:
-      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
+      c_printf("[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
                 msg, c, kind, typName, c.refcount shr rcShift, gch.gcThreadId)
 
 template logCell(msg: cstring, c: PCell) =
@@ -610,7 +610,7 @@ when logGC:
     else:
       writeCell("cell {", s)
       forAllChildren(s, waDebug)
-      c_fprintf(stdout, "}\n")
+      c_printf("}\n")
 
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
@@ -621,7 +621,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  c_fprintf(stdout, "[GC] decref bug: %p", c)
+    #  c_printf("[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     logCell("decref (from doOperation)", c)
@@ -778,7 +778,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
+        c_printf("[GC] missed deadline: %ld\n", duration)
 
 proc collectCT(gch: var GcHeap) =
   if (gch.zct.len >= gch.zctThreshold or (cycleGC and
