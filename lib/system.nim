@@ -1267,40 +1267,28 @@ proc `not`*(x: int): int {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `not`*(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
-else:
-  proc `not`*(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
+proc `not`*(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
 
 proc `+`*(x, y: int): int {.magic: "AddI", noSideEffect.}
   ## Binary `+` operator for an integer.
 proc `+`*(x, y: int8): int8 {.magic: "AddI", noSideEffect.}
 proc `+`*(x, y: int16): int16 {.magic: "AddI", noSideEffect.}
 proc `+`*(x, y: int32): int32 {.magic: "AddI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `+`*(x, y: int64): int64 {.magic: "AddI", noSideEffect.}
-else:
-  proc `+`*(x, y: int64): int64 {.magic: "AddI64", noSideEffect.}
+proc `+`*(x, y: int64): int64 {.magic: "AddI", noSideEffect.}
 
 proc `-`*(x, y: int): int {.magic: "SubI", noSideEffect.}
   ## Binary `-` operator for an integer.
 proc `-`*(x, y: int8): int8 {.magic: "SubI", noSideEffect.}
 proc `-`*(x, y: int16): int16 {.magic: "SubI", noSideEffect.}
 proc `-`*(x, y: int32): int32 {.magic: "SubI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `-`*(x, y: int64): int64 {.magic: "SubI", noSideEffect.}
-else:
-  proc `-`*(x, y: int64): int64 {.magic: "SubI64", noSideEffect.}
+proc `-`*(x, y: int64): int64 {.magic: "SubI", noSideEffect.}
 
 proc `*`*(x, y: int): int {.magic: "MulI", noSideEffect.}
   ## Binary `*` operator for an integer.
 proc `*`*(x, y: int8): int8 {.magic: "MulI", noSideEffect.}
 proc `*`*(x, y: int16): int16 {.magic: "MulI", noSideEffect.}
 proc `*`*(x, y: int32): int32 {.magic: "MulI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `*`*(x, y: int64): int64 {.magic: "MulI", noSideEffect.}
-else:
-  proc `*`*(x, y: int64): int64 {.magic: "MulI64", noSideEffect.}
+proc `*`*(x, y: int64): int64 {.magic: "MulI", noSideEffect.}
 
 proc `div`*(x, y: int): int {.magic: "DivI", noSideEffect.}
   ## Computes the integer division.
@@ -1318,10 +1306,7 @@ proc `div`*(x, y: int): int {.magic: "DivI", noSideEffect.}
 proc `div`*(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
 proc `div`*(x, y: int16): int16 {.magic: "DivI", noSideEffect.}
 proc `div`*(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `div`*(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
-else:
-  proc `div`*(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
+proc `div`*(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
 
 proc `mod`*(x, y: int): int {.magic: "ModI", noSideEffect.}
   ## Computes the integer modulo operation (remainder).
@@ -1336,10 +1321,7 @@ proc `mod`*(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `mod`*(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
-else:
-  proc `mod`*(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
+proc `mod`*(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
 
 when defined(nimNewShiftOps):
 
@@ -3488,20 +3470,12 @@ proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
 proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
-when defined(nimnomagic64):
-  proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
-    ## Returns the absolute value of `x`.
-    ##
-    ## If `x` is ``low(x)`` (that is -MININT for its type),
-    ## an overflow exception is thrown (if overflow checking is turned on).
-    result = if x < 0: -x else: x
-else:
-  proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.} =
-    ## Returns the absolute value of `x`.
-    ##
-    ## If `x` is ``low(x)`` (that is -MININT for its type),
-    ## an overflow exception is thrown (if overflow checking is turned on).
-    if x < 0: -x else: x
+proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
+  ## Returns the absolute value of `x`.
+  ##
+  ## If `x` is ``low(x)`` (that is -MININT for its type),
+  ## an overflow exception is thrown (if overflow checking is turned on).
+  result = if x < 0: -x else: x
 {.pop.}
 
 
