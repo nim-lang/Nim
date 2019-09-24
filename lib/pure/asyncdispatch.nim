@@ -181,6 +181,13 @@ export Port, SocketFlag
 export asyncfutures except callSoon
 export asyncstreams
 
+template withLockIfThreads(lock, code: untyped) =
+  when compileOption("threads"):
+    withRLock lock:
+      code
+  else:
+    code
+
 #{.injectStmt: newGcInvariant().}
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
@@ -285,6 +292,8 @@ when defined(windows) or defined(nimdoc):
   proc hash(x: VirtualFD): Hash {.borrow.}
   proc `==`*(x: VirtualFD, y: VirtualFD): bool {.borrow.}
 
+  const InvalidVirtualFD = VirtualFD(-1)
+
   {.push stackTrace:off.}
   proc waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL): void {.stdcall.} =
@@ -320,16 +329,11 @@ when defined(windows) or defined(nimdoc):
 
   proc unregister*(ev: AsyncEvent) =
     ## Unregisters event ``ev``.
-    doAssert(ev.vFD != VirtualFD(-1), "Event is not registered in the queue!")
-    when compileOption("threads"):
-      withRLock ev.eventLock:
-        ev.p.virtualHandles.del ev.vFD
-        ev.p = nil
-        ev.vFD = VirtualFD(-1)
-    else:
+    doAssert(ev.vFD != InvalidVirtualFD, "Event is not registered in the queue!")
+    withLockIfThreads ev.eventLock:
       ev.p.virtualHandles.del ev.vFD
       ev.p = nil
-      ev.vFD = VirtualFD(-1)
+      ev.vFD = InvalidVirtualFD
 
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
@@ -360,24 +364,13 @@ when defined(windows) or defined(nimdoc):
         result = proc() {.closure, gcSafe.} =
           let removeVCB = ev.callbacks[cbIndex](vfd.AsyncFD)
           if removeVCB:
-            when compileOption("threads"):
-              withRLock ev.eventLock:
-                ev.callbacks.del(cbIndex)
-                if ev.callbacks.len == 0:
-                  ev.unregister
-            else:
+            withLockIfThreads ev.eventLock:
               ev.callbacks.del(cbIndex)
               if ev.callbacks.len == 0:
                 ev.unregister
 
       for vfd, ev in p.virtualHandles:
-        when compileOption("threads"):
-          withRLock ev.eventLock:
-            if ev.triggered:
-              ev.triggered = false
-              for i in 0..ev.callbacks.high:
-                p.callbacks.addLast(vcbFactory(vfd, i))
-        else:
+        withLockIfThreads ev.eventLock:
           if ev.triggered:
             ev.triggered = false
             for i in 0..ev.callbacks.high:
@@ -1106,16 +1099,16 @@ when defined(windows) or defined(nimdoc):
     ## dispatcher like ``AsyncSocket``.
     result = cast[AsyncEvent](allocShared0(sizeof(AsyncEventImpl)))
     result.callbacks = newSeq[Callback]()
-    result.vFD = VirtualFD(-1)
+    result.vFD = InvalidVirtualFD
     when compileOption("threads"):
       initRLock result.eventLock
 
   proc trigger*(ev: AsyncEvent) =
     ## Set event ``ev`` to signaled state.
-    when compileOption("threads"):
-      withRLock ev.eventLock:
-        ev.triggered = true
-    else:
+    withLockIfThreads ev.eventLock:
+      if ev.vFD == InvalidVirtualFD:
+        # triggering on an event that is not registered is a noop.
+        return
       ev.triggered = true
 
     # send the signal to wake up the dispatcher thread.
@@ -1124,14 +1117,14 @@ when defined(windows) or defined(nimdoc):
 
   proc close*(ev: AsyncEvent) =
     ## Closes event ``ev``.
-    doAssert(ev.vFD != VirtualFD(-1), "Must unregister Event before you close it!")
+    doAssert(ev.vFD != InvalidVirtualFD, "Must unregister Event before you close it!")
     when compileOption("threads"):
       deinitRLock(ev.eventLock)
     deallocShared(cast[pointer](ev))
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Registers callback ``cb`` to be called when ``ev`` will be signaled
-    doAssert(ev.vFD == VirtualFD(-1), "Event is already registered in the queue!")
+    doAssert(ev.vFD == InvalidVirtualFD, "Event is already registered in the queue!")
 
     let p = getGlobalDispatcher()
 
@@ -1182,6 +1175,8 @@ else:
 
   proc `==`*(x, y: AsyncEvent): bool = x.vFD == y.vFD
 
+  const InvalidVirtualFD = VirtualFD(-1)
+
   template newAsyncData(): AsyncData =
     AsyncData(
       readList: newSeqOfCap[Callback](InitCallbackListSize),
@@ -1190,16 +1185,11 @@ else:
 
   proc unregister*(ev: AsyncEvent) =
     ## Unregisters event ``ev``.
-    doAssert(ev.vFD != VirtualFD(-1), "Event is not registered in the queue!")
-    when compileOption("threads"):
-      withRLock ev.eventLock:
-        ev.p.virtualHandles.del ev.vFD
-        ev.p = nil
-        ev.vFD = VirtualFD(-1)
-    else:
+    doAssert(ev.vFD != InvalidVirtualFD, "Event is not registered in the queue!")
+    withLockIfThreads ev.eventLock:
       ev.p.virtualHandles.del ev.vFD
       ev.p = nil
-      ev.vFD = VirtualFD(-1)
+      ev.vFD = InvalidVirtualFD
 
   proc newDispatcher*(): owned(PDispatcher) =
     new result
@@ -1222,24 +1212,13 @@ else:
         result = proc() {.closure, gcSafe.} =
           let removeVCB = ev.callbacks[cbIndex](vfd.AsyncFD)
           if removeVCB:
-            when compileOption("threads"):
-              withRLock ev.eventLock:
-                ev.callbacks.del(cbIndex)
-                if ev.callbacks.len == 0:
-                  ev.unregister
-            else:
+            withLockIfThreads ev.eventLock:
               ev.callbacks.del(cbIndex)
               if ev.callbacks.len == 0:
                 ev.unregister
 
       for vfd, ev in p.virtualHandles:
-        when compileOption("threads"):
-          withRLock ev.eventLock:
-            if ev.triggered:
-              ev.triggered = false
-              for i in 0..ev.callbacks.high:
-                p.callbacks.addLast(vcbFactory(vfd, i))
-        else:
+        withLockIfThreads ev.eventLock:
           if ev.triggered:
             ev.triggered = false
             for i in 0..ev.callbacks.high:
@@ -1669,16 +1648,16 @@ else:
     ## Creates new ``AsyncEvent``.
     result = cast[AsyncEvent](allocShared0(sizeof(AsyncEventImpl)))
     result.callbacks = newSeq[Callback]()
-    result.vFD = VirtualFD(-1)
+    result.vFD = InvalidVirtualFD
     when compileOption("threads"):
       initRLock result.eventLock
 
   proc trigger*(ev: AsyncEvent) =
     ## Sets new ``AsyncEvent`` to signaled state.
-    when compileOption("threads"):
-      withRLock ev.eventLock:
-        ev.triggered = true
-    else:
+    withLockIfThreads ev.eventLock:
+      if ev.vFD == InvalidVirtualFD:
+        # triggering on an event that is not registered is a noop.
+        return
       ev.triggered = true
 
     # send the signal to wake up the dispatcher thread.
@@ -1686,7 +1665,7 @@ else:
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Registers callback ``cb`` to be called when ``ev`` will be signaled
-    doAssert(ev.vFD == VirtualFD(-1), "Event is already registered in the queue!")
+    doAssert(ev.vFD == InvalidVirtualFD, "Event is already registered in the queue!")
 
     let p = getGlobalDispatcher()
 
@@ -1698,7 +1677,7 @@ else:
 
   proc close*(ev: AsyncEvent) =
     ## Closes event ``ev``.
-    doAssert(ev.vFD != VirtualFD(-1), "Must unregister Event before you close it!")
+    doAssert(ev.vFD != InvalidVirtualFD, "Must unregister Event before you close it!")
     when compileOption("threads"):
       deinitRLock(ev.eventLock)
     deallocShared(cast[pointer](ev))
