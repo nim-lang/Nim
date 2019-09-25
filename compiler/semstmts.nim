@@ -595,6 +595,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
 
+    # don't evaluate here since the type compatibility check below may add a converter
     var def = semExprWithType(c, a[^1])
     if def.typ.kind == tyProc and def.kind == nkSym:
       if def.sym.kind == skMacro:
