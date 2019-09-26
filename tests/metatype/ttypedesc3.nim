@@ -47,6 +47,6 @@ type
   Foo[T] = object
     val: T
 
-var x: Foo[int].val
+var x: typeof(Foo[int].val)
 inc(x)
 echo x
