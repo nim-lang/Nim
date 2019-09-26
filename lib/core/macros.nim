@@ -246,7 +246,7 @@ when defined(nimSymKind):
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
     ## Returns a copy of the declaration of a symbol or `nil`.
   proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
-    ## Return the string value of an identifier, symbol, comment, or string literal.
+    ## Returns the string value of an identifier, symbol, comment, or string literal.
     ##
     ## See also:
     ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
@@ -289,8 +289,7 @@ when defined(nimHasSymOwnerInMacro):
     ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
     ## context. For top level declarations this is an `nskModule` symbol,
     ## for proc local variables an `nskProc` symbol, for enum/object fields an
-    ## `nskType` symbol, etc. 
-    ## For symbols without an owner, `nil` is returned.
+    ## `nskType` symbol, etc. For symbols without an owner, `nil` is returned.
     ##
     ## See also:
     ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
