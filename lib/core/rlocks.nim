@@ -9,6 +9,10 @@
 
 ## 这个模块包含Nim对可重入锁的支持.
 
+
+when not compileOption("threads") and not defined(nimdoc):
+  {.error: "Rlocks requires --threads:on option.".}
+
 const insideRLocksModule = true
 include "system/syslocks"
 
