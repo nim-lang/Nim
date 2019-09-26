@@ -483,15 +483,21 @@ when defined(cpp) and appType != "lib" and
     setTerminate(nil)
 
     var msg = "Unknown error in unexpected exception handler"
-    try:
-      raise
-    except Exception:
+    when defined(vcc):
+      # disable C++ Native (not caused by nim) exceptions for MS Visual C++
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
-    except StdException as e:
-      msg = "Error: unhandled cpp exception: " & $e.what()
-    except:
-      msg = "Error: unhandled unknown cpp exception"
+    else:
+      try:
+        # catch C++ Native (not caused by nim) exceptions with nim
+        raise
+      except Exception:
+        msg = currException.getStackTrace() & "Error: unhandled exception: " &
+          currException.msg & " [" & $currException.name & "]"
+      except StdException as e:
+        msg = "Error: unhandled cpp exception: " & $e.what()
+      except:
+        msg = "Error: unhandled unknown cpp exception"
 
     when defined(genode):
       # stderr not available by default, use the LOG session
