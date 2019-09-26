@@ -183,9 +183,9 @@ type
   TSystemCPU* = enum # Also add CPU for in initialization section and
                      # alias conditionals to condsyms (end of module).
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
-    cpuPowerpc64el, cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuMipsel,
-    cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430, cpuSparc64,
-    cpuMips64, cpuMips64el, cpuRiscV64, cpuWasm32
+    cpuPowerpc64el, cpuSparc, cpuVm, cpuHppa, cpuIa64, cpuAmd64, cpuMips,
+    cpuMipsel, cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430,
+    cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV64, cpuWasm32
 
 type
   TEndian* = enum
@@ -204,6 +204,7 @@ const
     (name: "powerpc64el", intSize: 64, endian: littleEndian, floatSize: 64,bit: 64),
     (name: "sparc", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "vm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    (name: "hppa", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "ia64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
     (name: "amd64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
     (name: "mips", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
