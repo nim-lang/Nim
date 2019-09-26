@@ -244,9 +244,12 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: 
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
+    ## Returns a copy of the declaration of a symbol or `nil`.
   proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
-    ## retrieve the implementation of `symbol`. `symbol` can be a
-    ## routine or a const.
+    ## Return the string value of an identifier, symbol, comment, or string literal.
+    ##
+    ## See also:
+    ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
 
   proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
     "Deprecated since version 0.18.1; Use 'strVal' instead.".}
@@ -283,11 +286,15 @@ when defined(nimSymImplTransform):
 when defined(nimHasSymOwnerInMacro):
   proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
     ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
-    ## The meaning of 'owner' is contextual and can be queried using `symKind`.
-    ## For top level declarations this is a module symbol, for local variables
-    ## a proc symbol, for enum fields the enum type, etc.
-    ## This can be used recursively to get the module symbol.
+    ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
+    ## context. For top level declarations this is an `nskModule` symbol,
+    ## for proc local variables an `nskProc` symbol, for enum/object fields an
+    ## `nskType` symbol, etc. 
     ## For symbols without an owner, `nil` is returned.
+    ##
+    ## See also:
+    ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
+    ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
 
 when defined(nimHasInstantiationOfInMacro):
   proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
@@ -304,10 +311,7 @@ proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## kind of type it is, call `typeKind` on getType's result.
 
 proc getType*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Returns the Nim type node for given type. This can be used to turn macro
-  ## typedesc parameter into proper NimNode representing type, since typedesc
-  ## are an exception in macro calls - they are not mapped implicitly to
-  ## NimNode like any other arguments.
+  ## Version of ``getType`` which takes a ``typedesc``.
 
 proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
@@ -396,8 +400,15 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, de
 #   bracket[0] = fake  # constructs a mixed array with ints and floats!
 
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
+  ## Sets the string value of a string literal or comment.
   ## Setting `strVal` is disallowed for `nnkIdent` and `nnkSym` nodes; a new node
   ## must be created using `ident` or `bindSym` instead.
+  ##
+  ## See also:
+  ## * `strVal proc<#strVal,NimNode>`_ for getting the string value.
+  ## * `ident proc<#ident,string>`_ for creating an identifier.
+  ## * `bindSym proc<#bindSym%2C%2CBindSymRule>`_ for binding a symbol.
+  
 
 proc newNimNode*(kind: NimNodeKind,
                  lineInfoFrom: NimNode = nil): NimNode
