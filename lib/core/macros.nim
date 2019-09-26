@@ -282,9 +282,12 @@ when defined(nimSymImplTransform):
 
 when defined(nimHasSymOwnerInMacro):
   proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
-    ## accepts node of kind nnkSym and returns its owner's symbol.
-    ## result is also mnde of kind nnkSym if owner exists otherwise
-    ## nnkNilLit is returned
+    ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
+    ## The meaning of 'owner' is contextual and can be queried using `symKind`.
+    ## For top level declarations this is a module symbol, for local variables
+    ## a proc symbol, for enum fields the enum type, etc.
+    ## This can be used recursively to get the module symbol.
+    ## For symbols without an owner, `nil` is returned.
 
 when defined(nimHasInstantiationOfInMacro):
   proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
@@ -393,6 +396,8 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, de
 #   bracket[0] = fake  # constructs a mixed array with ints and floats!
 
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
+  ## Setting `strVal` is disallowed for `nnkIdent` and `nnkSym` nodes; a new node
+  ## must be created using `ident` or `bindSym` instead.
 
 proc newNimNode*(kind: NimNodeKind,
                  lineInfoFrom: NimNode = nil): NimNode
