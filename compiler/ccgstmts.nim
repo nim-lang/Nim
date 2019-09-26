@@ -784,7 +784,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     var branches: seq[Rope]
     newSeq(branches, bitMask + 1)
     var a: TLoc
-    initLocExpr(p, t.sons[0], a) # fist pass: gnerate ifs+goto:
+    initLocExpr(p, t.sons[0], a) # fist pass: generate ifs+goto:
     var labId = p.labels
     for i in 1 ..< len(t):
       inc(p.labels)

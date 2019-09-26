@@ -211,7 +211,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
       param.typ = makeTypeDesc(c, header[i+1])
 
     # this scope was not created by the user,
-    # unused params shoudn't be reported.
+    # unused params shouldn't be reported.
     param.flags.incl sfUsed
     addDecl(c, param)
 

@@ -206,7 +206,7 @@ proc auth*(smtp: Smtp | AsyncSmtp, username, password: string) {.multisync.} =
   await smtp.checkReply("334") # TODO: Same as above, only "Password:" (I think?)
 
   await smtp.debugSend(encode(password) & "\c\L")
-  await smtp.checkReply("235") # Check whether the authentification was successful.
+  await smtp.checkReply("235") # Check whether the authentication was successful.
 
 proc sendMail*(smtp: Smtp | AsyncSmtp, fromAddr: string,
                toAddrs: seq[string], msg: string) {.multisync.} =

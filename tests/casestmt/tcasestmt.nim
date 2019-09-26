@@ -163,7 +163,7 @@ block tcasestm:
     of "N": false
     else:
       echo "no good"
-      quit("quiting")
+      quit("quitting")
 
   proc toBool(s: string): bool =
     case s:

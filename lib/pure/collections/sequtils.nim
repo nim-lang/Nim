@@ -848,7 +848,7 @@ template mapIt*(s: typed, op: untyped): untyped =
     result
 
 template mapIt*(s, typ, op: untyped): untyped {.error:
-  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned seqence".} =
+  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned sequence".} =
   var result: seq[typ] = @[]
   for it {.inject.} in items(s):
     result.add(op)
@@ -883,7 +883,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
   ## or to populate fields of the created sequence.
   ##
   runnableExamples:
-    ## Creates a seqence containing 5 bool sequences, each of length of 3.
+    ## Creates a sequence containing 5 bool sequences, each of length of 3.
     var seq2D = newSeqWith(5, newSeq[bool](3))
     assert seq2D.len == 5
     assert seq2D[0].len == 3

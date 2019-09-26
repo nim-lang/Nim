@@ -477,14 +477,14 @@ when defined(nimArrIdx):
     x: S) {.noSideEffect, magic: "ArrPut".}
 
   proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-    ## Generic `destructor`:idx: implementation that can be overriden.
+    ## Generic `destructor`:idx: implementation that can be overridden.
     discard
   proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
-    ## Generic `sink`:idx: implementation that can be overriden.
+    ## Generic `sink`:idx: implementation that can be overridden.
     shallowCopy(x, y)
 
 type
-  HSlice*[T, U] = object   ## "Heterogenous" slice type.
+  HSlice*[T, U] = object   ## "Heterogeneous" slice type.
     a*: T                  ## The lower bound (inclusive).
     b*: U                  ## The upper bound (inclusive).
   Slice*[T] = HSlice[T, T] ## An alias for ``HSlice[T, T]``.
@@ -2314,7 +2314,7 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   ## registered.
 
 # Support for addQuitProc() is done by Ansi C's facilities here.
-# In case of an unhandled exeption the exit handlers should
+# In case of an unhandled exception the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
 
 when not defined(nimscript) and not defined(JS):
@@ -3974,7 +3974,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   if L == b.len:
     for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
-    sysFatal(RangeError, "diferent lengths for slice assignment")
+    sysFatal(RangeError, "different lengths for slice assignment")
 
 proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
@@ -4224,7 +4224,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many
-  ## diferent common syntaxes.
+  ## different common syntaxes.
   ##
   ## **Note**: This is **not correct** for producing Ansi C code!
   case c
@@ -4254,7 +4254,7 @@ proc addQuoted*[T](s: var string, x: T) =
   ## See `addEscapedChar <#addEscapedChar,string,char>`_
   ## for the escaping scheme. When `x` is a string, characters in the
   ## range ``{\128..\255}`` are never escaped so that multibyte UTF-8
-  ## characters are untouched (note that this behavior is diferent from
+  ## characters are untouched (note that this behavior is different from
   ## ``addEscapedChar``).
   ##
   ## The Nim standard library uses this function on the elements of
@@ -4315,7 +4315,7 @@ when hasAlloc:
       x.add(y)
 
   proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
-    ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
+    ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that
     ## case, ``x`` becomes ``y``.
     when defined(nimNoNilSeqs):
       x.add(y)

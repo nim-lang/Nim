@@ -138,7 +138,7 @@ type
   LegacyFeature* = enum
     allowSemcheckedAstModification,
       ## Allows to modify a NimNode where the type has already been
-      ## flaged with nfSem. If you actually do this, it will cause
+      ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
 
   SymbolFilesOption* = enum

@@ -275,9 +275,9 @@ proc createDiffs(dataA, dataB: DiffData): seq[Item] =
 proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   ## Find the difference in 2 arrays of integers.
   ##
-  ## ``arrayA`` A-version of the numbers (usualy the old one)
+  ## ``arrayA`` A-version of the numbers (usually the old one)
   ##
-  ## ``arrayB`` B-version of the numbers (usualy the new one)
+  ## ``arrayB`` B-version of the numbers (usually the new one)
   ##
   ## Returns a sequence of Items that describe the differences.
 
@@ -301,7 +301,7 @@ proc diffText*(textA, textB: string): seq[Item] =
   ##
   ## The algorithm itself is comparing 2 arrays of numbers so when comparing 2 text documents
   ## each line is converted into a (hash) number. This hash-value is computed by storing all
-  ## textlines into a common hashtable so i can find dublicates in there, and generating a
+  ## textlines into a common hashtable so i can find duplicates in there, and generating a
   ## new number each time a new textline is inserted.
   ##
   ## ``textA`` A-version of the text (usually the old one)

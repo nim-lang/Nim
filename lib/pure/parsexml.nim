@@ -154,7 +154,7 @@ import
 #  xmlElementCloseEnd, ## ``/>``
 
 type
-  XmlEventKind* = enum ## enumation of all events that may occur when parsing
+  XmlEventKind* = enum ## enumeration of all events that may occur when parsing
     xmlError,           ## an error occurred during parsing
     xmlEof,             ## end of file reached
     xmlCharData,        ## character data

@@ -134,7 +134,7 @@ type
       ## non-js target to true or false respectively.
       ## The deprecated environment variable
       ## ``NIMTEST_NO_COLOR``, when set,
-      ## changes the defualt to true, if
+      ## changes the default to true, if
       ## ``NIMTEST_COLOR`` is undefined.
     outputLevel: OutputLevel
       ## Set the verbosity of test results.

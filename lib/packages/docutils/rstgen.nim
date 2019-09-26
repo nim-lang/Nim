@@ -101,7 +101,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## index hyperlinks to the file, but you can pass an empty string here if you
   ## are parsing a stream in memory. If `filename` ends with the ``.nim``
   ## extension, the title for the document will be set by default to ``Module
-  ## filename``.  This default title can be overriden by the embedded rst, but
+  ## filename``.  This default title can be overridden by the embedded rst, but
   ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``RstParseOptions``, ``FindFileHandler`` and ``MsgHandler`` types
@@ -350,7 +350,7 @@ proc hash(n: PRstNode): int =
 proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   ## Renders the string decorated within \`foobar\`\:idx\: markers.
   ##
-  ## Additionally adds the encosed text to the index as a term. Since we are
+  ## Additionally adds the enclosed text to the index as a term. Since we are
   ## interested in different instances of the same term to have different
   ## entries, a table is used to keep track of the amount of times a term has
   ## previously appeared to give a different identifier value for each.

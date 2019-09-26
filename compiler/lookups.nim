@@ -233,7 +233,7 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   addInterfaceDeclAux(c, sym)
 
 when defined(nimfix):
-  # when we cannot find the identifier, retry with a changed identifer:
+  # when we cannot find the identifier, retry with a changed identifier:
   proc altSpelling(x: PIdent): PIdent =
     case x.s[0]
     of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))

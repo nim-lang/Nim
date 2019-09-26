@@ -318,7 +318,7 @@ proc readHeaderRow*(my: var CsvParser) =
     my.headers = my.row
 
 proc rowEntry*(my: var CsvParser, entry: string): var string =
-  ## Acceses a specified `entry` from the current row.
+  ## Accesses a specified `entry` from the current row.
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been
   ## called.

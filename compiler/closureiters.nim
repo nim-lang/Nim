@@ -1288,7 +1288,7 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   if getEnvParam(fn).isNil:
     # Lambda lifting was not done yet. Use temporary :state sym, which will
     # be handled specially by lambda lifting. Local temp vars (if needed)
-    # should folllow the same logic.
+    # should follow the same logic.
     ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), fn, fn.info)
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn)
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), fn, fn.info)
@@ -1309,7 +1309,7 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   # Optimize empty states away
   ctx.deleteEmptyStates()
 
-  # Make new body by concating the list of states
+  # Make new body by concatenating the list of states
   result = newNodeI(nkStmtList, n.info)
   for s in ctx.states:
     assert(s.len == 2)
