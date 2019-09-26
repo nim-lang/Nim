@@ -11,6 +11,8 @@
 
 ### Breaking changes in the compiler
 
+- Implicit conversions for `const` behave correctly now, meaning that code like `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
+  Simply write `const SOMECONST = 0` instead.
 
 
 ## Library additions
