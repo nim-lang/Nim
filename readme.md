@@ -61,7 +61,7 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 For package maintainers: see [packaging guidelines](https://nim-lang.github.io/Nim/packaging.html).
 
 
-First get nim from github:
+First get Nim from github:
 
 ```
 git clone https://github.com/nim-lang/Nim.git
