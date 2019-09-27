@@ -252,15 +252,15 @@ when not defined(js):
 
     const bufferSize = 1024
     when nimvm:
-      var bufferr: string
-      bufferr.setLen(bufferSize)
+      var buffer2: string
+      buffer2.setLen(bufferSize)
       while true:
-        let readBytes = readDataStr(s, bufferr, 0..<bufferSize)
+        let readBytes = readDataStr(s, buffer2, 0..<bufferSize)
         if readBytes == 0:
           break
         let prevLen = result.len
         result.setLen(prevLen + readBytes)
-        result[prevLen..<prevLen+readBytes] = bufferr[0..<readBytes]
+        result[prevLen..<prevLen+readBytes] = buffer2[0..<readBytes]
         if readBytes < bufferSize:
           break
     else:
@@ -1053,8 +1053,7 @@ when defined(js): #This section exists so that string streams work at compile ti
     var s = StringStream(s)
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
-      for i in 0 ..< result: # sorry, but no fast string splicing on the vm.
-        buffer[slice.a + i] = s.data[s.pos + i]
+      buffer[slice.a..<result] = s.data[s.pos..<result]
       inc(s.pos, result)
     else:
       result = 0
@@ -1108,8 +1107,7 @@ else:
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
       when nimvm:
-        for i in 0 ..< result: # sorry, but no fast string splicing on the vm.
-          buffer[slice.a + i] = s.data[s.pos + i]
+        buffer[slice.a..<result] = s.data[s.pos..<result]
       else:
         copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
       inc(s.pos, result)
