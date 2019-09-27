@@ -399,7 +399,12 @@ proc readChar*(s: Stream): char =
     doAssert strm.readChar() == '\x00'
     strm.close()
 
-  if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
+  when nimvm:
+    var str = " "
+    if readDataStr(s, str, 0..<sizeof(result)) != 1: result = '\0'
+    else: result = str[0]
+  else:
+    if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc peekChar*(s: Stream): char =
   ## Peeks a char from the stream `s`. Raises `IOError` if an error occurred.
@@ -884,7 +889,10 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     result = s.readLineImpl(s, line)
   else:
     # fallback
-    line.string.setLen(0)
+    when nimvm: #Bug #12282
+      line.setLen(0)
+    else:
+      line.string.setLen(0)
     while true:
       var c = readChar(s)
       if c == '\c':
@@ -894,7 +902,10 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
       elif c == '\0':
         if line.len > 0: break
         else: return false
-      line.string.add(c)
+      when nimvm: #Bug #12282
+        line.add(c)
+      else:
+        line.string.add(c)
     result = true
 
 proc peekLine*(s: Stream, line: var TaintedString): bool =
