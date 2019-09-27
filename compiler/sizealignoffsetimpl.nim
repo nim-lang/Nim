@@ -16,7 +16,7 @@ proc align(address, alignment: int): int =
   result = (address + (alignment - 1)) and not (alignment - 1)
 
 const
-  ## a size is concidered "unknown" when it is an imported type from C
+  ## a size is considered "unknown" when it is an imported type from C
   ## or C++.
   szUnknownSize* = -3
   szIllegalRecursion* = -2

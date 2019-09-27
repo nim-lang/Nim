@@ -133,7 +133,7 @@
   The ``times`` module exports two similar types that are both used to
   represent some amount of time: `Duration <#Duration>`_ and
   `TimeInterval <#TimeInterval>`_.
-  This section explains how they differ and when one should be prefered over the
+  This section explains how they differ and when one should be preferred over the
   other (short answer: use ``Duration`` unless support for months and years is
   needed).
 
@@ -152,7 +152,7 @@
   A ``TimeInterval`` represents an amount of time expressed in calendar
   units, for example "1 year and 2 days". Since some units cannot be
   normalized (the length of a year is different for leap years for example),
-  the ``TimeInterval`` type uses seperate fields for every unit. The
+  the ``TimeInterval`` type uses separate fields for every unit. The
   ``TimeInterval``'s returned from this module generally don't normalize
   **anything**, so even units that could be normalized (like seconds,
   milliseconds and so on) are left untouched.
@@ -393,7 +393,7 @@ type
     years*: int        ## The number of years
 
   Timezone* = ref object ## \
-      ## Timezone interface for supporting `DateTime <#DateTime>`_\s of arbritary
+      ## Timezone interface for supporting `DateTime <#DateTime>`_\s of arbitrary
       ## timezones. The ``times`` module only supplies implementations for the
       ## systems local time and UTC.
     zonedTimeFromTimeImpl: proc (x: Time): ZonedTime
@@ -2526,7 +2526,7 @@ when not defined(JS):
     ## because sub-second resolution is likely to be supported (depending
     ## on the hardware/OS).
     ##
-    ## ``getTime`` should generally be prefered over this proc.
+    ## ``getTime`` should generally be preferred over this proc.
     when defined(macosx):
       var a: Timeval
       gettimeofday(a)

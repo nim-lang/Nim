@@ -2025,7 +2025,7 @@ proc parseHtml*(s: Stream, filename: string,
   #if x.kind != xmlEof:
   #  adderr(errorMsg(x, "EOF expected"))
   while x.kind != xmlEof:
-    var oldPos = x.bufpos # little hack to see if we made any progess
+    var oldPos = x.bufpos # little hack to see if we made any progress
     result.addNode(parse(x, errors))
     if x.bufpos == oldPos:
       # force progress!

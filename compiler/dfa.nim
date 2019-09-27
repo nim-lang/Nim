@@ -513,7 +513,7 @@ proc genTry(c: var Con; n: PNode) =
     let f = c.tryStmtFixups[i]
     c.patch(f)
     # we also need to produce join instructions
-    # for the 'fork' that might preceed the goto instruction
+    # for the 'fork' that might precede the goto instruction
     if f.int-1 >= 0 and c.code[f.int-1].kind == fork:
       c.joinI(TPosition(f.int-1), n)
 

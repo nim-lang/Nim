@@ -134,7 +134,7 @@ type
   TErrorHandler* = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string)
   TLexer* = object of TBaseLexer
     fileIdx*: FileIndex
-    indentAhead*: int         # if > 0 an indendation has already been read
+    indentAhead*: int         # if > 0 an indentation has already been read
                               # this is needed because scanning comments
                               # needs so much look-ahead
     currLineIndent*: int

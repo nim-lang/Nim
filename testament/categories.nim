@@ -569,7 +569,7 @@ proc quoted(a: string): string =
   result.addQuoted(a)
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
-  ## returs a list of tests that have problems
+  ## returns a list of tests that have problems
   var specs: seq[TSpec] = @[]
   for kind, dir in walkDir(testsDir):
     assert testsDir.startsWith(testsDir)

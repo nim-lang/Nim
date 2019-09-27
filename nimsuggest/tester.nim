@@ -140,7 +140,7 @@ proc runCmd(cmd, dest: string): bool =
   of "!del":
     del(x)
   else:
-    quit "unkown command: " & cmd
+    quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
   if pattern.contains('*'):

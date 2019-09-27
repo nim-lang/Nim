@@ -288,7 +288,7 @@ proc test_float32_castB() =
   doAssert b == -1024049152
   doAssert cast[uint64](b) == 18446744072685502464'u64
   doAssert c == 3270918144'u32
-  # ensure the unsused bits in the internal representation don't have
+  # ensure the unused bits in the internal representation don't have
   # any surprising content.
   doAssert cast[uint64](c) == 3270918144'u64
 

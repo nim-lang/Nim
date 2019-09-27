@@ -339,7 +339,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         result = initPartial
         if discriminatorVal.kind == nkIntLit:
           # When the discriminator is a compile-time value, we also know
-          # which brach will be selected:
+          # which branch will be selected:
           let matchedBranch = recNode.pickCaseBranch discriminatorVal
           if matchedBranch != nil: checkMissingFields matchedBranch
         else:

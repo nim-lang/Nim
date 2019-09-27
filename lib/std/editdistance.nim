@@ -210,7 +210,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   inc(len1)
   inc(len2)
   var half = len1 shr 1
-  # initalize first row:
+  # initialize first row:
   #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2*sizeof(int)))
   var row: seq[int]
   newSeq(row, len2)

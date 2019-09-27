@@ -1027,7 +1027,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     dec p.splitDecls
 
 proc genEcho(p: BProc, n: PNode) =
-  # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
+  # this unusual way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert p.config, n.kind == nkBracket
   if p.config.target.targetOS == osGenode:

@@ -326,7 +326,7 @@ proc del*(t: StringTableRef, key: string) =
   ## Removes `key` from `t`.
   ##
   ## See also:
-  ## * `clear proc <#clear,StringTableRef,StringTableMode>`_ for reseting a
+  ## * `clear proc <#clear,StringTableRef,StringTableMode>`_ for resetting a
   ##   table to be empty
   ## * `[]= proc <#[]=,StringTableRef,string,string>`_ for inserting a new
   ##   (key, value) pair in the table

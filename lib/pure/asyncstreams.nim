@@ -74,7 +74,7 @@ proc write*[T](future: FutureStream[T], value: T): Future[void] =
     result.fail(newException(ValueError, msg))
     return
   # TODO: Implement limiting of the streams storage to prevent it growing
-  # infinitely when no reads are occuring.
+  # infinitely when no reads are occurring.
   future.queue.addLast(value)
   if not future.cb.isNil: future.cb()
   result.complete()

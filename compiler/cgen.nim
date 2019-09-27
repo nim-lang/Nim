@@ -1255,7 +1255,7 @@ proc hcrGetProcLoadCode(m: BModule, sym, prefix, handle, getProcFunc: string): R
 
 proc genMainProc(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
-  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## it means raising dependency on the symbols is too late as it will not propagate
   ## into other modules, only simple rope manipulations are allowed
 
   var preMainCode: Rope
@@ -1514,7 +1514,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
 
 proc genDatInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
-  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## it means raising dependency on the symbols is too late as it will not propagate
   ## into other modules, only simple rope manipulations are allowed
 
   var moduleDatInitRequired = m.hcrOn
@@ -1558,7 +1558,7 @@ proc hcrGetProcLoadCode(m: BModule, sym, prefix, handle, getProcFunc: string): R
 
 proc genInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
-  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## it means raising dependency on the symbols is too late as it will not propagate
   ## into other modules, only simple rope manipulations are allowed
   var moduleInitRequired = m.hcrOn
   let initname = getInitName(m)
@@ -1746,7 +1746,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
   # no line tracing for the init sections of the system module so that we
-  # don't generate a TFrame which can confuse the stack botton initialization:
+  # don't generate a TFrame which can confuse the stack bottom initialization:
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)

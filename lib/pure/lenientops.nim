@@ -12,7 +12,7 @@
 ## which work for mixed float/int operands.
 ## All operations convert the integer operand into the
 ## type of the float operand. For numerical expressions, the return
-## type is always the type of the float involved in the expresssion,
+## type is always the type of the float involved in the expression,
 ## i.e., there is no auto conversion from float32 to float64.
 ##
 ## Note: In general, auto-converting from int to float loses
