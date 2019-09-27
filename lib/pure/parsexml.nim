@@ -155,41 +155,41 @@ import
 
 type
   XmlEventKind* = enum ## enumeration of all events that may occur when parsing
-    xmlError,           ## an error occurred during parsing
-    xmlEof,             ## end of file reached
-    xmlCharData,        ## character data
-    xmlWhitespace,      ## whitespace has been parsed
-    xmlComment,         ## a comment has been parsed
-    xmlPI,              ## processing instruction (``<?name something ?>``)
-    xmlElementStart,    ## ``<elem>``
-    xmlElementEnd,      ## ``</elem>``
-    xmlElementOpen,     ## ``<elem
-    xmlAttribute,       ## ``key = "value"`` pair
-    xmlElementClose,    ## ``>``
-    xmlCData,           ## ``<![CDATA[`` ... data ... ``]]>``
-    xmlEntity,          ## &entity;
-    xmlSpecial          ## ``<! ... data ... >``
+    xmlError,          ## an error occurred during parsing
+    xmlEof,            ## end of file reached
+    xmlCharData,       ## character data
+    xmlWhitespace,     ## whitespace has been parsed
+    xmlComment,        ## a comment has been parsed
+    xmlPI,             ## processing instruction (``<?name something ?>``)
+    xmlElementStart,   ## ``<elem>``
+    xmlElementEnd,     ## ``</elem>``
+    xmlElementOpen,    ## ``<elem
+    xmlAttribute,      ## ``key = "value"`` pair
+    xmlElementClose,   ## ``>``
+    xmlCData,          ## ``<![CDATA[`` ... data ... ``]]>``
+    xmlEntity,         ## &entity;
+    xmlSpecial         ## ``<! ... data ... >``
 
-  XmlErrorKind* = enum       ## enumeration that lists all errors that can occur
-    errNone,                 ## no error
-    errEndOfCDataExpected,   ## ``]]>`` expected
-    errNameExpected,         ## name expected
-    errSemicolonExpected,    ## ``;`` expected
-    errQmGtExpected,         ## ``?>`` expected
-    errGtExpected,           ## ``>`` expected
-    errEqExpected,           ## ``=`` expected
-    errQuoteExpected,        ## ``"`` or ``'`` expected
-    errEndOfCommentExpected  ## ``-->`` expected
+  XmlErrorKind* = enum        ## enumeration that lists all errors that can occur
+    errNone,                  ## no error
+    errEndOfCDataExpected,    ## ``]]>`` expected
+    errNameExpected,          ## name expected
+    errSemicolonExpected,     ## ``;`` expected
+    errQmGtExpected,          ## ``?>`` expected
+    errGtExpected,            ## ``>`` expected
+    errEqExpected,            ## ``=`` expected
+    errQuoteExpected,         ## ``"`` or ``'`` expected
+    errEndOfCommentExpected   ## ``-->`` expected
     errAttributeValueExpected ## non-empty attribute value expected
 
   ParserState = enum
     stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
 
-  XmlParseOption* = enum  ## options for the XML parser
-    reportWhitespace,      ## report whitespace
-    reportComments         ## report comments
-    allowUnquotedAttribs   ## allow unquoted attribute values (for HTML)
-    allowEmptyAttribs      ## allow empty attributes (without explicit value)
+  XmlParseOption* = enum ## options for the XML parser
+    reportWhitespace,    ## report whitespace
+    reportComments       ## report comments
+    allowUnquotedAttribs ## allow unquoted attribute values (for HTML)
+    allowEmptyAttribs    ## allow empty attributes (without explicit value)
 
   XmlParser* = object of BaseLexer ## the parser object.
     a, b, c: string
@@ -399,7 +399,7 @@ proc parseComment(my: var XmlParser) =
   my.bufpos = pos
   my.kind = xmlComment
 
-proc parseWhitespace(my: var XmlParser, skip=false) =
+proc parseWhitespace(my: var XmlParser, skip = false) =
   var pos = my.bufpos
   while true:
     case my.buf[pos]
@@ -562,7 +562,7 @@ proc parseTag(my: var XmlParser) =
     my.kind = xmlCharData
     add(my.a, '<')
     return
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
   if my.buf[my.bufpos] in NameStartChar:
     # an attribute follows:
     my.kind = xmlElementOpen
@@ -588,7 +588,7 @@ proc parseEndTag(my: var XmlParser) =
   my.bufpos = lexbase.handleRefillChar(my, my.bufpos+1)
   #inc(my.bufpos, 2)
   parseName(my, my.a)
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
   if my.buf[my.bufpos] == '>':
     inc(my.bufpos)
   else:
@@ -606,7 +606,7 @@ proc parseAttribute(my: var XmlParser) =
     return
 
   let startPos = my.bufpos
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
   if my.buf[my.bufpos] != '=':
     if allowEmptyAttribs notin my.options or
         (my.buf[my.bufpos] != '>' and my.bufpos == startPos):
@@ -614,7 +614,7 @@ proc parseAttribute(my: var XmlParser) =
     return
 
   inc(my.bufpos)
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
 
   var pos = my.bufpos
   if my.buf[pos] in {'\'', '"'}:
@@ -678,7 +678,7 @@ proc parseAttribute(my: var XmlParser) =
       add(my.b, my.buf[pos])
       inc pos
   my.bufpos = pos
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
 
 proc parseCharData(my: var XmlParser) =
   var pos = my.bufpos
@@ -711,8 +711,9 @@ proc rawGetTok(my: var XmlParser) =
     of '/':
       parseEndTag(my)
     of '!':
-      if my.buf[pos+2] == '[' and my.buf[pos+3] == 'C' and my.buf[pos+4] == 'D' and
-          my.buf[pos+5] == 'A' and my.buf[pos+6] == 'T' and my.buf[pos+7] == 'A' and
+      if my.buf[pos+2] == '[' and my.buf[pos+3] == 'C' and
+          my.buf[pos+4] == 'D' and my.buf[pos+5] == 'A' and
+          my.buf[pos+6] == 'T' and my.buf[pos+7] == 'A' and
           my.buf[pos+8] == '[':
         parseCDATA(my)
       elif my.buf[pos+2] == '-' and my.buf[pos+3] == '-':
@@ -742,7 +743,8 @@ proc getTok(my: var XmlParser) =
     of xmlComment:
       if my.options.contains(reportComments): break
     of xmlWhitespace:
-      if my.options.contains(reportWhitespace) or lastKind in {xmlCharData, xmlComment, xmlEntity}:
+      if my.options.contains(reportWhitespace) or lastKind in {xmlCharData,
+          xmlComment, xmlEntity}:
         break
     else: break
 
