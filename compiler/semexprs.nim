@@ -2038,7 +2038,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldErrorMax = c.config.errorMax
   let oldCompilesId = c.compilesContextId
   # if this is a nested 'when compiles', do not increase the ID so that
-  # generic instantations can still be cached for this level.
+  # generic instantiations can still be cached for this level.
   if c.compilesContextId == 0:
     inc c.compilesContextIdGenerator
     c.compilesContextId = c.compilesContextIdGenerator

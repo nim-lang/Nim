@@ -27,7 +27,7 @@ proc importPureEnumField*(c: PContext; s: PSym) =
     if checkB == nil:
       strTableAdd(c.pureEnumFields, s)
     else:
-      # mark as ambigous:
+      # mark as ambiguous:
       incl(c.ambiguousSymbols, checkB.id)
       incl(c.ambiguousSymbols, s.id)
 

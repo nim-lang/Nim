@@ -198,7 +198,7 @@ proc processTimers(
     dec count
     didSomeWork = true
 
-  # Return the number of miliseconds in which the next timer will expire.
+  # Return the number of milliseconds in which the next timer will expire.
   if p.timers.len == 0: return
 
   let millisecs = (p.timers[0].finishAt - getMonoTime()).inMilliseconds

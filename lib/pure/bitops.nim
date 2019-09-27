@@ -23,7 +23,7 @@
 ## to force predictable behaviour for all input, causing a small performance hit.
 ##
 ## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
-## may return undefined and/or platform dependant value if given invalid input.
+## may return undefined and/or platform dependent value if given invalid input.
 
 proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.

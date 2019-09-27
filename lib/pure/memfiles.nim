@@ -303,7 +303,7 @@ when defined(posix) or defined(nimdoc):
     ## resize and re-map the file underlying an ``allowRemap MemFile``.
     ## **Note**: this assumes the entire file is mapped read-write at offset zero.
     ## Also, the value of ``.mem`` will probably change.
-    ## **Note**: This is not (yet) avaiable on Windows.
+    ## **Note**: This is not (yet) available on Windows.
     when defined(posix):
       if f.handle == -1:
         raise newException(IOError,

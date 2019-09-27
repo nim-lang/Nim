@@ -2,7 +2,7 @@ discard """
 outputsub: ""
 """
 
-# output not testable because repr prints pointer adresses
+# output not testable because repr prints pointer addresses
 # test the new "repr" built-in proc
 
 type

@@ -90,7 +90,7 @@ when true:
     doAssert result.other == node["other"].getBiggestInt()
 
   # TODO: Test object variant with set in of branch.
-  # TODO: Should we support heterogenous arrays?
+  # TODO: Should we support heterogeneous arrays?
 
   # Tests that verify the error messages for invalid data.
   block:

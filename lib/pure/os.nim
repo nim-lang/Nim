@@ -382,7 +382,7 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ## Walks over all parent directories of a given `path`.
   ##
   ## If `fromRoot` is true (default: false), the traversal will start from
-  ## the file system root diretory.
+  ## the file system root directory.
   ## If `inclusive` is true (default), the original argument will be included
   ## in the traversal.
   ##
@@ -781,7 +781,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## **Please do not use this**: On Android, it currently
   ## returns ``getHomeDir()``, and on other Unix based systems it can cause
   ## security problems too. That said, you can override this implementation
-  ## by adding ``-d:tempDir=mytempname`` to your compiler invokation.
+  ## by adding ``-d:tempDir=mytempname`` to your compiler invocation.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -1868,7 +1868,7 @@ type
 proc getCurrentCompilerExe*(): string {.compileTime.} = discard
   ## This is `getAppFilename() <#getAppFilename>`_ at compile time.
   ##
-  ## Can be used to retrive the currently executing
+  ## Can be used to retrieve the currently executing
   ## Nim compiler from a Nim or nimscript program, or the nimble binary
   ## inside a nimble program (likewise with other binaries built from
   ## compiler API).
@@ -2475,7 +2475,7 @@ when defined(nimdoc):
     ##
     ## Unlike `argc`:idx: in C, if your binary was called without parameters this
     ## will return zero.
-    ## You can query each individual paramater with `paramStr proc <#paramStr,int>`_
+    ## You can query each individual parameter with `paramStr proc <#paramStr,int>`_
     ## or retrieve all of them in one go with `commandLineParams proc
     ## <#commandLineParams>`_.
     ##

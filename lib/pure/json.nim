@@ -30,7 +30,7 @@
 ## ``JNull``. You check the kind of this object variant by using the ``kind``
 ## accessor.
 ##
-## For a ``JsonNode`` who's kind is ``JObject``, you can acess its fields using
+## For a ``JsonNode`` who's kind is ``JObject``, you can access its fields using
 ## the ``[]`` operator. The following example shows how to do this:
 ##
 ## .. code-block:: Nim

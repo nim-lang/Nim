@@ -135,7 +135,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
     else:
       addSon(result, default.copyTree)
 
-  # add any generic paramaters
+  # add any generic parameters
   for i in 1 .. genericParams:
     result.addSon n.sons[givenRegularParams + i]
 

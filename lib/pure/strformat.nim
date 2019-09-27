@@ -299,7 +299,7 @@ type
     alternateForm*: bool            ## Whether to prefix binary, octal and hex numbers
                                     ## with ``0b``, ``0o``, ``0x``.
     padWithZero*: bool              ## Whether to pad with zeros rather than spaces.
-    minimumWidth*, precision*: int  ## Desired minium width and precision.
+    minimumWidth*, precision*: int  ## Desired minimum width and precision.
     typ*: char                      ## Type like 'f', 'g' or 'd'.
     endPosition*: int ## End position in the format specifier after
                       ## ``parseStandardFormatSpecifier`` returned.
@@ -617,7 +617,7 @@ when isMainModule:
   check &"{1f:.3f}", "1.000"
   check &"Hello, {s}!", "Hello, string!"
 
-  # Tests for identifers without parenthesis
+  # Tests for identifiers without parenthesis
   check &"{s} works{s}", "string worksstring"
   check &"{s:>7}", " string"
   doAssert(not compiles(&"{s_works}")) # parsed as identifier `s_works`

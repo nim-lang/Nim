@@ -24,7 +24,7 @@ type
 
 echo("")
 
-# NOTE: when entering newlines, adjust `expectedEnd` ouptuts
+# NOTE: when entering newlines, adjust `expectedEnd` outputs
 
 try:
   doAssert(false, "msg1") # doAssert test

@@ -76,13 +76,13 @@ type
     c*: PContext
     typeMap*: ptr LayeredIdTable # map PType to PType
     symMap*: TIdTable         # map PSym to PSym
-    localCache*: TIdTable     # local cache for remembering alraedy replaced
+    localCache*: TIdTable     # local cache for remembering already replaced
                               # types during instantiation of meta types
                               # (they are not stored in the global cache)
     info*: TLineInfo
     allowMetaTypes*: bool     # allow types such as seq[Number]
                               # i.e. the result contains unresolved generics
-    skipTypedesc*: bool       # wether we should skip typeDescs
+    skipTypedesc*: bool       # whether we should skip typeDescs
     isReturnType*: bool
     owner*: PSym              # where this instantiation comes from
     recursionLimit: int
@@ -249,7 +249,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
     return s
 
   # XXX: Bound symbols in default parameter expressions may reach here.
-  # We cannot process them, becase `sym.n` may point to a proc body with
+  # We cannot process them, because `sym.n` may point to a proc body with
   # cyclic references that will lead to an infinite recursion.
   # Perhaps we should not use a black-list here, but a whitelist instead
   # (e.g. skGenericParam and skType).
