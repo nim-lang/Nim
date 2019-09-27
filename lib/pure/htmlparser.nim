@@ -52,7 +52,7 @@
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
 type
-  HtmlTag* = enum ## list of all supported HTML tags; order will always be
+  HtmlTag* = enum  ## list of all supported HTML tags; order will always be
                    ## alphabetically
     tagUnknown,    ## unknown HTML element
     tagA,          ## the HTML ``a`` element
@@ -1945,7 +1945,8 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
         adderr(expected(x, result))
         # this seems to do better match error corrections in browsers:
         while x.kind in {xmlElementEnd, xmlWhitespace}:
-          if x.kind == xmlElementEnd and cmpIgnoreCase(x.elemName, result.tag) == 0:
+          if x.kind == xmlElementEnd and cmpIgnoreCase(x.elemName,
+              result.tag) == 0:
             break
           next(x)
       next(x)
