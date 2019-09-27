@@ -303,7 +303,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                 {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the interator body.
+  ## on demand using []. Returned handle is valid only within the iterator body.
   var
     rowRes: Row = @[]
     sz: TSqlInteger = 0
