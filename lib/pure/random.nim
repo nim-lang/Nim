@@ -78,10 +78,10 @@
 ##   <lib.html#pure-libraries-cryptography-and-hashing>`_
 ##   in the standard library
 
-import algorithm                    #For upperBound
+import algorithm #For upperBound
 
 include "system/inclrtl"
-{.push debugger:off.}
+{.push debugger: off.}
 
 when defined(JS):
   type ui = uint32
@@ -94,18 +94,18 @@ else:
 
 type
   Rand* = object ## State of a random number generator.
-    ##
-    ## Create a new Rand state using the `initRand proc<#initRand,int64>`_.
-    ##
-    ## The module contains a default Rand state for convenience.
-    ## It corresponds to the default random number generator's state.
-    ## The default Rand state always starts with the same values, but the
-    ## `randomize proc<#randomize>`_ can be used to seed the default generator
-    ## with a value based on the current time.
-    ##
-    ## Many procs have two variations: one that takes in a Rand parameter and
-    ## another that uses the default generator. The procs that use the default
-    ## generator are **not** thread-safe!
+                 ##
+                 ## Create a new Rand state using the `initRand proc<#initRand,int64>`_.
+                 ##
+                 ## The module contains a default Rand state for convenience.
+                 ## It corresponds to the default random number generator's state.
+                 ## The default Rand state always starts with the same values, but the
+                 ## `randomize proc<#randomize>`_ can be used to seed the default generator
+                 ## with a value based on the current time.
+                 ##
+                 ## Many procs have two variations: one that takes in a Rand parameter and
+                 ## another that uses the default generator. The procs that use the default
+                 ## generator are **not** thread-safe!
     a0, a1: ui
 
 when defined(JS):
@@ -481,7 +481,7 @@ proc sample*[T](a: openArray[T]): T =
     doAssert sample(marbles) == "red"
   result = a[rand(a.low..a.high)]
 
-proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
+proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from ``a`` using a cumulative distribution function
   ## (CDF) and the given state.
   ##
@@ -509,14 +509,14 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
     doAssert r.sample(marbles, cdf) == "red"
     doAssert r.sample(marbles, cdf) == "green"
     doAssert r.sample(marbles, cdf) == "blue"
-  assert(cdf.len == a.len)              # Two basic sanity checks.
+  assert(cdf.len == a.len) # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
   #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
   #awfully expensive even in debugging modes.
   let u = r.rand(float(cdf[^1]))
   a[cdf.upperBound(U(u))]
 
-proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
+proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from ``a`` using a cumulative distribution function
   ## (CDF).
   ##
