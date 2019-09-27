@@ -40,7 +40,7 @@ proc openDefaultBrowser*(url: string) =
     for b in getEnv("BROWSER").string.split(PathSep):
       try:
         # we use ``startProcess`` here because we don't want to block!
-        discard startProcess(command=b, args=[url], options={poUsePath})
+        discard startProcess(command = b, args = [url], options = {poUsePath})
         return
       except OSError:
         discard

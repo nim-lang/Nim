@@ -32,7 +32,7 @@ import
 
 const
   coreAttr* = " accesskey class contenteditable dir hidden id lang " &
-    "spellcheck style tabindex title translate "  ## HTML DOM Core Attributes
+    "spellcheck style tabindex title translate " ## HTML DOM Core Attributes
   eventAttr* = "onabort onblur oncancel oncanplay oncanplaythrough onchange " &
     "onclick oncuechange ondblclick ondurationchange onemptied onended " &
     "onerror onfocus oninput oninvalid onkeydown onkeypress onkeyup onload " &
@@ -41,7 +41,7 @@ const
     "onpause onplay onplaying onprogress onratechange onreset onresize " &
     "onscroll onseeked onseeking onselect onshow onstalled onsubmit " &
     "onsuspend ontimeupdate ontoggle onvolumechange onwaiting " ## HTML DOM Event Attributes
-  ariaAttr* = " role "  ## HTML DOM Aria Attributes
+  ariaAttr* = " role "                           ## HTML DOM Aria Attributes
   commonAttr* = coreAttr & eventAttr & ariaAttr  ## HTML DOM Common Attributes
 
 proc getIdent(e: NimNode): string {.compileTime.} =
@@ -572,7 +572,7 @@ macro title*(e: varargs[untyped]): untyped =
 
 macro tr*(e: varargs[untyped]): untyped =
   ## generates the HTML ``tr`` element.
-  result = xmlCheckedTag(e, "tr",  commonAttr)
+  result = xmlCheckedTag(e, "tr", commonAttr)
 
 macro track*(e: varargs[untyped]): untyped =
   ## generates the HTML ``track`` element.
@@ -606,7 +606,7 @@ macro wbr*(e: varargs[untyped]): untyped =
 
 runnableExamples:
   let nim = "Nim"
-  assert h1(a(href="http://nim-lang.org", nim)) ==
+  assert h1(a(href = "http://nim-lang.org", nim)) ==
     """<h1><a href="http://nim-lang.org">Nim</a></h1>"""
-  assert form(action="test", `accept-charset` = "Content-Type") ==
+  assert form(action = "test", `accept-charset` = "Content-Type") ==
     """<form action="test" accept-charset="Content-Type"></form>"""

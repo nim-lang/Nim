@@ -127,7 +127,7 @@ proc `$`*(msg: Message): string =
   result.add("\c\L")
   result.add(msg.msgBody)
 
-proc newSmtp*(useSsl = false, debug=false,
+proc newSmtp*(useSsl = false, debug = false,
               sslContext: SSLContext = nil): Smtp =
   ## Creates a new ``Smtp`` instance.
   new result
@@ -142,7 +142,7 @@ proc newSmtp*(useSsl = false, debug=false,
     else:
       {.error: "SMTP module compiled without SSL support".}
 
-proc newAsyncSmtp*(useSsl = false, debug=false,
+proc newAsyncSmtp*(useSsl = false, debug = false,
                    sslContext: SSLContext = nil): AsyncSmtp =
   ## Creates a new ``AsyncSmtp`` instance.
   new result
@@ -256,7 +256,7 @@ when not defined(testing) and isMainModule:
   proc async_test() {.async.} =
     let client = newAsyncSmtp(
       conf["use_tls"].parseBool,
-      debug=true
+      debug = true
     )
     await client.connect(conf["smtphost"], conf["port"].parseInt.Port)
     await client.auth(conf["username"], conf["password"])
@@ -267,7 +267,7 @@ when not defined(testing) and isMainModule:
   proc sync_test() =
     var smtpConn = newSmtp(
       conf["use_tls"].parseBool,
-      debug=true
+      debug = true
     )
     smtpConn.connect(conf["smtphost"], conf["port"].parseInt.Port)
     smtpConn.auth(conf["username"], conf["password"])
