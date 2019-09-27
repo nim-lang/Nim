@@ -50,7 +50,7 @@ type
     headers*: HttpHeaders
     protocol*: tuple[orig: string, major, minor: int]
     url*: Uri
-    hostname*: string ## The hostname of the client that made the request.
+    hostname*: string    ## The hostname of the client that made the request.
     body*: string
 
   AsyncHttpServer* = ref object
@@ -169,7 +169,7 @@ proc processRequest(
   for i in 0..1:
     lineFut.mget().setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine) # TODO: Timeouts.
+    await client.recvLineInto(lineFut, maxLength = maxLine) # TODO: Timeouts.
 
     if lineFut.mget == "":
       client.close()
@@ -214,7 +214,7 @@ proc processRequest(
     i = 0
     lineFut.mget.setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine)
+    await client.recvLineInto(lineFut, maxLength = maxLine)
 
     if lineFut.mget == "":
       client.close(); return false
@@ -242,7 +242,8 @@ proc processRequest(
   # - Check for Content-length header
   if request.headers.hasKey("Content-Length"):
     var contentLength = 0
-    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
+    if parseSaturatedNatural(request.headers["Content-Length"],
+        contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return true
     else:
