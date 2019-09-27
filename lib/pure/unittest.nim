@@ -108,10 +108,10 @@ type
     FAILED,
     SKIPPED
 
-  OutputLevel* = enum  ## The output verbosity of the tests.
-    PRINT_ALL,         ## Print as much as possible.
-    PRINT_FAILURES,    ## Print only the failed tests.
-    PRINT_NONE         ## Print nothing.
+  OutputLevel* = enum ## The output verbosity of the tests.
+    PRINT_ALL,        ## Print as much as possible.
+    PRINT_FAILURES,   ## Print only the failed tests.
+    PRINT_NONE        ## Print nothing.
 
   TestResult* = object
     suiteName*: string
@@ -169,7 +169,8 @@ method suiteStarted*(formatter: OutputFormatter, suiteName: string) {.base, gcsa
   discard
 method testStarted*(formatter: OutputFormatter, testName: string) {.base, gcsafe.} =
   discard
-method failureOccurred*(formatter: OutputFormatter, checkpoints: seq[string], stackTrace: string) {.base, gcsafe.} =
+method failureOccurred*(formatter: OutputFormatter, checkpoints: seq[string],
+    stackTrace: string) {.base, gcsafe.} =
   ## ``stackTrace`` is provided only if the failure occurred due to an exception.
   ## ``checkpoints`` is never ``nil``.
   discard
@@ -182,7 +183,7 @@ proc addOutputFormatter*(formatter: OutputFormatter) =
   formatters.add(formatter)
 
 proc delOutputFormatter*(formatter: OutputFormatter) =
-  keepIf(formatters, proc (x: OutputFormatter) : bool =
+  keepIf(formatters, proc (x: OutputFormatter): bool =
     x != formatter)
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
@@ -197,7 +198,7 @@ proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
     # Reading settings
     # On a terminal this branch is executed
     var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
-    var colorOutput  = isatty(stdout)
+    var colorOutput = isatty(stdout)
     if existsEnv("NIMTEST_COLOR"):
       let colorEnv = getEnv("NIMTEST_COLOR")
       if colorEnv == "never":
@@ -228,7 +229,8 @@ method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
 method testStarted*(formatter: ConsoleOutputFormatter, testName: string) =
   formatter.isInTest = true
 
-method failureOccurred*(formatter: ConsoleOutputFormatter, checkpoints: seq[string], stackTrace: string) =
+method failureOccurred*(formatter: ConsoleOutputFormatter,
+                        checkpoints: seq[string], stackTrace: string) =
   if stackTrace.len > 0:
     echo stackTrace
   let prefix = if formatter.isInSuite: "    " else: ""
@@ -239,16 +241,18 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
   formatter.isInTest = false
 
   if formatter.outputLevel != PRINT_NONE and
-     (formatter.outputLevel == PRINT_ALL or testResult.status == FAILED):
+      (formatter.outputLevel == PRINT_ALL or testResult.status == FAILED):
     let prefix = if testResult.suiteName.len > 0: "  " else: ""
-    template rawPrint() = echo(prefix, "[", $testResult.status, "] ", testResult.testName)
+    template rawPrint() = echo(prefix, "[", $testResult.status, "] ",
+        testResult.testName)
     when not defined(ECMAScript):
       if formatter.colorOutput and not defined(ECMAScript):
         var color = case testResult.status
-                    of OK: fgGreen
-                    of FAILED: fgRed
-                    of SKIPPED: fgYellow
-        styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
+          of OK: fgGreen
+          of FAILED: fgRed
+          of SKIPPED: fgYellow
+        styledEcho styleBright, color, prefix, "[", $testResult.status, "] ",
+            resetStyle, testResult.testName
       else:
         rawPrint()
     else:
@@ -300,7 +304,8 @@ method testStarted*(formatter: JUnitOutputFormatter, testName: string) =
   formatter.testStackTrace.setLen(0)
   formatter.testStartTime = epochTime()
 
-method failureOccurred*(formatter: JUnitOutputFormatter, checkpoints: seq[string], stackTrace: string) =
+method failureOccurred*(formatter: JUnitOutputFormatter,
+                        checkpoints: seq[string], stackTrace: string) =
   ## ``stackTrace`` is provided only if the failure occurred due to an exception.
   ## ``checkpoints`` is never ``nil``.
   formatter.testErrors.add(checkpoints)
@@ -310,7 +315,8 @@ method failureOccurred*(formatter: JUnitOutputFormatter, checkpoints: seq[string
 method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
   let time = epochTime() - formatter.testStartTime
   let timeStr = time.formatFloat(ffDecimal, precision = 8)
-  formatter.stream.writeLine("\t\t<testcase name=\"$#\" time=\"$#\">" % [xmlEscape(testResult.testName), timeStr])
+  formatter.stream.writeLine("\t\t<testcase name=\"$#\" time=\"$#\">" % [
+      xmlEscape(testResult.testName), timeStr])
   case testResult.status
   of OK:
     discard
@@ -327,8 +333,9 @@ method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
     var errs = ""
     if formatter.testErrors.len > 1:
       var startIdx = if formatter.testStackTrace.len > 0: 0 else: 1
-      var endIdx = if formatter.testStackTrace.len > 0: formatter.testErrors.len - 2
-                   else: formatter.testErrors.len - 1
+      var endIdx = if formatter.testStackTrace.len > 0:
+          formatter.testErrors.len - 2
+        else: formatter.testErrors.len - 1
 
       for errIdx in startIdx..endIdx:
         if errs.len > 0:
@@ -336,11 +343,13 @@ method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
         errs.add(xmlEscape(formatter.testErrors[errIdx]))
 
     if formatter.testStackTrace.len > 0:
-      formatter.stream.writeLine("\t\t\t<error message=\"$#\">$#</error>" % [failureMsg, xmlEscape(formatter.testStackTrace)])
+      formatter.stream.writeLine("\t\t\t<error message=\"$#\">$#</error>" % [
+          failureMsg, xmlEscape(formatter.testStackTrace)])
       if errs.len > 0:
         formatter.stream.writeLine("\t\t\t<system-err>$#</system-err>" % errs)
     else:
-      formatter.stream.writeLine("\t\t\t<failure message=\"$#\">$#</failure>" % [failureMsg, errs])
+      formatter.stream.writeLine("\t\t\t<failure message=\"$#\">$#</failure>" %
+          [failureMsg, errs])
 
   formatter.stream.writeLine("\t\t</testcase>")
 
@@ -355,15 +364,16 @@ proc glob(matcher, filter: string): bool =
   if not filter.contains('*'):
     return matcher == filter
 
-  let beforeAndAfter = filter.split('*', maxsplit=1)
+  let beforeAndAfter = filter.split('*', maxsplit = 1)
   if beforeAndAfter.len == 1:
     # "foo*"
     return matcher.startsWith(beforeAndAfter[0])
 
   if matcher.len < filter.len - 1:
-    return false  # "12345" should not match "123*345"
+    return false # "12345" should not match "123*345"
 
-  return matcher.startsWith(beforeAndAfter[0]) and matcher.endsWith(beforeAndAfter[1])
+  return matcher.startsWith(beforeAndAfter[0]) and matcher.endsWith(
+      beforeAndAfter[1])
 
 proc matchFilter(suiteName, testName, filter: string): bool =
   if filter == "":
@@ -371,14 +381,15 @@ proc matchFilter(suiteName, testName, filter: string): bool =
   if testName == filter:
     # corner case for tests containing "::" in their name
     return true
-  let suiteAndTestFilters = filter.split("::", maxsplit=1)
+  let suiteAndTestFilters = filter.split("::", maxsplit = 1)
 
   if suiteAndTestFilters.len == 1:
     # no suite specified
     let testFilter = suiteAndTestFilters[0]
     return glob(testName, testFilter)
 
-  return glob(suiteName, suiteAndTestFilters[0]) and glob(testName, suiteAndTestFilters[1])
+  return glob(suiteName, suiteAndTestFilters[0]) and
+         glob(testName, suiteAndTestFilters[1])
 
 when defined(testing): export matchFilter
 
@@ -626,7 +637,7 @@ macro check*(conditions: untyped): untyped =
           let paramAst = exp[i]
           if exp[i].kind == nnkIdent:
             result.printOuts.add getAst(print(argStr, paramAst))
-          if exp[i].kind in nnkCallKinds + { nnkDotExpr, nnkBracketExpr }:
+          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr}:
             let callVar = newIdentNode(":c" & $counter)
             result.assigns.add getAst(asgn(callVar, paramAst))
             result.check[i] = callVar

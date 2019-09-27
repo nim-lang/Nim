@@ -34,47 +34,47 @@ const
 type
   PegKind* = enum
     pkEmpty,
-    pkAny,              ## any character (.)
-    pkAnyRune,          ## any Unicode character (_)
-    pkNewLine,          ## CR-LF, LF, CR
-    pkLetter,           ## Unicode letter
-    pkLower,            ## Unicode lower case letter
-    pkUpper,            ## Unicode upper case letter
-    pkTitle,            ## Unicode title character
-    pkWhitespace,       ## Unicode whitespace character
+    pkAny,            ## any character (.)
+    pkAnyRune,        ## any Unicode character (_)
+    pkNewLine,        ## CR-LF, LF, CR
+    pkLetter,         ## Unicode letter
+    pkLower,          ## Unicode lower case letter
+    pkUpper,          ## Unicode upper case letter
+    pkTitle,          ## Unicode title character
+    pkWhitespace,     ## Unicode whitespace character
     pkTerminal,
     pkTerminalIgnoreCase,
     pkTerminalIgnoreStyle,
-    pkChar,             ## single character to match
+    pkChar,           ## single character to match
     pkCharChoice,
     pkNonTerminal,
-    pkSequence,         ## a b c ... --> Internal DSL: peg(a, b, c)
-    pkOrderedChoice,    ## a / b / ... --> Internal DSL: a / b or /[a, b, c]
-    pkGreedyRep,        ## a*     --> Internal DSL: *a
-                        ## a+     --> (a a*)
-    pkGreedyRepChar,    ## x* where x is a single character (superop)
-    pkGreedyRepSet,     ## [set]* (superop)
-    pkGreedyAny,        ## .* or _* (superop)
-    pkOption,           ## a?     --> Internal DSL: ?a
-    pkAndPredicate,     ## &a     --> Internal DSL: &a
-    pkNotPredicate,     ## !a     --> Internal DSL: !a
-    pkCapture,          ## {a}    --> Internal DSL: capture(a)
-    pkBackRef,          ## $i     --> Internal DSL: backref(i)
+    pkSequence,       ## a b c ... --> Internal DSL: peg(a, b, c)
+    pkOrderedChoice,  ## a / b / ... --> Internal DSL: a / b or /[a, b, c]
+    pkGreedyRep,      ## a*     --> Internal DSL: *a
+                      ## a+     --> (a a*)
+    pkGreedyRepChar,  ## x* where x is a single character (superop)
+    pkGreedyRepSet,   ## [set]* (superop)
+    pkGreedyAny,      ## .* or _* (superop)
+    pkOption,         ## a?     --> Internal DSL: ?a
+    pkAndPredicate,   ## &a     --> Internal DSL: &a
+    pkNotPredicate,   ## !a     --> Internal DSL: !a
+    pkCapture,        ## {a}    --> Internal DSL: capture(a)
+    pkBackRef,        ## $i     --> Internal DSL: backref(i)
     pkBackRefIgnoreCase,
     pkBackRefIgnoreStyle,
-    pkSearch,           ## @a     --> Internal DSL: !*a
-    pkCapturedSearch,   ## {@} a  --> Internal DSL: !*\a
-    pkRule,             ## a <- b
-    pkList,             ## a, b
-    pkStartAnchor       ## ^      --> Internal DSL: startAnchor()
+    pkSearch,         ## @a     --> Internal DSL: !*a
+    pkCapturedSearch, ## {@} a  --> Internal DSL: !*\a
+    pkRule,           ## a <- b
+    pkList,           ## a, b
+    pkStartAnchor     ## ^      --> Internal DSL: startAnchor()
   NonTerminalFlag* = enum
     ntDeclared, ntUsed
-  NonTerminalObj = object         ## represents a non terminal symbol
-    name: string                  ## the name of the symbol
-    line: int                     ## line the symbol has been declared/used in
-    col: int                      ## column the symbol has been declared/used in
-    flags: set[NonTerminalFlag]   ## the nonterminal's flags
-    rule: Peg                     ## the rule that the symbol refers to
+  NonTerminalObj = object       ## represents a non terminal symbol
+    name: string                ## the name of the symbol
+    line: int                   ## line the symbol has been declared/used in
+    col: int                    ## column the symbol has been declared/used in
+    flags: set[NonTerminalFlag] ## the nonterminal's flags
+    rule: Peg                   ## the rule that the symbol refers to
   Peg* {.shallow.} = object ## type that represents a PEG
     case kind: PegKind
     of pkEmpty..pkWhitespace: nil
@@ -320,7 +320,7 @@ proc backrefIgnoreCase*(index: range[1..MaxSubpatterns]): Peg {.
   result = Peg(kind: pkBackRefIgnoreCase, index: index-1)
 
 proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns]): Peg {.
-  noSideEffect, rtl, extern: "npegs$1".}=
+  noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
   ## from 1. Ignores style for matching.
   result = Peg(kind: pkBackRefIgnoreStyle, index: index-1)
@@ -544,7 +544,7 @@ when not useUnicode:
     inc(i)
   template runeLenAt(s, i): untyped = 1
 
-  proc isAlpha(a: char): bool {.inline.} = return a in {'a'..'z','A'..'Z'}
+  proc isAlpha(a: char): bool {.inline.} = return a in {'a'..'z', 'A'..'Z'}
   proc isUpper(a: char): bool {.inline.} = return a in {'A'..'Z'}
   proc isLower(a: char): bool {.inline.} = return a in {'a'..'z'}
   proc isTitle(a: char): bool {.inline.} = return false
@@ -796,7 +796,8 @@ template matchOrParse(mopProc: untyped) =
     of pkGreedyRepSet:
       enter(pkGreedyRepSet, s, p, start)
       result = 0
-      while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
+      while start+result < s.len and contains(p.charChoice[], s[start+result]):
+        inc(result)
       leave(pkGreedyRepSet, s, p, start, result)
     of pkOption:
       enter(pkOption, s, p, start)
@@ -1278,7 +1279,7 @@ proc parallelReplace*(s: string, subs: varargs[
 
 proc replace*(s: string, sub: Peg, cb: proc(
               match: int, cnt: int, caps: openArray[string]): string): string {.
-              rtl, extern: "npegs$1cb".}=
+              rtl, extern: "npegs$1cb".} =
   ## Replaces `sub` in `s` by the resulting strings from the callback.
   ## The callback proc receives the index of the current match (starting with 0),
   ## the count of captures and an open array with the captures of each match. Examples:
@@ -1381,46 +1382,46 @@ type
     modVerbatim,
     modIgnoreCase,
     modIgnoreStyle
-  TokKind = enum       ## enumeration of all tokens
-    tkInvalid,          ## invalid token
-    tkEof,              ## end of file reached
-    tkAny,              ## .
-    tkAnyRune,          ## _
-    tkIdentifier,       ## abc
-    tkStringLit,        ## "abc" or 'abc'
-    tkCharSet,          ## [^A-Z]
-    tkParLe,            ## '('
-    tkParRi,            ## ')'
-    tkCurlyLe,          ## '{'
-    tkCurlyRi,          ## '}'
-    tkCurlyAt,          ## '{@}'
-    tkArrow,            ## '<-'
-    tkBar,              ## '/'
-    tkStar,             ## '*'
-    tkPlus,             ## '+'
-    tkAmp,              ## '&'
-    tkNot,              ## '!'
-    tkOption,           ## '?'
-    tkAt,               ## '@'
-    tkBuiltin,          ## \identifier
-    tkEscaped,          ## \\
-    tkBackref,          ## '$'
-    tkDollar,           ## '$'
-    tkHat               ## '^'
+  TokKind = enum  ## enumeration of all tokens
+    tkInvalid,    ## invalid token
+    tkEof,        ## end of file reached
+    tkAny,        ## .
+    tkAnyRune,    ## _
+    tkIdentifier, ## abc
+    tkStringLit,  ## "abc" or 'abc'
+    tkCharSet,    ## [^A-Z]
+    tkParLe,      ## '('
+    tkParRi,      ## ')'
+    tkCurlyLe,    ## '{'
+    tkCurlyRi,    ## '}'
+    tkCurlyAt,    ## '{@}'
+    tkArrow,      ## '<-'
+    tkBar,        ## '/'
+    tkStar,       ## '*'
+    tkPlus,       ## '+'
+    tkAmp,        ## '&'
+    tkNot,        ## '!'
+    tkOption,     ## '?'
+    tkAt,         ## '@'
+    tkBuiltin,    ## \identifier
+    tkEscaped,    ## \\
+    tkBackref,    ## '$'
+    tkDollar,     ## '$'
+    tkHat         ## '^'
 
-  Token {.final.} = object  ## a token
-    kind: TokKind           ## the type of the token
+  Token {.final.} = object ## a token
+    kind: TokKind          ## the type of the token
     modifier: Modifier
-    literal: string          ## the parsed (string) literal
-    charset: set[char]       ## if kind == tkCharSet
-    index: int               ## if kind == tkBackref
+    literal: string        ## the parsed (string) literal
+    charset: set[char]     ## if kind == tkCharSet
+    index: int             ## if kind == tkBackref
 
-  PegLexer {.inheritable.} = object          ## the lexer object.
-    bufpos: int               ## the current position within the buffer
-    buf: cstring              ## the buffer itself
-    lineNumber: int           ## the current line number
-    lineStart: int            ## index of last line start in buffer
-    colOffset: int            ## column to add
+  PegLexer {.inheritable.} = object ## the lexer object.
+    bufpos: int                     ## the current position within the buffer
+    buf: cstring                    ## the buffer itself
+    lineNumber: int                 ## the current line number
+    lineStart: int                  ## index of last line start in buffer
+    colOffset: int                  ## column to add
     filename: string
 
 const
@@ -1542,7 +1543,7 @@ proc skip(c: var PegLexer) =
     of '\L':
       pos = handleLF(c, pos)
     else:
-      break                   # EndOfFile also leaves the loop
+      break # EndOfFile also leaves the loop
   c.bufpos = pos
 
 proc getString(c: var PegLexer, tok: var Token) =
@@ -1771,7 +1772,7 @@ proc arrowIsNextTok(c: PegLexer): bool =
 
 type
   EInvalidPeg* = object of ValueError ## raised if an invalid
-                                         ## PEG has been detected
+                                      ## PEG has been detected
   PegParser = object of PegLexer ## the PEG parser object
     tok: Token
     nonterms: seq[NonTerminal]
@@ -1825,7 +1826,7 @@ proc builtin(p: var PegParser): Peg =
   of "s": result = charSet({' ', '\9'..'\13'})
   of "S": result = charSet({'\1'..'\xff'} - {' ', '\9'..'\13'})
   of "w": result = charSet({'a'..'z', 'A'..'Z', '_', '0'..'9'})
-  of "W": result = charSet({'\1'..'\xff'} - {'a'..'z','A'..'Z','_','0'..'9'})
+  of "W": result = charSet({'\1'..'\xff'} - {'a'..'z', 'A'..'Z', '_', '0'..'9'})
   of "a": result = charSet({'a'..'z', 'A'..'Z'})
   of "A": result = charSet({'\1'..'\xff'} - {'a'..'z', 'A'..'Z'})
   of "ident": result = pegs.ident
@@ -2167,8 +2168,8 @@ when isMainModule:
       else: ""
 
   assert("Var1=key1;var2=Key2;   VAR3".
-         replace(peg"{\ident}('='{\ident})* ';'* \s*",
-         handleMatches)=="var1: 'key1', var2: 'Key2', var3: ''")
+    replace(peg"{\ident}('='{\ident})* ';'* \s*",
+    handleMatches) == "var1: 'key1', var2: 'Key2', var3: ''")
 
 
   doAssert "test1".match(peg"""{@}$""")

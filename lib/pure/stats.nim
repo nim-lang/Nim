@@ -48,22 +48,22 @@
 
 from math import FloatClass, sqrt, pow, round
 
-{.push debugger:off .} # the user does not want to trace a part
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
-{.push checks:off, line_dir:off, stack_trace:off.}
+{.push checks: off, line_dir: off, stack_trace: off.}
 
 type
-  RunningStat* = object             ## an accumulator for statistical data
-    n*: int                         ## number of pushed data
-    min*, max*, sum*: float         ## self-explaining
-    mom1, mom2, mom3, mom4: float   ## statistical moments, mom1 is mean
+  RunningStat* = object           ## an accumulator for statistical data
+    n*: int                       ## number of pushed data
+    min*, max*, sum*: float       ## self-explaining
+    mom1, mom2, mom3, mom4: float ## statistical moments, mom1 is mean
 
 
-  RunningRegress* = object  ## an accumulator for regression calculations
-    n*: int                 ## number of pushed data
-    x_stats*: RunningStat   ## stats for first set of data
-    y_stats*: RunningStat   ## stats for second set of data
-    s_xy: float             ## accumulated data for combined xy
+  RunningRegress* = object ## an accumulator for regression calculations
+    n*: int                ## number of pushed data
+    x_stats*: RunningStat  ## stats for first set of data
+    y_stats*: RunningStat  ## stats for second set of data
+    s_xy: float            ## accumulated data for combined xy
 
 # ----------- RunningStat --------------------------
 proc clear*(s: var RunningStat) =
@@ -264,7 +264,7 @@ proc clear*(r: var RunningRegress) =
 
 proc push*(r: var RunningRegress, x, y: float) =
   ## pushes two values `x` and `y` for processing
-  r.s_xy += (r.x_stats.mean() - x)*(r.y_stats.mean() - y)*
+  r.s_xy += (r.x_stats.mean() - x)*(r.y_stats.mean() - y) *
                 toFloat(r.n) / toFloat(r.n + 1)
   r.x_stats.push(x)
   r.y_stats.push(y)
@@ -296,7 +296,7 @@ proc correlation*(r: RunningRegress): float =
   ## computes the current correlation of the two data
   ## sets pushed into `r`
   let t = r.x_stats.standardDeviation() * r.y_stats.standardDeviation()
-  result = r.s_xy / ( toFloat(r.n) * t )
+  result = r.s_xy / (toFloat(r.n) * t)
 
 proc `+`*(a, b: RunningRegress): RunningRegress =
   ## combine two `RunningRegress` objects.
@@ -354,13 +354,13 @@ when isMainModule:
   when not defined(cpu32):
     # XXX For some reason on 32bit CPUs these results differ
     var rr: RunningRegress
-    rr.push(@[0.0,1.0,2.8,3.0,4.0], @[0.0,1.0,2.3,3.0,4.0])
+    rr.push(@[0.0, 1.0, 2.8, 3.0, 4.0], @[0.0, 1.0, 2.3, 3.0, 4.0])
     doAssert(rr.slope() == 0.9695585996955861)
     doAssert(rr.intercept() == -0.03424657534246611)
     doAssert(rr.correlation() == 0.9905100362239381)
     var rr1, rr2: RunningRegress
-    rr1.push(@[0.0,1.0], @[0.0,1.0])
-    rr2.push(@[2.8,3.0,4.0], @[2.3,3.0,4.0])
+    rr1.push(@[0.0, 1.0], @[0.0, 1.0])
+    rr2.push(@[2.8, 3.0, 4.0], @[2.3, 3.0, 4.0])
     let rr3 = rr1 + rr2
     doAssert(rr3.correlation() == rr.correlation())
     doAssert(clean(rr3.slope()) == clean(rr.slope()))
