@@ -163,7 +163,8 @@ proc processBody(node, retFutureSym: NimNode,
       if node[1][0].eqIdent("await"):
         # x = await y
         var newAsgn = node
-        result.createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1], newAsgn, node)
+        result.createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1],
+            newAsgn, node)
     else: discard
   of nnkDiscardStmt:
     # discard await x
@@ -212,8 +213,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
   ## The ``async`` macro supports a stmtList holding multiple async procedures.
   if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
-      error("Cannot transform this node kind into an async proc." &
-            " proc/method definition or lambda node expected.")
+    error("Cannot transform this node kind into an async proc." &
+          " proc/method definition or lambda node expected.")
 
   let prcName = prc.name.getName
 
@@ -296,11 +297,12 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
     var closureIterator = newProc(iteratorNameSym, [parseExpr("owned(FutureBase)")],
                                   procBody, nnkIteratorDef)
-    closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom=prc.body)
+    closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom = prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
 
     # If proc has an explicit gcsafe pragma, we add it to iterator as well.
-    if prc.pragma.findChild(it.kind in {nnkSym, nnkIdent} and $it == "gcsafe") != nil:
+    if prc.pragma.findChild(it.kind in {nnkSym, nnkIdent} and $it ==
+        "gcsafe") != nil:
       closureIterator.addPragma(newIdentNode("gcsafe"))
     outerProcBody.add(closureIterator)
 
@@ -414,20 +416,20 @@ proc splitProc(prc: NimNode): (NimNode, NimNode) =
   result[0] = prc.copyNimTree()
   # Retrieve the `T` inside `Future[T]`.
   let returnType = stripReturnType(result[0][3][0])
-  result[0][3][0] = splitParamType(returnType, async=false)
+  result[0][3][0] = splitParamType(returnType, async = false)
   for i in 1 ..< result[0][3].len:
     # Sync proc (0) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
-    result[0][3][i][1] = splitParamType(result[0][3][i][1], async=false)
+    result[0][3][i][1] = splitParamType(result[0][3][i][1], async = false)
   result[0][6] = stripAwait(result[0][6])
 
   result[1] = prc.copyNimTree()
   if result[1][3][0].kind == nnkBracketExpr:
-    result[1][3][0][1] = splitParamType(result[1][3][0][1], async=true)
+    result[1][3][0][1] = splitParamType(result[1][3][0][1], async = true)
   for i in 1 ..< result[1][3].len:
     # Async proc (1) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
-    result[1][3][i][1] = splitParamType(result[1][3][i][1], async=true)
+    result[1][3][i][1] = splitParamType(result[1][3][i][1], async = true)
 
 macro multisync*(prc: untyped): untyped =
   ## Macro which processes async procedures into both asynchronous and

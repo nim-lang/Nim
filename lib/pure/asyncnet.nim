@@ -114,11 +114,11 @@ type
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc = object
     fd: SocketHandle
-    closed: bool ## determines whether this socket has been closed
+    closed: bool     ## determines whether this socket has been closed
     isBuffered: bool ## determines whether this socket is buffered.
     buffer: array[0..BufferSize, char]
-    currPos: int # current index in buffer
-    bufLen: int # current length of buffer
+    currPos: int     # current index in buffer
+    bufLen: int      # current length of buffer
     isSsl: bool
     when defineSsl:
       sslHandle: SslPtr
@@ -603,7 +603,8 @@ proc recvLine*(socket: AsyncSocket,
   await socket.recvLineInto(resString, flags, maxLength)
   result = resString.mget()
 
-proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
+proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [
+    ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
@@ -620,7 +621,7 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
   if realaddr == "":
     case socket.domain
     of AF_INET6: realaddr = "::"
-    of AF_INET:  realaddr = "0.0.0.0"
+    of AF_INET: realaddr = "0.0.0.0"
     else:
       raise newException(ValueError,
         "Unknown socket address family and no address specified to bindAddr")
@@ -653,7 +654,7 @@ when defined(posix):
 
       var socketAddr = makeUnixAddr(path)
       let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                       (sizeof(socketAddr.sun_family) + path.len).SockLen)
+                        (sizeof(socketAddr.sun_family) + path.len).SockLen)
       if ret == 0:
         # Request to connect completed immediately.
         retFuture.complete()
@@ -671,7 +672,7 @@ when defined(posix):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 elif defined(nimdoc):
