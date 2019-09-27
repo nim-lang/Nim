@@ -64,7 +64,7 @@
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 import nativesockets, os, strutils, parseutils, times, sets, options,
   std/monotimes
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
@@ -116,12 +116,12 @@ const
   MaxLineLength* = 1_000_000
 
 type
-  SocketImpl* = object ## socket type
+  SocketImpl* = object     ## socket type
     fd: SocketHandle
-    isBuffered: bool # determines whether this socket is buffered.
+    isBuffered: bool       # determines whether this socket is buffered.
     buffer: array[0..BufferSize, char]
-    currPos: int # current index in buffer
-    bufLen: int # current length of buffer
+    currPos: int           # current index in buffer
+    bufLen: int            # current length of buffer
     when defineSsl:
       isSsl: bool
       sslHandle: SSLPtr
@@ -154,17 +154,17 @@ when defined(nimHasStyleChecks):
 
 type
   IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
-    IPv6, ## IPv6 address
-    IPv4  ## IPv4 address
+    IPv6,                          ## IPv6 address
+    IPv4                           ## IPv4 address
 
-  IpAddress* = object ## stores an arbitrary IP address
-    case family*: IpAddressFamily ## the type of the IP address (IPv4 or IPv6)
+  IpAddress* = object                  ## stores an arbitrary IP address
+    case family*: IpAddressFamily      ## the type of the IP address (IPv4 or IPv6)
     of IpAddressFamily.IPv6:
       address_v6*: array[0..15, uint8] ## Contains the IP address in bytes in
                                        ## case of IPv6
     of IpAddressFamily.IPv4:
-      address_v4*: array[0..3, uint8] ## Contains the IP address in bytes in
-                                      ## case of IPv4
+      address_v4*: array[0..3, uint8]  ## Contains the IP address in bytes in
+                                       ## case of IPv4
 when defined(nimHasStyleChecks):
   {.pop.}
 
@@ -234,7 +234,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
   ## Raises ValueError on errors
   var
     byteCount = 0
-    currentByte:uint16 = 0
+    currentByte: uint16 = 0
     separatorValid = false
 
   result = IpAddress(family: IpAddressFamily.IPv4)
@@ -273,14 +273,14 @@ proc parseIPv6Address(addressStr: string): IpAddress =
   var
     groupCount = 0
     currentGroupStart = 0
-    currentShort:uint32 = 0
+    currentShort: uint32 = 0
     separatorValid = true
     dualColonGroup = -1
     lastWasColon = false
     v4StartPos = -1
     byteCount = 0
 
-  for i,c in addressStr:
+  for i, c in addressStr:
     if c == ':':
       if not separatorValid:
         raise newException(ValueError,
@@ -343,7 +343,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
       result.address_v6[groupCount*2+1] = cast[uint8](currentShort and 0xFF)
       groupCount.inc()
   else: # Must parse IPv4 address
-    for i,c in addressStr[v4StartPos..high(addressStr)]:
+    for i, c in addressStr[v4StartPos..high(addressStr)]:
       if c in strutils.Digits: # Character is a number
         currentShort = currentShort * 10 + cast[uint32](ord(c) - ord('0'))
         if currentShort > 255'u32:
@@ -497,7 +497,8 @@ when defineSsl:
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
   proc loadCertificates(ctx: SSL_CTX, certFile, keyFile: string) =
     if certFile != "" and not existsFile(certFile):
-      raise newException(system.IOError, "Certificate file could not be found: " & certFile)
+      raise newException(system.IOError,
+          "Certificate file could not be found: " & certFile)
     if keyFile != "" and not existsFile(keyFile):
       raise newException(system.IOError, "Key file could not be found: " & keyFile)
 
@@ -516,7 +517,7 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = "", cipherList = "ALL"): SSLContext =
+      certFile = "", keyFile = "", cipherList = "ALL"): SSLContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
@@ -586,8 +587,9 @@ when defineSsl:
   proc clientGetPskFunc*(ctx: SSLContext): SslClientGetPskFunc =
     return ctx.getExtraInternal().clientGetPskFunc
 
-  proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr cuchar;
-    max_psk_len: cuint): cuint {.cdecl.} =
+  proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
+      max_identity_len: cuint; psk: ptr cuchar;
+      max_psk_len: cuint): cuint {.cdecl.} =
     let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: "" else: $hint
     let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
@@ -613,7 +615,8 @@ when defineSsl:
   proc serverGetPskFunc*(ctx: SSLContext): SslServerGetPskFunc =
     return ctx.getExtraInternal().serverGetPskFunc
 
-  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar; max_psk_len: cint): cuint {.cdecl.} =
+  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
+      max_psk_len: cint): cuint {.cdecl.} =
     let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
     let pskString = (ctx.serverGetPskFunc)($identity)
     if psk.len.cint > max_psk_len:
@@ -765,7 +768,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   if realaddr == "":
     case socket.domain
     of AF_INET6: realaddr = "::"
-    of AF_INET:  realaddr = "0.0.0.0"
+    of AF_INET: realaddr = "0.0.0.0"
     else:
       raise newException(ValueError,
         "Unknown socket address family and no address specified to bindAddr")
@@ -940,8 +943,8 @@ proc getPeerAddr*(socket: Socket): (string, Port) =
   ## This is high-level interface for `getpeername`:idx:.
   getPeerAddr(socket.fd, socket.domain)
 
-proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {.
-  tags: [WriteIOEffect].} =
+proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
+    level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
   ## Sets option ``opt`` to a boolean value specified by ``value``.
   ##
   ## .. code-block:: Nim
@@ -959,7 +962,7 @@ when defined(posix) or defined(nimdoc):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                           (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
   proc bindUnix*(socket: Socket, path: string) =
@@ -968,7 +971,7 @@ when defined(posix) or defined(nimdoc):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 when defined(ssl):
@@ -1038,7 +1041,8 @@ template retRead(flags, readBytes: int) {.dirty.} =
     else:
       return res
 
-proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [ReadIOEffect].} =
+proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
+    ReadIOEffect].} =
   ## Receives data from a socket.
   ##
   ## **Note**: This is a low-level function, you may be interested in the higher
@@ -1093,7 +1097,8 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
   result = 1
   if size <= 0: assert false
   if timeout == -1: return size
-  if socket.isBuffered and socket.bufLen != 0 and socket.bufLen != socket.currPos:
+  if socket.isBuffered and socket.bufLen != 0 and
+      socket.bufLen != socket.currPos:
     result = socket.bufLen - socket.currPos
     result = min(result, size)
   else:
@@ -1499,7 +1504,7 @@ proc `$`*(address: IpAddress): string =
     else: # Print address
       var printedLastGroup = false
       for i in 0..7:
-        var word:uint16 = (cast[uint16](address.address_v6[i*2])) shl 8
+        var word: uint16 = (cast[uint16](address.address_v6[i*2])) shl 8
         word = word or cast[uint16](address.address_v6[i*2+1])
 
         if biggestZeroCount != 0 and # Check if group is in skip group
