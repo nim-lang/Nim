@@ -325,7 +325,8 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   var idx = genSym(nskVar, "idx")
   var res = genSym(nskVar, "res")
   let inp = genSym(nskLet, "inp")
-  result = newTree(nnkStmtListExpr, newLetStmt(inp, input), newVarStmt(idx, newLit 0), newVarStmt(res, newLit false))
+  result = newTree(nnkStmtListExpr, newLetStmt(inp, input),
+                   newVarStmt(idx, newLit 0), newVarStmt(res, newLit false))
   var conds = newTree(nnkStmtList)
   var fullMatch = false
   while p < pattern.len:
@@ -334,7 +335,8 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       case pattern[p]
       of '$':
         var resLen = genSym(nskLet, "resLen")
-        conds.add newLetStmt(resLen, newCall(bindSym"skip", inp, newLit($pattern[p]), idx))
+        conds.add newLetStmt(resLen, newCall(bindSym"skip", inp,
+                                             newLit($pattern[p]), idx))
         conds.add resLen.notZero
         conds.add resLen
       of 'w':
@@ -374,7 +376,8 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           matchError
         inc i
       of 's':
-        conds.add newCall(bindSym"inc", idx, newCall(bindSym"skipWhitespace", inp, idx))
+        conds.add newCall(bindSym"inc", idx,
+                          newCall(bindSym"skipWhitespace", inp, idx))
         conds.add newEmptyNode()
         conds.add newEmptyNode()
       of '.':
@@ -385,13 +388,14 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       of '*', '+':
         if i < results.len and getType(results[i]).typeKind == ntyString:
           var min = ord(pattern[p] == '+')
-          var q=p+1
+          var q = p+1
           var token = ""
           while q < pattern.len and pattern[q] != '$':
             token.add pattern[q]
             inc q
           var resLen = genSym(nskLet, "resLen")
-          conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", inp, results[i], newLit(token), idx))
+          conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", inp,
+              results[i], newLit(token), idx))
           conds.add newCall(bindSym"!=", resLen, newLit min)
           conds.add resLen
         else:
@@ -563,8 +567,8 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
         if a.cond.kind == nnkEmpty or b.cond.kind == nnkEmpty:
           error("'|' operator applied to a non-condition")
         else:
-          result = (newStmtList(a.init,
-                newIfStmt((a.cond, a.action), (newTree(nnkStmtListExpr, b.init, b.cond), b.action))),
+          result = (newStmtList(a.init, newIfStmt((a.cond, a.action),
+                (newTree(nnkStmtListExpr, b.init, b.cond), b.action))),
               newEmptyNode(), newEmptyNode())
       elif it.kind == nnkInfix and it[0].eqIdent"^*":
         # a ^* b  is rewritten to:  (a *(b a))?
@@ -582,18 +586,22 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
       else:
         var resLen = genSym(nskLet, "resLen")
         result = (newLetStmt(resLen, placeholder(it, input, idx)),
-                  newCall(interf"success", resLen), !!newCall(interf"nxt", input, idx, resLen))
+                  newCall(interf"success", resLen),
+                  !!newCall(interf"nxt", input, idx, resLen))
     of nnkStrLit..nnkTripleStrLit:
       var resLen = genSym(nskLet, "resLen")
       result = (newLetStmt(resLen, newCall(interf"skip", input, it, idx)),
-                newCall(interf"success", resLen), !!newCall(interf"nxt", input, idx, resLen))
+                newCall(interf"success", resLen),
+                !!newCall(interf"nxt", input, idx, resLen))
     of nnkCurly, nnkAccQuoted, nnkCharLit:
-      result = (newEmptyNode(), newCall(interf"atom", input, idx, it), !!newCall(interf"nxt", input, idx))
+      result = (newEmptyNode(), newCall(interf"atom", input, idx, it),
+                !!newCall(interf"nxt", input, idx))
     of nnkCurlyExpr:
       if it.len == 3 and it[1].kind == nnkIntLit and it[2].kind == nnkIntLit:
         var h = newTree(nnkTupleConstr, it[0])
         for count in 2i64 .. it[1].intVal: h.add(it[0])
-        for count in it[1].intVal .. it[2].intVal-1: h.add(newTree(nnkPrefix, ident"?", it[0]))
+        for count in it[1].intVal .. it[2].intVal-1:
+          h.add(newTree(nnkPrefix, ident"?", it[0]))
         result = atm(h, input, idx, attached)
       elif it.len == 2 and it[1].kind == nnkIntLit:
         var h = newTree(nnkTupleConstr, it[0])
@@ -617,7 +625,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
   #var idx = genSym(nskVar, "idx")
   var res = genSym(nskVar, "res")
   result = newTree(nnkStmtListExpr, #newVarStmt(idx, newCall(interf"prepare", input)),
-                                    newVarStmt(res, newLit false))
+    newVarStmt(res, newLit false))
   var conds: seq[StmtTriple] = @[]
   for it in pattern:
     conds.add atm(it, input, idx, nil)
@@ -635,7 +643,7 @@ when isMainModule:
     else:
       result = 0
 
-  proc someSep(input: string; start: int; seps: set[char] = {';',',','-','.'}): int =
+  proc someSep(input: string; start: int; seps: set[char] = {';', ',', '-', '.'}): int =
     result = 0
     while start+result < input.len and input[start+result] in seps: inc result
 
@@ -660,7 +668,7 @@ when isMainModule:
       var info = ""
       if scanp(resp, idx, *`whites`, '#', *`digits`, +`whites`, ?("0x", *`hexdigits`, " in "),
                demangle($input, prc, $index), *`whites`, '(', * ~ ')', ')',
-                *`whites`, "at ", +(~{'\C', '\L'} -> info.add($_)) ):
+                *`whites`, "at ", +(~{'\C', '\L'} -> info.add($_))):
         result.add prc & " " & info
       else:
         break
@@ -689,21 +697,25 @@ when isMainModule:
   let xx2 = scanf("$1234", "$$$i", intval)
   doAssert xx2
 
-  let yy = scanf(";.--Breakpoint00 [output]", "$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.", intVal, key)
+  let yy = scanf(";.--Breakpoint00 [output]",
+      "$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.",
+      intVal, key)
   doAssert yy
   doAssert key == "output"
   doAssert intVal == 13
 
   var ident = ""
   var idx = 0
-  let zz = scanp("foobar x x  x   xWZ", idx, +{'a'..'z'} -> add(ident, $_), *(*{' ', '\t'}, "x"), ~'U', "Z")
+  let zz = scanp("foobar x x  x   xWZ", idx, +{'a'..'z'} -> add(ident, $_), *(*{
+      ' ', '\t'}, "x"), ~'U', "Z")
   doAssert zz
   doAssert ident == "foobar"
 
   const digits = {'0'..'9'}
   var year = 0
   var idx2 = 0
-  if scanp("201655-8-9", idx2, `digits`{4,6} -> (year = year * 10 + ord($_) - ord('0')), "-8", "-9"):
+  if scanp("201655-8-9", idx2, `digits`{4, 6} -> (year = year * 10 + ord($_) -
+      ord('0')), "-8", "-9"):
     doAssert year == 201655
 
   const gdbOut = """
