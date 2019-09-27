@@ -499,7 +499,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     rememberSplit(splitComma)
     wrSpace em
   of openPars:
-    if tok.strongSpaceA > 0 and not em.endsInWhite and not em.wasExportMarker:
+    if tok.strongSpaceA > 0 and not em.endsInWhite and
+        (not em.wasExportMarker or tok.tokType == tkCurlyDotLe):
       wrSpace em
     wr(em, TokTypeToStr[tok.tokType], ltSomeParLe)
     rememberSplit(splitParLe)
