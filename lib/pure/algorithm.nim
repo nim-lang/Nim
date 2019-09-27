@@ -172,8 +172,8 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
   ## ``cmp`` is the comparator function to use, the expected return values are
   ## the same as that of system.cmp.
   runnableExamples:
-    assert binarySearch(["a","b","c","d"], "d", system.cmp[string]) == 3
-    assert binarySearch(["a","b","d","c"], "d", system.cmp[string]) == 2
+    assert binarySearch(["a", "b", "c", "d"], "d", system.cmp[string]) == 3
+    assert binarySearch(["a", "b", "d", "c"], "d", system.cmp[string]) == 2
   if a.len == 0:
     return -1
 
@@ -228,7 +228,8 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated:
 const
   onlySafeCode = true
 
-proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
+proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
+    closure.}): int =
   ## Returns a position to the first element in the ``a`` that is greater than
   ## ``key``, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -244,12 +245,12 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
   runnableExamples:
-    var arr = @[1,2,3,5,6,7,8,9]
+    var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
     assert arr.lowerBound(3, system.cmp[int]) == 2
     assert arr.lowerBound(4, system.cmp[int]) == 3
     assert arr.lowerBound(5, system.cmp[int]) == 3
     arr.insert(4, arr.lowerBound(4, system.cmp[int]))
-    assert arr == [1,2,3,4,5,6,7,8,9]
+    assert arr == [1, 2, 3, 4, 5, 6, 7, 8, 9]
   result = a.low
   var count = a.high - a.low + 1
   var step, pos: int
@@ -275,7 +276,8 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
 
-proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
+proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
+    closure.}): int =
   ## Returns a position to the first element in the ``a`` that is not less
   ## (i.e. greater or equal to) than ``key``, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -291,12 +293,12 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
   ## * `lowerBound proc<#lowerBound,openArray[T],T>`_
   runnableExamples:
-    var arr = @[1,2,3,5,6,7,8,9]
+    var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
     assert arr.upperBound(2, system.cmp[int]) == 2
     assert arr.upperBound(3, system.cmp[int]) == 3
     assert arr.upperBound(4, system.cmp[int]) == 3
     arr.insert(4, arr.upperBound(3, system.cmp[int]))
-    assert arr == [1,2,3,4,5,6,7,8,9]
+    assert arr == [1, 2, 3, 4, 5, 6, 7, 8, 9]
   result = a.low
   var count = a.high - a.low + 1
   var step, pos: int
@@ -422,7 +424,8 @@ func sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
-proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a, system.cmp[T], order)
+proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a,
+    system.cmp[T], order)
   ## Shortcut version of ``sort`` that uses ``system.cmp[T]`` as the comparison function.
   ##
   ## **See also:**
@@ -492,11 +495,13 @@ template sortedByIt*(seq1, op: untyped): untyped =
       p2: Person = (name: "p2", age: 20)
       p3: Person = (name: "p3", age: 30)
       p4: Person = (name: "p4", age: 30)
-      people = @[p1,p2,p4,p3]
+      people = @[p1, p2, p4, p3]
 
-    assert people.sortedByIt(it.name) == @[(name: "p1", age: 60), (name: "p2", age: 20), (name: "p3", age: 30), (name: "p4", age: 30)]
+    assert people.sortedByIt(it.name) == @[(name: "p1", age: 60), (name: "p2",
+        age: 20), (name: "p3", age: 30), (name: "p4", age: 30)]
     # Nested sort
-    assert people.sortedByIt((it.age, it.name)) == @[(name: "p2", age: 20), (name: "p3", age: 30), (name: "p4", age: 30), (name: "p1", age: 60)]
+    assert people.sortedByIt((it.age, it.name)) == @[(name: "p2", age: 20),
+       (name: "p3", age: 30), (name: "p4", age: 30), (name: "p1", age: 60)]
   var result = sorted(seq1, proc(x, y: type(seq1[0])): int =
     var it {.inject.} = x
     let a = op
@@ -529,7 +534,7 @@ func isSorted*[T](a: openArray[T],
     assert isSorted(e) == false
   result = true
   for i in 0..<len(a)-1:
-    if cmp(a[i],a[i+1]) * order > 0:
+    if cmp(a[i], a[i+1]) * order > 0:
       return false
 
 proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
@@ -665,19 +670,19 @@ proc prevPermutation*[T](x: var openArray[T]): bool {.discardable.} =
 
 when isMainModule:
   # Tests for lowerBound
-  var arr = @[1,2,3,5,6,7,8,9]
+  var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
   assert arr.lowerBound(0) == 0
   assert arr.lowerBound(4) == 3
   assert arr.lowerBound(5) == 3
   assert arr.lowerBound(10) == 8
-  arr = @[1,5,10]
+  arr = @[1, 5, 10]
   assert arr.lowerBound(4) == 1
   assert arr.lowerBound(5) == 1
   assert arr.lowerBound(6) == 2
   # Tests for isSorted
-  var srt1 = [1,2,3,4,4,4,4,5]
-  var srt2 = ["iello","hello"]
-  var srt3 = [1.0,1.0,1.0]
+  var srt1 = [1, 2, 3, 4, 4, 4, 4, 5]
+  var srt2 = ["iello", "hello"]
+  var srt3 = [1.0, 1.0, 1.0]
   var srt4: seq[int]
   assert srt1.isSorted(cmp) == true
   assert srt2.isSorted(cmp) == false
@@ -686,8 +691,8 @@ when isMainModule:
   var srtseq = newSeq[int]()
   assert srtseq.isSorted(cmp) == true
   # Tests for reversed
-  var arr1 = @[0,1,2,3,4]
-  assert arr1.reversed() == @[4,3,2,1,0]
+  var arr1 = @[0, 1, 2, 3, 4]
+  assert arr1.reversed() == @[4, 3, 2, 1, 0]
   for i in 0 .. high(arr1):
     assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
@@ -745,7 +750,8 @@ proc rotatedInternal[T](arg: openArray[T]; first, middle, last: int): seq[T] =
   for i in last ..< arg.len:
     result[i] = arg[i]
 
-proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int]; dist: int): int {.discardable.} =
+proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
+    dist: int): int {.discardable.} =
   ## Performs a left rotation on a range of elements. If you want to rotate
   ## right, use a negative ``dist``. Specifically, ``rotateLeft`` rotates
   ## the elements at ``slice`` by ``dist`` positions.
@@ -801,7 +807,8 @@ proc rotateLeft*[T](arg: var openArray[T]; dist: int): int {.discardable.} =
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotateInternal(0, distLeft, arglen)
 
-proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int], dist: int): seq[T] =
+proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
+    dist: int): seq[T] =
   ## Same as ``rotateLeft``, just with the difference that it does
   ## not modify the argument. It creates a new ``seq`` instead.
   ##
@@ -858,7 +865,7 @@ when isMainModule:
   doAssert list == expected
   doAssert list2 == @expected
 
-  var s0,s1,s2,s3,s4,s5 = "xxxabcdefgxxx"
+  var s0, s1, s2, s3, s4, s5 = "xxxabcdefgxxx"
 
   doAssert s0.rotateLeft(3 ..< 10, 3) == 7
   doAssert s0 == "xxxdefgabcxxx"
@@ -876,20 +883,22 @@ when isMainModule:
   block product:
     doAssert product(newSeq[seq[int]]()) == newSeq[seq[int]](), "empty input"
     doAssert product(@[newSeq[int](), @[], @[]]) == newSeq[seq[int]](), "bit more empty input"
-    doAssert product(@[@[1,2]]) == @[@[1,2]], "a simple case of one element"
-    doAssert product(@[@[1,2], @[3,4]]) == @[@[2,4],@[1,4],@[2,3],@[1,3]], "two elements"
-    doAssert product(@[@[1,2], @[3,4], @[5,6]]) == @[@[2,4,6],@[1,4,6],@[2,3,6],@[1,3,6], @[2,4,5],@[1,4,5],@[2,3,5],@[1,3,5]], "three elements"
-    doAssert product(@[@[1,2], @[]]) == newSeq[seq[int]](), "two elements, but one empty"
+    doAssert product(@[@[1, 2]]) == @[@[1, 2]], "a simple case of one element"
+    doAssert product(@[@[1, 2], @[3, 4]]) == @[@[2, 4], @[1, 4], @[2, 3], @[1,
+        3]], "two elements"
+    doAssert product(@[@[1, 2], @[3, 4], @[5, 6]]) == @[@[2, 4, 6], @[1, 4, 6],
+        @[2, 3, 6], @[1, 3, 6], @[2, 4, 5], @[1, 4, 5], @[2, 3, 5], @[1, 3, 5]], "three elements"
+    doAssert product(@[@[1, 2], @[]]) == newSeq[seq[int]](), "two elements, but one empty"
 
   block lowerBound:
-    doAssert lowerBound([1,2,4], 3, system.cmp[int]) == 2
-    doAssert lowerBound([1,2,2,3], 4, system.cmp[int]) == 4
-    doAssert lowerBound([1,2,3,10], 11) == 4
+    doAssert lowerBound([1, 2, 4], 3, system.cmp[int]) == 2
+    doAssert lowerBound([1, 2, 2, 3], 4, system.cmp[int]) == 4
+    doAssert lowerBound([1, 2, 3, 10], 11) == 4
 
   block upperBound:
-    doAssert upperBound([1,2,4], 3, system.cmp[int]) == 2
-    doAssert upperBound([1,2,2,3], 3, system.cmp[int]) == 4
-    doAssert upperBound([1,2,3,5], 3) == 3
+    doAssert upperBound([1, 2, 4], 3, system.cmp[int]) == 2
+    doAssert upperBound([1, 2, 2, 3], 3, system.cmp[int]) == 4
+    doAssert upperBound([1, 2, 3, 5], 3) == 3
 
   block fillEmptySeq:
     var s = newSeq[int]()
@@ -901,16 +910,16 @@ when isMainModule:
     let oneData = @[1]
     doAssert binarySearch(oneData, 1) == 0
     doAssert binarySearch(onedata, 7) == -1
-    let someData = @[1,3,4,7]
+    let someData = @[1, 3, 4, 7]
     doAssert binarySearch(someData, 1) == 0
     doAssert binarySearch(somedata, 7) == 3
     doAssert binarySearch(someData, -1) == -1
     doAssert binarySearch(someData, 5) == -1
     doAssert binarySearch(someData, 13) == -1
-    let moreData = @[1,3,5,7,4711]
+    let moreData = @[1, 3, 5, 7, 4711]
     doAssert binarySearch(moreData, -1) == -1
-    doAssert binarySearch(moreData,  1) == 0
-    doAssert binarySearch(moreData,  5) == 2
-    doAssert binarySearch(moreData,  6) == -1
-    doAssert binarySearch(moreData,  4711) == 4
-    doAssert binarySearch(moreData,  4712) == -1
+    doAssert binarySearch(moreData, 1) == 0
+    doAssert binarySearch(moreData, 5) == 2
+    doAssert binarySearch(moreData, 6) == -1
+    doAssert binarySearch(moreData, 4711) == 4
+    doAssert binarySearch(moreData, 4712) == -1
