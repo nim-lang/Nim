@@ -29,7 +29,7 @@ proc equalGenericParams(procA, procB: PNode): bool =
   result = true
 
 proc searchForProcOld*(c: PContext, scope: PScope, fn: PSym): PSym =
-  # Searchs for a forward declaration or a "twin" symbol of fn
+  # Searches for a forward declaration or a "twin" symbol of fn
   # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
@@ -108,7 +108,7 @@ when false:
       result = true
 
   proc searchForBorrowProc*(c: PContext, startScope: PScope, fn: PSym): PSym =
-    # Searchs for the fn in the symbol table. If the parameter lists are suitable
+    # Searches for the fn in the symbol table. If the parameter lists are suitable
     # for borrowing the sym in the symbol table is returned, else nil.
     var it: TIdentIter
     for scope in walkScopes(startScope):

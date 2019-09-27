@@ -364,7 +364,7 @@ when defined(nimHasSignatureHashInMacro):
 
 proc symBodyHash*(s: NimNode): string {.noSideEffect.} =
   ## Returns a stable digest for symbols derived not only from type signature
-  ## and owning module, but also implementation body. All procs/varibles used in
+  ## and owning module, but also implementation body. All procs/variables used in
   ## the implementation of this symbol are hashed recursively as well, including
   ## magics from system module.
   discard

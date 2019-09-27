@@ -279,7 +279,7 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
     a.setResult opBindSym(c, scope, a.getNode(0), a.getInt(1).int, a.getNode(2))
 
   let
-    # altough we use VM callback here, it is not
+    # although we use VM callback here, it is not
     # executed like 'normal' VM callback
     idx = vm.registerCallback("bindSymImpl", bindSymWrapper)
     # dummy node to carry idx information to VM

@@ -634,7 +634,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
         kind = ikDollar
       else:
         raise newException(ValueError,
-          "Unable to parse a varible name at " & substr(s, i, s.high))
+          "Unable to parse a variable name at " & substr(s, i, s.high))
     else:
       while j < s.len and s[j] != '$': inc j
       kind = ikStr

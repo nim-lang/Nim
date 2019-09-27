@@ -244,7 +244,7 @@ proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
-  # stack. It is used by the code generator if it cannot decide wether a
+  # stack. It is used by the code generator if it cannot decide whether a
   # reference is in the stack or not (this can happen for var parameters).
   if not isOnStack(dest):
     if src != nil: incRef(usrToCell(src))

@@ -575,7 +575,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
-  # sematic check doesn't allow statements after raise, break, return or
+  # semantic check doesn't allow statements after raise, break, return or
   # call to noreturn proc, so it is safe to check just the last statements
   var it = n
   while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:

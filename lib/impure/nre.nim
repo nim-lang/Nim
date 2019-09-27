@@ -137,7 +137,7 @@ type
     ## into PCRE flags. These include ``NEVER_UTF``, ``ANCHORED``,
     ## ``DOLLAR_ENDONLY``, ``FIRSTLINE``, ``NO_AUTO_CAPTURE``,
     ## ``JAVASCRIPT_COMPAT``, ``U``, ``NO_STUDY``. In other PCRE wrappers, you
-    ## will need to pass these as seperate flags to PCRE.
+    ## will need to pass these as separate flags to PCRE.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
