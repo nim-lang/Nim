@@ -41,7 +41,7 @@ when defined(windows):
     VectoredHandler = proc (p: PEXCEPTION_POINTERS): LONG {.stdcall.}
   proc addVectoredExceptionHandler(firstHandler: ULONG,
                                    handler: VectoredHandler): pointer {.
-    importc: "AddVectoredExceptionHandler", stdcall, dynlib: "kernel32.dll"}
+    importc: "AddVectoredExceptionHandler", stdcall, dynlib: "kernel32.dll".}
 
   {.push stackTrace: off.}
   proc segfaultHandler(p: PEXCEPTION_POINTERS): LONG {.stdcall.} =
