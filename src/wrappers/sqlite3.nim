@@ -62,7 +62,7 @@ const
   SQLITE_EMPTY* = 16          # Database is empty
   SQLITE_SCHEMA* = 17         # The database schema changed
   SQLITE_TOOBIG* = 18         # Too much data for one row of a table
-  SQLITE_CONSTRAINT* = 19     # Abort due to contraint violation
+  SQLITE_CONSTRAINT* = 19     # Abort due to constraint violation
   SQLITE_MISMATCH* = 20       # Data type mismatch
   SQLITE_MISUSE* = 21         # Library used incorrectly
   SQLITE_NOLFS* = 22          # Uses OS features not supported on host
