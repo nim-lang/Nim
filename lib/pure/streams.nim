@@ -1076,6 +1076,20 @@ when defined(js): #This section exists so that string streams work at compile ti
     result.getPositionImpl = ssGetPosition
     result.readDataStrImpl = ssReadDataStr
 
+  proc readAll*(s: Stream): string {.compileTime.} =
+    const bufferSize = 1024
+    var bufferr: string
+    bufferr.setLen(bufferSize)
+    while true:
+      let readBytes = readDataStr(s, bufferr, 0..<bufferSize)
+      if readBytes == 0:
+        break
+      let prevLen = result.len
+      result.setLen(prevLen + readBytes)
+      result[prevLen..<prevLen+readBytes] = bufferr[0..<readBytes]
+      if readBytes < bufferSize:
+        break
+
 else:
   proc ssAtEnd(s: Stream): bool =
     var s = StringStream(s)
