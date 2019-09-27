@@ -1053,7 +1053,7 @@ when defined(js): #This section exists so that string streams work at compile ti
     var s = StringStream(s)
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
-      buffer[slice.a..<result] = s.data[s.pos..<result]
+      buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       inc(s.pos, result)
     else:
       result = 0
@@ -1107,7 +1107,7 @@ else:
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
       when nimvm:
-        buffer[slice.a..<result] = s.data[s.pos..<result]
+        buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       else:
         copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
       inc(s.pos, result)
