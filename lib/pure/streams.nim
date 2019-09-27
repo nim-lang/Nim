@@ -251,16 +251,29 @@ when not defined(js):
       strm.close()
 
     const bufferSize = 1024
-    var buffer {.noinit.}: array[bufferSize, char]
-    while true:
-      let readBytes = readData(s, addr(buffer[0]), bufferSize)
-      if readBytes == 0:
-        break
-      let prevLen = result.len
-      result.setLen(prevLen + readBytes)
-      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
-      if readBytes < bufferSize:
-        break
+    when nimvm:
+      var bufferr: string
+      bufferr.setLen(bufferSize)
+      while true:
+        let readBytes = readDataStr(s, bufferr, 0..<bufferSize)
+        if readBytes == 0:
+          break
+        let prevLen = result.len
+        result.setLen(prevLen + readBytes)
+        result[prevLen..<prevLen+readBytes] = bufferr[0..<readBytes]
+        if readBytes < bufferSize:
+          break
+    else:
+      var buffer {.noinit.}: array[bufferSize, char]
+      while true:
+        let readBytes = readData(s, addr(buffer[0]), bufferSize)
+        if readBytes == 0:
+          break
+        let prevLen = result.len
+        result.setLen(prevLen + readBytes)
+        copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+        if readBytes < bufferSize:
+          break
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
