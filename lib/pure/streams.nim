@@ -879,7 +879,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     doAssert strm.readLine(line) == false
     doAssert line == ""
     strm.close()
-  
+
   if s.readLineImpl != nil:
     result = s.readLineImpl(s, line)
   else:
@@ -1184,7 +1184,8 @@ when not defined(js):
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
 
-  proc newFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
+  proc newFileStream*(filename: string, mode: FileMode = fmRead,
+      bufSize: int = -1): owned FileStream =
     ## Creates a new stream from the file named `filename` with the mode `mode`.
     ##
     ## If the file cannot be opened, `nil` is returned. See the `io module
@@ -1221,7 +1222,8 @@ when not defined(js):
     var f: File
     if open(f, filename, mode, bufSize): result = newFileStream(f)
 
-  proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
+  proc openFileStream*(filename: string, mode: FileMode = fmRead,
+      bufSize: int = -1): owned FileStream =
     ## Creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, an IO exception is raised.
     ##
@@ -1315,11 +1317,11 @@ when false:
     else:
       var flags: cint
       case mode
-      of fmRead:              flags = posix.O_RDONLY
-      of fmWrite:             flags = O_WRONLY or int(O_CREAT)
-      of fmReadWrite:         flags = O_RDWR or int(O_CREAT)
+      of fmRead: flags = posix.O_RDONLY
+      of fmWrite: flags = O_WRONLY or int(O_CREAT)
+      of fmReadWrite: flags = O_RDWR or int(O_CREAT)
       of fmReadWriteExisting: flags = O_RDWR
-      of fmAppend:            flags = O_WRONLY or int(O_CREAT) or O_APPEND
+      of fmAppend: flags = O_WRONLY or int(O_CREAT) or O_APPEND
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)

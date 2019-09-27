@@ -56,7 +56,8 @@ when defined(windows):
       wProcessorLevel: uint16
       wProcessorRevision: uint16
 
-  proc getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
+  proc getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall,
+      dynlib: "kernel32", importc: "GetSystemInfo".}
 
   proc getAllocationGranularity: uint =
     var sysInfo: SYSTEM_INFO
@@ -66,12 +67,12 @@ when defined(windows):
   let allocationGranularity = getAllocationGranularity().int
 
   const
-    memNoAccess       = MemAccessFlags(PAGE_NOACCESS)
-    memExec*          = MemAccessFlags(PAGE_EXECUTE)
-    memExecRead*      = MemAccessFlags(PAGE_EXECUTE_READ)
+    memNoAccess = MemAccessFlags(PAGE_NOACCESS)
+    memExec* = MemAccessFlags(PAGE_EXECUTE)
+    memExecRead* = MemAccessFlags(PAGE_EXECUTE_READ)
     memExecReadWrite* = MemAccessFlags(PAGE_EXECUTE_READWRITE)
-    memRead*          = MemAccessFlags(PAGE_READONLY)
-    memReadWrite*     = MemAccessFlags(PAGE_READWRITE)
+    memRead* = MemAccessFlags(PAGE_READONLY)
+    memReadWrite* = MemAccessFlags(PAGE_READWRITE)
 
   template check(expr) =
     let r = expr
@@ -84,12 +85,12 @@ else:
   let allocationGranularity = sysconf(SC_PAGESIZE)
 
   let
-    memNoAccess       = MemAccessFlags(PROT_NONE)
-    memExec*          = MemAccessFlags(PROT_EXEC)
-    memExecRead*      = MemAccessFlags(PROT_EXEC or PROT_READ)
+    memNoAccess = MemAccessFlags(PROT_NONE)
+    memExec* = MemAccessFlags(PROT_EXEC)
+    memExecRead* = MemAccessFlags(PROT_EXEC or PROT_READ)
     memExecReadWrite* = MemAccessFlags(PROT_EXEC or PROT_READ or PROT_WRITE)
-    memRead*          = MemAccessFlags(PROT_READ)
-    memReadWrite*     = MemAccessFlags(PROT_READ or PROT_WRITE)
+    memRead* = MemAccessFlags(PROT_READ)
+    memReadWrite* = MemAccessFlags(PROT_READ or PROT_WRITE)
 
   template check(expr) =
     if not expr:
@@ -125,14 +126,16 @@ proc init*(T: type ReservedMem,
   let commitSize = nextAlignedOffset(initCommitLen, allocationGranularity)
 
   when defined(windows):
-    result.memStart = virtualAlloc(memStart, maxLen, MEM_RESERVE, accessFlags.cint)
+    result.memStart = virtualAlloc(memStart, maxLen, MEM_RESERVE,
+        accessFlags.cint)
     check result.memStart
     if commitSize > 0:
-      check virtualAlloc(result.memStart, commitSize, MEM_COMMIT, accessFlags.cint)
+      check virtualAlloc(result.memStart, commitSize, MEM_COMMIT,
+          accessFlags.cint)
   else:
     var allocFlags = MAP_PRIVATE or MAP_ANONYMOUS # or MAP_NORESERVE
-    # if memStart != nil:
-    #  allocFlags = allocFlags or MAP_FIXED_NOREPLACE
+                                                  # if memStart != nil:
+                                                  #  allocFlags = allocFlags or MAP_FIXED_NOREPLACE
     result.memStart = mmap(memStart, maxLen, PROT_NONE, allocFlags, -1, 0)
     check result.memStart != MAP_FAILED
     if commitSize > 0:
@@ -164,7 +167,8 @@ proc setLen*(m: var ReservedMem, newLen: int) =
         check virtualAlloc(m.committedMemEnd, commitExtensionSize,
                            MEM_COMMIT, m.accessFlags.cint)
       else:
-        check mprotect(m.committedMemEnd, commitExtensionSize, m.accessFlags.cint) == 0
+        check mprotect(m.committedMemEnd, commitExtensionSize,
+            m.accessFlags.cint) == 0
   else:
     let d = distance(m.usedMemEnd, m.committedMemEnd) -
             m.maxCommittedAndUnusedPages * allocationGranularity

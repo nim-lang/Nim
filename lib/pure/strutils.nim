@@ -80,9 +80,9 @@ when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
   export toLower, toUpper
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 
-{.push debugger:off .} # the user does not want to trace a part
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
 include "system/inclrtl"
@@ -132,7 +132,7 @@ const
     ##   doAssert "01A34".find(invalid) == 2
 
 proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaAsciiChar".}=
+  rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -333,8 +333,8 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
     inc(i)
   result = a.len - b.len
 
-{.push checks: off, line_trace: off .} # this is a hot-spot in the compiler!
-                                       # thus we compile without checks here
+{.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
+                                      # thus we compile without checks here
 
 proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuCmpIgnoreStyle", procvar.} =
@@ -763,8 +763,9 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
     doAssert "a,b,c".split(",") == @["a", "b", "c"]
     doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
     doAssert "".split("Elon Musk") == @[""]
-    doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
-    doAssert "a  largely    spaced sentence".split(" ", maxsplit=1) == @["a", " largely    spaced sentence"]
+    doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
+        "", "", "", "spaced", "sentence"]
+    doAssert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
   doAssert(sep.len > 0)
 
   accResult(split(s, sep, maxsplit))
@@ -849,11 +850,14 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
   ## * `splitLines proc<#splitLines,string>`_
   ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
   runnableExamples:
-    doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit=1) == @["a  largely    spaced", "sentence"]
+    doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit = 1) == @[
+        "a  largely    spaced", "sentence"]
     doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
-    doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ",
+        "plan ", "canal panama"]
     doAssert "".rsplit("Elon Musk") == @[""]
-    doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
+    doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
+        "largely", "", "", "", "spaced", "sentence"]
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
@@ -866,7 +870,7 @@ proc splitLines*(s: string, keepEol = false): seq[string] {.noSideEffect,
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
   ## * `countLines proc<#countLines,string>`_
-  accResult(splitLines(s, keepEol=keepEol))
+  accResult(splitLines(s, keepEol = keepEol))
 
 proc splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitWhitespace".} =
@@ -1185,7 +1189,7 @@ proc generateHexCharToValueMap(): string =
         of '0'..'9': inp - ord('0')
         of 'a'..'f': inp - ord('a') + 10
         of 'A'..'F': inp - ord('A') + 10
-        else: 17  # indicates an invalid hex char
+        else: 17 # indicates an invalid hex char
     result.add chr(o)
 
 const hexCharToValueMap = generateHexCharToValueMap()
@@ -1346,7 +1350,8 @@ proc align*(s: string, count: Natural, padding = ' '): string {.
   else:
     result = s
 
-proc alignLeft*(s: string, count: Natural, padding = ' '): string {.noSideEffect.} =
+proc alignLeft*(s: string, count: Natural, padding = ' '): string {.
+    noSideEffect.} =
   ## Left-Aligns a string `s` with `padding`, so that it is of length `count`.
   ##
   ## `padding` characters (by default spaces) are added after `s` resulting in
@@ -1603,15 +1608,15 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   ## See also:
   ## * `removeSuffix proc<#removeSuffix,string,set[char]>`_
   runnableExamples:
-     var userInput = "\r\n*~Hello World!"
-     userInput.removePrefix
-     doAssert userInput == "*~Hello World!"
-     userInput.removePrefix({'~', '*'})
-     doAssert userInput == "Hello World!"
+    var userInput = "\r\n*~Hello World!"
+    userInput.removePrefix
+    doAssert userInput == "*~Hello World!"
+    userInput.removePrefix({'~', '*'})
+    doAssert userInput == "Hello World!"
 
-     var otherInput = "?!?Hello!?!"
-     otherInput.removePrefix({'!', '?'})
-     doAssert otherInput == "Hello!?!"
+    var otherInput = "?!?Hello!?!"
+    otherInput.removePrefix({'!', '?'})
+    doAssert otherInput == "Hello!?!"
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
@@ -1639,9 +1644,9 @@ proc removePrefix*(s: var string, prefix: string) {.
   ## * `removeSuffix proc<#removeSuffix,string,string>`_
   ## * `startsWith proc<#startsWith,string,string>`_
   runnableExamples:
-     var answers = "yesyes"
-     answers.removePrefix("yes")
-     doAssert answers == "yes"
+    var answers = "yesyes"
+    answers.removePrefix("yes")
+    doAssert answers == "yes"
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 
@@ -1653,15 +1658,15 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   ## See also:
   ## * `removePrefix proc<#removePrefix,string,set[char]>`_
   runnableExamples:
-     var userInput = "Hello World!*~\r\n"
-     userInput.removeSuffix
-     doAssert userInput == "Hello World!*~"
-     userInput.removeSuffix({'~', '*'})
-     doAssert userInput == "Hello World!"
+    var userInput = "Hello World!*~\r\n"
+    userInput.removeSuffix
+    doAssert userInput == "Hello World!*~"
+    userInput.removeSuffix({'~', '*'})
+    doAssert userInput == "Hello World!"
 
-     var otherInput = "Hello!?!"
-     otherInput.removeSuffix({'!', '?'})
-     doAssert otherInput == "Hello"
+    var otherInput = "Hello!?!"
+    otherInput.removeSuffix({'!', '?'})
+    doAssert otherInput == "Hello"
 
   if s.len == 0: return
   var last = s.high
@@ -1720,7 +1725,7 @@ proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
   runnableExamples:
     var arr = "["
     for x in items([2, 3, 5, 7, 11]):
-      addSep(arr, startLen=len("["))
+      addSep(arr, startLen = len("["))
       add(arr, $x)
     add(arr, "]")
     doAssert arr == "[2, 3, 5, 7, 11]"
@@ -1819,7 +1824,7 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   let
-    last = if last==0: s.high else: last
+    last = if last == 0: s.high else: last
     subLast = sub.len - 1
 
   if subLast == -1:
@@ -1842,7 +1847,7 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
-                importc: "memchr", header: "<string.h>" .}
+                importc: "memchr", header: "<string.h>".}
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1859,7 +1864,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## See also:
   ## * `rfind proc<#rfind,string,char,int,int>`_
   ## * `replace proc<#replace,string,char,char>`_
-  let last = if last==0: s.high else: last
+  let last = if last == 0: s.high else: last
   when nimvm:
     for i in int(start)..last:
       if sub == s[i]: return i
@@ -1887,7 +1892,7 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## See also:
   ## * `rfind proc<#rfind,string,set[char],int,int>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
-  let last = if last==0: s.high else: last
+  let last = if last == 0: s.high else: last
   for i in int(start)..last:
     if s[i] in chars: return i
   return -1
@@ -2140,7 +2145,8 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
     # copy the rest:
     add result, substr(s, i)
 
-proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {.noSideEffect.} =
+proc multiReplace*(s: string, replacements: varargs[(string, string)]):
+    string {.noSideEffect.} =
   ## Same as replace, but specialized for doing multiple replacements in a single
   ## pass through the input string.
   ##
@@ -2246,7 +2252,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
       of 'x':
         inc i, 2
         var c: int
-        i += parseutils.parseHex(s, c, i, maxLen=2)
+        i += parseutils.parseHex(s, c, i, maxLen = 2)
         result.add(chr(c))
         dec i, 2
       of '\\':
@@ -2416,8 +2422,8 @@ proc trimZeros*(x: var string) {.noSideEffect.} =
 
 type
   BinaryPrefixMode* = enum ## the different names for binary prefixes
-    bpIEC, # use the IEC/ISO standard prefixes such as kibi
-    bpColloquial # use the colloquial kilo, mega etc
+    bpIEC,                 # use the IEC/ISO standard prefixes such as kibi
+    bpColloquial           # use the colloquial kilo, mega etc
 
 proc formatSize*(bytes: int64,
                  decimalSep = '.',
@@ -2437,10 +2443,10 @@ proc formatSize*(bytes: int64,
   runnableExamples:
     doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
     doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
-    doAssert formatSize(4096, includeSpace=true) == "4 KiB"
-    doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
+    doAssert formatSize(4096, includeSpace = true) == "4 KiB"
+    doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
     doAssert formatSize(4096) == "4KiB"
-    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
+    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
 
   const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
   const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
@@ -2467,7 +2473,8 @@ proc formatSize*(bytes: int64,
       break
   # xb has the integer number for the latest value; index should be correct
   fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
-  result = formatFloat(fbytes, format=ffDecimal, precision=3, decimalSep=decimalSep)
+  result = formatFloat(fbytes, format = ffDecimal, precision = 3,
+      decimalSep = decimalSep)
   result.trimZeros()
   if includeSpace:
     result &= " "
@@ -2551,7 +2558,8 @@ proc formatEng*(f: BiggestFloat,
     ## Get the SI prefix for a given exponent
     ##
     ## Assumes exponent is a multiple of 3; returns ' ' if no prefix found
-    const siPrefixes = ['a','f','p','n','u','m',' ','k','M','G','T','P','E']
+    const siPrefixes = ['a', 'f', 'p', 'n', 'u', 'm', ' ', 'k', 'M', 'G', 'T',
+        'P', 'E']
     var index: int = (exp div 3) + 6
     result = ' '
     if index in low(siPrefixes)..high(siPrefixes):
@@ -2564,7 +2572,8 @@ proc formatEng*(f: BiggestFloat,
   if absolute == 0.0:
     # Simple case: just format it and force the exponent to 0
     exponent = 0
-    result = significand.formatBiggestFloat(ffDecimal, precision, decimalSep='.')
+    result = significand.formatBiggestFloat(ffDecimal, precision,
+        decimalSep = '.')
   else:
     # Find the best exponent that's a multiple of 3
     fexponent = floor(log10(absolute))
@@ -2579,7 +2588,8 @@ proc formatEng*(f: BiggestFloat,
       significand *= 0.001
       fexponent += 3
     # Components of the result:
-    result = significand.formatBiggestFloat(ffDecimal, precision, decimalSep='.')
+    result = significand.formatBiggestFloat(ffDecimal, precision,
+        decimalSep = '.')
     exponent = fexponent.int()
 
   splitResult = result.split('.')
@@ -2952,7 +2962,8 @@ proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl,
   ## Checks if `s` is nil or empty.
   result = len(s) == 0
 
-proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrWhitespace".} =
+proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
+    extern: "nsuIsNilOrWhitespace".} =
   ## Checks if `s` is nil or consists entirely of whitespace characters.
   result = true
   for c in s:
@@ -3124,11 +3135,11 @@ when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
     when not defined(js):
-      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235."           # <=== bug 8242
+      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # <=== bug 8242
     doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
     doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
     doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
-                                                     ["1,0e-11", "1,0e-011"]
+                                                      ["1,0e-11", "1,0e-011"]
     # bug #6589
     when not defined(js):
       doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
@@ -3138,41 +3149,45 @@ when isMainModule:
 
     block: # formatSize tests
       when not defined(js):
-        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"   # <=== bug #8231
+        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
       doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
       doAssert formatSize(4096) == "4KiB"
-      doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
-      doAssert formatSize(4096, includeSpace=true) == "4 KiB"
-      doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
+      doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
+      doAssert formatSize(4096, includeSpace = true) == "4 KiB"
+      doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
 
     block: # formatEng tests
-      doAssert formatEng(0, 2, trim=false) == "0.00"
+      doAssert formatEng(0, 2, trim = false) == "0.00"
       doAssert formatEng(0, 2) == "0"
-      doAssert formatEng(53, 2, trim=false) == "53.00"
-      doAssert formatEng(0.053, 2, trim=false) == "53.00e-3"
-      doAssert formatEng(0.053, 4, trim=false) == "53.0000e-3"
-      doAssert formatEng(0.053, 4, trim=true) == "53e-3"
+      doAssert formatEng(53, 2, trim = false) == "53.00"
+      doAssert formatEng(0.053, 2, trim = false) == "53.00e-3"
+      doAssert formatEng(0.053, 4, trim = false) == "53.0000e-3"
+      doAssert formatEng(0.053, 4, trim = true) == "53e-3"
       doAssert formatEng(0.053, 0) == "53e-3"
       doAssert formatEng(52731234) == "52.731234e6"
       doAssert formatEng(-52731234) == "-52.731234e6"
       doAssert formatEng(52731234, 1) == "52.7e6"
       doAssert formatEng(-52731234, 1) == "-52.7e6"
-      doAssert formatEng(52731234, 1, decimalSep=',') == "52,7e6"
-      doAssert formatEng(-52731234, 1, decimalSep=',') == "-52,7e6"
+      doAssert formatEng(52731234, 1, decimalSep = ',') == "52,7e6"
+      doAssert formatEng(-52731234, 1, decimalSep = ',') == "-52,7e6"
 
-      doAssert formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
-      doAssert formatEng(4.1, siPrefix=true, unit="V", useUnitSpace=true) == "4.1 V"
-      doAssert formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
-      doAssert formatEng(4100, siPrefix=true) == "4.1 k"
-      doAssert formatEng(4.1, siPrefix=true, unit="", useUnitSpace=true) == "4.1 " # Includes space
-      doAssert formatEng(4100, siPrefix=true, unit="") == "4.1 k"
+      doAssert formatEng(4100, siPrefix = true, unit = "V") == "4.1 kV"
+      doAssert formatEng(4.1, siPrefix = true, unit = "V",
+          useUnitSpace = true) == "4.1 V"
+      doAssert formatEng(4.1, siPrefix = true) == "4.1" # Note lack of space
+      doAssert formatEng(4100, siPrefix = true) == "4.1 k"
+      doAssert formatEng(4.1, siPrefix = true, unit = "",
+          useUnitSpace = true) == "4.1 " # Includes space
+      doAssert formatEng(4100, siPrefix = true, unit = "") == "4.1 k"
       doAssert formatEng(4100) == "4.1e3"
-      doAssert formatEng(4100, unit="V", useUnitSpace=true) == "4.1e3 V"
-      doAssert formatEng(4100, unit="", useUnitSpace=true) == "4.1e3 "
+      doAssert formatEng(4100, unit = "V", useUnitSpace = true) == "4.1e3 V"
+      doAssert formatEng(4100, unit = "", useUnitSpace = true) == "4.1e3 "
       # Don't use SI prefix as number is too big
-      doAssert formatEng(3.1e22, siPrefix=true, unit="a", useUnitSpace=true) == "31e21 a"
+      doAssert formatEng(3.1e22, siPrefix = true, unit = "a",
+          useUnitSpace = true) == "31e21 a"
       # Don't use SI prefix as number is too small
-      doAssert formatEng(3.1e-25, siPrefix=true, unit="A", useUnitSpace=true) == "310e-27 A"
+      doAssert formatEng(3.1e-25, siPrefix = true, unit = "A",
+          useUnitSpace = true) == "310e-27 A"
 
   proc staticTests =
     doAssert align("abc", 4) == " abc"
@@ -3218,7 +3233,7 @@ when isMainModule:
     doAssert count("foofoofoo", "foofoo") == 1
     doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
     doAssert count("foofoofoo", 'f') == 3
-    doAssert count("foofoofoobar", {'f','b'}) == 4
+    doAssert count("foofoofoobar", {'f', 'b'}) == 4
 
     doAssert strip("  foofoofoo  ") == "foofoofoo"
     doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
@@ -3232,7 +3247,8 @@ when isMainModule:
     doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
 
     doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
-    doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.", "PEOPLE!")) == "HELLO PEOPLE!"
+    doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.",
+        "PEOPLE!")) == "HELLO PEOPLE!"
     doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
 
     doAssert isAlphaAscii('r')
@@ -3268,13 +3284,14 @@ when isMainModule:
     doAssert(not isUpperAscii('5'))
     doAssert(not isUpperAscii('%'))
 
-    doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
-    doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps=Whitespace, maxsplit=1) == @[" foo bar", ""]
-    doAssert rsplit(":foo:bar", sep=':') == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep=':', maxsplit=2) == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep=':', maxsplit=3) == @["", "foo", "bar"]
-    doAssert rsplit("foothebar", sep="the") == @["foo", "bar"]
+    doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
+    doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
+    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
+        " foo bar", ""]
+    doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
+    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
+    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
+    doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
 
     doAssert(unescape(r"\x013", "", "") == "\x013")
 
@@ -3315,16 +3332,17 @@ bar
     let s2 = ":this;is;an:example;;"
 
     doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
-    doAssert s2.split(seps={':', ';'}) == @["", "this", "is", "an", "example", "", ""]
-    doAssert s.split(maxsplit=4) == @["", "this", "is", "an", "example  "]
-    doAssert s.split(' ', maxsplit=1) == @["", "this is an example  "]
-    doAssert s.split(" ", maxsplit=4) == @["", "this", "is", "an", "example  "]
+    doAssert s2.split(seps = {':', ';'}) == @["", "this", "is", "an", "example",
+        "", ""]
+    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
+    doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
 
     doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
-    doAssert s.splitWhitespace(maxsplit=1) == @["this", "is an example  "]
-    doAssert s.splitWhitespace(maxsplit=2) == @["this", "is", "an example  "]
-    doAssert s.splitWhitespace(maxsplit=3) == @["this", "is", "an", "example  "]
-    doAssert s.splitWhitespace(maxsplit=4) == @["this", "is", "an", "example"]
+    doAssert s.splitWhitespace(maxsplit = 1) == @["this", "is an example  "]
+    doAssert s.splitWhitespace(maxsplit = 2) == @["this", "is", "an example  "]
+    doAssert s.splitWhitespace(maxsplit = 3) == @["this", "is", "an", "example  "]
+    doAssert s.splitWhitespace(maxsplit = 4) == @["this", "is", "an", "example"]
 
     block: # startsWith / endsWith char tests
       var s = "abcdef"
