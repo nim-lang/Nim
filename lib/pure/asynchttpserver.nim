@@ -236,7 +236,8 @@ proc processRequest(
   # - Check for Content-length header
   if request.headers.hasKey("Content-Length"):
     var contentLength = 0
-    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
+    if parseSaturatedNatural(request.headers["Content-Length"],
+        contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return true
     else:
