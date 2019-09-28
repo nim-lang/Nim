@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements procs to determine the number of CPUs / cores.
+## 此模块实现了获取CPU的核数的procs。
 
 include "system/inclrtl"
 
@@ -50,8 +50,8 @@ when defined(haiku):
                                                     header: "<OS.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
-  ## returns the number of the processors/cores the machine has.
-  ## Returns 0 if it cannot be detected.
+  ## 返回机器处理器的核数。
+  ## 如果无法检测，返回0。
   when defined(windows):
     type
       SYSTEM_INFO {.final, pure.} = object
