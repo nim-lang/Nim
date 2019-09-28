@@ -7,19 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
-## Thread support for Nim.
+## Nim的线程支持模块.
 ##
-## **Note**: This is part of the system module. Do not import it directly.
-## To activate thread support you need to compile
-## with the ``--threads:on`` command line switch.
+## **注意**: 这是system模块的一部分. 不需要直接import.
+## 需要在编译的时候在命令行使用 ``--threads:on``
+## 开关来开启线程的支持
 ##
-## Nim's memory model for threads is quite different from other common
-## programming languages (C, Pascal): Each thread has its own
-## (garbage collected) heap and sharing of memory is restricted. This helps
-## to prevent race conditions and improves efficiency. See `the manual for
-## details of this memory model <manual.html#threads>`_.
+## Nim语言线程的内存模型与常见的编程语言（C, Pascal）不同:
+## 每一个线程都拥有自己（垃圾回收）的堆，共享内存是受限制的。
+## 这个能避免竞争条件，并且能提高效率。
+## 详情可查看 `手册中关于这种内存模型的描述 <manual.html#threads>`_.
 ##
-## Examples
+## 示例
 ## ========
 ##
 ## .. code-block:: Nim
@@ -92,12 +91,10 @@ var
   threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe.}]
 
 proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
-  ## Registers a *thread local* handler that is called at the thread's
-  ## destruction.
+  ## 注册一个 *thread local* 的处理proc，在线程销毁之前调用。
   ##
-  ## A thread is destructed when the ``.thread`` proc returns
-  ## normally or when it raises an exception. Note that unhandled exceptions
-  ## in a thread nevertheless cause the whole process to die.
+  ## 当一个 ``.thread`` proc正常退出或者抛出异常，这个线程会销毁，
+  ## 注意：线程抛出的异常如果未处理，将会导致整个进程退出。
   when not defined(nimNoNilSeqs):
     if threadDestructionHandlers.isNil:
       threadDestructionHandlers = @[]
@@ -191,22 +188,22 @@ else:
 {.pop.}
 
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
-  ## Returns true if `t` is running.
+  ## 如果线程 `t` 正在运行，返回true。
   result = t.dataFn != nil
 
 proc handle*[TArg](t: Thread[TArg]): SysThread {.inline.} =
-  ## Returns the thread handle of `t`.
+  ## 返回线程 `t` 的句柄。
   result = t.sys
 
 when hostOS == "windows":
   const MAXIMUM_WAIT_OBJECTS = 64
 
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
-    ## Waits for the thread `t` to finish.
+    ## 等待 `t` 中的每一个线程运行完成。
     discard waitForSingleObject(t.sys, -1'i32)
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
-    ## Waits for every thread in `t` to finish.
+    ## 等待 `t` 中的每一个线程运行完成。
     var a: array[MAXIMUM_WAIT_OBJECTS, SysThread]
     var k = 0
     while k < len(t):
@@ -218,33 +215,33 @@ when hostOS == "windows":
 
 elif defined(genode):
   proc joinThread*[TArg](t: Thread[TArg]) {.importcpp.}
-    ## Waits for the thread `t` to finish.
+    ## 等待 `t` 中的每一个线程运行完成。
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
-    ## Waits for every thread in `t` to finish.
+    ## 等待 `t` 中的每一个线程运行完成。
     for i in 0..t.high: joinThread(t[i])
 
 else:
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
-    ## Waits for the thread `t` to finish.
+    ## 等待 `t` 中的每一个线程运行完成。
     discard pthread_join(t.sys, nil)
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
-    ## Waits for every thread in `t` to finish.
+    ## 等待 `t` 中的每一个线程运行完成。
     for i in 0..t.high: joinThread(t[i])
 
 when false:
   # XXX a thread should really release its heap here somehow:
   proc destroyThread*[TArg](t: var Thread[TArg]) =
-    ## Forces the thread `t` to terminate. This is potentially dangerous if
-    ## you don't have full control over `t` and its acquired resources.
+    ## 强制终止线程 `t` 。
+    ## 如果你并不拥有 `t` 的全部控制权和他的资源，此操作存在潜在的危险。
     when hostOS == "windows":
       discard TerminateThread(t.sys, 1'i32)
     else:
       discard pthread_cancel(t.sys)
     when declared(registerThread): unregisterThread(addr(t))
     t.dataFn = nil
-    ## if thread `t` already exited, `t.core` will be `null`.
+    ## 如果线程 `t` 已经退出， `t.core` 将会是 `null`。
     if not isNil(t.core):
       deallocShared(t.core)
       t.core = nil
@@ -253,11 +250,10 @@ when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
-    ## Creates a new thread `t` and starts its execution.
+    ## 创建一个新的线程 `t` 并且开始执行。
     ##
-    ## Entry point is the proc `tp`.
-    ## `param` is passed to `tp`. `TArg` can be ``void`` if you
-    ## don't need to pass any data to the thread.
+    ## 线程的入口函数是 `tp` 。 `param` 是传送给线程函数的参数 `tp` 。
+    ## 如不需要传递任何数据给线程， `TArg` 可以传 ``void`` 
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
     when TArg isnot void: t.data = param
@@ -270,15 +266,15 @@ when hostOS == "windows":
       raise newException(ResourceExhaustedError, "cannot create thread")
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
-    ## Pins a thread to a `CPU`:idx:.
+    ## 绑定一个线程到一个 `CPU`:idx: 。
     ##
-    ## In other words sets a thread's `affinity`:idx:.
-    ## If you don't know what this means, you shouldn't use this proc.
+    ## 换句话说：设置一个线程的 `亲和性`:idx: 。
+    ## 如果你不清楚这个proc的功能，最好不要使用。
     setThreadAffinityMask(t.sys, uint(1 shl cpu))
 
 elif defined(genode):
   var affinityOffset: cuint = 1
-    ## CPU affinity offset for next thread, safe to roll-over.
+    ## 下一个线程的CPU亲核性偏移量，安全回滚。
 
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
@@ -302,11 +298,10 @@ else:
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
-    ## Creates a new thread `t` and starts its execution.
+    ## 创建一个新的线程 `t` 并且开始执行。
     ##
-    ## Entry point is the proc `tp`. `param` is passed to `tp`.
-    ## `TArg` can be ``void`` if you
-    ## don't need to pass any data to the thread.
+    ## 线程的入口函数是 `tp` 。 `param` 是传送给线程函数的参数 `tp` 。
+    ## 如不需要传递任何数据给线程， `TArg` 可以传 ``void`` 
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
     when TArg isnot void: t.data = param
@@ -319,10 +314,10 @@ else:
       raise newException(ResourceExhaustedError, "cannot create thread")
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
-    ## Pins a thread to a `CPU`:idx:.
+    ## 绑定一个线程到一个 `CPU`:idx: 。
     ##
-    ## In other words sets a thread's `affinity`:idx:.
-    ## If you don't know what this means, you shouldn't use this proc.
+    ## 换句话说：设置一个线程的 `亲和性`:idx: 。
+    ## 如果你不清楚这个proc的功能，最好不要使用。
     when not defined(macosx):
       var s {.noinit.}: CpuSet
       cpusetZero(s)
@@ -337,7 +332,7 @@ var threadId {.threadvar.}: int
 
 when defined(windows):
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(getCurrentThreadId())
     result = threadId
@@ -350,7 +345,7 @@ elif defined(linux):
     var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
 
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(syscall(NR_gettid))
     result = threadId
@@ -359,7 +354,7 @@ elif defined(dragonfly):
   proc lwp_gettid(): int32 {.importc, header: "unistd.h".}
 
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(lwp_gettid())
     result = threadId
@@ -368,7 +363,7 @@ elif defined(openbsd):
   proc getthrid(): int32 {.importc: "getthrid", header: "<unistd.h>".}
 
   proc getThreadId*(): int =
-    ## get the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(getthrid())
     result = threadId
@@ -377,7 +372,7 @@ elif defined(netbsd):
   proc lwp_self(): int32 {.importc: "_lwp_self", header: "<lwp.h>".}
 
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(lwp_self())
     result = threadId
@@ -387,7 +382,7 @@ elif defined(freebsd):
   var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>"}: cint
 
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     var tid = 0.cint
     if threadId == 0:
       discard syscall(SYS_thr_self, addr tid)
@@ -399,7 +394,7 @@ elif defined(macosx):
   var SYS_thread_selfid {.importc:"SYS_thread_selfid", header:"<sys/syscall.h>".}: cint
 
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(syscall(SYS_thread_selfid))
     result = threadId
@@ -409,7 +404,7 @@ elif defined(solaris):
   proc thr_self(): thread_t {.importc, header: "<thread.h>".}
 
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(thr_self())
     result = threadId
@@ -419,7 +414,7 @@ elif defined(haiku):
   proc find_thread(name: cstring): thr_id {.importc, header: "<OS.h>".}
 
   proc getThreadId*(): int =
-    ## Gets the ID of the currently running thread.
+    ## 获取当前线程ID。
     if threadId == 0:
       threadId = int(find_thread(nil))
     result = threadId
