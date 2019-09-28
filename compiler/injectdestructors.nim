@@ -490,6 +490,7 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
     result = copyTree(n)
     result[1][0] = processProc(result[1][0], c)
   of nkStmtList, nkStmtListExpr, nkTryStmt, nkFinally, nkPragmaBlock:
+    if n.len == 0: return n
     result = copyNode(n)
     for i in 0..<n.len-1:
       result.add p(n[i], c)
