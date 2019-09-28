@@ -311,15 +311,6 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
 proc isCursor(n: PNode): bool {.inline.} =
   result = n.kind == nkSym and sfCursor in n.sym.flags
 
-proc keepVar(n, it: PNode, c: var Con): PNode =
-  # keep the var but transform 'ri':
-  result = copyNode(n)
-  var itCopy = copyNode(it)
-  for j in 0..<it.len-1:
-    itCopy.add it[j]
-  itCopy.add p(it[^1], c)
-  result.add itCopy
-
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   if isSink:
     if arg.kind in nkCallKinds:
@@ -408,20 +399,6 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
         result[i][1] = pArg(n[i][1], c, isSink = true)
       else:
         result[i] = pArg(n[i], c, isSink = true)
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = copyNode(n)
-    result.add n[0] #Destination type
-    result.add p(n[1], c) #Analyse inner expression
-  of nkBracketExpr, nkCurly, nkRange, nkChckRange, nkChckRange64, nkChckRangeF,
-     nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString,
-     nkDotExpr, nkCheckedFieldExpr:
-    result = copyNode(n)
-    for son in n:
-      result.add p(son, c)
-  of nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref:
-    result = copyNode(n)
-    result.add p(n[0], c)
-  #Old pStmt:
   of nkVarSection, nkLetSection:
     # transform; var x = y to  var x; x op y  where op is a move or copy
     result = newNodeI(nkStmtList, n.info)
@@ -445,18 +422,18 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
-      else:
-        result.add keepVar(n, it, c)
-  of nkDiscardStmt:
+      else: # keep the var but transform 'ri':
+        var v = copyNode(n)
+        var itCopy = copyNode(it)
+        for j in 0..<it.len-1:
+          itCopy.add it[j]
+        itCopy.add p(it[^1], c)
+        v.add itCopy
+        result.add v
+  of nkDiscardStmt: #Small optimization
     if n[0].kind != nkEmpty:
       n[0] = pArg(n[0], c, false)
     result = n
-  of nkReturnStmt:
-    result = copyNode(n)
-    result.add p(n[0], c)
-  of nkYieldStmt:
-    result = copyNode(n)
-    result.add p(n[0], c)
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
       # rule (self-assignment-removal):
@@ -471,7 +448,7 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
   of nkRaiseStmt:
     if optNimV2 in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       if n[0].kind in nkCallKinds:
-        let call = p(n[0], c) #pExpr?
+        let call = p(n[0], c)
         result = copyNode(n)
         result.add call
       else:
@@ -493,31 +470,23 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
       nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt, nkExportStmt,
       nkPragma, nkCommentStmt, nkBreakStmt:
     result = n
-  # Recurse
   of nkWhileStmt:
     result = copyNode(n)
     inc c.inLoop
     result.add p(n[0], c)
     result.add p(n[1], c)
     dec c.inLoop
-  #Old recurse
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
     for son in n:
       var branch = copyNode(son)
       if son.kind in {nkElifBranch, nkElifExpr}:
-        if son[0].kind == nkBreakState:
-          var copy = copyNode(son[0])
-          copy.add p(son[0][0], c)
-          branch.add copy
-        else:
-          branch.add p(son[0], c) #The condition
+        branch.add p(son[0], c) #The condition
         branch.add processProc(son[1], c)
       else:
         branch.add processProc(son[0], c)
       result.add branch
-  of nkWhen:
-    # This should be a "when nimvm" node.
+  of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
     result[1][0] = processProc(result[1][0], c)
   of nkStmtList, nkStmtListExpr, nkTryStmt, nkFinally, nkPragmaBlock:
@@ -552,16 +521,12 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
         branch.add processProc(n[i][1], c)
       else:
         branch = copyNode(n[i])
-        if n[i][0].kind == nkNilLit: #XXX: Fix semCase to instead gen nkEmpty for cases that are never reached instead
-          branch.add c.emptyNode
-        else:
-          branch.add processProc(n[i][0], c)
+        branch.add processProc(n[i][0], c)
       result.add branch
   else:
     result = shallowCopy(n)
     for i in 0..<n.len:
       result[i] = processProc(n[i], c)
-    # result = recurse(n, c, p)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   # unfortunately, this needs to be kept consistent with the cases
@@ -569,7 +534,6 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   const movableNodeKinds = (nkCallKinds + {nkSym, nkTupleConstr, nkObjConstr,
                                            nkBracket, nkBracketExpr, nkNilLit})
 
-  #XXX: All these nkStmtList results will cause problems in recursive moveOrCopy calls
   case ri.kind
   of nkCallKinds:
     result = genSink(c, dest, ri)
@@ -718,7 +682,6 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       result.add newTryFinally(body, c.destroys)
   else:
     result.add body
-
   dbg:
     echo ">---------transformed-to--------->"
     echo result
