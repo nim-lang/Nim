@@ -284,7 +284,9 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
-proc p(n: PNode; c: var Con): PNode
+type ProcessProc = proc(n: PNode; c: var Con): PNode {.closure.}
+
+proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
@@ -318,71 +320,6 @@ proc keepVar(n, it: PNode, c: var Con): PNode =
   itCopy.add p(it[^1], c)
   result.add itCopy
 
-proc recurse(n: PNode, c: var Con, processProc: proc): PNode =
-  case n.kind:
-  of nkIfStmt, nkIfExpr:
-    result = copyNode(n)
-    for son in n:
-      var branch = copyNode(son)
-      if son.kind in {nkElifBranch, nkElifExpr}:
-        if son[0].kind == nkBreakState:
-          var copy = copyNode(son[0])
-          copy.add p(son[0][0], c)
-          branch.add copy
-        else:
-          branch.add p(son[0], c) #The condition
-        branch.add processProc(son[1], c)
-      else:
-        branch.add processProc(son[0], c)
-      result.add branch
-  of nkWhen:
-    # This should be a "when nimvm" node.
-    result = copyTree(n)
-    result[1][0] = processProc(result[1][0], c)
-  of nkStmtList, nkStmtListExpr, nkTryStmt, nkFinally, nkPragmaBlock:
-    result = copyNode(n)
-    for i in 0..<n.len-1:
-      result.add p(n[i], c)
-    result.add processProc(n[^1], c)
-  of nkBlockStmt, nkBlockExpr:
-    result = copyNode(n)
-    result.add n[0]
-    result.add processProc(n[1], c)
-  of nkRaiseStmt:
-    result = p(n, c)
-  of nkExceptBranch:
-    result = copyNode(n)
-    if n.len == 2:
-      result.add n[0]
-      for i in 1..<n.len:
-        result.add processProc(n[i], c)
-    else:
-      for i in 0..<n.len:
-        result.add processProc(n[i], c)
-  of nkCaseStmt:
-    result = copyNode(n)
-    result.add p(n[0], c)
-    for i in 1..<n.len:
-      var branch: PNode
-      if n[i].kind == nkOfBranch:
-        branch = n[i] # of branch conditions are constants
-        branch[^1] = processProc(n[i][^1], c)
-      elif n[i].kind in {nkElifBranch, nkElifExpr}:
-        branch = copyNode(n[i])
-        branch.add p(n[i][0], c) #The condition
-        branch.add processProc(n[i][1], c)
-      else:
-        branch = copyNode(n[i])
-        if n[i][0].kind == nkNilLit: #XXX: Fix semCase to instead gen nkEmpty for cases that are never reached instead
-          branch.add c.emptyNode
-        else:
-          branch.add processProc(n[i][0], c)
-      result.add branch
-  else:
-    result = shallowCopy(n)
-    for i in 0..<n.len:
-      result[i] = processProc(n[i], c)
-
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   if isSink:
     if arg.kind in nkCallKinds:
@@ -412,9 +349,9 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(arg, c)
     elif arg.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt}:
-      result = recurse(arg, c, proc(n: PNode, c: var Con): PNode = pArg(n, c, isSink))
+      result = p(arg, c, proc(n: PNode, c: var Con): PNode = pArg(n, c, isSink))
     elif arg.kind in {nkIfExpr, nkIfStmt, nkCaseStmt}:
-      result = recurse(arg, c, proc(n: PNode, c: var Con): PNode =
+      result = p(arg, c, proc(n: PNode, c: var Con): PNode =
           if n.typ == nil: p(n, c) #in if/case expr branch with noreturn
           else: pArg(n, c, isSink))
     else:
@@ -439,7 +376,10 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   else:
     result = p(arg, c)
 
-proc p(n: PNode; c: var Con): PNode =
+proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
+  let processProc = if processProc == nil: ProcessProc(proc(n: PNode, c: var Con): PNode = p(n, c, nil))
+                    else: processProc
+
   case n.kind
   of nkCallKinds:
     let parameters = n[0].typ
@@ -560,8 +500,68 @@ proc p(n: PNode; c: var Con): PNode =
     result.add p(n[0], c)
     result.add p(n[1], c)
     dec c.inLoop
+  #Old recurse
+  of nkIfStmt, nkIfExpr:
+    result = copyNode(n)
+    for son in n:
+      var branch = copyNode(son)
+      if son.kind in {nkElifBranch, nkElifExpr}:
+        if son[0].kind == nkBreakState:
+          var copy = copyNode(son[0])
+          copy.add p(son[0][0], c)
+          branch.add copy
+        else:
+          branch.add p(son[0], c) #The condition
+        branch.add processProc(son[1], c)
+      else:
+        branch.add processProc(son[0], c)
+      result.add branch
+  of nkWhen:
+    # This should be a "when nimvm" node.
+    result = copyTree(n)
+    result[1][0] = processProc(result[1][0], c)
+  of nkStmtList, nkStmtListExpr, nkTryStmt, nkFinally, nkPragmaBlock:
+    result = copyNode(n)
+    for i in 0..<n.len-1:
+      result.add p(n[i], c)
+    result.add processProc(n[^1], c)
+  of nkBlockStmt, nkBlockExpr:
+    result = copyNode(n)
+    result.add n[0]
+    result.add processProc(n[1], c)
+  of nkExceptBranch:
+    result = copyNode(n)
+    if n.len == 2:
+      result.add n[0]
+      for i in 1..<n.len:
+        result.add processProc(n[i], c)
+    else:
+      for i in 0..<n.len:
+        result.add processProc(n[i], c)
+  of nkCaseStmt:
+    result = copyNode(n)
+    result.add p(n[0], c)
+    for i in 1..<n.len:
+      var branch: PNode
+      if n[i].kind == nkOfBranch:
+        branch = n[i] # of branch conditions are constants
+        branch[^1] = processProc(n[i][^1], c)
+      elif n[i].kind in {nkElifBranch, nkElifExpr}:
+        branch = copyNode(n[i])
+        branch.add p(n[i][0], c) #The condition
+        branch.add processProc(n[i][1], c)
+      else:
+        branch = copyNode(n[i])
+        if n[i][0].kind == nkNilLit: #XXX: Fix semCase to instead gen nkEmpty for cases that are never reached instead
+          branch.add c.emptyNode
+        else:
+          branch.add processProc(n[i][0], c)
+      result.add branch
   else:
-    result = recurse(n, c, p)
+    result = shallowCopy(n)
+    for i in 0..<n.len:
+      result[i] = processProc(n[i], c)
+    # result = recurse(n, c, p)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   # unfortunately, this needs to be kept consistent with the cases
@@ -625,9 +625,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     copyRi[0] = result[^1]
     result[^1] = copyRi
   of nkStmtListExpr, nkBlockExpr:
-    result = recurse(ri, c, proc(n: PNode, c: var Con): PNode = moveOrCopy(dest, n, c))
+    result = p(ri, c, proc(n: PNode, c: var Con): PNode = moveOrCopy(dest, n, c))
   of nkIfExpr, nkCaseStmt:
-    result = recurse(ri, c, proc(n: PNode, c: var Con): PNode =
+    result = p(ri, c, proc(n: PNode, c: var Con): PNode =
         if n.typ == nil: p(n, c) #in if/case expr branch with noreturn
         else: moveOrCopy(dest, n, c))
   else:
