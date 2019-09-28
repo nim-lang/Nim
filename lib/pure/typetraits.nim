@@ -7,64 +7,60 @@
 #    distribution, for details about the copyright.
 #
 
-## This module defines compile-time reflection procs for
-## working with types.
+## 这个模块定义了编译时关于类型的反射procs。
 ##
-## Unstable API.
+## 未稳定的 API.
 
 export system.`$` # for backward compatibility
 
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
-  ## Returns the name of the given type.
+  ## 返回给定类型的名字。
   ##
-  ## Alias for system.`$`(t) since Nim v0.20.
+  ## 从v0.20开始，这个proc是system模块 \`$\`(t) 的别名。
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
-  ## Returns the arity of the given type. This is the number of "type"
-  ## components or the number of generic parameters a given type ``t`` has.
+  ## 返回给定类型的参数个数。
+  ## 这是 "类型" 的元素的个数或者给定类型 ``t`` 具有的泛型参数的个数。 
   runnableExamples:
     assert arity(seq[string]) == 1
     assert arity(array[3, int]) == 2
     assert arity((int, int, float, string)) == 4
 
 proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
-  ## Accepts an instantiated generic type and returns its
-  ## uninstantiated form.
+  ## 接受一个实例化的泛型类型并返回其未实例化的形式。 
   ##
-  ## For example:
-  ## * `seq[int].genericHead` will be just `seq`
-  ## * `seq[int].genericHead[float]` will be `seq[float]`
+  ## 例如:
+  ## * `seq[int].genericHead` 返回的只是 `seq`
+  ## * `seq[int].genericHead[float]` 返回的是 `seq[float]`
   ##
-  ## A compile-time error will be produced if the supplied type
-  ## is not generic.
+  ## 如果提供的类型是非泛型，则产生成编译时错误。 
+  ## 
   ##
-  ## See also:
+  ## 另请参阅:
   ## * `stripGenericParams <#stripGenericParams,typedesc>`_
   ##
-  ## Example:
+  ## 例子:
   ##
   ## .. code-block:: nim
   ##   type
   ##     Functor[A] = concept f
   ##       type MatchedGenericType = genericHead(f.type)
-  ##         # `f` will be a value of a type such as `Option[T]`
-  ##         # `MatchedGenericType` will become the `Option` type
+  ##         # `f` 将是 `Option[T]` 之类类型的值
+  ##         # `MatchedGenericType` 将成为 `Option` 类型
 
 
 proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
-  ## This trait is similar to `genericHead <#genericHead,typedesc>`_, but
-  ## instead of producing error for non-generic types, it will just return
-  ## them unmodified.
+  ## 这个 trait 和 `genericHead <#genericHead,typedesc>`_ 相似，
+  ## 不同的是，对于非泛型的类型，这个proc只会原封不动地返回它们 ，而不是产一个错误。
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
-  ## This trait returns true iff the type ``t`` is safe to use for
-  ## `copyMem`:idx:.
+  ## 如果类型 ``t`` 可以安全地用于 `copyMem`:idx: ，则此trait返回true。 
   ##
-  ## Other languages name a type like these `blob`:idx:.
+  ## 其他语言命名的类型类似于 `blob`:idx: 。
 
 proc isNamedTuple*(T: typedesc): bool =
-  ## Return true for named tuples, false for any other type.
+  ## 如果是命名的元组，返回true，否则返回falase。
   when T isnot tuple: result = false
   else:
     var t: T
