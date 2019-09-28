@@ -4522,6 +4522,7 @@ when defined(genode):
         # Perform application initialization
         # and return to thread entrypoint.
 
+var helperId* {.compileTime.} = 0
 
 import system/widestrs
 export widestrs

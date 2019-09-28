@@ -216,6 +216,7 @@ proc `==`*(x, y: JsRoot): bool {.importcpp: "(# === #)".}
   ## like in JavaScript, so if your JsObjects are in fact JavaScript Objects,
   ## and not strings or numbers, this is a *comparison of references*.
 
+
 {.experimental.}
 macro `.`*(obj: JsObject, field: untyped): JsObject =
   ## Experimental dot accessor (get) for type JsObject.
@@ -228,38 +229,45 @@ macro `.`*(obj: JsObject, field: untyped): JsObject =
   ##  let obj = newJsObject()
   ##  obj.a = 20
   ##  console.log(obj.a) # puts 20 onto the console.
+  let helper = genSym(nskProc,"helper" & $helperId) #ident("helper" & $helperId)
+  helperId += 1
   if validJsName($field):
     let importString = "#." & $field
     result = quote do:
-      proc helper(o: JsObject): JsObject
-        {.importcpp: `importString`, gensym.}
-      helper(`obj`)
+      proc `helper`(o: JsObject): JsObject
+        {.importcpp: `importString`.}
+      `helper`(`obj`)
   else:
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName($field)
     let importString = "#." & mangledNames[$field]
     result = quote do:
-      proc helper(o: JsObject): JsObject
-        {.importcpp: `importString`, gensym.}
-      helper(`obj`)
+      proc `helper`(o: JsObject): JsObject
+        {.importcpp: `importString`.}
+      `helper`(`obj`)
+  # echo result.repr
 
 macro `.=`*(obj: JsObject, field, value: untyped): untyped =
   ## Experimental dot accessor (set) for type JsObject.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
+  let helper = genSym(nskProc,"helper" & $helperId)
+  # ident("helper" & $helperId) #
+  helperId += 1
   if validJsName($field):
     let importString = "#." & $field & " = #"
     result = quote do:
-      proc helper(o: JsObject, v: auto)
-        {.importcpp: `importString`, gensym.}
-      helper(`obj`, `value`)
+      proc `helper`(o: JsObject, v: auto)
+        {.importcpp: `importString`.}
+      `helper`(`obj`, `value`)
   else:
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName($field)
     let importString = "#." & mangledNames[$field] & " = #"
     result = quote do:
-      proc helper(o: JsObject, v: auto)
-        {.importcpp: `importString`, gensym.}
-      helper(`obj`, `value`)
+      proc `helper`(o: JsObject, v: auto)
+        {.importcpp: `importString`.}
+      `helper`(`obj`, `value`)
+  # echo result.repr
 
 macro `.()`*(obj: JsObject,
              field: untyped,
@@ -287,10 +295,12 @@ macro `.()`*(obj: JsObject,
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName($field)
     importString = "#." & mangledNames[$field] & "(@)"
+  let helper = genSym(nskProc,"helper" & $helperId) #ident("helper" & $helperId)
+  helperId += 1
   result = quote:
-    proc helper(o: JsObject): JsObject
-      {.importcpp: `importString`, gensym, discardable.}
-    helper(`obj`)
+    proc `helper`(o: JsObject): JsObject
+      {.importcpp: `importString`, discardable.}
+    `helper`(`obj`)
   for idx in 0 ..< args.len:
     let paramName = newIdentNode("param" & $idx)
     result[0][3].add newIdentDefs(paramName, newIdentNode("JsObject"))
@@ -307,10 +317,14 @@ macro `.`*[K: cstring, V](obj: JsAssoc[K, V],
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName($field)
     importString = "#." & mangledNames[$field]
+  let helper = genSym(nskProc,"helper" & $helperId) #ident("helper" & $helperId)
+  helperId += 1
   result = quote do:
-    proc helper(o: type(`obj`)): `obj`.V
-      {.importcpp: `importString`, gensym.}
-    helper(`obj`)
+    proc `helper`(o: type(`obj`)): `obj`.V
+      {.importcpp: `importString`.}
+    `helper`(`obj`)
+
+  # echo result.repr
 
 macro `.=`*[K: cstring, V](obj: JsAssoc[K, V],
                                     field: untyped,
@@ -324,10 +338,12 @@ macro `.=`*[K: cstring, V](obj: JsAssoc[K, V],
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName($field)
     importString = "#." & mangledNames[$field] & " = #"
+  let helper = genSym(nskProc,"helper" & $helperId) #ident("helper" & $helperId)
+  helperId += 1
   result = quote do:
-    proc helper(o: type(`obj`), v: `obj`.V)
-      {.importcpp: `importString`, gensym.}
-    helper(`obj`, `value`)
+    proc `helper`(o: type(`obj`), v: `obj`.V)
+      {.importcpp: `importString`.}
+    `helper`(`obj`, `value`)
 
 macro `.()`*[K: cstring, V: proc](obj: JsAssoc[K, V],
                                            field: untyped,
