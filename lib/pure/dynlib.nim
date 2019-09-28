@@ -7,20 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the ability to access symbols from shared
-## libraries. On POSIX this uses the ``dlsym`` mechanism, on
-## Windows ``LoadLibrary``.
+## 该模块实现了一些访问动态共享库中符号的方法。在 Posix 系统上使用的是`dlsym`机制，
+## 而在 windows 平台，则是`LoadLibrary`。
 ##
-## Examples
+## 例子
 ## ========
 ##
-## Loading a simple C function
+## 加载一个简单的 c 函数
 ## ---------------------------
 ##
-## The following example demonstrates loading a function called 'greet'
-## from a library that is determined at runtime based upon a language choice.
-## If the library fails to load or the function 'greet' is not found,
-## it quits with a failure error code.
+## 下面的例子演示了从某个动态库中加载一个名为`greet`的函数，在运行时导入哪个库取决于语言的选择。
+## 如果该库导入失败或者`greet`函数没有找到，代码会以返回错误码的方式结束。
 ##
 ## .. code-block::nim
 ##
@@ -57,35 +54,31 @@
 import strutils
 
 type
-  LibHandle* = pointer ## a handle to a dynamically loaded library
+  LibHandle* = pointer ## 一个指向动态加载库的句柄
 
 proc loadLib*(path: string, globalSymbols=false): LibHandle {.gcsafe.}
-  ## loads a library from `path`. Returns nil if the library could not
-  ## be loaded.
+  ## 从路径`path`导入一个库。如果该路径的库无法导入，则返回`nil`。
 
 proc loadLib*(): LibHandle {.gcsafe.}
-  ## gets the handle from the current executable. Returns nil if the
-  ## library could not be loaded.
+  ## 从当前可执行文件获取动态库的句柄，如果库无法加载，则返回 nil
 
 proc unloadLib*(lib: LibHandle) {.gcsafe.}
-  ## unloads the library `lib`
+  ## 卸载库`lib`
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
-  ## raises an `EInvalidLibrary` exception.
+  ## 触发一个`EInvalidLibrary`异常。
   raise newException(LibraryError, "could not find symbol: " & $name)
 
 proc symAddr*(lib: LibHandle, name: cstring): pointer {.gcsafe.}
-  ## retrieves the address of a procedure/variable from `lib`. Returns nil
-  ## if the symbol could not be found.
+  ## 从库`lib`中获取一个过程或变量的地址。如果符号无法找到，则返回`nil`。
 
 proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
-  ## retrieves the address of a procedure/variable from `lib`. Raises
-  ## `EInvalidLibrary` if the symbol could not be found.
+  ## 从库`lib`中获取一个过程或变量的地址。如果符号无法找到，则会触发`EInvalidLibrary`异常。
   result = symAddr(lib, name)
   if result == nil: raiseInvalidLibrary(name)
 
 proc libCandidates*(s: string, dest: var seq[string]) =
-  ## given a library name pattern `s` write possible library names to `dest`.
+  ## 给定一个匹配的库名称`s`，将可能的库名称写入`desc`
   var le = strutils.find(s, '(')
   var ri = strutils.find(s, ')', le+1)
   if le >= 0 and ri > le:
@@ -97,9 +90,8 @@ proc libCandidates*(s: string, dest: var seq[string]) =
     add(dest, s)
 
 proc loadLibPattern*(pattern: string, globalSymbols=false): LibHandle =
-  ## loads a library with name matching `pattern`, similar to what `dlimport`
-  ## pragma does. Returns nil if the library could not be loaded.
-  ## Warning: this proc uses the GC and so cannot be used to load the GC.
+  ## 以名称匹配的方式导入库，行为与`dlimport`注解类似。如果库无法导入，则返回`nil`。
+  ## 警告：该过程涉及到 GC，因此不能用来加载 GC 相关的库。
   var candidates = newSeq[string]()
   libCandidates(pattern, candidates)
   for c in candidates:
@@ -109,10 +101,9 @@ proc loadLibPattern*(pattern: string, globalSymbols=false): LibHandle =
 when defined(posix) and not defined(nintendoswitch):
   #
   # =========================================================================
-  # This is an implementation based on the dlfcn interface.
-  # The dlfcn interface is available in Linux, SunOS, Solaris, IRIX, FreeBSD,
-  # NetBSD, AIX 4.2, HPUX 11, and probably most other Unix flavors, at least
-  # as an emulation layer on top of native functions.
+  # 这是一个基于 dlfcn 接口的实现。
+  # dlfcn 接口在 Linux, SunOS, Solaris, IRIX, FreeBSD, NetBSD, AIX 4.2, HPUX 11 
+  # 系统上可用， 或许在其他 Unix 变种上也可以使用，至少是作为一个建立在原生函数之上的模拟层
   # =========================================================================
   #
   import posix
@@ -131,7 +122,8 @@ when defined(posix) and not defined(nintendoswitch):
 elif defined(nintendoswitch):
   #
   # =========================================================================
-  # Nintendo switch DevkitPro sdk does not have these. Raise an error if called.
+  # Nintendo switch DevkitPro sdk 没有这些. 如果调用会触发错误.
+  # 
   # =========================================================================
   #
 
@@ -153,7 +145,7 @@ elif defined(nintendoswitch):
 elif defined(windows) or defined(dos):
   #
   # =======================================================================
-  # Native Windows Implementation
+  # 原生 Windows 实现
   # =======================================================================
   #
   type
