@@ -14,7 +14,7 @@ import os, strutils
 #  8 - Handle : Invalid Handle
 
 proc genBadFileName(limit = 100): string =
-    ## Generates a filename of a nonexistant file.
+    ## Generates a filename of a nonexistent file.
     ## Returns "" if generation fails.
     result = "a"
     var hitLimit = true

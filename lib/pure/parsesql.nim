@@ -711,7 +711,7 @@ proc identOrLiteral(p: var SqlParser): SqlNode =
       getTok(p)
     else:
       sqlError(p, "expression expected")
-      getTok(p) # we must consume a token here to prevend endless loops!
+      getTok(p) # we must consume a token here to prevent endless loops!
 
 proc primary(p: var SqlParser): SqlNode =
   if (p.tok.kind == tkOperator and (p.tok.literal == "+" or p.tok.literal == "-")) or isKeyw(p, "not"):

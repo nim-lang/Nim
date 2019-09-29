@@ -256,7 +256,7 @@ proc isLastRead(n: PNode; c: var Con): bool =
 
 proc initialized(code: ControlFlowGraph; pc: int,
                  init, uninit: var IntSet; comesFrom: int): int =
-  ## Computes the set of definitely initialized variables accross all code paths
+  ## Computes the set of definitely initialized variables across all code paths
   ## as an IntSet of IDs.
   var pc = pc
   while pc < code.len:
@@ -492,7 +492,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
         result.add pArg(arg[i], c, i < L and isSinkTypeForParam(parameters[i]))
     elif arg.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
-      # sink parameter (bug #11524). Note that the string implemenation is
+      # sink parameter (bug #11524). Note that the string implementation is
       # different and can deal with 'const string sunk into var'.
       result = passCopyToSink(arg, c)
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkCharLit..nkTripleStrLit}:

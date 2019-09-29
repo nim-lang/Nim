@@ -877,7 +877,7 @@ proc hoistParamsUsedInDefault(c: PTransf, call, letSection, defExpr: PNode): PNo
   # The recursion may confuse you. It performs two duties:
   #
   # 1) extracting all referenced params from default expressions
-  #    into a let section preceeding the call
+  #    into a let section preceding the call
   #
   # 2) replacing the "references" within the default expression
   #    with these extracted skLet symbols.
@@ -1140,7 +1140,7 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
 
     let cache = cache or prc.typ.callConv == ccInline
     if cache:
-      # genProc for inline procs will be called multiple times from diffrent modules,
+      # genProc for inline procs will be called multiple times from different modules,
       # it is important to transform exactly once to get sym ids and locations right
       prc.transformedBody = result
     else:

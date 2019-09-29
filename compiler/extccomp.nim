@@ -404,7 +404,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
                      CC[c].name & fullSuffix
     result = getConfigVar(conf, fullCCname)
     if result.len == 0:
-      # not overriden for this cross compilation setting?
+      # not overridden for this cross compilation setting?
       result = getConfigVar(conf, CC[c].name & fullSuffix)
   else:
     result = getConfigVar(conf, CC[c].name & fullSuffix)
@@ -757,7 +757,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     # way of being able to debug and rebuild the program at the same time. This
     # is accomplished using the /PDB:<filename> flag (there also exists the
     # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
-    # atleast 300kb big (when linking statically to the runtime - or else 5mb+)
+    # at least 300kb big (when linking statically to the runtime - or else 5mb+)
     # and will quickly accumulate. There is a hacky solution: we could try to
     # delete all .pdb files with a pattern and swallow exceptions.
     #

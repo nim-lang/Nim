@@ -230,7 +230,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
   result = newSocket(fd, domain, sockType, protocol, buffered)
 
 proc parseIPv4Address(addressStr: string): IpAddress =
-  ## Parses IPv4 adresses
+  ## Parses IPv4 addresses
   ## Raises ValueError on errors
   var
     byteCount = 0
@@ -264,7 +264,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
   result.address_v4[byteCount] = cast[uint8](currentByte)
 
 proc parseIPv6Address(addressStr: string): IpAddress =
-  ## Parses IPv6 adresses
+  ## Parses IPv6 addresses
   ## Raises ValueError on errors
   result = IpAddress(family: IpAddressFamily.IPv6)
   if addressStr.len < 2:
@@ -1657,7 +1657,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
     timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Connects to server as specified by ``address`` on port specified by ``port``.
   ##
-  ## The ``timeout`` paremeter specifies the time in milliseconds to allow for
+  ## The ``timeout`` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
   socket.fd.setBlocking(false)
 

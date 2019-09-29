@@ -47,7 +47,7 @@ when defined(cpp) or defined(nimdoc):
         ## Behaves like Acquire when applied to load, like Release when
         ## applied to a store and like AcquireRelease when applied to a
         ## read-modify-write operation.
-        ## Also garantees that all threads observe the same total ordering
+        ## Also guarantees that all threads observe the same total ordering
         ## with other moSequentiallyConsistent operations.
 
   type

@@ -2017,7 +2017,7 @@ proc countLines*(s: string): int {.noSideEffect,
   ## `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported.
   ##
-  ## In this context, a line is any string seperated by a newline combination.
+  ## In this context, a line is any string separated by a newline combination.
   ## A line can be an empty string.
   ##
   ## See also:
@@ -2145,7 +2145,7 @@ proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {
   ## pass through the input string.
   ##
   ## `multiReplace` performs all replacements in a single pass, this means it
-  ## can be used to swap the occurences of "a" and "b", for instance.
+  ## can be used to swap the occurrences of "a" and "b", for instance.
   ##
   ## If the resulting string is not longer than the original input string,
   ## only a single memory allocation is required.
@@ -2280,14 +2280,14 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
     return true
 
 
-# floating point formating:
+# floating point formatting:
 when not defined(js):
   proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
                                      importc: "sprintf", varargs, noSideEffect.}
 
 type
   FloatFormatMode* = enum
-    ## the different modes of floating point formating
+    ## the different modes of floating point formatting
     ffDefault,   ## use the shorter floating point notation
     ffDecimal,   ## use decimal floating point notation
     ffScientific ## use scientific notation (using ``e`` character)
@@ -2892,7 +2892,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   inc(len1)
   inc(len2)
   var half = len1 shr 1
-  # initalize first row:
+  # initialize first row:
   #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2*sizeof(int)))
   var row: seq[int]
   newSeq(row, len2)

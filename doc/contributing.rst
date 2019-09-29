@@ -140,9 +140,6 @@ commands.
 Comparing tests
 ===============
 
-Because some tests fail in the current ``devel`` branch, not every failure
-after your change is necessarily caused by your changes. Some tests are
-flaky and will fail on occasion; these are typically bugs that should be fixed.
 Test failures can be grepped using ``Failure:``.
 
 The tester can compare two test runs. First, you need to create the
@@ -348,15 +345,10 @@ The Git stuff
 General commit rules
 --------------------
 
-1. The commit message should contain either ``[bugfix]`` or ``[feature]``
-   or ``[refactoring]`` or ``[other]``. In practice however this is very
-   often forgotten and a commit message like ``fixes #xyz`` is good enough.
-
-   Every commit is backported unless
-   tagged with either ``[feature]`` or with ``[nobackport]``. They are
-   backported to the latest stable release branch (currently 0.20.x).
-
-   Refactorings are backported because they often enable further bugfixes.
+1. Important, critical bugfixes that have a tiny chance of breaking
+   somebody's code should be backported to the latest stable release
+   branch (currently 1.0.x). The commit message should contain ``[backport]``
+   then.
 
 2. If you introduce changes which affect backwards compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,

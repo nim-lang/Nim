@@ -7,26 +7,24 @@
 #    distribution, for details about the copyright.
 #
 
-## Channel support for threads.
+## 线程间通信通道的支持。
 ##
-## **Note**: This is part of the system module. Do not import it directly.
-## To activate thread support compile with the ``--threads:on`` command line switch.
+## **注意**: 这是system模块的一部分. 不需要直接import.
+## 需要在编译的时候在命令行使用 ``--threads:on``
+## 开关来开启线程的支持
 ##
-## **Note:** Channels are designed for the ``Thread`` type. They are unstable when
-## used with ``spawn``
+## **注意:** 通道是为了 ``Thread`` 类型二设计的. 在通过 ``spawn`` 使用的时候是不稳定的。
 ##
-## **Note:** The current implementation of message passing does
-## not work with cyclic data structures.
+## **注意:** 当前不支持循环数据结构的消息。
 ##
-## **Note:** Channels cannot be passed between threads. Use globals or pass
-## them by `ptr`.
+## **注意:** 通道不能在线程之间传递，使用全局变量或者通过 `ptr` 方式进行传递。
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
 type
   pbytes = ptr array[0.. 0xffff, byte]
-  RawChannel {.pure, final.} = object ## msg queue for a thread
+  RawChannel {.pure, final.} = object ## 一个线程的消息队列。
     rd, wr, count, mask, maxItems: int
     data: pbytes
     lock: SysLock
@@ -36,7 +34,7 @@ type
     region: MemRegion
   PRawChannel = ptr RawChannel
   LoadStoreMode = enum mStore, mLoad
-  Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
+  Channel* {.gcsafe.}[TMsg] = RawChannel ## 一个线程间通信的通道。
 
 const ChannelDeadMask = -2
 
@@ -178,7 +176,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     copyMem(dest, src, mt.size) # copy raw bits
 
 proc rawSend(q: PRawChannel, data: pointer, typ: PNimType) =
-  ## Adds an `item` to the end of the queue `q`.
+  ## 添加一个 `item` 到队列 `q` 的尾部。
   var cap = q.mask+1
   if q.count >= cap:
     # start with capacity for 2 entries in the queue:
@@ -232,16 +230,15 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
   result = true
 
 proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) {.inline.} =
-  ## Sends a message to a thread. `msg` is deeply copied.
+  ## 发送一个消息给一个线程。 `msg` 是深拷贝的。
   discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
 
 proc trySend*[TMsg](c: var Channel[TMsg], msg: TMsg): bool {.inline.} =
-  ## Tries to send a message to a thread.
+  ## 试图发送一个消息给一个线程。
   ##
-  ## `msg` is deeply copied. Doesn't block.
+  ## `msg` 是深拷贝的。不会阻塞。
   ##
-  ## Returns `false` if the message was not sent because number of pending items
-  ## in the channel exceeded `maxItems`.
+  ## 如果是因为通道中挂起的项的数量超过了 `maxItems` 而未发送消息，返回 `false` 。
   sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
@@ -258,10 +255,10 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
     signalSysCond(q.cond)
 
 proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
-  ## Receives a message from the channel `c`.
+  ## 从通道 `c` 接收一个消息。
   ##
-  ## This blocks until a message has arrived!
-  ## You may use `peek proc <#peek,Channel[TMsg]>`_ to avoid the blocking.
+  ## 将阻塞直到一个消息到达!
+  ## 可以使用 `peek proc <#peek,Channel[TMsg]>`_ 避免阻塞。
   var q = cast[PRawChannel](addr(c))
   acquireSys(q.lock)
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
@@ -269,11 +266,10 @@ proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
 
 proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
                                                   msg: TMsg] =
-  ## Tries to receive a message from the channel `c`, but this can fail
-  ## for all sort of reasons, including contention.
+  ## 试图从通道 `c` 中接收一个消息，但这可能会因为各种原因而失败，包括竞争。
   ##
-  ## If it fails, it returns ``(false, default(msg))`` otherwise it
-  ## returns ``(true, msg)``.
+  ## 如果失败, 返回 ``(false, default(msg))`` 。
+  ## 如果成功，返回 ``(true, msg)`` 。
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):
@@ -283,12 +279,12 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
       releaseSys(q.lock)
 
 proc peek*[TMsg](c: var Channel[TMsg]): int =
-  ## Returns the current number of messages in the channel `c`.
+  ## 返回通道 `c` 中当前的消息数量。
   ##
-  ## Returns -1 if the channel has been closed.
+  ## 如果通道已经关闭，返回-1。
   ##
-  ## **Note**: This is dangerous to use as it encourages races.
-  ## It's much better to use `tryRecv proc <#tryRecv,Channel[TMsg]>`_ instead.
+  ## **注意**:  此操作是危险的，因为鼓励竞争。
+  ## 最好是使用 `tryRecv proc <#tryRecv,Channel[TMsg]>`_ 替代。
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     lockChannel(q):
@@ -297,21 +293,19 @@ proc peek*[TMsg](c: var Channel[TMsg]): int =
     result = -1
 
 proc open*[TMsg](c: var Channel[TMsg], maxItems: int = 0) =
-  ## Opens a channel `c` for inter thread communication.
+  ## 开启一个线程间通信的通道 `c` 。
   ##
-  ## The `send` operation will block until number of unprocessed items is
-  ## less than `maxItems`.
+  ## `send` 操作将阻塞，直到未处理项的数量小于 `maxItems` 。
   ##
-  ## For unlimited queue set `maxItems` to 0.
+  ## 想要得到不限制长度的队列，设置 `maxItems` 为0。
   initRawChannel(addr(c), maxItems)
 
 proc close*[TMsg](c: var Channel[TMsg]) =
-  ## Closes a channel `c` and frees its associated resources.
+  ## 关闭一个通道 `c` 并且释放相关资源。
   deinitRawChannel(addr(c))
 
 proc ready*[TMsg](c: var Channel[TMsg]): bool =
-  ## Returns true iff some thread is waiting on the channel `c` for
-  ## new messages.
+  ## 如果某个线程正在通道 ``c`` 上等待新消息，返回true。 
   var q = cast[PRawChannel](addr(c))
   result = q.ready
 
