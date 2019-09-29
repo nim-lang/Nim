@@ -251,16 +251,29 @@ when not defined(js):
       strm.close()
 
     const bufferSize = 1024
-    var buffer {.noinit.}: array[bufferSize, char]
-    while true:
-      let readBytes = readData(s, addr(buffer[0]), bufferSize)
-      if readBytes == 0:
-        break
-      let prevLen = result.len
-      result.setLen(prevLen + readBytes)
-      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
-      if readBytes < bufferSize:
-        break
+    when nimvm:
+      var buffer2: string
+      buffer2.setLen(bufferSize)
+      while true:
+        let readBytes = readDataStr(s, buffer2, 0..<bufferSize)
+        if readBytes == 0:
+          break
+        let prevLen = result.len
+        result.setLen(prevLen + readBytes)
+        result[prevLen..<prevLen+readBytes] = buffer2[0..<readBytes]
+        if readBytes < bufferSize:
+          break
+    else:
+      var buffer {.noinit.}: array[bufferSize, char]
+      while true:
+        let readBytes = readData(s, addr(buffer[0]), bufferSize)
+        if readBytes == 0:
+          break
+        let prevLen = result.len
+        result.setLen(prevLen + readBytes)
+        copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+        if readBytes < bufferSize:
+          break
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
@@ -399,7 +412,12 @@ proc readChar*(s: Stream): char =
     doAssert strm.readChar() == '\x00'
     strm.close()
 
-  if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
+  when nimvm:
+    var str = " "
+    if readDataStr(s, str, 0..<sizeof(result)) != 1: result = '\0'
+    else: result = str[0]
+  else:
+    if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc peekChar*(s: Stream): char =
   ## Peeks a char from the stream `s`. Raises `IOError` if an error occurred.
@@ -884,7 +902,10 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     result = s.readLineImpl(s, line)
   else:
     # fallback
-    line.string.setLen(0)
+    when nimvm: #Bug #12282
+      line.setLen(0)
+    else:
+      line.string.setLen(0)
     while true:
       var c = readChar(s)
       if c == '\c':
@@ -894,7 +915,10 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
       elif c == '\0':
         if line.len > 0: break
         else: return false
-      line.string.add(c)
+      when nimvm: #Bug #12282
+        line.add(c)
+      else:
+        line.string.add(c)
     result = true
 
 proc peekLine*(s: Stream, line: var TaintedString): bool =
@@ -999,21 +1023,73 @@ iterator lines*(s: Stream): TaintedString =
   while s.readLine(line):
     yield line
 
-when not defined(js):
+type
+  StringStream* = ref StringStreamObj
+    ## A stream that encapsulates a string.
+    ##
+    ## **Note:** Not available for JS backend.
+  StringStreamObj* = object of StreamObj
+    ## A string stream object.
+    ##
+    ## **Note:** Not available for JS backend.
+    data*: string ## A string data.
+                  ## This is updated when called `writeLine` etc.
+    pos: int
 
-  type
-    StringStream* = ref StringStreamObj
-      ## A stream that encapsulates a string.
-      ##
-      ## **Note:** Not available for JS backend.
-    StringStreamObj* = object of StreamObj
-      ## A string stream object.
-      ##
-      ## **Note:** Not available for JS backend.
-      data*: string ## A string data.
-                    ## This is updated when called `writeLine` etc.
-      pos: int
+when defined(js): #This section exists so that string streams work at compile time for the js backend
+  proc ssAtEnd(s: Stream): bool {.compileTime.} =
+    var s = StringStream(s)
+    return s.pos >= s.data.len
 
+  proc ssSetPosition(s: Stream, pos: int) {.compileTime.} =
+    var s = StringStream(s)
+    s.pos = clamp(pos, 0, s.data.len)
+
+  proc ssGetPosition(s: Stream): int {.compileTime.} =
+    var s = StringStream(s)
+    return s.pos
+
+  proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int {.compileTime.} =
+    var s = StringStream(s)
+    result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
+    if result > 0:
+      buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
+      inc(s.pos, result)
+    else:
+      result = 0
+
+  proc ssClose(s: Stream) {.compileTime.} =
+    var s = StringStream(s)
+    when defined(nimNoNilSeqs):
+      s.data = ""
+    else:
+      s.data = nil
+
+  proc newStringStream*(s: string = ""): owned StringStream {.compileTime.} =
+    new(result)
+    result.data = s
+    result.pos = 0
+    result.closeImpl = ssClose
+    result.atEndImpl = ssAtEnd
+    result.setPositionImpl = ssSetPosition
+    result.getPositionImpl = ssGetPosition
+    result.readDataStrImpl = ssReadDataStr
+
+  proc readAll*(s: Stream): string {.compileTime.} =
+    const bufferSize = 1024
+    var bufferr: string
+    bufferr.setLen(bufferSize)
+    while true:
+      let readBytes = readDataStr(s, bufferr, 0..<bufferSize)
+      if readBytes == 0:
+        break
+      let prevLen = result.len
+      result.setLen(prevLen + readBytes)
+      result[prevLen..<prevLen+readBytes] = bufferr[0..<readBytes]
+      if readBytes < bufferSize:
+        break
+
+else:
   proc ssAtEnd(s: Stream): bool =
     var s = StringStream(s)
     return s.pos >= s.data.len
@@ -1031,8 +1107,7 @@ when not defined(js):
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
       when nimvm:
-        for i in 0 ..< result: # sorry, but no fast string splicing on the vm.
-          buffer[slice.a + i] = s.data[s.pos + i]
+        buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
       else:
         copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
       inc(s.pos, result)
