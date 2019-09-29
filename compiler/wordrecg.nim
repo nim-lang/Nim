@@ -37,8 +37,6 @@ type
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
     wIntDefine, wStrDefine, wBoolDefine
 
-    wCursor,
-
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
@@ -124,8 +122,6 @@ const
     "*", "-",
     "magic", "thread", "final", "profiler", "memtracker", "objchecks",
     "intdefine", "strdefine", "booldefine",
-
-    "cursor",
 
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",

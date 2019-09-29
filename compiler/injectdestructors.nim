@@ -265,27 +265,7 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc isDangerousSeq(t: PType): bool {.inline.} =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind == tySequence and tfHasOwned notin t[0].flags
-
-proc containsConstSeq(n: PNode): bool =
-  if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):
-    return true
-  result = false
-  case n.kind
-  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
-    result = containsConstSeq(n[1])
-  of nkObjConstr, nkClosure:
-    for i in 1..<n.len:
-      if containsConstSeq(n[i]): return true
-  of nkCurly, nkBracket, nkPar, nkTupleConstr:
-    for son in n:
-      if containsConstSeq(son): return true
-  else: discard
-
 type ProcessProc = proc(n: PNode; c: var Con): PNode {.closure.}
-
 proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
@@ -308,8 +288,24 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
 
-proc isCursor(n: PNode): bool {.inline.} =
-  result = n.kind == nkSym and sfCursor in n.sym.flags
+proc isDangerousSeq(t: PType): bool {.inline.} =
+  let t = t.skipTypes(abstractInst)
+  result = t.kind == tySequence and tfHasOwned notin t[0].flags
+
+proc containsConstSeq(n: PNode): bool =
+  if n.kind == nkBracket and n.len > 0 and n.typ != nil and isDangerousSeq(n.typ):
+    return true
+  result = false
+  case n.kind
+  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
+    result = containsConstSeq(n[1])
+  of nkObjConstr, nkClosure:
+    for i in 1..<n.len:
+      if containsConstSeq(n[i]): return true
+  of nkCurly, nkBracket, nkPar, nkTupleConstr:
+    for son in n:
+      if containsConstSeq(son): return true
+  else: discard
 
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   if isSink:
@@ -407,7 +403,7 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
         for j in 0..<it.len-2:
           let v = it[j]
           if v.kind == nkSym:
