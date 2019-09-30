@@ -73,6 +73,15 @@ proc toInt64*(arg: Int128): int64 =
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
+proc toInt64Checked*(arg: Int128; onError: int64): int64 =
+  if isNegative(arg):
+    if arg.sdata(3) != -1 or arg.sdata(2) != -1:
+      return onError
+  else:
+    if arg.sdata(3) != 0 or arg.sdata(2) != 0:
+      return onError
+  return cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
+
 proc toInt32*(arg: Int128): int32 =
   if isNegative(arg):
     assert(arg.sdata(3) == -1, "out of range")
