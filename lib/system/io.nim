@@ -67,6 +67,8 @@ proc c_fputs(c: cstring, f: File): cint {.
   importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgets(c: cstring, n: cint, f: File): cstring {.
   importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
+proc c_fputc(c: char, f: File): cint {.
+  importc: "fputc", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgetc(stream: File): cint {.
   importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
 proc c_ungetc(c: cint, f: File): cint {.
@@ -212,6 +214,10 @@ when defined(windows):
     var i = c_fprintf(f, "%s", s)
     while i < s.len:
       if s[i] == '\0':
+        let c = c_fputc('\0', f)
+        if c != 0:
+          if doRaise: raiseEIO("cannot write string to file")
+          break
         inc i
       else:
         let w = c_fprintf(f, "%s", unsafeAddr s[i])
