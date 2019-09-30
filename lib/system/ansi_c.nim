@@ -144,6 +144,6 @@ proc c_fwrite*(buf: pointer, size, n: csize, f: CFilePtr): cint {.
 
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
-  discard c_fwrite(s, 1, s.len, f)
+  discard c_fwrite(s, 1, csize s.len, f)
 
 {.pop.}

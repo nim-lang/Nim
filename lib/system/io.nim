@@ -151,7 +151,7 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  result = c_fread(buffer, 1, len, f)
+  result = int c_fread(buffer, 1, csize(len), f)
   if result != len: checkErr(f)
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
@@ -183,7 +183,7 @@ proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## writes the bytes of buffer pointed to by the parameter `buffer` to the
   ## file `f`. Returns the number of actual written bytes, which may be less
   ## than `len` in case of an error.
-  result = c_fwrite(buffer, 1, len, f)
+  result = int c_fwrite(buffer, 1, csize len, f)
   checkErr(f)
 
 proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
@@ -306,7 +306,7 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
 
     var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
-    let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
+    let m = c_memchr(addr line.string[pos], '\L'.ord, csize sp)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
@@ -530,7 +530,7 @@ proc open*(f: var File, filename: string,
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
-      discard c_setvbuf(f, nil, IOFBF, bufSize.cint)
+      discard c_setvbuf(f, nil, IOFBF, bufSize.csize)
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
 

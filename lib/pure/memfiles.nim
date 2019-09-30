@@ -415,7 +415,7 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   ms.data = mfile.mem
   var remaining = mfile.size
   while remaining > 0:
-    ending = c_memchr(ms.data, delim, remaining)
+    ending = c_memchr(ms.data, delim, csize remaining)
     if ending == nil:                               # unterminated final slice
       ms.size = remaining                           # Weird case..check eat?
       yield ms
