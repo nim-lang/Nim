@@ -498,7 +498,7 @@ macro bindMethod*(procedure: typed): auto =
     this = newIdentNode("this")
     # construct the `this` parameter:
     thisQuote = quote do:
-      var `this` {.nodecl, importc.} : `thisType`
+      var `this` {.nodecl, importc: "this".}: `thisType`
     call = newNimNode(nnkCall).add(rawProc[0], thisQuote[0][0][0])
   # construct the procedure call inside the method
   if args.len > 2:
