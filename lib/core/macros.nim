@@ -742,6 +742,12 @@ proc newLit*(arg: object): NimNode {.compileTime.} =
   for a, b in arg.fieldPairs:
     result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
 
+proc newLit*(arg: ref object): NimNode {.compileTime.} =
+  ## produces a new ref type literal node.
+  result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
+  for a, b in fieldPairs(arg[]):
+    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+
 proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.} =
   result = nnkBracket.newTree
   for x in arg:
