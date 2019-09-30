@@ -219,6 +219,7 @@ lib/pure/endians.nim
 lib/pure/uri.nim
 lib/pure/nimprof.nim
 lib/pure/unittest.nim
+lib/pure/quitprocs.nim
 lib/packages/docutils/highlite.nim
 lib/packages/docutils/rst.nim
 lib/packages/docutils/rstast.nim
