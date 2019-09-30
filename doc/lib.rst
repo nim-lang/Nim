@@ -450,9 +450,6 @@ Miscellaneous
 * `logging <logging.html>`_
   This module implements a simple logger.
 
-* `quitprocs <quitprocs>`_
-  Better implementation of ``system.addQuitProc``.
-
 * `segfaults <segfaults.html>`_
   Turns access violations or segfaults into a ``NilAccessError`` exception.
 
