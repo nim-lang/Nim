@@ -353,7 +353,6 @@ template handleNested(n: untyped, processCall: untyped) =
       else:
         branch = copyNode(n[i])
         template node: untyped = n[i][0]
-        echo n[i].kind
         branch.add if node.typ == nil: p(node, c) #noreturn
                    else: processCall
       result.add branch
