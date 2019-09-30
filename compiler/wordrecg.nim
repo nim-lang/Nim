@@ -209,7 +209,7 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wLinearScanEnd: "linearScanEnd"
   of wComputedGoto: "computedGoto"
   of wInjectStmt: "injectStmt"
-  of wAsmNoStackFrame: "asmNoStackframe"
+  of wAsmNoStackFrame: "asmNoStackFrame"
   of wImplicitStatic: "implicitStatic"
   of wCodegenDecl: "codegenDecl"
   of wLiftLocals: "liftLocals"
