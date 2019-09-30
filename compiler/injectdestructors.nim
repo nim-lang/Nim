@@ -265,8 +265,7 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-type ProcessProc = proc(n: PNode; c: var Con): PNode {.closure.}
-proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode
+proc p(n: PNode; c: var Con): PNode
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
@@ -307,6 +306,59 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
+template handleNested(n: untyped, processCall: untyped) =
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    if n.len == 0: return n
+    result = copyNode(n)
+    for i in 0..<n.len-1:
+      result.add p(n[i], c)
+    template node: untyped = n[^1]
+    result.add processCall
+  of nkBlockStmt, nkBlockExpr:
+    result = copyNode(n)
+    result.add n[0]
+    template node: untyped = n[1]
+    result.add processCall
+  of nkIfStmt, nkIfExpr:
+    result = copyNode(n)
+    for son in n:
+      var branch = copyNode(son)
+      if son.kind in {nkElifBranch, nkElifExpr}:
+        template node: untyped = son[1]
+        branch.add p(son[0], c) #The condition
+        branch.add if node.typ == nil: p(node, c) #noreturn
+                   else: processCall
+      else:
+        template node: untyped = son[0]
+        branch.add if node.typ == nil: p(node, c) #noreturn
+                   else: processCall
+      result.add branch
+  of nkCaseStmt:
+    result = copyNode(n)
+    result.add p(n[0], c)
+    for i in 1..<n.len:
+      var branch: PNode
+      if n[i].kind == nkOfBranch:
+        branch = n[i] # of branch conditions are constants
+        template node: untyped = n[i][^1]
+        branch[^1] = if node.typ == nil: p(node, c) #noreturn
+                     else: processCall
+      elif n[i].kind in {nkElifBranch, nkElifExpr}:
+        branch = copyNode(n[i])
+        branch.add p(n[i][0], c) #The condition
+        template node: untyped = n[i][1]
+        branch.add if node.typ == nil: p(node, c) #noreturn
+                   else: processCall
+      else:
+        branch = copyNode(n[i])
+        template node: untyped = n[i][0]
+        echo n[i].kind
+        branch.add if node.typ == nil: p(node, c) #noreturn
+                   else: processCall
+      result.add branch
+  else: assert(false)
+
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   if isSink:
     if arg.kind in nkCallKinds:
@@ -335,12 +387,8 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # it is the last read, can be sinked. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(arg, c)
-    elif arg.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt}:
-      result = p(arg, c, proc(n: PNode, c: var Con): PNode = pArg(n, c, isSink))
-    elif arg.kind in {nkIfExpr, nkIfStmt, nkCaseStmt}:
-      result = p(arg, c, proc(n: PNode, c: var Con): PNode =
-          if n.typ == nil: p(n, c) #in if/case expr branch with noreturn
-          else: pArg(n, c, isSink))
+    elif arg.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr, nkIfStmt, nkCaseStmt}:
+      handleNested(arg): pArg(node, c, isSink)
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
@@ -363,16 +411,17 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   else:
     result = p(arg, c)
 
-proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
-  let processProc = if processProc == nil: ProcessProc(proc(n: PNode, c: var Con): PNode = p(n, c, nil))
-                    else: processProc
-
+proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkCallKinds:
     let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
     for i in 1..<n.len:
       n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
+    result = n
+  of nkDiscardStmt: #Small optimization
+    if n[0].kind != nkEmpty:
+      n[0] = pArg(n[0], c, false)
     result = n
   of nkBracket:
     result = copyTree(n)
@@ -426,10 +475,6 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
         itCopy.add p(it[^1], c)
         v.add itCopy
         result.add v
-  of nkDiscardStmt: #Small optimization
-    if n[0].kind != nkEmpty:
-      n[0] = pArg(n[0], c, false)
-    result = n
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
       # rule (self-assignment-removal):
@@ -450,7 +495,6 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
       else:
         let tmp = getTemp(c, n[0].typ, n.info)
         var m = genCopyNoCheck(c, tmp, n[0])
-
         m.add p(n[0], c)
         result = newTree(nkStmtList, genWasMoved(tmp, c), m)
         var toDisarm = n[0]
@@ -472,58 +516,15 @@ proc p(n: PNode; c: var Con, processProc: ProcessProc = nil): PNode =
     result.add p(n[0], c)
     result.add p(n[1], c)
     dec c.inLoop
-  of nkIfStmt, nkIfExpr:
-    result = copyNode(n)
-    for son in n:
-      var branch = copyNode(son)
-      if son.kind in {nkElifBranch, nkElifExpr}:
-        branch.add p(son[0], c) #The condition
-        branch.add processProc(son[1], c)
-      else:
-        branch.add processProc(son[0], c)
-      result.add branch
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
-    result[1][0] = processProc(result[1][0], c)
-  of nkStmtList, nkStmtListExpr, nkTryStmt, nkFinally, nkPragmaBlock:
-    if n.len == 0: return n
-    result = copyNode(n)
-    for i in 0..<n.len-1:
-      result.add p(n[i], c)
-    result.add processProc(n[^1], c)
-  of nkBlockStmt, nkBlockExpr:
-    result = copyNode(n)
-    result.add n[0]
-    result.add processProc(n[1], c)
-  of nkExceptBranch:
-    result = copyNode(n)
-    if n.len == 2:
-      result.add n[0]
-      for i in 1..<n.len:
-        result.add processProc(n[i], c)
-    else:
-      for i in 0..<n.len:
-        result.add processProc(n[i], c)
-  of nkCaseStmt:
-    result = copyNode(n)
-    result.add p(n[0], c)
-    for i in 1..<n.len:
-      var branch: PNode
-      if n[i].kind == nkOfBranch:
-        branch = n[i] # of branch conditions are constants
-        branch[^1] = processProc(n[i][^1], c)
-      elif n[i].kind in {nkElifBranch, nkElifExpr}:
-        branch = copyNode(n[i])
-        branch.add p(n[i][0], c) #The condition
-        branch.add processProc(n[i][1], c)
-      else:
-        branch = copyNode(n[i])
-        branch.add processProc(n[i][0], c)
-      result.add branch
+    result[1][0] = p(result[1][0], c)
+  of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt:
+    handleNested(n): p(node, c)
   else:
     result = shallowCopy(n)
     for i in 0..<n.len:
-      result[i] = processProc(n[i], c)
+      result[i] = p(n[i], c)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   # unfortunately, this needs to be kept consistent with the cases
@@ -585,12 +586,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     let copyRi = copyTree(ri)
     copyRi[0] = result[^1]
     result[^1] = copyRi
-  of nkStmtListExpr, nkBlockExpr:
-    result = p(ri, c, proc(n: PNode, c: var Con): PNode = moveOrCopy(dest, n, c))
-  of nkIfExpr, nkCaseStmt:
-    result = p(ri, c, proc(n: PNode, c: var Con): PNode =
-        if n.typ == nil: p(n, c) #in if/case expr branch with noreturn
-        else: moveOrCopy(dest, n, c))
+  of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
+    handleNested(ri): moveOrCopy(dest, node, c)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(dest.typ):
