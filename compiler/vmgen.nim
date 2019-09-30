@@ -1316,7 +1316,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mMove:
     let arg = n[1]
     let a = c.genx(arg)
-    assert dest >= 0
     if dest < 0: dest = c.getTemp(arg.typ)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     # XXX use ldNullOpcode() here?
