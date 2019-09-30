@@ -17,6 +17,7 @@
 
 ## Library additions
 
+- `macros.newLit` now works for ref object types.
 
 
 ## Library changes
@@ -41,3 +42,4 @@
 
 
 ## Bugfixes
+
