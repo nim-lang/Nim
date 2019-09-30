@@ -18,7 +18,7 @@
 ## Library additions
 
 - `macros.newLit` now works for ref object types.
-
+- `system.writeFile` has been overloaded to also support `openarray[byte]`.
 
 ## Library changes
 
