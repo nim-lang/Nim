@@ -85,10 +85,14 @@ proc c_feof(f: File): cint {.
 when not declared(c_fwrite):
   proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
     importc: "fwrite", header: "<stdio.h>".}
+  proc c_fwrite(buf: pointer, size, n: cint, f: File): cint {.
+    importc: "fwrite", header: "<stdio.h>", deprecated: "csize is now uint".}
 
 # C routine that is used here:
 proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
+proc c_fread(buf: pointer, size, n: cint, f: File): int {.
+  importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect], deprecated: "csize is now uint".}
 when defined(windows):
   when not defined(amd64):
     proc c_fseek(f: File, offset: int64, whence: cint): cint {.
@@ -109,6 +113,8 @@ proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
 proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
   importc: "setvbuf", header: "<stdio.h>", tags: [].}
+proc c_setvbuf(f: File, buf: pointer, mode: cint, size: cint): cint {.
+  importc: "setvbuf", header: "<stdio.h>", tags: [], deprecated: "csize is now uint".}
 
 proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
@@ -292,6 +298,8 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
   ## ``false`` is returned `line` contains no new data.
   proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
     importc: "memchr", header: "<string.h>".}
+  proc c_memchr(s: pointer, c: cint, n: cint): pointer {.
+    importc: "memchr", header: "<string.h>", deprecated: "csize is now uint".}
 
   var pos = 0
 
