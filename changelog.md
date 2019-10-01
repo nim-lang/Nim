@@ -22,6 +22,9 @@
 
 ## Library changes
 
+- `asynchttpserver.processClient` is now exported so that a server may be
+  written to capture exceptions yielded by this procedure without leaving
+  an event loop.
 
 
 ## Language additions
