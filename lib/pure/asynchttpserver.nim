@@ -284,6 +284,8 @@ proc processRequest(
 proc processClient*(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
+  ## Process requests on a client socket using the given callback.
+  ## Returns a ``Future`` which completes when the client socket is closed.
   var request = newFutureVar[Request]("asynchttpserver.processClient")
   request.mget().url = initUri()
   request.mget().headers = newHttpHeaders()
