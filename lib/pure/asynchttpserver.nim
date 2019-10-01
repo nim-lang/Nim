@@ -281,7 +281,7 @@ proc processRequest(
     request.client.close()
     return false
 
-proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
+proc processClient*(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
   var request = newFutureVar[Request]("asynchttpserver.processClient")
