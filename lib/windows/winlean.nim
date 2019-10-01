@@ -1111,5 +1111,14 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
                  lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
 
+when useWinUnicode:
+  proc PathIsSameRootW*(pszPath1: WideCString,
+                        pszPath2: WideCString): WINBOOL {.
+       stdcall, dynlib: "Shlwapi", importc: "PathIsSameRootW".}
+else:
+  proc PathIsSameRootA*(pszPath1: cstring,
+                        pszPath2: cstring): WINBOOL {.
+       stdcall, dynlib: "Shlwapi", importc: "PathIsSameRootA".}
+
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}

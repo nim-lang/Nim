@@ -237,6 +237,20 @@ when FileSystemCaseSensitive:
 else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
+when defined(windows):
+  proc sameRoot(path1, path2: string): bool =
+    # PathIsSameRootW always returns 0 when input path uses '/'.
+    let
+      p1 = replace(path1, '/', '\\')
+      p2 = replace(path2, '/', '\\')
+
+    when useWinUnicode:
+      return PathIsSameRootW(newWideCString(p1), newWideCString(p2)) != 0
+    else:
+      return PathIsSameRootA(p1, p2) != 0
+
+proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].}
+
 proc relativePath*(path, base: string; sep = DirSep): string {.
   noSideEffect, rtl, extern: "nos$1", raises: [].} =
   ## Converts `path` to a path relative to `base`.
@@ -244,6 +258,10 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
   ## The `sep` (default: `DirSep <#DirSep>`_) is used for the path normalizations,
   ## this can be useful to ensure the relative path only contains `'/'`
   ## so that it can be used for URL constructions.
+  ##
+  ## On windows, if a root of `path` and a root of `base` are different,
+  ## returns `path` as is because it is impossible to make a relative path.
+  ## That means an absolute path can be returned.
   ##
   ## See also:
   ## * `splitPath proc <#splitPath,string>`_
@@ -256,9 +274,13 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
 
-  # Todo: If on Windows, path and base do not agree on the drive letter,
-  # return `path` as is.
   if path.len == 0: return ""
+
+  when defined(windows):
+    if isAbsolute(path) and isAbsolute(base):
+      if not sameRoot(path, base):
+        return path
+
   var f, b: PathIter
   var ff = (0, -1)
   var bb = (0, -1) # (int, int)
@@ -645,7 +667,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
     else:
       result = cmpIgnoreCase(a, b)
 
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
+proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
   ## Checks whether a given `path` is absolute.
   ##
   ## On Windows, network paths are considered absolute too.
