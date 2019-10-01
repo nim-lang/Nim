@@ -79,7 +79,7 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
       len: csize
     mib[0] = CTL_HW
     mib[1] = HW_AVAILCPU
-    len = sizeof(numCPU)
+    len = csize sizeof(numCPU)
     discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
     if numCPU < 1:
       mib[1] = HW_NCPU
