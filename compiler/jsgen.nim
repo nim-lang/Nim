@@ -1295,12 +1295,16 @@ proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
       return
     owner = owner.up
 
+proc genVarInit(p: PProc, v: PSym, n: PNode)
+
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
   case s.kind
   of skVar, skLet, skParam, skTemp, skResult, skForVar:
     if s.loc.r == nil:
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
+    if sfCompileTime in s.flags:
+      genVarInit(p, s, if s.ast != nil: s.ast else: newNodeI(nkEmpty, s.info))
     if s.kind == skParam:
       genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
@@ -1732,7 +1736,11 @@ proc genVarStmt(p: PProc, n: PNode) =
         var v = a.sons[0].sym
         if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
           genLineDir(p, a)
-          genVarInit(p, v, a.sons[2])
+          if sfCompileTime notin v.flags:
+            genVarInit(p, v, a.sons[2])
+          else:
+            # lazy emit, done when it's actually used.
+            if v.ast == nil: v.ast = a[2]
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
