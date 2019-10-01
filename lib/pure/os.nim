@@ -232,9 +232,9 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     result.tail = path
 
 when FileSystemCaseSensitive:
-  template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
-else:
   template `!=?`(a, b: char): bool = a != b
+else:
+  template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
 proc relativePath*(path, base: string; sep = DirSep): string {.
   noSideEffect, rtl, extern: "nos$1", raises: [].} =
