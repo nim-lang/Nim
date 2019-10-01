@@ -329,6 +329,10 @@ block ospaths:
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
   doAssert relativePath("", "/users/moo", '/') == ""
   doAssert relativePath("foo", "", '/') == "foo"
+  doAssert relativePath("/foo", "/Foo", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
+  doAssert relativePath("/Foo", "/foo", '/') == (when FileSystemCaseSensitive: "../Foo" else: "")
+  doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
+  doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: "")
 
   doAssert joinPath("usr", "") == unixToNativePath"usr/"
   doAssert joinPath("", "lib") == "lib"
