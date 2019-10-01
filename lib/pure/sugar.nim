@@ -10,7 +10,7 @@
 ## This module implements nice syntactic sugar based on Nim's
 ## macro system.
 
-import macros
+import macros, strutils
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   #echo treeRepr(p)
@@ -238,3 +238,91 @@ macro distinctBase*(T: typedesc): untyped =
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
+
+template genAtom(body: untyped): untyped {.dirty.} =
+  let value = nnkBracketExpr.newTree(param, newIntLitNode(pos))
+  body
+  inc(pos)
+
+proc readType(nodeTy, param: NimNode, pos: var int): NimNode =
+  let baseTy = getTypeImpl(nodeTy)
+  case baseTy.typeKind
+  of ntyRef:
+    result = readType(baseTy[0], param, pos)
+    if result.kind == nnkObjConstr:
+      result[0] = nodeTy
+    else:
+      error("Only ref objects are supported")
+  of ntyObject:
+    result = nnkObjConstr.newTree(nodeTy)
+    for n in baseTy[2]:
+      n.expectKind nnkIdentDefs
+      result.add nnkExprColonExpr.newTree(n[0], readType(n[1], param, pos))
+  of ntyTuple:
+    let isAnonTu = baseTy.kind == nnkTupleConstr
+    result = newNimNode(nnkTupleConstr)
+    for n in baseTy:
+      result.add readType(if isAnonTu: n else: n[1], param, pos)
+  of ntyArray:
+    result = newNimNode(nnkBracket)
+    for i in baseTy[1][1].intVal .. baseTy[1][2].intVal:
+      result.add readType(baseTy[2], param, pos)
+  of ntyRange:
+    result = readType(baseTy[1][1], param, pos)
+  of ntyDistinct:
+    result = newCall(nodeTy, readType(baseTy[0], param, pos))
+  of ntyString:
+    genAtom:
+      result = value
+  of ntyBool:
+    genAtom:
+      result = newCall(bindSym"parseBool", value)
+  of ntyEnum:
+    genAtom:
+      result = newCall(nnkBracketExpr.newTree(bindSym"parseEnum", nodeTy), value)
+  of ntyInt..ntyInt64:
+    genAtom:
+      result = newCall(baseTy, newCall(bindSym"parseInt", value))
+  of ntyFloat..ntyFloat64:
+    genAtom:
+      result = newCall(baseTy, newCall(bindSym"parseFloat", value))
+  of ntyUInt..ntyUInt64:
+    genAtom:
+      result = newCall(baseTy, newCall(bindSym"parseUInt", value))
+  else:
+    error("Unsupported type: " & nodeTy.repr)
+
+template checkCompatible(nfields, s): untyped =
+  assert nfields == len(s),
+    "Type can't be de-serialized from seq, it's fields and seq's length don't match"
+
+macro to*(s: seq[string], T: typedesc): untyped =
+  ## De-serializes ``s`` to the type specified.
+  ## Useful when working with procs that return a ``Row`` and can be found in the
+  ## `parsecsv module<parsecsv.html>`_ and all ``db_*.nim`` modules.
+  ##
+  ## Known limitations:
+  ##
+  ##   * Object variants are not supported.
+  ##   * Sets and sequences are not supported.
+  ##   * Ojects with cycles are not supported.
+  ##
+  runnableExamples:
+    type
+      Vector2D = tuple[x, y: int]
+      Date = distinct string
+      Entity = object
+        x, y: float
+        z: Vector2D
+        w: Date
+    proc `==`(a, b: Date): bool = string(a) == string(b)
+    var row = @["1.0", "2.0", "3", "4", "2018-01-10"]
+    assert row.to(Entity) == Entity(x: 1.0, y: 2.0, z: (3, 4),
+       w: Date("2018-01-10"))
+
+  let typeSym = getTypeImpl(T)[1]
+  var pos = 0 # sequence current index
+  let constr = readType(typeSym, s, pos)
+  result = nnkStmtListExpr.newTree(
+    getAst(checkCompatible(newLit(pos), s)),
+    constr)
