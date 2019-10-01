@@ -233,73 +233,6 @@ proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
   for i in 0 ..< m:
     result[i] = (s1[i], s2[i])
 
-{.experimental: "forLoopMacros".}
-
-macro zip*(x: ForLoopStmt): untyped =
-  ## Iterates over a variadic number of input containers yielding a combination
-  ## of their items.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container(s)
-  ## are discarded.
-  runnableExamples:
-    let
-      a = [1, 3, 5, 7]
-      b = @[0, 2, 4, 6, 8]
-      c = @["one", "two", "three", "four", "five"]
-    var res: seq[(int, int, string)]
-    for (x, y, z) in zip(a, b, c):
-      res.add (x, y, z)
-    assert res == @[(1, 0, "one"), (3, 2, "two"), (5, 4, "three"), (7, 6, "four")]
-
-  expectKind x, nnkForStmt
-  result = newStmtList()
-  let zipArgs = newNimNode(nnkBracket)
-  for i in 1 ..< x[^2].len: # zip(a, b, ...)
-    zipArgs.add x[^2][i]
-  let iterVars = newNimNode(nnkBracket)
-  if x.len == 3: # single iteration variable
-    if x[0].kind == nnkVarTuple: # for (x, y, ...) in iter
-      for i in 0 .. x[0].len-2:
-        iterVars.add x[0][i]
-      if zipArgs.len != iterVars.len:
-        error("Not as many iterator variables and zip arguments")
-    else:
-      iterVars.add x[0] # for x in iter
-  else: # for x, y, ... in iter
-    for i in 0 .. x.len-3:
-      iterVars.add x[i]
-    if zipArgs.len != iterVars.len:
-      error("Not as many iterator variables and zip arguments")
-  # write: let m = min(len(a), min(len(b), ...))
-  let minLen = genSym(nskLet, "m")
-  let minArgs = newNimNode(nnkBracket)
-  for i in 0 ..< zipArgs.len:
-    minArgs.add newCall("len", zipArgs[i])
-  result.add newLetStmt(minLen, nestList(bindSym"min", minArgs))
-  let indVar = genSym(nskForVar, "i")
-  let letSec = newNimNode(nnkLetSection)
-  if iterVars.len == 1:
-    # write: let x = (a[i], b[i], ...)
-    let value = newNimNode(nnkTupleConstr)
-    for i in 0 ..< zipArgs.len:
-      value.add nnkBracketExpr.newTree(zipArgs[i], indVar)
-    letSec.add newIdentDefs(iterVars[0], newEmptyNode(), value)
-  else:
-    # write: let x = a[i]; let y = b[i]; ...
-    for i in 0 ..< iterVars.len:
-      let value = nnkBracketExpr.newTree(zipArgs[i], indVar)
-      letSec.add newIdentDefs(iterVars[i], newEmptyNode(), value)
-  var body = x[^1]
-  if body.kind != nnkStmtList:
-    body = newTree(nnkStmtList, body)
-  body.insert(0, letSec)
-  # write: for i in 0 ..< m
-  let newFor = nnkForStmt.newTree(indVar,
-    nnkInfix.newTree(bindSym"..<", newLit(0), minLen))
-  newFor.add body
-  result.add newFor
-
 proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
   ##
@@ -1137,32 +1070,6 @@ when isMainModule:
     assert zip3[2].b == 4
     assert zip4[2].b == "three"
     assert zip5[2].b == "three"
-
-  block: # zip for loop macro tests
-    let
-      a = [1, 3, 5, 7]
-      b = @[0, 2, 4, 6, 8]
-      c = @["one", "two", "three", "four", "five"]
-    var res1: seq[(int,)]
-    for x in zip(a):
-      res1.add x
-    assert res1 == @[(1,), (3,), (5,), (7,)]
-    var res2: seq[(int, int, int)]
-    for (x, y, z) in zip(a, b, @[-1, -2, -3, -4, -5]):
-      res2.add (x, y, z)
-    assert res2 == @[(1, 0, -1), (3, 2, -2), (5, 4, -3), (7, 6, -4)]
-    var res3: seq[(int, int)]
-    for x in zip(b, a):
-      res3.add x
-    assert res3 == @[(0, 1), (2, 3), (4, 5), (6, 7)]
-    var res4: seq[(int, int)]
-    for x, y in zip(a, b):
-      res4.add (y, x)
-    assert res4 == @[(0, 1), (2, 3), (4, 5), (6, 7)]
-    var res5: seq[(int, int, string)]
-    for (x, y, z) in zip(a, b, c):
-      res5.add (x, y, z)
-    assert res5 == @[(1, 0, "one"), (3, 2, "two"), (5, 4, "three"), (7, 6, "four")]
 
   block: # distribute tests
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
