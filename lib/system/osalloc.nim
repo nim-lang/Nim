@@ -153,7 +153,7 @@ elif defined(nintendoswitch):
     # size, as well as space to store our structure
     let realSize = alignSize(size + sizeof(NSwitchBlock))
 
-    let heap = memalign(PageSize, realSize)
+    let heap = memalign(PageSize, realSize.csize)
 
     if heap.isNil:
       outOfMemoryStmt
