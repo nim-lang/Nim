@@ -480,16 +480,16 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
   ## Ceates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
-  ## if `ident` is a NimNode, it must have nkIdent kind.
-  ## If ``rule == brClosed`` either an ``nkClosedSymChoice`` tree is
-  ## returned or ``nkSym`` if the symbol is not ambiguous.
-  ## If ``rule == brOpen`` either an ``nkOpenSymChoice`` tree is
-  ## returned or ``nkSym`` if the symbol is not ambiguous.
-  ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
+  ## if `ident` is a NimNode, it must have ``nnkIdent`` kind.
+  ## If ``rule == brClosed`` either an ``nnkClosedSymChoice`` tree is
+  ## returned or ``nnkSym`` if the symbol is not ambiguous.
+  ## If ``rule == brOpen`` either an ``nnkOpenSymChoice`` tree is
+  ## returned or ``nnkSym`` if the symbol is not ambiguous.
+  ## If ``rule == brForceOpen`` always an ``nnkOpenSymChoice`` tree is
   ## returned even if the symbol is not ambiguous.
   ##
   ## Experimental feature:
-  ## Use {.experimental: "dynamicBindSym".} to activate it.
+  ## use {.experimental: "dynamicBindSym".} to activate it.
   ## If called from template / regular code, `ident` and `rule` must be
   ## constant expression / literal value.
   ## If called from macros / compile time procs / static blocks,
