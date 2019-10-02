@@ -57,13 +57,13 @@ when defined(nimdoc):
       Vnode,       ## BSD specific file change
       User,        ## User event is raised
       Error,       ## Error occurred while waiting for descriptor
-      VnodeWrite,  ## NOTE_WRITE (BSD specific, write to file occurred)
-      VnodeDelete, ## NOTE_DELETE (BSD specific, unlink of file occurred)
-      VnodeExtend, ## NOTE_EXTEND (BSD specific, file extended)
-      VnodeAttrib, ## NOTE_ATTRIB (BSD specific, file attributes changed)
-      VnodeLink,   ## NOTE_LINK (BSD specific, file link count changed)
-      VnodeRename, ## NOTE_RENAME (BSD specific, file renamed)
-      VnodeRevoke  ## NOTE_REVOKE (BSD specific, file revoke occurred)
+      VnodeWrite,  ## NODE_WRITE (BSD specific, write to file occurred)
+      VnodeDelete, ## NODE_DELETE (BSD specific, unlink of file occurred)
+      VnodeExtend, ## NODE_EXTEND (BSD specific, file extended)
+      VnodeAttrib, ## NODE_ATTRIB (BSD specific, file attributes changed)
+      VnodeLink,   ## NODE_LINK (BSD specific, file link count changed)
+      VnodeRename, ## NODE_RENAME (BSD specific, file renamed)
+      VnodeRevoke  ## NODE_REVOKE (BSD specific, file revoke occurred)
 
     ReadyKey* = object
       ## An object which holds result for descriptor
