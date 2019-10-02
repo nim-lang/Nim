@@ -15,19 +15,20 @@
 ##   import os
 ##
 ##   let myFile = "/path/to/my/file.nim"
-##
-##   let splittedPath = splitPath(myFile)
-##   assert splittedPath.head == "/path/to/my"
-##   assert splittedPath.tail == "file.nim"
-##
+## 
+##   let pathSplit = splitPath(myFile)
+##   assert pathSplit.head == "/path/to/my"
+##   assert pathSplit.tail == "file.nim"
+## 
 ##   assert parentDir(myFile) == "/path/to/my"
-##
-##   let splittedFile = splitFile(myFile)
-##   assert splittedFile.dir == "/path/to/my"
-##   assert splittedFile.name == "file"
-##   assert splittedFile.ext == ".nim"
-##
+## 
+##   let fileSplit = splitFile(myFile)
+##   assert fileSplit.dir == "/path/to/my"
+##   assert fileSplit.name == "file"
+##   assert fileSplit.ext == ".nim"
+## 
 ##   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
+
 ##
 ##
 ## **See also:**
