@@ -287,6 +287,7 @@ proc fillResult(conf: ConfigRef; param: PNode) =
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
+    useHeader(m, t.sym)
     result = t.sym.loc.r
   else:
     result = rope(literal)
