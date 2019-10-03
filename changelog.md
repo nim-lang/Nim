@@ -1,4 +1,4 @@
-# v1.1 - xxxx-xx-xx
+# x.x - xxxx-xx-xx
 
 
 ## Changes affecting backwards compatibility
