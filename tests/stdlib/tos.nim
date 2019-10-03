@@ -334,8 +334,7 @@ block ospaths:
   doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
   doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: "")
 
-  when defined(windows):
-    echo relativePath(r"c:\foo.nim", r"C:\")
+  when doslikeFileSystem:
     doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
     doAssert relativePath(r"c:\foo\bar\baz.nim", r"c:\foo") == r"bar\baz.nim"
     doAssert relativePath(r"c:\foo\bar\baz.nim", r"d:\foo") == r"c:\foo\bar\baz.nim"
@@ -346,6 +345,9 @@ block ospaths:
     doAssert relativePath(r"\\foo\bar\baz.nim", r"\\bar\bar") == r"\\foo\bar\baz.nim"
     doAssert relativePath(r"\\foo\bar\baz.nim", r"\\foo\car") == r"\\foo\bar\baz.nim"
     doAssert relativePath(r"\\foo\bar\baz.nim", r"\\goo\bar") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"c:\") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"\foo") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"c:\foo.nim", r"\foo") == r"c:\foo.nim"
 
   doAssert joinPath("usr", "") == unixToNativePath"usr/"
   doAssert joinPath("", "lib") == "lib"

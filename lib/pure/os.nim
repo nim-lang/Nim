@@ -237,19 +237,63 @@ when FileSystemCaseSensitive:
 else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
-when defined(windows):
-  proc sameRoot(path1, path2: string): bool =
-    # PathIsSameRootW always returns 0 when input path uses '/'.
-    let
-      p1 = replace(path1, '/', '\\')
-      p2 = replace(path2, '/', '\\')
-
-    when useWinUnicode:
-      return PathIsSameRootW(newWideCString(p1), newWideCString(p2)) != 0
-    else:
-      return PathIsSameRootA(p1, p2) != 0
 
 proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].}
+
+when doslikeFileSystem:
+  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
+    ## An absolute path from the root of the current drive (e.g. "\foo")
+    path.len > 0 and
+    (path[0] == AltSep or
+     (path[0] == DirSep and
+      (path.len == 1 or path[1] notin {DirSep, AltSep, ':'})))
+
+  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
+    path[0] == DirSep and path[1] == DirSep
+
+  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
+    ## Return true if path1 and path2 have a same root.
+    ##
+    ## Detail of windows path formats:
+    ## https://docs.microsoft.com/en-us/dotnet/standard/io/file-path-formats
+
+    assert(isAbsolute(path1))
+    assert(isAbsolute(path2))
+
+    let
+      len1 = path1.len
+      len2 = path2.len
+    assert(len1 != 0 and len2 != 0)
+
+    if isAbsFromCurrentDrive(path1) and isAbsFromCurrentDrive(path2):
+      return true
+    elif len1 == 1 or len2 == 1:
+      return false
+    else:
+      if path1[1] == ':' and path2[1] == ':':
+        return path1[0].toLowerAscii() == path2[0].toLowerAscii()
+      else:
+        var
+          p1, p2: PathIter
+          pp1 = next(p1, path1)
+          pp2 = next(p2, path2)
+        if pp1[1] - pp1[0] == 1 and pp2[1] - pp2[0] == 1 and
+           isUNCPrefix(path1) and isUNCPrefix(path2):
+          #UNC
+          var h = 0
+          while p1.hasNext(path1) and p2.hasNext(path2) and h < 2:
+            pp1 = next(p1, path1)
+            pp2 = next(p2, path2)
+            let diff = pp1[1] - pp1[0]
+            if diff != pp2[1] - pp2[0]:
+              return false
+            for i in 0..diff:
+              if path1[i + pp1[0]] !=? path2[i + pp2[0]]:
+                return false
+            inc h
+          return h == 2
+        else:
+          return false
 
 proc relativePath*(path, base: string; sep = DirSep): string {.
   noSideEffect, rtl, extern: "nos$1", raises: [].} =
@@ -276,7 +320,7 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
 
   if path.len == 0: return ""
 
-  when defined(windows):
+  when doslikeFileSystem:
     if isAbsolute(path) and isAbsolute(base):
       if not sameRoot(path, base):
         return path
