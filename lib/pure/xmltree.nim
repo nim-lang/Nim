@@ -236,13 +236,19 @@ proc rawText*(n: XmlNode): string {.inline.} =
   ## Returns the underlying 'text' string by reference.
   ##
   ## This is only used for speed hacks.
-  shallowCopy(result, n.fText)
+  when defined(gcDestructors):
+    result = move(n.fText)
+  else:
+    shallowCopy(result, n.fText)
 
 proc rawTag*(n: XmlNode): string {.inline.} =
   ## Returns the underlying 'tag' string by reference.
   ##
   ## This is only used for speed hacks.
-  shallowCopy(result, n.fTag)
+  when defined(gcDestructors):
+    result = move(n.fTag)
+  else:
+    shallowCopy(result, n.fTag)
 
 proc innerText*(n: XmlNode): string =
   ## Gets the inner text of `n`:
