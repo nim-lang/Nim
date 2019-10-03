@@ -201,7 +201,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     properFreeResult(sqlres, row)
 
 proc setTypeName(t: var DbType; f: PFIELD) =
-  shallowCopy(t.name, $f.name)
+  t.name = $f.name
   t.maxReprLen = Natural(f.max_length)
   if (NOT_NULL_FLAG and f.flags) != 0: t.notNull = true
   case f.ftype
