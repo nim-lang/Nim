@@ -1004,14 +1004,14 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      lineF(p, "$1 = nimCopy(null, $2, $3);$n",
+      lineF(p, "$1 = nimCopy($1, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
     if x.typ.kind == tyVar or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      lineF(p, "$1 = nimCopy(null, $2, $3);$n",
+      lineF(p, "$1 = nimCopy($1, $2, $3);$n",
                [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
@@ -1290,7 +1290,7 @@ proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
       internalError(p.config, n.info, "couldn't find the owner proc of the closed over param: " & s.name.s)
     if owner.prc == s.owner:
       if not owner.generatedParamCopies.containsOrIncl(s.id):
-        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
+        let copy = "$1 = nimCopy($1, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
         add(owner.locals, owner.indentLine(copy))
       return
     owner = owner.up
@@ -1931,7 +1931,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else:
       useMagic(p, "nimCopy")
       let c = getTemp(p, defineInLocals=false)
-      lineF(p, "var $1 = nimCopy(null, $2, $3);$n",
+      lineF(p, "var $1 = nimCopy($1, $2, $3);$n",
             [c, y.rdLoc, genTypeInfo(p, n[2].typ)])
       r.res = "if ($1 != null) { $3.push($2); } else { $3 = [$2]; }" % [a, c, tmp]
     r.kind = resExpr
