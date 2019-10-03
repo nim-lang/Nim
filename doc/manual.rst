@@ -3546,7 +3546,7 @@ Nonoverloadable builtins
 The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
-  declared, defined, definedInScope, compiles, sizeOf,
+  declared, defined, definedInScope, compiles, sizeof,
   is, shallowCopy, getAst, astToStr, spawn, procCall
 
 Thus they act more like keywords than like ordinary identifiers; unlike a

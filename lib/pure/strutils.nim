@@ -955,10 +955,10 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     if n == 0 and x < 0: n = -1
 
 proc toHex*[T: SomeInteger](x: T): string =
-  ## Shortcut for ``toHex(x, T.sizeOf * 2)``
+  ## Shortcut for ``toHex(x, T.sizeof * 2)``
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
-  toHex(BiggestInt(x), T.sizeOf * 2)
+  toHex(BiggestInt(x), T.sizeof * 2)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
