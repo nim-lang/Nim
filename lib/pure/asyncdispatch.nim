@@ -390,69 +390,9 @@ when defined(windows) or defined(nimdoc):
     new result
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[AsyncFD]()
-    result.virtualHandles = initTable[VirtualFD, AsyncEvent]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](64)
     initVirtualEventDispatcher(result)
-
-    # create and register the physical event handle for all the virtual handles.
-    var sa = SECURITY_ATTRIBUTES(
-      nLength: sizeof(SECURITY_ATTRIBUTES).cint,
-      bInheritHandle: 1
-    )
-    result.virtualMuxHandle = createEvent(addr(sa), 0'i32, 0'i32, nil)
-    if result.virtualMuxHandle == INVALID_HANDLE_VALUE:
-      raiseOSError(osLastError())
-
-    var p = result # put the dispatcher into the closure env under a more usable name
-    proc virtualMuxCB(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
-      # find the virtual events that triggered the physical event and
-      # add them to the callback list.
-      # Not very efficient, but requires the least coordination between threads.
-      
-      proc vcbFactory(vfd: VirtualFD, cbIndex: int) : proc() {.closure, gcsafe.} =
-        let ev = p.virtualHandles[vfd]
-        result = proc() {.closure, gcSafe.} =
-          let removeVCB = ev.callbacks[cbIndex](vfd.AsyncFD)
-          if removeVCB:
-            when compileOption("threads"):
-              withRLock ev.eventLock:
-                ev.callbacks.del(cbIndex)
-                if ev.callbacks.len == 0:
-                  ev.unregister
-            else:
-              ev.callbacks.del(cbIndex)
-              if ev.callbacks.len == 0:
-                ev.unregister
-
-      for vfd, ev in p.virtualHandles:
-        when compileOption("threads"):
-          withRLock ev.eventLock:
-            if ev.triggered:
-              ev.triggered = false
-              for i in 0..ev.callbacks.high:
-                p.callbacks.addLast(vcbFactory(vfd, i))
-        else:
-          if ev.triggered:
-            ev.triggered = false
-            for i in 0..ev.callbacks.high:
-              p.callbacks.addLast(vcbFactory(vfd, i))
-
-      # this global callback always wants to be called again, so
-      # we need to ref and protect `pcd.ovl`, because it will be
-      # unrefed and disposed in `poll()`.
-      GC_ref(p.virtualPCD.ovl)
-      p.virtualPCD.ovl.data.cell = system.protect(rawEnv(p.virtualPCD.ovl.data.cb))
-
-    result.virtualPCD = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    # TODO: We need a destructor for pDispatcher, or the virtualPCD will leak.
-    # Probably fine for the global dispatcher since it lives for the whole application, but in principle we should clean up... 
-    # Same with closing the socket / file handle.
-    # How do we do this for GC'ed nim / pre-destuctors Nim?
-    # deallocShared(cast[pointer](result.virtualPCD))
-
-    var flags = WT_EXECUTEINWAITTHREAD.DWORD
-    registerWaitableHandle(result, result.virtualMuxHandle, flags, result.virtualPCD, INFINITE, virtualMuxCB)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
