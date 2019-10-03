@@ -16,6 +16,7 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 from md5 import getMD5
 from sighashes import symBodyDigest
+from times import cpuTime
 
 from hashes import hash
 
@@ -24,6 +25,9 @@ template mathop(op) {.dirty.} =
 
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
+
+template timesop(op) {.dirty.} =
+  registerCallback(c, "stdlib.times." & astToStr(op), `op Wrapper`)
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
@@ -143,6 +147,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1s(fileExists, osop)
     wrapDangerous(writeFile, ioop)
     wrap1s(readFile, ioop)
+    wrap0(cpuTime, timesop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
