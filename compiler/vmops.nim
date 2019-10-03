@@ -147,7 +147,6 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1s(fileExists, osop)
     wrapDangerous(writeFile, ioop)
     wrap1s(readFile, ioop)
-    wrap0(cpuTime, timesop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
@@ -199,3 +198,9 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
+
+  if optBenchmarkVM in c.config.globalOptions:
+    wrap0(cpuTime, timesop)
+  else:
+    proc cpuTime(): float = 5.391245e-44  # Randomly chosen
+    wrap0(cpuTime, timesop)
