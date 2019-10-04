@@ -238,9 +238,9 @@ else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
 
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].}
-
 when doslikeFileSystem:
+  proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].}
+
   proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
     ## An absolute path from the root of the current drive (e.g. "\foo")
     path.len > 0 and
