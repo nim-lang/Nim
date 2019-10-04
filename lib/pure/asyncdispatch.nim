@@ -1130,11 +1130,12 @@ when defined(windows) or defined(nimdoc):
 
     let p = getGlobalDispatcher()
 
-    ev.cb = cb
-    ev.vFD = p.vd.nextVirtualHandle
-    p.vd.nextVirtualHandle = VirtualFD(int(p.vd.nextVirtualHandle) + 1)
-    p.vd.virtualHandles[ev.vFD] = ev
-    ev.p = p
+    withLockIfThreads ev.eventLock:
+      ev.cb = cb
+      ev.vFD = p.vd.nextVirtualHandle
+      p.vd.nextVirtualHandle = VirtualFD(int(p.vd.nextVirtualHandle) + 1)
+      p.vd.virtualHandles[ev.vFD] = ev
+      ev.p = p
 
   initAll()
 else:
@@ -1662,8 +1663,8 @@ else:
         return
       ev.triggered = true
 
-    # send the signal to wake up the dispatcher thread.
-    trigger(ev.p.vd.virtualMuxHandle)
+      # send the signal to wake up the dispatcher thread.
+      trigger(ev.p.vd.virtualMuxHandle)
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Registers callback ``cb`` to be called when ``ev`` will be signaled
@@ -1671,11 +1672,12 @@ else:
 
     let p = getGlobalDispatcher()
 
-    ev.cb = cb
-    ev.vFD = p.vd.nextVirtualHandle
-    p.vd.nextVirtualHandle = VirtualFD(int(p.vd.nextVirtualHandle) + 1)
-    p.vd.virtualHandles[ev.vFD] = ev
-    ev.p = p
+    withLockIfThreads ev.eventLock:
+      ev.cb = cb
+      ev.vFD = p.vd.nextVirtualHandle
+      p.vd.nextVirtualHandle = VirtualFD(int(p.vd.nextVirtualHandle) + 1)
+      p.vd.virtualHandles[ev.vFD] = ev
+      ev.p = p
 
   proc close*(ev: AsyncEvent) =
     ## Closes event ``ev``.
