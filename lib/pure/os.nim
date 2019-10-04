@@ -232,15 +232,38 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     result.head = ""
     result.tail = path
 
+proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
+  ## Checks whether a given `path` is absolute.
+  ##
+  ## On Windows, network paths are considered absolute too.
+  runnableExamples:
+    assert not "".isAbsolute
+    assert not ".".isAbsolute
+    when defined(posix):
+      assert "/".isAbsolute
+      assert not "a/".isAbsolute
+      assert "/a/".isAbsolute
+
+  if len(path) == 0: return false
+
+  when doslikeFileSystem:
+    var len = len(path)
+    result = (path[0] in {'/', '\\'}) or
+              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
+  elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    result = path[0] != ':'
+  elif defined(RISCOS):
+    result = path[0] == '$'
+  elif defined(posix):
+    result = path[0] == '/'
+
 when FileSystemCaseSensitive:
   template `!=?`(a, b: char): bool = a != b
 else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
-
 when doslikeFileSystem:
-  proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].}
-
   proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
     ## An absolute path from the root of the current drive (e.g. "\foo")
     path.len > 0 and
@@ -710,32 +733,6 @@ proc cmpPaths*(pathA, pathB: string): int {.
     elif defined(nimdoc): discard
     else:
       result = cmpIgnoreCase(a, b)
-
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
-  ## Checks whether a given `path` is absolute.
-  ##
-  ## On Windows, network paths are considered absolute too.
-  runnableExamples:
-    assert not "".isAbsolute
-    assert not ".".isAbsolute
-    when defined(posix):
-      assert "/".isAbsolute
-      assert not "a/".isAbsolute
-      assert "/a/".isAbsolute
-
-  if len(path) == 0: return false
-
-  when doslikeFileSystem:
-    var len = len(path)
-    result = (path[0] in {'/', '\\'}) or
-              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
-  elif defined(macos):
-    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
-    result = path[0] != ':'
-  elif defined(RISCOS):
-    result = path[0] == '$'
-  elif defined(posix):
-    result = path[0] == '/'
 
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
