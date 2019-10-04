@@ -272,7 +272,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop may cause a driver error
-  ## for subsequenct queries
+  ## for subsequent queries
   ##
   ## Rows are retrieved from the server at each iteration.
   var
