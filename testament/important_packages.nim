@@ -20,7 +20,6 @@ pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
 pkg "chronos"
 pkg "cligen", "nim c -o:cligenn -r cligen.nim"
-pkg "coco", "", true
 pkg "combparser"
 pkg "compactdict", "", false, "https://github.com/Clyybber/compactdict"
 pkg "comprehension", "", false, "https://github.com/alehander42/comprehension"
