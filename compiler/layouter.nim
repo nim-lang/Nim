@@ -21,7 +21,7 @@ type
   SemicolonKind = enum
     detectSemicolonKind, useSemicolon, dontTouch
 
-  LayoutToken = enum
+  LayoutToken* = enum
     ltSpaces,
     ltCrucialNewline, ## a semantically crucial newline (indentation!)
     ltSplittingNewline, ## newline used for splitting up long
@@ -41,8 +41,8 @@ type
     col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
     keepIndents*: int
     doIndentMore*: int
-    kinds: seq[LayoutToken]
-    tokens: seq[string]
+    kinds*: seq[LayoutToken]
+    tokens*: seq[string]
     indentStack: seq[int]
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
