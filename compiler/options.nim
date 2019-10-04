@@ -84,6 +84,7 @@ type                          # please make sure we have under 32 options
     optNimV2
     optMultiMethods
     optNimV019
+    optBenchmarkVM            # Enables cpuTime() in the VM
 
   TGlobalOptions* = set[TGlobalOption]
 

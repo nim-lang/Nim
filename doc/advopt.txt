@@ -129,3 +129,4 @@ Advanced options:
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
+  --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
