@@ -8,16 +8,20 @@
 #
 
 ## This module implements URI parsing as specified by RFC 3986.
+## 此模块实现RFC 3986指定的URI解析。
 ##
 ## A Uniform Resource Identifier (URI) provides a simple and extensible
 ## means for identifying a resource. A URI can be further classified
 ## as a locator, a name, or both. The term “Uniform Resource Locator”
 ## (URL) refers to the subset of URIs.
+## 统一资源标识符(URI)提供了一种简单且可扩展的资源标识方法。URI可以进一步分类为定位程序、名称或两者。术语“统一资源定位器”(URL)指uri的子集。
 ##
 ## Basic usage
+## 基本用法
 ## ===========
 ##
 ## Combine URIs
+## 拼接URIs
 ## -------------
 ## .. code-block::
 ##    import uri
@@ -28,6 +32,7 @@
 ##    assert $bloguri == "https://nim-lang.org/blog.html"
 ##
 ## Access URI item
+## URI访问项目
 ## ---------------
 ## .. code-block::
 ##    import uri
@@ -48,15 +53,22 @@ type
 
 proc encodeUrl*(s: string, usePlus=true): string =
   ## Encodes a URL according to RFC3986.
+  ## 这个模块按照RFC 3986编码规范解析URI
   ##
   ## This means that characters in the set
   ## ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}`` are
   ## carried over to the result.
   ## All other characters are encoded as ``%xx`` where ``xx``
   ## denotes its hexadecimal value.
+  ## 这意味着字符在集合中 ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}``,
+  ## 结转到结果.
+  ## 所有其他字符都被编码为 ``''%xx'`` 当 ``xx``表示其十六进制值时。
   ##
   ## As a special rule, when the value of ``usePlus`` is true,
   ## spaces are encoded as ``+`` instead of ``%20``.
+  ##
+  ## ## 作为一个特殊的规则，当 ``usePlus``的值为真时，
+  ## 空格被编码为``'+'``而不是 ``'%20'``。
   ##
   ## **See also:**
   ## * `decodeUrl proc<#decodeUrl,string>`_
@@ -77,13 +89,17 @@ proc encodeUrl*(s: string, usePlus=true): string =
 
 proc decodeUrl*(s: string, decodePlus=true): string =
   ## Decodes a URL according to RFC3986.
+  ## 根据RFC3986对URL进行解码。
   ##
   ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
   ## value) are converted to the character with ordinal number ``xx``,
   ## and every other character is carried over.
+  ## 这意味着任何``'%xx'``(其中``xx``表示十六进制)被转换为序号为 ``xx``的字符，
+  ## 其他所有的字符都被保留了下来。
   ##
   ## As a special rule, when the value of ``decodePlus`` is true, ``+``
   ## characters are converted to a space.
+  ## 作为一个特殊的规则，当``decodePlus``的值为真时，`` + `` `字符被转换为空格。
   ##
   ## **See also:**
   ## * `encodeUrl proc<#encodeUrl,string>`_
@@ -121,14 +137,20 @@ proc decodeUrl*(s: string, decodePlus=true): string =
 
 proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
-  ##
+  ## 将一组(键、值)参数编码到URL查询字符串中。
+  ## 
   ## Every (key, value) pair is URL-encoded and written as ``key=value``. If the
   ## value is an empty string then the ``=`` is omitted, unless ``omitEq`` is
   ## false.
+  ## 每个(键值)对都是url编码的，并被写成`` key=value``。
+  ## 如果该值是一个空字符串，那么``=``将被省略，除非``omitEq``为false
+  ##
   ## The pairs are joined together by a ``&`` character.
+  ## 这些对由“&”字符连接在一起。
   ##
   ## The ``usePlus`` parameter is passed down to the `encodeUrl` function that
   ## is used for the URL encoding of the string values.
+  ## ``usePlus``参数被传递给`encodeUrl`函数，该函数用于字符串值的URL编码。
   ##
   ## **See also:**
   ## * `encodeUrl proc<#encodeUrl,string>`_
@@ -138,10 +160,12 @@ proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true)
     assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
   for elem in query:
     # Encode the `key = value` pairs and separate them with a '&'
+    # 对`key = value`对进行编码，并用`&`分隔它们
     if result.len > 0: result.add('&')
     let (key, val) = elem
     result.add(encodeUrl(key, usePlus))
     # Omit the '=' if the value string is empty
+    # 如果值字符串为空，则省略'='
     if not omitEq or val.len > 0:
       result.add('=')
       result.add(encodeUrl(val, usePlus))
@@ -179,6 +203,7 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
   # The 'mailto' scheme's PATH actually contains the hostname/username
+  # 'mailto'方案的路径实际上包含主机名/用户名
   if cmpIgnoreCase(result.scheme, "mailto") == 0:
     parseAuthority(result.path, result)
     result.path.setLen(0)
@@ -193,6 +218,8 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
 
 proc initUri*(): Uri =
   ## Initializes a URI with ``scheme``, ``username``, ``password``,
+  ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
+  ## 初始化一个URI 包含``scheme``、 ``username``, ``password``,
   ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
   ##
   ## **See also:**
@@ -212,6 +239,7 @@ proc resetUri(uri: var Uri) =
 
 proc parseUri*(uri: string, result: var Uri) =
   ## Parses a URI. The `result` variable will be cleared before.
+  ## 解析一个URI，变量`result`将会在解析之前被清楚。
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
@@ -227,17 +255,21 @@ proc parseUri*(uri: string, result: var Uri) =
   var i = 0
 
   # Check if this is a reference URI (relative URI)
+  # 检查这是否是一个引用URI(相对URI)
   let doubleSlash = uri.len > 1 and uri[1] == '/'
   if i < uri.len and uri[i] == '/':
     # Make sure ``uri`` doesn't begin with '//'.
+    # 确保`uri`不以`//`开头
     if not doubleSlash:
       parsePath(uri, i, result)
       return
 
   # Scheme
+  # 方案
   i.inc parseWhile(uri, result.scheme, Letters + Digits + {'+', '-', '.'}, i)
   if (i >= uri.len or uri[i] != ':') and not doubleSlash:
     # Assume this is a reference URI (relative URI)
+    # 假设这是一个引用URI(相对URI)
     i = 0
     result.scheme.setLen(0)
     parsePath(uri, i, result)
@@ -260,6 +292,7 @@ proc parseUri*(uri: string, result: var Uri) =
 
 proc parseUri*(uri: string): Uri =
   ## Parses a URI and returns it.
+  ## 解析URI并返回它。
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
@@ -314,12 +347,15 @@ proc merge(base, reference: Uri): string =
 
 proc combine*(base: Uri, reference: Uri): Uri =
   ## Combines a base URI with a reference URI.
+  ## 将基URI与引用URI组合。
   ##
   ## This uses the algorithm specified in
   ## `section 5.2.2 of RFC 3986 <http://tools.ietf.org/html/rfc3986#section-5.2.2>`_.
+  ## 这使用了指定的算法`section 5.2.2 of RFC 3986 <http://tools.ietf.org/html/rfc3986#section-5.2.2>`_.
   ##
   ## This means that the slashes inside the base URIs path as well as reference
   ## URIs path affect the resulting URI.
+  ## 这意味着基URI路径和引用URI路径中的斜线将影响结果URI。
   ##
   ## **See also:**
   ## * `/ proc <#/,Uri,string>`_ for building URIs
@@ -365,6 +401,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
 
 proc combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
+  ## 将多个uri组合在一起。
   ##
   ## **See also:**
   ## * `/ proc <#/,Uri,string>`_ for building URIs
@@ -378,6 +415,7 @@ proc combine*(uris: varargs[Uri]): Uri =
 
 proc isAbsolute*(uri: Uri): bool =
   ## Returns true if URI is absolute, false otherwise.
+  ## 如果URI是绝对的，则返回true，否则返回false
   runnableExamples:
     let foo = parseUri("https://nim-lang.org")
     assert isAbsolute(foo) == true
@@ -387,10 +425,12 @@ proc isAbsolute*(uri: Uri): bool =
 
 proc `/`*(x: Uri, path: string): Uri =
   ## Concatenates the path specified to the specified URIs path.
+  ## 将指定的路径连接到指定URI的路径。
   ##
   ## Contrary to the `combine proc <#combine,Uri,Uri>`_ you do not have to worry about
   ## the slashes at the beginning and end of the path and URIs path
   ## respectively.
+  ## 与“组合”过程相反，您不必分别担心路径的开始和结束处的斜线和URI的路径
   ##
   ## **See also:**
   ## * `combine proc <#combine,Uri,Uri>`_
@@ -421,6 +461,7 @@ proc `/`*(x: Uri, path: string): Uri =
 
 proc `?`*(u: Uri, query: openArray[(string, string)]): Uri =
   ## Concatenates the query parameters to the specified URI object.
+  ## 将查询参数连接到指定的URI对象。
   runnableExamples:
     let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
     assert $foo == "https://example.com/foo?bar=qux"
@@ -429,6 +470,7 @@ proc `?`*(u: Uri, query: openArray[(string, string)]): Uri =
 
 proc `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
+  ## 返回指定URI对象的字符串表示形式。
   runnableExamples:
     let foo = parseUri("https://nim-lang.org")
     assert $foo == "https://nim-lang.org"
@@ -507,6 +549,7 @@ when isMainModule:
 
   block:
     # IPv6 address
+    # IPv6 地址
     let str = "foo://[::1]:1234/bar?baz=true&qux#quux"
     let uri = parseUri(str)
     doAssert uri.scheme == "foo"
@@ -577,6 +620,7 @@ when isMainModule:
     doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
 
   # Combine tests
+  # 集成测试（结合测试）
   block:
     let concat = combine(parseUri("http://google.com/foo/bar/"), parseUri("baz"))
     doAssert concat.path == "/foo/bar/baz"
