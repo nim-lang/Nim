@@ -101,9 +101,7 @@ Thread 2: iteration 48
 Thread 1: iteration 49
 Thread 2: iteration 49
 Thread 1: iteration 50
-Thread 1: done
 Thread 2: iteration 50
-Thread 2: done
 '''
 """
 
@@ -137,7 +135,6 @@ proc asyncProc1(args: ThreadArg) {.async.} =
     # We need to make sure the threads get properly synchronized on each iteration.
     echo "Thread 1: iteration ", i
   args.event2.trigger()
-  echo "Thread 1: done"
 
 proc asyncProc2(args: ThreadArg) {.async.} =
   for i in 0 .. 50:
@@ -146,7 +143,6 @@ proc asyncProc2(args: ThreadArg) {.async.} =
     await waiting
     echo "Thread 2: iteration ", i
   args.event1.trigger()
-  echo "Thread 2: done"
 
 proc threadProc1(args: ThreadArg) {.thread.} =
   ## We create new dispatcher explicitly to avoid bugs.
