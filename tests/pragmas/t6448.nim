@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''ambiguous call; both foobar.async(body: untyped) [declared in foobar.nim(2, 7)] and asyncdispatch.async(prc: untyped) [declared in ../../lib/pure/asyncmacro.nim(333, 7)] match for: ()'''
+  errormsg: '''ambiguous call; both foobar.async(body: untyped) [declared in foobar.nim(2, 7)] and asyncdispatch.async(prc: untyped) [declared in ../../lib/pure/asyncmacro.nim(335, 7)] match for: ()'''
   line: 9
 """
 
