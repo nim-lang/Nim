@@ -436,12 +436,8 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
 
         var value = cast[BiggestUInt](src.intVal)
-        when system.cpuEndian == bigEndian:
-          value = (value shr srcDist) shl srcDist
-          value = (value shr destDist) shl destDist
-        else:
-          value = (value shl srcDist) shr srcDist
-          value = (value shl destDist) shr destDist
+        value = (value shl srcDist) shr srcDist
+        value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
