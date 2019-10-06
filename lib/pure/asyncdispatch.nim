@@ -169,16 +169,26 @@
 include "system/inclrtl"
 
 import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
-import options, math, std/monotimes
+import options, math, std/monotimes, hashes
 import asyncfutures except callSoon
 
 import nativesockets, net, deques
+
+when compileOption("threads"):
+  import rlocks
 
 export Port, SocketFlag
 export asyncfutures except callSoon
 export asyncstreams
 
 #{.injectStmt: newGcInvariant().}
+
+template withLockIfThreads(lock, code: untyped) =
+  when compileOption("threads"):
+    withRLock lock:
+      code
+  else:
+    code
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
@@ -246,6 +256,12 @@ when defined(windows) or defined(nimdoc):
     PDispatcher* = ref object of PDispatcherBase
       ioPort: Handle
       handles: HashSet[AsyncFD]
+      vd: VirtualEventDispatcher
+
+    VirtualEventDispatcher = object
+      virtualHandles: Table[VirtualFD, VirtualAsyncEvent] # pseudo handles for custom AsyncEvents.
+      nextVirtualHandle: VirtualFD
+      virtualMuxHandle: AsyncEvent # all the virtual handles get multiplexed through a single real handle.
 
     CustomOverlapped = object of OVERLAPPED
       data*: CompletionData
@@ -267,10 +283,25 @@ when defined(windows) or defined(nimdoc):
       pcd: PostCallbackDataPtr
     AsyncEvent* = ptr AsyncEventImpl
 
+    VirtualFD* = distinct int
+
+    VirtualAsyncEventImpl = object
+      triggered: bool
+      when compileOption("threads"):
+        eventLock: RLock
+      p: PDispatcher
+      vFD: VirtualFD
+      cb: Callback
+    VirtualAsyncEvent* = ptr VirtualAsyncEventImpl
+
     Callback = proc (fd: AsyncFD): bool {.closure, gcsafe.}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
+  proc hash(x: VirtualFD): Hash {.borrow.}
+  proc `==`*(x: VirtualFD, y: VirtualFD): bool {.borrow.}
+
+  const InvalidVirtualFD = VirtualFD(-1)
 
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
@@ -279,6 +310,7 @@ when defined(windows) or defined(nimdoc):
     result.handles = initSet[AsyncFD]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](64)
+    result.vd.virtualHandles = initTable[VirtualFD, VirtualAsyncEvent]()
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
@@ -924,8 +956,8 @@ when defined(windows) or defined(nimdoc):
     ## receiving notifications.
     registerWaitableEvent(fd, cb, FD_WRITE or FD_CONNECT or FD_CLOSE)
 
-  template registerWaitableHandle(p, hEvent, flags, pcd, timeout,
-                                  handleCallback) =
+  proc registerWaitableHandle(p: PDispatcher, hEvent: Handle, flags: DWORD, pcd: PostCallbackDataPtr, timeout: int,
+                                  handleCallback: NativeCallback) =
     let handleFD = AsyncFD(hEvent)
     pcd.ioPort = p.ioPort
     pcd.handleFd = handleFD
@@ -1101,11 +1133,33 @@ else:
 
     AsyncEvent* = distinct SelectEvent
 
+    VirtualFD* = distinct int
+
+    VirtualAsyncEventImpl = object
+      triggered: bool
+      when compileOption("threads"):
+        eventLock: RLock
+      p: PDispatcher
+      vFD: VirtualFD
+      cb: Callback
+    VirtualAsyncEvent* = ptr VirtualAsyncEventImpl
+
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
+      vd: VirtualEventDispatcher
+
+    VirtualEventDispatcher = object
+      virtualHandles: Table[VirtualFD, VirtualAsyncEvent] # pseudo handles for custom AsyncEvents.
+      nextVirtualHandle: VirtualFD
+      virtualMuxHandle: AsyncEvent # all the virtual handles get multiplexed through a single real handle.
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
+
+  proc hash(x: VirtualFD): Hash {.borrow.}
+  proc `==`*(x: VirtualFD, y: VirtualFD): bool {.borrow.}
+
+  const InvalidVirtualFD = VirtualFD(-1)
 
   template newAsyncData(): AsyncData =
     AsyncData(
@@ -1118,6 +1172,7 @@ else:
     result.selector = newSelector[AsyncData]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
+    result.vd.virtualHandles = initTable[VirtualFD, VirtualAsyncEvent]()
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
@@ -1850,6 +1905,105 @@ proc send*(socket: AsyncFD, data: string,
         retFuture.complete()
 
   return retFuture
+
+proc deInitVirtualEventDispatcher(p: PDispatcher) =
+  assert p.vd.virtualHandles.len == 0, "Cannot de-Init Virtual Event Dispacter. There are still Pending Events."
+  p.vd.virtualMuxHandle.unregister()
+  p.vd.virtualMuxHandle.close()
+  p.vd.virtualMuxHandle = nil
+  p.vd.nextVirtualHandle = 0.VirtualFD
+
+proc unregister*(ev: VirtualAsyncEvent) =
+  ## Unregisters event ``ev``.
+  doAssert(ev.vFD != InvalidVirtualFD, "Event is not registered in the queue!")
+
+  let oldP = ev.p
+  withLockIfThreads ev.eventLock:
+    ev.p.vd.virtualHandles.del ev.vFD
+    ev.p = nil
+    ev.cb = nil
+    ev.vFD = InvalidVirtualFD
+
+  if oldP.vd.virtualHandles.len == 0:
+    # lazy de-init the physical event with the Dispatcher
+    # The main reason we need this is to make
+    # hasPendingOperations still work
+    # without modifying the ioselector code.
+    deInitVirtualEventDispatcher(oldP)
+
+proc initVirtualEventDispatcher(p: PDispatcher) =
+  p.vd.virtualMuxHandle = newAsyncEvent()
+
+  proc virtualMuxCB(fd: AsyncFD): bool {.closure,gcsafe.} =
+    # find the virtual events that triggered the physical event and
+    # add them to the callback list.
+    # Not very efficient, but requires the least coordination between threads.
+    
+    proc vcbFactory(vfd: VirtualFD) : proc() {.closure, gcsafe.} =
+      let ev = p.vd.virtualHandles[vfd]
+      result = proc() {.closure,gcSafe.} =
+        if ev.cb(vfd.AsyncFD):
+          # the convention is that if the callback returns true, we unregister the event.
+          ev.unregister
+
+    for vfd, ev in p.vd.virtualHandles:
+      withLockIfThreads ev.eventLock:
+        if ev.triggered:
+          ev.triggered = false
+          p.callbacks.addLast(vcbFactory(vfd))
+
+    # always return false b/c we never want to unregister this event
+    return false
+
+  p.vd.virtualMuxHandle.addEvent(virtualMuxCB)
+
+proc newVirtualAsyncEvent*(): VirtualAsyncEvent =
+  ## Creates a new thread-safe ``VirtualAsyncEvent`` object.
+  ##
+  ## New ``VirtualAsyncEvent`` object is not automatically registered with
+  ## dispatcher like ``AsyncSocket``.
+  result = cast[VirtualAsyncEvent](allocShared0(sizeof(VirtualAsyncEventImpl)))
+  result.cb = nil
+  result.vFD = InvalidVirtualFD
+  when compileOption("threads"):
+    initRLock result.eventLock
+
+proc trigger*(ev: VirtualAsyncEvent) =
+  ## Sets new ``VirtualAsyncEvent`` to signaled state.
+  withLockIfThreads ev.eventLock:
+    if ev.vFD == InvalidVirtualFD:
+      # triggering on an event that is not registered is a noop.
+      return
+    ev.triggered = true
+
+    # send the signal to wake up the dispatcher thread.
+    trigger(ev.p.vd.virtualMuxHandle)
+
+proc addEvent*(ev: VirtualAsyncEvent, cb: Callback) =
+  ## Registers callback ``cb`` to be called when ``ev`` will be signaled
+  doAssert(ev.vFD == InvalidVirtualFD, "Event is already registered in the queue!")
+
+  let p = getGlobalDispatcher()
+
+  if p.vd.virtualMuxHandle == nil:
+    # lazy register the physical event with the Dispatcher
+    # The main reason we need this is to make hasPendingOperations still work
+    # without modifying the ioselector code.
+    initVirtualEventDispatcher(p)
+
+  withLockIfThreads ev.eventLock:
+    ev.cb = cb
+    ev.vFD = p.vd.nextVirtualHandle
+    p.vd.nextVirtualHandle = VirtualFD(int(p.vd.nextVirtualHandle) + 1)
+    p.vd.virtualHandles[ev.vFD] = ev
+    ev.p = p
+
+proc close*(ev: VirtualAsyncEvent) =
+  ## Closes event ``ev``.
+  doAssert(ev.vFD != InvalidVirtualFD, "Must unregister Event before you close it!")
+  when compileOption("threads"):
+    deinitRLock(ev.eventLock)
+  deallocShared(cast[pointer](ev))
 
 # -- Await Macro
 include asyncmacro
