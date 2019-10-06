@@ -1,6 +1,6 @@
 discard """
   errormsg: '''ambiguous call; both foobar.async'''
-  line: 9
+  line: 10
   disabled: "32bit"
 """
 
