@@ -18,6 +18,11 @@ when true:
       case kind*: ReplayEventKind
       of FoodAppeared, FoodEaten:
         foodPos*: Point[float]
+        case subKind*: bool
+        of true:
+          it: int
+        of false:
+          ot: float
       of DirectionChanged:
         playerPos*: float
 
@@ -33,7 +38,9 @@ when true:
       ReplayEvent(
         time: 1.2345,
         kind: FoodEaten,
-        foodPos: Point[float](x: 5.0, y: 1.0)
+        foodPos: Point[float](x: 5.0, y: 1.0),
+        subKind: true,
+        it: 7
       )
     ],
     test: 18827361,

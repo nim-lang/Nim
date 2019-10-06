@@ -1018,9 +1018,9 @@ proc toIdentNode(typeNode: NimNode): NimNode =
   else:
     doAssert false, "Cannot convert typeNode to an ident node: " & $typeNode.kind
 
-proc createGetEnumCall(jsonNode, kindType: NimNode): NimNode =
+proc createGetEnumCall(jsonNode, enumType: NimNode): NimNode =
   # -> getEnum(`jsonNode`, `kindType`)
-  result = newCall(bindSym("getEnum"), jsonNode, toStrLit(jsonNode), kindType)
+  result = newCall(bindSym("getEnum"), jsonNode, newLit(jsonNode.repr), enumType)
 
 proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
   ## Creates an expression that acts as the condition for an ``of`` branch.
@@ -1104,7 +1104,7 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
       let ifStmt = newIfStmt((cond, objField[1]))
       exprColonExpr.add(ifStmt)
 
-proc createConstructor(typeSym, jsonNode: NimNode): NimNode {.compileTime.}
+proc createConstructor(typeExpr, jsonNode: NimNode): NimNode {.compileTime.}
 
 proc detectDistinctType(typeSym: NimNode): NimNode =
   let
@@ -1193,253 +1193,471 @@ proc processFields(obj: NimNode,
   else:
     doAssert false, "Unable to process field type: " & $obj.kind
 
-proc processType(typeName: NimNode, obj: NimNode,
-                 jsonNode: NimNode, isRef: bool): NimNode {.compileTime.} =
-  ## Process a type such as ``Sym "float"`` or ``ObjectTy ...``.
-  ##
-  ## Sample ``ObjectTy``:
-  ##
-  ## .. code-block::plain
-  ##     ObjectTy
-  ##       Empty
-  ##       InheritanceInformation
-  ##       RecList
-  ##         Sym "events"
-  case obj.kind
-  of nnkObjectTy, nnkTupleTy:
-    # Create object constructor.
-    result =
-      if obj.kind == nnkObjectTy: newNimNode(nnkObjConstr)
-      else: newNimNode(nnkPar)
+# proc processType(typeName: NimNode, obj: NimNode,
+#                  jsonNode: NimNode, isRef: bool): NimNode {.compileTime.} =
+#   ## Process a type such as ``Sym "float"`` or ``ObjectTy ...``.
+#   ##
+#   ## Sample ``ObjectTy``:
+#   ##
+#   ## .. code-block::plain
+#   ##     ObjectTy
+#   ##       Empty
+#   ##       InheritanceInformation
+#   ##       RecList
+#   ##         Sym "events"
+#   case obj.kind
+#   of nnkObjectTy, nnkTupleTy:
+#     # Create object constructor.
+#     result =
+#       if obj.kind == nnkObjectTy: newNimNode(nnkObjConstr)
+#       else: newNimNode(nnkPar)
 
-    if obj.kind == nnkObjectTy:
-      result.add(typeName) # Name of the type to construct.
+#     if obj.kind == nnkObjectTy:
+#       result.add(typeName) # Name of the type to construct.
 
-    # Process each object/tuple field and add it as an exprColonExpr
-    result.add(processFields(obj, jsonNode))
+#     # Process each object/tuple field and add it as an exprColonExpr
+#     result.add(processFields(obj, jsonNode))
 
-    # Object might be null. So we need to check for that.
-    if isRef:
-      result = quote do:
-        verifyJsonKind(`jsonNode`, {JObject, JNull}, astToStr(`jsonNode`))
-        if `jsonNode`.kind == JNull:
-          nil
-        else:
-          `result`
-    else:
-      result = quote do:
-        verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
-        `result`
+#     # Object might be null. So we need to check for that.
+#     if isRef:
+#       result = quote do:
+#         verifyJsonKind(`jsonNode`, {JObject, JNull}, astToStr(`jsonNode`))
+#         if `jsonNode`.kind == JNull:
+#           nil
+#         else:
+#           `result`
+#     else:
+#       result = quote do:
+#         verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
+#         `result`
 
-  of nnkEnumTy:
-    let instType = toIdentNode(getTypeInst(typeName))
-    let getEnumCall = createGetEnumCall(jsonNode, instType)
-    result = quote do:
-      (
-        `getEnumCall`
-      )
-  of nnkSym:
-    let name = normalize($typeName.getTypeImpl())
-    case name
-    of "string":
-      result = quote do:
-        (
-          verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
-          if `jsonNode`.kind == JNull: "" else: `jsonNode`.str
-        )
-    of "biggestint":
-      result = quote do:
-        (
-          verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
-          `jsonNode`.num
-        )
-    of "bool":
-      result = quote do:
-        (
-          verifyJsonKind(`jsonNode`, {JBool}, astToStr(`jsonNode`));
-          `jsonNode`.bval
-        )
-    else:
-      if name.startsWith("int") or name.startsWith("uint"):
-        result = quote do:
-          (
-            verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
-            `jsonNode`.num.`obj`
-          )
-      elif name.startsWith("float"):
-        result = quote do:
-          (
-            verifyJsonKind(`jsonNode`, {JInt, JFloat}, astToStr(`jsonNode`));
-            if `jsonNode`.kind == JFloat: `jsonNode`.fnum.`obj` else: `jsonNode`.num.`obj`
-          )
-      else:
-        doAssert false, "Unable to process nnkSym " & $typeName
-  else:
-    doAssert false, "Unable to process type: " & $obj.kind
+#   of nnkEnumTy:
+#     let instType = toIdentNode(getTypeInst(typeName))
+#     let getEnumCall = createGetEnumCall(jsonNode, instType)
+#     result = quote do:
+#       (
+#         `getEnumCall`
+#       )
+#   of nnkSym:
+#     let name = normalize($typeName.getTypeImpl())
+#     case name
+#     of "string":
+#       result = quote do:
+#         (
+#           verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
+#           if `jsonNode`.kind == JNull: "" else: `jsonNode`.str
+#         )
+#     of "biggestint":
+#       result = quote do:
+#         (
+#           verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
+#           `jsonNode`.num
+#         )
+#     of "bool":
+#       result = quote do:
+#         (
+#           verifyJsonKind(`jsonNode`, {JBool}, astToStr(`jsonNode`));
+#           `jsonNode`.bval
+#         )
+#     else:
+#       if name.startsWith("int") or name.startsWith("uint"):
+#         result = quote do:
+#           (
+#             verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
+#             `jsonNode`.num.`obj`
+#           )
+#       elif name.startsWith("float"):
+#         result = quote do:
+#           (
+#             verifyJsonKind(`jsonNode`, {JInt, JFloat}, astToStr(`jsonNode`));
+#             if `jsonNode`.kind == JFloat: `jsonNode`.fnum.`obj` else: `jsonNode`.num.`obj`
+#           )
+#       else:
+#         doAssert false, "Unable to process nnkSym " & $typeName
+#   else:
+#     doAssert false, "Unable to process type: " & $obj.kind
 
-  doAssert(not result.isNil(), "processType not initialised.")
+#   doAssert(not result.isNil(), "processType not initialised.")
 
 import options
 proc workaroundMacroNone[T](): Option[T] =
   none(T)
 
-proc depth(n: NimNode, current = 0): int =
-  result = 1
-  for child in n:
-    let d = 1 + child.depth(current + 1)
-    if d > result:
-      result = d
+# proc depth(n: NimNode, current = 0): int =
+#   result = 1
+#   for child in n:
+#     let d = 1 + child.depth(current + 1)
+#     if d > result:
+#       result = d
 
-proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
-  ## Accepts a type description, i.e. "ref Type", "seq[Type]", "Type" etc.
-  ##
-  ## The ``jsonNode`` refers to the node variable that we are deserialising.
-  ##
-  ## Returns an object constructor node.
-  # echo("--createConsuctor-- \n", treeRepr(typeSym))
-  # echo()
+# proc createConstructor(typeExpr, jsonNode: NimNode): NimNode =
+#   ## Accepts a type description, i.e. "ref Type", "seq[Type]", "Type" etc.
+#   ##
+#   ## The ``jsonNode`` refers to the node variable that we are deserialising.
+#   ##
+#   ## Returns an object constructor node.
+#   # echo("--createConsuctor-- \n", treeRepr(typeExpr))
+#   # echo()
 
-  if depth(jsonNode) > 150:
-    error("The `to` macro does not support ref objects with cycles.", jsonNode)
+#   echo typeExpr.treeRepr
 
-  case typeSym.kind
-  of nnkBracketExpr:
-    var bracketName = ($typeSym[0]).normalize
-    case bracketName
-    of "option":
-      # TODO: Would be good to verify that this is Option[T] from
-      # options module I suppose.
-      let lenientJsonNode = transformJsonIndexer(jsonNode)
+#   if depth(jsonNode) > 150:
+#     error("The `to` macro does not support ref objects with cycles.", jsonNode)
 
-      let optionGeneric = typeSym[1]
-      let value = createConstructor(typeSym[1], jsonNode)
-      let workaround = bindSym("workaroundMacroNone") # TODO: Nim Bug: This shouldn't be necessary.
+#   case typeExpr.kind
+#   of nnkBracketExpr:
+#     var bracketName = ($typeExpr[0]).normalize
+#     case bracketName
+#     of "option":
+#       # TODO: Would be good to verify that this is Option[T] from
+#       # options module I suppose.
+#       let lenientJsonNode = transformJsonIndexer(jsonNode)
 
-      result = quote do:
-        (
-          if `lenientJsonNode`.isNil or `jsonNode`.kind == JNull: `workaround`[`optionGeneric`]() else: some[`optionGeneric`](`value`)
-        )
-    of "table", "orderedtable":
-      let tableKeyType = typeSym[1]
-      if ($tableKeyType).cmpIgnoreStyle("string") != 0:
-        error("JSON doesn't support keys of type " & $tableKeyType)
-      let tableValueType = typeSym[2]
+#       let optionGeneric = typeExpr[1]
+#       let value = createConstructor(typeExpr[1], jsonNode)
+#       let workaround = bindSym("workaroundMacroNone") # TODO: Nim Bug: This shouldn't be necessary.
 
-      let forLoopKey = genSym(nskForVar, "key")
-      let indexerNode = createJsonIndexer(jsonNode, forLoopKey)
-      let constructorNode = createConstructor(tableValueType, indexerNode)
+#       result = quote do:
+#         (
+#           if `lenientJsonNode`.isNil or `jsonNode`.kind == JNull: `workaround`[`optionGeneric`]() else: some[`optionGeneric`](`value`)
+#         )
+#     of "table", "orderedtable":
+#       let tableKeyType = typeExpr[1]
+#       if ($tableKeyType).cmpIgnoreStyle("string") != 0:
+#         error("JSON doesn't support keys of type " & $tableKeyType)
+#       let tableValueType = typeExpr[2]
 
-      let tableInit =
-        if bracketName == "table":
-          bindSym("initTable")
-        else:
-          bindSym("initOrderedTable")
+#       let forLoopKey = genSym(nskForVar, "key")
+#       let indexerNode = createJsonIndexer(jsonNode, forLoopKey)
+#       let constructorNode = createConstructor(tableValueType, indexerNode)
 
-      # Create a statement expression containing a for loop.
-      result = quote do:
-        (
-          var map = `tableInit`[`tableKeyType`, `tableValueType`]();
-          verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
-          for `forLoopKey` in keys(`jsonNode`.fields): map[`forLoopKey`] = `constructorNode`;
-          map
-        )
-    of "ref":
-      # Ref type.
-      var typeName = $typeSym[1]
-      # Remove the `:ObjectType` suffix.
-      if typeName.endsWith(":ObjectType"):
-        typeName = typeName[0 .. ^12]
+#       let tableInit =
+#         if bracketName == "table":
+#           bindSym("initTable")
+#         else:
+#           bindSym("initOrderedTable")
 
-      let obj = getType(typeSym[1])
-      result = processType(newIdentNode(typeName), obj, jsonNode, true)
-    of "range":
-      let typeNode = typeSym
-      # Deduce the base type from one of the endpoints
-      let baseType = getType(typeNode[1])
+#       # Create a statement expression containing a for loop.
+#       result = quote do:
+#         (
+#           var map = `tableInit`[`tableKeyType`, `tableValueType`]();
+#           verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
+#           for `forLoopKey` in keys(`jsonNode`.fields): map[`forLoopKey`] = `constructorNode`;
+#           map
+#         )
+#     of "ref":
+#       # Ref type.
+#       var typeName = $typeExpr[1]
+#       # Remove the `:ObjectType` suffix.
+#       if typeName.endsWith(":ObjectType"):
+#         typeName = typeName[0 .. ^12]
 
-      result = createConstructor(baseType, jsonNode)
-    of "seq":
-      let seqT = typeSym[1]
-      let forLoopI = genSym(nskForVar, "i")
-      let indexerNode = createJsonIndexer(jsonNode, forLoopI)
-      let constructorNode = createConstructor(detectDistinctType(seqT), indexerNode)
+#       let obj = getType(typeExpr[1])
+#       result = processType(newIdentNode(typeName), obj, jsonNode, true)
+#     of "range":
+#       let typeNode = typeExpr
+#       # Deduce the base type from one of the endpoints
+#       let baseType = getType(typeNode[1])
 
-      # Create a statement expression containing a for loop.
-      result = quote do:
-        (
-          var list: `typeSym` = @[];
-          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
-          for `forLoopI` in 0 ..< `jsonNode`.len: list.add(`constructorNode`);
-          list
-        )
-    of "array":
-      let arrayT = typeSym[2]
-      let forLoopI = genSym(nskForVar, "i")
-      let indexerNode = createJsonIndexer(jsonNode, forLoopI)
-      let constructorNode = createConstructor(arrayT, indexerNode)
+#       result = createConstructor(baseType, jsonNode)
+#     of "seq":
+#       let seqT = typeExpr[1]
+#       let forLoopI = genSym(nskForVar, "i")
+#       let indexerNode = createJsonIndexer(jsonNode, forLoopI)
+#       let constructorNode = createConstructor(detectDistinctType(seqT), indexerNode)
 
-      # Create a statement expression containing a for loop.
-      result = quote do:
-        (
-          var list: `typeSym`;
-          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
-          for `forLoopI` in 0 ..< `jsonNode`.len: list[`forLoopI`] =`constructorNode`;
-          list
-        )
-    of "tuple":
-      let typeNode = getTypeImpl(typeSym)
-      result = createConstructor(typeNode, jsonNode)
-    else:
-      # Generic type or some `seq[T]` alias
-      let obj = getType(typeSym)
-      case obj.kind
-      of nnkBracketExpr:
-        # probably a `seq[T]` alias
-        let typeNode = getTypeImpl(typeSym)
-        result = createConstructor(typeNode, jsonNode)
-      else:
-        # generic type
-        result = processType(typeSym, obj, jsonNode, false)
-  of nnkSym:
-    # Handle JsonNode.
-    if ($typeSym).cmpIgnoreStyle("jsonnode") == 0:
-      return jsonNode
+#       # Create a statement expression containing a for loop.
+#       result = quote do:
+#         (
+#           var list: `typeExpr` = @[];
+#           verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
+#           for `forLoopI` in 0 ..< `jsonNode`.len: list.add(`constructorNode`);
+#           list
+#         )
+#     of "array":
+#       let arrayT = typeExpr[2]
+#       let forLoopI = genSym(nskForVar, "i")
+#       let indexerNode = createJsonIndexer(jsonNode, forLoopI)
+#       let constructorNode = createConstructor(arrayT, indexerNode)
 
-    # Handle all other types.
-    let obj = getType(typeSym)
-    let typeNode = getTypeImpl(typeSym)
-    if typeNode.typeKind == ntyDistinct:
-      result = createConstructor(typeNode, jsonNode)
-    elif obj.kind == nnkBracketExpr:
-      # When `Sym "Foo"` turns out to be a `ref object` or `tuple`
-      result = createConstructor(obj, jsonNode)
-    else:
-      result = processType(typeSym, obj, jsonNode, false)
-  of nnkTupleTy:
-    result = processType(typeSym, typeSym, jsonNode, false)
-  of nnkPar, nnkTupleConstr:
-    # TODO: The fact that `jsonNode` here works to give a good line number
-    # is weird. Specifying typeSym should work but doesn't.
-    error("Use a named tuple instead of: " & $toStrLit(typeSym), jsonNode)
-  of nnkDistinctTy:
-    var baseType = typeSym
-    # solve nested distinct types
-    while baseType.typeKind == ntyDistinct:
-      let impl = getTypeImpl(baseType[0])
-      if impl.typeKind != ntyDistinct:
-        baseType = baseType[0]
-        break
-      baseType = impl
-    let ret = createConstructor(baseType, jsonNode)
-    let typeInst = getTypeInst(typeSym)
-    result = quote do:
-      (
-        `typeInst`(`ret`)
+#       # Create a statement expression containing a for loop.
+#       result = quote do:
+#         (
+#           var list: `typeExpr`;
+#           verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
+#           for `forLoopI` in 0 ..< `jsonNode`.len: list[`forLoopI`] =`constructorNode`;
+#           list
+#         )
+#     of "tuple":
+#       let typeNode = getTypeImpl(typeExpr)
+#       result = createConstructor(typeNode, jsonNode)
+#     else:
+#       # Generic type or some `seq[T]` alias
+#       let obj = getType(typeExpr)
+#       case obj.kind
+#       of nnkBracketExpr:
+#         # probably a `seq[T]` alias
+#         let typeNode = getTypeImpl(typeExpr)
+#         result = createConstructor(typeNode, jsonNode)
+#       else:
+#         # generic type
+#         result = processType(typeExpr, obj, jsonNode, false)
+#   of nnkSym:
+#     # Handle JsonNode.
+#     if ($typeExpr).cmpIgnoreStyle("jsonnode") == 0:
+#       return jsonNode
+
+#     # Handle all other types.
+#     let obj = getType(typeExpr)
+#     let typeNode = getTypeImpl(typeExpr)
+#     echo typeNode.treeRepr
+#     if typeNode.typeKind == ntyDistinct:
+#       result = createConstructor(typeNode, jsonNode)
+#     elif obj.kind == nnkBracketExpr:
+#       # When `Sym "Foo"` turns out to be a `ref object` or `tuple`
+#       result = createConstructor(obj, jsonNode)
+#     else:
+#       result = processType(typeExpr, obj, jsonNode, false)
+#   of nnkTupleTy:
+#     result = processType(typeExpr, typeExpr, jsonNode, false)
+#   of nnkPar, nnkTupleConstr:
+#     # TODO: The fact that `jsonNode` here works to give a good line number
+#     # is weird. Specifying typeExpr should work but doesn't.
+#     error("Use a named tuple instead of: " & $toStrLit(typeExpr), jsonNode)
+#   of nnkDistinctTy:
+#     var baseType = typeExpr
+#     # solve nested distinct types
+#     while baseType.typeKind == ntyDistinct:
+#       let impl = getTypeImpl(baseType[0])
+#       if impl.typeKind != ntyDistinct:
+#         baseType = baseType[0]
+#         break
+#       baseType = impl
+#     let ret = createConstructor(baseType, jsonNode)
+#     let typeInst = getTypeInst(typeExpr)
+#     result = quote do:
+#       (
+#         `typeInst`(`ret`)
+#       )
+#   else:
+#     doAssert false, "Unable to create constructor for: " & $typeExpr.kind
+#   doAssert(not result.isNil(), "Constructor not initialised.")
+
+
+
+proc createObjectConstructor(typeSym, body, jsonNode: NimNode): NimNode {.compileTime.} =
+
+  let tmpSym = genSym(nskVar, "tmp")
+
+  var res = nnkStmtListExpr.newTree()
+
+  # var `tmpSym` {.noInit.}: `typeSym`
+  res.add(
+    nnkVarSection.newTree(
+      nnkIdentDefs.newTree(
+        nnkPragmaExpr.newTree(
+          tmpSym,
+          nnkPragma.newTree(
+            ident"noInit"
+          )
+        ),
+        typeSym,
+        newEmptyNode()
       )
-  else:
-    doAssert false, "Unable to create constructor for: " & $typeSym.kind
+    )
+  )
 
-  doAssert(not result.isNil(), "Constructor not initialised.")
+  proc handleNode(node: NimNode) =
+    case node.kind
+    of nnkEmpty:
+      discard
+    of nnkRecList, nnkTupleTy:
+      for it in node:
+        handleNode(it)
+    of nnkIdentDefs:
+      node.expectLen 3
+      let fieldSym = node[0]
+      let indexJsonNode = nnkBracketExpr.newTree(jsonNode, newLit(fieldSym.strVal))
+      let fieldType = node[1]
+      let valueExpr = createConstructor(fieldType, indexJsonNode)
+      res.add quote do:
+        `tmpSym`.`fieldSym` = `valueExpr`
+    of nnkRecCase:
+      let kindSym = node[0][0]
+      let kindIndexJsonNode = nnkBracketExpr.newTree(jsonNode, newLit(kindSym.strVal))
+      let kindType = node[0][1]
+      let kindExpr = createConstructor(kindType, kindIndexJsonNode)
+      let kindOffsetLit = newLit(uint(getOffset(kindSym)))
+
+
+
+      res.add quote do:
+        when nimVm:
+          `tmpSym`.`kindSym` = `kindExpr`
+        else:
+          # fuck it, assign kind field anyway
+          ((cast[ptr `kindType`](cast[uint](`tmpSym`.addr) + `kindOffsetLit`))[]) = `kindExpr`
+
+      res.add nnkCaseStmt.newTree(nnkDotExpr.newTree(tmpSym, kindSym))
+
+      for i in 1 ..< node.len:
+        handleNode(node[i])
+
+    of nnkOfBranch, nnkElse:
+
+      let ofBranch = newNimNode(node.kind)
+      for i in 0 ..< node.len-1:
+        ofBranch.add copyNimTree(node[i])
+
+      # push current result
+      var resOuter = res
+      res = newNimNode(nnkStmtListExpr)
+
+      handleNode(node[^1])
+
+      # pop current result
+      swap(resOuter, res)
+
+      # resOuter now contains the inner stmtList
+      ofBranch.add resOuter
+
+      res[^1].expectKind nnkCaseStmt
+      res[^1].add ofBranch
+
+    else:
+      echo node.treeRepr
+      error("unhandled kind: " & $node.kind, node)
+
+  handleNode(body)
+  res.add tmpSym
+
+
+  return res
+
+
+
+proc createSeqConstructor(typeExpr, elementTypeExpr, jsonNode: NimNode): NimNode {.compileTime.} =
+  let forLoopI = genSym(nskForVar, "i")
+  let constructorNode = createConstructor(
+    elementTypeExpr,
+    nnkBracketExpr.newTree(jsonNode, forLoopI)
+  )
+  let jsonNodeLit = newLit(jsonNode.repr)
+  result = quote do:
+    var list: `typeExpr` = @[]
+    verifyJsonKind(`jsonNode`, {JArray}, `jsonNodeLit`)
+    for `forLoopI` in 0 ..< `jsonNode`.len:
+      list.add(`constructorNode`)
+    list
+
+proc createArrayConstructor(typeExpr, elementTypeExpr, jsonNode: NimNode): NimNode {.compileTime.} =
+  let forLoopI = genSym(nskForVar, "i")
+  let constructorNode = createConstructor(
+    elementTypeExpr,
+    nnkBracketExpr.newTree(jsonNode, forLoopI)
+  )
+  let jsonNodeLit = newLit(jsonNode.repr)
+  result = quote do:
+    var list: `typeExpr`
+    for `forLoopI` in 0 ..< `jsonNode`.len:
+      list[`forLoopI`] = `constructorNode`
+    list
+
+
+proc createConstructor(typeExpr, jsonNode: NimNode): NimNode =
+
+  let originalTypeExpr = typeExpr
+
+  proc handleTypeExpr(typeExpr: NimNode): NimNode =
+    # recursively resolve type aliases
+
+    case typeExpr.kind
+    of nnkSym:
+      if typeExpr == bindSym"JsonNode":
+        return jsonNode
+
+      if typeExpr.eqIdent("int") or typeExpr.eqIdent("uint8"):
+        let jsonNodeLit = newLit(jsonNode.repr)
+        result = quote do:
+          verifyJsonKind(`jsonNode`, {JInt}, `jsonNodeLit`)
+          `typeExpr`(`jsonNode`.num)
+      elif typeExpr.eqIdent "string":
+        let jsonNodeLit = newLit(jsonNode.repr)
+        result = quote do:
+          verifyJsonKind(`jsonNode`, {JString, JNull}, `jsonNodeLit`)
+          if `jsonNode`.kind == JNull: "" else: `jsonNode`.str
+      elif typeExpr.eqIdent "bool":
+        let jsonNodeLit = newLit(jsonNode.repr)
+        result = quote do:
+          verifyJsonKind(`jsonNode`, {JBool}, `jsonNodeLit`)
+          `jsonNode`.bval
+      elif typeExpr.eqIdent "float": #  or typeExpr.eqIdent "float32" or typeExpr.eqIdent "float64" or typeExpr.eqIdent "BiggestFloat":
+        let jsonNodeLit = newLit(jsonNode.repr)
+        result = quote do:
+          verifyJsonKind(`jsonNode`, {JInt, JFloat}, `jsonNodeLit`)
+          if `jsonNode`.kind == JFloat:
+            `typeExpr`(`jsonNode`.fnum)
+          else:
+            `typeExpr`(`jsonNode`.num)
+      else:
+
+        #### AAAA ####
+
+        let typeImpl = getTypeImpl(typeExpr)
+        if typeImpl.len == 1 and typeImpl.kind == nnkRefTy and typeImpl[0].kind == nnkSym:
+          let innerSym = typeImpl[0]
+          let innerImpl = innerSym.getTypeImpl
+          innerImpl.expectKind nnkObjectTy
+          result = createObjectConstructor(typeExpr, innerImpl[2], jsonNode)
+        elif typeImpl.kind == nnkObjectTy:
+          result = createObjectConstructor(typeExpr, typeImpl[2], jsonNode)
+        elif typeImpl.kind == nnkEnumTy:
+          let jsonNodeLit = newLit(jsonNode.repr)
+          result = quote do:
+            verifyJsonKind(`jsonNode`, {JString}, `jsonNodeLit`)
+            parseEnum[`typeExpr`](node.getStr)
+        else:
+          error("unhandled type: " & typeExpr.repr & " --> " & typeImpl.lispRepr, typeExpr)
+
+
+    of nnkTupleTy:
+      result = createObjectConstructor(typeExpr, typeExpr, jsonNode)
+
+    of nnkBracketExpr:
+      if typeExpr.len == 2 and typeExpr[0].eqIdent "seq":
+        result = createSeqConstructor(typeExpr, typeExpr[1], jsonNode)
+      elif typeExpr.len == 3 and typeExpr[0].eqIdent "array":
+        result = createArrayConstructor(typeExpr, typeExpr[2], jsonNode)
+      else:
+
+        #### AAAA ####
+        let typeImpl = getTypeImpl(typeExpr)
+        if typeImpl.len == 1 and typeImpl.kind == nnkRefTy and typeImpl[0].kind == nnkSym:
+          let innerSym = typeImpl[0]
+          let innerImpl = innerSym.getTypeImpl
+          innerImpl.expectKind nnkObjectTy
+          result = createObjectConstructor(typeExpr, innerImpl[2], jsonNode)
+        elif typeImpl.kind == nnkObjectTy:
+          result = createObjectConstructor(typeExpr, typeImpl[2], jsonNode)
+        elif typeImpl.kind == nnkEnumTy:
+          let jsonNodeLit = newLit(jsonNode.repr)
+          result = quote do:
+            verifyJsonKind(`jsonNode`, {JString}, `jsonNodeLit`)
+            parseEnum[`typeExpr`](node.getStr)
+        else:
+
+          let impl = getImpl(typeEXpr[0])
+          echo impl.treeRepr
+          let impl2 = getImpl(impl[0])
+          echo impl2.treeRepr
+
+          error("unhandled type: " & typeExpr.repr & " --> " & typeImpl.lispRepr, typeExpr)
+
+    else:
+      echo typeExpr.treeRepr
+      error("unhandled type kind: " & $typeExpr.kind, typeExpr)
+
+  result = handleTypeExpr(typeExpr)
 
 proc postProcess(node: NimNode): NimNode
 proc postProcessValue(value: NimNode): NimNode =
@@ -1519,8 +1737,7 @@ proc postProcess(node: NimNode): NimNode =
   # Return the `res` variable.
   result.add(resIdent)
 
-
-macro to*(node: JsonNode, T: typedesc): untyped =
+macro to*[T](node: JsonNode, t: typedesc[T]): T =
   ## `Unmarshals`:idx: the specified node into the object type specified.
   ##
   ## Known limitations:
@@ -1556,7 +1773,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##     doAssert data.person.age == 21
   ##     doAssert data.list == @[1, 2, 3, 4]
 
-  let typeNode = getTypeImpl(T)
+  let typeNode = getTypeImpl(t)
   expectKind(typeNode, nnkBracketExpr)
   doAssert(($typeNode[0]).normalize == "typedesc")
 
@@ -1567,11 +1784,12 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   result.add quote do:
     let `temp` = `node`
 
-  let constructor = createConstructor(typeNode[1], temp)
-  result.add(postProcessValue(constructor))
+  result.add createConstructor(typeNode[1], temp)
+
 
   # echo(treeRepr(result))
-  # echo(toStrLit(result))
+  echo "result: ", t.repr
+  echo(result.repr)
 
 when false:
   import os
