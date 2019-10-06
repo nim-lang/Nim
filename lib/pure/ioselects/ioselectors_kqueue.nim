@@ -375,7 +375,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
            "Descriptor [" & $fdi & "] is not registered in the queue!")
 
   if pkey.events != {}:
-    if pkey.events * {Event.Read, Event.Write} != {}:
+    if pkey.events * {Event.Read, Event.Write, Event.User} != {}:
       if Event.Read in pkey.events:
         modifyKQueue(s, uint(fdi), EVFILT_READ, EV_DELETE, 0, 0, nil)
         dec(s.count)
