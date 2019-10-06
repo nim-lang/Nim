@@ -474,7 +474,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
         len("if_:_")
   of nkElifExpr: result = lsons(g, n) + len("_elif_:_")
   of nkElseExpr: result = lsub(g, n.sons[0]) + len("_else:_") # type descriptions
-  of nkTypeOfExpr: result = (if n.len > 0: lsub(g, n.sons[0]) else: 0)+len("type()")
+  of nkTypeOfExpr: result = (if n.len > 0: lsub(g, n.sons[0]) else: 0)+len("typeof()")
   of nkRefTy: result = (if n.len > 0: lsub(g, n.sons[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(g, n.sons[0])+1 else: 0) + len("ptr")
   of nkVarTy: result = (if n.len > 0: lsub(g, n.sons[0])+1 else: 0) + len("var")
@@ -1195,7 +1195,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 0)
   of nkTypeOfExpr:
-    put(g, tkType, "type")
+    put(g, tkType, "typeof")
     put(g, tkParLe, "(")
     if n.len > 0: gsub(g, n.sons[0])
     put(g, tkParRi, ")")
