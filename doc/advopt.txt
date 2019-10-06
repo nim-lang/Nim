@@ -100,6 +100,8 @@ Advanced options:
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
   --noCppExceptions         use default exception handling with C++ backend
+  --noCppNativeExceptions   don't attempt to catch C++ native exceptions from
+                            C++ code
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used

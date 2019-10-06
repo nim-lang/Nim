@@ -483,7 +483,7 @@ when defined(cpp) and appType != "lib" and
     setTerminate(nil)
 
     var msg = "Unknown error in unexpected exception handler"
-    when defined(vcc):
+    when defined(noCppNativeExceptions):
       # disable C++ Native (not caused by nim) exceptions for MS Visual C++
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
