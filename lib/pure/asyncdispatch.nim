@@ -295,6 +295,7 @@ when defined(windows) or defined(nimdoc):
     VirtualAsyncEvent* = ptr VirtualAsyncEventImpl
 
     Callback = proc (fd: AsyncFD): bool {.closure, gcsafe.}
+    NativeCallback = proc(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.closure,gcsafe.}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
