@@ -376,7 +376,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
 
   if pkey.events != {}:
     if pkey.events * {Event.Read, Event.Write, Event.User} != {}:
-      if Event.Read in pkey.events:
+      if Event.Read in pkey.events or Event.User in pkey.events:
         modifyKQueue(s, uint(fdi), EVFILT_READ, EV_DELETE, 0, 0, nil)
         dec(s.count)
       if Event.Write in pkey.events:
