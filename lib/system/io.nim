@@ -67,8 +67,6 @@ proc c_fputs(c: cstring, f: File): cint {.
   importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgets(c: cstring, n: cint, f: File): cstring {.
   importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
-proc c_fputc(c: char, f: File): cint {.
-  importc: "fputc", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgetc(stream: File): cint {.
   importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
 proc c_ungetc(c: cint, f: File): cint {.
@@ -147,6 +145,24 @@ proc checkErr(f: File) =
     # shouldn't happen
     quit(1)
 
+proc getFileHandle*(f: File): FileHandle =
+  ## returns the file handle of the file ``f``. This is only useful for
+  ## platform specific programming.
+  ## Note that on Windows this doesn't return the Windows-specific handle,
+  ## but the C library's notion of a handle, whatever that means.
+  ## Use `getOsFileHandle` instead.
+  c_fileno(f)
+
+proc getOsFileHandle*(f: File): FileHandle =
+  ## returns the OS file handle of the file ``f``. This is only useful for
+  ## platform specific programming.
+  when defined(windows):
+    proc getOsfhandle(fd: cint): FileHandle {.
+      importc: "_get_osfhandle", header: "<io.h>".}
+    result = getOsfhandle(getFileHandle(f))
+  else:
+    result = c_fileno(f)
+
 {.push stackTrace:off, profiler:off.}
 proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
@@ -214,10 +230,6 @@ when defined(windows):
     var i = c_fprintf(f, "%s", s)
     while i < s.len:
       if s[i] == '\0':
-        let c = c_fputc('\0', f)
-        if c != 0:
-          if doRaise: raiseEIO("cannot write string to file")
-          break
         inc i
       else:
         let w = c_fprintf(f, "%s", unsafeAddr s[i])
@@ -228,10 +240,13 @@ when defined(windows):
 
 proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.} =
   when defined(windows):
-    writeWindows(f, s, doRaise = true)
-  else:
-    if writeBuffer(f, cstring(s), s.len) != s.len:
-      raiseEIO("cannot write string to file")
+    proc isatty(filehandle: FileHandle): cint {.
+      importc: "_isatty", header: "<io.h>".}
+    if isatty(getFileHandle(f)) != 0:
+      writeWindows(f, s, doRaise = true)
+      return
+  if writeBuffer(f, cstring(s), s.len) != s.len:
+    raiseEIO("cannot write string to file")
 {.pop.}
 
 when NoFakeVars:
@@ -269,24 +284,6 @@ proc readChar*(f: File): char {.tags: [ReadIOEffect].} =
 proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
   ## Flushes `f`'s buffer.
   discard c_fflush(f)
-
-proc getFileHandle*(f: File): FileHandle =
-  ## returns the file handle of the file ``f``. This is only useful for
-  ## platform specific programming.
-  ## Note that on Windows this doesn't return the Windows-specific handle,
-  ## but the C library's notion of a handle, whatever that means.
-  ## Use `getOsFileHandle` instead.
-  c_fileno(f)
-
-proc getOsFileHandle*(f: File): FileHandle =
-  ## returns the OS file handle of the file ``f``. This is only useful for
-  ## platform specific programming.
-  when defined(windows):
-    proc getOsfhandle(fd: cint): FileHandle {.
-      importc: "_get_osfhandle", header: "<io.h>".}
-    result = getOsfhandle(getFileHandle(f))
-  else:
-    result = c_fileno(f)
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
