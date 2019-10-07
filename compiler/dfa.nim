@@ -793,3 +793,8 @@ proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   gen(c, body)
   genImplicitReturn(c)
   shallowCopy(result, c.code)
+
+proc nilCheck*(s: PSym, body: PNode) =
+  var cfg = constructCfg(s, body)
+  echo "cfg"
+  echoCfg cfg

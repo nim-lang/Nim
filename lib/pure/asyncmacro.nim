@@ -378,14 +378,9 @@ proc splitProc(prc: NimNode): (NimNode, NimNode) =
   for i in 1 ..< result[0][3].len:
     # Sync proc (0) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
-<<<<<<< HEAD
-    result[0][3][i][1] = splitParamType(result[0][3][i][1], async = false)
-  result[0][6] = stripAwait(result[0][6])
-=======
     result[0][3][i][1] = splitParamType(result[0][3][i][1], async=false)
   var inMultisync = newVarStmt(ident"inMultisync", newLit(true))
   result[0][^1] = nnkStmtList.newTree(inMultisync, result[0][^1])
->>>>>>> Make await a template
 
   result[1] = prc.copyNimTree()
   if result[1][3][0].kind == nnkBracketExpr:
