@@ -41,3 +41,5 @@
 
 
 ## Bugfixes
+
+- Fixed "`writeFile` and `write(f, str)` skip null bytes on Windows" ([#12315](https://github.com/nim-lang/Nim/issues/12315))
