@@ -232,10 +232,91 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     result.head = ""
     result.tail = path
 
+proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
+  ## Checks whether a given `path` is absolute.
+  ##
+  ## On Windows, network paths are considered absolute too.
+  runnableExamples:
+    assert not "".isAbsolute
+    assert not ".".isAbsolute
+    when defined(posix):
+      assert "/".isAbsolute
+      assert not "a/".isAbsolute
+      assert "/a/".isAbsolute
+
+  if len(path) == 0: return false
+
+  when doslikeFileSystem:
+    var len = len(path)
+    result = (path[0] in {'/', '\\'}) or
+              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
+  elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    result = path[0] != ':'
+  elif defined(RISCOS):
+    result = path[0] == '$'
+  elif defined(posix):
+    result = path[0] == '/'
+
 when FileSystemCaseSensitive:
   template `!=?`(a, b: char): bool = a != b
 else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
+
+when doslikeFileSystem:
+  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
+    ## An absolute path from the root of the current drive (e.g. "\foo")
+    path.len > 0 and
+    (path[0] == AltSep or
+     (path[0] == DirSep and
+      (path.len == 1 or path[1] notin {DirSep, AltSep, ':'})))
+
+  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
+    path[0] == DirSep and path[1] == DirSep
+
+  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
+    ## Return true if path1 and path2 have a same root.
+    ##
+    ## Detail of windows path formats:
+    ## https://docs.microsoft.com/en-us/dotnet/standard/io/file-path-formats
+
+    assert(isAbsolute(path1))
+    assert(isAbsolute(path2))
+
+    let
+      len1 = path1.len
+      len2 = path2.len
+    assert(len1 != 0 and len2 != 0)
+
+    if isAbsFromCurrentDrive(path1) and isAbsFromCurrentDrive(path2):
+      return true
+    elif len1 == 1 or len2 == 1:
+      return false
+    else:
+      if path1[1] == ':' and path2[1] == ':':
+        return path1[0].toLowerAscii() == path2[0].toLowerAscii()
+      else:
+        var
+          p1, p2: PathIter
+          pp1 = next(p1, path1)
+          pp2 = next(p2, path2)
+        if pp1[1] - pp1[0] == 1 and pp2[1] - pp2[0] == 1 and
+           isUNCPrefix(path1) and isUNCPrefix(path2):
+          #UNC
+          var h = 0
+          while p1.hasNext(path1) and p2.hasNext(path2) and h < 2:
+            pp1 = next(p1, path1)
+            pp2 = next(p2, path2)
+            let diff = pp1[1] - pp1[0]
+            if diff != pp2[1] - pp2[0]:
+              return false
+            for i in 0..diff:
+              if path1[i + pp1[0]] !=? path2[i + pp2[0]]:
+                return false
+            inc h
+          return h == 2
+        else:
+          return false
 
 proc relativePath*(path, base: string; sep = DirSep): string {.
   noSideEffect, rtl, extern: "nos$1", raises: [].} =
@@ -244,6 +325,10 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
   ## The `sep` (default: `DirSep <#DirSep>`_) is used for the path normalizations,
   ## this can be useful to ensure the relative path only contains `'/'`
   ## so that it can be used for URL constructions.
+  ##
+  ## On windows, if a root of `path` and a root of `base` are different,
+  ## returns `path` as is because it is impossible to make a relative path.
+  ## That means an absolute path can be returned.
   ##
   ## See also:
   ## * `splitPath proc <#splitPath,string>`_
@@ -256,9 +341,13 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
 
-  # Todo: If on Windows, path and base do not agree on the drive letter,
-  # return `path` as is.
   if path.len == 0: return ""
+
+  when doslikeFileSystem:
+    if isAbsolute(path) and isAbsolute(base):
+      if not sameRoot(path, base):
+        return path
+
   var f, b: PathIter
   var ff = (0, -1)
   var bb = (0, -1) # (int, int)
@@ -644,32 +733,6 @@ proc cmpPaths*(pathA, pathB: string): int {.
     elif defined(nimdoc): discard
     else:
       result = cmpIgnoreCase(a, b)
-
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
-  ## Checks whether a given `path` is absolute.
-  ##
-  ## On Windows, network paths are considered absolute too.
-  runnableExamples:
-    assert not "".isAbsolute
-    assert not ".".isAbsolute
-    when defined(posix):
-      assert "/".isAbsolute
-      assert not "a/".isAbsolute
-      assert "/a/".isAbsolute
-
-  if len(path) == 0: return false
-
-  when doslikeFileSystem:
-    var len = len(path)
-    result = (path[0] in {'/', '\\'}) or
-              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
-  elif defined(macos):
-    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
-    result = path[0] != ':'
-  elif defined(RISCOS):
-    result = path[0] == '$'
-  elif defined(posix):
-    result = path[0] == '/'
 
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
