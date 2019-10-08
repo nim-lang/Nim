@@ -955,7 +955,7 @@ else:
   proc parseJson*(buffer: string): JsonNode =
     return parseNativeJson(buffer).convertObject()
 
-# -- Json deserialiser macro. --
+# -- Json deserialiser. --
 
 template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
                         ast: string) =
@@ -969,10 +969,13 @@ template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
     ]
     raise newException(JsonKindError, msg)
 
-# I have to export the private `assignFromJson` otherwise it won't compile
+# `assignFromJson` has to be exported, otherwise the symbol resultion doesn't work even though it is inteded for internal use only.
 
 proc assignFromJson*(dst: var string; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JString, JNull}, jsonPath)
+  # since strings don't have a nil state anymore, this mapping of
+  # JNull to the default string is questionable. `none(string)` and
+  # `some("")` have the same potentional json value `JNull`.
   if jsonNode.kind == JNull:
     dst = ""
   else:
@@ -1015,17 +1018,13 @@ proc assignFromJson*[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: s
   dst = initTable[string, T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    var tmp {.noinit.}: T
-    assignFromJson(tmp, jsonNode[key], jsonPath & "." & key)
-    dst[key] = tmp
+    assignFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
 
 proc assignFromJson*[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: string) =
   dst = initOrderedTable[string,T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    var tmp {.noinit.}: T
-    assignFromJson(tmp, jsonNode[key], jsonPath & "." & key)
-    dst[key] = tmp
+    assignFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
 
 proc assignFromJson*[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
   if jsonNode.kind == JNull:
@@ -1036,18 +1035,15 @@ proc assignFromJson*[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
 
 proc assignFromJson*[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string) =
   if jsonNode != nil and jsonNode.kind != JNull:
-    var tmp {.noinit.}: T
-    assignFromJson(tmp, jsonNode, jsonPath)
-    dst = some(tmp)
+    dst = some(default(T))
+    assignFromJson(dst.get, jsonNode, jsonPath)
 
 macro assignDistinctImpl[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
   let typInst = getTypeInst(dst)
   let typImpl = getTypeImpl(dst)
   let baseTyp = typImpl[0]
   result = quote do:
-    var tmp: `baseTyp`
-    assignFromJson(tmp, `jsonNode`, `jsonPath`)
-    `dst` = `typInst`(tmp)
+    assignFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
 proc assignFromJson*[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
   assignDistinctImpl(dst, jsonNode, jsonPath)
@@ -1136,10 +1132,6 @@ macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: string) =
 
 proc assignFromJson*[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   assignObjectImpl(dst, jsonNode, jsonPath)
-
-import options
-proc workaroundMacroNone[T](): Option[T] =
-  none(T)
 
 proc to*[T](node: JsonNode, t: typedesc[T]): T =
   ## `Unmarshals`:idx: the specified node into the object type specified.
