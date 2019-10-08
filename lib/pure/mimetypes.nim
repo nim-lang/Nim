@@ -8,12 +8,12 @@
 #
 
 ## This module implements a mimetypes database
-import strtabs
+import tables
 from strutils import startsWith, toLowerAscii, strip
 
 type
   MimeDB* = object
-    mimes: StringTableRef
+    mimes: Table[string, string]
 
 const mimes* = {
   "123": "application/vnd.lotus-1-2-3",
@@ -1881,33 +1881,29 @@ const mimes* = {
   "~": "application/x-trash"
 }
 
-
 func newMimetypes*(): MimeDB =
   ## Creates a new Mimetypes database. The database will contain the most
   ## common mimetypes.
-  result.mimes = mimes.newStringTable()
+  result.mimes = mimes.toTable()
 
 func getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to ``ext``. Returns ``default`` if ``ext``
   ## could not be found. ``ext`` can start with an optional dot which is ignored.
   ## ``ext`` is lowercased before querying ``mimedb``.
   if ext.startsWith("."):
-    result = mimedb.mimes.getOrDefault(ext.toLowerAscii.substr(1))
+    mimedb.mimes.getOrDefault(ext.substr(1).toLowerAscii(), default)
   else:
-    result = mimedb.mimes.getOrDefault(ext.toLowerAscii())
-  if result == "":
-    return default
+    mimedb.mimes.getOrDefault(ext.toLowerAscii(), default)
 
 func getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
   ## Gets extension which corresponds to ``mimetype``. Returns ``default`` if
   ## ``mimetype`` could not be found. Extensions are returned without the
   ## leading dot. ``mimetype`` is lowercased before querying ``mimedb``.
-  result = default
   let mimeLowered = mimetype.toLowerAscii()
   for e, m in mimedb.mimes:
     if m == mimeLowered:
-      result = e
-      break
+      return e
+  result = default
 
 func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   ## Adds ``mimetype`` to the ``mimedb``.
