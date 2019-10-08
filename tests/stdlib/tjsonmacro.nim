@@ -601,7 +601,7 @@ static:
   doAssert t["emails"][1].getStr == "123"
 
 block:
-  #ref objects with cycles.
+  # ref objects with cycles.
   type
     Misdirection = object
       cycle: Cycle
@@ -616,3 +616,11 @@ block:
 
   let dataParsed = parseJson(data)
   let dataDeser = to(dataParsed, Misdirection)
+
+block:
+  # ref object from #12316
+  type
+    Foo = ref Bar
+    Bar = object
+
+  discard "null".parseJson.to Foo
