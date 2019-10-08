@@ -984,7 +984,9 @@ proc transformJsonIndexer(jsonNode: NimNode): NimNode =
 
 template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
                         ast: string) =
-  if node.kind notin kinds:
+  if node == nil:
+    raise newException(KeyError, "key not found: " & ast)
+  elif  node.kind notin kinds:
     let msg = "Incorrect JSON kind. Wanted '$1' in '$2' but got '$3'." % [
       $kinds,
       ast,
@@ -1080,13 +1082,17 @@ proc assignFromJson*[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: s
   dst = initTable[string, T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    assignFromJson(dst[key], jsonNode[key], jsonPath & "." & key)
+    var tmp {.noinit.}: T
+    assignFromJson(tmp, jsonNode[key], jsonPath & "." & key)
+    dst[key] = tmp
 
-proc assignFromJson*[S,T](dst: var OrderedTable[S,T];jsonNode: JsonNode; jsonPath: string) =
-  dst = initOrderedTable[S,T]()
+proc assignFromJson*[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: string) =
+  dst = initOrderedTable[string,T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    assignFromJson(dst[key], jsonNode[key], jsonPath & "." & key)
+    var tmp {.noinit.}: T
+    assignFromJson(tmp, jsonNode[key], jsonPath & "." & key)
+    dst[key] = tmp
 
 proc assignFromJson*[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
   if jsonNode.kind == JNull:
@@ -1096,7 +1102,7 @@ proc assignFromJson*[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
     assignFromJson(dst[], jsonNode, jsonPath)
 
 proc assignFromJson*[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string) =
-  if jsonNode.kind != JNull:
+  if jsonNode != nil and jsonNode.kind != JNull:
     var tmp {.noinit.}: T
     assignFromJson(tmp, jsonNode, jsonPath)
     dst = some(tmp)
