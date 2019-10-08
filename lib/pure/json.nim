@@ -971,7 +971,7 @@ template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
 
 # `assignFromJson` has to be exported, otherwise the symbol resultion doesn't work even though it is inteded for internal use only.
 
-proc assignFromJson*(dst: var string; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*(dst: var string; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JString, JNull}, jsonPath)
   # since strings don't have a nil state anymore, this mapping of
   # JNull to the default string is questionable. `none(string)` and
@@ -981,72 +981,77 @@ proc assignFromJson*(dst: var string; jsonNode: JsonNode; jsonPath: string) =
   else:
     dst = jsonNode.str
 
-proc assignFromJson*(dst: var bool; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*(dst: var bool; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JBool}, jsonPath)
   dst = jsonNode.bval
 
-proc assignFromJson*(dst: var JsonNode; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*(dst: var JsonNode; jsonNode: JsonNode; jsonPath: string) =
   dst = jsonNode.copy
 
-proc assignFromJson*[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: string) =
+proc initFromJson*[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: string) =
   verifyJsonKind(jsonNode, {JInt}, jsonPath)
   dst = T(jsonNode.num)
 
-proc assignFromJson*[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
   if jsonNode.kind == JFloat:
     dst = T(jsonNode.fnum)
   else:
     dst = T(jsonNode.num)
 
-proc assignFromJson*[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JString}, jsonPath)
   dst = parseEnum[T](jsonNode.getStr)
 
-proc assignFromJson*[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JArray}, jsonPath)
   dst.setLen jsonNode.len
   for i in 0 ..< jsonNode.len:
-    assignFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
+    initFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
 
-proc assignFromJson*[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JArray}, jsonPath)
   for i in 0 ..< jsonNode.len:
-    assignFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
+    initFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
 
-proc assignFromJson*[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: string) =
   dst = initTable[string, T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    assignFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
+    initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
 
-proc assignFromJson*[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: string) =
   dst = initOrderedTable[string,T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    assignFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
+    initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
 
-proc assignFromJson*[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
   if jsonNode.kind == JNull:
     dst = nil
   else:
     dst = new(ref T)
-    assignFromJson(dst[], jsonNode, jsonPath)
+    initFromJson(dst[], jsonNode, jsonPath)
 
-proc assignFromJson*[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string) =
   if jsonNode != nil and jsonNode.kind != JNull:
     dst = some(default(T))
-    assignFromJson(dst.get, jsonNode, jsonPath)
+    initFromJson(dst.get, jsonNode, jsonPath)
 
 macro assignDistinctImpl[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
   let typInst = getTypeInst(dst)
   let typImpl = getTypeImpl(dst)
   let baseTyp = typImpl[0]
   result = quote do:
-    assignFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
+    initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
-proc assignFromJson*[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
   assignDistinctImpl(dst, jsonNode, jsonPath)
+
+
+proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode): void =
+  if typeExpr.kind == nnkTupleConstr:
+    error("Use a named tuple instead of: " & typeExpr.repr, lineinfoNode)
 
 proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: int): void {.compileTime.} =
 
@@ -1064,8 +1069,15 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: i
     let fieldSym = typeNode[0]
     let fieldNameLit = newLit(fieldSym.strVal)
     let fieldType = typeNode[1]
+
+    # Detecting incompatiple tuple types in `assignObjectImpl` only
+    # would be much cleaner, but the ast for tuple types does not
+    # contain usable type information.
+    detectIncompatibleType(fieldType, fieldSym)
+
     dst.add quote do:
-      assignFromJson(`tmpSym`.`fieldSym`, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath` & "." & `fieldNameLit`)
+      initFromJson(`tmpSym`.`fieldSym`, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath` & "." & `fieldNameLit`)
+
   of nnkRecCase:
     let kindSym = typeNode[0][0]
     let kindNameLit = newLit(kindSym.strVal)
@@ -1074,7 +1086,7 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: i
 
     dst.add quote do:
       var kindTmp: `kindType`
-      assignFromJson(kindTmp, `jsonNode`[`kindNameLit`], `jsonPath` & "." & `kindNameLit`)
+      initFromJson(kindTmp, `jsonNode`[`kindNameLit`], `jsonPath` & "." & `kindNameLit`)
       when nimVm:
         `tmpSym`.`kindSym` = kindTmp
       else:
@@ -1125,12 +1137,15 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: i
 macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   let typeSym = getTypeInst(dst)
   result = newStmtList()
-  if typeSym.kind == nnkTupleTy:
+  if typeSym.kind in {nnkTupleTy, nnkTupleConstr}:
+    # both, `dst` and `typeSym` don't have good lineinfo. But nothing
+    # else is available here.
+    detectIncompatibleType(typeSym, dst)
     foldObjectBody(result, typeSym, dst, jsonNode, jsonPath, 0)
   else:
     foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, 0)
 
-proc assignFromJson*[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+proc initFromJson*[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   assignObjectImpl(dst, jsonNode, jsonPath)
 
 proc to*[T](node: JsonNode, t: typedesc[T]): T =
@@ -1169,7 +1184,7 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
   ##     doAssert data.person.age == 21
   ##     doAssert data.list == @[1, 2, 3, 4]
 
-  assignFromJson(result, node, "")
+  initFromJson(result, node, "")
 
 
   # let typeNode = getTypeImpl(t)

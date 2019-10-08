@@ -599,3 +599,20 @@ static:
   doAssert t["fruit"]["color"].getInt == 10
   doAssert t["emails"][0].getStr == "abc"
   doAssert t["emails"][1].getStr == "123"
+
+block:
+  #ref objects with cycles.
+  type
+    Misdirection = object
+      cycle: Cycle
+
+    Cycle = ref object
+      foo: string
+      cycle: Misdirection
+
+  let data = """
+    {"cycle": null}
+  """
+
+  let dataParsed = parseJson(data)
+  let dataDeser = to(dataParsed, Misdirection)
