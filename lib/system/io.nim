@@ -118,6 +118,8 @@ proc c_setvbuf(f: File, buf: pointer, mode: cint, size: int): cint {.
 
 proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
+proc c_fputc(c: char, f: File): cint {.
+  importc: "fputc", header: "<stdio.h>".}
 
 ## When running nim in android app stdout goes no where, so echo gets ignored
 ## To redreict echo to the android logcat use -d:androidNDK
@@ -218,6 +220,10 @@ when defined(windows):
     var i = c_fprintf(f, "%s", s)
     while i < s.len:
       if s[i] == '\0':
+        let w = c_fputc('\0', f)
+        if w != 0:
+          if doRaise: raiseEIO("cannot write string to file")
+          break
         inc i
       else:
         let w = c_fprintf(f, "%s", unsafeAddr s[i])
