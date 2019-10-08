@@ -436,12 +436,8 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
 
         var value = cast[BiggestUInt](src.intVal)
-        when system.cpuEndian == bigEndian:
-          value = (value shr srcDist) shl srcDist
-          value = (value shr destDist) shl destDist
-        else:
-          value = (value shl srcDist) shr srcDist
-          value = (value shl destDist) shr destDist
+        value = (value shl srcDist) shr srcDist
+        value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
@@ -1567,19 +1563,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module, c.config)
     of opcGorge:
+      decodeBC(rkNode)
+      inc pc
+      let rd = c.code[pc].regA
+      createStr regs[ra]
       if defined(nimsuggest) or c.config.cmd == cmdCheck:
         discard "don't run staticExec for 'nim suggest'"
+        regs[ra].node.strVal = ""
       else:
         when defined(nimcore):
-          decodeBC(rkNode)
-          inc pc
-          let rd = c.code[pc].regA
-
-          createStr regs[ra]
           regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
                                         regs[rc].node.strVal, regs[rd].node.strVal,
                                         c.debug[pc], c.config)[0]
         else:
+          regs[ra].node.strVal = ""
           globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError, opcNWarning, opcNHint:
       decodeB(rkNode)

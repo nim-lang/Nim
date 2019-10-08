@@ -37,8 +37,6 @@ type
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
     wIntDefine, wStrDefine, wBoolDefine
 
-    wCursor,
-
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
@@ -125,8 +123,6 @@ const
     "magic", "thread", "final", "profiler", "memtracker", "objchecks",
     "intdefine", "strdefine", "booldefine",
 
-    "cursor",
-
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
     "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
@@ -209,7 +205,7 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wLinearScanEnd: "linearScanEnd"
   of wComputedGoto: "computedGoto"
   of wInjectStmt: "injectStmt"
-  of wAsmNoStackFrame: "asmNoStackframe"
+  of wAsmNoStackFrame: "asmNoStackFrame"
   of wImplicitStatic: "implicitStatic"
   of wCodegenDecl: "codegenDecl"
   of wLiftLocals: "liftLocals"

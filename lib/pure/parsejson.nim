@@ -15,21 +15,21 @@ import
   strutils, lexbase, streams, unicode
 
 type
-  JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
-    jsonError,           ## an error occurred during parsing
-    jsonEof,             ## end of file reached
-    jsonString,          ## a string literal
-    jsonInt,             ## an integer literal
-    jsonFloat,           ## a float literal
-    jsonTrue,            ## the value ``true``
-    jsonFalse,           ## the value ``false``
-    jsonNull,            ## the value ``null``
-    jsonObjectStart,     ## start of an object: the ``{`` token
-    jsonObjectEnd,       ## end of an object: the ``}`` token
-    jsonArrayStart,      ## start of an array: the ``[`` token
-    jsonArrayEnd         ## start of an array: the ``]`` token
+  JsonEventKind* = enum ## enumeration of all events that may occur when parsing
+    jsonError,          ## an error occurred during parsing
+    jsonEof,            ## end of file reached
+    jsonString,         ## a string literal
+    jsonInt,            ## an integer literal
+    jsonFloat,          ## a float literal
+    jsonTrue,           ## the value ``true``
+    jsonFalse,          ## the value ``false``
+    jsonNull,           ## the value ``null``
+    jsonObjectStart,    ## start of an object: the ``{`` token
+    jsonObjectEnd,      ## end of an object: the ``}`` token
+    jsonArrayStart,     ## start of an array: the ``[`` token
+    jsonArrayEnd        ## start of an array: the ``]`` token
 
-  TokKind* = enum         # must be synchronized with TJsonEventKind!
+  TokKind* = enum # must be synchronized with TJsonEventKind!
     tkError,
     tkEof,
     tkString,
@@ -45,18 +45,18 @@ type
     tkColon,
     tkComma
 
-  JsonError* = enum        ## enumeration that lists all errors that can occur
-    errNone,               ## no error
-    errInvalidToken,       ## invalid token
-    errStringExpected,     ## string expected
-    errColonExpected,      ## ``:`` expected
-    errCommaExpected,      ## ``,`` expected
-    errBracketRiExpected,  ## ``]`` expected
-    errCurlyRiExpected,    ## ``}`` expected
-    errQuoteExpected,      ## ``"`` or ``'`` expected
-    errEOC_Expected,       ## ``*/`` expected
-    errEofExpected,        ## EOF expected
-    errExprExpected        ## expr expected
+  JsonError* = enum       ## enumeration that lists all errors that can occur
+    errNone,              ## no error
+    errInvalidToken,      ## invalid token
+    errStringExpected,    ## string expected
+    errColonExpected,     ## ``:`` expected
+    errCommaExpected,     ## ``,`` expected
+    errBracketRiExpected, ## ``]`` expected
+    errCurlyRiExpected,   ## ``}`` expected
+    errQuoteExpected,     ## ``"`` or ``'`` expected
+    errEOC_Expected,      ## ``*/`` expected
+    errEofExpected,       ## EOF expected
+    errExprExpected       ## expr expected
 
   ParserState = enum
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,

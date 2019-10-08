@@ -71,12 +71,12 @@ import
 type
   CsvRow* = seq[string] ## A row in a CSV file.
   CsvParser* = object of BaseLexer ## The parser object.
-    ##
-    ## It consists of two public fields:
-    ## * `row` is the current row
-    ## * `headers` are the columns that are defined in the csv file
-    ##   (read using `readHeaderRow <#readHeaderRow,CsvParser>`_).
-    ##   Used with `rowEntry <#rowEntry,CsvParser,string>`_).
+                                   ##
+                                   ## It consists of two public fields:
+                                   ## * `row` is the current row
+                                   ## * `headers` are the columns that are defined in the csv file
+                                   ##   (read using `readHeaderRow <#readHeaderRow,CsvParser>`_).
+                                   ##   Used with `rowEntry <#rowEntry,CsvParser,string>`_).
     row*: CsvRow
     filename: string
     sep, quote, esc: char

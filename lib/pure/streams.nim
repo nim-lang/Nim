@@ -311,7 +311,7 @@ proc write*[T](s: Stream, x: T) =
   ##
   ## .. code-block:: Nim
   ##
-  ##     s.writeData(s, addr(x), sizeof(x))
+  ##     s.writeData(s, unsafeAddr(x), sizeof(x))
   runnableExamples:
     var strm = newStringStream("")
     strm.write("abcde")
@@ -319,9 +319,7 @@ proc write*[T](s: Stream, x: T) =
     doAssert strm.readAll() == "abcde"
     strm.close()
 
-  var y: T
-  shallowCopy(y, x)
-  writeData(s, addr(y), sizeof(y))
+  writeData(s, unsafeAddr(x), sizeof(x))
 
 proc write*(s: Stream, x: string) =
   ## Writes the string `x` to the the stream `s`. No length field or
@@ -897,7 +895,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     doAssert strm.readLine(line) == false
     doAssert line == ""
     strm.close()
-  
+
   if s.readLineImpl != nil:
     result = s.readLineImpl(s, line)
   else:
@@ -1259,7 +1257,8 @@ else:
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
 
-  proc newFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
+  proc newFileStream*(filename: string, mode: FileMode = fmRead,
+      bufSize: int = -1): owned FileStream =
     ## Creates a new stream from the file named `filename` with the mode `mode`.
     ##
     ## If the file cannot be opened, `nil` is returned. See the `io module
@@ -1296,7 +1295,8 @@ else:
     var f: File
     if open(f, filename, mode, bufSize): result = newFileStream(f)
 
-  proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
+  proc openFileStream*(filename: string, mode: FileMode = fmRead,
+      bufSize: int = -1): owned FileStream =
     ## Creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, an IO exception is raised.
     ##
@@ -1390,11 +1390,11 @@ when false:
     else:
       var flags: cint
       case mode
-      of fmRead:              flags = posix.O_RDONLY
-      of fmWrite:             flags = O_WRONLY or int(O_CREAT)
-      of fmReadWrite:         flags = O_RDWR or int(O_CREAT)
+      of fmRead: flags = posix.O_RDONLY
+      of fmWrite: flags = O_WRONLY or int(O_CREAT)
+      of fmReadWrite: flags = O_RDWR or int(O_CREAT)
       of fmReadWriteExisting: flags = O_RDWR
-      of fmAppend:            flags = O_WRONLY or int(O_CREAT) or O_APPEND
+      of fmAppend: flags = O_WRONLY or int(O_CREAT) or O_APPEND
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)

@@ -118,7 +118,7 @@ proc encode*(s: string): string {.raises: [PunyError].} =
   ## Encode a string that may contain Unicode. Prefix is empty.
   result = encode("", s)
 
-proc decode*(encoded: string): string {.raises: [PunyError].}  =
+proc decode*(encoded: string): string {.raises: [PunyError].} =
   ## Decode a Punycode-encoded string
   var
     n = InitialN

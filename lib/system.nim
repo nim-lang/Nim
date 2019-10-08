@@ -2104,7 +2104,7 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
-when defined(nimV2):
+when defined(gcDestructors):
   template movingCopy(a, b) =
     a = move(b)
 else:

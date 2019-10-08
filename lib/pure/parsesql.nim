@@ -18,12 +18,12 @@ import
 # ------------------- scanner -------------------------------------------------
 
 type
-  TokKind = enum       ## enumeration of all SQL tokens
-    tkInvalid,          ## invalid token
-    tkEof,              ## end of file reached
-    tkIdentifier,       ## abc
-    tkQuotedIdentifier, ## "abc"
-    tkStringConstant,   ## 'abc'
+  TokKind = enum            ## enumeration of all SQL tokens
+    tkInvalid,              ## invalid token
+    tkEof,                  ## end of file reached
+    tkIdentifier,           ## abc
+    tkQuotedIdentifier,     ## "abc"
+    tkStringConstant,       ## 'abc'
     tkEscapeConstant,       ## e'abc'
     tkDollarQuotedConstant, ## $tag$abc$tag$
     tkBitStringConstant,    ## B'00011'
@@ -40,9 +40,9 @@ type
     tkBracketRi,            ## ']'
     tkDot                   ## '.'
 
-  Token = object  # a token
-    kind: TokKind           # the type of the token
-    literal: string          # the parsed (string) literal
+  Token = object    # a token
+    kind: TokKind   # the type of the token
+    literal: string # the parsed (string) literal
 
   SqlLexer* = object of BaseLexer ## the parser object.
     filename: string
@@ -162,7 +162,7 @@ proc skip(c: var SqlLexer) =
         break
     of '/':
       if c.buf[pos+1] == '*':
-        inc(pos,2)
+        inc(pos, 2)
         while true:
           case c.buf[pos]
           of '\0': break
@@ -186,7 +186,7 @@ proc skip(c: var SqlLexer) =
     of '\c', '\L':
       pos = handleCRLF(c, pos)
     else:
-      break                   # EndOfFile also leaves the loop
+      break # EndOfFile also leaves the loop
   c.bufpos = pos
 
 proc getString(c: var SqlLexer, tok: var Token, kind: TokKind) =
@@ -264,12 +264,13 @@ proc getSymbol(c: var SqlLexer, tok: var Token) =
   while true:
     add(tok.literal, c.buf[pos])
     inc(pos)
-    if c.buf[pos] notin {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}:
+    if c.buf[pos] notin {'a'..'z', 'A'..'Z', '0'..'9', '_', '$',
+        '\128'..'\255'}:
       break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
-proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote='\"') =
+proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote = '\"') =
   var pos = c.bufpos + 1
   tok.kind = tkQuotedIdentifier
   while true:
@@ -403,7 +404,7 @@ proc getTok(c: var SqlLexer, tok: var Token) =
   of 'x', 'X':
     if c.buf[c.bufpos + 1] == '\'':
       tok.kind = tkHexStringConstant
-      getBitHexString(c, tok, {'a'..'f','A'..'F','0'..'9'})
+      getBitHexString(c, tok, {'a'..'f', 'A'..'F', '0'..'9'})
     else:
       getSymbol(c, tok)
   of '$': getDollarString(c, tok)
@@ -504,7 +505,7 @@ type
     nkConstraint,
     nkUnique,
     nkIdentity,
-    nkColumnDef,        ## name, datatype, constraints
+    nkColumnDef,      ## name, datatype, constraints
     nkInsert,
     nkUpdate,
     nkDelete,
@@ -543,14 +544,14 @@ const
 
 type
   SqlParseError* = object of ValueError ## Invalid SQL encountered
-  SqlNode* = ref SqlNodeObj        ## an SQL abstract syntax tree node
-  SqlNodeObj* = object              ## an SQL abstract syntax tree node
-    case kind*: SqlNodeKind      ## kind of syntax tree
+  SqlNode* = ref SqlNodeObj ## an SQL abstract syntax tree node
+  SqlNodeObj* = object      ## an SQL abstract syntax tree node
+    case kind*: SqlNodeKind ## kind of syntax tree
     of LiteralNodes:
-      strVal*: string             ## AST leaf: the identifier, numeric literal
-                                  ## string literal, etc.
+      strVal*: string       ## AST leaf: the identifier, numeric literal
+                            ## string literal, etc.
     else:
-      sons*: seq[SqlNode]        ## the node's children
+      sons*: seq[SqlNode]   ## the node's children
 
   SqlParser* = object of SqlLexer ## SQL parser object
     tok: Token
@@ -714,7 +715,8 @@ proc identOrLiteral(p: var SqlParser): SqlNode =
       getTok(p) # we must consume a token here to prevent endless loops!
 
 proc primary(p: var SqlParser): SqlNode =
-  if (p.tok.kind == tkOperator and (p.tok.literal == "+" or p.tok.literal == "-")) or isKeyw(p, "not"):
+  if (p.tok.kind == tkOperator and (p.tok.literal == "+" or p.tok.literal ==
+      "-")) or isKeyw(p, "not"):
     result = newNode(nkPrefix)
     result.add(newNode(nkIdent, p.tok.literal))
     getTok(p)
@@ -1439,7 +1441,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addKeyw("enum")
     rs(n, s)
 
-proc renderSQL*(n: SqlNode, upperCase=false): string =
+proc renderSQL*(n: SqlNode, upperCase = false): string =
   ## Converts an SQL abstract syntax tree to its string representation.
   var s: SqlWriter
   s.buffer = ""
@@ -1493,7 +1495,7 @@ when not defined(js):
     finally:
       close(p)
 
-  proc parseSQL*(input: string, filename=""): SqlNode =
+  proc parseSQL*(input: string, filename = ""): SqlNode =
     ## parses the SQL from `input` into an AST and returns the AST.
     ## `filename` is only used for error messages.
     ## Syntax errors raise an `SqlParseError` exception.

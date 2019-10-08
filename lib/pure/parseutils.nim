@@ -48,9 +48,9 @@
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
 
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 
-{.push debugger:off .} # the user does not want to trace a part
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
 include "system/inclrtl"
@@ -64,8 +64,8 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.noSideEffect.} =
+proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
+    maxLen = 0): int {.noSideEffect.} =
   ## Parses a binary number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -74,7 +74,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-bin character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -111,8 +111,8 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     number = output
     result = i - start
 
-proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.noSideEffect.} =
+proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
+    maxLen = 0): int {.noSideEffect.} =
   ## Parses an octal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -121,7 +121,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-oct character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -158,8 +158,8 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     number = output
     result = i - start
 
-proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.noSideEffect.} =
+proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
+    maxLen = 0): int {.noSideEffect.} =
   ## Parses a hexadecimal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -168,7 +168,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-hex character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -468,7 +468,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
     number = int(res)
 
 proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
-  raises: [].}=
+    raises: [].} =
   ## Parses a natural number into ``b``. This cannot raise an overflow
   ## error. ``high(int)`` is returned for an overflow.
   ## The number of processed character is returned.
@@ -573,13 +573,13 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
     number = bf
 
 type
-  InterpolatedKind* = enum   ## Describes for `interpolatedFragments`
-                             ## which part of the interpolated string is
-                             ## yielded; for example in "str$$$var${expr}"
-    ikStr,                   ## ``str`` part of the interpolated string
-    ikDollar,                ## escaped ``$`` part of the interpolated string
-    ikVar,                   ## ``var`` part of the interpolated string
-    ikExpr                   ## ``expr`` part of the interpolated string
+  InterpolatedKind* = enum ## Describes for `interpolatedFragments`
+                           ## which part of the interpolated string is
+                           ## yielded; for example in "str$$$var${expr}"
+    ikStr,                 ## ``str`` part of the interpolated string
+    ikDollar,              ## escaped ``$`` part of the interpolated string
+    ikVar,                 ## ``var`` part of the interpolated string
+    ikExpr                 ## ``expr`` part of the interpolated string
 
 iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
@@ -649,7 +649,7 @@ when isMainModule:
   import sequtils
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
-                   (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
+                    (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
   doAssert toSeq(interpolatedFragments(input)) == expected
 
   var value = 0

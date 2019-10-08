@@ -406,7 +406,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJson(x)
 
-proc `==`* (a, b: JsonNode): bool =
+proc `==`*(a, b: JsonNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -428,13 +428,13 @@ proc `==`* (a, b: JsonNode): bool =
     of JArray:
       result = a.elems == b.elems
     of JObject:
-     # we cannot use OrderedTable's equality here as
-     # the order does not matter for equality here.
-     if a.fields.len != b.fields.len: return false
-     for key, val in a.fields:
-       if not b.fields.hasKey(key): return false
-       if b.fields[key] != val: return false
-     result = true
+      # we cannot use OrderedTable's equality here as
+      # the order does not matter for equality here.
+      if a.fields.len != b.fields.len: return false
+      for key, val in a.fields:
+        if not b.fields.hasKey(key): return false
+        if b.fields[key] != val: return false
+      result = true
 
 proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
 
@@ -502,7 +502,8 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
   assert(node.kind == JArray)
   find(node.elems, val) >= 0
 
-proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use 'hasKey' instead".} =
+proc existsKey*(node: JsonNode, key: string): bool {.
+    deprecated: "use 'hasKey' instead".} =
   node.hasKey(key)
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
@@ -538,7 +539,8 @@ proc getOrDefault*(node: JsonNode, key: string): JsonNode =
   if not isNil(node) and node.kind == JObject:
     result = node.fields.getOrDefault(key)
 
-template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode, key: string): JsonNode = node.getOrDefault(key)
+template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode,
+    key: string): JsonNode = node.getOrDefault(key)
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
@@ -691,7 +693,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ## Similar to prettyprint in Python.
   runnableExamples:
     let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
-                "details": {"age":35, "pi":3.1415}}
+                "details": {"age": 35, "pi": 3.1415}}
     doAssert pretty(j) == """
 {
   "name": "Isaac",
@@ -721,14 +723,14 @@ proc toUgly*(result: var string, node: JsonNode) =
     result.add "["
     for child in node.elems:
       if comma: result.add ","
-      else:     comma = true
+      else: comma = true
       result.toUgly child
     result.add "]"
   of JObject:
     result.add "{"
     for key, value in pairs(node.fields):
       if comma: result.add ","
-      else:     comma = true
+      else: comma = true
       key.escapeJson(result)
       result.add ":"
       result.toUgly value
@@ -1331,7 +1333,8 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         (
           var map = `tableInit`[`tableKeyType`, `tableValueType`]();
           verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
-          for `forLoopKey` in keys(`jsonNode`.fields): map[`forLoopKey`] = `constructorNode`;
+          for `forLoopKey` in keys(`jsonNode`.fields): map[
+              `forLoopKey`] = `constructorNode`;
           map
         )
     of "ref":
@@ -1374,7 +1377,8 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         (
           var list: `typeSym`;
           verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
-          for `forLoopI` in 0 ..< `jsonNode`.len: list[`forLoopI`] =`constructorNode`;
+          for `forLoopI` in 0 ..< `jsonNode`.len: list[
+              `forLoopI`] = `constructorNode`;
           list
         )
     of "tuple":
@@ -1640,11 +1644,11 @@ when isMainModule:
     except:
       doAssert(false, "IndexError thrown for valid index")
 
-  doAssert(testJson{"b"}.getStr()=="asd", "Couldn't fetch a singly nested key with {}")
+  doAssert(testJson{"b"}.getStr() == "asd", "Couldn't fetch a singly nested key with {}")
   doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
-  doAssert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
+  doAssert(testJson{"a"} == parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
   doAssert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
 
   # Generator:
@@ -1669,10 +1673,10 @@ when isMainModule:
   const hisAge = 31
 
   var j3 = %*
-    [ { "name": "John"
+    [ {"name": "John"
       , "age": herAge
       }
-    , { "name": "Susan"
+    , {"name": "Susan"
       , "age": hisAge
       }
     ]
@@ -1708,7 +1712,8 @@ when isMainModule:
     except IndexError: doAssert(true)
 
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
-    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+    doAssert(parsed2{"repository", "description"}.str ==
+        "IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
   doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0014" # for #7887
@@ -1752,15 +1757,15 @@ when isMainModule:
   # Generate constructors for range[T] types
   block:
     type
-      Q1 = range[0'u8  .. 50'u8]
+      Q1 = range[0'u8 .. 50'u8]
       Q2 = range[0'u16 .. 50'u16]
       Q3 = range[0'u32 .. 50'u32]
-      Q4 = range[0'i8  .. 50'i8]
+      Q4 = range[0'i8 .. 50'i8]
       Q5 = range[0'i16 .. 50'i16]
       Q6 = range[0'i32 .. 50'i32]
       Q7 = range[0'f32 .. 50'f32]
       Q8 = range[0'f64 .. 50'f64]
-      Q9 = range[0     .. 50]
+      Q9 = range[0 .. 50]
 
       X = object
         m1: Q1

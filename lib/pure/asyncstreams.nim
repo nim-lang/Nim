@@ -14,10 +14,10 @@ import asyncfutures
 import deques
 
 type
-  FutureStream*[T] = ref object   ## Special future that acts as
-                                  ## a queue. Its API is still
-                                  ## experimental and so is
-                                  ## subject to change.
+  FutureStream*[T] = ref object ## Special future that acts as
+                                ## a queue. Its API is still
+                                ## experimental and so is
+                                ## subject to change.
     queue: Deque[T]
     finished: bool
     cb: proc () {.closure, gcsafe.}
@@ -45,7 +45,7 @@ proc complete*[T](future: FutureStream[T]) =
     future.cb()
 
 proc `callback=`*[T](future: FutureStream[T],
-    cb: proc (future: FutureStream[T]) {.closure,gcsafe.}) =
+    cb: proc (future: FutureStream[T]) {.closure, gcsafe.}) =
   ## Sets the callback proc to be called when data was placed inside the
   ## future stream.
   ##

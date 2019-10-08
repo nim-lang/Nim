@@ -51,7 +51,7 @@
 
 
 include "system/inclrtl"
-{.push debugger:off .} # the user does not want to trace a part
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
 import bitops
@@ -93,39 +93,39 @@ proc fac*(n: int): int =
   assert(n < factTable.len, $n & " is too large to look up in the table")
   factTable[n]
 
-{.push checks:off, line_dir:off, stack_trace:off.}
+{.push checks: off, line_dir: off, stack_trace: off.}
 
 when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
 
 const
-  PI* = 3.1415926535897932384626433 ## The circle constant PI (Ludolph's number)
-  TAU* = 2.0 * PI ## The circle constant TAU (= 2 * PI)
-  E* = 2.71828182845904523536028747 ## Euler's number
+  PI* = 3.1415926535897932384626433        ## The circle constant PI (Ludolph's number)
+  TAU* = 2.0 * PI                          ## The circle constant TAU (= 2 * PI)
+  E* = 2.71828182845904523536028747        ## Euler's number
 
-  MaxFloat64Precision* = 16 ## Maximum number of meaningful digits
-                            ## after the decimal point for Nim's
-                            ## ``float64`` type.
-  MaxFloat32Precision* = 8  ## Maximum number of meaningful digits
-                            ## after the decimal point for Nim's
-                            ## ``float32`` type.
+  MaxFloat64Precision* = 16                ## Maximum number of meaningful digits
+                                           ## after the decimal point for Nim's
+                                           ## ``float64`` type.
+  MaxFloat32Precision* = 8                 ## Maximum number of meaningful digits
+                                           ## after the decimal point for Nim's
+                                           ## ``float32`` type.
   MaxFloatPrecision* = MaxFloat64Precision ## Maximum number of
                                            ## meaningful digits
                                            ## after the decimal point
                                            ## for Nim's ``float`` type.
-  RadPerDeg = PI / 180.0 ## Number of radians per degree
+  RadPerDeg = PI / 180.0                   ## Number of radians per degree
 
 type
   FloatClass* = enum ## Describes the class a floating point value belongs to.
                      ## This is the type that is returned by
                      ## `classify proc <#classify,float>`_.
-    fcNormal,    ## value is an ordinary nonzero floating point value
-    fcSubnormal, ## value is a subnormal (a very small) floating point value
-    fcZero,      ## value is zero
-    fcNegZero,   ## value is the negative zero
-    fcNan,       ## value is Not-A-Number (NAN)
-    fcInf,       ## value is positive infinity
-    fcNegInf     ## value is negative infinity
+    fcNormal,        ## value is an ordinary nonzero floating point value
+    fcSubnormal,     ## value is a subnormal (a very small) floating point value
+    fcZero,          ## value is zero
+    fcNegZero,       ## value is the negative zero
+    fcNan,           ## value is Not-A-Number (NAN)
+    fcInf,           ## value is positive infinity
+    fcNegInf         ## value is negative infinity
 
 proc classify*(x: float): FloatClass =
   ## Classifies a floating point value.
@@ -186,7 +186,7 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 4)
   result = result or (result shr 2)
   result = result or (result shr 1)
-  result += 1 + ord(x<=0)
+  result += 1 + ord(x <= 0)
 
 proc countBits32*(n: int32): int {.noSideEffect, deprecated:
   "Deprecated since v0.20.0; use 'bitops.countSetBits' instead".} =
@@ -472,7 +472,8 @@ when not defined(JS): # C
     ## .. code-block:: nim
     ##  echo arctan(1.0) ## 0.7853981633974483
     ##  echo radToDeg(arctan(1.0)) ## 45.0
-  proc arctan2*(y, x: float32): float32 {.importc: "atan2f", header: "<math.h>".}
+  proc arctan2*(y, x: float32): float32 {.importc: "atan2f",
+      header: "<math.h>".}
   proc arctan2*(y, x: float64): float64 {.importc: "atan2", header: "<math.h>".}
     ## Calculate the arc tangent of ``y`` / ``x``.
     ##
@@ -603,9 +604,11 @@ when not defined(JS): # C
       ##  echo gamma(11.0) # 3628800.0
       ##  echo gamma(-1.0) # nan
     proc tgamma*(x: float32): float32
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgammaf", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead",
+          importc: "tgammaf", header: "<math.h>".}
     proc tgamma*(x: float64): float64
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgamma", header: "<math.h>".}
+      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead",
+          importc: "tgamma", header: "<math.h>".}
       ## The gamma function
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
@@ -739,8 +742,10 @@ when not defined(JS): # C
       ##  echo trunc(PI) # 3.0
       ##  echo trunc(-1.85) # -1.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmod", header: "<math.h>".}
+  proc fmod*(x, y: float32): float32 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead",
+      importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead",
+      importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of ``x`` divided by ``y``.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
@@ -779,7 +784,8 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use strformat module instead".} =
+proc round*[T: float32|float64](x: T, places: int): T {.
+    deprecated: "use strformat module instead".} =
   ## Decimal rounding on a binary floating point number.
   ##
   ## This function is NOT reliable. Floating point numbers cannot hold

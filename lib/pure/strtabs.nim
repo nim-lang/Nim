@@ -60,10 +60,10 @@ else:
   include "system/inclrtl"
 
 type
-  StringTableMode* = enum   ## Describes the tables operation mode.
-    modeCaseSensitive,      ## the table is case sensitive
-    modeCaseInsensitive,    ## the table is case insensitive
-    modeStyleInsensitive    ## the table is style insensitive
+  StringTableMode* = enum ## Describes the tables operation mode.
+    modeCaseSensitive,    ## the table is case sensitive
+    modeCaseInsensitive,  ## the table is case insensitive
+    modeStyleInsensitive  ## the table is style insensitive
   KeyValuePair = tuple[key, val: string, hasValue: bool]
   KeyValuePairSeq = seq[KeyValuePair]
   StringTableObj* = object of RootObj
@@ -73,15 +73,15 @@ type
 
   StringTableRef* = ref StringTableObj
 
-  FormatFlag* = enum  ## Flags for the `%` operator.
-    useEnvironment,   ## Use environment variable if the ``$key``
-                      ## is not found in the table.
-                      ## Does nothing when using `js` target.
-    useEmpty,         ## Use the empty string as a default, thus it
-                      ## won't throw an exception if ``$key`` is not
-                      ## in the table.
-    useKey            ## Do not replace ``$key`` if it is not found
-                      ## in the table (or in the environment).
+  FormatFlag* = enum ## Flags for the `%` operator.
+    useEnvironment,  ## Use environment variable if the ``$key``
+                     ## is not found in the table.
+                     ## Does nothing when using `js` target.
+    useEmpty,        ## Use the empty string as a default, thus it
+                     ## won't throw an exception if ``$key`` is not
+                     ## in the table.
+    useKey           ## Do not replace ``$key`` if it is not found
+                     ## in the table (or in the environment).
 
 const
   growthFactor = 2
@@ -168,7 +168,8 @@ proc `[]`*(t: StringTableRef, key: string): var string {.
       echo t["occupation"]
   get(t, key)
 
-proc getOrDefault*(t: StringTableRef; key: string, default: string = ""): string =
+proc getOrDefault*(t: StringTableRef; key: string,
+    default: string = ""): string =
   ## Retrieves the location at ``t[key]``.
   ##
   ## If `key` is not in `t`, the default value is returned (if not specified,
@@ -191,7 +192,8 @@ proc getOrDefault*(t: StringTableRef; key: string, default: string = ""): string
   if index >= 0: result = t.data[index].val
   else: result = default
 
-proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc, extern: "nst$1".} =
+proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc,
+    extern: "nst$1".} =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
@@ -276,8 +278,8 @@ proc newStringTable*(keyValuePairs: varargs[string],
     inc(i, 2)
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
-                     mode: StringTableMode = modeCaseSensitive): owned(StringTableRef) {.
-  rtlFunc, extern: "nst$1WithTableConstr".} =
+    mode: StringTableMode = modeCaseSensitive): owned(StringTableRef) {.
+    rtlFunc, extern: "nst$1WithTableConstr".} =
   ## Creates a new string table with given `(key, value)` tuple pairs.
   ##
   ## The default mode is case sensitive.
@@ -343,21 +345,23 @@ proc del*(t: StringTableRef, key: string) =
   if i >= 0:
     dec(t.counter)
     block outer:
-      while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-        var j = i         # The correctness of this depends on (h+1) in nextTry,
-        var r = j         # though may be adaptable to other simple sequences.
-        t.data[i].hasValue = false              # mark current EMPTY
+      while true: # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
+        var j = i # The correctness of this depends on (h+1) in nextTry,
+        var r = j # though may be adaptable to other simple sequences.
+        t.data[i].hasValue = false # mark current EMPTY
         t.data[i].key = ""
         t.data[i].val = ""
         while true:
-          i = (i + 1) and msk      # increment mod table size
-          if not t.data[i].hasValue:   # end of collision cluster; So all done
+          i = (i + 1) and msk # increment mod table size
+          if not t.data[i].hasValue: # end of collision cluster; So all done
             break outer
-          r = t.myhash(t.data[i].key) and msk    # "home" location of key@i
+          r = t.myhash(t.data[i].key) and msk # "home" location of key@i
           if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
             break
         when defined(js):
           t.data[j] = t.data[i]
+        elif defined(gcDestructors):
+          t.data[j] = move t.data[i]
         else:
           shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
 

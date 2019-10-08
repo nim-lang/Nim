@@ -56,7 +56,8 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
-proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = DirSep) =
+proc addNormalizePath*(x: string; result: var string; state: var int;
+    dirSep = DirSep) =
   ## Low level proc. Undocumented.
 
   # state: 0th bit set if isAbsolute path. Other bits count

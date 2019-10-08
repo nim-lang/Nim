@@ -100,27 +100,27 @@ type
     of JRetr, JStore:
       file: File
       filename: string
-      total: BiggestInt # In bytes.
-      progress: BiggestInt # In bytes.
-      oneSecond: BiggestInt # Bytes transferred in one second.
+      total: BiggestInt         # In bytes.
+      progress: BiggestInt      # In bytes.
+      oneSecond: BiggestInt     # Bytes transferred in one second.
       lastProgressReport: float # Time
-      toStore: string # Data left to upload (Only used with async)
+      toStore: string           # Data left to upload (Only used with async)
 
   FtpEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore
 
-  FtpEvent* = object ## Event
+  FtpEvent* = object             ## Event
     filename*: string
     case typ*: FtpEventType
     of EvLines:
-      lines*: string ## Lines that have been transferred.
-    of EvRetr, EvStore: ## Retr/Store operation finished.
+      lines*: string             ## Lines that have been transferred.
+    of EvRetr, EvStore:          ## Retr/Store operation finished.
       nil
     of EvTransferProgress:
-      bytesTotal*: BiggestInt     ## Bytes total.
-      bytesFinished*: BiggestInt  ## Bytes transferred.
-      speed*: BiggestInt          ## Speed in bytes/s
-      currentJob*: FtpJobType     ## The current job being performed.
+      bytesTotal*: BiggestInt    ## Bytes total.
+      bytesFinished*: BiggestInt ## Bytes transferred.
+      speed*: BiggestInt         ## Speed in bytes/s
+      currentJob*: FtpJobType    ## The current job being performed.
 
   ReplyError* = object of IOError
 
@@ -154,7 +154,7 @@ proc assertReply(received: TaintedString, expected: varargs[string]) =
     if received.string.startsWith(i): return
   raise newException(ReplyError,
                      "Expected reply '$1' got: $2" %
-                     [expected.join("' or '"), received.string])
+                      [expected.join("' or '"), received.string])
 
 proc pasv(ftp: AsyncFtpClient) {.async.} =
   ## Negotiate a data connection.
@@ -164,8 +164,8 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
-  var ip = nums[0.. ^3]
-  var port = nums[^2.. ^1]
+  var ip = nums[0 .. ^3]
+  var port = nums[^2 .. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
   await ftp.dsock.connect(ip.join("."), Port(properPort.toU16))
   ftp.dsockConnected = true

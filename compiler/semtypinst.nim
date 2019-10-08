@@ -589,7 +589,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       for i in 0 ..< len(result):
         if result.sons[i] != nil:
           if result.sons[i].kind == tyGenericBody:
-            localError(cl.c.config, t.sym.info,
+            localError(cl.c.config, if t.sym != nil: t.sym.info else: cl.info,
               "cannot instantiate '" &
               typeToString(result.sons[i], preferDesc) &
               "' inside of type definition: '" &
