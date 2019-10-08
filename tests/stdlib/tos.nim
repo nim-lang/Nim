@@ -334,6 +334,21 @@ block ospaths:
   doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
   doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: "")
 
+  when doslikeFileSystem:
+    doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
+    doAssert relativePath(r"c:\foo\bar\baz.nim", r"c:\foo") == r"bar\baz.nim"
+    doAssert relativePath(r"c:\foo\bar\baz.nim", r"d:\foo") == r"c:\foo\bar\baz.nim"
+    doAssert relativePath(r"\foo\baz.nim", r"\foo") == r"baz.nim"
+    doAssert relativePath(r"\foo\bar\baz.nim", r"\bar") == r"..\foo\bar\baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"\\foo\bar") == r"baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"\\foO\bar") == r"baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"\\bar\bar") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"\\foo\car") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"\\goo\bar") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"c:\") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"\\foo\bar\baz.nim", r"\foo") == r"\\foo\bar\baz.nim"
+    doAssert relativePath(r"c:\foo.nim", r"\foo") == r"c:\foo.nim"
+
   doAssert joinPath("usr", "") == unixToNativePath"usr/"
   doAssert joinPath("", "lib") == "lib"
   doAssert joinPath("", "/lib") == unixToNativePath"/lib"
