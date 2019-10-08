@@ -2233,7 +2233,7 @@ type # these work for most platforms:
     ## This is the same as the type ``short`` in *C*.
   cint* {.importc: "int", nodecl.} = int32
     ## This is the same as the type ``int`` in *C*.
-  csize* {.importc: "size_t", nodecl.} = int
+  csize* {.importc: "size_t", nodecl.} = uint
     ## This is the same as the type ``size_t`` in *C*.
   clonglong* {.importc: "long long", nodecl.} = int64
     ## This is the same as the type ``long long`` in *C*.
@@ -3597,7 +3597,7 @@ when not defined(JS): #and not defined(nimscript):
       when declared(memTrackerOp):
         memTrackerOp("copyMem", dest, size)
     proc moveMem(dest, source: pointer, size: Natural) =
-      c_memmove(dest, source, size)
+      c_memmove(dest, source, csize size)
       when declared(memTrackerOp):
         memTrackerOp("moveMem", dest, size)
     proc equalMem(a, b: pointer, size: Natural): bool =

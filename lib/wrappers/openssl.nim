@@ -712,7 +712,7 @@ proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
 
   discard md5_Init(ctx)
   while(let bytes = f.readChars(buf, 0, sz); bytes > 0):
-    discard md5_Update(ctx, buf[0].addr, bytes)
+    discard md5_Update(ctx, buf[0].addr, csize bytes)
 
   discard md5_Final(buf[0].addr, ctx)
   f.close
@@ -731,7 +731,7 @@ proc md5_Str*(str: string): string =
   var i = 0
   while i < str.len:
     let L = min(str.len - i, 512)
-    discard md5_Update(ctx, input[i].addr, L)
+    discard md5_Update(ctx, input[i].addr, csize L)
     i += L
 
   discard md5_Final(addr res, ctx)

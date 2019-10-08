@@ -85,10 +85,14 @@ proc c_feof(f: File): cint {.
 when not declared(c_fwrite):
   proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
     importc: "fwrite", header: "<stdio.h>".}
+  proc c_fwrite(buf: pointer, size, n: int, f: File): cint {.
+    importc: "fwrite", header: "<stdio.h>", deprecated: "csize is now uint".}
 
 # C routine that is used here:
 proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
+proc c_fread(buf: pointer, size, n: int, f: File): int {.
+  importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect], deprecated: "csize is now uint".}
 when defined(windows):
   when not defined(amd64):
     proc c_fseek(f: File, offset: int64, whence: cint): cint {.
@@ -109,6 +113,8 @@ proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
 proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
   importc: "setvbuf", header: "<stdio.h>", tags: [].}
+proc c_setvbuf(f: File, buf: pointer, mode: cint, size: int): cint {.
+  importc: "setvbuf", header: "<stdio.h>", tags: [], deprecated: "csize is now uint".}
 
 proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
@@ -151,7 +157,7 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  result = c_fread(buffer, 1, len, f)
+  result = int c_fread(buffer, 1, csize len, f)
   if result != len: checkErr(f)
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
@@ -183,7 +189,7 @@ proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## writes the bytes of buffer pointed to by the parameter `buffer` to the
   ## file `f`. Returns the number of actual written bytes, which may be less
   ## than `len` in case of an error.
-  result = c_fwrite(buffer, 1, len, f)
+  result = c_fwrite(buffer, 1, csize len, f)
   checkErr(f)
 
 proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
@@ -292,6 +298,8 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
   ## ``false`` is returned `line` contains no new data.
   proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
     importc: "memchr", header: "<string.h>".}
+  proc c_memchr(s: pointer, c: cint, n: int): pointer {.
+    importc: "memchr", header: "<string.h>", deprecated: "csize is now uint".}
 
   var pos = 0
 
@@ -306,7 +314,7 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
 
     var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
-    let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
+    let m = c_memchr(addr line.string[pos], '\L'.ord, csize sp)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
