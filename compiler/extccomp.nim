@@ -662,6 +662,10 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
       not externalFileChanged(conf, c):
     c.flags.incl CfileFlag.Cached
+  else:
+    # make sure Nim keeps recompiling the external file on reruns
+    # if compilation is not successful  
+    discard tryRemoveFile(c.obj.string)
   conf.toCompile.add(c)
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
