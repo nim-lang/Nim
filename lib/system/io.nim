@@ -661,10 +661,10 @@ when defined(windows) and appType == "console" and
 
 proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
-  ## <#readAll>`_ and closes the file afterwards. Returns the string.
-  ## Raises an IO exception in case of an error. If # you need to call
+  ## <#readAll,File>`_ and closes the file afterwards. Returns the string.
+  ## Raises an IO exception in case of an error. If you need to call
   ## this inside a compile time macro you can use `staticRead
-  ## <#staticRead>`_.
+  ## <system.html#staticRead,string>`_.
   var f: File
   if open(f, filename):
     try:
