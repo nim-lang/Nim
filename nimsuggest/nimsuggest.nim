@@ -353,7 +353,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
   echo port
   stdout.flushFile()
 
-  var client = newSocket()
+  var client: Socket
   # Wait for connection
   accept(server, client)
   while true:
