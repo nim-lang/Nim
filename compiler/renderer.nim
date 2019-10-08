@@ -314,6 +314,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
     while result != nil and result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
                           tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
+
   let typ = n.typ.skip
   if typ != nil and typ.kind in {tyBool, tyEnum}:
     if sfPure in typ.sym.flags:
@@ -324,11 +325,13 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
       if e.sym.position == x:
         result &= e.sym.name.s
         return
-
-  let y = x and ((1 shl (size*8)) - 1)
-  if nfBase2 in n.flags: result = "0b" & toBin(y, size * 8)
-  elif nfBase8 in n.flags: result = "0o" & toOct(y, size * 3)
-  elif nfBase16 in n.flags: result = "0x" & toHex(y, size * 2)
+  
+  if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
+  elif nfBase8 in n.flags:
+    var y = if size < sizeof(BiggestInt): x and ((1 shl (size*8)) - 1)
+            else: x
+    result = "0o" & toOct(y, size * 3)
+  elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
   else: result = $x
 
 proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
