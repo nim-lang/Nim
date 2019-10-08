@@ -2722,16 +2722,41 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
     setLen(result, len)
 
 when not (defined(windows) or defined(macosx) or weirdTarget):
+  proc isExecutable(path: string): bool =
+    let p = getFilePermissions(path)
+    result = fpUserExec in p and fpGroupExec in p and fpOthersExec in p
+
   proc getApplHeuristic(): string =
     when declared(paramStr):
-      result = string(paramStr(0))
+      result = ""
+
       # POSIX guaranties that this contains the executable
       # as it has been executed by the calling process
-      if len(result) > 0 and result[0] != DirSep: # not an absolute path?
-        # iterate over any path in the $PATH environment variable
-        for p in split(string(getEnv("PATH")), {PathSep}):
-          var x = joinPath(p, result)
-          if existsFile(x): return x
+      let exePath = string(paramStr(0))
+
+      if len(exePath) == 0:
+        return ""
+
+      if exePath[0] == DirSep:
+        result = exePath
+      else:
+        # not an absolute path, check if it's relative to the current working directory
+        for i in 1..<len(exePath):
+          if exePath[i] == DirSep:
+            result = joinPath(getCurrentDir(), exePath)
+            break
+
+      if len(result) > 0:
+        if isExecutable(result):
+          return result
+        else:
+          result = ""
+
+      # search in path
+      for p in split(string(getEnv("PATH")), {PathSep}):
+        var x = joinPath(p, exePath)
+        if existsFile(x) and isExecutable(x): 
+          return x
     else:
       result = ""
 
