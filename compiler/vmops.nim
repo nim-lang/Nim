@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# Unforunately this cannot be a module yet:
+# Unfortunately this cannot be a module yet:
 #import vmdeps, vm
 from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
@@ -16,6 +16,7 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 from md5 import getMD5
 from sighashes import symBodyDigest
+from times import cpuTime
 
 from hashes import hash
 
@@ -24,6 +25,9 @@ template mathop(op) {.dirty.} =
 
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
+
+template timesop(op) {.dirty.} =
+  registerCallback(c, "stdlib.times." & astToStr(op), `op Wrapper`)
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
@@ -194,3 +198,9 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
+
+  if optBenchmarkVM in c.config.globalOptions:
+    wrap0(cpuTime, timesop)
+  else:
+    proc cpuTime(): float = 5.391245e-44  # Randomly chosen
+    wrap0(cpuTime, timesop)

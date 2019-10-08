@@ -9,6 +9,8 @@
 
 ## This module implements a base64 encoder and decoder.
 ##
+## Unstable API.
+##
 ## Base64 is an encoding and decoding technique used to convert binary
 ## data to an ASCII string format.
 ## Each Base64 digit represents exactly 6 bits of data. Three 8-bit
@@ -110,7 +112,8 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
     #assert(r == result.len)
     discard
 
-proc encode*[T:SomeInteger|char](s: openArray[T], lineLen = 75, newLine=""): string =
+proc encode*[T: SomeInteger|char](s: openArray[T], lineLen = 75,
+    newLine = ""): string =
   ## Encodes ``s`` into base64 representation. After ``lineLen`` characters, a
   ## ``newline`` is added.
   ##
@@ -126,7 +129,7 @@ proc encode*[T:SomeInteger|char](s: openArray[T], lineLen = 75, newLine=""): str
     assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
   encodeInternal(s, lineLen, newLine)
 
-proc encode*(s: string, lineLen = 75, newLine=""): string =
+proc encode*(s: string, lineLen = 75, newLine = ""): string =
   ## Encodes ``s`` into base64 representation. After ``lineLen`` characters, a
   ## ``newline`` is added.
   ##
@@ -206,5 +209,5 @@ when isMainModule:
 
   for t in items(tests):
     assert decode(encode(t)) == t
-    assert decode(encode(t, lineLen=40)) == t
-    assert decode(encode(t, lineLen=76)) == t
+    assert decode(encode(t, lineLen = 40)) == t
+    assert decode(encode(t, lineLen = 76)) == t

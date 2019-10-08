@@ -2,7 +2,7 @@ discard """
 action: compile
 """
 
-# this test should ensure that the AST doesn't change slighly without it getting noticed.
+# this test should ensure that the AST doesn't change slightly without it getting noticed.
 
 import ../ast_pattern_matching
 
@@ -12,7 +12,7 @@ template expectNimNode(arg: untyped): NimNode = arg
   ## type `NimNode`.
 
 proc substitudeComments(symbols, values, n: NimNode): NimNode =
-  ## substitudes all nodes of kind nnkCommentStmt to parameter
+  ## substitutes all nodes of kind nnkCommentStmt to parameter
   ## symbols. Consumes the argument `n`.
   if n.kind == nnkCommentStmt:
     values.add newCall(bindSym"newCommentStmtNode", newLit(n.strVal))

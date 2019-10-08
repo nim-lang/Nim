@@ -8,8 +8,9 @@
 #
 
 ## OS-Path normalization. Used by ``os.nim`` but also
-## generally useful for dealing with paths. Note that this module
-## does not provide a stable API.
+## generally useful for dealing with paths.
+##
+## Unstable API.
 
 # Yes, this uses import here, not include so that
 # we don't end up exporting these symbols from pathnorm and os:
@@ -55,7 +56,8 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
-proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = DirSep) =
+proc addNormalizePath*(x: string; result: var string; state: var int;
+    dirSep = DirSep) =
   ## Low level proc. Undocumented.
 
   # state: 0th bit set if isAbsolute path. Other bits count

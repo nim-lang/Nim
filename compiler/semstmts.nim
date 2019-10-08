@@ -595,11 +595,8 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
 
-    var def = semConstExpr(c, a.sons[length-1])
-    if def == nil:
-      localError(c.config, a.sons[length-1].info, errConstExprExpected)
-      continue
-
+    # don't evaluate here since the type compatibility check below may add a converter
+    var def = semExprWithType(c, a[^1])
     if def.typ.kind == tyProc and def.kind == nkSym:
       if def.sym.kind == skMacro:
         localError(c.config, def.info, errCannotAssignMacroSymbol % "constant")
@@ -621,7 +618,10 @@ proc semConst(c: PContext, n: PNode): PNode =
         def = fitRemoveHiddenConv(c, typ, def)
     else:
       typ = def.typ
-    if typ == nil:
+
+    # evaluate the node
+    def = semConstExpr(c, def)
+    if def == nil:
       localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
@@ -639,7 +639,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       b.sons[length-2] = a.sons[length-2]
       b.sons[length-1] = def
 
-    for j in 0 .. length-3:
+    for j in 0 ..< length-2:
       var v = semIdentDef(c, a.sons[j], skConst)
       if sfGenSym notin v.flags: addInterfaceDecl(c, v)
       elif v.owner == nil: v.owner = getCurrOwner(c)

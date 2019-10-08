@@ -9,6 +9,8 @@
 
 ## This module implements a simple proc for opening URLs with the user's
 ## default browser.
+##
+## Unstable API.
 
 import strutils
 
@@ -22,8 +24,10 @@ proc openDefaultBrowser*(url: string) =
   ##
   ## Under Windows, ``ShellExecute`` is used. Under Mac OS X the ``open``
   ## command is used. Under Unix, it is checked if ``xdg-open`` exists and
-  ## used if it does. Otherwise the environment variable ``BROWSER`` is 
+  ## used if it does. Otherwise the environment variable ``BROWSER`` is
   ## used to determine the default browser to use.
+  ##
+  ## This proc doesn't raise an exception on error, beware.
   when defined(windows):
     var o = newWideCString("open")
     var u = newWideCString(url)
@@ -36,7 +40,7 @@ proc openDefaultBrowser*(url: string) =
     for b in getEnv("BROWSER").string.split(PathSep):
       try:
         # we use ``startProcess`` here because we don't want to block!
-        discard startProcess(command=b, args=[url], options={poUsePath})
+        discard startProcess(command = b, args = [url], options = {poUsePath})
         return
       except OSError:
         discard

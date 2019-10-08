@@ -575,7 +575,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
-  # sematic check doesn't allow statements after raise, break, return or
+  # semantic check doesn't allow statements after raise, break, return or
   # call to noreturn proc, so it is safe to check just the last statements
   var it = n
   while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
@@ -751,7 +751,9 @@ proc track(tracked: PEffects, n: PNode) =
           discard
         else:
           message(tracked.config, arg.info, warnProveInit, $arg)
-      createTypeBoundOps(tracked.graph, tracked.c, n[1].typ.lastSon, n.info)
+      # check required for 'nim check':
+      if n[1].typ.len > 0:
+        createTypeBoundOps(tracked.graph, tracked.c, n[1].typ.lastSon, n.info)
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:

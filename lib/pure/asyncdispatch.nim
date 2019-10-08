@@ -198,7 +198,7 @@ proc processTimers(
     dec count
     didSomeWork = true
 
-  # Return the number of miliseconds in which the next timer will expire.
+  # Return the number of milliseconds in which the next timer will expire.
   if p.timers.len == 0: return
 
   let millisecs = (p.timers[0].finishAt - getMonoTime()).inMilliseconds
@@ -210,7 +210,12 @@ proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
     cb()
     didSomeWork = true
 
-proc adjustTimeout(pollTimeout: int, nextTimer: Option[int]): int {.inline.} =
+proc adjustTimeout(
+  p: PDispatcherBase, pollTimeout: int, nextTimer: Option[int]
+): int {.inline.} =
+  if p.callbacks.len != 0:
+    return 0
+
   if nextTimer.isNone() or pollTimeout == -1:
     return pollTimeout
 
@@ -231,7 +236,7 @@ when defined(windows) or defined(nimdoc):
     CompletionKey = ULONG_PTR
 
     CompletionData* = object
-      fd*: AsyncFD # TODO: Rename this.
+      fd*: AsyncFD       # TODO: Rename this.
       cb*: owned(proc (fd: AsyncFD, bytesTransferred: DWORD,
                 errcode: OSErrorCode) {.closure, gcsafe.})
       cell*: ForeignCell # we need this `cell` to protect our `cb` environment,
@@ -262,7 +267,7 @@ when defined(windows) or defined(nimdoc):
       pcd: PostCallbackDataPtr
     AsyncEvent* = ptr AsyncEventImpl
 
-    Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
+    Callback = proc (fd: AsyncFD): bool {.closure, gcsafe.}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
@@ -304,6 +309,7 @@ when defined(windows) or defined(nimdoc):
 
   proc verifyPresence(fd: AsyncFD) =
     ## Ensures that file descriptor has been registered with the dispatcher.
+    ## Raises ValueError if `fd` has not been registered.
     let p = getGlobalDispatcher()
     if fd notin p.handles:
       raise newException(ValueError,
@@ -323,7 +329,7 @@ when defined(windows) or defined(nimdoc):
 
     result = false
     let nextTimer = processTimers(p, result)
-    let at = adjustTimeout(timeout, nextTimer)
+    let at = adjustTimeout(p, timeout, nextTimer)
     var llTimeout =
       if at == -1: winlean.INFINITE
       else: at.int32
@@ -789,7 +795,7 @@ when defined(windows) or defined(nimdoc):
   proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
     return fd in disp.handles
 
-  {.push stackTrace:off.}
+  {.push stackTrace: off.}
   proc waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL): void {.stdcall.} =
     var p = cast[PostCallbackDataPtr](param)
@@ -947,10 +953,10 @@ when defined(windows) or defined(nimdoc):
     deallocShared(cast[pointer](pcd))
     p.handles.excl(fd)
     if unregisterWait(waitFd) == 0:
-        let err = osLastError()
-        if err.int32 != ERROR_IO_PENDING:
-          discard closeHandle(handle)
-          raiseOSError(err)
+      let err = osLastError()
+      if err.int32 != ERROR_IO_PENDING:
+        discard closeHandle(handle)
+        raiseOSError(err)
     if closeHandle(handle) == 0:
       raiseOSError(osLastError())
 
@@ -1087,7 +1093,7 @@ else:
                                      # queue.
   type
     AsyncFD* = distinct cint
-    Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
+    Callback = proc (fd: AsyncFD): bool {.closure, gcsafe.}
 
     AsyncData = object
       readList: seq[Callback]
@@ -1283,7 +1289,8 @@ else:
     result = false
     var keys: array[64, ReadyKey]
     let nextTimer = processTimers(p, result)
-    var count = p.selector.selectInto(adjustTimeout(timeout, nextTimer), keys)
+    var count =
+      p.selector.selectInto(adjustTimeout(p, timeout, nextTimer), keys)
     for i in 0..<count:
       let fd = keys[i].fd.AsyncFD
       let events = keys[i].events
@@ -1581,7 +1588,7 @@ proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
   createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 proc newAsyncNativeSocket*(domain: cint, sockType: cint,
-                           protocol: cint): AsyncFD {.deprecated: "use createAsyncNativeSocket instead".} =
+    protocol: cint): AsyncFD {.deprecated: "use createAsyncNativeSocket instead".} =
   createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 proc newAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
@@ -1872,8 +1879,3 @@ proc waitFor*[T](fut: Future[T]): T =
     poll()
 
   fut.read
-
-proc setEvent*(ev: AsyncEvent) {.deprecated:
-  "Deprecated since v0.18.0: Use 'trigger' instead.".} =
-  ## Set event ``ev`` to signaled state.
-  ev.trigger()

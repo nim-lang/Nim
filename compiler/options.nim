@@ -84,6 +84,7 @@ type                          # please make sure we have under 32 options
     optNimV2
     optMultiMethods
     optNimV019
+    optBenchmarkVM            # Enables cpuTime() in the VM
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -138,7 +139,7 @@ type
   LegacyFeature* = enum
     allowSemcheckedAstModification,
       ## Allows to modify a NimNode where the type has already been
-      ## flaged with nfSem. If you actually do this, it will cause
+      ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
 
   SymbolFilesOption* = enum
@@ -397,7 +398,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osDragonfly, osMacosx,
+                            osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
                             osAndroid, osNintendoSwitch}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
@@ -407,8 +408,10 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = platform.OS[conf.target.targetOS].props.contains(ospLacksThreadVars)
     of "msdos": result = conf.target.targetOS == osDos
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
-    of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
-    of "osx": result = conf.target.targetOS == osMacosx
+    of "macintosh":
+      result = conf.target.targetOS in {osMacos, osMacosx, osIos}
+    of "osx":
+      result = conf.target.targetOS in {osMacosx, osIos}
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
@@ -471,12 +474,16 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
-  conf.outDir / conf.outFile
+  result = conf.outDir / conf.outFile
+  if dirExists(result.string):
+    result.string.add ".out"
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
   createDir conf.outDir
-  return conf.outDir / conf.outFile
+  result = conf.outDir / conf.outFile
+  if dirExists(result.string):
+    result.string.add ".out"
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
@@ -721,7 +728,7 @@ proc `$`*(c: IdeCmd): string =
 
 proc floatInt64Align*(conf: ConfigRef): int16 =
   ## Returns either 4 or 8 depending on reasons.
-  if conf.target.targetCPU == cpuI386:
+  if conf != nil and conf.target.targetCPU == cpuI386:
     #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
     if conf.target.targetOS != osWindows:
       # on i386 for all known POSIX systems, 64bits ints are aligned

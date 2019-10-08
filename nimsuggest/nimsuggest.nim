@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
-# Do NOT import suggest. It will lead to wierd bugs with
+# Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 import compiler / [options, commands, modules, sem,
@@ -319,8 +319,8 @@ proc replTcp(x: ThreadParams) {.thread.} =
     server.bindAddr(x.port, x.address)
     server.listen()
   var inp = "".TaintedString
+  var stdoutSocket: Socket
   while true:
-    var stdoutSocket = newSocket()
     accept(server, stdoutSocket)
 
     stdoutSocket.readLine(inp)
@@ -353,7 +353,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
   echo port
   stdout.flushFile()
 
-  var client = newSocket()
+  var client: Socket
   # Wait for connection
   accept(server, client)
   while true:

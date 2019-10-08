@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## Unstable API.
+
 type
   AllocatorFlag* {.pure.} = enum  ## flags describing the properties of the allocator
     ThreadLocal ## the allocator is thread local only.

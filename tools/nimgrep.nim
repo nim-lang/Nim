@@ -33,7 +33,8 @@ Options:
   --ignoreCase, -i    be case insensitive
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
-  --nocolor           output will be given without any colours.
+  --nocolor           output will be given without any colours
+  --color[:always]    force color even if output is redirected
   --group             group matches by file
   --verbose           be verbose: list every processed file
   --filenames         find the pattern in the filenames, not in the contents
@@ -270,6 +271,10 @@ proc checkOptions(subset: TOptions, a, b: string) =
   if subset <= options:
     quit("cannot specify both '$#' and '$#'" % [a, b])
 
+when defined(posix):
+  useWriteStyled = terminal.isatty(stdout)
+  # that should be before option processing to allow override of useWriteStyled
+
 oneline = true
 for kind, key, val in getopt():
   case kind
@@ -304,6 +309,12 @@ for kind, key, val in getopt():
     of "ignorestyle", "y": incl(options, optIgnoreStyle)
     of "ext": extensions.add val.split('|')
     of "nocolor": useWriteStyled = false
+    of "color":
+      case val
+      of "auto": discard
+      of "never", "false": useWriteStyled = false
+      of "", "always", "true": useWriteStyled = true
+      else: writeHelp()
     of "oneline": oneline = true
     of "group": oneline = false
     of "verbose": incl(options, optVerbose)
@@ -312,9 +323,6 @@ for kind, key, val in getopt():
     of "version", "v": writeVersion()
     else: writeHelp()
   of cmdEnd: assert(false) # cannot happen
-
-when defined(posix):
-  useWriteStyled = terminal.isatty(stdout)
 
 checkOptions({optFind, optReplace}, "find", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")

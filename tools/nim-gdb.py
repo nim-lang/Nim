@@ -285,7 +285,7 @@ class NimStringPrinter:
      return ""
 
 class NimRopePrinter:
-  pattern = re.compile(r'^tyObject_RopeObj_OFzf0kSiPTcNreUIeJgWVA \*$')
+  pattern = re.compile(r'^tyObject_RopeObj__([A-Za-z0-9]*) \*$')
 
   def __init__(self, val):
     self.val = val
@@ -398,7 +398,7 @@ class NimSetPrinter:
 ################################################################################
 
 class NimHashSetPrinter:
-  pattern = re.compile(r'^tyObject_(HashSet)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyObject_(HashSet)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
@@ -475,7 +475,7 @@ class NimArrayPrinter:
 ################################################################################
 
 class NimStringTablePrinter:
-  pattern = re.compile(r'^tyObject_(StringTableObj)_([A-Za-z0-9]*)(:? \*)?$')
+  pattern = re.compile(r'^tyObject_(StringTableObj)__([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val
@@ -504,7 +504,7 @@ class NimStringTablePrinter:
 ################################################################
 
 class NimTablePrinter:
-  pattern = re.compile(r'^tyObject_(Table)_([A-Za-z0-9]*)(:? \*)?$')
+  pattern = re.compile(r'^tyObject_(Table)__([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val

@@ -16,11 +16,12 @@ proc align(address, alignment: int): int =
   result = (address + (alignment - 1)) and not (alignment - 1)
 
 const
-  ## a size is concidered "unknown" when it is an imported type from C
+  ## a size is considered "unknown" when it is an imported type from C
   ## or C++.
   szUnknownSize* = -3
   szIllegalRecursion* = -2
   szUncomputedSize* = -1
+  szTooBigSize* = -4
 
 type IllegalTypeRecursionError = object of Exception
 
@@ -33,14 +34,14 @@ type
     offset: int
 
 proc inc(arg: var OffsetAccum; value: int) =
-  if unlikely(value == szIllegalRecursion):  raiseIllegalTypeRecursion()
+  if unlikely(value == szIllegalRecursion): raiseIllegalTypeRecursion()
   if value == szUnknownSize or arg.offset == szUnknownSize:
     arg.offset = szUnknownSize
   else:
     arg.offset += value
 
 proc alignmentMax(a,b: int): int =
-  if unlikely(a == szIllegalRecursion or b == szIllegalRecursion):  raiseIllegalTypeRecursion()
+  if unlikely(a == szIllegalRecursion or b == szIllegalRecursion): raiseIllegalTypeRecursion()
   if a == szUnknownSize or b == szUnknownSize:
     szUnknownSize
   else:
@@ -57,7 +58,7 @@ proc align(arg: var OffsetAccum; value: int) =
 
 proc mergeBranch(arg: var OffsetAccum; value: OffsetAccum) =
   if value.maxAlign == szUnknownSize or arg.maxAlign == szUnknownSize or
-     value.offset   == szUnknownSize or arg.offset == szUnknownSize:
+     value.offset == szUnknownSize or arg.offset == szUnknownSize:
     arg.maxAlign = szUnknownSize
     arg.offset = szUnknownSize
   else:
@@ -111,7 +112,7 @@ proc setOffsetsToUnknown(n: PNode) =
     for i in 0 ..< safeLen(n):
       setOffsetsToUnknown(n[i])
 
-proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, accum: var OffsetAccum): void =
+proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, accum: var OffsetAccum) =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
   assert n != nil
@@ -256,7 +257,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = elemSize
       typ.align = int16(elemSize)
     else:
-      typ.size = toInt64(lengthOrd(conf, typ.sons[0]) * int32(elemSize))
+      typ.size = toInt64Checked(lengthOrd(conf, typ.sons[0]) * int32(elemSize), szTooBigSize)
       typ.align = typ.sons[1].align
 
   of tyUncheckedArray:

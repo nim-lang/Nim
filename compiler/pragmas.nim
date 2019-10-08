@@ -19,7 +19,7 @@ const
   LastCallConv* = wNoconv
 
 const
-  declPragmas = {wImportc, wImportObjC, wImportCpp, wExportc, wExportCpp,
+  declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
     wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
@@ -66,7 +66,7 @@ const
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
@@ -803,6 +803,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
+      of wImportJs:
+        if c.config.cmd != cmdCompileToJS:
+          localError(c.config, it.info, "`importjs` pragma requires the JavaScript target")
+        let name = getOptionalStr(c, it, "$1")
+        incl(sym.flags, sfImportc)
+        incl(sym.flags, sfInfixCall)
+        if sym.kind in skProcKinds and {'(', '#', '@'} notin name:
+          localError(c.config, n.info, "`importjs` for routines requires a pattern")
+        setExternName(c, sym, name, it.info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:
@@ -1094,11 +1103,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
         else:
           sym.flags.incl sfGoto
-      of wCursor:
-        if sym == nil or sym.kind notin {skVar, skLet}:
-          invalidPragma(c, it)
-        else:
-          sym.flags.incl sfCursor
       of wExportNims:
         if sym == nil: invalidPragma(c, it)
         else: magicsys.registerNimScriptSymbol(c.graph, sym)

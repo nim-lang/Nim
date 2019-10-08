@@ -792,6 +792,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       discard "the default"
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
+  of "benchmarkvm":
+    processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
   of "":
     conf.projectName = "-"
   else:

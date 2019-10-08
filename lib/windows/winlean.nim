@@ -745,9 +745,16 @@ proc setFilePointer*(hFile: Handle, lDistanceToMove: LONG,
 proc getFileSize*(hFile: Handle, lpFileSizeHigh: ptr DWORD): DWORD{.stdcall,
     dynlib: "kernel32", importc: "GetFileSize".}
 
+when defined(cpu32):
+  type
+    WinSizeT* = uint32
+else:
+  type
+    WinSizeT* = uint64
+
 proc mapViewOfFileEx*(hFileMappingObject: Handle, dwDesiredAccess: DWORD,
                       dwFileOffsetHigh, dwFileOffsetLow: DWORD,
-                      dwNumberOfBytesToMap: DWORD,
+                      dwNumberOfBytesToMap: WinSizeT,
                       lpBaseAddress: pointer): pointer{.
     stdcall, dynlib: "kernel32", importc: "MapViewOfFileEx".}
 

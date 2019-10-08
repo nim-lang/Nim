@@ -153,7 +153,7 @@ elif defined(nintendoswitch):
     # size, as well as space to store our structure
     let realSize = alignSize(size + sizeof(NSwitchBlock))
 
-    let heap = memalign(PageSize, realSize)
+    let heap = memalign(PageSize, realSize.csize)
 
     if heap.isNil:
       outOfMemoryStmt
@@ -221,18 +221,18 @@ elif defined(posix):
   proc munmap(adr: pointer, len: csize): cint {.header: "<sys/mman.h>".}
 
   proc osAllocPages(size: int): pointer {.inline.} =
-    result = mmap(nil, size, PROT_READ or PROT_WRITE,
+    result = mmap(nil, csize size, PROT_READ or PROT_WRITE,
                              MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
     if result == nil or result == cast[pointer](-1):
       raiseOutOfMem()
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
-    result = mmap(nil, size, PROT_READ or PROT_WRITE,
+    result = mmap(nil, csize size, PROT_READ or PROT_WRITE,
                              MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
     if result == cast[pointer](-1): result = nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
-    when reallyOsDealloc: discard munmap(p, size)
+    when reallyOsDealloc: discard munmap(p, csize size)
 
 elif defined(windows):
   const

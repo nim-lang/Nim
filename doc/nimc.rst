@@ -17,7 +17,7 @@ Introduction
 
 This document describes the usage of the *Nim compiler*
 on the different supported platforms. It is not a definition of the Nim
-programming language (therefore is the `manual <manual.html>`_).
+programming language (which is covered in the `manual <manual.html>`_).
 
 Nim is free software; it is licensed under the
 `MIT License <http://www.opensource.org/licenses/mit-license.php>`_.
@@ -197,9 +197,8 @@ directory structure looks like this::
   other.nim
 
 And ``main`` imports ``x``, ``foo/x`` is imported. If ``other`` imports ``x``
-then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match and so the compiler
-should reject it. Currently however this check is not implemented and instead
-the first matching file is used.
+then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match but ``$lib/x.nim`` is used
+as it is the first match.
 
 
 Generated C code directory
@@ -213,10 +212,7 @@ The generated files that Nim produces all go into a subdirectory called
 
 The ``_r`` suffix is used for release builds, ``_d`` is for debug builds.
 
-This makes it easy to delete all
-generated files. Files generated in this directory follow a naming logic which
-you can read about in the `Nim Backend Integration document
-<backends.html#nimcache-naming-logic>`_.
+This makes it easy to delete all generated files.
 
 The ``--nimcache``
 `compiler switch <nimc.html#command-line-switches>`_ can be used to
@@ -280,6 +276,75 @@ The MinGW-w64 toolchain can be installed as follows::
   Ubuntu: apt install mingw-w64
   CentOS: yum install mingw32-gcc | mingw64-gcc - requires EPEL
   OSX: brew install mingw-w64
+
+
+Cross compilation for Android
+=============================
+
+There are two ways to compile for Android: terminal programs (Termux) and with
+the NDK (Android Native Development Kit).
+
+First one is to treat Android as a simple Linux and use
+`Termux <https://wiki.termux.com>`_ to connect and run the Nim compiler
+directly on android as if it was Linux. These programs are console only
+programs that can't be distributed in the Play Store.
+
+Use regular ``nim c`` inside termux to make Android terminal programs.
+
+Normal Android apps are written in Java, to use Nim inside an Android app
+you need a small Java stub that calls out to a native library written in
+Nim using the `NDK <https://developer.android.com/ndk>`_. You can also use
+`native-acitivty <https://developer.android.com/ndk/samples/sample_na>`_
+to have the Java stub be auto generated for you.
+
+Use ``nim c -c --cpu:arm --os:android -d:androidNDK --noMain:on`` to
+generate the C source files you need to include in your Android Studio
+project. Add the generated C files to CMake build script in your Android
+project. Then do the final compile with Android Studio which uses Gradle
+to call CMake to compile the project.
+
+Because Nim is part of a library it can't have its own c style ``main()``
+so you would need to define your own ``android_main`` and init the Java
+environment, or use a library like SDL2 or GLFM to do it. After the Android
+stuff is done, it's very important to call ``NimMain()`` in order to
+initialize Nim's garbage collector and to run the top level statements
+of your program.
+
+.. code-block:: Nim
+
+  proc NimMain() {.importc.}
+  proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
+    NimMain() # initialize garbage collector memory, types and stack
+
+
+Cross compilation for iOS
+=========================
+
+To cross compile for iOS you need to be on a MacOS computer and use XCode.
+Normal languages for iOS development are Swift and Objective C. Both of these
+use LLVM and can be compiled into object files linked together with C, C++
+or Objective C code produced by Nim.
+
+Use ``nim c -c --os:ios --noMain:on`` to generate C files and include them in
+your XCode project. Then you can use XCode to compile, link, package and
+sign everything.
+
+Because Nim is part of a library it can't have its own c style ``main()`` so you
+would need to define `main` that calls ``autoreleasepool`` and
+``UIApplicationMain`` to do it, or use a library like SDL2 or GLFM. After
+the iOS setup is done, it's very important to call ``NimMain()`` in order to
+initialize Nim's garbage collector and to run the top level statements
+of your program.
+
+.. code-block:: Nim
+
+  proc NimMain() {.importc.}
+  proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
+    NimMain() # initialize garbage collector memory, types and stack
+
+Note: XCodes "make clean" gets confused about the genreated nim.c files,
+so you need to clean those files manually to do a clean build.
+
 
 Cross compilation for Nintendo Switch
 =====================================
@@ -418,7 +483,6 @@ number information are given if the program crashes or an uncaught exception
 is raised.
 
 
-
 DynlibOverride
 ==============
 
@@ -430,14 +494,6 @@ against. For instance, to link statically against Lua this command might work
 on Linux::
 
   nim c --dynlibOverride:lua --passL:liblua.lib program.nim
-
-
-Cursor pragma
-=============
-
-The ``.cursor`` pragma is a temporary tool for optimization purposes
-and this property will be computed by Nim's optimizer eventually. Thus it
-remains undocumented.
 
 
 Backend language options

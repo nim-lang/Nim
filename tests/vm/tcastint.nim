@@ -281,14 +281,27 @@ proc test_float32_cast =
   let xf = cast[float32](xx)
   doAssert(xf == 16.0'f32, $xf)
 
+proc test_float32_castB() =
+  let a: float32 = -123.125
+  let b = cast[int32](a)
+  let c = cast[uint32](a)
+  doAssert b == -1024049152
+  doAssert cast[uint64](b) == 18446744072685502464'u64
+  doAssert c == 3270918144'u32
+  # ensure the unused bits in the internal representation don't have
+  # any surprising content.
+  doAssert cast[uint64](c) == 3270918144'u64
+
 test()
 test_float_cast()
 test_float32_cast()
 free_integer_casting()
+test_float32_castB()
 static:
   test()
   test_float_cast()
   test_float32_cast()
   free_integer_casting()
+  test_float32_castB()
 
 echo "OK"

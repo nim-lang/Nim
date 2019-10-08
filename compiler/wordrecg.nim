@@ -37,12 +37,10 @@ type
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
     wIntDefine, wStrDefine, wBoolDefine
 
-    wCursor,
-
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wExportCpp, wExportNims, wIncompleteStruct, wRequiresInit,
+    wImportc, wImportJs, wExportc, wExportCpp, wExportNims, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideEffect, wHeader,
     wNoSideEffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
     wCompilerProc, wCore, wProcVar, wBase, wUsed,
@@ -125,11 +123,9 @@ const
     "magic", "thread", "final", "profiler", "memtracker", "objchecks",
     "intdefine", "strdefine", "booldefine",
 
-    "cursor",
-
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
-    "importcompilerproc", "importc", "exportc", "exportcpp", "exportnims",
+    "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
     "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
@@ -209,7 +205,7 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wLinearScanEnd: "linearScanEnd"
   of wComputedGoto: "computedGoto"
   of wInjectStmt: "injectStmt"
-  of wAsmNoStackFrame: "asmNoStackframe"
+  of wAsmNoStackFrame: "asmNoStackFrame"
   of wImplicitStatic: "implicitStatic"
   of wCodegenDecl: "codegenDecl"
   of wLiftLocals: "liftLocals"

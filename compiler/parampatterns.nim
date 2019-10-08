@@ -218,14 +218,16 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   of nkSym:
     let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet, skForVar}
                 else: {skVar, skResult, skTemp}
-    if n.sym.kind in kinds:
+    if n.sym.kind == skParam and n.sym.typ.kind in {tyVar, tySink}:
+      result = arLValue
+    elif isUnsafeAddr and n.sym.kind == skParam:
+      result = arLValue
+    elif n.sym.kind in kinds:
       if owner != nil and owner == n.sym.owner and
           sfGlobal notin n.sym.flags:
         result = arLocalLValue
       else:
         result = arLValue
-    elif n.sym.kind == skParam and n.sym.typ.kind in {tyVar, tySink}:
-      result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
       if t.kind == tyVar: result = arStrange

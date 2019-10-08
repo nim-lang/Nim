@@ -48,7 +48,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
   defineSymbol("nimnode")
-  defineSymbol("nimnomagic64")
   defineSymbol("nimvarargstyped")
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
@@ -87,6 +86,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDefault")
   defineSymbol("nimMacrosSizealignof")
   defineSymbol("nimNoZeroExtendMagic")
+  defineSymbol("nimMacrosGetNodeId")
   for f in low(Feature)..high(Feature):
     defineSymbol("nimHas" & $f)
 
