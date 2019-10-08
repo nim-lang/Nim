@@ -957,31 +957,6 @@ else:
 
 # -- Json deserialiser macro. --
 
-proc createJsonIndexer(jsonNode: NimNode,
-                       index: string | int | NimNode): NimNode
-    {.compileTime.} =
-  when index is string:
-    let indexNode = newStrLitNode(index)
-  elif index is int:
-    let indexNode = newIntLitNode(index)
-  elif index is NimNode:
-    let indexNode = index
-
-  result = newNimNode(nnkBracketExpr).add(
-    jsonNode,
-    indexNode
-  )
-
-proc transformJsonIndexer(jsonNode: NimNode): NimNode =
-  case jsonNode.kind
-  of nnkBracketExpr:
-    result = newNimNode(nnkCurlyExpr)
-  else:
-    result = jsonNode.copy()
-
-  for child in jsonNode:
-    result.add(transformJsonIndexer(child))
-
 template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
                         ast: string) =
   if node == nil:
@@ -994,49 +969,7 @@ template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
     ]
     raise newException(JsonKindError, msg)
 
-proc getEnum(node: JsonNode, ast: string, T: typedesc): T =
-  when T is SomeInteger:
-    # TODO: I shouldn't need this proc.
-    proc convert[T](x: BiggestInt): T = T(x)
-    verifyJsonKind(node, {JInt}, ast)
-    return convert[T](node.getBiggestInt())
-  else:
-    verifyJsonKind(node, {JString}, ast)
-    return parseEnum[T](node.getStr())
-
-proc toIdentNode(typeNode: NimNode): NimNode =
-  ## Converts a Sym type node (returned by getType et al.) into an
-  ## Ident node. Placing Sym type nodes inside the resulting code AST is
-  ## unsound (according to @Araq) so this is necessary.
-  case typeNode.kind
-  of nnkSym:
-    return newIdentNode($typeNode)
-  of nnkBracketExpr:
-    result = typeNode
-    for i in 0..<len(result):
-      result[i] = newIdentNode($result[i])
-  of nnkIdent:
-    return typeNode
-  else:
-    doAssert false, "Cannot convert typeNode to an ident node: " & $typeNode.kind
-
-proc createGetEnumCall(jsonNode, enumType: NimNode): NimNode =
-  # -> getEnum(`jsonNode`, `kindType`)
-  result = newCall(bindSym("getEnum"), jsonNode, newLit(jsonNode.repr), enumType)
-
-proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
-  ## Creates an expression that acts as the condition for an ``of`` branch.
-  var cond = newIdentNode("false")
-  for ofCond in ofBranch:
-    if ofCond.kind == nnkRecList:
-      break
-
-    let comparison = infix(getEnumCall, "==", ofCond)
-    cond = infix(cond, "or", comparison)
-
-  return cond
-
-# I have to export the private three argument ``to`` otherwise it won't compile
+# I have to export the private `assignFromJson` otherwise it won't compile
 
 proc assignFromJson*(dst: var string; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JString, JNull}, jsonPath)
@@ -1107,15 +1040,17 @@ proc assignFromJson*[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string
     assignFromJson(tmp, jsonNode, jsonPath)
     dst = some(tmp)
 
-macro assignFromJson*[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
+macro assignDistinctImpl[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
   let typInst = getTypeInst(dst)
   let typImpl = getTypeImpl(dst)
   let baseTyp = typImpl[0]
-
   result = quote do:
-    var tmp {.noInit.}: `baseTyp`
+    var tmp: `baseTyp`
     assignFromJson(tmp, `jsonNode`, `jsonPath`)
     `dst` = `typInst`(tmp)
+
+proc assignFromJson*[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
+  assignDistinctImpl(dst, jsonNode, jsonPath)
 
 proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: int): void {.compileTime.} =
 
@@ -1193,15 +1128,11 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: i
 
 macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   let typeSym = getTypeInst(dst)
-
   result = newStmtList()
   if typeSym.kind == nnkTupleTy:
     foldObjectBody(result, typeSym, dst, jsonNode, jsonPath, 0)
   else:
     foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, 0)
-
-  echo typeSym.repr
-  echo result.repr
 
 proc assignFromJson*[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   assignObjectImpl(dst, jsonNode, jsonPath)
