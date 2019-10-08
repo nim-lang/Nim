@@ -1036,88 +1036,99 @@ proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
 
 # I have to export the private three argument ``to`` otherwise it won't compile
 
-proc to*(jsonNode: JsonNode; t: typedesc[string]; jsonPath: string): string =
+proc assignFromJson*(dst: var string; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JString, JNull}, jsonPath)
-  if jsonNode.kind == JNull: "" else: jsonNode.str
+  if jsonNode.kind == JNull:
+    dst = ""
+  else:
+    dst = jsonNode.str
 
-proc to*(jsonNode: JsonNode; t: typedesc[bool]; jsonPath: string): bool =
+proc assignFromJson*(dst: var bool; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JBool}, jsonPath)
-  jsonNode.bval
+  dst = jsonNode.bval
 
-proc to*(jsonNode: JsonNode; t: typedesc[JsonNode]; jsonPath: string): JsonNode =
-  jsonNode
+proc assignFromJson*(dst: var JsonNode; jsonNode: JsonNode; jsonPath: string) =
+  dst = jsonNode.copy
 
-proc to*[T: SomeInteger](jsonNode: JsonNode, t: typedesc[T], jsonPath: string): T =
+proc assignFromJson*[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: string) =
   verifyJsonKind(jsonNode, {JInt}, jsonPath)
-  T(jsonNode.num)
+  dst = T(jsonNode.num)
 
-proc to*[T: SomeFloat](jsonNode: JsonNode; t: typedesc[T]; jsonPath: string): T =
+proc assignFromJson*[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
   if jsonNode.kind == JFloat:
-    T(jsonNode.fnum)
+    dst = T(jsonNode.fnum)
   else:
-    T(jsonNode.num)
+    dst = T(jsonNode.num)
 
-proc to*[T: enum](jsonNode: JsonNode; t: typedesc[T]; jsonPath: string): T =
+proc assignFromJson*[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JString}, jsonPath)
-  parseEnum[T](jsonNode.getStr)
+  dst = parseEnum[T](jsonNode.getStr)
 
-proc to*[T](jsonNode: JsonNode; t: typedesc[seq[T]]; jsonPath: string): seq[T] =
+proc assignFromJson*[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: string) =
+  verifyJsonKind(jsonNode, {JArray}, jsonPath)
+  dst.setLen jsonNode.len
+  for i in 0 ..< jsonNode.len:
+    assignFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
+
+proc assignFromJson*[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: string) =
   verifyJsonKind(jsonNode, {JArray}, jsonPath)
   for i in 0 ..< jsonNode.len:
-    result.add to(jsonNode[i], T, jsonPath & "[" & $i & "]")
+    assignFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
 
-proc to*[S,T](jsonNode: JsonNode; t: typedesc[array[S,T]]; jsonPath: string): array[S,T] =
-  verifyJsonKind(jsonNode, {JArray}, jsonPath)
-  for i in 0 ..< jsonNode.len:
-    result[i] = to(jsonNode[i], typedesc(T), jsonPath & "[" & $i & "]")
-
-proc to*[T](jsonNode: JsonNode; t: typedesc[Table[string,T]]; jsonPath: string): Table[string,T] =
-  result = initTable[string, T]()
+proc assignFromJson*[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: string) =
+  dst = initTable[string, T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    result[key] = to(jsonNode[key], typedesc(T), jsonPath & "." & key)
+    assignFromJson(dst[key], jsonNode[key], jsonPath & "." & key)
 
-proc to*[S,T](jsonNode: JsonNode; t: typedesc[OrderedTable[S,T]]; jsonPath: string): Table[string,int] =
-  result = initOrderedTable[S,T]()
+proc assignFromJson*[S,T](dst: var OrderedTable[S,T];jsonNode: JsonNode; jsonPath: string) =
+  dst = initOrderedTable[S,T]()
   verifyJsonKind(jsonNode, {JObject}, jsonPath)
   for key in keys(jsonNode.fields):
-    result[key] = jsonNode[key]
+    assignFromJson(dst[key], jsonNode[key], jsonPath & "." & key)
 
-proc to*[T](jsonNode: JsonNode; t: typedesc[ref T]; jsonPath: string): ref T =
+proc assignFromJson*[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
   if jsonNode.kind == JNull:
-    result = nil
+    dst = nil
   else:
-    result = new(ref T)
-    result[] = to(jsonNode, T, jsonPath)
+    dst = new(ref T)
+    assignFromJson(dst[], jsonNode, jsonPath)
 
-macro to*[T : distinct](jsonNode: JsonNode; t: typedesc[T]; jsonPath: string): T =
-  let a = t.getTypeInst
-  let b = a[1]
-  let c = b.getTypeImpl
-  let d = c[0]
+proc assignFromJson*[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string) =
+  if jsonNode.kind != JNull:
+    var tmp {.noinit.}: T
+    assignFromJson(tmp, jsonNode, jsonPath)
+    dst = some(tmp)
+
+macro assignFromJson*[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
+  let typInst = getTypeInst(dst)
+  let typImpl = getTypeImpl(dst)
+  let baseTyp = typImpl[0]
+
   result = quote do:
-    `b`(to(`jsonNode`, typedesc(`d`), `jsonPath`))
+    var tmp {.noInit.}: `baseTyp`
+    assignFromJson(tmp, `jsonNode`, `jsonPath`)
+    `dst` = `typInst`(tmp)
 
+proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: int): void {.compileTime.} =
 
-proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode): void {.compileTime.} =
+  if depth > 150:
+    error("recursion limit reached", typeNode)
 
   case typeNode.kind
   of nnkEmpty:
     discard
   of nnkRecList, nnkTupleTy:
     for it in typeNode:
-      foldObjectBody(dst, it, tmpSym, jsonNode, jsonPath)
+      foldObjectBody(dst, it, tmpSym, jsonNode, jsonPath, depth + 1)
   of nnkIdentDefs:
     typeNode.expectLen 3
     let fieldSym = typeNode[0]
     let fieldNameLit = newLit(fieldSym.strVal)
     let fieldType = typeNode[1]
     dst.add quote do:
-      `tmpSym`.`fieldSym` = to(`jsonNode`[`fieldNameLit`], typedesc(`fieldType`), `jsonPath` & "." & `fieldNameLit`)
-
-    echo jsonNode.treeRepr
-    echo dst[^1].repr
+      assignFromJson(`tmpSym`.`fieldSym`, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath` & "." & `fieldNameLit`)
   of nnkRecCase:
     let kindSym = typeNode[0][0]
     let kindNameLit = newLit(kindSym.strVal)
@@ -1125,17 +1136,18 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode): void {.
     let kindOffsetLit = newLit(uint(getOffset(kindSym)))
 
     dst.add quote do:
+      var kindTmp: `kindType`
+      assignFromJson(kindTmp, `jsonNode`[`kindNameLit`], `jsonPath` & "." & `kindNameLit`)
       when nimVm:
-        `tmpSym`.`kindSym` = to(`jsonNode`[`kindNameLit`], typedesc(`kindType`),  `jsonPath` & "." & `kindNameLit`)
+        `tmpSym`.`kindSym` = kindTmp
       else:
         # fuck it, assign kind field anyway
-        ((cast[ptr `kindType`](cast[uint](`tmpSym`.addr) + `kindOffsetLit`))[]) =
-          to(`jsonNode`[`kindNameLit`], typedesc(`kindType`),  `jsonPath` & "." & `kindNameLit`)
+        ((cast[ptr `kindType`](cast[uint](`tmpSym`.addr) + `kindOffsetLit`))[]) = kindTmp
 
     dst.add nnkCaseStmt.newTree(nnkDotExpr.newTree(tmpSym, kindSym))
 
     for i in 1 ..< typeNode.len:
-      foldObjectBody(dst, typeNode[i], tmpSym, jsonNode, jsonPath)
+      foldObjectBody(dst, typeNode[i], tmpSym, jsonNode, jsonPath, depth + 1)
 
   of nnkOfBranch, nnkElse:
     let ofBranch = newNimNode(typeNode.kind)
@@ -1143,141 +1155,54 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode): void {.
       ofBranch.add copyNimTree(typeNode[i])
 
     let dstInner = newNimNode(nnkStmtListExpr)
-    foldObjectBody(dstInner, typeNode[^1], tmpSym, jsonNode, jsonPath)
+    foldObjectBody(dstInner, typeNode[^1], tmpSym, jsonNode, jsonPath, depth + 1)
 
     # resOuter now contains the inner stmtList
     ofBranch.add dstInner
     dst[^1].expectKind nnkCaseStmt
     dst[^1].add ofBranch
 
+  of nnkObjectTy:
+
+
+    if typeNode[0].kind != nnkEmpty or typeNode[1].kind notin {nnkEmpty, nnkOfInherit}:
+      echo typeNode.treeRepr
+
+    if typeNode[1].kind == nnkOfInherit:
+      let base = typeNode[1][0]
+
+      var impl = getTypeImpl(base)
+      while impl.kind in {nnkRefTy, nnkPtrTy}:
+        impl = getTypeImpl(impl[0])
+      foldObjectBody(dst, impl, tmpSym, jsonNode, jsonPath, depth + 1)
+
+    let body = typeNode[2]
+
+    foldObjectBody(dst, body, tmpSym, jsonNode, jsonPath, depth + 1)
+
   else:
     echo typeNode.treeRepr
     error("unhandled kind: " & $typeNode.kind, typeNode)
 
 
-macro toObjectImpl[T](jsonNode: JsonNode; t: typedesc[T]; jsonPath: string): T =
-  let typeSym = t.getTypeInst[1]
+macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+  let typeSym = getTypeInst(dst)
 
-
-  let body =
-    if typeSym.kind == nnkTupleTy:
-      typeSym
-    else:
-      typeSym.getTypeImpl[2]
-
-  echo typeSym.lispRepr
-  echo body.treeRepr
-
-
-  let tmpSym = genSym(nskVar, "tmp")
-  result = nnkStmtListExpr.newTree()
-  # var `tmpSym` {.noInit.}: `typeSym`
-  result.add(
-    nnkVarSection.newTree(
-      nnkIdentDefs.newTree(
-        nnkPragmaExpr.newTree(
-          tmpSym,
-          nnkPragma.newTree(
-            ident"noInit"
-          )
-        ),
-        typeSym,
-        newEmptyNode()
-      )
-    )
-  )
-
-  foldObjectBody(result, body, tmpSym, jsonNode, jsonPath)
-
-  result.add tmpSym
+  result = newStmtList()
+  if typeSym.kind == nnkTupleTy:
+    foldObjectBody(result, typeSym, dst, jsonNode, jsonPath, 0)
+  else:
+    foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, 0)
 
   echo typeSym.repr
   echo result.repr
 
-proc to*[T : object|tuple](jsonNode: JsonNode; t: typedesc[T]; jsonPath: string): T =
-  toObjectImpl(jsonNode, typedesc(T), jsonPath)
+proc assignFromJson*[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+  assignObjectImpl(dst, jsonNode, jsonPath)
 
 import options
 proc workaroundMacroNone[T](): Option[T] =
   none(T)
-
-proc postProcess(node: NimNode): NimNode
-proc postProcessValue(value: NimNode): NimNode =
-  ## Looks for object constructors and calls the ``postProcess`` procedure
-  ## on them. Otherwise it just returns the node as-is.
-  case value.kind
-  of nnkObjConstr:
-    result = postProcess(value)
-  else:
-    result = value
-    for i in 0 ..< len(result):
-      result[i] = postProcessValue(result[i])
-
-proc postProcessExprColonExpr(exprColonExpr, resIdent: NimNode): NimNode =
-  ## Transform each field mapping in the ExprColonExpr into a simple
-  ## field assignment. Special processing is performed if the field mapping
-  ## has an if statement.
-  ##
-  ## ..code-block::plain
-  ##    field: (if true: 12)  ->  if true: `resIdent`.field = 12
-  expectKind(exprColonExpr, nnkExprColonExpr)
-  let fieldName = exprColonExpr[0]
-  let fieldValue = exprColonExpr[1]
-  case fieldValue.kind
-  of nnkIfStmt:
-    doAssert fieldValue.len == 1, "Cannot postProcess two ElifBranches."
-    expectKind(fieldValue[0], nnkElifBranch)
-
-    let cond = fieldValue[0][0]
-    let bodyValue = postProcessValue(fieldValue[0][1])
-    doAssert(bodyValue.kind != nnkNilLit)
-    result =
-      quote do:
-        if `cond`:
-          `resIdent`.`fieldName` = `bodyValue`
-  else:
-    let fieldValue = postProcessValue(fieldValue)
-    doAssert(fieldValue.kind != nnkNilLit)
-    result =
-      quote do:
-        `resIdent`.`fieldName` = `fieldValue`
-
-
-proc postProcess(node: NimNode): NimNode =
-  ## The ``createConstructor`` proc creates a ObjConstr node which contains
-  ## if statements for fields that may not be assignable (due to an object
-  ## variant). Nim doesn't handle this, but may do in the future.
-  ##
-  ## For simplicity, we post process the object constructor into multiple
-  ## assignments.
-  ##
-  ## For example:
-  ##
-  ## ..code-block::plain
-  ##    Object(                           (var res = Object();
-  ##      field: if true: 12      ->       if true: res.field = 12;
-  ##    )                                  res)
-  result = newNimNode(nnkStmtListExpr)
-
-  expectKind(node, nnkObjConstr)
-
-  # Create the type.
-  # -> var res = Object()
-  var resIdent = genSym(nskVar, "res")
-  var resType = node[0]
-
-  var objConstr = newTree(nnkObjConstr, resType)
-  result.add newVarStmt(resIdent, objConstr)
-
-  # Process each ExprColonExpr.
-  for i in 1..<len(node):
-    if node[i].kind == nnkExprEqExpr:
-      objConstr.add newTree(nnkExprColonExpr, node[i][0], node[i][1])
-    else:
-      result.add postProcessExprColonExpr(node[i], resIdent)
-
-  # Return the `res` variable.
-  result.add(resIdent)
 
 proc to*[T](node: JsonNode, t: typedesc[T]): T =
   ## `Unmarshals`:idx: the specified node into the object type specified.
@@ -1315,7 +1240,7 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
   ##     doAssert data.person.age == 21
   ##     doAssert data.list == @[1, 2, 3, 4]
 
-  to(node, t, "")
+  assignFromJson(result, node, "")
 
 
   # let typeNode = getTypeImpl(t)
