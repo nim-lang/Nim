@@ -604,7 +604,7 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
     r.shuffle(cards)
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   for i in countdown(x.high, 1):
-    let j = r.rand(i)
+    let j = r.rand(i-1)
     swap(x[i], x[j])
 
 proc shuffle*[T](x: var openArray[T]) =
