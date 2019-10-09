@@ -1,5 +1,5 @@
 =======================
-Nim Tutorial (Part III)
+Nim教程 (III)
 =======================
 
 :Author: Arne Döring
@@ -8,103 +8,75 @@ Nim Tutorial (Part III)
 .. contents::
 
 
-Introduction
+引言
 ============
 
-  "With Great Power Comes Great Responsibility." -- Spider Man's Uncle
+  "能力越大，责任越大。" -- 蜘蛛侠的叔叔
 
-This document is a tutorial about Nim's macro system.
-A macro is a function that is executed at compile time and transforms
-a Nim syntax tree into a different tree.
+本文档是关于Nim宏系统的教程。宏是编译期执行的函数，把Nim语法树变换成不同的树。
 
-Examples of things that can be implemented in macros:
+用宏可以实现的功能示例：
 
-* An assert macro that prints both sides of a comparison operator, if
-  the assertion fails. ``myAssert(a == b)`` is converted to
-  ``if a != b: quit($a " != " $b)``
+* 一个断言宏，如果断言失败打印比较运算符两边的数， ``myAssert(a == b)`` 转换成 ``if a != b: quit($a " != " $b)``
 
-* A debug macro that prints the value and the name of the symbol.
-  ``myDebugEcho(a)`` is converted to ``echo "a: ", a``
+* 一个调试宏，打印符号的值和名字。 ``myDebugEcho(a)`` 转换成 ``echo "a: ", a``
 
-* Symbolic differentiation of an expression.
-  ``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)`` is converted to
-  ``3*a*pow(x,2) + 2*a*x + c``
+* 表达式的象征性区别。
+  ``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)`` 转换成
+  ``3*a*pow(x,2) + 2*b*x + c``
+  (译者注：ax^3+bx^2+cx+d 微分的结果是 3ax^2+2bx+c)
 
 
-Macro Arguments
+宏实参
 ---------------
 
-The types of macro arguments have two faces. One face is used for
-the overload resolution, and the other face is used within the macro
-body. For example, if ``macro foo(arg: int)`` is called in an
-expression ``foo(x)``, ``x`` has to be of a type compatible to int, but
-*within* the macro's body ``arg`` has the type ``NimNode``, not ``int``!
-Why it is done this way will become obvious later, when we have seen
-concrete examples.
+宏的实参有两面性。一面用来重载解析，另一面在宏体内使用。例如，如果 ``macro foo(arg: int)`` 在表达式 ``foo(x)`` 中调用， ``x`` 必须是与整型兼容的类型，
+但在宏体 *内* ``arg`` 的类型是 ``NimNode`` ， 而不是 ``int`` ！这么做的原因会在我们见到具体的示例时明白。
 
-There are two ways to pass arguments to a macro, an argument can be
-either ``typed`` or ``untyped``.
+有两种给宏传递实参的方式，实参必须是 ``typed`` 或 ``untyped`` 中的一种。
 
 
-Untyped Arguments
+无类型（untyped）实参
 -----------------
 
-Untyped macro arguments are passed to the macro before they are
-semantically checked. This means the syntax tree that is passed down
-to the macro does not need to make sense for Nim yet, the only
-limitation is that it needs to be parsable. Usually the macro does
-not check the argument either but uses it in the transformation's
-result somehow. The result of a macro expansion is always checked
-by the compiler, so apart from weird error messages nothing bad
-can happen.
+无类型宏实参在语义检查前传递给宏。这表示传给宏的语法树Nim尚不需要理解，唯一的限制是它必须是可以解析的。通常宏不检查实参但在变换结果中使用。编译器会检查宏展开的结果，所以除了
+一些错误消息没有其它坏事情发生。
 
-The downside for an ``untyped`` argument is that these do not play
-well with Nim's overloading resolution.
+``untyped`` 实参的缺点是对重载解析不利。
 
-The upside for untyped arguments is that the syntax tree is
-quite predictable and less complex compared to its ``typed``
-counterpart.
+无类型实参的优点是语法树可以预知，也比 ``typed`` 简单。
 
 
-Typed Arguments
+类型化（typed）实参
 ---------------
 
-For typed arguments, the semantic checker runs on the argument and
-does transformations on it, before it is passed to the macro. Here
-identifier nodes are resolved as symbols, implicit type
-conversions are visible in the tree as calls, templates are
-expanded and probably most importantly, nodes have type information.
-Typed arguments can have the type ``typed`` in the arguments list.
-But all other types, such as ``int``, ``float`` or ``MyObjectType``
-are typed arguments as well, and they are passed to the macro as a
-syntax tree.
+对于类型化实参，语义检查器在它传给宏之前对其进行检查并进行变换。这里标识符节点解析成符号，
+树中的隐式类型转换被看作调用，模板被展开，最重要的是节点有类型信息。类型化实参的实参列表可以有 ``typed`` 类型。
+但是其它所有类型，例如 ``int``, ``float`` 或 ``MyObjectType`` 也是类型化实参，它们作为一个语法树传递给宏。
 
 
-Static Arguments
+静态实参
 ----------------
 
-Static arguments are a way to pass values as values and not as syntax
-tree nodes to a macro. For example for ``macro foo(arg: static[int])``
-in the expression ``foo(x)``, ``x`` needs to be an integer constant,
-but in the macro body ``arg`` is just like a normal parameter of type
-``int``.
+静态实参是向宏传递值而不是语法树的方法。例如对于 ``macro foo(arg: static[int])`` 来说， ``foo(x)`` 表达式中的 ``x`` 需要是整型常量，
+但在宏体中 ``arg`` 只是一个普通的 ``int`` 类型。
 
 .. code-block:: nim
 
   import macros
 
   macro myMacro(arg: static[int]): untyped =
-    echo arg # just an int (7), not ``NimNode``
+    echo arg # 只是int (7), 不是 ``NimNode``
 
   myMacro(1 + 2 * 3)
 
 
-Code Blocks as Arguments
+代码块实参
 ------------------------
 
-It is possible to pass the last argument of a call expression in a
-separate code block with indentation. For example the following code
-example is a valid (but not a recommended) way to call ``echo``:
+
+可以在具有缩进的单独代码块中传递调用表达式的最后一个参数。
+例如下面的代码示例是合法的（不推荐的）调用 ``echo`` 的方法：
 
 .. code-block:: nim
 
@@ -113,31 +85,24 @@ example is a valid (but not a recommended) way to call ``echo``:
     let b = "ld!"
     a & b
 
-For macros this way of calling is very useful; syntax trees of arbitrary
-complexity can be passed to macros with this notation.
+对于宏来说这样的调用很有用；任意复杂度的语法树可以用这种标记传给宏。
 
 
-The Syntax Tree
+语法树
 ---------------
 
-In order to build a Nim syntax tree one needs to know how Nim source
-code is represented as a syntax tree, and how such a tree needs to
-look like so that the Nim compiler will understand it. The nodes of the
-Nim syntax tree are documented in the `macros <macros.html>`_ module.
-But a more interactive way to explore the Nim
-syntax tree is with ``macros.treeRepr``, it converts a syntax tree
-into a multi line string for printing on the console. It can be used
-to explore how the argument expressions are represented in tree form
-and for debug printing of generated syntax tree. ``dumpTree`` is a
-predefined macro that just prints its argument in tree representation,
-but does nothing else. Here is an example of such a tree representation:
+为了构建Nim语法树，我们需要知道如何用语法树表示Nim源码， 能被Nim编译器理解的树看起来是什么样子的。 
+Nim语法树节点记载在 `macros <macros.html>`_ 模块。
+一个更加互动性的学习Nim语法树的方法是用 ``macros.treeRepr`` ，它把语法树转换成一个多行字符串打印到控制台。
+它也可以用来探索实参表达式如何用树的形式表示，
+以及生成的语法树的调试打印。 ``dumpTree`` 是一个预定义的宏，以树的形式打印它的实参。树表示的示例：
 
 .. code-block:: nim
 
   dumpTree:
     var mt: MyType = MyType(a:123.456, b:"abcdef")
 
-  # output:
+  # 输出:
   #   StmtList
   #     VarSection
   #       IdentDefs
@@ -153,16 +118,11 @@ but does nothing else. Here is an example of such a tree representation:
   #             StrLit "abcdef"
 
 
-Custom Semantic Checking
+自定义语义检查
 -----------------------
 
-The first thing that a macro should do with its arguments is to check
-if the argument is in the correct form. Not every type of wrong input
-needs to be caught here, but anything that could cause a crash during
-macro evaluation should be caught and create a nice error message.
-``macros.expectKind`` and ``macros.expectLen`` are a good start. If
-the checks need to be more complex, arbitrary error messages can
-be created with the ``macros.error`` proc.
+宏对实参做的第一件事是检查实参是否是正确的形式。不是每种类型的错误输入都需要在这里捕获，但是应该捕获在宏求值期间可能导致崩溃的任何内容并创建一个很好的错误消息。
+``macros.expectKind`` 和 ``macros.expectLen`` 是一个好的开始。如果检查需要更加复杂，任意错误消息可以用 ``macros.error`` 过程创建。
 
 .. code-block:: nim
 
@@ -170,24 +130,14 @@ be created with the ``macros.error`` proc.
     arg.expectKind nnkInfix
 
 
-Generating Code
+生成代码
 ---------------
 
-There are two ways to generate the code. Either by creating the syntax
-tree with expressions that contain a lot of calls to ``newTree`` and
-``newLit``, or with ``quote do:`` expressions. The first option offers
-the best low level control for the syntax tree generation, but the
-second option is much less verbose. If you choose to create the syntax
-tree with calls to ``newTree`` and ``newLit`` the macro
-``macros.dumpAstGen`` can help you with the verbosity. ``quote do:``
-allows you to write the code that you want to generate literally,
-backticks are used to insert code from ``NimNode`` symbols into the
-generated expression. This means that you can't use backticks within
-``quote do:`` for anything else than injecting symbols.  Make sure to
-inject only symbols of type ``NimNode`` into the generated syntax
-tree. You can use ``newLit`` to convert arbitrary values into
-expressions trees of type ``NimNode`` so that it is safe to inject
-them into the tree.
+生成代码有两种方式。通过用含有多个 ``newTree`` 和 ``newLit`` 调用的表达式创建语法树，或者用 ``quote do:`` 表达式。
+第一种为语法树生成提供最好的底层控制，第二种简短很多。如果你选择用 ``newTree`` 和 ``newLit`` 创建语法树，
+``marcos.dumpAstGen`` 宏可以帮你很多。 ``quote do:`` 允许你直接写希望生成的代码，反引号用来插入来自 ``NimNode`` 符号的代码到生成的表达式中。
+这表示你无法在 ``quote do:`` 使用反引号做除了注入符号之外的事情。确保只注入 ``NimNode`` 类型的符号到生成的语法树中。
+你可以使用 ``newLit`` 把任意值转换成 ``NimNode`` 表达式树类型， 以便安全地注入到树中。
 
 
 .. code-block:: nim
@@ -213,21 +163,18 @@ them into the tree.
 
   myMacro("Hallo")
 
-The call to ``myMacro`` will generate the following code:
+调用``myMacro``将生成下面的代码：
 
 .. code-block:: nim
   echo "Hallo"
   echo MyType(a: 123.456'f64, b: "abcdef")
 
 
-Building Your First Macro
+构建你的第一个宏
 -------------------------
 
-To give a starting point to writing macros we will show now how to
-implement the ``myDebug`` macro mentioned earlier. The first thing to
-do is to build a simple example of the macro usage, and then just
-print the argument. This way it is possible to get an idea of a
-correct argument should be look like.
+为了给写宏一个开始，我们展示如何实现之前提到的 ``myDebug`` 宏。 
+首先要构建一个宏使用的示例，接着打印实参。这可以看出一个正确的实参是什么样子。
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -250,10 +197,7 @@ correct argument should be look like.
     Ident "b"
 
 
-From the output it is possible to see that the argument is an infix
-operator (node kind is "Infix"), as well as that the two operands are
-at index 1 and 2. With this information the actual macro can be
-written.
+从输出可以看出实参信息是一个中缀操作符（节点类型是"Infix"）， 两个操作数在索引1和2的位置。用这个信息可以写真正的宏。
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -261,10 +205,10 @@ written.
   import macros
 
   macro myAssert(arg: untyped): untyped =
-    # all node kind identifiers are prefixed with "nnk"
+    # 所有节点类型标识符用前缀 "nnk"
     arg.expectKind nnkInfix
     arg.expectLen 3
-    # operator as string literal
+    # 操作符作字符串字面值
     let op  = newLit(" " & arg[0].repr & " ")
     let lhs = arg[1]
     let rhs = arg[2]
@@ -280,75 +224,53 @@ written.
   myAssert(a == b)
 
 
-This is the code that will be generated. To debug what the macro
-actually generated, the statement ``echo result.repr`` can be used, in
-the last line of the macro. It is also the statement that has been
-used to get this output.
+这是即将生成的代码。 调试生成的宏可以在宏最后一行用 ``echo result.repr`` 语句。它也是用于获取此输出的语句。
 
 .. code-block:: nim
   if not (a != b):
     raise newException(AssertionError, $a & " != " & $b)
 
-With Power Comes Responsibility
+能力与责任
 -------------------------------
 
-Macros are very powerful. A good advice is to use them as little as
-possible, but as much as necessary. Macros can change the semantics of
-expressions, making the code incomprehensible for anybody who does not
-know exactly what the macro does with it. So whenever a macro is not
-necessary and the same logic can be implemented using templates or
-generics, it is probably better not to use a macro. And when a macro
-is used for something, the macro should better have a well written
-documentation. For all the people who claim to write only perfectly
-self-explanatory code: when it comes to macros, the implementation is
-not enough for documentation.
+宏非常强大。
+宏可以改变表达式的语义，让不知道宏做什么的人难以理解。
+可以使用模板或泛型实现的相同逻辑，最好不要使用宏。
+当宏用于某种用途时，应当有一个优秀的文档。
+说自己写的代码一目了然的人实现宏时，需要足够的文档。
 
-Limitations
+限制
 -----------
 
-Since macros are evaluated in the compiler in the NimVM, macros share
-all the limitations of the NimVM. They have to be implemented in pure Nim
-code. Macros can start external processes on the shell, but they
-cannot call C functions except from those that are built in the
-compiler.
+因为宏由Nim虚拟机的编译器求值，它有Nim虚拟机的所有限制。
+必须用纯Nim代码实现，宏可以在shell打开外部进程，不能调用除了编译器内置外的C函数。
 
 
-More Examples
+更多示例
 =============
 
-This tutorial can only cover the basics of the macro system. There are
-macros out there that could be an inspiration for you of what is
-possible with it.
+本教程讲解了宏系统的基础。对于宏能够做的事情，有些宏可以给你灵感。
 
 
 Strformat
 ---------
 
-In the Nim standard library, the ``strformat`` library provides a
-macro that parses a string literal at compile time. Parsing a string
-in a macro like here is generally not recommended. The parsed AST
-cannot have type information, and parsing implemented on the VM is
-generally not very fast. Working on AST nodes is almost always the
-recommended way. But still ``strformat`` is a good example for a
-practical use case for a macro that is slightly more complex than the
-``assert`` macro.
+在Nim标准库中， ``strformat`` 库提供了一个在编译时解析字符串字面值的宏。通常不建议像这样在宏中解析字符串。
+解析的AST不能具有类型信息，并且在VM上实现的解析通常不是非常快。在AST节点上操作几乎总是推荐的方式。
+但 ``strformat`` 仍然是宏实际应用的一个很好的例子，它比 ``assert`` 宏稍微复杂一些。
 
 `Strformat <https://github.com/nim-lang/Nim/blob/5845716df8c96157a047c2bd6bcdd795a7a2b9b1/lib/pure/strformat.nim#L280>`_
 
-Ast Pattern Matching
+抽象语法树模式匹配（Ast Pattern Matching）
 --------------------
 
-Ast Pattern Matching is a macro library to aid in writing complex
-macros. This can be seen as a good example of how to repurpose the
-Nim syntax tree with new semantics.
+Ast Pattern Matching是一个宏库，可以帮助编写复杂的宏。这可以看作是如何使用新语义重新利用Nim语法树的一个很好的例子。
 
 `Ast Pattern Matching <https://github.com/krux02/ast-pattern-matching>`_
 
-OpenGL Sandbox
+OpenGL沙盒
 --------------
 
-This project has a working Nim to GLSL compiler written entirely in
-macros. It scans recursively though all used function symbols to
-compile them so that cross library functions can be executed on the GPU.
+这个项目有一个完全用宏编写的Nim到GLSL编译器。它通过递归扫描所有使用的函数符号来编译它们，以便可以在GPU上执行交叉库函数。
 
 `OpenGL Sandbox <https://github.com/krux02/opengl-sandbox>`_

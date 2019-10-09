@@ -1,5 +1,5 @@
 ==================================
-Nim Destructors and Move Semantics
+Nim析构函数与移动语义
 ==================================
 
 :Authors: Andreas Rumpf
@@ -8,25 +8,20 @@ Nim Destructors and Move Semantics
 .. contents::
 
 
-About this document
+关于本文档
 ===================
 
-This document describes the upcoming Nim runtime which does
-not use classical GC algorithms anymore but is based on destructors and
-move semantics. The new runtime's advantages are that Nim programs become
-oblivious to the involved heap sizes and programs are easier to write to make
-effective use of multi-core machines. As a nice bonus, files and sockets and
-the like will not require manual ``close`` calls anymore.
+本文档描述了即将推出的Nim运行时，它不再使用经典的GC算法，而是基于析构函数和移动语义。
+新运行时的优点是Nim程序无法访问所涉及的堆大小，并且程序更易于编写以有效使用多核机器。
+作为一个很好的奖励，文件和套接字等不再需要手动“关闭”调用。
 
-This document aims to be a precise specification about how
-move semantics and destructors work in Nim.
+本文档旨在成为关于Nim中移动语义和析构函数如何工作的精确规范。
 
 
-Motivating example
+起因示例
 ==================
 
-With the language mechanisms described here a custom seq could be
-written as:
+使用此处描述的语言机制，自定义seq可以写为：
 
 .. code-block:: nim
 
@@ -42,7 +37,7 @@ written as:
       x.data = nil
 
   proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
-    # do nothing for self-assignments:
+    # 自赋值不做任何事:
     if a.data == b.data: return
     `=destroy`(a)
     a.len = b.len
@@ -53,7 +48,7 @@ written as:
         a.data[i] = b.data[i]
 
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
-    # move assignment
+    # 移动赋值
     `=destroy`(a)
     a.len = b.len
     a.cap = b.cap
@@ -82,36 +77,29 @@ written as:
 
 
 
-Lifetime-tracking hooks
+生命周期跟踪钩子
 =======================
 
-The memory management for Nim's standard ``string`` and ``seq`` types as
-well as other standard collections is performed via so called
-"Lifetime-tracking hooks" or "type-bound operators". There are 3 different
-hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
-``distinct`` type) that are called implicitly by the compiler.
+Nim的标准 ``string`` 和 ``seq`` 类型以及其他标准集合的内存管理是通过所谓的 ``生命周期跟踪钩子`` 或 ``类型绑定运算符`` 执行的。
+每个（通用或具体）对象类型有3个不同的钩子 ``T``（ ``T`` 也可以是 ``distinct`` 类型），由编译器隐式调用。
 
-(Note: The word "hook" here does not imply any kind of dynamic binding
-or runtime indirections, the implicit calls are statically bound and
-potentially inlined.)
+（注意：这里的“钩子”一词并不表示任何类型的动态绑定或运行时间接，隐式调用是静态绑定的，可能是内联的。）
+(Note: The word "hook" here does not imply any kind of dynamic binding or runtime indirections, the implicit calls are statically bound and potentially inlined.)
 
 
-`=destroy` hook
+`=destroy` 钩子
 ---------------
 
-A `=destroy` hook frees the object's associated memory and releases
-other associated resources. Variables are destroyed via this hook when
-they go out of scope or when the routine they were declared in is about
-to return.
+`=destroy` 钩子释放对象的相关内存并释放其他相关资源。当变量超出范围或者声明它们的例程即将返回时，变量会通过此钩子被销毁。
 
-The prototype of this hook for a type ``T`` needs to be:
+这个类型 ``T`` 的钩子的原型需要是：
 
 .. code-block:: nim
 
   proc `=destroy`(x: var T)
 
 
-The general pattern in ``=destroy`` looks like:
+``=destroy`` 中的一般形式如下：
 
 .. code-block:: nim
 
@@ -123,23 +111,22 @@ The general pattern in ``=destroy`` looks like:
 
 
 
-`=sink` hook
+`=sink` 钩子
 ------------
 
-A `=sink` hook moves an object around, the resources are stolen from the source
-and passed to the destination. It is ensured that source's destructor does
-not free the resources afterwards by setting the object to its default value
-(the value the object's state started in). Setting an object ``x`` back to its
-default value is written as ``wasMoved(x)``.
+`=sink` 钩子移动一个对象，资源从源头被移动并传递到目的地。 
+通过将对象设置为其默认值（对象状态开始的值），确保源的析构函数不会释放资源。
+将对象``x``设置回其默认值写为``wasMoved（x）``。
 
-The prototype of this hook for a type ``T`` needs to be:
+这个类型``T``的钩子的原型需要是：
+
 
 .. code-block:: nim
 
   proc `=sink`(dest: var T; source: T)
 
 
-The general pattern in ``=sink`` looks like:
+``=sink`` 的一般形式如下:
 
 .. code-block:: nim
 
@@ -148,82 +135,70 @@ The general pattern in ``=sink`` looks like:
     dest.field = source.field
 
 
-**Note**: ``=sink`` does not need to check for self-assignments.
-How self-assignments are handled is explained later in this document.
+**注意**: ``=sink`` 不需要检查自赋值。
+如何处理自赋值将在本文档后面解释。
 
 
-`=` (copy) hook
+`=` (复制) 钩子
 ---------------
 
-The ordinary assignment in Nim conceptually copies the values. The ``=`` hook
-is called for assignments that couldn't be transformed into ``=sink``
-operations.
+Nim中的普通赋值是概念上地复制值。
+对于无法转换为 ``=sink`` 操作的赋值，调用 ``=`` hook。
 
-The prototype of this hook for a type ``T`` needs to be:
+这个类型 ``T`` 的钩子的原型需要是：
 
 .. code-block:: nim
 
   proc `=`(dest: var T; source: T)
 
 
-The general pattern in ``=`` looks like:
+``=``的一般形式如下：
 
 .. code-block:: nim
 
   proc `=`(dest: var T; source: T) =
-    # protect against self-assignments:
+    # 阻止自赋值:
     if dest.field != source.field:
       `=destroy`(dest)
       dest.field = duplicateResource(source.field)
 
 
-The ``=`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
-that otherwise would lead to a copy is prevented at compile-time.
+``=`` proc 可以用 ``{.error.}`` 标记。 
+然后，在编译时阻止任何可能导致副本的任务。
 
 
-Move semantics
+移动语义
 ==============
 
-A "move" can be regarded as an optimized copy operation. If the source of the
-copy operation is not used afterwards, the copy can be replaced by a move. This
-document uses the notation ``lastReadOf(x)`` to describe that ``x`` is not
-used afterwards. This property is computed by a static control flow analysis
-but can also be enforced by using ``system.move`` explicitly.
+“移动”可以被视为优化的复制操作。
+如果之后未使用复制操作的源，则可以通过移动替换副本。
+本文档使用符号 ``lastReadOf（x）`` 来描述之后不使用 ``x` `。
+此属性由静态流程控制分析计算，但也可以通过显式使用 ``system.move`` 来强制执行。
 
 
-Swap
+交换
 ====
 
-The need to check for self-assignments and also the need to destroy previous
-objects inside ``=`` and ``=sink`` is a strong indicator to treat
-``system.swap`` as a builtin primitive of its own that simply swaps every
-field in the involved objects via ``copyMem`` or a comparable mechanism.
-In other words, ``swap(a, b)`` is **not** implemented
-as ``let tmp = move(a); b = move(a); a = move(tmp)``.
+需要检查自赋值以及是否需要销毁 ``=`` 和 ``= sink`` 中的先前对象，这是将 ``system.swap`` 视为内置原语的强大指标。只需通过 ``copyMem`` 或类似机制交换涉及对象中的每个字段。
+换句话说， ``swap(a, b)`` is **不是** 实现为 ``let tmp = move(a); b = move(a); a = move(tmp)`` 。
 
-This has further consequences:
+这还有其他后果：
 
-* Objects that contain pointers that point to the same object are not supported
-  by Nim's model. Otherwise swapped objects would end up in an inconsistent state.
-* Seqs can use ``realloc`` in the implementation.
+* Nim的模型不支持包含指向同一对象的指针的对象。否则，交换的对象最终会处于不一致状态。
+* Seqs可以在实现中使用 ``realloc`` 。
 
 
-Sink parameters
+Sink形参
 ===============
 
-To move a variable into a collection usually ``sink`` parameters are involved.
-A location that is passed to a ``sink`` parameter should not be used afterwards.
-This is ensured by a static analysis over a control flow graph. If it cannot be
-proven to be the last usage of the location, a copy is done instead and this
-copy is then passed to the sink parameter.
+要将变量移动到集合中，通常会涉及 ``sink`` 形参。
+之后不应使用传递给 ``sink`` 形参的位置。
+这通过控制流图的静态分析来确保。
+如果无法证明它是该位置的最后一次使用，则会执行复制，然后将此副本传递给接收器参数。
 
-A sink parameter
-*may* be consumed once in the proc's body but doesn't have to be consumed at all.
-The reason for this is that signatures
-like ``proc put(t: var Table; k: sink Key, v: sink Value)`` should be possible
-without any further overloads and ``put`` might not take owership of ``k`` if
-``k`` already exists in the table. Sink parameters enable an affine type system,
-not a linear type system.
+sink形参 *may* be consumed once in the proc's body but doesn't have to be consumed at all.
+The reason for this is that signatures like ``proc put(t: var Table; k: sink Key, v: sink Value)`` should be possible without any further overloads and ``put`` might not take owership of ``k`` if ``k`` already exists in the table. 
+Sink parameters enable an affine type system, not a linear type system.
 
 The employed static analysis is limited and only concerned with local variables;
 however object and tuple fields are treated as separate entities:
@@ -253,13 +228,12 @@ optimizations (and the current implementation does not).
 
 
 
-Rewrite rules
+重写规则
 =============
 
-**Note**: There are two different allowed implementation strategies:
+**注意**: 允许两种不同的实施策略:
 
-1. The produced ``finally`` section can be a single section that is wrapped
-   around the complete routine body.
+1. 生成的 ``finally`` 部分可以是一个环绕整个过程体的单个部分。
 2. The produced ``finally`` section is wrapped around the enclosing scope.
 
 The current implementation follows strategy (1). This means that resources are

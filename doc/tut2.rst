@@ -1,5 +1,5 @@
 ======================
-Nim Tutorial (Part II)
+Nim教程 (II)
 ======================
 
 :Author: Andreas Rumpf
@@ -8,149 +8,118 @@ Nim Tutorial (Part II)
 .. contents::
 
 
-Introduction
+引言
 ============
 
-  "Repetition renders the ridiculous reasonable." -- Norman Wildberger
+  "重复让荒谬合理。" -- Norman Wildberger
 
-This document is a tutorial for the advanced constructs of the *Nim*
-programming language. **Note that this document is somewhat obsolete as the**
-`manual <manual.html>`_ **contains many more examples of the advanced language
-features.**
+本文档是 *Nim* 编程语言的高级构造部分。 **注意本文档有些过时** 因为 `manual <manual.html>`_  **包含更多高级语言特性的样例** 。
 
 
-Pragmas
+编译指示（Pragmas）
 =======
 
-Pragmas are Nim's method to give the compiler additional information/
-commands without introducing a massive number of new keywords. Pragmas are
-enclosed in the special ``{.`` and ``.}`` curly dot brackets. This tutorial
-does not cover pragmas. See the `manual <manual.html#pragmas>`_ or `user guide
-<nimc.html#additional-features>`_ for a description of the available
-pragmas.
+编译指示是Nim中不用引用大量新关键字，给编译器附加信息、命令的方法。编译指示用特殊的 ``{.`` 和 ``.}`` 花括号括起来。本教程不讲pragmas。
+可用编译指示的描述见 `manual <manual.html#pragmas>`_ 或 `user guide <nimc.html#additional-features>`_ .
 
 
-Object Oriented Programming
+面向对象编程
 ===========================
 
-While Nim's support for object oriented programming (OOP) is minimalistic,
-powerful OOP techniques can be used. OOP is seen as *one* way to design a
-program, not *the only* way. Often a procedural approach leads to simpler
-and more efficient code. In particular, preferring composition over inheritance
-is often the better design.
+虽然Nim对面向对象编程（OOP）的支持很简单，但可以使用强大的OOP技术。OOP看作 *一种* 程序设计方式，不是 *唯一* 方式。通常过程的解决方法有更简单和高效的代码。
+特别是，首选组合是比继承更好的设计。
 
 
-Inheritance
+继承
 -----------
 
-Inheritance in Nim is entirely optional. To enable inheritance with
-runtime type information the object needs to inherit from
-``RootObj``.  This can be done directly, or indirectly by
-inheriting from an object that inherits from ``RootObj``.  Usually
-types with inheritance are also marked as ``ref`` types even though
-this isn't strictly enforced. To check at runtime if an object is of a certain
-type, the ``of`` operator can be used.
+继承在Nim中是完全可选的。对象需要用运行时类型信息使用继承 
+要使用运行时类型信息启用继承，对象需要从 ``RootObj`` 继承。
+这可以直接完成，也可以通过从继承自 ``RootObj``  的对象继承来间接完成。
+通常，具有继承的类型也被标记为“ref”类型，即使这不是严格执行的。要在运行时检查某个对象是否属于某种类型，可以使用 ``of`` 运算符。
 
 .. code-block:: nim
     :test: "nim c $1"
   type
     Person = ref object of RootObj
-      name*: string  # the * means that `name` is accessible from other modules
-      age: int       # no * means that the field is hidden from other modules
+      name*: string  # *表示 `name`可以从其它模块访问
+      age: int       # 没有*表示字段对其它模块隐藏
 
-    Student = ref object of Person # Student inherits from Person
-      id: int                      # with an id field
+    Student = ref object of Person # Student从Person继承
+      id: int                      # 有一个id字段
 
   var
     student: Student
     person: Person
   assert(student of Student) # is true
-  # object construction:
+  # 对象构造:
   student = Student(name: "Anton", age: 5, id: 2)
   echo student[]
 
-Inheritance is done with the ``object of`` syntax. Multiple inheritance is
-currently not supported. If an object type has no suitable ancestor, ``RootObj``
-can be used as its ancestor, but this is only a convention. Objects that have
-no ancestor are implicitly ``final``. You can use the ``inheritable`` pragma
-to introduce new object roots apart from ``system.RootObj``. (This is used
-in the GTK wrapper for instance.)
 
-Ref objects should be used whenever inheritance is used. It isn't strictly
-necessary, but with non-ref objects assignments such as ``let person: Person =
-Student(id: 123)`` will truncate subclass fields.
+继承是使用 ``object of`` 语法完成的。目前不支持多重继承。如果一个对象类型没有合适的祖先， ``RootObj`` 可以用作它的祖先，但这只是一个约定。
+没有祖先的对象是隐式的“final”。你可以使用 ``inheritable`` 编译指示来引入除 ``system.RootObj`` 之外的新对象根。 （例如，GTK封装使用了这种方法。）
 
-**Note**: Composition (*has-a* relation) is often preferable to inheritance
-(*is-a* relation) for simple code reuse. Since objects are value types in
-Nim, composition is as efficient as inheritance.
+只要使用继承，就应该使用Ref对象。它不是必须的，但是对于非ref对象赋值，例如 ``let person：Person = Student（id：123）`` 将截断子类字段。
 
+**注意** ：对于简单的代码重用，组合（*has-a* 关系）通常优于继承（*is-a* 关系）。由于对象是Nim中的值类型，因此组合与继承一样有效。
 
-Mutually recursive types
+相互递归类型
 ------------------------
 
-Objects, tuples and references can model quite complex data structures which
-depend on each other; they are *mutually recursive*. In Nim
-these types can only be declared within a single type section. (Anything else
-would require arbitrary symbol lookahead which slows down compilation.)
+对象、元组和引用可以模拟相互依赖的非常复杂的数据结构; 它们是 *相互递归的* 。在Nim中，这些类型只能在单个类型部分中声明。（即任何其他因为需要任意符号先行减慢编译速度的类型。）
 
-Example:
+示例：
 
 .. code-block:: nim
     :test: "nim c $1"
   type
-    Node = ref object  # a reference to an object with the following field:
-      le, ri: Node     # left and right subtrees
-      sym: ref Sym     # leaves contain a reference to a Sym
+    Node = ref object  # 对具有以下字段的对象的引用：
+      le, ri: Node     # 左右子树
+      sym: ref Sym     # 叶节点包含Sym的引用
 
-    Sym = object       # a symbol
-      name: string     # the symbol's name
-      line: int        # the line the symbol was declared in
-      code: Node       # the symbol's abstract syntax tree
+    Sym = object       # 符号
+      name: string     # 符号名
+      line: int        # 符号声明的行
+      code: Node       # 符号的抽象语法树
 
 
-Type conversions
+类型转换
 ----------------
-Nim distinguishes between `type casts`:idx: and `type conversions`:idx:.
-Casts are done with the ``cast`` operator and force the compiler to
-interpret a bit pattern to be of another type.
+Nim区分 `type casts`:idx: 和 `type conversions`:idx: 。使用 ``cast`` 运算符完成转换，并强制编译器将位模式解释为另一种类型。
 
-Type conversions are a much more polite way to convert a type into another:
-They preserve the abstract *value*, not necessarily the *bit-pattern*. If a
-type conversion is not possible, the compiler complains or an exception is
-raised.
+类型转换是将类型转换为另一种类型的更友好的方式：它们保留抽象 *值* ，不一定是 *位模式* 。如果无法进行类型转换，则编译器会引发异常。
 
-The syntax for type conversions is ``destination_type(expression_to_convert)``
-(like an ordinary call):
+类型转换语法 ``destination_type(expression_to_convert)`` (像平时的调用):
 
 .. code-block:: nim
   proc getID(x: Person): int =
     Student(x).id
 
-The ``InvalidObjectConversionError`` exception is raised if ``x`` is not a
-``Student``.
+如果 ``x`` 不是 ``Student`` ，则引发 ``InvalidObjectConversionError`` 异常。
 
 
-Object variants
+对象变体
 ---------------
-Often an object hierarchy is overkill in certain situations where simple
-variant types are needed.
 
-An example:
+在需要简单变体类型的某些情况下，对象层次结构通常是过度的。
+
+一个示例:
 
 .. code-block:: nim
     :test: "nim c $1"
 
-  # This is an example how an abstract syntax tree could be modelled in Nim
+  # 这是一个如何在Nim中建模抽象语法树的示例
   type
-    NodeKind = enum  # the different node types
-      nkInt,          # a leaf with an integer value
-      nkFloat,        # a leaf with a float value
-      nkString,       # a leaf with a string value
-      nkAdd,          # an addition
-      nkSub,          # a subtraction
-      nkIf            # an if statement
+    NodeKind = enum  # 不同节点类型
+      nkInt,          # 整型值叶节点
+      nkFloat,        # 浮点型叶节点
+      nkString,       # 字符串叶节点
+      nkAdd,          # 加法
+      nkSub,          # 减法
+      nkIf            # if语句
     Node = ref object
-      case kind: NodeKind  # the ``kind`` field is the discriminator
+      case kind: NodeKind  # ``kind`` 字段是鉴别字段
       of nkInt: intVal: int
       of nkFloat: floatVal: float
       of nkString: strVal: string
@@ -160,25 +129,19 @@ An example:
         condition, thenPart, elsePart: Node
 
   var n = Node(kind: nkFloat, floatVal: 1.0)
-  # the following statement raises an `FieldError` exception, because
-  # n.kind's value does not fit:
+  # 以下语句引发了一个`FieldError`异常，因为 n.kind的值不匹配：
   n.strVal = ""
 
-As can been seen from the example, an advantage to an object hierarchy is that
-no conversion between different object types is needed. Yet, access to invalid
-object fields raises an exception.
+从该示例可以看出，对象层次结构的优点是不需要在不同对象类型之间进行转换。但是，访问无效对象字段会引发异常。
 
 
-Method call syntax
+方法调用语法
 ------------------
 
-There is a syntactic sugar for calling routines:
-The syntax ``obj.method(args)`` can be used instead of ``method(obj, args)``.
-If there are no remaining arguments, the parentheses can be omitted:
-``obj.len`` (instead of ``len(obj)``).
+调用例程有一个语法糖：语法 ``obj.method（args）`` 可以用来代替 ``method（obj，args）`` 。如果没有剩余的参数，则可以省略括号： ``obj.len`` （而不是 ``len（obj）`` ）。
 
-This method call syntax is not restricted to objects, it can be used
-for any type:
+此方法调用语法不限于对象，它可以用于任何类型：
+
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -189,10 +152,10 @@ for any type:
   echo({'a', 'b', 'c'}.card)
   stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
 
-(Another way to look at the method call syntax is that it provides the missing
-postfix notation.)
+（查看方法调用语法的另一种方法是它提供了缺少的后缀表示法。）
 
-So "pure object oriented" code is easy to write:
+
+所以“纯面向对象”代码很容易编写：
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -203,19 +166,16 @@ So "pure object oriented" code is easy to write:
   stdout.writeLine(" is the maximum!")
 
 
-Properties
+属性
 ----------
-As the above example shows, Nim has no need for *get-properties*:
-Ordinary get-procedures that are called with the *method call syntax* achieve
-the same. But setting a value is different; for this a special setter syntax
-is needed:
+如上例所示，Nim不需要 *get-properties* ：使用 *方法调用语法* 调用的普通get-procedures实现相同。但设定值是不同的；为此需要一个特殊的setter语法：
 
 .. code-block:: nim
     :test: "nim c $1"
 
   type
     Socket* = ref object of RootObj
-      h: int # cannot be accessed from the outside of the module due to missing star
+      h: int # 由于缺少星号，无法从模块外部访问
 
   proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of host address
@@ -229,11 +189,10 @@ is needed:
   new s
   s.host = 34  # same as `host=`(s, 34)
 
-(The example also shows ``inline`` procedures.)
+（该示例还显示了 ``inline`` 程序。）
 
 
-The ``[]`` array access operator can be overloaded to provide
-`array properties`:idx:\ :
+可以重载 ``[]`` 数组访问运算符来提供 `数组属性`:idx: ：
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -257,15 +216,13 @@ The ``[]`` array access operator can be overloaded to provide
     of 2: result = v.z
     else: assert(false)
 
-The example is silly, since a vector is better modelled by a tuple which
-already provides ``v[]`` access.
+这个例子可以更好的用元组展示，元组提供 ``v[]`` 访问。
 
 
-Dynamic dispatch
+动态分发
 ----------------
 
-Procedures always use static dispatch. For dynamic dispatch replace the
-``proc`` keyword by ``method``:
+程序总是使用静态调度。对于动态调度，用 ``method`` 替换 ``proc`` 关键字：
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -276,9 +233,9 @@ Procedures always use static dispatch. For dynamic dispatch replace the
     PlusExpr = ref object of Expression
       a, b: Expression
 
-  # watch out: 'eval' relies on dynamic binding
+  # 注意：'eval'依赖于动态绑定
   method eval(e: Expression): int {.base.} =
-    # override this base method
+    # 重写基方法
     quit "to override!"
 
   method eval(e: Literal): int = e.x
@@ -289,15 +246,11 @@ Procedures always use static dispatch. For dynamic dispatch replace the
 
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
 
-Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
-because it makes more sense for them to use static binding, but ``eval`` is a
-method because it requires dynamic binding.
+请注意，在示例中，构造函数 ``newLit`` 和 ``newPlus`` 是procs，因为它们使用静态绑定更有意义，但 ``eval`` 是一种方法，因为它需要动态绑定。
 
-**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
-``--multimethods:on`` when compiling.
+**注意：** 从Nim 0.20开始，要使用多方法，必须在编译时明确传递 ``--multimethods：on`` 。
 
-In a multi-method all parameters that have an object type are used for the
-dispatching:
+在多方法中，所有具有对象类型的参数都用于分发：
 
 .. code-block:: nim
     :test: "nim c --multiMethods:on $1"
@@ -322,37 +275,25 @@ dispatching:
   collide(a, b) # output: 2
 
 
-As the example demonstrates, invocation of a multi-method cannot be ambiguous:
-Collide 2 is preferred over collide 1 because the resolution works from left to
-right. Thus ``Unit, Thing`` is preferred over ``Thing, Unit``.
+如示例所示，多方法的调用不能有歧义：collide2比collide1更受欢迎，因为解析是从左到右的。因此 ``Unit，Thing`` 比 ``Thing，Unit`` 更准确。
 
-**Performance note**: Nim does not produce a virtual method table, but
-generates dispatch trees. This avoids the expensive indirect branch for method
-calls and enables inlining. However, other optimizations like compile time
-evaluation or dead code elimination do not work with methods.
+**性能说明**: Nim不会生成虚函数表，但会生成调度树。这避免了方法调用的昂贵间接分支并启用内联。但是，其他优化（如编译时评估或死代码消除）不适用于方法。
 
 
-Exceptions
+异常
 ==========
 
-In Nim exceptions are objects. By convention, exception types are
-suffixed with 'Error'. The `system <system.html>`_ module defines an
-exception hierarchy that you might want to stick to. Exceptions derive from
-``system.Exception``, which provides the common interface.
-
-Exceptions have to be allocated on the heap because their lifetime is unknown.
-The compiler will prevent you from raising an exception created on the stack.
-All raised exceptions should at least specify the reason for being raised in
-the ``msg`` field.
-
-A convention is that exceptions should be raised in *exceptional* cases:
-For example, if a file cannot be opened, this should not raise an
-exception since this is quite common (the file may not exist).
+在Nim中，异常是对象。按照惯例，异常类型后缀为“Error”。 `system <system.html>`_ 模块定义了异常层次结构。异常来自 ``system.Exception`` ，它提供了通用接口。
 
 
-Raise statement
+必须在堆上分配异常，因为它们的生命周期是未知的。编译器将阻止您引发在栈上创建的异常。所有引发的异常应该至少指定在 ``msg`` 字段中引发的原因。
+
+
+一个约定是只在异常情况下应该引发异常：例如，如果无法打开文件，不应引发异常，这很常见（文件可能不存在）。
+
+Raise语句
 ---------------
-Raising an exception is done with the ``raise`` statement:
+发起一个异常用 ``raise`` 语句：
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -362,25 +303,22 @@ Raising an exception is done with the ``raise`` statement:
   e.msg = "the request to the OS failed"
   raise e
 
-If the ``raise`` keyword is not followed by an expression, the last exception
-is *re-raised*. For the purpose of avoiding repeating this common code pattern,
-the template ``newException`` in the ``system`` module can be used:
+如果 ``raise`` 关键字后面没有表达式，则最后一个异常是 *re-raised* 。为了避免重复这种常见的代码模式，可以使用 ``system`` 模块中的模板 ``newException`` ：
 
 .. code-block:: nim
   raise newException(OSError, "the request to the OS failed")
 
 
-Try statement
+Try语句
 -------------
 
-The ``try`` statement handles exceptions:
+``try`` 语句处理异常：
 
 .. code-block:: nim
     :test: "nim c $1"
   from strutils import parseInt
 
-  # read the first two lines of a text file that should contain numbers
-  # and tries to add them
+  # 读取应包含数字的文本文件的前两行并尝试添加
   var
     f: File
   if open(f, "numbers.txt"):
@@ -401,26 +339,17 @@ The ``try`` statement handles exceptions:
     finally:
       close(f)
 
-The statements after the ``try`` are executed unless an exception is
-raised. Then the appropriate ``except`` part is executed.
 
-The empty ``except`` part is executed if there is an exception that is
-not explicitly listed. It is similar to an ``else`` part in ``if``
-statements.
+除非引发异常，否则执行 ``try`` 之后的语句。然后执行适当的 ``except`` 部分。
 
-If there is a ``finally`` part, it is always executed after the
-exception handlers.
+如果存在未明确列出的异常，则执行空的 ``except`` 部分。它类似于 ``if`` 语句中的 ``else`` 部分。
 
-The exception is *consumed* in an ``except`` part. If an exception is not
-handled, it is propagated through the call stack. This means that often
-the rest of the procedure - that is not within a ``finally`` clause -
-is not executed (if an exception occurs).
+如果有一个 ``finally`` 部分，它总是在异常处理程序之后执行。
 
-If you need to *access* the actual exception object or message inside an
-``except`` branch you can use the `getCurrentException()
-<system.html#getCurrentException>`_ and `getCurrentExceptionMsg()
-<system.html#getCurrentExceptionMsg>`_ procs from the `system <system.html>`_
-module. Example:
+在 ``except`` 部分中 *消耗* 异常。如果未处理异常，则通过调用堆栈传播该异常。这意味着程序的其余部分 - 不在 ``finally`` 子句中 - 通常不会被执行（如果发生异常）。
+
+如果你需要*访问 ``except`` 分支中的实际异常对象或消息，你可以使用来自 `system <system.html>`_ 模块的 `getCurrentException()<system.html#getCurrentException>`_ 和
+ `getCurrentExceptionMsg()<system.html#getCurrentExceptionMsg>`_ 的过程。例：
 
 .. code-block:: nim
   try:
@@ -432,15 +361,12 @@ module. Example:
     echo "Got exception ", repr(e), " with message ", msg
 
 
-Annotating procs with raised exceptions
+引发异常的procs注释
 ---------------------------------------
 
-Through the use of the optional ``{.raises.}`` pragma you can specify that a
-proc is meant to raise a specific set of exceptions, or none at all. If the
-``{.raises.}`` pragma is used, the compiler will verify that this is true. For
-instance, if you specify that a proc raises ``IOError``, and at some point it
-(or one of the procs it calls) starts raising a new exception the compiler will
-prevent that proc from compiling. Usage example:
+通过使用可选的 ``{.raises.}`` pragma，你可以指定过程是为了引发一组特定的异常，或者根本没有异常。如果使用 ``{.raises.}`` 编译指示，编译器将验证这是否为真。例如，如果指定过程引发
+``IOError`` ，并且在某些时候它（或它调用的一个过程）开始引发一个新的异常，编译器将阻止该过程进行编译。用法示例：
+
 
 .. code-block:: nim
   proc complexProc() {.raises: [IOError, ArithmeticError].} =
@@ -449,51 +375,39 @@ prevent that proc from compiling. Usage example:
   proc simpleProc() {.raises: [].} =
     ...
 
-Once you have code like this in place, if the list of raised exception changes
-the compiler will stop with an error specifying the line of the proc which
-stopped validating the pragma and the raised exception not being caught, along
-with the file and line where the uncaught exception is being raised, which may
-help you locate the offending code which has changed.
+一旦你有这样的代码，如果引发的异常列表发生了变化，编译器就会停止，并指出过程停止验证编译指示的行，没有捕获的异常和它的行数以及文件。
+正在引发未捕获的异常，这可能有助于您找到已更改的有问题的代码。
 
-If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
-also help you. You can add the ``{.effects.}`` pragma statement to your proc and
-the compiler will output all inferred effects up to that point (exception
-tracking is part of Nim's effect system). Another more roundabout way to
-find out the list of exceptions raised by a proc is to use the Nim ``doc2``
-command which generates documentation for a whole module and decorates all
-procs with the list of raised exceptions. You can read more about Nim's
-`effect system and related pragmas in the manual <manual.html#effect-system>`_.
+如果你想将 ``{.raises.}`` 编译指示添加到现有代码中，编译器也可以帮助你。你可以在你的过程中添加 ``{.effects.}`` 编译指示语句，
+编译器将输出所有推断的效果直到那一点（异常跟踪是Nim效果系统的一部分）。
+查找proc引发的异常列表的另一种更迂回的方法是使用Nim ``doc2`` 命令，该命令为整个模块生成文档，并使用引发的异常列表来装饰所有过程。
+您可以在手册中阅读有关Nim的 `效果系统和相关编译指示的更多信息<manual.html＃effect-system>`_ 。
 
-
-Generics
+泛型
 ========
 
-Generics are Nim's means to parametrize procs, iterators or types
-with `type parameters`:idx:. They are most useful for efficient type safe
-containers:
+泛型是Nim用 `类型化参数`:idx: 参数化过程，迭代器或类型的方法。它们对于高效型安全容器很有用：
 
 .. code-block:: nim
     :test: "nim c $1"
   type
-    BinaryTree*[T] = ref object # BinaryTree is a generic type with
-                                # generic param ``T``
-      le, ri: BinaryTree[T]     # left and right subtrees; may be nil
-      data: T                   # the data stored in a node
+    BinaryTree*[T] = ref object # 二叉树是左右子树用泛型参数 ``T`` 可能nil的泛型
+      le, ri: BinaryTree[T]     
+      data: T                   # 数据存储在节点
 
   proc newNode*[T](data: T): BinaryTree[T] =
-    # constructor for a node
+    # 节点构造
     new(result)
     result.data = data
 
   proc add*[T](root: var BinaryTree[T], n: BinaryTree[T]) =
-    # insert a node into the tree
+    # 插入节点
     if root == nil:
       root = n
     else:
       var it = root
       while it != nil:
-        # compare the data items; uses the generic ``cmp`` proc
-        # that works for any type that has a ``==`` and ``<`` operator
+        # 比较数据; 使用对任何有 ``==`` and ``<`` 操作符的类型有用的泛型 ``cmp`` 过程
         var c = cmp(it.data, n.data)
         if c < 0:
           if it.le == nil:
@@ -507,65 +421,57 @@ containers:
           it = it.ri
 
   proc add*[T](root: var BinaryTree[T], data: T) =
-    # convenience proc:
+    # 方便过程:
     add(root, newNode(data))
 
   iterator preorder*[T](root: BinaryTree[T]): T =
-    # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # 二叉树前序遍历。
+    # 因为递归迭代器没有实现，用显式的堆栈(更高效):
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
       while n != nil:
         yield n.data
-        add(stack, n.ri)  # push right subtree onto the stack
-        n = n.le          # and follow the left pointer
+        add(stack, n.ri)  # 右子树push到堆栈
+        n = n.le          # 跟随左指针
 
   var
-    root: BinaryTree[string] # instantiate a BinaryTree with ``string``
-  add(root, newNode("hello")) # instantiates ``newNode`` and ``add``
-  add(root, "world")          # instantiates the second ``add`` proc
+    root: BinaryTree[string] # 用 ``string`` 实例化一个二叉树 
+  add(root, newNode("hello")) # 实例化 ``newNode`` 和 ``add``
+  add(root, "world")          # 实例化第二个 ``add`` 过程
   for str in preorder(root):
     stdout.writeLine(str)
 
-The example shows a generic binary tree. Depending on context, the brackets are
-used either to introduce type parameters or to instantiate a generic proc,
-iterator or type. As the example shows, generics work with overloading: the
-best match of ``add`` is used. The built-in ``add`` procedure for sequences
-is not hidden and is used in the ``preorder`` iterator.
+该示例显示了通用二叉树。根据上下文，括号用于引入类型参数或实例化通用过程、迭代器或类型。如示例所示，泛型使用重载：使用“add”的最佳匹配。
+序列的内置 ``add`` 过程没有隐藏，而是在 ``preorder`` 迭代器中使用。
 
 
-Templates
+模板
 =========
 
-Templates are a simple substitution mechanism that operates on Nim's
-abstract syntax trees. Templates are processed in the semantic pass of the
-compiler. They integrate well with the rest of the language and share none
-of C's preprocessor macros flaws.
+模板是一种简单的替换机制，可以在Nim的抽象语法树上运行。模板在编译器的语义传递中处理。它们与语言的其余部分很好地集成，并且没有C的预处理器宏缺陷。
 
-To *invoke* a template, call it like a procedure.
+要 *调用* 模板，将其作为过程。
+
 
 Example:
 
 .. code-block:: nim
   template `!=` (a, b: untyped): untyped =
-    # this definition exists in the System module
+    # 此定义存在于system模块中
     not (a == b)
 
-  assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
+  assert(5 != 6) # 编译器将其重写为：assert（not（5 == 6））
 
-The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact
-templates: this has the benefit that if you overload the ``==`` operator,
-the ``!=`` operator is available automatically and does the right thing. (Except
-for IEEE floating point numbers - NaN breaks basic boolean logic.)
+``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` 操作符实际是模板：这对重载自动可用的 ``==`` ,  ``!=`` 操作符有好处。 
+（除了IEEE浮点数 -  NaN打破了基本的布尔逻辑。）
 
-``a > b`` is transformed into ``b < a``.
-``a in b`` is transformed into ``contains(b, a)``.
-``notin`` and ``isnot`` have the obvious meanings.
+``a > b`` 变换成 ``b < a`` 。
+``a in b`` 变换成 ``contains(b, a)`` 。
+``notin`` 和 ``isnot`` 顾名思义。
 
-Templates are especially useful for lazy evaluation purposes. Consider a
-simple proc for logging:
+
+模板对于延迟计算特别有用。看一个简单的日志记录过程：
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -579,11 +485,9 @@ simple proc for logging:
     x = 4
   log("x has the value: " & $x)
 
-This code has a shortcoming: if ``debug`` is set to false someday, the quite
-expensive ``$`` and ``&`` operations are still performed! (The argument
-evaluation for procedures is *eager*).
+这段代码有一个缺点：如果 ``debug`` 有一天设置为false，那么仍然会执行 ``$`` 和 ``&`` 操作！ （程序的参数求值是 *急切* ）。
 
-Turning the ``log`` proc into a template solves this problem:
+将 ``log`` 过程转换为模板解决了这个问题：
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -597,15 +501,12 @@ Turning the ``log`` proc into a template solves this problem:
     x = 4
   log("x has the value: " & $x)
 
-The parameters' types can be ordinary types or the meta types ``untyped``,
-``typed``, or ``type``. ``type`` suggests that only a type symbol may be given
-as an argument, and ``untyped`` means symbol lookups and type resolution is not
-performed before the expression is passed to the template.
+参数的类型可以是普通类型，也可以是元类型 ``untyped`` ， ``typed`` 或 ``type`` 。 ``type`` 表示只有一个类型符号可以作为参数给出， 
+``untyped`` 表示符号查找，并且在表达式传递给模板之前不执行类型解析。
 
-If the template has no explicit return type,
-``void`` is used for consistency with procs and methods.
+如果模板没有显式返回类型，则使用 ``void`` 与过程和方法保持一致。
 
-To pass a block of statements to a template, use ``untyped`` for the last parameter:
+要将一个语句块传递给模板，请使用 ``untyped`` 作为最后一个参数：
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -626,13 +527,10 @@ To pass a block of statements to a template, use ``untyped`` for the last parame
     txt.writeLine("line 1")
     txt.writeLine("line 2")
 
-In the example the two ``writeLine`` statements are bound to the ``body``
-parameter. The ``withFile`` template contains boilerplate code and helps to
-avoid a common bug: to forget to close the file. Note how the
-``let fn = filename`` statement ensures that ``filename`` is evaluated only
-once.
+在示例中，两个 ``writeLine`` 语句绑定到 ``body`` 参数。 ``withFile`` 模板包含样板代码，有助于避免忘记关闭文件的常见错误。
+注意 ``let fn = filename`` 语句如何确保 ``filename`` 只被求值一次。
 
-Example: Lifting Procs
+示例: 提升过程
 ----------------------
 
 .. code-block:: nim
@@ -640,14 +538,13 @@ Example: Lifting Procs
   import math
 
   template liftScalarProc(fname) =
-    ## Lift a proc taking one scalar parameter and returning a
-    ## scalar value (eg ``proc sssss[T](x: T): float``),
-    ## to provide templated procs that can handle a single
-    ## parameter of seq[T] or nested seq[seq[]] or the same type
+    ## 使用一个标量参数提升一个proc并返回一个
+    ## 标量值（例如 ``proc sssss[T](x: T): float``）,
+    ## 来提供模板过程可以处理单个seq[T]形参或嵌套seq[seq[]]或同样的类型
     ##
     ## .. code-block:: Nim
     ##  liftScalarProc(abs)
-    ##  # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
+    ##  现在 abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
     proc fname[T](x: openarray[T]): auto =
       var temp: T
       type outType = type(fname(temp))
@@ -655,26 +552,19 @@ Example: Lifting Procs
       for i in 0..<x.len:
         result[i] = fname(x[i])
 
-  liftScalarProc(sqrt)   # make sqrt() work for sequences
+  liftScalarProc(sqrt)   # 让sqrt()可以用于序列
   echo sqrt(@[4.0, 16.0, 25.0, 36.0])   # => @[2.0, 4.0, 5.0, 6.0]
 
-Compilation to JavaScript
+编译成Javascript
 =========================
 
-Nim code can be compiled to JavaScript. However in order to write
-JavaScript-compatible code you should remember the following:
-- ``addr`` and ``ptr`` have slightly different semantic meaning in JavaScript.
-  It is recommended to avoid those if you're not sure how they are translated
-  to JavaScript.
-- ``cast[T](x)`` in JavaScript is translated to ``(x)``, except for casting
-  between signed/unsigned ints, in which case it behaves as static cast in
-  C language.
-- ``cstring`` in JavaScript means JavaScript string. It is a good practice to
-  use ``cstring`` only when it is semantically appropriate. E.g. don't use
-  ``cstring`` as a binary data buffer.
+Nim代码可以编译成JavaScript。为了写JavaScript兼容的代码你要记住以下几个方面：
+- ``addr`` 和 ``ptr`` 在JavaScript中有略微不同的语义。你不确定它们是怎样编译成JavaScript，建议避免使用。
+- 在JavaScript中的 ``cast[T](x)`` 被转换为 ``(x)`` ，除了在有符号/无符号整数之间进行转换，在这种情况下，它在C语言中表现为静态强制转换。
+- ``cstring`` 在JavaScript中表示JavaScript字符串。 只有在语义上合适时才使用 ``cstring`` 是一个好习惯。例如。不要使用 ``cstring`` 作为二进制数据缓冲区。
 
 
 Part 3
 ======
 
-Next part will be entirely about metaprogramming via macros: `Part III <tut3.html>`_
+下一部分将是完全关于使用宏的元编程： `Part III <tut3.html>`_
