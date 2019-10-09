@@ -80,7 +80,7 @@ type
 
   Check = tuple[nilability: Nilability, map: NilMap]
 
-let RESULT_ID = -1
+let resultId = -1
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check
 proc checkCondition(n: PNode, conf: ConfigRef, map: NilMap, isElse: bool, base: bool): NilMap
@@ -175,7 +175,7 @@ proc symbol(n: PNode): Symbol =
   case n.kind:
   of nkSym:
     if $n == "result":
-      result = RESULT_ID
+      result = resultId
     else:
       result = n.sym.id
   of nkHiddenAddr, nkAddr:
@@ -344,7 +344,7 @@ proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
 proc checkReturn(n, conf, map): Check =
   # return n same as result = n; return
   result = check(n[0], conf, map)
-  result.map.store(RESULT_ID, result.nilability, TAssign, n.info)
+  result.map.store(resultId, result.nilability, TAssign, n.info)
 
 
 proc checkFor(n, conf, map): Check =
@@ -532,7 +532,7 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
     result = checkInfix(n, conf, map).map
 
 proc checkResult(n, conf, map) =
-  let resultNilability = map[RESULT_ID] # "result"]
+  let resultNilability = map[resultId] # "result"]
   case resultNilability:
   of Nil:
     localError conf, n.info, "return value is nil"
@@ -637,31 +637,31 @@ proc typeNilability(typ: PType): Nilability =
     MaybeNil
   else:
     Safe
+
 proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   var map = newNilMap()
   let line = s.ast.info.line
   let fileIndex = s.ast.info.fileIndex.int
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
   # TODO
-  if not filename.contains("nim/lib") and not filename.contains("zero-functional") and not filename.contains("/lib"):
-    for i, child in s.typ.n.sons:
-      if i > 0:
+  for i, child in s.typ.n.sons:
+    if i > 0:
         #if not child.isNil and not s.ast.isNil:
         #if s.ast.sons.len >= 4 and s.ast.sons[3].sons.len > i:
          # if s.ast.sons[3].sons[i].kind != nkIdentDefs:
-        if child.kind != nkSym:
-          continue
-        map.store(symbol(child), typeNilability(child.typ), TArg, child.info)
+      if child.kind != nkSym:
+        continue
+      map.store(symbol(child), typeNilability(child.typ), TArg, child.info)
     # even not nil is nil by default
     # map["result"] = if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe
     # if not s.typ[0].isNil:
     #   echo s.typ[0].kind
 
-    map.store(RESULT_ID, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+  map.store(resultId, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
     # echo map
-    let res = check(body, conf, map)
-    if res.nilability == Safe and (not res.map.history.hasKey(RESULT_ID) or res.map.history[RESULT_ID].len <= 1):
-      res.map.store(RESULT_ID, Safe, TAssign, s.ast.info)
-    if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
+  let res = check(body, conf, map)
+  if res.nilability == Safe and (not res.map.history.hasKey(resultId) or res.map.history[resultId].len <= 1):
+    res.map.store(resultId, Safe, TAssign, s.ast.info)
+  if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
       # echo res.map
-      checkResult(s.ast, conf, res.map)
+    checkResult(s.ast, conf, res.map)
