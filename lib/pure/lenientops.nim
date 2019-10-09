@@ -12,7 +12,7 @@
 ## which work for mixed float/int operands.
 ## All operations convert the integer operand into the
 ## type of the float operand. For numerical expressions, the return
-## type is always the type of the float involved in the expresssion,
+## type is always the type of the float involved in the expression,
 ## i.e., there is no auto conversion from float32 to float64.
 ##
 ## Note: In general, auto-converting from int to float loses
@@ -57,4 +57,4 @@ proc `<=`*[I: SomeInteger, F: SomeFloat](f: F, i: I): bool {.noSideEffect, inlin
 
 # Note that we must not defined `>=` and `>`, because system.nim already has a
 # template with signature (x, y: untyped): untyped, which would lead to
-# ambigous calls.
+# ambiguous calls.

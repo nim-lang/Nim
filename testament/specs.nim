@@ -7,12 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-import sequtils, parseutils, strutils, os, osproc, streams, parsecfg
+import sequtils, parseutils, strutils, os, streams, parsecfg
 
 var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
+let isAzure* = existsEnv("TF_BUILD")
 
 var skips*: seq[string]
 
@@ -34,6 +35,7 @@ type
     reLinesDiffer,      # expected and given line numbers differ
     reOutputsDiffer,
     reExitcodesDiffer,
+    reTimeout,
     reInvalidPeg,
     reCodegenFailure,
     reCodeNotFound,
@@ -70,6 +72,8 @@ type
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
+    timeout*: float # in seconds, fractions possible,
+                    # but don't rely on much precision
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
@@ -121,6 +125,9 @@ proc addLine*(self: var string; a,b: string) =
   self.add a
   self.add b
   self.add "\n"
+
+proc initSpec*(filename: string): TSpec =
+  result.file = filename
 
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
@@ -208,6 +215,8 @@ proc parseSpec*(filename: string): TSpec =
           if isTravis: result.err = reDisabled
         of "appveyor":
           if isAppVeyor: result.err = reDisabled
+        of "azure":
+          if isAzure: result.err = reDisabled
         of "32bit":
           if sizeof(int) == 4:
             result.err = reDisabled
@@ -222,6 +231,11 @@ proc parseSpec*(filename: string): TSpec =
         result.ccodeCheck = e.value
       of "maxcodesize":
         discard parseInt(e.value, result.maxCodeSize)
+      of "timeout":
+        try:
+          result.timeout = parseFloat(e.value)
+        except ValueError:
+          result.parseErrors.addLine "cannot interpret as a float: ", e.value
       of "target", "targets":
         for v in e.value.normalize.splitWhitespace:
           case v

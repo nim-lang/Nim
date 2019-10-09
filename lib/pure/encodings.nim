@@ -34,66 +34,68 @@ when defined(windows):
     while i < a.len and j < b.len:
       if a[i] in {'-', '_'}: inc i
       if b[j] in {'-', '_'}: inc j
-      if i < a.len and j < b.len and a[i].toLowerAscii != b[j].toLowerAscii: return false
+      if i < a.len and j < b.len and
+          a[i].toLowerAscii != b[j].toLowerAscii:
+        return false
       inc i
       inc j
     result = i == a.len and j == b.len
 
   const
     winEncodings = [
-      (1,   "OEMCP"), # current OEM codepage
-      (037, "IBM037"), # IBM EBCDIC US-Canada
-      (437, "IBM437"), # OEM United States
-      (500, "IBM500"), # IBM EBCDIC International
-      (708, "ASMO-708"), # Arabic (ASMO 708)
-      (709, "ASMO_449"), # Arabic (ASMO-449+, BCON V4)
-      (710, ""), # Arabic - Transparent Arabic
-      (720, "DOS-720"), # Arabic (Transparent ASMO); Arabic (DOS)
-      (737, "ibm737"), # OEM Greek (formerly 437G); Greek (DOS)
-      (775, "ibm775"), # OEM Baltic; Baltic (DOS)
-      (850, "ibm850"), # OEM Multilingual Latin 1; Western European (DOS)
-      (852, "ibm852"), # OEM Latin 2; Central European (DOS)
-      (855, "IBM855"), # OEM Cyrillic (primarily Russian)
-      (857, "ibm857"), # OEM Turkish; Turkish (DOS)
-      (858, "IBM00858"), # OEM Multilingual Latin 1 + Euro symbol
-      (860, "IBM860"), # OEM Portuguese; Portuguese (DOS)
-      (861, "ibm861"), # OEM Icelandic; Icelandic (DOS)
-      (862, "DOS-862"), # OEM Hebrew; Hebrew (DOS)
-      (863, "IBM863"), # OEM French Canadian; French Canadian (DOS)
-      (864, "IBM864"), # OEM Arabic; Arabic (864)
-      (865, "IBM865"), # OEM Nordic; Nordic (DOS)
-      (866, "cp866"), # OEM Russian; Cyrillic (DOS)
-      (869, "ibm869"), # OEM Modern Greek; Greek, Modern (DOS)
-      (870, "IBM870"), # IBM EBCDIC Multilingual/ROECE (Latin 2); IBM EBCDIC Multilingual Latin 2
-      (874, "windows-874"), # ANSI/OEM Thai (same as 28605, ISO 8859-15); Thai (Windows)
-      (875, "cp875"), # IBM EBCDIC Greek Modern
-      (932, "shift_jis"), # ANSI/OEM Japanese; Japanese (Shift-JIS)
-      (936, "gb2312"), # ANSI/OEM Simplified Chinese (PRC, Singapore); Chinese Simplified (GB2312)
+      (1, "OEMCP"),            # current OEM codepage
+      (037, "IBM037"),         # IBM EBCDIC US-Canada
+      (437, "IBM437"),         # OEM United States
+      (500, "IBM500"),         # IBM EBCDIC International
+      (708, "ASMO-708"),       # Arabic (ASMO 708)
+      (709, "ASMO_449"),       # Arabic (ASMO-449+, BCON V4)
+      (710, ""),               # Arabic - Transparent Arabic
+      (720, "DOS-720"),        # Arabic (Transparent ASMO); Arabic (DOS)
+      (737, "ibm737"),         # OEM Greek (formerly 437G); Greek (DOS)
+      (775, "ibm775"),         # OEM Baltic; Baltic (DOS)
+      (850, "ibm850"),         # OEM Multilingual Latin 1; Western European (DOS)
+      (852, "ibm852"),         # OEM Latin 2; Central European (DOS)
+      (855, "IBM855"),         # OEM Cyrillic (primarily Russian)
+      (857, "ibm857"),         # OEM Turkish; Turkish (DOS)
+      (858, "IBM00858"),       # OEM Multilingual Latin 1 + Euro symbol
+      (860, "IBM860"),         # OEM Portuguese; Portuguese (DOS)
+      (861, "ibm861"),         # OEM Icelandic; Icelandic (DOS)
+      (862, "DOS-862"),        # OEM Hebrew; Hebrew (DOS)
+      (863, "IBM863"),         # OEM French Canadian; French Canadian (DOS)
+      (864, "IBM864"),         # OEM Arabic; Arabic (864)
+      (865, "IBM865"),         # OEM Nordic; Nordic (DOS)
+      (866, "cp866"),          # OEM Russian; Cyrillic (DOS)
+      (869, "ibm869"),         # OEM Modern Greek; Greek, Modern (DOS)
+      (870, "IBM870"),         # IBM EBCDIC Multilingual/ROECE (Latin 2); IBM EBCDIC Multilingual Latin 2
+      (874, "windows-874"),    # ANSI/OEM Thai (same as 28605, ISO 8859-15); Thai (Windows)
+      (875, "cp875"),          # IBM EBCDIC Greek Modern
+      (932, "shift_jis"),      # ANSI/OEM Japanese; Japanese (Shift-JIS)
+      (936, "gb2312"),         # ANSI/OEM Simplified Chinese (PRC, Singapore); Chinese Simplified (GB2312)
       (949, "ks_c_5601-1987"), # ANSI/OEM Korean (Unified Hangul Code)
-      (950, "big5"), # ANSI/OEM Traditional Chinese (Taiwan; Hong Kong SAR, PRC); Chinese Traditional (Big5)
-      (1026, "IBM1026"), # IBM EBCDIC Turkish (Latin 5)
-      (1047, "IBM01047"), # IBM EBCDIC Latin 1/Open System
-      (1140, "IBM01140"), # IBM EBCDIC US-Canada (037 + Euro symbol); IBM EBCDIC (US-Canada-Euro)
-      (1141, "IBM01141"), # IBM EBCDIC Germany (20273 + Euro symbol); IBM EBCDIC (Germany-Euro)
-      (1142, "IBM01142"), # IBM EBCDIC Denmark-Norway (20277 + Euro symbol); IBM EBCDIC (Denmark-Norway-Euro)
-      (1143, "IBM01143"), # IBM EBCDIC Finland-Sweden (20278 + Euro symbol); IBM EBCDIC (Finland-Sweden-Euro)
-      (1144, "IBM01144"), # IBM EBCDIC Italy (20280 + Euro symbol); IBM EBCDIC (Italy-Euro)
-      (1145, "IBM01145"), # IBM EBCDIC Latin America-Spain (20284 + Euro symbol); IBM EBCDIC (Spain-Euro)
-      (1146, "IBM01146"), # IBM EBCDIC United Kingdom (20285 + Euro symbol); IBM EBCDIC (UK-Euro)
-      (1147, "IBM01147"), # IBM EBCDIC France (20297 + Euro symbol); IBM EBCDIC (France-Euro)
-      (1148, "IBM01148"), # IBM EBCDIC International (500 + Euro symbol); IBM EBCDIC (International-Euro)
-      (1149, "IBM01149"), # IBM EBCDIC Icelandic (20871 + Euro symbol); IBM EBCDIC (Icelandic-Euro)
-      (1200, "utf-16"), # Unicode UTF-16, little endian byte order (BMP of ISO 10646); available only to managed applications
-      (1201, "unicodeFFFE"), # Unicode UTF-16, big endian byte order; available only to managed applications
-      (1250, "windows-1250"), # ANSI Central European; Central European (Windows)
-      (1251, "windows-1251"), # ANSI Cyrillic; Cyrillic (Windows)
-      (1252, "windows-1252"), # ANSI Latin 1; Western European (Windows)
-      (1253, "windows-1253"), # ANSI Greek; Greek (Windows)
-      (1254, "windows-1254"), # ANSI Turkish; Turkish (Windows)
-      (1255, "windows-1255"), # ANSI Hebrew; Hebrew (Windows)
-      (1256, "windows-1256"), # ANSI Arabic; Arabic (Windows)
-      (1257, "windows-1257"), # ANSI Baltic; Baltic (Windows)
-      (1258, "windows-1258"), # ANSI/OEM Vietnamese; Vietnamese (Windows)
+      (950, "big5"),           # ANSI/OEM Traditional Chinese (Taiwan; Hong Kong SAR, PRC); Chinese Traditional (Big5)
+      (1026, "IBM1026"),       # IBM EBCDIC Turkish (Latin 5)
+      (1047, "IBM01047"),      # IBM EBCDIC Latin 1/Open System
+      (1140, "IBM01140"),      # IBM EBCDIC US-Canada (037 + Euro symbol); IBM EBCDIC (US-Canada-Euro)
+      (1141, "IBM01141"),      # IBM EBCDIC Germany (20273 + Euro symbol); IBM EBCDIC (Germany-Euro)
+      (1142, "IBM01142"),      # IBM EBCDIC Denmark-Norway (20277 + Euro symbol); IBM EBCDIC (Denmark-Norway-Euro)
+      (1143, "IBM01143"),      # IBM EBCDIC Finland-Sweden (20278 + Euro symbol); IBM EBCDIC (Finland-Sweden-Euro)
+      (1144, "IBM01144"),      # IBM EBCDIC Italy (20280 + Euro symbol); IBM EBCDIC (Italy-Euro)
+      (1145, "IBM01145"),      # IBM EBCDIC Latin America-Spain (20284 + Euro symbol); IBM EBCDIC (Spain-Euro)
+      (1146, "IBM01146"),      # IBM EBCDIC United Kingdom (20285 + Euro symbol); IBM EBCDIC (UK-Euro)
+      (1147, "IBM01147"),      # IBM EBCDIC France (20297 + Euro symbol); IBM EBCDIC (France-Euro)
+      (1148, "IBM01148"),      # IBM EBCDIC International (500 + Euro symbol); IBM EBCDIC (International-Euro)
+      (1149, "IBM01149"),      # IBM EBCDIC Icelandic (20871 + Euro symbol); IBM EBCDIC (Icelandic-Euro)
+      (1200, "utf-16"),        # Unicode UTF-16, little endian byte order (BMP of ISO 10646); available only to managed applications
+      (1201, "unicodeFFFE"),   # Unicode UTF-16, big endian byte order; available only to managed applications
+      (1250, "windows-1250"),  # ANSI Central European; Central European (Windows)
+      (1251, "windows-1251"),  # ANSI Cyrillic; Cyrillic (Windows)
+      (1252, "windows-1252"),  # ANSI Latin 1; Western European (Windows)
+      (1253, "windows-1253"),  # ANSI Greek; Greek (Windows)
+      (1254, "windows-1254"),  # ANSI Turkish; Turkish (Windows)
+      (1255, "windows-1255"),  # ANSI Hebrew; Hebrew (Windows)
+      (1256, "windows-1256"),  # ANSI Arabic; Arabic (Windows)
+      (1257, "windows-1257"),  # ANSI Baltic; Baltic (Windows)
+      (1258, "windows-1258"),  # ANSI/OEM Vietnamese; Vietnamese (Windows)
 
       (1250, "cp-1250"), # ANSI Central European; Central European (Windows)
       (1251, "cp-1251"), # ANSI Cyrillic; Cyrillic (Windows)
@@ -105,106 +107,106 @@ when defined(windows):
       (1257, "cp-1257"), # ANSI Baltic; Baltic (Windows)
       (1258, "cp-1258"), # ANSI/OEM Vietnamese; Vietnamese (Windows)
 
-      (1361, "Johab"), # Korean (Johab)
-      (10000, "macintosh"), # MAC Roman; Western European (Mac)
-      (10001, "x-mac-japanese"), # Japanese (Mac)
-      (10002, "x-mac-chinesetrad"), # MAC Traditional Chinese (Big5); Chinese Traditional (Mac)
-      (10003, "x-mac-korean"), # Korean (Mac)
-      (10004, "x-mac-arabic"), # Arabic (Mac)
-      (10005, "x-mac-hebrew"), # Hebrew (Mac)
-      (10006, "x-mac-greek"), # Greek (Mac)
-      (10007, "x-mac-cyrillic"), # Cyrillic (Mac)
-      (10008, "x-mac-chinesesimp"), # MAC Simplified Chinese (GB 2312); Chinese Simplified (Mac)
-      (10010, "x-mac-romanian"), # Romanian (Mac)
-      (10017, "x-mac-ukrainian"), # Ukrainian (Mac)
-      (10021, "x-mac-thai"), # Thai (Mac)
-      (10029, "x-mac-ce"), # MAC Latin 2; Central European (Mac)
-      (10079, "x-mac-icelandic"), # Icelandic (Mac)
-      (10081, "x-mac-turkish"), # Turkish (Mac)
-      (10082, "x-mac-croatian"), # Croatian (Mac)
-      (12000, "utf-32"), # Unicode UTF-32, little endian byte order; available only to managed applications
-      (12001, "utf-32BE"), # Unicode UTF-32, big endian byte order; available only to managed applications
-      (20000, "x-Chinese_CNS"), # CNS Taiwan; Chinese Traditional (CNS)
-      (20001, "x-cp20001"), # TCA Taiwan
-      (20002, "x_Chinese-Eten"), # Eten Taiwan; Chinese Traditional (Eten)
-      (20003, "x-cp20003"), # IBM5550 Taiwan
-      (20004, "x-cp20004"), # TeleText Taiwan
-      (20005, "x-cp20005"), # Wang Taiwan
-      (20105, "x-IA5"), # IA5 (IRV International Alphabet No. 5, 7-bit); Western European (IA5)
-      (20106, "x-IA5-German"), # IA5 German (7-bit)
-      (20107, "x-IA5-Swedish"), # IA5 Swedish (7-bit)
-      (20108, "x-IA5-Norwegian"), # IA5 Norwegian (7-bit)
-      (20127, "us-ascii"), # US-ASCII (7-bit)
-      (20261, "x-cp20261"), # T.61
-      (20269, "x-cp20269"), # ISO 6937 Non-Spacing Accent
-      (20273, "IBM273"), # IBM EBCDIC Germany
-      (20277, "IBM277"), # IBM EBCDIC Denmark-Norway
-      (20278, "IBM278"), # IBM EBCDIC Finland-Sweden
-      (20280, "IBM280"), # IBM EBCDIC Italy
-      (20284, "IBM284"), # IBM EBCDIC Latin America-Spain
-      (20285, "IBM285"), # IBM EBCDIC United Kingdom
-      (20290, "IBM290"), # IBM EBCDIC Japanese Katakana Extended
-      (20297, "IBM297"), # IBM EBCDIC France
-      (20420, "IBM420"), # IBM EBCDIC Arabic
-      (20423, "IBM423"), # IBM EBCDIC Greek
-      (20424, "IBM424"), # IBM EBCDIC Hebrew
+      (1361, "Johab"),                    # Korean (Johab)
+      (10000, "macintosh"),               # MAC Roman; Western European (Mac)
+      (10001, "x-mac-japanese"),          # Japanese (Mac)
+      (10002, "x-mac-chinesetrad"),       # MAC Traditional Chinese (Big5); Chinese Traditional (Mac)
+      (10003, "x-mac-korean"),            # Korean (Mac)
+      (10004, "x-mac-arabic"),            # Arabic (Mac)
+      (10005, "x-mac-hebrew"),            # Hebrew (Mac)
+      (10006, "x-mac-greek"),             # Greek (Mac)
+      (10007, "x-mac-cyrillic"),          # Cyrillic (Mac)
+      (10008, "x-mac-chinesesimp"),       # MAC Simplified Chinese (GB 2312); Chinese Simplified (Mac)
+      (10010, "x-mac-romanian"),          # Romanian (Mac)
+      (10017, "x-mac-ukrainian"),         # Ukrainian (Mac)
+      (10021, "x-mac-thai"),              # Thai (Mac)
+      (10029, "x-mac-ce"),                # MAC Latin 2; Central European (Mac)
+      (10079, "x-mac-icelandic"),         # Icelandic (Mac)
+      (10081, "x-mac-turkish"),           # Turkish (Mac)
+      (10082, "x-mac-croatian"),          # Croatian (Mac)
+      (12000, "utf-32"),                  # Unicode UTF-32, little endian byte order; available only to managed applications
+      (12001, "utf-32BE"),                # Unicode UTF-32, big endian byte order; available only to managed applications
+      (20000, "x-Chinese_CNS"),           # CNS Taiwan; Chinese Traditional (CNS)
+      (20001, "x-cp20001"),               # TCA Taiwan
+      (20002, "x_Chinese-Eten"),          # Eten Taiwan; Chinese Traditional (Eten)
+      (20003, "x-cp20003"),               # IBM5550 Taiwan
+      (20004, "x-cp20004"),               # TeleText Taiwan
+      (20005, "x-cp20005"),               # Wang Taiwan
+      (20105, "x-IA5"),                   # IA5 (IRV International Alphabet No. 5, 7-bit); Western European (IA5)
+      (20106, "x-IA5-German"),            # IA5 German (7-bit)
+      (20107, "x-IA5-Swedish"),           # IA5 Swedish (7-bit)
+      (20108, "x-IA5-Norwegian"),         # IA5 Norwegian (7-bit)
+      (20127, "us-ascii"),                # US-ASCII (7-bit)
+      (20261, "x-cp20261"),               # T.61
+      (20269, "x-cp20269"),               # ISO 6937 Non-Spacing Accent
+      (20273, "IBM273"),                  # IBM EBCDIC Germany
+      (20277, "IBM277"),                  # IBM EBCDIC Denmark-Norway
+      (20278, "IBM278"),                  # IBM EBCDIC Finland-Sweden
+      (20280, "IBM280"),                  # IBM EBCDIC Italy
+      (20284, "IBM284"),                  # IBM EBCDIC Latin America-Spain
+      (20285, "IBM285"),                  # IBM EBCDIC United Kingdom
+      (20290, "IBM290"),                  # IBM EBCDIC Japanese Katakana Extended
+      (20297, "IBM297"),                  # IBM EBCDIC France
+      (20420, "IBM420"),                  # IBM EBCDIC Arabic
+      (20423, "IBM423"),                  # IBM EBCDIC Greek
+      (20424, "IBM424"),                  # IBM EBCDIC Hebrew
       (20833, "x-EBCDIC-KoreanExtended"), # IBM EBCDIC Korean Extended
-      (20838, "IBM-Thai"), # IBM EBCDIC Thai
-      (20866, "koi8-r"), # Russian (KOI8-R); Cyrillic (KOI8-R)
-      (20871, "IBM871"), # IBM EBCDIC Icelandic
-      (20880, "IBM880"), # IBM EBCDIC Cyrillic Russian
-      (20905, "IBM905"), # IBM EBCDIC Turkish
-      (20924, "IBM00924"), # IBM EBCDIC Latin 1/Open System (1047 + Euro symbol)
-      (20932, "EUC-JP"), # Japanese (JIS 0208-1990 and 0121-1990)
-      (20936, "x-cp20936"), # Simplified Chinese (GB2312); Chinese Simplified (GB2312-80)
-      (20949, "x-cp20949"), # Korean Wansung
-      (21025, "cp1025"), # IBM EBCDIC Cyrillic Serbian-Bulgarian
-      (21027, ""), # (deprecated)
-      (21866, "koi8-u"), # Ukrainian (KOI8-U); Cyrillic (KOI8-U)
-      (28591, "iso-8859-1"), # ISO 8859-1 Latin 1; Western European (ISO)
-      (28592, "iso-8859-2"), # ISO 8859-2 Central European; Central European (ISO)
-      (28593, "iso-8859-3"), # ISO 8859-3 Latin 3
-      (28594, "iso-8859-4"), # ISO 8859-4 Baltic
-      (28595, "iso-8859-5"), # ISO 8859-5 Cyrillic
-      (28596, "iso-8859-6"), # ISO 8859-6 Arabic
-      (28597, "iso-8859-7"), # ISO 8859-7 Greek
-      (28598, "iso-8859-8"), # ISO 8859-8 Hebrew; Hebrew (ISO-Visual)
-      (28599, "iso-8859-9"), # ISO 8859-9 Turkish
-      (28603, "iso-8859-13"), # ISO 8859-13 Estonian
-      (28605, "iso-8859-15"), # ISO 8859-15 Latin 9
-      (29001, "x-Europa"), # Europa 3
-      (38598, "iso-8859-8-i"), # ISO 8859-8 Hebrew; Hebrew (ISO-Logical)
-      (50220, "iso-2022-jp"), # ISO 2022 Japanese with no halfwidth Katakana; Japanese (JIS)
-      (50221, "csISO2022JP"), # ISO 2022 Japanese with halfwidth Katakana; Japanese (JIS-Allow 1 byte Kana)
-      (50222, "iso-2022-jp"), # ISO 2022 Japanese JIS X 0201-1989; Japanese (JIS-Allow 1 byte Kana - SO/SI)
-      (50225, "iso-2022-kr"), # ISO 2022 Korean
-      (50227, "x-cp50227"), # ISO 2022 Simplified Chinese; Chinese Simplified (ISO 2022)
-      (50229, ""), # ISO 2022 Traditional Chinese
-      (50930, ""), # EBCDIC Japanese (Katakana) Extended
-      (50931, ""), # EBCDIC US-Canada and Japanese
-      (50933, ""), # EBCDIC Korean Extended and Korean
-      (50935, ""), # EBCDIC Simplified Chinese Extended and Simplified Chinese
-      (50936, ""), # EBCDIC Simplified Chinese
-      (50937, ""), # EBCDIC US-Canada and Traditional Chinese
-      (50939, ""), # EBCDIC Japanese (Latin) Extended and Japanese
-      (51932, "euc-jp"), # EUC Japanese
-      (51936, "EUC-CN"), # EUC Simplified Chinese; Chinese Simplified (EUC)
-      (51949, "euc-kr"), # EUC Korean
-      (51950, ""), # EUC Traditional Chinese
-      (52936, "hz-gb-2312"), # HZ-GB2312 Simplified Chinese; Chinese Simplified (HZ)
-      (54936, "GB18030"), # Windows XP and later: GB18030 Simplified Chinese (4 byte); Chinese Simplified (GB18030)
-      (57002, "x-iscii-de"), # ISCII Devanagari
-      (57003, "x-iscii-be"), # ISCII Bengali
-      (57004, "x-iscii-ta"), # ISCII Tamil
-      (57005, "x-iscii-te"), # ISCII Telugu
-      (57006, "x-iscii-as"), # ISCII Assamese
-      (57007, "x-iscii-or"), # ISCII Oriya
-      (57008, "x-iscii-ka"), # ISCII Kannada
-      (57009, "x-iscii-ma"), # ISCII Malayalam
-      (57010, "x-iscii-gu"), # ISCII Gujarati
-      (57011, "x-iscii-pa"), # ISCII Punjabi
-      (65000, "utf-7"), # Unicode (UTF-7)
-      (65001, "utf-8")] # Unicode (UTF-8)
+      (20838, "IBM-Thai"),                # IBM EBCDIC Thai
+      (20866, "koi8-r"),                  # Russian (KOI8-R); Cyrillic (KOI8-R)
+      (20871, "IBM871"),                  # IBM EBCDIC Icelandic
+      (20880, "IBM880"),                  # IBM EBCDIC Cyrillic Russian
+      (20905, "IBM905"),                  # IBM EBCDIC Turkish
+      (20924, "IBM00924"),                # IBM EBCDIC Latin 1/Open System (1047 + Euro symbol)
+      (20932, "EUC-JP"),                  # Japanese (JIS 0208-1990 and 0121-1990)
+      (20936, "x-cp20936"),               # Simplified Chinese (GB2312); Chinese Simplified (GB2312-80)
+      (20949, "x-cp20949"),               # Korean Wansung
+      (21025, "cp1025"),                  # IBM EBCDIC Cyrillic Serbian-Bulgarian
+      (21027, ""),                        # (deprecated)
+      (21866, "koi8-u"),                  # Ukrainian (KOI8-U); Cyrillic (KOI8-U)
+      (28591, "iso-8859-1"),              # ISO 8859-1 Latin 1; Western European (ISO)
+      (28592, "iso-8859-2"),              # ISO 8859-2 Central European; Central European (ISO)
+      (28593, "iso-8859-3"),              # ISO 8859-3 Latin 3
+      (28594, "iso-8859-4"),              # ISO 8859-4 Baltic
+      (28595, "iso-8859-5"),              # ISO 8859-5 Cyrillic
+      (28596, "iso-8859-6"),              # ISO 8859-6 Arabic
+      (28597, "iso-8859-7"),              # ISO 8859-7 Greek
+      (28598, "iso-8859-8"),              # ISO 8859-8 Hebrew; Hebrew (ISO-Visual)
+      (28599, "iso-8859-9"),              # ISO 8859-9 Turkish
+      (28603, "iso-8859-13"),             # ISO 8859-13 Estonian
+      (28605, "iso-8859-15"),             # ISO 8859-15 Latin 9
+      (29001, "x-Europa"),                # Europa 3
+      (38598, "iso-8859-8-i"),            # ISO 8859-8 Hebrew; Hebrew (ISO-Logical)
+      (50220, "iso-2022-jp"),             # ISO 2022 Japanese with no halfwidth Katakana; Japanese (JIS)
+      (50221, "csISO2022JP"),             # ISO 2022 Japanese with halfwidth Katakana; Japanese (JIS-Allow 1 byte Kana)
+      (50222, "iso-2022-jp"),             # ISO 2022 Japanese JIS X 0201-1989; Japanese (JIS-Allow 1 byte Kana - SO/SI)
+      (50225, "iso-2022-kr"),             # ISO 2022 Korean
+      (50227, "x-cp50227"),               # ISO 2022 Simplified Chinese; Chinese Simplified (ISO 2022)
+      (50229, ""),                        # ISO 2022 Traditional Chinese
+      (50930, ""),                        # EBCDIC Japanese (Katakana) Extended
+      (50931, ""),                        # EBCDIC US-Canada and Japanese
+      (50933, ""),                        # EBCDIC Korean Extended and Korean
+      (50935, ""),                        # EBCDIC Simplified Chinese Extended and Simplified Chinese
+      (50936, ""),                        # EBCDIC Simplified Chinese
+      (50937, ""),                        # EBCDIC US-Canada and Traditional Chinese
+      (50939, ""),                        # EBCDIC Japanese (Latin) Extended and Japanese
+      (51932, "euc-jp"),                  # EUC Japanese
+      (51936, "EUC-CN"),                  # EUC Simplified Chinese; Chinese Simplified (EUC)
+      (51949, "euc-kr"),                  # EUC Korean
+      (51950, ""),                        # EUC Traditional Chinese
+      (52936, "hz-gb-2312"),              # HZ-GB2312 Simplified Chinese; Chinese Simplified (HZ)
+      (54936, "GB18030"),                 # Windows XP and later: GB18030 Simplified Chinese (4 byte); Chinese Simplified (GB18030)
+      (57002, "x-iscii-de"),              # ISCII Devanagari
+      (57003, "x-iscii-be"),              # ISCII Bengali
+      (57004, "x-iscii-ta"),              # ISCII Tamil
+      (57005, "x-iscii-te"),              # ISCII Telugu
+      (57006, "x-iscii-as"),              # ISCII Assamese
+      (57007, "x-iscii-or"),              # ISCII Oriya
+      (57008, "x-iscii-ka"),              # ISCII Kannada
+      (57009, "x-iscii-ma"),              # ISCII Malayalam
+      (57010, "x-iscii-gu"),              # ISCII Gujarati
+      (57011, "x-iscii-pa"),              # ISCII Punjabi
+      (65000, "utf-7"),                   # Unicode (UTF-7)
+      (65001, "utf-8")]                   # Unicode (UTF-8)
 
   when false:
     # not needed yet:
@@ -231,6 +233,8 @@ when defined(windows):
     result = ""
 
   proc getACP(): CodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
+  proc getGetConsoleCP(): CodePage {.stdcall, importc: "GetConsoleCP",
+      dynlib: "kernel32".}
 
   proc multiByteToWideChar(
     codePage: CodePage,
@@ -248,8 +252,8 @@ when defined(windows):
     cchWideChar: cint,
     lpMultiByteStr: cstring,
     cbMultiByte: cint,
-    lpDefaultChar: cstring=nil,
-    lpUsedDefaultChar: pointer=nil): cint {.
+    lpDefaultChar: cstring = nil,
+    lpUsedDefaultChar: pointer = nil): cint {.
       stdcall, importc: "WideCharToMultiByte", dynlib: "kernel32".}
 
 else:
@@ -292,10 +296,12 @@ else:
              outbuf: var cstring, outbytesLeft: var int): int {.
     importc: "iconv", importIconv.}
 
-proc getCurrentEncoding*(): string =
+proc getCurrentEncoding*(uiApp = false): string =
   ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
+  ## The `uiApp` parameter is Windows specific. If true, the UI's code-page
+  ## is returned, if false, the Console's code-page is returned.
   when defined(windows):
-    result = codePageToName(getACP())
+    result = codePageToName(if uiApp: getACP() else: getGetConsoleCP())
   else:
     result = "UTF-8"
 
@@ -324,32 +330,29 @@ proc close*(c: EncodingConverter) =
     iconvClose(c)
 
 when defined(windows):
-  proc convert*(c: EncodingConverter, s: string): string =
-    ## converts `s` to `destEncoding` that was given to the converter `c`. It
-    ## assumed that `s` is in `srcEncoding`.
-
-    # special case: empty string: needed because MultiByteToWideChar
-    # return 0 in case of error:
-    if s.len == 0: return ""
+  proc convertToWideString(codePage: CodePage, s: string): string =
     # educated guess of capacity:
     var cap = s.len + s.len shr 2
     result = newString(cap*2)
     # convert to utf-16 LE
-    var m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
+    var m = multiByteToWideChar(codePage,
+                                dwFlags = 0'i32,
                                 lpMultiByteStr = cstring(s),
                                 cbMultiByte = cint(s.len),
                                 lpWideCharStr = cstring(result),
                                 cchWideChar = cint(cap))
     if m == 0:
       # try again; ask for capacity:
-      cap = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
+      cap = multiByteToWideChar(codePage,
+                                dwFlags = 0'i32,
                                 lpMultiByteStr = cstring(s),
                                 cbMultiByte = cint(s.len),
                                 lpWideCharStr = nil,
                                 cchWideChar = cint(0))
       # and do the conversion properly:
       result = newString(cap*2)
-      m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
+      m = multiByteToWideChar(codePage,
+                              dwFlags = 0'i32,
                               lpMultiByteStr = cstring(s),
                               cbMultiByte = cint(s.len),
                               lpWideCharStr = cstring(result),
@@ -361,45 +364,66 @@ when defined(windows):
     else:
       assert(false) # cannot happen
 
-    # if already utf-16 LE, no further need to do something:
-    if int(c.dest) == 1200: return
-    # otherwise the fun starts again:
-    cap = s.len + s.len shr 2
-    var res = newString(cap)
-    m = wideCharToMultiByte(
-      codePage = c.dest,
-      dwFlags = 0'i32,
-      lpWideCharStr = cstring(result),
-      cchWideChar = cint(result.len div 2),
-      lpMultiByteStr = cstring(res),
-      cbMultiByte = cap.cint)
+  proc convertFromWideString(codePage: CodePage, s: string): string =
+    let charCount = s.len div 2
+    var cap = s.len + s.len shr 2
+    result = newString(cap)
+    var m = wideCharToMultiByte(codePage,
+                                dwFlags = 0'i32,
+                                lpWideCharStr = cstring(s),
+                                cchWideChar = cint(charCount),
+                                lpMultiByteStr = cstring(result),
+                                cbMultiByte = cap.cint)
     if m == 0:
       # try again; ask for capacity:
-      cap = wideCharToMultiByte(
-        codePage = c.dest,
-        dwFlags = 0'i32,
-        lpWideCharStr = cstring(result),
-        cchWideChar = cint(result.len div 2),
-        lpMultiByteStr = nil,
-        cbMultiByte = cint(0))
+      cap = wideCharToMultiByte(codePage,
+                                dwFlags = 0'i32,
+                                lpWideCharStr = cstring(s),
+                                cchWideChar = cint(charCount),
+                                lpMultiByteStr = nil,
+                                cbMultiByte = cint(0))
       # and do the conversion properly:
-      res = newString(cap)
-      m = wideCharToMultiByte(
-        codePage = c.dest,
-        dwFlags = 0'i32,
-        lpWideCharStr = cstring(result),
-        cchWideChar = cint(result.len div 2),
-        lpMultiByteStr = cstring(res),
-        cbMultiByte = cap.cint)
+      result = newString(cap)
+      m = wideCharToMultiByte(codePage,
+                              dwFlags = 0'i32,
+                              lpWideCharStr = cstring(s),
+                              cchWideChar = cint(charCount),
+                              lpMultiByteStr = cstring(result),
+                              cbMultiByte = cap.cint)
       if m == 0: raiseOSError(osLastError())
-      setLen(res, m)
-      result = res
+      setLen(result, m)
     elif m <= cap:
-      setLen(res, m)
-      result = res
+      setLen(result, m)
     else:
       assert(false) # cannot happen
 
+  proc convertWin(codePageFrom: CodePage, codePageTo: CodePage,
+      s: string): string =
+    # special case: empty string: needed because MultiByteToWideChar, WideCharToMultiByte
+    # return 0 in case of error
+    if s.len == 0: return ""
+    # multiByteToWideChar does not support encoding from code pages below
+    let unsupported = [1201, 12000, 12001]
+
+    if int(codePageFrom) in unsupported:
+      let message = "encoding from " & codePageToName(codePageFrom) & " is not supported on windows"
+      raise newException(EncodingError, message)
+
+    if int(codePageTo) in unsupported:
+      let message = "encoding to " & codePageToName(codePageTo) & " is not supported on windows"
+      raise newException(EncodingError, message)
+
+    # in case it's already UTF-16 little endian - conversion can be simplified
+    let wideString = if int(codePageFrom) == 1200: s
+                     else: convertToWideString(codePageFrom, s)
+    return if int(codePageTo) == 1200: wideString
+           else: convertFromWideString(codePageTo, wideString)
+
+  proc convert*(c: EncodingConverter, s: string): string =
+    ## converts `s` to `destEncoding` that was given to the converter `c`. It
+    ## assumed that `s` is in `srcEncoding`.
+    ## utf-16BE, utf-32 conversions not supported on windows
+    result = convertWin(c.src, c.dest, s)
 else:
   proc convert*(c: EncodingConverter, s: string): string =
     result = newString(s.len)
@@ -445,6 +469,7 @@ proc convert*(s: string, destEncoding = "UTF-8",
   ## converts `s` to `destEncoding`. It assumed that `s` is in `srcEncoding`.
   ## This opens a converter, uses it and closes it again and is thus more
   ## convienent but also likely less efficient than re-using a converter.
+  ## utf-16BE, utf-32 conversions not supported on windows
   var c = open(destEncoding, srcEncoding)
   try:
     result = convert(c, s)
@@ -461,3 +486,64 @@ when not defined(testing) and isMainModule:
   echo "Forced ibm850 encoding: ", ibm850
   echo "Current encoding: ", current
   echo "From ibm850 to current: ", convert(ibm850, current, "ibm850")
+
+when not defined(testing) and isMainModule and defined(windows):
+  block should_throw_on_unsupported_conversions:
+    let original = "some string"
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-8", "utf-32")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-8", "unicodeFFFE")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-8", "utf-32BE")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "unicodeFFFE", "utf-8")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-32", "utf-8")
+
+    doAssertRaises(EncodingError):
+      discard convert(original, "utf-32BE", "utf-8")
+
+  block should_convert_from_utf16_to_utf8:
+    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
+    let result = convert(original, "utf-8", "utf-16")
+    doAssert(result == "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82")
+
+  block should_convert_from_utf16_to_win1251:
+    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
+    let result = convert(original, "windows-1251", "utf-16")
+    doAssert(result == "\xf2\xe5\xf1\xf2")
+
+  block should_convert_from_win1251_to_koi8r:
+    let original = "\xf2\xe5\xf1\xf2" # win1251 test string "тест"
+    let result = convert(original, "koi8-r", "windows-1251")
+    doAssert(result == "\xd4\xc5\xd3\xd4")
+
+  block should_convert_from_koi8r_to_win1251:
+    let original = "\xd4\xc5\xd3\xd4" # koi8r test string "тест"
+    let result = convert(original, "windows-1251", "koi8-r")
+    doAssert(result == "\xf2\xe5\xf1\xf2")
+
+  block should_convert_from_utf8_to_win1251:
+    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
+    let result = convert(original, "windows-1251", "utf-8")
+    doAssert(result == "\xf2\xe5\xf1\xf2")
+
+  block should_convert_from_utf8_to_utf16:
+    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
+    let result = convert(original, "utf-16", "utf-8")
+    doAssert(result == "\x42\x04\x35\x04\x41\x04\x42\x04")
+
+  block should_handle_empty_string_for_any_conversion:
+    let original = ""
+    var result = convert(original, "utf-16", "utf-8")
+    doAssert(result == "")
+    result = convert(original, "utf-8", "utf-16")
+    doAssert(result == "")
+    result = convert(original, "windows-1251", "koi8-r")
+    doAssert(result == "")

@@ -1,4 +1,4 @@
-# v0.20.2 - XXXX-XX-XX
+# v0.20.2 - 2019-07-17
 
 
 ## Changes affecting backwards compatibility
@@ -11,8 +11,14 @@
   then you need to change that to `rfind X, last=N` or `rfind X, 0, N`. (This
   should minimize gotchas porting code from other languages like Python or C++.)
 
+- On Windows stderr/stdout/stdin are not opened as binary files anymore. Use the switch
+  `-d:nimBinaryStdFiles` for a transition period.
 
 ### Breaking changes in the standard library
+
+- Mac OS X / BSD: TSa_Family is now the ``uint8`` type, so type
+  conversions like ``x.sin_family = uint16 toInt(nativesockets.AF_INET)``
+  need to be changed into ``x.sin_family = TSa_Family toInt(nativesockets.AF_INET)``.
 
 
 ### Breaking changes in the compiler
@@ -20,6 +26,7 @@
 
 ## Library additions
 
+- `toOpenArray` is now available for the JS target.
 
 ## Library changes
 

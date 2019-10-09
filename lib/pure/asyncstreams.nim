@@ -1,12 +1,23 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## Unstable API.
+
 import asyncfutures
 
 import deques
 
 type
-  FutureStream*[T] = ref object   ## Special future that acts as
-                                  ## a queue. Its API is still
-                                  ## experimental and so is
-                                  ## subject to change.
+  FutureStream*[T] = ref object ## Special future that acts as
+                                ## a queue. Its API is still
+                                ## experimental and so is
+                                ## subject to change.
     queue: Deque[T]
     finished: bool
     cb: proc () {.closure, gcsafe.}
@@ -34,7 +45,7 @@ proc complete*[T](future: FutureStream[T]) =
     future.cb()
 
 proc `callback=`*[T](future: FutureStream[T],
-    cb: proc (future: FutureStream[T]) {.closure,gcsafe.}) =
+    cb: proc (future: FutureStream[T]) {.closure, gcsafe.}) =
   ## Sets the callback proc to be called when data was placed inside the
   ## future stream.
   ##
@@ -63,12 +74,12 @@ proc write*[T](future: FutureStream[T], value: T): Future[void] =
     result.fail(newException(ValueError, msg))
     return
   # TODO: Implement limiting of the streams storage to prevent it growing
-  # infinitely when no reads are occuring.
+  # infinitely when no reads are occurring.
   future.queue.addLast(value)
   if not future.cb.isNil: future.cb()
   result.complete()
 
-proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
+proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
   ## Returns a future that will complete when the ``FutureStream`` has data
   ## placed into it. The future will be completed with the oldest
   ## value stored inside the stream. The return value will also determine

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, os, streams, options, idents, lineinfos
+import ast, types, msgs, os, options, idents, lineinfos
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
@@ -242,7 +242,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyRange:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("range", mRange)
-    if inst:
+    if inst and t.n.len == 2:
       let rng = newNodeX(nkInfix)
       rng.add newIdentNode(getIdent(cache, ".."), info)
       rng.add t.n.sons[0].copyTree
@@ -250,10 +250,11 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result.add rng
     else:
       result.add t.n.sons[0].copyTree
-      result.add t.n.sons[1].copyTree
+      if t.n.len > 1:
+        result.add t.n.sons[1].copyTree
   of tyPointer: result = atomicType("pointer", mPointer)
   of tyString: result = atomicType("string", mString)
-  of tyCString: result = atomicType("cstring", mCString)
+  of tyCString: result = atomicType("cstring", mCstring)
   of tyInt: result = atomicType("int", mInt)
   of tyInt8: result = atomicType("int8", mInt8)
   of tyInt16: result = atomicType("int16", mInt16)
@@ -263,11 +264,11 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyFloat32: result = atomicType("float32", mFloat32)
   of tyFloat64: result = atomicType("float64", mFloat64)
   of tyFloat128: result = atomicType("float128", mFloat128)
-  of tyUInt: result = atomicType("uint", mUint)
-  of tyUInt8: result = atomicType("uint8", mUint8)
-  of tyUInt16: result = atomicType("uint16", mUint16)
-  of tyUInt32: result = atomicType("uint32", mUint32)
-  of tyUInt64: result = atomicType("uint64", mUint64)
+  of tyUInt: result = atomicType("uint", mUInt)
+  of tyUInt8: result = atomicType("uint8", mUInt8)
+  of tyUInt16: result = atomicType("uint16", mUInt16)
+  of tyUInt32: result = atomicType("uint32", mUInt32)
+  of tyUInt64: result = atomicType("uint64", mUInt64)
   of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
   of tyProxy: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:

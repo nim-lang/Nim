@@ -384,7 +384,7 @@ when not defined(testing) and isMainModule:
   test4.b = "ref string test: B"
   testit(test4)
 
-  var test5 = @[(0,1),(2,3),(4,5)]
+  var test5 = @[(0, 1), (2, 3), (4, 5)]
   testit(test5)
 
   var test6: set[char] = {'A'..'Z', '_'}

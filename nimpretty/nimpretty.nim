@@ -12,22 +12,22 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer, options,
-  pathutils, layouter]
+import ../compiler / [idents, msgs, syntaxes, options, pathutils, layouter]
 
 import parseopt, strutils, os
 
 const
-  Version = "0.1"
+  Version = "0.2"
   Usage = "nimpretty - Nim Pretty Printer Version " & Version & """
 
   (c) 2017 Andreas Rumpf
 Usage:
   nimpretty [options] file.nim
 Options:
-  --output:file         set the output file (default: overwrite the input file)
+  --out:file            set the output file (default: overwrite the input file)
   --indent:N[=0]        set the number of spaces that is used for indentation
                         --indent:0 means autodetection (default behaviour)
+  --maxLineLen:N        set the desired maximum line length (default: 80)
   --version             show the version
   --help                show this help
 """
@@ -45,6 +45,7 @@ proc writeVersion() =
 type
   PrettyOptions = object
     indWidth: int
+    maxLineLen: int
 
 proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
@@ -55,6 +56,7 @@ proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var p: TParsers
   p.parser.em.indWidth = opt.indWidth
   if setupParsers(p, fileIdx, newIdentCache(), conf):
+    p.parser.em.maxLineLen = opt.maxLineLen
     discard parseAll(p)
     closeParsers(p)
 
@@ -66,17 +68,19 @@ proc main =
     # if input is not actually over-written, when nimpretty is a noop).
     # --backup was un-documented (rely on git instead).
   var opt: PrettyOptions
+  opt.maxLineLen = 80
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
       infile = key.addFileExt(".nim")
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key)
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)
-      of "output", "o": outfile = val
+      of "output", "o", "out": outfile = val
       of "indent": opt.indWidth = parseInt(val)
+      of "maxlinelen": opt.maxLineLen = parseInt(val)
       else: writeHelp()
     of cmdEnd: assert(false) # cannot happen
   if infile.len == 0:

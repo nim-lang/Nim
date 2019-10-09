@@ -10,8 +10,7 @@
 ## Template evaluation engine. Now hygienic.
 
 import
-  strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer,
-  lineinfos
+  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents
 
 type
   TemplCtx = object
@@ -21,6 +20,7 @@ type
     mapping: TIdTable # every gensym'ed symbol needs to be mapped to some
                       # new symbol
     config: ConfigRef
+    ic: IdentCache
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
@@ -38,7 +38,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   of nkSym:
     var s = templ.sym
     if (s.owner == nil and s.kind == skParam) or s.owner == c.owner:
-      if s.kind == skParam and sfGenSym notin s.flags:
+      if s.kind == skParam and {sfGenSym, sfTemplateParam} * s.flags == {sfTemplateParam}:
         handleParam actual.sons[s.position]
       elif (s.owner != nil) and (s.kind == skGenericParam or
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
@@ -53,7 +53,11 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #if x.kind == skParam and x.owner.kind == skModule:
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
-        result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
+        if sfGenSym in s.flags and optNimV019 notin c.config.globalOptions:
+          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
+            if c.instLines: actual.info else: templ.info)
+        else:
+          result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
     else:
       result.add copyNode(c, templ, actual)
   of nkNone..nkIdent, nkType..nkNilLit: # atom
@@ -64,7 +68,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in 0 ..< sonsLen(templ):
+      for i in 0 ..< len(templ):
         evalTemplateAux(templ.sons[i], actual, c, res)
       result.add res
     else:
@@ -78,7 +82,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       c.isDeclarative = true
       isDeclarative = true
     var res = copyNode(c, templ, actual)
-    for i in 0 ..< sonsLen(templ):
+    for i in 0 ..< len(templ):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
     if isDeclarative: c.isDeclarative = false
@@ -131,7 +135,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
     else:
       addSon(result, default.copyTree)
 
-  # add any generic paramaters
+  # add any generic parameters
   for i in 1 .. genericParams:
     result.addSon n.sons[givenRegularParams + i]
 
@@ -161,7 +165,9 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
     result.typ = res.typ
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
-                   conf: ConfigRef; fromHlo=false): PNode =
+                   conf: ConfigRef;
+                   ic: IdentCache;
+                   fromHlo=false): PNode =
   inc(conf.evalTemplateCounter)
   if conf.evalTemplateCounter > evalTemplateLimit:
     globalError(conf, n.info, errTemplateInstantiationTooNested)
@@ -173,6 +179,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.owner = tmpl
   ctx.genSymOwner = genSymOwner
   ctx.config = conf
+  ctx.ic = ic
   initIdTable(ctx.mapping)
 
   let body = tmpl.getBody

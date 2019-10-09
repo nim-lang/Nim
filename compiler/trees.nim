@@ -10,7 +10,7 @@
 # tree helper routines
 
 import
-  ast, astalgo, lexer, msgs, strutils, wordrecg, idents
+  ast, wordrecg, idents
 
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   if n == nil: return
@@ -44,8 +44,8 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkCommentStmt: result = a.comment == b.comment
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in 0 ..< sonsLen(a):
+      if len(a) == len(b):
+        for i in 0 ..< len(a):
           if not exprStructuralEquivalent(a.sons[i], b.sons[i],
                                           strictSymEquality): return
         result = true
@@ -68,8 +68,8 @@ proc sameTree*(a, b: PNode): bool =
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in 0 ..< sonsLen(a):
+      if len(a) == len(b):
+        for i in 0 ..< len(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
@@ -127,7 +127,7 @@ proc findPragma*(n: PNode, which: TSpecialWord): PNode =
         return son
 
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     var it = n.sons[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
       result = it.sons[1]

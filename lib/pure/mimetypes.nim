@@ -1929,6 +1929,6 @@ runnableExamples:
   assert m.getMimetype("") == "text/plain"
   assert m.getExt("") == "txt"
   ## Register new Mimetypes.
-  m.register(ext="fakext", mimetype="text/fakelang")
+  m.register(ext = "fakext", mimetype = "text/fakelang")
   assert m.getMimetype("fakext") == "text/fakelang"
   assert m.getMimetype("FaKeXT") == "text/fakelang"

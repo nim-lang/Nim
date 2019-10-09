@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, wordrecg, idgen, nimfix/prettybase, lineinfos, strutils
+  renderer, nimfix/prettybase, lineinfos, strutils
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -233,7 +233,7 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   addInterfaceDeclAux(c, sym)
 
 when defined(nimfix):
-  # when we cannot find the identifier, retry with a changed identifer:
+  # when we cannot find the identifier, retry with a changed identifier:
   proc altSpelling(x: PIdent): PIdent =
     case x.s[0]
     of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
@@ -430,7 +430,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimOtherModule:
     result = nextIdentIter(o.it, o.m.tab).skipAlias(n, c.config)
   of oimSymChoice:
-    if o.symChoiceIndex < sonsLen(n):
+    if o.symChoiceIndex < len(n):
       result = n.sons[o.symChoiceIndex].sym
       incl(o.inSymChoice, result.id)
       inc o.symChoiceIndex

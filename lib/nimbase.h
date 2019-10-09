@@ -374,18 +374,6 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-static N_INLINE(NI, float64ToInt32)(double x) {
-  /* nowadays no hack necessary anymore */
-  return x >= 0 ? (NI)(x+0.5) : (NI)(x-0.5);
-}
-
-static N_INLINE(NI32, float32ToInt32)(float x) {
-  /* nowadays no hack necessary anymore */
-  return x >= 0 ? (NI32)(x+0.5) : (NI32)(x-0.5);
-}
-
-#define float64ToInt64(x) ((NI64) (x))
-
 #define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
 #define STRING_LITERAL(name, str, length) \
@@ -438,30 +426,6 @@ struct TFrame_ {
   NI16 len;
   NI16 calldepth;
 };
-
-#ifdef NIM_NEW_MANGLING_RULES
-  #define nimfr_(proc, file) \
-    TFrame FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; nimFrame(&FR_);
-
-  #define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; nimFrame((TFrame*)&FR_);
-
-  #define nimln_(n, file) \
-    FR_.line = n; FR_.filename = file;
-#else
-  #define nimfr(proc, file) \
-    TFrame FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
-
-  #define nimfrs(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
-    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
-
-  #define nimln(n, file) \
-    FR.line = n; FR.filename = file;
-#endif
 
 #define NIM_POSIX_INIT  __attribute__((constructor))
 

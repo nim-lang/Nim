@@ -94,6 +94,18 @@
 ##
 ##    db.close()
 ##
+##
+## Note
+## ====
+## This module does not implement any ORM features such as mapping the types from the schema.
+## Instead, a ``seq[string]`` is returned for each row.
+##
+## The reasoning is as follows:
+## 1. it's close to what many DBs offer natively (char**)
+## 2. it hides the number of types that the DB supports
+## (int? int64? decimal up to 10 places? geo coords?)
+## 3. it's convenient when all you do is to forward the data to somewhere else (echo, log, put the data into a new query)
+##
 ## See also
 ## ========
 ##
@@ -103,7 +115,7 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 
-import strutils, sqlite3
+import sqlite3
 
 import db_common
 export db_common
@@ -112,7 +124,7 @@ type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
   Row* = seq[string]  ## A row of a dataset. `NULL` database values will be
                       ## converted to an empty string.
-  InstantRow* = Pstmt ## A handle that can be used to get a row's column
+  InstantRow* = PStmt ## A handle that can be used to get a row's column
                       ## text on demand.
 
 proc dbError*(db: DbConn) {.noreturn.} =
@@ -169,7 +181,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
   ##    db.close()
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
-  var stmt: sqlite3.Pstmt
+  var stmt: sqlite3.PStmt
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
     let x = step(stmt)
     if x in {SQLITE_DONE, SQLITE_ROW}:
@@ -198,12 +210,12 @@ proc newRow(L: int): Row =
   for i in 0..L-1: result[i] = ""
 
 proc setupQuery(db: DbConn, query: SqlQuery,
-                args: varargs[string]): Pstmt =
+                args: varargs[string]): PStmt =
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
-proc setRow(stmt: Pstmt, r: var Row, cols: cint) =
+proc setRow(stmt: PStmt, r: var Row, cols: cint) =
   for col in 0'i32..cols-1:
     setLen(r[col], column_bytes(stmt, col)) # set capacity
     setLen(r[col], 0)
@@ -359,6 +371,14 @@ proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ##   example code
   $column_text(row, col)
 
+proc unsafeColumnAt*(row: InstantRow, index: int32): cstring {.inline.} =
+  ## Returns cstring for given column of the row.
+  ##
+  ## See also:
+  ## * `instantRows iterator <#instantRows.i,DbConn,SqlQuery,varargs[string,]>`_
+  ##   example code
+  column_text(row, index)
+
 proc len*(row: InstantRow): int32 {.inline.} =
   ## Returns number of columns in a row.
   ##
@@ -506,7 +526,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   ##    db.close()
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
-  var stmt: sqlite3.Pstmt
+  var stmt: sqlite3.PStmt
   result = -1
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
     if step(stmt) == SQLITE_DONE:

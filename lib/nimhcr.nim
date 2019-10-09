@@ -111,6 +111,7 @@
 # - ARM support for the trampolines
 # - investigate:
 #   - soon the system module might be importing other modules - the init order...?
+#     (revert https://github.com/nim-lang/Nim/pull/11971 when working on this)
 #   - rethink the closure iterators
 #     - ability to keep old versions of dynamic libraries alive
 #       - because of async server code
@@ -120,10 +121,10 @@
 #       - state in static libs gets duplicated
 #       - linking is slow and therefore iteration time suffers
 #         - have just a single .dll for all .nim files and bulk reload?
-#   - think about the compile/link/passC/passL/emit/injectStmt pragmas
-#     - if a passC pragma is introduced (either written or dragged in by a new
+#   - think about the compile/link/passc/passl/emit/injectStmt pragmas
+#     - if a passc pragma is introduced (either written or dragged in by a new
 #       import) the whole command line for compilation changes - for example:
-#         winlean.nim: {.passC: "-DWIN32_LEAN_AND_MEAN".}
+#         winlean.nim: {.passc: "-DWIN32_LEAN_AND_MEAN".}
 #   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
 #   - everything thread-local related
 # - tests
@@ -347,7 +348,7 @@ when defined(createNimHcr):
 
   proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get proc: ", module.sanitize, " ", name
-    return modules[$module].procs[$name].jump
+    return modules[$module].procs.getOrDefault($name, ProcSym()).jump
 
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
@@ -421,7 +422,7 @@ when defined(createNimHcr):
       modules.add(name, newModuleDesc())
 
     let copiedName = name & ".copy." & dllExt
-    copyFile(name, copiedName)
+    copyFileWithPermissions(name, copiedName)
 
     let lib = loadLib(copiedName)
     assert lib != nil

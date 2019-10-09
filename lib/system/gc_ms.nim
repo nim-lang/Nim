@@ -162,7 +162,7 @@ when defined(nimGcRefLeak):
 
   var ax: array[10_000, GcStackTrace]
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerproc.} =
   # we keep it from being collected by pretending it's not even allocated:
   when false:
     when withBitvectors: excl(gch.allocated, usrToCell(p))
@@ -171,7 +171,7 @@ proc nimGCref(p: pointer) {.compilerProc.} =
     captureStackTrace(framePtr, ax[gch.additionalRoots.len])
   add(gch.additionalRoots, usrToCell(p))
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -372,14 +372,14 @@ proc mark(gch: var GcHeap, c: PCell) =
                   c, c.typ.name)
         inc gch.indentation, 2
 
-    c.refCount = rcBlack
+    c.refcount = rcBlack
     gcAssert gch.tempStack.len == 0, "stack not empty!"
     forAllChildren(c, waMarkPrecise)
     while gch.tempStack.len > 0:
       dec gch.tempStack.len
       var d = gch.tempStack.d[gch.tempStack.len]
       if d.refcount == rcWhite:
-        d.refCount = rcBlack
+        d.refcount = rcBlack
         forAllChildren(d, waMarkPrecise)
 
     when defined(nimTracing):
@@ -511,7 +511,7 @@ when not defined(useNimRtl):
       gch.tracing = true
 
   proc GC_fullCollect() =
-    var oldThreshold = gch.cycleThreshold
+    let oldThreshold = gch.cycleThreshold
     gch.cycleThreshold = 0 # forces cycle collection
     collectCT(gch, 0)
     gch.cycleThreshold = oldThreshold

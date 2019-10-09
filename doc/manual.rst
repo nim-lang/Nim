@@ -22,6 +22,10 @@ precise wording. This manual is constantly evolving into a proper specification.
 **Note**: The experimental features of Nim are
 covered `here <manual_experimental.html>`_.
 
+**Note**: Assignments, moves and destruction are specified in
+the `destructors <destructors.html>`_ document.
+
+
 This document describes the lexis, the syntax, and the semantics of the Nim language.
 
 To learn how to compile Nim programs and generate documentation see
@@ -95,8 +99,8 @@ and code execution in the executable.
 
 The compiler parses Nim source code into an internal data structure called the
 `abstract syntax tree`:idx: (`AST`:idx:). Then, before executing the code or
-compiling it into the executable, it transforms the AST through `semantic
-analysis`:idx:. This adds semantic information such as expression types,
+compiling it into the executable, it transforms the AST through
+`semantic analysis`:idx:. This adds semantic information such as expression types,
 identifier meanings, and in some cases expression values. An error detected
 during semantic analysis is called a `static error`:idx:. Errors described in
 this manual are static errors when not otherwise specified.
@@ -245,8 +249,11 @@ Identifiers & Keywords
 ----------------------
 
 Identifiers in Nim can be any string of letters, digits
-and underscores, beginning with a letter. Two immediate following
-underscores ``__`` are not allowed::
+and underscores, with the following restrictions:
+
+* begins with a letter
+* does not end with an underscore ``_``
+* two immediate following underscores ``__`` are not allowed::
 
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
@@ -715,6 +722,44 @@ right-hand side:
 
 Rationale: Consistency with overloaded assignment or assignment-like operations,
 ``a = b`` can be read as ``performSomeCopy(a, b)``.
+
+
+However, the concept of "order of evaluation" is only applicable after the code
+was normalized: The normalization involves template expansions and argument
+reorderings that have been passed to named parameters:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var s = ""
+
+  proc p(): int =
+    s.add "p"
+    result = 5
+
+  proc q(): int =
+    s.add "q"
+    result = 3
+
+  # Evaluation order is 'b' before 'a' due to template
+  # expansion's semantics.
+  template swapArgs(a, b): untyped =
+    b + a
+
+  doAssert swapArgs(p() + q(), q() - p()) == 6
+  doAssert s == "qppq"
+
+  # Evaluation order is not influenced by named parameters:
+  proc construct(first, second: int) =
+    discard
+
+  # 'p' is evaluated before 'q'!
+  construct(second = q(), first = p())
+
+  doAssert s == "qppqpq"
+
+
+Rationale: This is far easier to implement than hypothetical alternatives.
 
 
 Constants and Constant Expressions
@@ -1283,6 +1328,39 @@ Arrays are always bounds checked (statically or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
 ``--boundChecks:off`` command line switch.
 
+An array constructor can have explicit indexes for readability:
+
+.. code-block:: nim
+
+  type
+    Values = enum
+      valA, valB, valC
+
+  const
+    lookupTable = [
+      valA: "A",
+      valB: "B",
+      valC: "C"
+    ]
+
+If an index is left out, ``succ(lastIndex)`` is used as the index
+value:
+
+.. code-block:: nim
+
+  type
+    Values = enum
+      valA, valB, valC, valD, valE
+
+  const
+    lookupTable = [
+      valA: "A",
+      "B",
+      valC: "C",
+      "D", "e"
+    ]
+
+
 
 Open arrays
 -----------
@@ -1485,8 +1563,10 @@ For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 Object variants
 ---------------
-Often an object hierarchy is overkill in certain situations where simple
-variant types are needed.
+Often an object hierarchy is overkill in certain situations where simple variant
+types are needed. Object variants are tagged unions discriminated via a
+enumerated type used for runtime type flexibility, mirroring the concepts of
+*sum types* and *algebraic data types (ADTs)* as found in other languages.
 
 An example:
 
@@ -1561,7 +1641,9 @@ statement. If possible values of the discriminator variable in a
 ``case`` statement branch are a subset of discriminator values for the selected
 object branch, the initialization is considered valid. This analysis only works
 for immutable discriminators of an ordinal type and disregards ``elif``
-branches.
+branches. For discriminator values with a ``range`` type, the compiler
+checks if the entire range of possible values for the discriminator value is
+valid for the choosen object branch.
 
 A small example:
 
@@ -1579,6 +1661,10 @@ A small example:
     z = Node(kind: unknownKind, leftOp: Node(), rightOp: Node())
   else:
     echo "ignoring: ", unknownKind
+
+  # also valid, since unknownKindBounded can only contain the values nkAdd or nkSub
+  let unknownKindBounded = range[nkAdd..nkSub](unknownKind)
+  z = Node(kind: unknownKindBounded, leftOp: Node(), rightOp: Node())
 
 Set type
 --------
@@ -1667,7 +1753,39 @@ To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
 ``realloc`` can be used. The documentation of the system module contains
 further information.
 
-If a reference points to *nothing*, it has the value ``nil``.
+
+Nil
+---
+
+If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
+the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
+is an unrecoverable fatal runtime error. A dereferencing operation ``p[]``
+implies that ``p`` is not nil. This can be exploited by the implementation to
+optimize code like:
+
+
+.. code-block:: nim
+
+  p[].field = 3
+  if p != nil:
+    # if p were nil, ``p[]`` would have caused a crash already,
+    # so we know ``p`` is always not nil here.
+    action()
+
+Into:
+
+.. code-block:: nim
+
+  p[].field = 3
+  action()
+
+
+*Note*: This is not comparable to C's "undefined behavior" for
+dereferencing NULL pointers.
+
+
+Mixing GC'ed memory with ``ptr``
+--------------------------------
 
 Special care has to be taken if an untraced object contains traced objects like
 traced references, strings or sequences: in order to free everything properly,
@@ -2167,9 +2285,11 @@ algorithm returns true:
   proc isImplicitlyConvertible(a, b: PType): bool =
     if isSubtype(a, b) or isCovariant(a, b):
       return true
+    if isIntLiteral(a):
+      return b in {int8, int16, int32, int64, int, uint, uint8, uint16,
+                   uint32, uint64, float32, float64}
     case a.kind
-    of int:     result = b in {int8, int16, int32, int64, uint, uint8, uint16,
-                               uint32, uint64, float, float32, float64}
+    of int:     result = b in {int32, int64}
     of int8:    result = b in {int16, int32, int64, int}
     of int16:   result = b in {int32, int64, int}
     of int32:   result = b in {int64, int}
@@ -2177,9 +2297,8 @@ algorithm returns true:
     of uint8:   result = b in {uint16, uint32, uint64}
     of uint16:  result = b in {uint32, uint64}
     of uint32:  result = b in {uint64}
-    of float:   result = b in {float32, float64}
-    of float32: result = b in {float64, float}
-    of float64: result = b in {float32, float}
+    of float32: result = b in {float64}
+    of float64: result = b in {float32}
     of seq:
       result = b == openArray and typeEquals(a.baseType, b.baseType)
     of array:
@@ -3023,6 +3142,21 @@ As seen in the above example, the case expression can also introduce side
 effects. When multiple statements are given for a branch, Nim will use
 the last expression as the result value.
 
+Block expression
+----------------
+
+A `block expression` is almost like a block statement, but it is an expression
+that uses last expression under the block as the value.
+It is similar to the statement list expression, but the statement list expression
+does not open new block scope.
+
+.. code-block:: nim
+  let a = block:
+    var fib = @[0, 1]
+    for i in 0..10:
+      fib.add fib[^1] + fib[^2]
+    fib
+
 Table constructor
 -----------------
 
@@ -3061,6 +3195,16 @@ results in an exception (if it cannot be determined statically).
 Ordinary procs are often preferred over type conversions in Nim: For instance,
 ``$`` is the ``toString`` operator by convention and ``toFloat`` and ``toInt``
 can be used to convert from floating point to integer or vice versa.
+
+A type conversion can also be used to disambiguate overloaded routines:
+
+.. code-block:: nim
+
+  proc p(x: int) = echo "int"
+  proc p(x: string) = echo "string"
+
+  let procVar = (proc(x: string))(p)
+  procVar("a")
 
 
 Type casts
@@ -3402,7 +3546,7 @@ Nonoverloadable builtins
 The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
-  declared, defined, definedInScope, compiles, sizeOf,
+  declared, defined, definedInScope, compiles, sizeof,
   is, shallowCopy, getAst, astToStr, spawn, procCall
 
 Thus they act more like keywords than like ordinary identifiers; unlike a
@@ -4308,15 +4452,26 @@ more complex type classes:
   # create a type class that will match all tuple and object types
   type RecordType = tuple or object
 
-  proc printFields(rec: RecordType) =
+  proc printFields[T: RecordType](rec: T) =
     for key, value in fieldPairs(rec):
       echo key, " = ", value
 
-Procedures utilizing type classes in such manner are considered to be
-`implicitly generic`:idx:. They will be instantiated once for each unique
-combination of param types used within the program.
 
-Nim also allows for type classes and regular types to be specified
+Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
+types in ML-like languages, it should be understood that type classes are static
+constraints to be enforced at type instantations. Type classes are not really
+types in themsleves, but are instead a system of providing generic "checks" that
+ultimately *resolve* to some singular type. Type classes do not allow for
+runtime type dynamism, unlike object variants or methods.
+
+As an example, the following would not compile:
+
+.. code-block:: nim
+  type TypeClass = int | string
+  var foo: TypeClass = 2 # foo's type is resolved to an int here
+  foo = "this will fail" # error here, because foo is an int
+
+Nim allows for type classes and regular types to be specified
 as `type constraints`:idx: of the generic type parameter:
 
 .. code-block:: nim
@@ -4325,6 +4480,26 @@ as `type constraints`:idx: of the generic type parameter:
   onlyIntOrString(450, 616) # valid
   onlyIntOrString(5.0, 0.0) # type mismatch
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
+
+
+Implicit generics
+-----------------
+
+A type class can be used directly as the parameter's type.
+
+.. code-block:: nim
+
+  # create a type class that will match all tuple and object types
+  type RecordType = tuple or object
+
+  proc printFields(rec: RecordType) =
+    for key, value in fieldPairs(rec):
+      echo key, " = ", value
+
+
+Procedures utilizing type classes in such manner are considered to be
+`implicitly generic`:idx:. They will be instantiated once for each unique
+combination of param types used within the program.
 
 By default, during overload resolution each named type class will bind to
 exactly one concrete type. We call such type classes `bind once`:idx: types.
@@ -4354,26 +4529,73 @@ the dot syntax:
   proc `[]`(m: Matrix, row, col: int): Matrix.T =
     m.data[col * high(Matrix.Columns) + row]
 
-Alternatively, the `type` operator can be used over the proc params for similar
-effect when anonymous or distinct type classes are used.
 
-When a generic type is instantiated with a type class instead of a concrete
-type, this results in another more specific type class:
+Here are more examples that illustrate implicit generics:
 
 .. code-block:: nim
-  seq[ref object]  # Any sequence storing references to any object type
 
-  type T1 = auto
-  proc foo(s: seq[T1], e: T1)
-    # seq[T1] is the same as just `seq`, but T1 will be allowed to bind
-    # to a single type, while the signature is being matched
+  proc p(t: Table; k: Table.Key): Table.Value
 
-  Matrix[Ordinal] # Any Matrix instantiation using integer values
+  # is roughly the same as:
 
-As seen in the previous example, in such instantiations, it's not necessary to
-supply all type parameters of the generic type, because any missing ones will
-be inferred to have the equivalent of the `any` type class and thus they will
-match anything without discrimination.
+  proc p[Key, Value](t: Table[Key, Value]; k: Key): Value
+
+
+.. code-block:: nim
+
+  proc p(a: Table, b: Table)
+
+  # is roughly the same as:
+
+  proc p[Key, Value](a, b: Table[Key, Value])
+
+
+.. code-block:: nim
+
+  proc p(a: Table, b: distinct Table)
+
+  # is roughly the same as:
+
+  proc p[Key, Value, KeyB, ValueB](a: Table[Key, Value], b: Table[KeyB, ValueB])
+
+
+`typedesc` used as a parameter type also introduces an implicit
+generic. `typedesc` has its own set of rules:
+
+.. code-block:: nim
+
+  proc p(a: typedesc)
+
+  # is roughly the same as:
+
+  proc p[T](a: typedesc[T])
+
+
+`typedesc` is a "bind many" type class:
+
+.. code-block:: nim
+
+  proc p(a, b: typedesc)
+
+  # is roughly the same as:
+
+  proc p[T, T2](a: typedesc[T], b: typedesc[T2])
+
+
+A parameter of type `typedesc` is itself usable as a type. If it is used
+as a type, it's the underlying type. (In other words, one level
+of "typedesc"-ness is stripped off:
+
+.. code-block:: nim
+
+  proc p(a: typedesc; b: a) = discard
+
+  # is roughly the same as:
+  proc p[T](a: typedesc[T]; b: T) = discard
+
+  # hence this is a valid call:
+  p(int, 4)
+  # as parameter 'a' requires a type, but 'b' requires a value.
 
 
 Generic inference restrictions
@@ -4783,6 +5005,45 @@ no semantics outside of a template definition and cannot be abstracted over:
 To get rid of hygiene in templates, one can use the `dirty`:idx: pragma for
 a template. ``inject`` and ``gensym`` have no effect in ``dirty`` templates.
 
+``gensym``'ed symbols cannot be used as ``field`` in the ``x.field`` syntax.
+Nor can they be used in the ``ObjectConstruction(field: value)``
+and ``namedParameterCall(field = value)`` syntactic constructs.
+
+The reason for this is that code like
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  type
+    T = object
+      f: int
+
+  template tmp(x: T) =
+    let f = 34
+    echo x.f, T(f: 4)
+
+
+should work as expected.
+
+However, this means that the method call syntax is not available for
+``gensym``'ed symbols:
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+  template tmp(x) =
+    type
+      T {.gensym.} = int
+
+    echo x.T # invalid: instead use:  'echo T(x)'.
+
+  tmp(12)
+
+
+**Note**: The Nim compiler prior to version 1 was more lenient about this
+requirement. Use the ``--useVersion:0.19`` switch for a transition period.
+
 
 
 Limitations of the method call syntax
@@ -5057,57 +5318,6 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
 
 Currently for loop macros must be enabled explicitly
 via ``{.experimental: "forLoopMacros".}``.
-
-
-Case statement macros
----------------------
-
-A macro that needs to be called `match`:idx: can be used to rewrite
-``case`` statements in order to implement `pattern matching`:idx: for
-certain types. The following example implements a simplistic form of
-pattern matching for tuples, leveraging the existing equality operator
-for tuples (as provided in ``system.==``):
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  {.experimental: "caseStmtMacros".}
-
-  import macros
-
-  macro match(n: tuple): untyped =
-    result = newTree(nnkIfStmt)
-    let selector = n[0]
-    for i in 1 ..< n.len:
-      let it = n[i]
-      case it.kind
-      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
-        result.add it
-      of nnkOfBranch:
-        for j in 0..it.len-2:
-          let cond = newCall("==", selector, it[j])
-          result.add newTree(nnkElifBranch, cond, it[^1])
-      else:
-        error "'match' cannot handle this node", it
-    echo repr result
-
-  case ("foo", 78)
-  of ("foo", 78): echo "yes"
-  of ("bar", 88): echo "no"
-  else: discard
-
-
-Currently case statement macros must be enabled explicitly
-via ``{.experimental: "caseStmtMacros".}``.
-
-``match`` macros are subject to overload resolution. First the
-``case``'s selector expression is used to determine which ``match``
-macro to call. To this macro is then passed the complete ``case``
-statement body and the macro is evaluated.
-
-In other words, the macro needs to transform the full ``case`` statement
-but only the statement's selector expression is used to determine which
-macro to call.
 
 
 Special Types
@@ -5721,6 +5931,31 @@ Is the same as:
   proc astHelper(n: NimNode): NimNode {.compileTime.} =
     result = n
 
+``compileTime`` variables are available at runtime too. This simplifies certain
+idioms where variables are filled at compile-time (for example, lookup tables)
+but accessed at runtime:
+
+.. code-block:: nim
+    :test: "nim c -r $1"
+
+  import macros
+
+  var nameToProc {.compileTime.}: seq[(string, proc (): string {.nimcall.})]
+
+  macro registerProc(p: untyped): untyped =
+    result = newTree(nnkStmtList, p)
+
+    let procName = p[0]
+    let procNameAsStr = $p[0]
+    result.add quote do:
+      nameToProc.add((`procNameAsStr`, `procName`))
+
+  proc foo: string {.registerProc.} = "foo"
+  proc bar: string {.registerProc.} = "bar"
+  proc baz: string {.registerProc.} = "baz"
+
+  doAssert nameToProc[2][1]() == "baz"
+
 
 noReturn pragma
 ---------------
@@ -6070,6 +6305,17 @@ is particularly useful when the symbol was generated by a macro:
   implementArithOps(int)
   echoAdd 3, 5
 
+``used`` can also be used as a top level statement to mark a module as "used".
+This prevents the "Unused import" warning:
+
+.. code-block:: nim
+
+  # module: debughelper.nim
+  when defined(nimHasUsed):
+    # 'import debughelper' is so useful for debugging
+    # that Nim shouldn't produce a warning for that import,
+    # even if currently unused:
+    {.used.}
 
 
 experimental pragma
@@ -6309,7 +6555,7 @@ prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 ImportCpp pragma
 ----------------
 
-**Note**: `c2nim <https://nim-lang.org/docs/c2nim.html>`_ can parse a large subset of C++ and knows
+**Note**: `c2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_ can parse a large subset of C++ and knows
 about the ``importcpp`` pragma pattern language. It is not necessary
 to know all the details described here.
 
@@ -6352,6 +6598,14 @@ The compiler needs to be told to generate C++ (command ``cpp``) for
 this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
 
+
+ImportJs pragma
+---------------
+
+Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+the ``importjs`` pragma can be used to import Javascript methods or
+symbols in general. The generated code then uses the Javascript method
+calling syntax: ``obj.method(arg)``.
 
 Namespaces
 ~~~~~~~~~~
@@ -6750,13 +7004,14 @@ spelled*:
 .. code-block::
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
-Note that this pragma is somewhat of a misnomer: Other backends do provide
-the same feature under the same name. Also, if one is interfacing with C++
-the `ImportCpp pragma <manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
-interfacing with Objective-C the `ImportObjC pragma
-<manual.html#implementation-specific-pragmas-importobjc-pragma>`_ can be used.
+Note that this pragma has been abused in the past to also work in the
+js backand for js objects and functions. : Other backends do provide
+the same feature under the same name. Also, when the target language
+is not set to C, other pragmas are available:
 
-The string literal passed to ``importc`` can be a format string:
+ * `importcpp <manual.html#implementation-specific-pragmas-importcpp-pragma>`_
+ * `importobjc <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
+ * `importjs <manul.html#implementation-specific-pragmas-importjs-pragma>`_
 
 .. code-block:: Nim
   proc p(s: cstring) {.importc: "prefix$1".}

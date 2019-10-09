@@ -159,3 +159,28 @@ block: # `$`*[T: tuple|object](x: T)
     x2:float
   doAssert $Foo(x:2) == "(x: 2, x2: 0.0)"
   doAssert $() == "()"
+
+# this is a call indirection to prevent `toInt` to be resolved at compile time.
+proc testToInt(arg: float64, a: int, b: BiggestInt) =
+  doAssert toInt(arg) == a
+  doAssert toBiggestInt(arg) == b
+
+testToInt(0.45, 0, 0)    # should round towards 0
+testToInt(-0.45, 0, 0)   # should round towards 0
+testToInt(0.5, 1, 1)     # should round away from 0
+testToInt(-0.5, -1, -1)  # should round away from 0
+testToInt(13.37, 13, 13)    # should round towards 0
+testToInt(-13.37, -13, -13) # should round towards 0
+testToInt(7.8, 8, 8)     # should round away from 0
+testToInt(-7.8, -8, -8)  # should round away from 0
+
+# test min/max for correct NaN handling
+
+proc testMinMax(a,b: float32) =
+  doAssert max(float32(a),float32(b)) == 0'f32
+  doAssert min(float32(a),float32(b)) == 0'f32
+  doAssert max(float64(a),float64(b)) == 0'f64
+  doAssert min(float64(a),float64(b)) == 0'f64
+
+testMinMax(0.0, NaN)
+testMinMax(NaN, 0.0)

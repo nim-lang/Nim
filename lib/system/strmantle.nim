@@ -9,7 +9,7 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
-proc cmpStrings(a, b: string): int {.inline, compilerProc.} =
+proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
   let minlen = min(alen, blen)
@@ -20,7 +20,7 @@ proc cmpStrings(a, b: string): int {.inline, compilerProc.} =
   else:
     result = alen - blen
 
-proc eqStrings(a, b: string): bool {.inline, compilerProc.} =
+proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
   if alen == blen:
@@ -74,6 +74,15 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
 
+proc addCstringN(result: var string, buf: cstring; buflen: int) =
+  # no nimvm support needed, so it doesn't need to be fast here either
+  let oldLen = result.len
+  let newLen = oldLen + buflen
+  result.setLen newLen
+  copyMem(result[oldLen].addr, buf, buflen)
+
+import formatfloat
+
 proc addFloat*(result: var string; x: float) =
   ## Converts float to its string representation and appends it to `result`.
   ##
@@ -85,37 +94,9 @@ proc addFloat*(result: var string; x: float) =
   when nimvm:
     result.add $x
   else:
-    var buf: array[0..64, char]
-    when defined(nimNoArrayToCstringConversion):
-      var n: int = c_sprintf(addr buf, "%.16g", x)
-    else:
-      var n: int = c_sprintf(buf, "%.16g", x)
-    var hasDot = false
-    for i in 0..n-1:
-      if buf[i] == ',':
-        buf[i] = '.'
-        hasDot = true
-      elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
-        hasDot = true
-    if not hasDot:
-      buf[n] = '.'
-      buf[n+1] = '0'
-      buf[n+2] = '\0'
-    # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
-    # of '-1.#IND' are produced.
-    # We want to get rid of these here:
-    if buf[n-1] in {'n', 'N', 'D', 'd'}:
-      result.add "nan"
-    elif buf[n-1] == 'F':
-      if buf[0] == '-':
-        result.add "-inf"
-      else:
-        result.add "inf"
-    else:
-      var i = 0
-      while buf[i] != '\0':
-        result.add buf[i]
-        inc i
+    var buffer: array[65, char]
+    let n = writeFloatToBuffer(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
 
 proc add*(result: var string; x: float) {.deprecated:
   "Deprecated since v0.20, use 'addFloat'".} =
@@ -135,7 +116,7 @@ const
               1e20, 1e21, 1e22]
 
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
-                          start = 0): int {.compilerProc.} =
+                          start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
   # ie whose integer part can fit inside a 53bits integer.
   # their real exponent must also be <= 22. If the float doesn't follow
@@ -304,7 +285,7 @@ proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc `$`*(x: uint64): string {.noSideEffect.} =
+proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
   ## The stringify operator for an unsigned integer argument. Returns `x`
   ## converted to a decimal string.
   if x == 0:

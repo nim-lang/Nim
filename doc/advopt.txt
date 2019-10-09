@@ -25,6 +25,7 @@ Runtime checks (see -x):
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
   --nilChecks:on|off        turn nil checks on|off
+  --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
@@ -60,6 +61,7 @@ Advanced options:
   --debuginfo:on|off        enables debug information
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
+  --cc:SYMBOL               specify the C compiler
   --cincludes:DIR           modify the C compiler header search path
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
@@ -119,6 +121,12 @@ Advanced options:
   --errorMax:N              stop compilation after N errors; 0 means unlimited
   --experimental:$1
                             enable experimental language feature
-  --profiler:on|off         Enable profiling; requires `import nimprof`, and
+  --legacy:$2
+                            enable obsolete/legacy language feature
+  --useVersion:1.0          emulate Nim version X of the Nim compiler
+  --newruntime              use an alternative runtime that uses destructors
+                            and that uses a shared heap via -d:useMalloc
+  --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
+  --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()

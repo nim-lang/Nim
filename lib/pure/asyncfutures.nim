@@ -1,3 +1,12 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
@@ -6,13 +15,13 @@ type
 
   CallbackList = object
     function: CallbackFunc
-    next: ref CallbackList
+    next: owned(ref CallbackList)
 
-  FutureBase* = ref object of RootObj ## Untyped future.
+  FutureBase* = ref object of RootObj  ## Untyped future.
     callbacks: CallbackList
 
     finished: bool
-    error*: ref Exception ## Stored exception
+    error*: ref Exception              ## Stored exception
     errorStackTrace*: string
     when not defined(release):
       stackTrace: seq[StackTraceEntry] ## For debugging purposes only.
@@ -20,7 +29,7 @@ type
       fromProc: string
 
   Future*[T] = ref object of FutureBase ## Typed future.
-    value: T ## Stored value
+    value: T                            ## Stored value
 
   FutureVar*[T] = distinct Future[T]
 
@@ -31,6 +40,10 @@ when not defined(release):
   var currentID = 0
 
 const isFutureLoggingEnabled* = defined(futureLogging)
+
+const
+  NimAsyncContinueSuffix* = "NimAsyncContinue" ## For internal usage. Do not use.
+
 when isFutureLoggingEnabled:
   import hashes
   type
@@ -99,7 +112,7 @@ template setupFutureBase(fromProc: string) =
     result.fromProc = fromProc
     currentID.inc()
 
-proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
+proc newFuture*[T](fromProc: string = "unspecified"): owned(Future[T]) =
   ## Creates a new future.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
@@ -107,13 +120,14 @@ proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   setupFutureBase(fromProc)
   when isFutureLoggingEnabled: logFutureStart(result)
 
-proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
+proc newFutureVar*[T](fromProc = "unspecified"): owned(FutureVar[T]) =
   ## Create a new ``FutureVar``. This Future type is ideally suited for
   ## situations where you want to avoid unnecessary allocations of Futures.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
   ## that this future belongs to, is a good habit as it helps with debugging.
-  result = FutureVar[T](newFuture[T](fromProc))
+  let fo = newFuture[T](fromProc)
+  result = typeof(result)(fo)
   when isFutureLoggingEnabled: logFutureStart(Future[T](result))
 
 proc clean*[T](future: FutureVar[T]) =
@@ -143,16 +157,32 @@ proc checkFinished[T](future: Future[T]) =
       raise err
 
 proc call(callbacks: var CallbackList) =
-  var current = callbacks
+  when not defined(nimV2):
+    # strictly speaking a little code duplication here, but we strive
+    # to minimize regressions and I'm not sure I got the 'nimV2' logic
+    # right:
+    var current = callbacks
+    while true:
+      if not current.function.isNil:
+        callSoon(current.function)
 
-  while true:
-    if not current.function.isNil:
-      callSoon(current.function)
+      if current.next.isNil:
+        break
+      else:
+        current = current.next[]
+  else:
+    var currentFunc = unown callbacks.function
+    var currentNext = unown callbacks.next
 
-    if current.next.isNil:
-      break
-    else:
-      current = current.next[]
+    while true:
+      if not currentFunc.isNil:
+        callSoon(currentFunc)
+
+      if currentNext.isNil:
+        break
+      else:
+        currentFunc = currentNext.function
+        currentNext = unown currentNext.next
 
   # callback will be called only once, let GC collect them now
   callbacks.next = nil
@@ -230,7 +260,7 @@ proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
   future.callbacks.next = nil
 
-proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
+proc addCallback*(future: FutureBase, cb: proc() {.closure, gcsafe.}) =
   ## Adds the callbacks proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -241,16 +271,16 @@ proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
     future.callbacks.add cb
 
 proc addCallback*[T](future: Future[T],
-                     cb: proc (future: Future[T]) {.closure,gcsafe.}) =
+                     cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Adds the callbacks proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
   future.addCallback(
     proc() =
-      cb(future)
+    cb(future)
   )
 
-proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
+proc `callback=`*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
   ## Clears the list of callbacks and sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -260,7 +290,7 @@ proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
   future.addCallback cb
 
 proc `callback=`*[T](future: Future[T],
-    cb: proc (future: Future[T]) {.closure,gcsafe.}) =
+    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -277,7 +307,7 @@ proc getHint(entry: StackTraceEntry): string =
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
 
-  if entry.procname.endsWith("_continue"):
+  if entry.procname.endsWith(NimAsyncContinueSuffix):
     if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
       return "Resumes an async procedure"
 
@@ -286,7 +316,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
   for entry in entries:
-    if entry.procName.isNil: continue
+    if entry.procname.isNil: continue
 
     let left = $entry.filename & $entry.line
     if left.len > longestLeft:
@@ -295,7 +325,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   var indent = 2
   # Format the entries.
   for entry in entries:
-    if entry.procName.isNil:
+    if entry.procname.isNil:
       if entry.line == -10:
         result.add(spaces(indent) & "#[\n")
         indent.inc(2)
@@ -308,7 +338,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
     result.add((spaces(indent) & "$#$# $#\n") % [
       left,
       spaces(longestLeft - left.len + 2),
-      $entry.procName
+      $entry.procname
     ])
     let hint = getHint(entry)
     if hint.len > 0:

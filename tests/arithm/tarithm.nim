@@ -48,6 +48,7 @@ block tcast:
     let rt = ty(exp)
     const ct = ty(exp)
     if $rt != $ct:
+      echo astToStr(exp)
       echo "Got ", ct
       echo "Expected ", rt
 
@@ -71,7 +72,8 @@ block tcast:
   crossCheck(uint8, uint8.high + 5'u8)
   crossCheck(uint16, uint16.high + 5'u16)
   crossCheck(uint32, uint32.high + 5'u32)
-  crossCheck(uint64, (-1).uint64 + 5'u64)
+  crossCheck(uint64, 0xFFFFFFFFFFFFFFFF'u64 + 5'u64)
+  crossCheck(uint64, uint64.high + 5'u64)
 
   doAssert $sub1(0'u8) == "255"
   doAssert $sub1(0'u16) == "65535"
@@ -88,12 +90,10 @@ block tcast:
   crossCheck(int64, high(int8).int16.int32.int64)
   crossCheck(int64, low(int8).int16.int32.int64)
 
-  crossCheck(int64, 0xFFFFFFFFFFFFFFFF'u64)
-  crossCheck(int32, 0xFFFFFFFFFFFFFFFF'u64)
-  crossCheck(int16, 0xFFFFFFFFFFFFFFFF'u64)
-  crossCheck(int8 , 0xFFFFFFFFFFFFFFFF'u64)
-
-
+  doAssert not compiles(echo int64(0xFFFFFFFFFFFFFFFF'u64))
+  doAssert not compiles(echo int32(0xFFFFFFFFFFFFFFFF'u64))
+  doAssert not compiles(echo int16(0xFFFFFFFFFFFFFFFF'u64))
+  doAssert not compiles(echo  int8(0xFFFFFFFFFFFFFFFF'u64))
 
 block tnot:
   # Signed types
@@ -134,8 +134,6 @@ block tnot:
     doAssert t6 == 4
     doAssert t7 == 4
 
-
-
 block tshl:
   # Signed types
   block:
@@ -158,8 +156,6 @@ block tshl:
     doAssert t1 == 1
     doAssert t2 == 1
     doAssert t3 == 1
-
-
 
 block tshr:
   proc T() =
@@ -188,7 +184,7 @@ block tsubrange:
   var level: n16 = 1
   let maxLevel: n16 = 1
 
-  level = min(level + 2, maxLevel)
+  level = min(level + 2, maxLevel).n16
   doAssert level == 1
 
 

@@ -657,3 +657,168 @@ type
     key*, val*: TaintedString ## Key and value pair; the key is the option
                               ## or the argument, and the value is not "" if
                               ## the option was given a value
+
+block:
+  var t = 3
+
+## This MUST be a multiline comment,
+## single line comment would be ok.
+block:
+  var x = 7
+
+
+block:
+  var t = 3
+  ## another
+  ## multi
+
+## This MUST be a multiline comment,
+## single line comment would be ok.
+block:
+  var x = 7
+
+
+proc newRecordGen(ctx: Context; typ: TypRef): PNode =
+  result = nkTypeDef.t(
+    newId(typ.optSym.name, true, pragmas = [id(if typ.isUnion: "cUnion" else: "cStruct")]),
+    empty(),
+    nkObjectTy.t(
+      empty(),
+      empty(),
+      nkRecList.t(
+        typ.recFields.map(newRecFieldGen))))
+
+
+##[
+String `interpolation`:idx: / `format`:idx: inspired by
+Python's ``f``-strings.
+
+.. code-block:: nim
+
+    import strformat
+    let msg = "hello"
+    doAssert fmt"{msg}\n" == "hello\\n"
+
+Because the literal is a raw string literal, the ``\n`` is not interpreted as
+an escape sequence.
+
+
+=================        ====================================================
+  Sign                   Meaning
+=================        ====================================================
+``+``                    Indicates that a sign should be used for both
+                         positive as well as negative numbers.
+``-``                    Indicates that a sign should be used only for
+                         negative numbers (this is the default behavior).
+(space)                  Indicates that a leading space should be used on
+                         positive numbers.
+=================        ====================================================
+
+]##
+
+
+let
+  lla = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is an okayish comment
+  llb = 42394219 - 42429849 + 1293293 - 13918391 + 424242 # this here is a very long comment which should be split
+  llc = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 3429424 + 4239489 - 42399
+  lld = 42394219 - 42429849 + 1293293 - 13918391 + 424242 - 342949924 + 423948999 - 42399
+
+type
+  MyLongEnum = enum ## doc comment here
+    first, ## this is a long comment here, but please align it
+    secondWithAVeryLongNameMightBreak, ## this is a short one
+    thirdOne ## it's ok
+
+if true: # just one space before comment
+  echo 7
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool
+  ## Compares two colors.
+  ##
+
+# colors.nim:18
+proc `==` *(a, b: Color): bool {.borrow.}
+  ## Compares two colors.
+  ##
+
+
+var rows1 = await pool.rows(sql"""
+    SELECT STUFF
+    WHERE fffffffffffffffffffffffffffffff
+  """,
+  @[
+    "AAAA",
+    "BBBB"
+  ]
+)
+
+var rows2 = await pool.rows(sql"""
+    SELECT STUFF
+    WHERE fffffffffffffffffffffffffffffffgggggggggggggggggggggggggghhhhhhhhhhhhhhhheeeeeeiiiijklm""",
+  @[
+    "AAAA",
+    "BBBB"
+  ]
+)
+
+
+# bug #11699
+
+const keywords = @[
+  "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar", "foo", "bar",
+  "zzz", "ggg", "ddd",
+]
+
+let keywords1 = @[
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+  "zzz", "ggg", "ddd",
+]
+
+let keywords2 = @[
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+  "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+  "zzz", "ggg", "ddd",
+]
+
+if true:
+  let keywords3 = @[
+    "foo1", "bar1", "foo2", "bar2", "foo3", "bar3", "foo4", "bar4", "foo5", "bar5", "foo6", "bar6", "foo7",
+    "zzz", "ggg", "ddd",
+  ]
+
+const b = true
+let fooB =
+  if true:
+    if b: 7 else: 8
+  else: ord(b)
+
+let foo = if cond:
+            if b: T else: F
+          else: b
+
+let a =
+  [[aaadsfas, bbb],
+   [ccc, ddd]]
+
+let b = [
+  [aaa, bbb],
+  [ccc, ddd]
+]
+
+# bug #11616
+proc newRecordGen(ctx: Context; typ: TypRef): PNode =
+  result = nkTypeDef.t(
+    newId(typ.optSym.name, true, pragmas = [id(if typ.isUnion: "cUnion"
+                                               else: "cStruct")]),
+    empty(),
+    nkObjectTy.t(
+      empty(),
+      empty(),
+      nkRecList.t(
+        typ.recFields.map(newRecFieldGen))))
+
+proc f =
+  # doesn't break the code, but leaving indentation as is would be nice.
+  let x = if true: callingProcWhatever()
+          else: callingADifferentProc()

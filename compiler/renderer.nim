@@ -9,6 +9,11 @@
 
 # This module implements the renderer of the standard Nim representation.
 
+when defined(nimHasUsed):
+  # 'import renderer' is so useful for debugging
+  # that Nim shouldn't produce a warning for that:
+  {.used.}
+
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
 
@@ -64,14 +69,11 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   else:
     result = '`' & x & '`'
 
-when not defined(nimpretty):
-  const
-    IndentWidth = 2
-    longIndentWid = IndentWidth * 2
-else:
-  template IndentWidth: untyped = lexer.gIndentationWidth
-  template longIndentWid: untyped = IndentWidth() * 2
+const
+  IndentWidth = 2
+  longIndentWid = IndentWidth * 2
 
+when defined(nimpretty):
   proc minmaxLine(n: PNode): (int, int) =
     case n.kind
     of nkTripleStrLit:
@@ -312,6 +314,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
     while result != nil and result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
                           tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
+
   let typ = n.typ.skip
   if typ != nil and typ.kind in {tyBool, tyEnum}:
     if sfPure in typ.sym.flags:
@@ -322,19 +325,20 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
       if e.sym.position == x:
         result &= e.sym.name.s
         return
-
-  let y = x and ((1 shl (size*8)) - 1)
-  if nfBase2 in n.flags: result = "0b" & toBin(y, size * 8)
-  elif nfBase8 in n.flags: result = "0o" & toOct(y, size * 3)
-  elif nfBase16 in n.flags: result = "0x" & toHex(y, size * 2)
+  
+  if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
+  elif nfBase8 in n.flags:
+    var y = if size < sizeof(BiggestInt): x and ((1 shl (size*8)) - 1)
+            else: x
+    result = "0o" & toOct(y, size * 3)
+  elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
   else: result = $x
 
 proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
-  else: result = $x
-  # XXX proper unsigned output!
+  else: result = $cast[BiggestUInt](x)
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
@@ -394,7 +398,7 @@ proc atom(g: TSrcGen; n: PNode): string =
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in start .. sonsLen(n) + theEnd:
+  for i in start .. len(n) + theEnd:
     let param = n.sons[i]
     if nfDefaultParam notin param.flags:
       inc(result, lsub(g, param))
@@ -405,7 +409,7 @@ proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in start .. sonsLen(n) + theEnd: inc(result, lsub(g, n.sons[i]))
+  for i in start .. len(n) + theEnd: inc(result, lsub(g, n.sons[i]))
 
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
@@ -435,7 +439,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkTableConstr:
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
   of nkClosedSymChoice, nkOpenSymChoice:
-    result = lsons(g, n) + len("()") + sonsLen(n) - 1
+    result = lsons(g, n) + len("()") + len(n) - 1
   of nkTupleTy: result = lcomma(g, n) + len("tuple[]")
   of nkTupleClassTy: result = len("tuple")
   of nkDotExpr: result = lsons(g, n) + 1
@@ -447,7 +451,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
     result = lcomma(g, n, 0, - 3)
-    var L = sonsLen(n)
+    var L = len(n)
     if n.sons[L - 2].kind != nkEmpty: result = result + lsub(g, n.sons[L - 2]) + 2
     if n.sons[L - 1].kind != nkEmpty: result = result + lsub(g, n.sons[L - 1]) + 3
   of nkVarTuple: result = lcomma(g, n, 0, - 3) + len("() = ") + lsub(g, lastSon(n))
@@ -456,7 +460,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkChckRange: result = len("chckRange") + 2 + lcomma(g, n)
   of nkObjDownConv, nkObjUpConv:
     result = 2
-    if sonsLen(n) >= 1: result = result + lsub(g, n.sons[0])
+    if len(n) >= 1: result = result + lsub(g, n.sons[0])
     result = result + lcomma(g, n, 1)
   of nkExprColonExpr: result = lsons(g, n) + 2
   of nkInfix: result = lsons(g, n) + 2
@@ -473,7 +477,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
         len("if_:_")
   of nkElifExpr: result = lsons(g, n) + len("_elif_:_")
   of nkElseExpr: result = lsub(g, n.sons[0]) + len("_else:_") # type descriptions
-  of nkTypeOfExpr: result = (if n.len > 0: lsub(g, n.sons[0]) else: 0)+len("type()")
+  of nkTypeOfExpr: result = (if n.len > 0: lsub(g, n.sons[0]) else: 0)+len("typeof()")
   of nkRefTy: result = (if n.len > 0: lsub(g, n.sons[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(g, n.sons[0])+1 else: 0) + len("ptr")
   of nkVarTy: result = (if n.len > 0: lsub(g, n.sons[0])+1 else: 0) + len("var")
@@ -490,16 +494,16 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkIteratorTy: result = lsons(g, n) + len("iterator_")
   of nkSharedTy: result = lsons(g, n) + len("shared_")
   of nkEnumTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       result = lsub(g, n.sons[0]) + lcomma(g, n, 1) + len("enum_")
     else:
       result = len("enum")
   of nkEnumFieldDef: result = lsons(g, n) + 3
   of nkVarSection, nkLetSection:
-    if sonsLen(n) > 1: result = MaxLineLen + 1
+    if len(n) > 1: result = MaxLineLen + 1
     else: result = lsons(g, n) + len("var_")
   of nkUsingStmt:
-    if sonsLen(n) > 1: result = MaxLineLen + 1
+    if len(n) > 1: result = MaxLineLen + 1
     else: result = lsons(g, n) + len("using_")
   of nkReturnStmt:
     if n.len > 0 and n[0].kind == nkAsgn:
@@ -555,7 +559,7 @@ proc hasCom(n: PNode): bool =
   case n.kind
   of nkEmpty..nkNilLit: discard
   else:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if hasCom(n.sons[i]): return true
 
 proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
@@ -564,8 +568,8 @@ proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
                theEnd: int = - 1, separator = tkComma) =
-  for i in start .. sonsLen(n) + theEnd:
-    var c = i < sonsLen(n) + theEnd
+  for i in start .. len(n) + theEnd:
+    var c = i < len(n) + theEnd
     var sublen = lsub(g, n.sons[i]) + ord(c)
     if not fits(g, sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
@@ -599,15 +603,15 @@ proc gsemicolon(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) =
 
 proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
            theEnd: int = - 1) =
-  for i in start .. sonsLen(n) + theEnd: gsub(g, n.sons[i], c)
+  for i in start .. len(n) + theEnd: gsub(g, n.sons[i], c)
 
 proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
               k: string) =
-  if sonsLen(n) == 0: return # empty var sections are possible
+  if len(n) == 0: return # empty var sections are possible
   putWithSpace(g, kind, k)
   gcoms(g)
   indentNL(g)
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     optNL(g)
     gsub(g, n.sons[i], c)
     gcoms(g)
@@ -617,7 +621,7 @@ proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
   result = n.comment.len > 0
   if not result:
     # check further
-    for i in start .. sonsLen(n) + theEnd:
+    for i in start .. len(n) + theEnd:
       if (lsub(g, n.sons[i]) > MaxLineLen):
         result = true
         break
@@ -662,7 +666,7 @@ proc gif(g: var TSrcGen, n: PNode) =
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n.sons[0].sons[1], c)
-  var length = sonsLen(n)
+  var length = len(n)
   for i in 1 ..< length:
     optNL(g)
     gsub(g, n.sons[i], c)
@@ -711,7 +715,7 @@ proc gtry(g: var TSrcGen, n: PNode) =
 
 proc gfor(g: var TSrcGen, n: PNode) =
   var c: TContext
-  var length = sonsLen(n)
+  var length = len(n)
   putWithSpace(g, tkFor, "for")
   initContext(c)
   if longMode(g, n) or
@@ -729,7 +733,7 @@ proc gfor(g: var TSrcGen, n: PNode) =
 proc gcase(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
-  var length = sonsLen(n)
+  var length = len(n)
   if length == 0: return
   var last = if n.sons[length-1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
@@ -743,13 +747,18 @@ proc gcase(g: var TSrcGen, n: PNode) =
     if longMode(g, n.sons[length - 1]): incl(c.flags, rfLongMode)
     gsub(g, n.sons[length - 1], c)
 
+proc genSymSuffix(result: var string, s: PSym) {.inline.} =
+  if sfGenSym in s.flags:
+    result.add '_'
+    result.addInt s.id
+
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
     let s = n.sons[namePos].sym
-    put(g, tkSymbol, renderDefinitionName(s))
-    if sfGenSym in s.flags:
-      put(g, tkIntLit, $s.id)
+    var ret = renderDefinitionName(s)
+    ret.genSymSuffix(s)
+    put(g, tkSymbol, ret)
   else:
     gsub(g, n.sons[namePos])
 
@@ -843,12 +852,12 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+    s.genSymSuffix(n.sym)
     when defined(debugMagics):
-      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
-    else:
-      put(g, tkIntLit, $n.sym.id)
+      s.add '_'
+      s.add $n.sym.magic
+  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -898,16 +907,19 @@ proc accentedName(g: var TSrcGen, n: PNode) =
     gsub(g, n)
 
 proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
-  if i >= n.len: return
-
+  if i < 1 and i > 2: return
   var needsParenthesis = false
-  let n_next = n[i].skipHiddenNodes
-  if n_next.kind == nkInfix:
-    if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
-      let nextId = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
+  let nNext = n[i].skipHiddenNodes
+  if nNext.kind == nkInfix:
+    if nNext[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
+      let nextId = if nNext[0].kind == nkSym: nNext[0].sym.name else: nNext[0].ident
       let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident
-      if getPrecedence(nextId) < getPrecedence(nnId):
-        needsParenthesis = true
+      if i == 1:
+        if getPrecedence(nextId) < getPrecedence(nnId):
+          needsParenthesis = true
+      elif i == 2:
+        if getPrecedence(nextId) <= getPrecedence(nnId):
+          needsParenthesis = true
   if needsParenthesis:
     put(g, tkParLe, "(")
   gsub(g, n, i)
@@ -957,7 +969,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkColon, ":")
       gsub(g, n, n.len-1)
     else:
-      if sonsLen(n) >= 1: accentedName(g, n[0])
+      if len(n) >= 1: accentedName(g, n[0])
       put(g, tkParLe, "(")
       gcomma(g, n, 1)
       put(g, tkParRi, ")")
@@ -1037,14 +1049,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n)
     put(g, tkParRi, ")")
   of nkObjDownConv, nkObjUpConv:
-    if sonsLen(n) >= 1: gsub(g, n.sons[0])
+    if len(n) >= 1: gsub(g, n.sons[0])
     put(g, tkParLe, "(")
     gcomma(g, n, 1)
     put(g, tkParRi, ")")
   of nkClosedSymChoice, nkOpenSymChoice:
     if renderIds in g.flags:
       put(g, tkParLe, "(")
-      for i in 0 ..< sonsLen(n):
+      for i in 0 ..< len(n):
         if i > 0: put(g, tkOpr, "|")
         if n.sons[i].kind == nkSym:
           let s = n[i].sym
@@ -1106,7 +1118,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n, bodyPos)
   of nkConstDef, nkIdentDefs:
     gcomma(g, n, 0, -3)
-    var L = sonsLen(n)
+    var L = len(n)
     if L >= 2 and n.sons[L - 2].kind != nkEmpty:
       putWithSpace(g, tkColon, ":")
       gsub(g, n, L - 2)
@@ -1144,10 +1156,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
                 elif n[0].kind == nkSym: n[0].sym.name
                 elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
-      let n_next = skipHiddenNodes(n[1])
-      if n_next.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
+      let nNext = skipHiddenNodes(n[1])
+      if nNext.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
-      if n_next.kind == nkInfix:
+      if nNext.kind == nkInfix:
         put(g, tkParLe, "(")
         gsub(g, n.sons[1])
         put(g, tkParRi, ")")
@@ -1186,24 +1198,24 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 0)
   of nkTypeOfExpr:
-    put(g, tkType, "type")
+    put(g, tkType, "typeof")
     put(g, tkParLe, "(")
     if n.len > 0: gsub(g, n.sons[0])
     put(g, tkParRi, ")")
   of nkRefTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       putWithSpace(g, tkRef, "ref")
       gsub(g, n.sons[0])
     else:
       put(g, tkRef, "ref")
   of nkPtrTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       putWithSpace(g, tkPtr, "ptr")
       gsub(g, n.sons[0])
     else:
       put(g, tkPtr, "ptr")
   of nkVarTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       putWithSpace(g, tkVar, "var")
       gsub(g, n.sons[0])
     else:
@@ -1234,7 +1246,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       putWithSpace(g, tkEquals, "=")
       gsub(g, n.sons[2])
   of nkObjectTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       putWithSpace(g, tkObject, "object")
       gsub(g, n.sons[0])
       gsub(g, n.sons[1])
@@ -1244,7 +1256,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkObject, "object")
   of nkRecList:
     indentNL(g)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       optNL(g)
       gsub(g, n.sons[i], c)
       gcoms(g)
@@ -1254,14 +1266,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkOf, "of")
     gsub(g, n, 0)
   of nkProcTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       putWithSpace(g, tkProc, "proc")
       gsub(g, n, 0)
       gsub(g, n, 1)
     else:
       put(g, tkProc, "proc")
   of nkIteratorTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       putWithSpace(g, tkIterator, "iterator")
       gsub(g, n, 0)
       gsub(g, n, 1)
@@ -1274,7 +1286,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
     put(g, tkBracketRi, "]")
   of nkEnumTy:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       putWithSpace(g, tkEnum, "enum")
       gsub(g, n.sons[0])
       gcoms(g)
@@ -1332,7 +1344,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
   of nkVarSection, nkLetSection, nkUsingStmt:
-    var L = sonsLen(n)
+    var L = len(n)
     if L == 0: return
     if n.kind == nkVarSection: putWithSpace(g, tkVar, "var")
     elif n.kind == nkLetSection: putWithSpace(g, tkLet, "let")
@@ -1543,7 +1555,7 @@ proc renderModule*(n: PNode, infile, outfile: string,
     g: TSrcGen
   initSrcGen(g, renderFlags, conf)
   g.fid = fid
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     gsub(g, n.sons[i])
     optNL(g)
     case n.sons[i].kind
@@ -1576,3 +1588,15 @@ proc getTokSym*(r: TSrcGen): PSym =
     result = r.tokens[r.idx-1].sym
   else:
     result = nil
+
+proc quoteExpr*(a: string): string {.inline.} =
+  ## can be used for quoting expressions in error msgs.
+  "'" & a & "'"
+
+proc genFieldError*(field: PSym, disc: PSym): string =
+  ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
+  ## provide this error msg FieldError; msgs would be better but it does not
+  ## import ast
+  result = field.name.s.quoteExpr & " is not accessible using discriminant " &
+    disc.name.s.quoteExpr & " of type " &
+    disc.owner.name.s.quoteExpr

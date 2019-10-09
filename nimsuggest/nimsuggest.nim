@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
-# Do NOT import suggest. It will lead to wierd bugs with
+# Do NOT import suggest. It will lead to weird bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 import compiler / [options, commands, modules, sem,
@@ -274,7 +274,7 @@ template setVerbosity(level: typed) =
   conf.notes = NotesVerbosity[gVerbosity]
 
 proc connectToNextFreePort(server: Socket, host: string): Port =
-  server.bindaddr(Port(0), host)
+  server.bindAddr(Port(0), host)
   let (_, port) = server.getLocalAddr
   result = port
 
@@ -319,8 +319,8 @@ proc replTcp(x: ThreadParams) {.thread.} =
     server.bindAddr(x.port, x.address)
     server.listen()
   var inp = "".TaintedString
+  var stdoutSocket: Socket
   while true:
-    var stdoutSocket = newSocket()
     accept(server, stdoutSocket)
 
     stdoutSocket.readLine(inp)
@@ -342,9 +342,9 @@ proc argsToStr(x: SexpNode): string =
     result.add ';'
     result.add dirty.escape
   result.add ':'
-  result.add line
+  result.addInt line
   result.add ':'
-  result.add col
+  result.addInt col
 
 proc replEpc(x: ThreadParams) {.thread.} =
   var server = newSocket()
@@ -353,7 +353,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
   echo port
   stdout.flushFile()
 
-  var client = newSocket()
+  var client: Socket
   # Wait for connection
   accept(server, client)
   while true:
@@ -393,7 +393,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
                        of "return", "return-error":
                          "no return expected"
                        else:
-                         "unexpected call: " & epcAPI
+                         "unexpected call: " & epcApi
       quit errMessage
 
 proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
@@ -464,7 +464,7 @@ proc recompileFullProject(graph: ModuleGraph) =
   resetSystemArtifacts(graph)
   graph.vm = nil
   graph.resetAllModules()
-  GC_fullcollect()
+  GC_fullCollect()
   compileProject(graph)
   #echo GC_getStatistics()
 
@@ -553,10 +553,10 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case p.key.normalize
       of "help", "h":
-        stdout.writeline(Usage)
+        stdout.writeLine(Usage)
         quit()
       of "autobind":
         gMode = mtcp
@@ -614,7 +614,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   self.initDefinesProg(conf, "nimsuggest")
 
   if paramCount() == 0:
-    stdout.writeline(Usage)
+    stdout.writeLine(Usage)
     return
 
   self.processCmdLineAndProjectPath(conf)
@@ -636,7 +636,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   discard self.loadConfigsAndRunMainCommand(cache, conf)
 
 when isMainModule:
-  handleCmdline(newIdentCache(), newConfigRef())
+  handleCmdLine(newIdentCache(), newConfigRef())
 else:
   export Suggest
   export IdeCmd

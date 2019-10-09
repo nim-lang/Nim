@@ -10,15 +10,14 @@
 # this unit handles Nim sets; it implements symbolic sets
 
 import
-  ast, astalgo, trees, nversion, lineinfos, platform, bitsets, types, renderer,
-  options
+  ast, astalgo, lineinfos, bitsets, types, options
 
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
     #internalError(s.info, "inSet")
     return false
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
       if leValue(s.sons[i].sons[0], elem) and
           leValue(elem, s.sons[i].sons[1]):
@@ -48,7 +47,7 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "SomeInSet")
     return false
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
       if leValue(s.sons[i].sons[0], b) and leValue(b, s.sons[i].sons[1]) or
           leValue(s.sons[i].sons[0], a) and leValue(a, s.sons[i].sons[1]):
@@ -60,17 +59,17 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   result = false
 
 proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
-  var first, j: BiggestInt
+  var first, j: Int128
   first = firstOrd(conf, s.typ.sons[0])
   bitSetInit(b, int(getSize(conf, s.typ)))
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
-      j = getOrdValue(s.sons[i].sons[0])
-      while j <= getOrdValue(s.sons[i].sons[1]):
-        bitSetIncl(b, j - first)
+      j = getOrdValue(s.sons[i].sons[0], first)
+      while j <= getOrdValue(s.sons[i].sons[1], first):
+        bitSetIncl(b, toInt64(j - first))
         inc(j)
     else:
-      bitSetIncl(b, getOrdValue(s.sons[i]) - first)
+      bitSetIncl(b, toInt64(getOrdValue(s.sons[i]) - first))
 
 proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): PNode =
   var
@@ -78,7 +77,7 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
     elemType: PType
     n: PNode
   elemType = settype.sons[0]
-  first = firstOrd(conf, elemType)
+  first = firstOrd(conf, elemType).toInt64
   result = newNodeI(nkCurly, info)
   result.typ = settype
   result.info = info
@@ -91,7 +90,7 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
         inc(b)
         if (b >= len(s) * ElemSize) or not bitSetIn(s, b): break
       dec(b)
-      let aa = newIntTypeNode(nkIntLit, a + first, elemType)
+      let aa = newIntTypeNode(a + first, elemType)
       aa.info = info
       if a == b:
         addSon(result, aa)
@@ -99,7 +98,7 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
         n = newNodeI(nkRange, info)
         n.typ = elemType
         addSon(n, aa)
-        let bb = newIntTypeNode(nkIntLit, b + first, elemType)
+        let bb = newIntTypeNode(b + first, elemType)
         bb.info = info
         addSon(n, bb)
         addSon(result, n)
@@ -150,7 +149,7 @@ proc setHasRange*(s: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
     return false
-  for i in 0 ..< sonsLen(s):
+  for i in 0 ..< len(s):
     if s.sons[i].kind == nkRange:
       return true
   result = false

@@ -232,7 +232,7 @@ type
     ## For creating an empty Table, use `initTable proc<#initTable,int>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
-  TableRef*[A,B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
+  TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
     ## For creating a new empty TableRef, use `newTable proc
     ## <#newTable,int>`_.
@@ -286,7 +286,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
 # ------------------------------ Table ------------------------------
 # -------------------------------------------------------------------
 
-proc initTable*[A, B](initialsize = defaultInitialSize): Table[A, B] =
+proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -306,6 +306,22 @@ proc initTable*[A, B](initialsize = defaultInitialSize): Table[A, B] =
       a = initTable[int, string]()
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
+
+proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toTable
+
+  putImpl(enlarge)
 
 proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## Creates a new hash table that contains the given ``pairs``.
@@ -361,22 +377,6 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
-  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -540,7 +540,7 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   var index = rawGet(t, key, hc)
   result = index >= 0
   if result:
-    shallowCopy(val, t.data[index].val)
+    val = move(t.data[index].val)
     delImplIdx(t, index)
 
 proc clear*[A, B](t: var Table[A, B]) =
@@ -580,7 +580,7 @@ proc rightSize*(count: Natural): int {.inline.} =
   ## expected extra amount to the parameter before calling this.
   ##
   ## Internally, we want mustRehash(rightSize(x), x) == false.
-  result = nextPowerOfTwo(count * 3 div 2  +  4)
+  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.
@@ -788,7 +788,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 # -------------------------------------------------------------------
 
 
-proc newTable*[A, B](initialsize = defaultInitialSize): <//>TableRef[A, B] =
+proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -1201,7 +1201,7 @@ type
   OrderedKeyValuePair[A, B] = tuple[
     hcode: Hash, next: int, key: A, val: B]
   OrderedKeyValuePairSeq[A, B] = seq[OrderedKeyValuePair[A, B]]
-  OrderedTable* [A, B] = object
+  OrderedTable*[A, B] = object
     ## Hash table that remembers insertion order.
     ##
     ## For creating an empty OrderedTable, use `initOrderedTable proc
@@ -1263,7 +1263,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 
 # ----------------------------------------------------------------------
 
-proc initOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTable[A, B] =
+proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -1284,6 +1284,22 @@ proc initOrderedTable*[A, B](initialsize = defaultInitialSize): OrderedTable[A, 
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
+
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
+  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initOrderedTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
+
+  putImpl(enlarge)
 
 proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given ``pairs``.
@@ -1326,7 +1342,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
 
   get(t, key)
 
-proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B=
+proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## Retrieves the value at ``t[key]``. The value can be modified.
   ##
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
@@ -1341,22 +1357,6 @@ proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B=
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
-  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initOrderedTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -1527,7 +1527,8 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
   t.first = -1
   t.last = -1
 
-proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int, order = SortOrder.Ascending) =
+proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
+    order = SortOrder.Ascending) =
   ## Sorts ``t`` according to the function ``cmp``.
   ##
   ## This modifies the internal list
@@ -1542,7 +1543,7 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int, order 
     doAssert a == {'c': 0, 'a': 10, 'b': 20}.toOrderedTable
     a.sort(system.cmp)
     doAssert a == {'a': 10, 'b': 20, 'c': 0}.toOrderedTable
-    a.sort(system.cmp, order=SortOrder.Descending)
+    a.sort(system.cmp, order = SortOrder.Descending)
     doAssert a == {'c': 0, 'b': 20, 'a': 10}.toOrderedTable
 
   var list = t.first
@@ -1660,7 +1661,8 @@ iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
       }.toOrderedTable
     for k, v in a.mpairs:
       v.add(v[0] + 10)
-    doAssert a == {'o': @[1, 5, 7, 9, 11], 'e': @[2, 4, 6, 8, 12]}.toOrderedTable
+    doAssert a == {'o': @[1, 5, 7, 9, 11],
+                   'e': @[2, 4, 6, 8, 12]}.toOrderedTable
 
   let L = len(t)
   forAllOrderedPairs:
@@ -1680,7 +1682,8 @@ iterator keys*[A, B](t: OrderedTable[A, B]): A =
       }.toOrderedTable
     for k in a.keys:
       a[k].add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.toOrderedTable
+    doAssert a == {'o': @[1, 5, 7, 9, 99],
+                   'e': @[2, 4, 6, 8, 99]}.toOrderedTable
 
   let L = len(t)
   forAllOrderedPairs:
@@ -1722,7 +1725,8 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
       }.toOrderedTable
     for v in a.mvalues:
       v.add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.toOrderedTable
+    doAssert a == {'o': @[1, 5, 7, 9, 99],
+                   'e': @[2, 4, 6, 8, 99]}.toOrderedTable
 
   let L = len(t)
   forAllOrderedPairs:
@@ -1737,7 +1741,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
-proc newOrderedTable*[A, B](initialsize = defaultInitialSize): <//>OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -1964,7 +1968,8 @@ proc clear*[A, B](t: var OrderedTableRef[A, B]) =
 
   clear(t[])
 
-proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int, order = SortOrder.Ascending) =
+proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
+    order = SortOrder.Ascending) =
   ## Sorts ``t`` according to the function ``cmp``.
   ##
   ## This modifies the internal list
@@ -1979,10 +1984,10 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int, order =
     doAssert a == {'c': 0, 'a': 10, 'b': 20}.newOrderedTable
     a.sort(system.cmp)
     doAssert a == {'a': 10, 'b': 20, 'c': 0}.newOrderedTable
-    a.sort(system.cmp, order=SortOrder.Descending)
+    a.sort(system.cmp, order = SortOrder.Descending)
     doAssert a == {'c': 0, 'b': 20, 'a': 10}.newOrderedTable
 
-  t[].sort(cmp, order=order)
+  t[].sort(cmp, order = order)
 
 proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The ``$`` operator for hash tables. Used internally when calling `echo`
@@ -2050,7 +2055,8 @@ iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
       }.newOrderedTable
     for k, v in a.mpairs:
       v.add(v[0] + 10)
-    doAssert a == {'o': @[1, 5, 7, 9, 11], 'e': @[2, 4, 6, 8, 12]}.newOrderedTable
+    doAssert a == {'o': @[1, 5, 7, 9, 11],
+                   'e': @[2, 4, 6, 8, 12]}.newOrderedTable
 
   let L = len(t)
   forAllOrderedPairs:
@@ -2070,7 +2076,8 @@ iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
       }.newOrderedTable
     for k in a.keys:
       a[k].add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.newOrderedTable
+    doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8,
+        99]}.newOrderedTable
 
   let L = len(t)
   forAllOrderedPairs:
@@ -2111,7 +2118,8 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
       }.newOrderedTable
     for v in a.mvalues:
       v.add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8, 99]}.newOrderedTable
+    doAssert a == {'o': @[1, 5, 7, 9, 99],
+                   'e': @[2, 4, 6, 8, 99]}.newOrderedTable
 
   let L = len(t)
   forAllOrderedPairs:
@@ -2129,7 +2137,7 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
 # -------------------------------------------------------------------------
 
 type
-  CountTable* [A] = object
+  CountTable*[A] = object
     ## Hash table that counts the number of each key.
     ##
     ## For creating an empty CountTable, use `initCountTable proc
@@ -2167,17 +2175,17 @@ proc rawGet[A](t: CountTable[A], key: A): int =
   while t.data[h].val != 0:
     if t.data[h].key == key: return h
     h = nextTry(h, high(t.data))
-  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
+  result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1)
+proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
 
 # ----------------------------------------------------------------------
 
-proc initCountTable*[A](initialsize = defaultInitialSize): CountTable[A] =
+proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## Creates a new count table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -2238,8 +2246,11 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   else:
     insertImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
+  ##
+  ## ``val`` must be a positive number. If you need to decrement a value,
+  ## use a regular ``Table`` instead.
   runnableExamples:
     var a = toCountTable("aab")
     a.inc('a')
@@ -2336,7 +2347,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
     a.sort(SortOrder.Ascending)
     doAssert toSeq(a.values) == @[1, 1, 2, 2, 5]
 
-  t.data.sort(cmp=ctCmp, order=order)
+  t.data.sort(cmp = ctCmp, order = order)
   t.isSorted = true
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
@@ -2494,7 +2505,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
-proc newCountTable*[A](initialsize = defaultInitialSize): <//>CountTableRef[A] =
+proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -2613,7 +2624,7 @@ proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
   ## You can use the iterators `pairs<#pairs.i,CountTableRef[A]>`_,
   ## `keys<#keys.i,CountTableRef[A]>`_, and `values<#values.i,CountTableRef[A]>`_
   ## to iterate over ``t`` in the sorted order.
-  t[].sort(order=order)
+  t[].sort(order = order)
 
 proc merge*[A](s, t: CountTableRef[A]) =
   ## Merges the second table into the first one.
@@ -2880,37 +2891,37 @@ when isMainModule:
     doAssert clearTable.getOrDefault(42) == ""
 
   block: #5482
-    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
-    var b = newOrderedTable[string, string](initialSize=2)
+    var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
+    var b = newOrderedTable[string, string](initialSize = 2)
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
     assert a == b
 
   block: #5482
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
-    var b = newOrderedTable[string, string](initialSize=2)
+    var b = newOrderedTable[string, string](initialSize = 2)
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
     assert a == b
 
   block: #5487
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
-    var b = newOrderedTable[string, string]() # notice, default size!
+    var b = newOrderedTable[string, string]()         # notice, default size!
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
     assert a == b
 
   block: #5487
-    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
-    var b = newOrderedTable[string, string]()  # notice, default size!
+    var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
+    var b = newOrderedTable[string, string]()         # notice, default size!
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
     assert a == b
 
   block:
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
-    var b = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
-    var c = newOrderedTable[string, string]() # notice, default size!
+    var b = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
+    var c = newOrderedTable[string, string]()         # notice, default size!
     c.add("wrong?", "foo")
     c.add("wrong?", "foo2")
     assert a == b

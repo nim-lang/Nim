@@ -15,8 +15,8 @@ import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
-  packages/docutils/highlite, json, xmltree, cgi, trees, types,
-  typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
+  json, xmltree, cgi, trees, types,
+  typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees
 
 const
@@ -406,6 +406,7 @@ proc runAllExamples(d: PDoc) =
                 elif isDefined(d.conf, "objc"): "objc"
                 else: "c"
   if os.execShellCmd(os.getAppFilename() & " " & backend &
+                    " --warning[UnusedImport]:off" &
                     " --path:" & quoteShell(d.conf.projectPath) &
                     " --nimcache:" & quoteShell(outputDir) &
                     " -r " & quoteShell(outp)) != 0:
@@ -415,12 +416,6 @@ proc runAllExamples(d: PDoc) =
     rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
     removeFile(outp.changeFileExt(ExeExt))
 
-proc extractImports(n: PNode; result: PNode) =
-  if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
-    result.add copyTree(n)
-    n.kind = nkEmpty
-    return
-  for i in 0..<n.safeLen: extractImports(n[i], result)
 
 proc prepareExamples(d: PDoc; n: PNode) =
   var docComment = newTree(nkCommentStmt)
@@ -430,12 +425,20 @@ proc prepareExamples(d: PDoc; n: PNode) =
       docComment,
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
-  let imports = newTree(nkStmtList)
-  var savedLastSon = copyTree n.lastSon
-  extractImports(savedLastSon, imports)
-  for imp in imports: runnableExamples.add imp
-  runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
+  for a in n.lastSon: runnableExamples.add a
   testExample(d, runnableExamples)
+  when false:
+    proc extractImports(n: PNode; result: PNode) =
+      if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+        result.add copyTree(n)
+        n.kind = nkEmpty
+        return
+      for i in 0..<n.safeLen: extractImports(n[i], result)
+    let imports = newTree(nkStmtList)
+    var savedLastSon = copyTree n.lastSon
+    extractImports(savedLastSon, imports)
+    for imp in imports: runnableExamples.add imp
+    runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
 proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
   if n.info.fileIndex != orig.info.fileIndex: return
@@ -869,13 +872,13 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< sonsLen(n): generateDoc(d, n.sons[i], orig)
+    for i in 0 ..< len(n): generateDoc(d, n.sons[i], orig)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
@@ -923,13 +926,13 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       generateJson(d, n.sons[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
@@ -966,13 +969,13 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
     when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         r.add genTagsItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       generateTags(d, n.sons[i], r)
   of nkWhenStmt:
     # generate documentation for the first branch only:

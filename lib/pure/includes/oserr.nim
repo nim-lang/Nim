@@ -31,7 +31,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
   ## * `osLastError proc <#osLastError>`_
   runnableExamples:
-    when defined(posix):
+    when defined(linux):
       assert osErrorMsg(OSErrorCode(0)) == ""
       assert osErrorMsg(OSErrorCode(1)) == "Operation not permitted"
       assert osErrorMsg(OSErrorCode(2)) == "No such file or directory"

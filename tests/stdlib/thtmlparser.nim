@@ -2,6 +2,9 @@ discard """
   output: '''
 @[]
 true
+https://example.com/test?format=jpg&name=orig##
+https://example.com/test?format=jpg&name=orig##text
+https://example.com/test?format=jpg##text
 '''
 """
 import htmlparser
@@ -136,3 +139,20 @@ block t6154:
   doAssert ps[6].attr("quux") == ""
   doAssert ps[6].attr("whatever") == ""
   doassert ps[6].len == 0
+
+# bug #11713, #1034
+var content = """
+# with &
+<img src="https://example.com/test?format=jpg&name=orig" alt="">
+<img src="https://example.com/test?format=jpg&name=orig" alt="text">
+
+# without &
+<img src="https://example.com/test?format=jpg" alt="text">
+"""
+
+var
+  stream = newStringStream(content)
+  body = parseHtml(stream)
+
+for y in body.findAll("img"):
+  echo y.attr("src"), "##", y.attr("alt")

@@ -3,7 +3,14 @@ discard """
 [127, 127, 0, 255]
 '''
 
-  nimout: '''caught Exception'''
+  nimout: '''caught Exception
+main:begin
+main:end
+@[{0}]
+(width: 0, height: 0, path: "")
+@[(width: 0, height: 0, path: ""), (width: 0, height: 0, path: "")]
+Done!
+'''
 """
 
 #bug #1009
@@ -24,7 +31,7 @@ template `B=`*(self: TAggRgba8, val: byte) =
 template `A=`*(self: TAggRgba8, val: byte) =
   self[3] = val
 
-proc ABGR*(val: int| int64): TAggRgba8 =
+proc ABGR*(val: int | int64): TAggRgba8 =
   var V = val
   result.R = byte(V and 0xFF)
   V = V shr 8
@@ -69,3 +76,107 @@ block:
   let x1 = fun1()
   const x2 = fun1()
   doAssert(x1 == x2)
+
+# bug #11610
+proc simpleTryFinally()=
+  try:
+    echo "main:begin"
+  finally:
+    echo "main:end"
+
+static: simpleTryFinally()
+
+# bug #10981
+
+import sets
+
+proc main =
+  for i in 0..<15:
+    var someSets = @[initHashSet[int]()]
+    someSets[^1].incl(0) # <-- segfaults
+    if i == 0:
+      echo someSets
+
+static:
+  main()
+
+# bug #7261
+const file = """
+sprites.png
+size: 1024,1024
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+char/slide_down
+  rotate: false
+  xy: 730, 810
+  size: 204, 116
+  orig: 204, 116
+  offset: 0, 0
+  index: -1
+"""
+
+type
+  AtlasPage = object
+    width, height: int
+    path: string
+
+  CtsStream = object
+    data: string
+    pos: int
+
+proc atEnd(stream: CtsStream): bool =
+  stream.pos >= stream.data.len
+
+proc readChar(stream: var CtsStream): char =
+  if stream.atEnd:
+    result = '\0'
+  else:
+    result = stream.data[stream.pos]
+    inc stream.pos
+
+proc readLine(s: var CtsStream, line: var string): bool =
+  # This is pretty much copied from the standard library:
+  line.setLen(0)
+  while true:
+    var c = readChar(s)
+    if c == '\c':
+      c = readChar(s)
+      break
+    elif c == '\L': break
+    elif c == '\0':
+      if line.len > 0: break
+      else: return false
+    line.add(c)
+  result = true
+
+proc peekLine(s: var CtsStream, line: var string): bool =
+  let oldPos = s.pos
+  result = s.readLine(line)
+  s.pos = oldPos
+
+proc initCtsStream(data: string): CtsStream =
+  CtsStream(
+    pos: 0,
+    data: data
+  )
+
+# ********************
+# Interesting stuff happens here:
+# ********************
+
+proc parseAtlas(stream: var CtsStream) =
+  var pages = @[AtlasPage(), AtlasPage()]
+  var line = ""
+
+  block:
+    let page = addr pages[^1]
+    discard stream.peekLine(line)
+    discard stream.peekLine(line)
+    echo page[]
+  echo pages
+
+static:
+  var stream = initCtsStream(file)
+  parseAtlas(stream)
+  echo "Done!"

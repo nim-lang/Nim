@@ -29,11 +29,11 @@ implements the required case distinction.
 
 
 import
-  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
-  nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
-  times, ropes, math, passes, ccgutils, wordrecg, renderer,
+  ast, strutils, trees, magicsys, options,
+  nversion, msgs, idents, types, tables,
+  ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  pathutils, transf
+  transf
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -389,8 +389,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # BitxorI
     ["nimMin", "nimMin"], # MinI
     ["nimMax", "nimMax"], # MaxI
-    ["nimMin", "nimMin"], # MinF64
-    ["nimMax", "nimMax"], # MaxF64
     ["", ""], # addU
     ["", ""], # subU
     ["", ""], # mulU
@@ -430,11 +428,6 @@ const # magic checked op; magic unchecked op;
     ["", ""], # BitnotI
     ["", ""], # UnaryPlusF64
     ["", ""], # UnaryMinusF64
-    ["", ""], # AbsF64
-    ["", ""],     # ToFloat
-    ["", ""],     # ToBiggestFloat
-    ["", ""], # ToInt
-    ["", ""], # ToBiggestInt
     ["nimCharToStr", "nimCharToStr"],
     ["nimBoolToStr", "nimBoolToStr"],
     ["cstrToNimstr", "cstrToNimstr"],
@@ -482,7 +475,7 @@ template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
     a, tmp = x.rdLoc
     b, tmp2 = y.rdLoc
   when "$3" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
-  when "$4" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
+  when "$4" in frmt: (b, tmp2) = maybeMakeTemp(p, n[2], y)
 
   r.res = frmt % [a, b, tmp, tmp2]
   r.kind = resExpr
@@ -535,7 +528,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     xLoc,yLoc: Rope
   let i = ord(optOverflowCheck notin p.options)
   useMagic(p, jsMagics[op][i])
-  if sonsLen(n) > 2:
+  if len(n) > 2:
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
     xLoc = x.rdLoc
@@ -570,23 +563,21 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
   of mMinI: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
   of mMaxI: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
-  of mMinF64: applyFormat("nimMin($1, $2)", "nimMin($1, $2)")
-  of mMaxF64: applyFormat("nimMax($1, $2)", "nimMax($1, $2)")
   of mAddU: applyFormat("", "")
-  of msubU: applyFormat("", "")
-  of mmulU: applyFormat("", "")
-  of mdivU: applyFormat("", "")
-  of mmodU: applyFormat("($1 % $2)", "($1 % $2)")
+  of mSubU: applyFormat("", "")
+  of mMulU: applyFormat("", "")
+  of mDivU: applyFormat("", "")
+  of mModU: applyFormat("($1 % $2)", "($1 % $2)")
   of mEqI: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeI: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtI: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqF64: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeF64: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtF64: applyFormat("($1 < $2)", "($1 < $2)")
-  of mleU: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mltU: applyFormat("($1 < $2)", "($1 < $2)")
-  of mleU64: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mltU64: applyFormat("($1 < $2)", "($1 < $2)")
+  of mLeU: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtU: applyFormat("($1 < $2)", "($1 < $2)")
+  of mLeU64: applyFormat("($1 <= $2)", "($1 <= $2)")
+  of mLtU64: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqEnum: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)", "($1 < $2)")
@@ -611,11 +602,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mBitnotI: applyFormat("~($1)", "~($1)")
   of mUnaryPlusF64: applyFormat("+($1)", "+($1)")
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
-  of mAbsF64: applyFormat("Math.abs($1)", "Math.abs($1)")
-  of mToFloat: applyFormat("$1", "$1")
-  of mToBiggestFloat: applyFormat("$1", "$1")
-  of mToInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
-  of mToBiggestInt: applyFormat("Math.trunc($1)", "Math.trunc($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
   of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
@@ -666,11 +652,7 @@ proc genLineDir(p: PProc, n: PNode) =
   if optLineDir in p.options:
     lineF(p, "// line $2 \"$1\"$n",
          [rope(toFilename(p.config, n.info)), rope(line)])
-  if {optStackTrace, optEndb} * p.options == {optStackTrace, optEndb} and
-      ((p.prc == nil) or sfPure notin p.prc.flags):
-    useMagic(p, "endb")
-    lineF(p, "endb($1);$n", [rope(line)])
-  elif hasFrameInfo(p):
+  if hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
 
 proc genWhileStmt(p: PProc, n: PNode) =
@@ -731,7 +713,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     r.res = getTemp(p)
   inc(p.unique)
   var i = 1
-  var length = sonsLen(n)
+  var length = len(n)
   var catchBranchesExist = length > 1 and n.sons[i].kind == nkExceptBranch
   if catchBranchesExist:
     add(p.body, "++excHandler;\L")
@@ -749,7 +731,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
         " lastJSError = EXC;$n --excHandler;$n", [])
     line(p, "framePtr = $1;$n" % [tmpFramePtr])
   while i < length and n.sons[i].kind == nkExceptBranch:
-    let blen = sonsLen(n.sons[i])
+    let blen = len(n.sons[i])
     if blen == 1:
       # general except section:
       generalCatchBranchExists = true
@@ -840,11 +822,11 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
-  for i in 1 ..< sonsLen(n):
+  for i in 1 ..< len(n):
     let it = n.sons[i]
     case it.kind
     of nkOfBranch:
-      for j in 0 .. sonsLen(it) - 2:
+      for j in 0 .. len(it) - 2:
         let e = it.sons[j]
         if e.kind == nkRange:
           var v = copyNode(e.sons[0])
@@ -912,7 +894,7 @@ proc genBreakStmt(p: PProc, n: PNode) =
 proc genAsmOrEmitStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
@@ -950,9 +932,9 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     let it = n.sons[i]
-    if sonsLen(it) != 1:
+    if len(it) != 1:
       if i > 0:
         lineF(p, "else {$n", [])
         inc(toClose)
@@ -969,7 +951,7 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
 
 proc generateHeader(p: PProc, typ: PType): Rope =
   result = nil
-  for i in 1 ..< sonsLen(typ.n):
+  for i in 1 ..< len(typ.n):
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
@@ -982,7 +964,7 @@ proc generateHeader(p: PProc, typ: PType): Rope =
       add(result, "_Idx")
 
 proc countJsParams(typ: PType): int =
-  for i in 1 ..< sonsLen(typ.n):
+  for i in 1 ..< len(typ.n):
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
@@ -993,7 +975,7 @@ proc countJsParams(typ: PType): int =
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkStringToCString,
+    nkFloatLit..nkFloat64Lit, nkPar, nkStringToCString,
     nkObjConstr, nkTupleConstr, nkBracket,
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix,
     nkCommand, nkHiddenCallConv, nkCallStrLit}
@@ -1157,9 +1139,10 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
 
   useMagic(p, "raiseFieldError")
   useMagic(p, "makeNimstrLit")
+  let msg = genFieldError(field, disc)
   lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError(makeNimstrLit($5)); }$n",
     setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
-    makeJSString(field.name.s))
+    makeJSString(msg))
 
   if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
     r.typ = etyBaseIndex
@@ -1173,7 +1156,7 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b: TCompRes
-    first: BiggestInt
+    first: Int128
   r.typ = etyBaseIndex
   let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
   gen(p, m.sons[0], a)
@@ -1182,8 +1165,8 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   let (x, tmp) = maybeMakeTemp(p, m[0], a)
   r.address = x
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
-  if typ.kind == tyArray: first = firstOrd(p.config, typ.sons[0])
-  else: first = 0
+  if typ.kind == tyArray:
+    first = firstOrd(p.config, typ.sons[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     r.res = "chckIndx($1, $2, $3.length+$2-1)-$2" % [b.res, rope(first), tmp]
@@ -1312,12 +1295,16 @@ proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
       return
     owner = owner.up
 
+proc genVarInit(p: PProc, v: PSym, n: PNode)
+
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
   case s.kind
   of skVar, skLet, skParam, skTemp, skResult, skForVar:
     if s.loc.r == nil:
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
+    if sfCompileTime in s.flags:
+      genVarInit(p, s, if s.ast != nil: s.ast else: newNodeI(nkEmpty, s.info))
     if s.kind == skParam:
       genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
@@ -1422,13 +1409,13 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
 
   var typ = skipTypes(n.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  assert(sonsLen(typ) == sonsLen(typ.n))
+  assert(len(typ) == len(typ.n))
   var emitted = start-1
 
-  for i in start ..< sonsLen(n):
+  for i in start ..< len(n):
     let it = n.sons[i]
     var paramType: PNode = nil
-    if i < sonsLen(typ):
+    if i < len(typ):
       assert(typ.n.sons[i].kind == nkSym)
       paramType = typ.n.sons[i]
       if paramType.typ.isCompileTimeOnly: continue
@@ -1456,7 +1443,7 @@ proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
         " but got only: " & $(n.len-1))
   let it = n[i]
   var paramType: PNode = nil
-  if i < sonsLen(typ):
+  if i < len(typ):
     assert(typ.n.sons[i].kind == nkSym)
     paramType = typ.n.sons[i]
     if paramType.typ.isCompileTimeOnly: return
@@ -1544,7 +1531,7 @@ proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
   useMagic(p, "toJSStr") # Used in rawEcho
   useMagic(p, "rawEcho")
   add(r.res, "rawEcho(")
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     let it = n.sons[i]
     if it.typ.isCompileTimeOnly: continue
     if i > 0: add(r.res, ", ")
@@ -1560,11 +1547,11 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope
 proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: var Rope) =
   case rec.kind
   of nkRecList:
-    for i in 0 ..< sonsLen(rec):
+    for i in 0 ..< len(rec):
       createRecordVarAux(p, rec.sons[i], excludedFieldIDs, output)
   of nkRecCase:
     createRecordVarAux(p, rec.sons[0], excludedFieldIDs, output)
-    for i in 1 ..< sonsLen(rec):
+    for i in 1 ..< len(rec):
       createRecordVarAux(p, lastSon(rec.sons[i]), excludedFieldIDs, output)
   of nkSym:
     # Do not produce code for void types
@@ -1591,9 +1578,9 @@ proc arrayTypeForElemType(typ: PType): string =
   of tyInt, tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
   of tyInt8: "Int8Array"
-  of tyUint, tyUint32: "Uint32Array"
-  of tyUint16: "Uint16Array"
-  of tyUint8: "Uint8Array"
+  of tyUInt, tyUInt32: "Uint32Array"
+  of tyUInt16: "Uint16Array"
+  of tyUInt8: "Uint8Array"
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
   else: ""
@@ -1611,8 +1598,10 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("{}", indirect)
   of tyBool:
     result = putToSeq("false", indirect)
+  of tyNil:
+    result = putToSeq("null", indirect)
   of tyArray:
-    let length = int(lengthOrd(p.config, t))
+    let length = toInt(lengthOrd(p.config, t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
     if jsTyp.len > 0:
@@ -1634,7 +1623,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     if indirect: result = "[$1]" % [result]
   of tyTuple:
     result = rope("{")
-    for i in 0..<t.sonsLen:
+    for i in 0..<t.len:
       if i > 0: add(result, ", ")
       addf(result, "Field$1: $2", [i.rope,
             createVar(p, t.sons[i], false)])
@@ -1735,7 +1724,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     lineF(p, "}$n")
 
 proc genVarStmt(p: PProc, n: PNode) =
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     var a = n.sons[i]
     if a.kind != nkCommentStmt:
       if a.kind == nkVarTuple:
@@ -1747,7 +1736,11 @@ proc genVarStmt(p: PProc, n: PNode) =
         var v = a.sons[0].sym
         if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
           genLineDir(p, a)
-          genVarInit(p, v, a.sons[2])
+          if sfCompileTime notin v.flags:
+            genVarInit(p, v, a.sons[2])
+          else:
+            # lazy emit, done when it's actually used.
+            if v.ast == nil: v.ast = a[2]
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
@@ -1793,15 +1786,15 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add("($1 || []).concat(" % [a.res])
 
-  for i in 2 .. sonsLen(n) - 2:
+  for i in 2 .. len(n) - 2:
     gen(p, n.sons[i], a)
     if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
     else:
       r.res.add("$1 || []," % [a.res])
 
-  gen(p, n.sons[sonsLen(n) - 1], a)
-  if skipTypes(n.sons[sonsLen(n) - 1].typ, abstractVarRange).kind == tyChar:
+  gen(p, n.sons[len(n) - 1], a)
+  if skipTypes(n.sons[len(n) - 1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1])" % [a.res])
   else:
     r.res.add("$1 || [])" % [a.res])
@@ -2040,8 +2033,14 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mParseBiggestFloat:
     useMagic(p, "nimParseBiggestFloat")
     genCall(p, n, r)
-  of mArray:
-    genCall(p, n, r)
+  of mSlice:
+    # arr.slice([begin[, end]]): 'end' is exclusive
+    var x, y, z: TCompRes
+    gen(p, n.sons[1], x)
+    gen(p, n.sons[2], y)
+    gen(p, n.sons[3], z)
+    r.res = "($1.slice($2, $3+1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
+    r.kind = resExpr
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);
@@ -2052,7 +2051,7 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
   useMagic(p, "setConstr")
   r.res = rope("setConstr(")
   r.kind = resExpr
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     if i > 0: add(r.res, ", ")
     var it = n.sons[i]
     if it.kind == nkRange:
@@ -2074,7 +2073,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = rope("[")
   r.kind = resExpr
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     if i > 0: add(r.res, ", ")
     gen(p, n.sons[i], a)
     if a.typ == etyBaseIndex:
@@ -2091,7 +2090,7 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = rope("{")
   r.kind = resExpr
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     if i > 0: add(r.res, ", ")
     var it = n.sons[i]
     if it.kind == nkExprColonExpr: it = it.sons[1]
@@ -2111,7 +2110,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
   var initList : Rope
   var fieldIDs = initIntSet()
-  for i in 1 ..< sonsLen(n):
+  for i in 1 ..< len(n):
     if i > 1: add(initList, ", ")
     var it = n.sons[i]
     internalAssert p.config, it.kind == nkExprColonExpr
@@ -2246,7 +2245,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   if prc.typ.sons[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast.sons[resultPos].sym
     let mname = mangleName(p.module, resultSym)
-    if not isindirect(resultSym) and
+    if not isIndirect(resultSym) and
       resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and
         mapType(p, resultSym.typ) == etyBaseIndex:
       resultAsgn = p.indentLine(("var $# = null;$n") % [mname])
@@ -2260,8 +2259,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  let transformed_body = transformBody(oldProc.module.graph, prc, cache = false)
-  p.nested: genStmt(p, transformed_body)
+  let transformedBody = transformBody(oldProc.module.graph, prc, cache = false)
+  p.nested: genStmt(p, transformedBody)
 
   var def: Rope
   if not prc.constraint.isNil:
@@ -2391,7 +2390,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkFloatLit..nkFloat64Lit:
     let f = n.floatVal
     case classify(f)
-    of fcNaN:
+    of fcNan:
       r.res = rope"NaN"
     of fcNegZero:
       r.res = rope"-0.0"
@@ -2445,7 +2444,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     # this shows the distinction is nice for backends and should be kept
     # in the frontend
     let isExpr = not isEmptyType(n.typ)
-    for i in 0 ..< sonsLen(n) - isExpr.ord:
+    for i in 0 ..< len(n) - isExpr.ord:
       genStmt(p, n.sons[i])
     if isExpr:
       gen(p, lastSon(n), r)
@@ -2541,7 +2540,7 @@ proc genModule(p: PProc, n: PNode) =
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
-  let n_transformed = transformStmt(p.module.graph, p.module.module, n)
+  let transformedN = transformStmt(p.module.graph, p.module.module, n)
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
@@ -2549,7 +2548,7 @@ proc genModule(p: PProc, n: PNode) =
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 
-    addHcrInitGuards(p, n_transformed, moduleLoadedVar, inGuardedBlock)
+    addHcrInitGuards(p, transformedN, moduleLoadedVar, inGuardedBlock)
 
     if inGuardedBlock:
       dec p.extraIndent
@@ -2557,7 +2556,7 @@ proc genModule(p: PProc, n: PNode) =
 
     lineF(p, "$1 = true;$n", [moduleLoadedVar])
   else:
-    genStmt(p, n_transformed)
+    genStmt(p, transformedN)
 
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))
@@ -2582,7 +2581,7 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       attachProc(p, prc)
 
   var disp = generateMethodDispatchers(graph)
-  for i in 0..sonsLen(disp)-1:
+  for i in 0..len(disp)-1:
     let prc = disp.sons[i].sym
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newProc(globals, m, nil, m.module.options)

@@ -226,11 +226,12 @@ when not defined(useNimRtl):
                cl: var ReprClosure) =
     # we know that p is not nil here:
     when declared(CellSet):
-      when defined(boehmGC) or defined(gogc) or defined(nogc):
+      when defined(boehmGC) or defined(gogc) or defined(nogc) or defined(gcDestructors):
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)
-      add result, "ref " & reprPointer(p)
+      add result, if typ.kind == tyPtr: "ptr " else: "ref "
+      add result, reprPointer(p)
       if cell notin cl.marked:
         # only the address is shown:
         incl(cl.marked, cell)
@@ -298,18 +299,19 @@ when not defined(useNimRtl):
       add result, "(invalid data!)"
     inc(cl.recdepth)
 
-proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
-                   compilerRtl.} =
-  var
-    cl: ReprClosure
-  initReprClosure(cl)
-  result = "["
-  var bs = elemtyp.size
-  for i in 0..length - 1:
-    if i > 0: add result, ", "
-    reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
-  add result, "]"
-  deinitReprClosure(cl)
+when not defined(useNimRtl):
+  proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
+                     compilerRtl.} =
+    var
+      cl: ReprClosure
+    initReprClosure(cl)
+    result = "["
+    var bs = elemtyp.size
+    for i in 0..length - 1:
+      if i > 0: add result, ", "
+      reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
+    add result, "]"
+    deinitReprClosure(cl)
 
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string =

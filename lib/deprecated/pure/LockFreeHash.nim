@@ -64,29 +64,29 @@ type
 
   EntryArr = ptr array[0..10_000_000, Entry]
 
-  PConcTable[K,V] = ptr object {.pure.}
+  PConcTable[K, V] = ptr object {.pure.}
     len: int
     used: int
     active: int
     copyIdx: int
     copyDone: int
-    next: PConcTable[K,V]
+    next: PConcTable[K, V]
     data: EntryArr
 
-proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
+proc setVal[K, V](table: var PConcTable[K, V], key: int, val: int,
   expVal: int, match: bool): int
 
 #------------------------------------------------------------------------------
 
 # Create a new table
-proc newLFTable*[K,V](size: int = minTableSize): PConcTable[K,V]  =
+proc newLFTable*[K, V](size: int = minTableSize): PConcTable[K, V] =
   let
     dataLen = max(nextPowerOfTwo(size), minTableSize)
     dataSize = dataLen*sizeof(Entry)
     dataMem = allocShared0(dataSize)
     tableSize = 7 * intSize
     tableMem = allocShared0(tableSize)
-    table = cast[PConcTable[K,V]](tableMem)
+    table = cast[PConcTable[K, V]](tableMem)
   table.len = dataLen
   table.used = 0
   table.active = 0
@@ -99,13 +99,13 @@ proc newLFTable*[K,V](size: int = minTableSize): PConcTable[K,V]  =
 #------------------------------------------------------------------------------
 
 # Delete a table
-proc deleteConcTable[K,V](tbl: PConcTable[K,V]) =
+proc deleteConcTable[K, V](tbl: PConcTable[K, V]) =
   deallocShared(tbl.data)
   deallocShared(tbl)
 
 #------------------------------------------------------------------------------
 
-proc `[]`[K,V](table: var PConcTable[K,V], i: int): var Entry {.inline.} =
+proc `[]`[K, V](table: var PConcTable[K, V], i: int): var Entry {.inline.} =
   table.data[i]
 
 #------------------------------------------------------------------------------
@@ -117,15 +117,15 @@ proc pack[T](x: T): int {.inline.} =
   #echo("packKey ",cast[int](x) , " -> ", result)
 
 # Pop the flags off returning a 4 byte aligned ptr to our Key or Val
-proc pop(x: int): int  {.inline.} =
+proc pop(x: int): int {.inline.} =
   result = x and 0xFFFFFFFC'i32
 
 # Pop the raw value off of our Key or Val
-proc popRaw(x: int): int  {.inline.} =
+proc popRaw(x: int): int {.inline.} =
   result = x shr 2
 
 # Pop the flags off returning a 4 byte aligned ptr to our Key or Val
-proc popPtr[V](x: int): ptr V  {.inline.} =
+proc popPtr[V](x: int): ptr V {.inline.} =
   result = cast[ptr V](pop(x))
   #echo("popPtr " & $x & " -> " & $cast[int](result))
 
@@ -154,7 +154,7 @@ proc setPrime(x: int): int {.inline.} =
 #------------------------------------------------------------------------------
 
 ##This is for i32 only need to override for i64
-proc hashInt(x: int):int {.inline.} =
+proc hashInt(x: int): int {.inline.} =
   var h = uint32(x) #shr 2'u32
   h = h xor (h shr 16'u32)
   h *= 0x85ebca6b'u32
@@ -165,7 +165,7 @@ proc hashInt(x: int):int {.inline.} =
 
 #------------------------------------------------------------------------------
 
-proc resize[K,V](self: PConcTable[K,V]): PConcTable[K,V] =
+proc resize[K, V](self: PConcTable[K, V]): PConcTable[K, V] =
   var next = atomic_load_n(self.next.addr, ATOMIC_RELAXED)
   #echo("next = " & $cast[int](next))
   if next != nil:
@@ -173,11 +173,12 @@ proc resize[K,V](self: PConcTable[K,V]): PConcTable[K,V] =
     return next
   var
     oldLen = atomic_load_n(self.len.addr, ATOMIC_RELAXED)
-    newTable = newLFTable[K,V](oldLen*2)
+    newTable = newLFTable[K, V](oldLen*2)
     success = atomic_compare_exchange_n(self.next.addr, next.addr, newTable,
                   false, ATOMIC_RELAXED, ATOMIC_RELAXED)
   if not success:
-    echo("someone beat us to it! delete table we just created and return his " & $cast[int](next))
+    echo("someone beat us to it! delete table we just created and return his " &
+        $cast[int](next))
     deleteConcTable(newTable)
     return next
   else:
@@ -209,7 +210,8 @@ proc keyEQ[K](key1: int, key2: int): bool {.inline.} =
 
 #------------------------------------------------------------------------------
 
-proc copySlot[K,V](idx: int, oldTbl: var PConcTable[K,V], newTbl: var PConcTable[K,V]): bool =
+proc copySlot[K, V](idx: int, oldTbl: var PConcTable[K, V],
+    newTbl: var PConcTable[K, V]): bool =
   #echo("Copy idx " & $idx)
   var
     oldVal = 0
@@ -224,7 +226,7 @@ proc copySlot[K,V](idx: int, oldTbl: var PConcTable[K,V], newTbl: var PConcTable
   #Prevent new values from appearing in the old table by priming
   oldVal = atomic_load_n(oldTbl[idx].value.addr, ATOMIC_RELAXED)
   while not isPrime(oldVal):
-    var box = if oldVal == 0 or isTomb(oldVal) : oldVal.setTomb.setPrime
+    var box = if oldVal == 0 or isTomb(oldVal): oldVal.setTomb.setPrime
       else: oldVal.setPrime
     if atomic_compare_exchange_n(oldTbl[idx].value.addr, oldVal.addr,
       box, false, ATOMIC_RELAXED, ATOMIC_RELAXED):
@@ -248,13 +250,13 @@ proc copySlot[K,V](idx: int, oldTbl: var PConcTable[K,V], newTbl: var PConcTable
   # Our copy is done so we disable the old slot
   while not ok:
     ok = atomic_compare_exchange_n(oldTbl[idx].value.addr, oldVal.addr,
-      oldVal.setTomb.setPrime , false, ATOMIC_RELAXED, ATOMIC_RELAXED)
+      oldVal.setTomb.setPrime, false, ATOMIC_RELAXED, ATOMIC_RELAXED)
   #echo("disabled old slot")
   #echo"---------------------"
 
 #------------------------------------------------------------------------------
 
-proc promote[K,V](table: var PConcTable[K,V]) =
+proc promote[K, V](table: var PConcTable[K, V]) =
   var
     newData = atomic_load_n(table.next.data.addr, ATOMIC_RELAXED)
     newLen = atomic_load_n(table.next.len.addr, ATOMIC_RELAXED)
@@ -272,7 +274,7 @@ proc promote[K,V](table: var PConcTable[K,V]) =
 
 #------------------------------------------------------------------------------
 
-proc checkAndPromote[K,V](table: var PConcTable[K,V], workDone: int): bool =
+proc checkAndPromote[K, V](table: var PConcTable[K, V], workDone: int): bool =
   var
     oldLen = atomic_load_n(table.len.addr, ATOMIC_RELAXED)
     copyDone = atomic_load_n(table.copyDone.addr, ATOMIC_RELAXED)
@@ -294,10 +296,11 @@ proc checkAndPromote[K,V](table: var PConcTable[K,V], workDone: int): bool =
 
 #------------------------------------------------------------------------------
 
-proc copySlotAndCheck[K,V](table: var PConcTable[K,V], idx: int):
-  PConcTable[K,V] =
+proc copySlotAndCheck[K, V](table: var PConcTable[K, V], idx: int):
+  PConcTable[K, V] =
   var
-    newTable = cast[PConcTable[K,V]](atomic_load_n(table.next.addr, ATOMIC_RELAXED))
+    newTable = cast[PConcTable[K, V]](atomic_load_n(table.next.addr,
+        ATOMIC_RELAXED))
   result = newTable
   if newTable != nil and copySlot(idx, table, newTable):
     #echo("copied a single slot, idx = " & $idx)
@@ -306,9 +309,10 @@ proc copySlotAndCheck[K,V](table: var PConcTable[K,V], idx: int):
 
 #------------------------------------------------------------------------------
 
-proc helpCopy[K,V](table: var PConcTable[K,V]): PConcTable[K,V] =
+proc helpCopy[K, V](table: var PConcTable[K, V]): PConcTable[K, V] =
   var
-    newTable = cast[PConcTable[K,V]](atomic_load_n(table.next.addr, ATOMIC_RELAXED))
+    newTable = cast[PConcTable[K, V]](atomic_load_n(table.next.addr,
+        ATOMIC_RELAXED))
   result = newTable
   if newTable != nil:
     var
@@ -338,7 +342,7 @@ proc helpCopy[K,V](table: var PConcTable[K,V]): PConcTable[K,V] =
 
 #------------------------------------------------------------------------------
 
-proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
+proc setVal[K, V](table: var PConcTable[K, V], key: int, val: int,
   expVal: int, match: bool): int =
   #echo("-try set- in table ", " key = ", (popPtr[K](key)[]), " val = ", val)
   when K is Raw:
@@ -346,7 +350,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
   else:
     var idx = popPtr[K](key)[].hash
   var
-    nextTable: PConcTable[K,V]
+    nextTable: PConcTable[K, V]
     probes = 1
   # spin until we find a key slot or build and jump to next table
   while true:
@@ -387,7 +391,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
   # Done spinning for a new slot
   var oldVal = atomic_load_n(table[idx].value.addr, ATOMIC_RELAXED)
   if val == oldVal:
-    #echo("this val is alredy in the slot")
+    #echo("this val is already in the slot")
     return oldVal
   nextTable = atomic_load_n(table.next.addr, ATOMIC_SEQ_CST)
   if nextTable == nil and
@@ -400,7 +404,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
     nextTable = resize(table)
   if nextTable != nil:
     #echo("tomb old slot then set in new table")
-    nextTable = copySlotAndCheck(table,idx)
+    nextTable = copySlotAndCheck(table, idx)
     return setVal(nextTable, key, val, expVal, match)
   # Finally ready to add new val to table
   while true:
@@ -424,7 +428,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
 
 #------------------------------------------------------------------------------
 
-proc getVal[K,V](table: var PConcTable[K,V], key: int): int =
+proc getVal[K, V](table: var PConcTable[K, V], key: int): int =
   #echo("-try get-  key = " & $key)
   when K is Raw:
     var idx = hashInt(key)
@@ -437,7 +441,7 @@ proc getVal[K,V](table: var PConcTable[K,V], key: int): int =
   while true:
     idx = idx and (table.len - 1)
     var
-      newTable: PConcTable[K,V] # = atomic_load_n(table.next.addr, ATOMIC_ACQUIRE)
+      newTable: PConcTable[K, V] # = atomic_load_n(table.next.addr, ATOMIC_ACQUIRE)
       probedKey = atomic_load_n(table[idx].key.addr, ATOMIC_SEQ_CST)
     if keyEQ[K](probedKey, key):
       #echo("found key after ", probes+1)
@@ -472,7 +476,7 @@ proc getVal[K,V](table: var PConcTable[K,V], key: int): int =
 #proc set*[V](table: var PConcTable[Raw,V], key: Raw, val: ptr V) =
 #  discard setVal(table, pack(key), cast[int](val), 0, false)
 
-proc set*[K,V](table: var PConcTable[K,V], key: var K, val: var V) =
+proc set*[K, V](table: var PConcTable[K, V], key: var K, val: var V) =
   when not (K is Raw):
     var newKey = cast[int](copyShared(key))
   else:
@@ -489,7 +493,7 @@ proc set*[K,V](table: var PConcTable[K,V], key: var K, val: var V) =
 
 
 
-proc get*[K,V](table: var PConcTable[K,V], key: var K): V =
+proc get*[K, V](table: var PConcTable[K, V], key: var K): V =
   when not (V is Raw):
     when not (K is Raw):
       return popPtr[V](getVal(table, cast[int](key.addr)))[]
@@ -527,7 +531,7 @@ when not defined(testing) and isMainModule:
   import locks, times, mersenne
 
   const
-    numTests  = 100000
+    numTests = 100000
     numThreads = 10
 
 
@@ -538,14 +542,14 @@ when not defined(testing) and isMainModule:
       f0: int
       f1: int
 
-    Data = tuple[k: string,v: TestObj]
+    Data = tuple[k: string, v: TestObj]
     PDataArr = array[0..numTests-1, Data]
-    Dict = PConcTable[string,TestObj]
+    Dict = PConcTable[string, TestObj]
 
   var
     thr: array[0..numThreads-1, Thread[Dict]]
 
-    table = newLFTable[string,TestObj](8)
+    table = newLFTable[string, TestObj](8)
     rand = newMersenneTwister(2525)
 
   proc createSampleData(len: int): PDataArr =

@@ -10,8 +10,8 @@
 # This module implements Nim's standard template filter.
 
 import
-  llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options,
-  renderer, filters, lineinfos, pathutils
+  llstream, strutils, ast, msgs, options,
+  filters, lineinfos, pathutils
 
 type
   TParseState = enum
@@ -22,7 +22,7 @@ type
     info: TLineInfo
     indent, emitPar: int
     x: string                # the current input line
-    outp: PLLStream          # the ouput will be parsed by pnimsyn
+    outp: PLLStream          # the output will be parsed by pnimsyn
     subsChar, nimDirective: char
     emit, conc, toStr: string
     curly, bracket, par: int

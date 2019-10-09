@@ -9,20 +9,6 @@
 
 ## Default new string implementation used by Nim's core.
 
-when false:
-  # these are to be implemented or changed in the code generator.
-
-  #proc rawNewStringNoInit(space: int): NimString {.compilerProc.}
-  # seems to be unused.
-  proc copyDeepString(src: NimString): NimString {.inline.}
-  # ----------------- sequences ----------------------------------------------
-
-  proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.}
-  proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
-      compilerRtl.}
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
-  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.}
-
 import allocators
 
 type
@@ -44,41 +30,6 @@ template contentSize(cap): int = cap + 1 + sizeof(int) + sizeof(Allocator)
 template frees(s) =
   if not isLiteral(s):
     s.p.allocator.dealloc(s.p.allocator, s.p, contentSize(s.p.cap))
-
-when not defined(nimV2):
-  proc `=destroy`(s: var string) =
-    var a = cast[ptr NimStringV2](addr s)
-    frees(a)
-    a.len = 0
-    a.p = nil
-
-  proc `=sink`(x: var string, y: string) =
-    var a = cast[ptr NimStringV2](addr x)
-    var b = cast[ptr NimStringV2](unsafeAddr y)
-    # we hope this is optimized away for not yet alive objects:
-    if unlikely(a.p == b.p): return
-    frees(a)
-    a.len = b.len
-    a.p = b.p
-
-  proc `=`(x: var string, y: string) =
-    var a = cast[ptr NimStringV2](addr x)
-    var b = cast[ptr NimStringV2](unsafeAddr y)
-    if unlikely(a.p == b.p): return
-    frees(a)
-    a.len = b.len
-    if isLiteral(b):
-      # we can shallow copy literals:
-      a.p = b.p
-    else:
-      let allocator = if a.p != nil and a.p.allocator != nil: a.p.allocator else: getLocalAllocator()
-      # we have to allocate the 'cap' here, consider
-      # 'let y = newStringOfCap(); var x = y'
-      # on the other hand... These get turned into moves now.
-      a.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(b.len)))
-      a.p.allocator = allocator
-      a.p.cap = b.len
-      copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
@@ -109,7 +60,7 @@ proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =
   s.p.data[s.len+1] = '\0'
   inc s.len
 
-proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerProc.} =
+proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
@@ -126,7 +77,7 @@ proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
   if str == nil: toNimStr(str, 0)
   else: toNimStr(str, str.len)
 
-proc nimToCStringConv(s: NimStringV2): cstring {.compilerProc, nonReloadable, inline.} =
+proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.} =
   if s.len == 0: result = cstring""
   else: result = cstring(unsafeAddr s.p.data)
 
@@ -141,7 +92,7 @@ proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   dest.p.data[dest.len+1] = '\0'
   inc dest.len
 
-proc rawNewString(space: int): NimStringV2 {.compilerProc.} =
+proc rawNewString(space: int): NimStringV2 {.compilerproc.} =
   # this is also 'system.newStringOfCap'.
   if space <= 0:
     result = NimStringV2(len: 0, p: nil)
@@ -152,7 +103,7 @@ proc rawNewString(space: int): NimStringV2 {.compilerProc.} =
     p.cap = space
     result = NimStringV2(len: 0, p: p)
 
-proc mnewString(len: int): NimStringV2 {.compilerProc.} =
+proc mnewString(len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
@@ -189,3 +140,13 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
       a.p.cap = b.len
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
+
+proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl.} =
+  if s.p != nil and s.p.allocator == nil:
+    let oldP = s.p
+    # can't mutate a literal, so we need a fresh copy here:
+    let allocator = getLocalAllocator()
+    s.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(s.len)))
+    s.p.allocator = allocator
+    s.p.cap = s.len
+    copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)

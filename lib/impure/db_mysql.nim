@@ -201,7 +201,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     properFreeResult(sqlres, row)
 
 proc setTypeName(t: var DbType; f: PFIELD) =
-  shallowCopy(t.name, $f.name)
+  t.name = $f.name
   t.maxReprLen = Natural(f.max_length)
   if (NOT_NULL_FLAG and f.flags) != 0: t.notNull = true
   case f.ftype
@@ -285,6 +285,10 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row.
   $row.row[col]
+
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row.

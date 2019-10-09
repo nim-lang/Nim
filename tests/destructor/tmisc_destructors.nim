@@ -1,8 +1,12 @@
 discard """
-  exitcode: 0
-  output: ""
+  output: '''@[0]
+@[1]
+@[2]
+@[3]'''
   joinable: false
 """
+
+# bug #6434
 
 type
   Foo* = object
@@ -25,3 +29,13 @@ var (a, b, _) = test()
 
 doAssert assign_counter == 0
 doAssert sink_counter == 12 # + 3 because of the conservative tuple unpacking transformation
+
+# bug #11510
+proc main =
+  for i in 0 ..< 4:
+    var buffer: seq[int] # = @[] # uncomment to make it work
+    # var buffer: string # also this is broken
+    buffer.add i
+    echo buffer
+
+main()

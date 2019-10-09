@@ -3,7 +3,10 @@ discard """
 3
 4:2
 Got Hi
-Got Hey'''
+Got Hey
+a
+b
+c'''
 """
 
 # bug #404
@@ -47,3 +50,9 @@ addStuff("Hey"): echo "Hey"
 addStuff("Hi"): echo "Hi"
 dump()
 
+# ensure .compileTime vars can be used at runtime:
+import macros
+
+var xzzzz {.compileTime.}: array[3, string] = ["a", "b", "c"]
+
+for i in 0..high(xzzzz): echo xzzzz[i]

@@ -14,8 +14,8 @@ import
   ast, astalgo, msgs, semdata, types, trees, strutils
 
 proc equalGenericParams(procA, procB: PNode): bool =
-  if sonsLen(procA) != sonsLen(procB): return false
-  for i in 0 ..< sonsLen(procA):
+  if len(procA) != len(procB): return false
+  for i in 0 ..< len(procA):
     if procA.sons[i].kind != nkSym:
       return false
     if procB.sons[i].kind != nkSym:
@@ -29,7 +29,7 @@ proc equalGenericParams(procA, procB: PNode): bool =
   result = true
 
 proc searchForProcOld*(c: PContext, scope: PScope, fn: PSym): PSym =
-  # Searchs for a forward declaration or a "twin" symbol of fn
+  # Searches for a forward declaration or a "twin" symbol of fn
   # in the symbol table. If the parameter lists are exactly
   # the same the sym in the symbol table is returned, else nil.
   var it: TIdentIter
@@ -72,8 +72,8 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
       of paramsEqual:
         if (sfExported notin result.flags) and (sfExported in fn.flags):
           let message = ("public implementation '$1' has non-public " &
-                         "forward declaration in $2") %
-                        [getProcHeader(c.config, result), c.config$result.info]
+                         "forward declaration at $2") %
+                        [getProcHeader(c.config, result, getDeclarationPath = false), c.config$result.info]
           localError(c.config, fn.info, message)
         return
       of paramsIncompatible:
@@ -95,9 +95,9 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool =
-    var length = sonsLen(child)
+    var length = len(child)
     result = false
-    if length == sonsLen(parent):
+    if length == len(parent):
       for i in 1 ..< length:
         var m = child.sons[i].sym
         var n = parent.sons[i].sym
@@ -108,7 +108,7 @@ when false:
       result = true
 
   proc searchForBorrowProc*(c: PContext, startScope: PScope, fn: PSym): PSym =
-    # Searchs for the fn in the symbol table. If the parameter lists are suitable
+    # Searches for the fn in the symbol table. If the parameter lists are suitable
     # for borrowing the sym in the symbol table is returned, else nil.
     var it: TIdentIter
     for scope in walkScopes(startScope):

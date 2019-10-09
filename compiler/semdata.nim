@@ -10,11 +10,8 @@
 ## This module contains the data structures for the semantic checking phase.
 
 import
-  strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
-  wordrecg,
-  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, vmdef,
-  modulegraphs, lineinfos
+  intsets, options, ast, astalgo, msgs, idents, renderer,
+  magicsys, vmdef, modulegraphs, lineinfos, sets
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -74,7 +71,8 @@ type
   TExprFlags* = set[TExprFlag]
 
   PContext* = ref TContext
-  TContext* = object of TPassContext # a context represents a module
+  TContext* = object of TPassContext # a context represents the module
+                                     # that is currently being compiled
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
@@ -139,6 +137,8 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
+    unusedImports*: seq[(PSym, TLineInfo)]
+    exportIndirections*: HashSet[(int, int)]
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -368,7 +368,7 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
   result.n = newNode(nkRange, n.info, @[
-    newIntTypeNode(nkIntLit, 0, intType),
+    newIntTypeNode(0, intType),
     makeStaticExpr(c, nMinusOne(c, n))])
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
@@ -392,8 +392,8 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =
   let intType = if intType != nil: intType else: getSysType(c.graph, info, tyInt)
   var n = newNodeI(nkRange, info)
-  addSon(n, newIntTypeNode(nkIntLit, first, intType))
-  addSon(n, newIntTypeNode(nkIntLit, last, intType))
+  addSon(n, newIntTypeNode(first, intType))
+  addSon(n, newIntTypeNode(last, intType))
   result = newTypeS(tyRange, c)
   result.n = n
   addSonSkipIntLit(result, intType) # basetype of range
@@ -410,10 +410,10 @@ proc illFormedAstLocal*(n: PNode; conf: ConfigRef) =
   localError(conf, n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc checkSonsLen*(n: PNode, length: int; conf: ConfigRef) =
-  if sonsLen(n) != length: illFormedAst(n, conf)
+  if len(n) != length: illFormedAst(n, conf)
 
 proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
-  if sonsLen(n) < length: illFormedAst(n, conf)
+  if len(n) < length: illFormedAst(n, conf)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2

@@ -10,7 +10,7 @@
 # This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs,
+  intsets, strutils, options, ast, astalgo, msgs,
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
   transf, liftdestructors
 
@@ -344,7 +344,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
   # This seems to be generally correct but since it's a bit risky it's only
   # enabled for gcDestructors.
-  let fieldType = if c.graph.config.selectedGc == gcDestructors:
+  let fieldType = if false: # c.graph.config.selectedGC == gcDestructors:
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)
@@ -477,7 +477,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           w = up
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
-     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt:
+     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt, nkTypeOfExpr:
     discard
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
@@ -535,7 +535,7 @@ proc setupEnvVar(owner: PSym; d: DetectionPass;
                  c: var LiftingPass; info: TLineInfo): PNode =
   if owner.isIterator:
     return getHiddenParam(d.graph, owner).newSymNode
-  result = c.envvars.getOrDefault(owner.id)
+  result = c.envVars.getOrDefault(owner.id)
   if result.isNil:
     let envVarType = d.ownerToType.getOrDefault(owner.id)
     if envVarType.isNil:
@@ -710,7 +710,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         c.inContainer = 0
         var body = transformBody(d.graph, s)
         body = liftCapturedVars(body, s, d, c)
-        if c.envvars.getOrDefault(s.id).isNil:
+        if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
         else:
           s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
@@ -760,6 +760,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       n[0].sons[1] = liftCapturedVars(n[0].sons[1], owner, d, c)
     else:
       n.sons[0] = liftCapturedVars(n[0], owner, d, c)
+  of nkTypeOfExpr:
+    result = n
   else:
     if owner.isIterator:
       if nfLL in n.flags:
@@ -851,7 +853,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
       var c = initLiftingPass(fn)
       result = liftCapturedVars(body, fn, d, c)
       # echo renderTree(result, {renderIds})
-      if c.envvars.getOrDefault(fn.id) != nil:
+      if c.envVars.getOrDefault(fn.id) != nil:
         result = newTree(nkStmtList, rawClosureCreation(fn, d, c, body.info), result)
         finishClosureCreation(fn, d, c, body.info, result)
     else:
@@ -933,7 +935,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
-  whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(g, body.info, tyBool))
+  whileLoop.sons[0] = newIntTypeNode(1, getSysType(g, body.info, tyBool))
   whileLoop.sons[1] = loopBody
   result.add whileLoop
 

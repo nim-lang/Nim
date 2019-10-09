@@ -1,10 +1,11 @@
 discard """
+  cmd: "nim $target $options --excessiveStackTrace:off $file"
   output: '''true'''
 """
 
 const expected = """
-tfailedassert_stacktrace.nim(34) tfailedassert_stacktrace
-tfailedassert_stacktrace.nim(33) foo
+tfailedassert_stacktrace.nim(35) tfailedassert_stacktrace
+tfailedassert_stacktrace.nim(34) foo
 assertions.nim(*)       failedAssertImpl
 assertions.nim(*)       raiseAssert
 fatal.nim(*)            sysFatal"""

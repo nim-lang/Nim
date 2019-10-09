@@ -14,6 +14,9 @@
 when not defined(profiler) and not defined(memProfiler):
   {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
 
+when defined(nimHasUsed):
+  {.used.}
+
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
 
@@ -198,7 +201,8 @@ proc writeProfile() {.noconv.} =
           let procname = profileData[i].st[ii]
           let filename = profileData[i].st.files[ii]
           if isNil(procname): break
-          writeLine(f, "  ", $filename & ": " & $procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", $filename & ": " & $procname, " ",
+                    perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:

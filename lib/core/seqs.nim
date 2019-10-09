@@ -138,7 +138,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) =
   mixin `=destroy`
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
   when not supportsCopyMem(T):
-    for i in countdown(x.len - 1, newLen - 1):
+    for i in countdown(x.len - 1, newLen):
       `=destroy`(x[i])
   # XXX This is wrong for const seqs that were moved into 'x'!
   cast[ptr NimSeqV2[T]](addr x).len = newLen
@@ -170,9 +170,14 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
 proc setLen[T](s: var seq[T], newlen: Natural) =
   {.noSideEffect.}:
     if newlen < s.len:
-      shrink(s, newLen)
+      shrink(s, newlen)
     else:
-      grow(s, newLen, default(T))
+      let oldLen = s.len
+      if newlen <= oldLen: return
+      var xu = cast[ptr NimSeqV2[T]](addr s)
+      if xu.p == nil or xu.p.cap < newlen:
+        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T)))
+      xu.len = newlen
 
 when false:
   proc resize[T](s: var NimSeqV2[T]) =
@@ -197,7 +202,7 @@ when false:
     assert i < x.len
     x.data[i] = y
 
-  proc `@`*[T](elems: openArray[T]): NimSeqV2[T] =
+  proc `@`*[T](elems: sink openArray[T]): NimSeqV2[T] =
     result.cap = elems.len
     result.len = elems.len
     result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))

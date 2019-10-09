@@ -30,6 +30,9 @@ proc intLiteral(i: BiggestInt): Rope =
   else:
     result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
+proc intLiteral(i: Int128): Rope =
+  intLiteral(toInt64(i))
+
 proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   case n.kind
   of nkCharLit..nkUInt64Lit:
@@ -76,7 +79,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
       # with the new semantics for 'nil' strings, we can map "" to nil and
       # save tons of allocations:
       if n.strVal.len == 0 and optNilSeqs notin p.options and
-          p.config.selectedGc != gcDestructors:
+          p.config.selectedGC != gcDestructors:
         result = genNilStringLiteral(p.module, n.info)
       else:
         result = genStringLiteral(p.module, n)
@@ -585,8 +588,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mBitxorI: applyFormat("($4)($1 ^ $2)")
   of mMinI: applyFormat("(($1 <= $2) ? $1 : $2)")
   of mMaxI: applyFormat("(($1 >= $2) ? $1 : $2)")
-  of mMinF64: applyFormat("(($1 <= $2) ? $1 : $2)")
-  of mMaxF64: applyFormat("(($1 >= $2) ? $1 : $2)")
   of mAddU: applyFormat("($4)((NU$3)($1) + (NU$3)($2))")
   of mSubU: applyFormat("($4)((NU$3)($1) - (NU$3)($2))")
   of mMulU: applyFormat("($4)((NU$3)($1) * (NU$3)($2))")
@@ -660,17 +661,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     applyFormat("$1")
   of mUnaryMinusF64:
     applyFormat("-($1)")
-  of mAbsF64:
-    applyFormat("($1 < 0? -($1) : ($1))")
-    # BUGFIX: fabs() makes problems for Tiny C
-  of mToFloat:
-    applyFormat("((double) ($1))")
-  of mToBiggestFloat:
-    applyFormat("((double) ($1))")
-  of mToInt:
-    applyFormat("float64ToInt32($1)")
-  of mToBiggestInt:
-    applyFormat("float64ToInt64($1)")
   else:
     assert false, $op
 
@@ -807,7 +797,7 @@ proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
 proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
   var test, u, v: TLoc
-  for i in 1 ..< sonsLen(e):
+  for i in 1 ..< len(e):
     var it = e.sons[i]
     assert(it.kind in nkCallKinds)
     assert(it.sons[0].kind == nkSym)
@@ -822,7 +812,8 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
-    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, field.name.s))
+    let msg = genFieldError(field, disc.sym)
+    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
     if op.magic == mNot:
       linefmt(p, cpsStmts,
               "if ($1) #raiseFieldError($2);$n",
@@ -941,6 +932,10 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", [a.r])
+
+  if lfPrepareForMutation in d.flags and ty.kind == tyString and
+      p.config.selectedGC == gcDestructors:
+    linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   putIntoDest(p, d, n,
               ropecg(p.module, "$1$3[$2]", [rdLoc(a), rdCharLoc(b), dataField(p)]), a.storage)
 
@@ -1032,7 +1027,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     dec p.splitDecls
 
 proc genEcho(p: BProc, n: PNode) =
-  # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
+  # this unusual way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert p.config, n.kind == nkBracket
   if p.config.target.targetOS == osGenode:
@@ -1065,7 +1060,7 @@ proc gcUsage(conf: ConfigRef; n: PNode) =
   if conf.selectedGC == gcNone: message(conf, n.info, warnGcMem, n.renderTree)
 
 proc strLoc(p: BProc; d: TLoc): Rope =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     result = byRefLoc(p, d)
   else:
     result = rdLoc(d)
@@ -1092,7 +1087,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in 0 .. sonsLen(e) - 2:
+  for i in 0 .. len(e) - 2:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
     if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -1131,7 +1126,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e.sons[1], dest)
-  for i in 0 .. sonsLen(e) - 3:
+  for i in 0 .. len(e) - 3:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 2], a)
     if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -1198,6 +1193,8 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
+proc trivialDestructor(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
   let typ = a.t
@@ -1215,7 +1212,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
-    if bt.destructor != nil:
+    if bt.destructor != nil and not trivialDestructor(bt.destructor):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
@@ -1405,7 +1402,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   elif d.k == locNone:
     getTemp(p, n.typ, d)
 
-  let l = intLiteral(sonsLen(n))
+  let l = intLiteral(len(n))
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
@@ -1415,7 +1412,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     # generate call to newSeq before adding the elements per hand:
     genNewSeqAux(p, dest[], l,
       optNilSeqs notin p.options and n.len == 0)
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), intLiteral(i), dataField(p)])
     arr.storage = OnHeap            # we know that sequences are on the heap
@@ -1436,7 +1433,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   if d.k == locNone:
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  let L = int(lengthOrd(p.config, n.sons[1].typ))
+  let L = toInt(lengthOrd(p.config, n.sons[1].typ))
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
@@ -1650,11 +1647,14 @@ proc makePtrType(baseType: PType): PType =
   addSonSkipIntLit(result, baseType)
 
 proc makeAddr(n: PNode): PNode =
-  result = newTree(nkHiddenAddr, n)
-  result.typ = makePtrType(n.typ)
+  if n.kind == nkHiddenAddr:
+    result = n
+  else:
+    result = newTree(nkHiddenAddr, n)
+    result.typ = makePtrType(n.typ)
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     e.sons[1] = makeAddr(e[1])
     genCall(p, e, d)
     return
@@ -1683,7 +1683,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   gcUsage(p.config, e)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
-  if p.config.selectedGc == gcDestructors:
+  if p.config.selectedGC == gcDestructors:
     binaryStmtAddr(p, e, d, "setLengthStrV2")
   else:
     var a, b, call: TLoc
@@ -1728,7 +1728,7 @@ proc fewCmps(conf: ConfigRef; s: PNode): bool =
   elif elemType(s.typ).kind in {tyInt, tyInt16..tyInt64}:
     result = true             # better not emit the set if int is basetype!
   else:
-    result = sonsLen(s) <= 8  # 8 seems to be a good value
+    result = len(s) <= 8  # 8 seems to be a good value
 
 template binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
   putIntoDest(p, d, e, frmt % [rdLoc(a), rdSetElemLoc(p.config, b, a.t)])
@@ -1761,7 +1761,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
                e.sons[2]
     initLocExpr(p, ea, a)
     initLoc(b, locExpr, e, OnUnknown)
-    var length = sonsLen(e.sons[1])
+    var length = len(e.sons[1])
     if length > 0:
       b.r = rope("(")
       for i in 0 ..< length:
@@ -1897,7 +1897,7 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     if srcTyp.kind in {tyPtr, tyPointer} and etyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) (ptrdiff_t) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
-    elif p.config.selectedGc == gcDestructors and etyp.kind in {tySequence, tyString}:
+    elif p.config.selectedGC == gcDestructors and etyp.kind in {tySequence, tyString}:
       putIntoDest(p, d, e, "(*($1*) (&$2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
     else:
@@ -2025,7 +2025,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
-  if optNimV2 in p.config.globalOptions:
+  if p.config.selectedGC == gcDestructors:
     let arg = n[1].skipAddr
     let t = arg.typ.skipTypes(abstractInst)
     case t.kind
@@ -2044,7 +2044,7 @@ proc genDestroy(p: BProc; n: PNode) =
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
-    if t.destructor != nil and t.destructor.magic != mDestroy:
+    if t.destructor != nil and t.destructor.ast[bodyPos].len != 0:
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
@@ -2083,7 +2083,7 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
-  of mNot..mToBiggestInt: unaryArith(p, e, d, op)
+  of mNot..mUnaryMinusF64: unaryArith(p, e, d, op)
   of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
@@ -2131,7 +2131,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genAssignment(p, dest, call, {})
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem:
-    if p.config.selectedGc == gcDestructors:
+    if p.config.selectedGC == gcDestructors:
       e.sons[1] = makeAddr(e[1])
       genCall(p, e, d)
     else:
@@ -2165,6 +2165,22 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if not p.module.compileToCpp:
       p.module.includeHeader("<stdalign.h>")
     putIntoDest(p, d, e, "((NI)alignof($1))" % [getTypeDesc(p.module, t)])
+  of mOffsetOf:
+    var dotExpr: PNode
+    block findDotExpr:
+      if e[1].kind == nkDotExpr:
+        dotExpr = e[1]
+      elif e[1].kind == nkCheckedFieldExpr:
+        dotExpr = e[1][0]
+      else:
+        internalError(p.config, e.info, "unknown ast")
+    let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
+    let member =
+      if t.kind == tyTuple:
+        "Field" & rope(dotExpr[1].sym.position)
+      else:
+        rope(dotExpr[1].sym.name.s)
+    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -2225,8 +2241,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNLen..mNError, mSlurp..mQuoteAst:
     localError(p.config, e.info, strutils.`%`(errXMustBeCompileTime, e.sons[0].sym.name.s))
   of mSpawn:
-    let n = lowerings.wrapProcForSpawn(p.module.g.graph, p.module.module, e, e.typ, nil, nil)
-    expr(p, n, d)
+    when defined(leanCompiler):
+      quit "compiler built without support for the 'spawn' statement"
+    else:
+      let n = spawn.wrapProcForSpawn(p.module.g.graph, p.module.module, e, e.typ, nil, nil)
+      expr(p, n, d)
   of mParallel:
     when defined(leanCompiler):
       quit "compiler built without support for the 'parallel' statement"
@@ -2246,7 +2265,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
-      " 'toOpenArray' is only valid within a call expression")
+      "'toOpenArray' is only valid within a call expression")
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind
@@ -2304,7 +2323,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     if d.k == locNone: getTemp(p, t, d)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
       initLoc(rec, locExpr, it, d.storage)
@@ -2346,7 +2365,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n.sons[i], arr)
@@ -2516,6 +2535,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
         genVarPrototype(p.module, n)
+        if sfCompileTime in sym.flags:
+          genSingleVar(p, sym, n, astdef(sym))
+
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
@@ -2666,9 +2688,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
             (prc.kind == skMethod):
-          # we have not only the header:
-          if prc.getBody.kind != nkEmpty or lfDynamicLib in prc.loc.flags:
-            genProc(p.module, prc)
+          # Generate proc even if empty body, bugfix #11651.
+          genProc(p.module, prc)
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
   of nkGotoState:
@@ -2688,9 +2709,14 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   of tyBool: result = rope"NIM_FALSE"
   of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result = rope"0"
   of tyFloat..tyFloat128: result = rope"0.0"
-  of tyCString, tyString, tyVar, tyLent, tyPointer, tyPtr, tySequence, tyUntyped,
+  of tyCString, tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
      tyTyped, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = rope"NIM_NIL"
+  of tyString, tySequence:
+    if p.config.selectedGC == gcDestructors:
+      result = rope"{0, NIM_NIL}"
+    else:
+      result = rope"NIM_NIL"
   of tyProc:
     if t.callConv != ccClosure:
       result = rope"NIM_NIL"
@@ -2722,7 +2748,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
       getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj.sons[0], cons, result, count)
-    for i in 1 ..< sonsLen(obj):
+    for i in 1 ..< len(obj):
       getNullValueAux(p, t, lastSon(obj.sons[i]), cons, result, count)
   of nkSym:
     if count > 0: result.add ", "
@@ -2755,7 +2781,7 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode,
     inc count
   getNullValueAux(p, t, obj, cons, result, count)
   # do not emit '{}' as that is not valid C:
-  if oldcount == count: result = oldres
+  if oldcount == count: result = oldRes
   elif not p.module.compileToCpp: result.add "}"
 
 proc genConstObjConstr(p: BProc; n: PNode): Rope =
@@ -2770,7 +2796,7 @@ proc genConstObjConstr(p: BProc; n: PNode): Rope =
     result = "{$1}$n" % [result]
 
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
-  var length = sonsLen(n)
+  var length = len(n)
   result = rope("{")
   for i in 0 .. length - 2:
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
@@ -2829,7 +2855,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkBracket, nkPar, nkTupleConstr, nkClosure:
     var t = skipTypes(n.typ, abstractInstOwned)
     if t.kind == tySequence:
-      if p.config.selectedGc == gcDestructors:
+      if p.config.selectedGC == gcDestructors:
         result = genConstSeqV2(p, n, n.typ)
       else:
         result = genConstSeq(p, n, n.typ)
@@ -2853,7 +2879,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkObjConstr:
     result = genConstObjConstr(p, n)
   of nkStrLit..nkTripleStrLit:
-    if p.config.selectedGc == gcDestructors:
+    if p.config.selectedGC == gcDestructors:
       result = genStringLiteralV2Const(p.module, n)
     else:
       var d: TLoc

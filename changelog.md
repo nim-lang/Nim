@@ -1,38 +1,45 @@
-# v1.1 - XXXX-XX-XX
+# x.x - xxxx-xx-xx
 
 
 ## Changes affecting backwards compatibility
 
 
+
 ### Breaking changes in the standard library
+
 
 
 ### Breaking changes in the compiler
 
 - Bitshifting operators apply bitmasking to right argument.
 
+- Implicit conversions for `const` behave correctly now, meaning that code like `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
+  Simply write `const SOMECONST = 0` instead.
+
 ## Library additions
 
+- `macros.newLit` now works for ref object types.
+- `system.writeFile` has been overloaded to also support `openarray[byte]`.
 
 ## Library changes
 
-- Added `os.delEnv` and `nimscript.delEnv`. (#11466)
-
-- Enable Oid usage in hashtables. (#11472)
 
 
 ## Language additions
 
 
+
 ## Language changes
+
 
 
 ### Tool changes
 
 
+
 ### Compiler changes
 
-- VM can now cast integer type arbitrarily. (#11459)
+
 
 
 ## Bugfixes

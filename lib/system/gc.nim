@@ -157,10 +157,10 @@ when defined(logGC):
           typName = c.typ.name
 
     when leakDetector:
-      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
+      c_printf("[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
                 msg, c, kind, typName, c.refcount shr rcShift, c.filename, c.line)
     else:
-      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
+      c_printf("[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
                 msg, c, kind, typName, c.refcount shr rcShift, gch.gcThreadId)
 
 template logCell(msg: cstring, c: PCell) =
@@ -184,7 +184,7 @@ proc incRef(c: PCell) {.inline.} =
   # and not colorMask
   logCell("incRef", c)
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerproc.} =
   # we keep it from being collected by pretending it's not even allocated:
   let c = usrToCell(p)
   add(gch.additionalRoots, c)
@@ -202,7 +202,7 @@ proc decRef(c: PCell) {.inline.} =
     rtlAddZCT(c)
   logCell("decRef", c)
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -223,15 +223,15 @@ template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
       if gch.decStack.d[i] == c:
         sysAssert(false, msg)
 
-proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} =
   sysAssert(allocInv(gch.region), "begin nimGCunrefNoCycle")
   decRef(usrToCell(p))
   sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
 
-proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefRC1(p: pointer) {.compilerproc, inline.} =
   decRef(usrToCell(p))
 
-proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
@@ -242,9 +242,9 @@ proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
 proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
   deprecated: "old compiler compat".} = asgnRef(dest, src)
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
-  # stack. It is used by the code generator if it cannot decide wether a
+  # stack. It is used by the code generator if it cannot decide whether a
   # reference is in the stack or not (this can happen for var parameters).
   if not isOnStack(dest):
     if src != nil: incRef(usrToCell(src))
@@ -610,7 +610,7 @@ when logGC:
     else:
       writeCell("cell {", s)
       forAllChildren(s, waDebug)
-      c_fprintf(stdout, "}\n")
+      c_printf("}\n")
 
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
@@ -621,7 +621,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  c_fprintf(stdout, "[GC] decref bug: %p", c)
+    #  c_printf("[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     logCell("decref (from doOperation)", c)
@@ -778,7 +778,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
+        c_printf("[GC] missed deadline: %ld\n", duration)
 
 proc collectCT(gch: var GcHeap) =
   if (gch.zct.len >= gch.zctThreshold or (cycleGC and

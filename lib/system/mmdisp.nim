@@ -42,7 +42,7 @@ type
 # CPU this needs to be changed:
 const
   PageShift = when defined(cpu16): 8 else: 12 # \
-    # my tests showed no improvments for using larger page sizes.
+    # my tests showed no improvements for using larger page sizes.
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
@@ -112,8 +112,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
-    proc realloc(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc realloc(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: pointer) = boehmDealloc(p)
 
@@ -122,8 +122,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
       result = allocShared(size)
-    proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc reallocShared(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = boehmDealloc(p)
 
@@ -235,6 +235,8 @@ elif defined(gogc):
   proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
   proc writebarrierptr(dest: PPointer, src: pointer) {.importc: "writebarrierptr", codegenDecl:"$1 $2$3 __asm__ (\"main.Atomic_store_pointer\");\n$1 $2$3", dynlib: goLib.}
 
+  proc `$`*(x: uint64): string {.noSideEffect, raises: [].}
+
   proc GC_getStatistics(): string =
     var mstats = goMemStats()
     result = "[GC] total allocated memory: " & $(mstats.total_alloc) & "\n" &
@@ -268,7 +270,7 @@ elif defined(gogc):
     result = goMalloc(size.uint)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    raise newException(Exception, "not implemented")
+    doAssert false, "not implemented"
 
   proc dealloc(p: pointer) =
     discard
@@ -503,10 +505,12 @@ else:
   elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
-  elif defined(nimV2):
+  elif defined(nimV2) or defined(gcDestructors):
     var allocator {.rtlThreadVar.}: MemRegion
     instantiateForRegion(allocator)
-  elif defined(gcMarkAndSweep) or defined(gcDestructors):
+    when defined(gcDestructors):
+      include "system/gc_hooks"
+  elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"
   else:

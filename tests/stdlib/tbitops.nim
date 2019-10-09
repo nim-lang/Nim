@@ -211,15 +211,15 @@ proc main() =
 
     proc testReverseBitsPerType(x, reversed: uint64) =
       doAssert reverseBits(x) == reversed
-      doAssert reverseBits(uint32(x)) == uint32(reversed shr 32)
-      doAssert reverseBits(uint32(x shr 16)) == uint32(reversed shr 16)
-      doAssert reverseBits(uint16(x)) == uint16(reversed shr 48)
-      doAssert reverseBits(uint8(x)) == uint8(reversed shr 56)
+      doAssert reverseBits(cast[uint32](x)) == cast[uint32](reversed shr 32)
+      doAssert reverseBits(cast[uint32](x shr 16)) == cast[uint32](reversed shr 16)
+      doAssert reverseBits(cast[uint16](x)) == cast[uint16](reversed shr 48)
+      doAssert reverseBits(cast[uint8](x)) == cast[uint8](reversed shr 56)
 
       testReverseBitsInvo(x)
-      testReverseBitsInvo(uint32(x))
-      testReverseBitsInvo(uint16(x))
-      testReverseBitsInvo(uint8(x))
+      testReverseBitsInvo(cast[uint32](x))
+      testReverseBitsInvo(cast[uint16](x))
+      testReverseBitsInvo(cast[uint8](x))
 
     proc testReverseBitsRefl(x, reversed: uint64) =
       testReverseBitsPerType(x, reversed)

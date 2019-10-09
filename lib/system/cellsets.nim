@@ -154,7 +154,7 @@ proc contains(s: CellSet, cell: PCell): bool =
   else:
     result = false
 
-proc incl(s: var CellSet, cell: PCell) {.noinline.} =
+proc incl(s: var CellSet, cell: PCell) =
   var u = cast[uint](cell)
   var t = cellSetPut(s, u shr PageShift)
   u = (u mod PageSize) div MemAlign

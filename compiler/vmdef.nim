@@ -10,8 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets, options, modulegraphs, lineinfos,
-  tables, btrees
+import ast, idents, options, modulegraphs, lineinfos
 
 const
   byteExcess* = 128 # we use excess-K for immediates
@@ -32,14 +31,14 @@ type
     opcYldVal,      # yield with a value
 
     opcAsgnInt,
-    opcAsgnStr,
     opcAsgnFloat,
     opcAsgnRef,
-    opcAsgnIntFromFloat32,    # int and float must be of the same byte size
-    opcAsgnIntFromFloat64,    # int and float must be of the same byte size
-    opcAsgnFloat32FromInt,    # int and float must be of the same byte size
-    opcAsgnFloat64FromInt,    # int and float must be of the same byte size
     opcAsgnComplex,
+    opcCastIntToFloat32,    # int and float must be of the same byte size
+    opcCastIntToFloat64,    # int and float must be of the same byte size
+    opcCastFloatToInt32,    # int and float must be of the same byte size
+    opcCastFloatToInt64,    # int and float must be of the same byte size
+    opcFastAsgnComplex,
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
@@ -100,7 +99,7 @@ type
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
 
     opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
-    opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext,
+    opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext, opcNodeId,
 
     opcSlurp,
     opcGorge,

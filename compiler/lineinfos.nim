@@ -13,7 +13,7 @@
 import ropes, tables, pathutils
 
 const
-  explanationsBaseUrl* = "https://nim-lang.org/docs/manual"
+  explanationsBaseUrl* = "https://nim-lang.org/docs"
 
 type
   TMsgKind* = enum
@@ -33,12 +33,14 @@ type
     warnFieldXNotSupported, warnCommentXIgnored,
     warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
+    warnUnusedImportX,
     warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnCaseTransition, warnUser,
     hintSuccess, hintSuccessX, hintCC,
-    hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
+    hintLineTooLong, hintXDeclaredButNotUsed,
+    hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
@@ -78,6 +80,7 @@ const
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
+    warnUnusedImportX: "imported and not used: '$1'",
     warnEachIdentIsTuple: "each identifier is a tuple",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
@@ -108,7 +111,7 @@ const
     hintPath: "added path: '$1'",
     hintConditionAlwaysTrue: "condition is always true: '$1'",
     hintConditionAlwaysFalse: "condition is always false: '$1'",
-    hintName: "name should be: '$1'",
+    hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
     hintLinking: "",
@@ -133,14 +136,15 @@ const
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "EachIdentIsTuple",
+    "UnsafeCode", "UnusedImport", "EachIdentIsTuple",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "CaseTransition", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",
-    "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
+    "XDeclaredButNotUsed",
+    "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
@@ -193,7 +197,7 @@ type
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
-    dirtyfile*: AbsoluteFile   # the file that is actually read into memory
+    dirtyFile*: AbsoluteFile   # the file that is actually read into memory
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
@@ -229,19 +233,21 @@ proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)
 
 const
-  InvalidFileIDX* = FileIndex(-1)
+  InvalidFileIdx* = FileIndex(-1)
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = uint16(0)
   result.col = int16(-1)
-  result.fileIndex = InvalidFileIDX
+  result.fileIndex = InvalidFileIdx
 
 type
   Severity* {.pure.} = enum ## VS Code only supports these three
     Hint, Warning, Error
 
-const trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
-                                   # are produced within comments and string literals
+const
+  trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
+                                          # are produced within comments and string literals
+  commandLineIdx* = FileIndex(-3)
 
 type
   MsgConfig* = object ## does not need to be stored in the incremental cache

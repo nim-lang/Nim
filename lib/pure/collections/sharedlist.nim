@@ -8,8 +8,10 @@
 #
 
 ## Shared list support.
+##
+## Unstable API.
 
-{.push stackTrace:off.}
+{.push stackTrace: off.}
 
 import
   locks

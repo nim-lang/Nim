@@ -9,6 +9,10 @@
 
 ## This module contains Nim's support for reentrant locks.
 
+
+when not compileOption("threads") and not defined(nimdoc):
+  {.error: "Rlocks requires --threads:on option.".}
+
 const insideRLocksModule = true
 include "system/syslocks"
 

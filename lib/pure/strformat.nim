@@ -234,7 +234,7 @@ quoted string literal. It is not an identifier yet. Then the strformat
 macro creates the ``arg`` identifier from the string literal. An
 identifier that cannot be resolved anymore.
 
-The workaround for this is to bind template argument to a new local variable.
+The workaround for this is to bind the template argument to a new local variable.
 
 .. code-block:: nim
 
@@ -273,7 +273,8 @@ proc mkDigit(v: int, typ: char): string {.inline.} =
   else:
     result = $chr(ord(if typ == 'x': 'a' else: 'A') + v - 10)
 
-proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
+proc alignString*(s: string, minimumWidth: int; align = '\0';
+    fill = ' '): string =
   ## Aligns ``s`` using ``fill`` char.
   ## This is only of interest if you want to write a custom ``format`` proc that
   ## should support the standard format specifiers.
@@ -294,17 +295,18 @@ proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): strin
 
 type
   StandardFormatSpecifier* = object ## Type that describes "standard format specifiers".
-    fill*, align*: char             ## Desired fill and alignment.
-    sign*: char                     ## Desired sign.
-    alternateForm*: bool            ## Whether to prefix binary, octal and hex numbers
-                                    ## with ``0b``, ``0o``, ``0x``.
-    padWithZero*: bool              ## Whether to pad with zeros rather than spaces.
-    minimumWidth*, precision*: int  ## Desired minium width and precision.
-    typ*: char                      ## Type like 'f', 'g' or 'd'.
-    endPosition*: int ## End position in the format specifier after
-                      ## ``parseStandardFormatSpecifier`` returned.
+    fill*, align*: char            ## Desired fill and alignment.
+    sign*: char                    ## Desired sign.
+    alternateForm*: bool           ## Whether to prefix binary, octal and hex numbers
+                                   ## with ``0b``, ``0o``, ``0x``.
+    padWithZero*: bool             ## Whether to pad with zeros rather than spaces.
+    minimumWidth*, precision*: int ## Desired minimum width and precision.
+    typ*: char                     ## Type like 'f', 'g' or 'd'.
+    endPosition*: int              ## End position in the format specifier after
+                                   ## ``parseStandardFormatSpecifier`` returned.
 
-proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
+proc formatInt(n: SomeNumber; radix: int;
+    spec: StandardFormatSpecifier): string =
   ## Converts ``n`` to string. If ``n`` is `SomeFloat`, it casts to `int64`.
   ## Conversion is done using ``radix``. If result's length is lesser than
   ## ``minimumWidth``, it aligns result to the right or left (depending on ``a``)
@@ -415,7 +417,8 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
     raise newException(ValueError,
       "invalid format string, cannot parse: " & s[i..^1])
 
-proc formatValue*(result: var string; value: SomeInteger; specifier: string) =
+proc formatValue*[T: SomeInteger](result: var string; value: T;
+    specifier: string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
@@ -505,11 +508,12 @@ proc formatValue*(result: var string; value: string; specifier: string) =
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
   if spec.precision != -1:
-    if spec.precision < runelen(value):
+    if spec.precision < runeLen(value):
       setLen(value, runeOffset(value, spec.precision))
   result.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
-proc formatValue[T](result: var string; value: T; specifier: string) =
+proc formatValue[T: not SomeInteger](result: var string; value: T;
+    specifier: string) =
   mixin `$`
   formatValue(result, $value, specifier)
 
@@ -526,12 +530,13 @@ macro `&`*(pattern: string): untyped =
   let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
-  result = newNimNode(nnkStmtListExpr, lineInfoFrom=pattern)
+  result = newNimNode(nnkStmtListExpr, lineInfoFrom = pattern)
   # XXX: https://github.com/nim-lang/Nim/issues/8405
   # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
   # module are not accessible at compile-time:
   let expectedGrowth = when defined(useNimRtl): 0 else: count(f, '{') * 10
-  result.add newVarStmt(res, newCall(bindSym"newStringOfCap", newLit(f.len + expectedGrowth)))
+  result.add newVarStmt(res, newCall(bindSym"newStringOfCap",
+                                     newLit(f.len + expectedGrowth)))
   var strlit = ""
   while i < f.len:
     if f[i] == '{':
@@ -617,7 +622,7 @@ when isMainModule:
   check &"{1f:.3f}", "1.000"
   check &"Hello, {s}!", "Hello, string!"
 
-  # Tests for identifers without parenthesis
+  # Tests for identifiers without parenthesis
   check &"{s} works{s}", "string worksstring"
   check &"{s:>7}", " string"
   doAssert(not compiles(&"{s_works}")) # parsed as identifier `s_works`

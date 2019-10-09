@@ -98,7 +98,7 @@ proc sameInstantiation(a, b: TInstantiation): bool =
 proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
   for inst in genericSym.procInstCache:
-    if inst.compilesId == id and sameInstantiation(entry, inst[]):
+    if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
 when false:
@@ -211,7 +211,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
       param.typ = makeTypeDesc(c, header[i+1])
 
     # this scope was not created by the user,
-    # unused params shoudn't be reported.
+    # unused params shouldn't be reported.
     param.flags.incl sfUsed
     addDecl(c, param)
 
@@ -387,7 +387,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
-    if result.magic != mSlice:
+    if result.magic notin {mSlice, mTypeOf}:
       # 'toOpenArray' is special and it is allowed to return 'openArray':
       paramsTypeCheck(c, result.typ)
   else:

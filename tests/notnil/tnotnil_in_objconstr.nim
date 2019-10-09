@@ -9,6 +9,6 @@ type
     foo: ref int
     bar: ref int not nil
 var x: ref int = new(int)
-# Create instance without initializaing the `bar` field
+# Create instance without initializing the `bar` field
 var f = Foo(foo: x)
 echo f.bar.isNil # true
