@@ -1186,25 +1186,6 @@ proc to*[T](node: JsonNode, t: typedesc[T]): T =
 
   initFromJson(result, node, "")
 
-
-  # let typeNode = getTypeImpl(t)
-  # expectKind(typeNode, nnkBracketExpr)
-  # doAssert(($typeNode[0]).normalize == "typedesc")
-
-  # # Create `temp` variable to store the result in case the user calls this
-  # # on `parseJson` (see bug #6604).
-  # result = newNimNode(nnkStmtListExpr)
-  # let temp = genSym(nskLet, "temp")
-  # result.add quote do:
-  #   let `temp` = `node`
-
-  # result.add createConstructor(typeNode[1], temp)
-
-
-  # # echo(treeRepr(result))
-  # echo "result: ", t.repr
-  # echo(result.repr)
-
 when false:
   import os
   var s = newFileStream(paramStr(1), fmRead)
