@@ -127,7 +127,7 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   ctx.debug.add(n.info)
 
 proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
-  # Takes the `b` register and the immediate `imm`, appies the operation `opc`,
+  # Takes the `b` register and the immediate `imm`, applies the operation `opc`,
   # and stores the output value into `a`.
   # `imm` is signed and must be within [-128, 127]
   if imm >= -128 and imm <= 127:
@@ -1316,7 +1316,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mMove:
     let arg = n[1]
     let a = c.genx(arg)
-    assert dest >= 0
     if dest < 0: dest = c.getTemp(arg.typ)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     # XXX use ldNullOpcode() here?

@@ -477,14 +477,14 @@ when defined(nimArrIdx):
     x: S) {.noSideEffect, magic: "ArrPut".}
 
   proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-    ## Generic `destructor`:idx: implementation that can be overriden.
+    ## Generic `destructor`:idx: implementation that can be overridden.
     discard
   proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
-    ## Generic `sink`:idx: implementation that can be overriden.
+    ## Generic `sink`:idx: implementation that can be overridden.
     shallowCopy(x, y)
 
 type
-  HSlice*[T, U] = object   ## "Heterogenous" slice type.
+  HSlice*[T, U] = object   ## "Heterogeneous" slice type.
     a*: T                  ## The lower bound (inclusive).
     b*: U                  ## The upper bound (inclusive).
   Slice*[T] = HSlice[T, T] ## An alias for ``HSlice[T, T]``.
@@ -1267,40 +1267,28 @@ proc `not`*(x: int): int {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
 proc `not`*(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `not`*(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
-else:
-  proc `not`*(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
+proc `not`*(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
 
 proc `+`*(x, y: int): int {.magic: "AddI", noSideEffect.}
   ## Binary `+` operator for an integer.
 proc `+`*(x, y: int8): int8 {.magic: "AddI", noSideEffect.}
 proc `+`*(x, y: int16): int16 {.magic: "AddI", noSideEffect.}
 proc `+`*(x, y: int32): int32 {.magic: "AddI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `+`*(x, y: int64): int64 {.magic: "AddI", noSideEffect.}
-else:
-  proc `+`*(x, y: int64): int64 {.magic: "AddI64", noSideEffect.}
+proc `+`*(x, y: int64): int64 {.magic: "AddI", noSideEffect.}
 
 proc `-`*(x, y: int): int {.magic: "SubI", noSideEffect.}
   ## Binary `-` operator for an integer.
 proc `-`*(x, y: int8): int8 {.magic: "SubI", noSideEffect.}
 proc `-`*(x, y: int16): int16 {.magic: "SubI", noSideEffect.}
 proc `-`*(x, y: int32): int32 {.magic: "SubI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `-`*(x, y: int64): int64 {.magic: "SubI", noSideEffect.}
-else:
-  proc `-`*(x, y: int64): int64 {.magic: "SubI64", noSideEffect.}
+proc `-`*(x, y: int64): int64 {.magic: "SubI", noSideEffect.}
 
 proc `*`*(x, y: int): int {.magic: "MulI", noSideEffect.}
   ## Binary `*` operator for an integer.
 proc `*`*(x, y: int8): int8 {.magic: "MulI", noSideEffect.}
 proc `*`*(x, y: int16): int16 {.magic: "MulI", noSideEffect.}
 proc `*`*(x, y: int32): int32 {.magic: "MulI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `*`*(x, y: int64): int64 {.magic: "MulI", noSideEffect.}
-else:
-  proc `*`*(x, y: int64): int64 {.magic: "MulI64", noSideEffect.}
+proc `*`*(x, y: int64): int64 {.magic: "MulI", noSideEffect.}
 
 proc `div`*(x, y: int): int {.magic: "DivI", noSideEffect.}
   ## Computes the integer division.
@@ -1318,10 +1306,7 @@ proc `div`*(x, y: int): int {.magic: "DivI", noSideEffect.}
 proc `div`*(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
 proc `div`*(x, y: int16): int16 {.magic: "DivI", noSideEffect.}
 proc `div`*(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `div`*(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
-else:
-  proc `div`*(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
+proc `div`*(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
 
 proc `mod`*(x, y: int): int {.magic: "ModI", noSideEffect.}
   ## Computes the integer modulo operation (remainder).
@@ -1336,10 +1321,7 @@ proc `mod`*(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
-when defined(nimnomagic64):
-  proc `mod`*(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
-else:
-  proc `mod`*(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
+proc `mod`*(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
 
 when defined(nimOldShiftRight) or not defined(nimAshr):
   const shrDepMessage = "`shr` will become sign preserving."
@@ -2159,7 +2141,7 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
-when defined(nimV2):
+when defined(gcDestructors):
   template movingCopy(a, b) =
     a = move(b)
 else:
@@ -2288,7 +2270,7 @@ type # these work for most platforms:
     ## This is the same as the type ``short`` in *C*.
   cint* {.importc: "int", nodecl.} = int32
     ## This is the same as the type ``int`` in *C*.
-  csize* {.importc: "size_t", nodecl.} = int
+  csize* {.importc: "size_t", nodecl.} = uint
     ## This is the same as the type ``size_t`` in *C*.
   clonglong* {.importc: "long long", nodecl.} = int64
     ## This is the same as the type ``long long`` in *C*.
@@ -2369,7 +2351,7 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   ## registered.
 
 # Support for addQuitProc() is done by Ansi C's facilities here.
-# In case of an unhandled exeption the exit handlers should
+# In case of an unhandled exception the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
 
 when not defined(nimscript) and not defined(JS):
@@ -3525,20 +3507,12 @@ proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
 proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
-when defined(nimnomagic64):
-  proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
-    ## Returns the absolute value of `x`.
-    ##
-    ## If `x` is ``low(x)`` (that is -MININT for its type),
-    ## an overflow exception is thrown (if overflow checking is turned on).
-    result = if x < 0: -x else: x
-else:
-  proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.} =
-    ## Returns the absolute value of `x`.
-    ##
-    ## If `x` is ``low(x)`` (that is -MININT for its type),
-    ## an overflow exception is thrown (if overflow checking is turned on).
-    if x < 0: -x else: x
+proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
+  ## Returns the absolute value of `x`.
+  ##
+  ## If `x` is ``low(x)`` (that is -MININT for its type),
+  ## an overflow exception is thrown (if overflow checking is turned on).
+  result = if x < 0: -x else: x
 {.pop.}
 
 
@@ -3600,10 +3574,10 @@ export dollars
 
 
 const
-  NimMajor* {.intdefine.}: int = 0
+  NimMajor* {.intdefine.}: int = 1
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 20
+  NimMinor* {.intdefine.}: int = 0
     ## is the minor number of Nim's version.
 
   NimPatch* {.intdefine.}: int = 99
@@ -3660,7 +3634,7 @@ when not defined(JS): #and not defined(nimscript):
       when declared(memTrackerOp):
         memTrackerOp("copyMem", dest, size)
     proc moveMem(dest, source: pointer, size: Natural) =
-      c_memmove(dest, source, size)
+      c_memmove(dest, source, csize size)
       when declared(memTrackerOp):
         memTrackerOp("moveMem", dest, size)
     proc equalMem(a, b: pointer, size: Natural): bool =
@@ -4037,7 +4011,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   if L == b.len:
     for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
-    sysFatal(RangeError, "diferent lengths for slice assignment")
+    sysFatal(RangeError, "different lengths for slice assignment")
 
 proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
@@ -4287,7 +4261,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many
-  ## diferent common syntaxes.
+  ## different common syntaxes.
   ##
   ## **Note**: This is **not correct** for producing Ansi C code!
   case c
@@ -4317,7 +4291,7 @@ proc addQuoted*[T](s: var string, x: T) =
   ## See `addEscapedChar <#addEscapedChar,string,char>`_
   ## for the escaping scheme. When `x` is a string, characters in the
   ## range ``{\128..\255}`` are never escaped so that multibyte UTF-8
-  ## characters are untouched (note that this behavior is diferent from
+  ## characters are untouched (note that this behavior is different from
   ## ``addEscapedChar``).
   ##
   ## The Nim standard library uses this function on the elements of
@@ -4378,7 +4352,7 @@ when hasAlloc:
       x.add(y)
 
   proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
-    ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
+    ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that
     ## case, ``x`` becomes ``y``.
     when defined(nimNoNilSeqs):
       x.add(y)

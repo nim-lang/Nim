@@ -570,7 +570,7 @@ type
 
 proc payloadCheck() =
   doAssert offsetOf(Payload, vals) == 4
-  doAssert sizeOf(Payload) == 4
+  doAssert sizeof(Payload) == 4
 
 payloadCheck()
 

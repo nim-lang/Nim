@@ -303,7 +303,7 @@ proc analyseObjectWithTypeFieldAux(t: PType,
 
 proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult =
   # this does a complex analysis whether a call to ``objectInit`` needs to be
-  # made or intializing of the type field suffices or if there is no type field
+  # made or initializing of the type field suffices or if there is no type field
   # at all in this type.
   var marker = initIntSet()
   result = analyseObjectWithTypeFieldAux(t, marker)
@@ -814,11 +814,8 @@ proc floatRangeCheck*(x: BiggestFloat, t: PType): bool =
     false
 
 proc lengthOrd*(conf: ConfigRef; t: PType): Int128 =
-  case t.skipTypes(tyUserTypeClasses).kind
-  of tyInt64, tyInt32, tyInt:
-    # XXX: this is just wrong
-    result = lastOrd(conf, t)
-  of tyDistinct: result = lengthOrd(conf, t.sons[0])
+  if t.skipTypes(tyUserTypeClasses).kind == tyDistinct:
+    result = lengthOrd(conf, t.sons[0])
   else:
     let last = lastOrd(conf, t)
     let first = firstOrd(conf, t)

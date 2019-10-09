@@ -99,7 +99,7 @@ template delImplIdx(t, i) =
         when defined(js):
           t.data[j] = t.data[i]
         else:
-          shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
+          t.data[j] = move(t.data[i]) # data[j] will be marked EMPTY next loop
 
 template delImpl() {.dirty.} =
   var hc: Hash

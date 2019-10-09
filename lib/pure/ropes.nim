@@ -19,9 +19,9 @@
 include "system/inclrtl"
 import streams
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 
-{.push debugger:off .} # the user does not want to trace a part
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
 const
@@ -57,8 +57,8 @@ proc newRope(data: string): Rope =
   result.data = data
 
 var
-  cache {.threadvar.}: Rope     # the root of the cache tree
-  N {.threadvar.}: Rope         # dummy rope needed for splay algorithm
+  cache {.threadvar.}: Rope # the root of the cache tree
+  N {.threadvar.}: Rope     # dummy rope needed for splay algorithm
 
 when countCacheMisses:
   var misses, hits: int
@@ -67,7 +67,7 @@ proc splay(s: string, tree: Rope, cmpres: var int): Rope =
   var c: int
   var t = tree
   N.left = nil
-  N.right = nil               # reset to nil
+  N.right = nil # reset to nil
   var le = N
   var r = N
   while true:
@@ -235,7 +235,7 @@ proc write*(s: Stream, r: Rope) {.rtl, extern: "nroWriteStream".} =
   ## writes a rope to a stream.
   for rs in leaves(r): write(s, rs)
 
-proc `$`*(r: Rope): string  {.rtl, extern: "nroToString".}=
+proc `$`*(r: Rope): string {.rtl, extern: "nroToString".} =
   ## converts a rope back to a string.
   result = newStringOfCap(r.len)
   for s in leaves(r): add(result, s)
@@ -290,7 +290,7 @@ proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.
   add(c, frmt % args)
 
 const
-  bufSize = 1024              # 1 KB is reasonable
+  bufSize = 1024 # 1 KB is reasonable
 
 proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
   ## returns true if the contents of the file `f` equal `r`.
@@ -307,7 +307,7 @@ proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
         # Read more data
         bpos = 0
         blen = readBuffer(f, addr(buf[0]), buf.len)
-        if blen == 0:  # no more data in file
+        if blen == 0: # no more data in file
           result = false
           return
       let n = min(blen - bpos, slen - spos)
@@ -319,7 +319,7 @@ proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
       spos += n
       bpos += n
 
-  result = readBuffer(f, addr(buf[0]), 1) == 0  # check that we've read all
+  result = readBuffer(f, addr(buf[0]), 1) == 0 # check that we've read all
 
 proc equalsFile*(r: Rope, filename: string): bool {.rtl, extern: "nro$1Str".} =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not

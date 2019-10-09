@@ -84,6 +84,7 @@ type                          # please make sure we have under 32 options
     optNimV2
     optMultiMethods
     optNimV019
+    optBenchmarkVM            # Enables cpuTime() in the VM
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -138,7 +139,7 @@ type
   LegacyFeature* = enum
     allowSemcheckedAstModification,
       ## Allows to modify a NimNode where the type has already been
-      ## flaged with nfSem. If you actually do this, it will cause
+      ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
 
   SymbolFilesOption* = enum
@@ -727,7 +728,7 @@ proc `$`*(c: IdeCmd): string =
 
 proc floatInt64Align*(conf: ConfigRef): int16 =
   ## Returns either 4 or 8 depending on reasons.
-  if conf.target.targetCPU == cpuI386:
+  if conf != nil and conf.target.targetCPU == cpuI386:
     #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
     if conf.target.targetOS != osWindows:
       # on i386 for all known POSIX systems, 64bits ints are aligned

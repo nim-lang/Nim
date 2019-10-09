@@ -17,14 +17,24 @@ when not defined(nimHasHotCodeReloading):
 
 proc c_memchr*(s: pointer, c: cint, n: csize): pointer {.
   importc: "memchr", header: "<string.h>".}
+proc c_memchr*(s: pointer, c: cint, n: int): pointer {.
+  importc: "memchr", header: "<string.h>", deprecated: "csize is now uint".}
 proc c_memcmp*(a, b: pointer, size: csize): cint {.
   importc: "memcmp", header: "<string.h>", noSideEffect.}
+proc c_memcmp*(a, b: pointer, size: int): cint {.
+  importc: "memcmp", header: "<string.h>", noSideEffect, deprecated: "csize is now uint".}
 proc c_memcpy*(a, b: pointer, size: csize): pointer {.
   importc: "memcpy", header: "<string.h>", discardable.}
+proc c_memcpy*(a, b: pointer, size: int): pointer {.
+  importc: "memcpy", header: "<string.h>", discardable, deprecated: "csize is now uint".}
 proc c_memmove*(a, b: pointer, size: csize): pointer {.
   importc: "memmove", header: "<string.h>",discardable.}
+proc c_memmove*(a, b: pointer, size: int): pointer {.
+  importc: "memmove", header: "<string.h>",discardable, deprecated: "csize is now uint".}
 proc c_memset*(p: pointer, value: cint, size: csize): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
+proc c_memset*(p: pointer, value: cint, size: int): pointer {.
+  importc: "memset", header: "<string.h>", discardable, deprecated: "csize is now uint".}
 proc c_strcmp*(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
 proc c_strlen*(a: cstring): csize {.
@@ -134,16 +144,22 @@ proc c_sprintf*(buf, frmt: cstring): cint {.
 
 proc c_malloc*(size: csize): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
+proc c_malloc*(size: int): pointer {.
+  importc: "malloc", header: "<stdlib.h>", deprecated: "csize is now uint".}
 proc c_free*(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 proc c_realloc*(p: pointer, newsize: csize): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
+proc c_realloc*(p: pointer, newsize: int): pointer {.
+  importc: "realloc", header: "<stdlib.h>", deprecated: "csize is now uint".}
 
 proc c_fwrite*(buf: pointer, size, n: csize, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
+proc c_fwrite*(buf: pointer, size, n: int, f: CFilePtr): cint {.
+  importc: "fwrite", header: "<stdio.h>", deprecated: "csize is now uint".}
 
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
-  discard c_fwrite(s, 1, s.len, f)
+  discard c_fwrite(s, 1, csize s.len, f)
 
 {.pop.}

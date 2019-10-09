@@ -49,7 +49,7 @@ type
     precision: int    ## floating point precision
     width: int        ## minimal width
     fill: string      ## the fill character, UTF8
-    align: FmtAlign  ## aligment
+    align: FmtAlign  ## alignment
     sign: FmtSign    ## sign notation
     baseprefix: bool  ## whether binary, octal, hex should be prefixed by 0b, 0x, 0o
     upcase: bool      ## upper case letters in hex or exponential formats
@@ -207,7 +207,7 @@ proc writefill(o: var Writer; fmt: Format; n: int; signum: int = 0) =
   ## `add`
   ##   output function
   ## `fmt`
-  ##   format to be used (important for padding aligment)
+  ##   format to be used (important for padding alignment)
   ## `n`
   ##   the number of filling characters to be written
   ## `signum`

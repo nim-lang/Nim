@@ -162,6 +162,8 @@ case $ucpu in
       mycpu="powerpc"
     fi
     ;;
+  *hppa*)
+    mycpu="hppa" ;;
   *ia64*)
     mycpu="ia64" ;;
   *m68k*)

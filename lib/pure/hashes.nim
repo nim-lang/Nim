@@ -45,7 +45,7 @@
 ## * `tables module <tables.html>`_ for hash tables
 
 type
-  Hash* = int  ## A hash value. Hash tables using these values should
+  Hash* = int ## A hash value. Hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
@@ -451,7 +451,7 @@ when isMainModule:
     doAssert hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234")
   block smallSize: # no multibyte hashing
     let
-      xx = @['H','i']
+      xx = @['H', 'i']
       ii = @[72'u8, 105]
       ss = "Hi"
     doAssert hash(xx) == hash(ii)
@@ -460,8 +460,8 @@ when isMainModule:
     doAssert hash(ss) == hash(ss, 0, ss.high)
   block largeSize: # longer than 4 characters
     let
-      xx = @['H','e','l','l','o']
-      xxl = @['H','e','l','l','o','w','e','e','n','s']
+      xx = @['H', 'e', 'l', 'l', 'o']
+      xxl = @['H', 'e', 'l', 'l', 'o', 'w', 'e', 'e', 'n', 's']
       ssl = "Helloweens"
     doAssert hash(xxl) == hash(ssl)
     doAssert hash(xxl) == hash(xxl, 0, xxl.high)

@@ -249,8 +249,11 @@ Identifiers & Keywords
 ----------------------
 
 Identifiers in Nim can be any string of letters, digits
-and underscores, beginning with a letter. Two immediate following
-underscores ``__`` are not allowed::
+and underscores, with the following restrictions:
+
+* begins with a letter
+* does not end with an underscore ``_``
+* two immediate following underscores ``__`` are not allowed::
 
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
@@ -3543,7 +3546,7 @@ Nonoverloadable builtins
 The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
-  declared, defined, definedInScope, compiles, sizeOf,
+  declared, defined, definedInScope, compiles, sizeof,
   is, shallowCopy, getAst, astToStr, spawn, procCall
 
 Thus they act more like keywords than like ordinary identifiers; unlike a

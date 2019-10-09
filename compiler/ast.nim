@@ -185,7 +185,7 @@ type
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
     nkBlockExpr,          # a statement block ending in an expr; this is used
-                          # to allowe powerful multi-line templates that open a
+                          # to allow powerful multi-line templates that open a
                           # temporary scope
     nkStmtListType,       # a statement list ending in a type; for macros
     nkBlockType,          # a statement block ending in a type; for macros
@@ -272,7 +272,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfOverriden,      # proc is overriden
+    sfOverriden,      # proc is overridden
     sfCallsite        # A flag for template symbols to tell the
                       # compiler it should use line information from
                       # the calling side of the macro, not from the
@@ -290,10 +290,6 @@ type
 
 const
   sfNoInit* = sfMainModule       # don't generate code to init the variable
-
-  sfCursor* = sfDispatcher
-    # local variable has been computed to be a "cursor".
-    # see cursors.nim for details about what that means.
 
   sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
     # in a generic context
@@ -535,8 +531,8 @@ type
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
     tfRefsAnonObj     # used for 'ref object' and 'ptr object'
-    tfCovariant       # covariant generic param mimicing a ptr type
-    tfWeakCovariant   # covariant generic param mimicing a seq/array type
+    tfCovariant       # covariant generic param mimicking a ptr type
+    tfWeakCovariant   # covariant generic param mimicking a seq/array type
     tfContravariant   # contravariant generic param
     tfCheckedForDestructor # type was checked for having a destructor.
                            # If it has one, t.destructor is not nil.
@@ -1250,7 +1246,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
 
-  # this is dirty. abstractVarRange isn't defined yet and therefor it
+  # this is dirty. abstractVarRange isn't defined yet and therefore it
   # is duplicated here.
   const abstractVarRange = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}

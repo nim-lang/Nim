@@ -61,7 +61,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
     var res = s.name.s.mangle
     # Take into account if HCR is on because of the following scenario:
     #   if a module gets imported and it has some more importc symbols in it,
-    # some param names might recieve the "_0" suffix to distinguish from what
+    # some param names might receive the "_0" suffix to distinguish from what
     # is newly available. That might lead to changes in the C code in nimcache
     # that contain only a parameter name change, but that is enough to mandate
     # recompilation of that source file and thus a new shared object will be
@@ -287,6 +287,7 @@ proc fillResult(conf: ConfigRef; param: PNode) =
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
+    useHeader(m, t.sym)
     result = t.sym.loc.r
   else:
     result = rope(literal)

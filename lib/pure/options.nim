@@ -258,7 +258,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
     assert $(b.map(isEven)) == "None[bool]"
 
   if self.isSome:
-    some[R]( callback(self.val) )
+    some[R](callback(self.val))
   else:
     none(R)
 
@@ -273,7 +273,8 @@ proc flatten*[A](self: Option[Option[A]]): Option[A] =
   else:
     none(A)
 
-proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Option[B] =
+proc flatMap*[A, B](self: Option[A],
+                    callback: proc (input: A): Option[B]): Option[B] =
   ## Applies a `callback` function to the value of the `Option` and returns an
   ## `Option` containing the new value.
   ##
