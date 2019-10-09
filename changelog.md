@@ -107,6 +107,7 @@ iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
 
 ## Language changes
 
+- Unsigned integer operators have been fixed to allow promotion of the first operand.
 - `uint64` is now finally a regular ordinal type. This means `high(uint64)` compiles
   and yields the correct value.
 
