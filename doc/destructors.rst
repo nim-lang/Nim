@@ -152,7 +152,7 @@ Nim中的普通赋值是概念上地复制值。
   proc `=`(dest: var T; source: T)
 
 
-``=``的一般形式如下：
+`=`的一般形式如下：
 
 .. code-block:: nim
 
