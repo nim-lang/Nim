@@ -232,7 +232,6 @@ proc event(b: History): string =
   of TResult: "it is nil by default"
   of TType: "it has ref type"
   of TOwner: "a subexpression changed: we can't prove it isn't nil now"
-  else: ""
 
 proc derefError(n, conf, map; maybe: bool) =
   var a = history(map, symbol(n))
@@ -643,6 +642,9 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   let line = s.ast.info.line
   let fileIndex = s.ast.info.fileIndex.int
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
+
+  if "nilcheck" notin filename:
+    return
   # TODO
   for i, child in s.typ.n.sons:
     if i > 0:
