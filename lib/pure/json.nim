@@ -833,50 +833,37 @@ proc parseJson(p: var JsonParser): JsonNode =
   of tkError, tkCurlyRi, tkBracketRi, tkColon, tkComma, tkEof:
     raiseParseErr(p, "{")
 
-when not defined(js):
-  iterator parseJsonFragments*(s: Stream, filename: string = ""): JsonNode =
-    ## Parses from a stream `s` into `JsonNodes`. `filename` is only needed
-    ## for nice error messages.
-    ## The JSON fragments are separated by whitespace. This can be substantially
-    ## faster than the comparable loop
-    ## ``for x in splitWhitespace(s): yield parseJson(x)``.
-    ## This closes the stream `s` after it's done.
-    var p: JsonParser
-    p.open(s, filename)
-    try:
-      discard getTok(p) # read first token
-      while p.tok != tkEof:
-        yield p.parseJson()
-    finally:
-      p.close()
+iterator parseJsonFragments*(s: Stream, filename: string = ""): JsonNode =
+  ## Parses from a stream `s` into `JsonNodes`. `filename` is only needed
+  ## for nice error messages.
+  ## The JSON fragments are separated by whitespace. This can be substantially
+  ## faster than the comparable loop
+  ## ``for x in splitWhitespace(s): yield parseJson(x)``.
+  ## This closes the stream `s` after it's done.
+  var p: JsonParser
+  p.open(s, filename)
+  try:
+    discard getTok(p) # read first token
+    while p.tok != tkEof:
+      yield p.parseJson()
+  finally:
+    p.close()
 
-  proc parseJson*(s: Stream, filename: string = ""): JsonNode =
-    ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
-    ## for nice error messages.
-    ## If `s` contains extra data, it will raise `JsonParsingError`.
-    ## This closes the stream `s` after it's done.
-    var p: JsonParser
-    p.open(s, filename)
-    try:
-      discard getTok(p) # read first token
-      result = p.parseJson()
-      eat(p, tkEof) # check if there is no extra data
-    finally:
-      p.close()
+proc parseJson*(s: Stream, filename: string = ""): JsonNode =
+  ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
+  ## for nice error messages.
+  ## If `s` contains extra data, it will raise `JsonParsingError`.
+  ## This closes the stream `s` after it's done.
+  var p: JsonParser
+  p.open(s, filename)
+  try:
+    discard getTok(p) # read first token
+    result = p.parseJson()
+    eat(p, tkEof) # check if there is no extra data
+  finally:
+    p.close()
 
-  proc parseJson*(buffer: string): JsonNode =
-    ## Parses JSON from `buffer`.
-    ## If `buffer` contains extra data, it will raise `JsonParsingError`.
-    result = parseJson(newStringStream(buffer), "input")
-
-  proc parseFile*(filename: string): JsonNode =
-    ## Parses `file` into a `JsonNode`.
-    ## If `file` contains extra data, it will raise `JsonParsingError`.
-    var stream = newFileStream(filename, fmRead)
-    if stream == nil:
-      raise newException(IOError, "cannot read from file: " & filename)
-    result = parseJson(stream, filename)
-else:
+when defined(js):
   from math import `mod`
   type
     JSObject = object
@@ -946,7 +933,24 @@ else:
       result = newJNull()
 
   proc parseJson*(buffer: string): JsonNode =
-    return parseNativeJson(buffer).convertObject()
+    when nimvm:
+      return parseJson(newStringStream(buffer), "input")
+    else:
+      return parseNativeJson(buffer).convertObject()
+
+else:
+  proc parseJson*(buffer: string): JsonNode =
+    ## Parses JSON from `buffer`.
+    ## If `buffer` contains extra data, it will raise `JsonParsingError`.
+    result = parseJson(newStringStream(buffer), "input")
+
+  proc parseFile*(filename: string): JsonNode =
+    ## Parses `file` into a `JsonNode`.
+    ## If `file` contains extra data, it will raise `JsonParsingError`.
+    var stream = newFileStream(filename, fmRead)
+    if stream == nil:
+      raise newException(IOError, "cannot read from file: " & filename)
+    result = parseJson(stream, filename)
 
 # -- Json deserialiser. --
 
@@ -1080,11 +1084,15 @@ proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: i
     dst.add quote do:
       var kindTmp: `kindType`
       initFromJson(kindTmp, `jsonNode`[`kindNameLit`], `jsonPath` & "." & `kindNameLit`)
-      when nimVm:
+
+      when defined js:
         `tmpSym`.`kindSym` = kindTmp
       else:
-        # fuck it, assign kind field anyway
-        ((cast[ptr `kindType`](cast[uint](`tmpSym`.addr) + `kindOffsetLit`))[]) = kindTmp
+        when nimVm:
+          `tmpSym`.`kindSym` = kindTmp
+        else:
+          # fuck it, assign kind field anyway
+          ((cast[ptr `kindType`](cast[uint](`tmpSym`.addr) + `kindOffsetLit`))[]) = kindTmp
 
     dst.add nnkCaseStmt.newTree(nnkDotExpr.newTree(tmpSym, kindSym))
 
