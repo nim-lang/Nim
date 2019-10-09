@@ -1,6 +1,8 @@
 discard """
   output: ""
+  targets: "c js"
 """
+
 import json, strutils, options, tables
 
 when true:
