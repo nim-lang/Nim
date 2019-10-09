@@ -602,7 +602,7 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     var r = initRand(678)
     r.shuffle(cards)
-    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+    doAssert cards == ["King", "Ten", "Jack", "Ace", "Queen"]
   for i in countdown(x.high, 1):
     let j = r.rand(i-1)
     swap(x[i], x[j])
@@ -622,7 +622,7 @@ proc shuffle*[T](x: var openArray[T]) =
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     randomize(678)
     shuffle(cards)
-    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+    doAssert cards == ["King", "Ten", "Jack", "Ace", "Queen"]
   shuffle(state, x)
 
 when not defined(nimscript):
