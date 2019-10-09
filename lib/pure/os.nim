@@ -2738,6 +2738,7 @@ when not (defined(windows) or defined(macosx) or weirdTarget):
         return ""
 
       if exePath[0] == DirSep:
+        # path is absolute
         result = exePath
       else:
         # not an absolute path, check if it's relative to the current working directory
@@ -2746,17 +2747,32 @@ when not (defined(windows) or defined(macosx) or weirdTarget):
             result = joinPath(getCurrentDir(), exePath)
             break
 
-      if len(result) > 0:
-        if isExecutable(result):
-          return result
-        else:
-          result = ""
+      if len(result) == 0 or not isExecutable(result):
+        # search in path
+        for p in split(string(getEnv("PATH")), {PathSep}):
+          var x = joinPath(p, exePath)
+          if existsFile(x) and isExecutable(x): 
+            result = x
+            break
 
-      # search in path
-      for p in split(string(getEnv("PATH")), {PathSep}):
-        var x = joinPath(p, exePath)
-        if existsFile(x) and isExecutable(x): 
-          return x
+      if len(result) > 0:
+        # expand symlinks
+        while true:
+          if result.checkSymlink:
+            var r = newString(256)
+            var len = readlink(result, r, 256)
+            if len < 0:
+              raiseOSError(osLastError())
+            if len > 256:
+              r = newString(len+1)
+              len = readlink(result, r, len)
+            setLen(r, len)
+            if isAbsolute(r):
+              result = r
+            else:
+              result = parentDir(result) / r
+          else:
+            break
     else:
       result = ""
 
