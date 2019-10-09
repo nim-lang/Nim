@@ -544,9 +544,9 @@ proc open*(f: var File, filename: string,
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
-      discard c_setvbuf(f, nil, IOFBF, bufSize.cint)
+      discard c_setvbuf(f, nil, IOFBF, bufSize.csize)
     elif bufSize == 0:
-      discard c_setvbuf(f, nil, IONBF, 0)
+      discard c_setvbuf(f, nil, IONBF, 0'u)
 
 proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   tags: [], benign.} =
@@ -598,11 +598,11 @@ proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
 proc setStdIoUnbuffered*() {.tags: [], benign.} =
   ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
   when declared(stdout):
-    discard c_setvbuf(stdout, nil, IONBF, 0)
+    discard c_setvbuf(stdout, nil, IONBF, 0'u)
   when declared(stderr):
-    discard c_setvbuf(stderr, nil, IONBF, 0)
+    discard c_setvbuf(stderr, nil, IONBF, 0'u)
   when declared(stdin):
-    discard c_setvbuf(stdin, nil, IONBF, 0)
+    discard c_setvbuf(stdin, nil, IONBF, 0'u)
 
 when declared(stdout):
   when defined(windows) and compileOption("threads"):
@@ -632,7 +632,7 @@ when declared(stdout):
         else:
           discard c_fwrite(s.cstring, s.len, 1, stdout)
       const linefeed = "\n"
-      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+      discard c_fwrite(linefeed.cstring, linefeed.len, 1'u, stdout)
       discard c_fflush(stdout)
       when not defined(windows) and not defined(android) and not defined(nintendoswitch):
         funlockfile(stdout)
@@ -674,7 +674,7 @@ proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
   var f: File
   if open(f, filename):
     try:
-      result = readAll(f).TaintedString
+      result = readAll(f)
     finally:
       close(f)
   else:
