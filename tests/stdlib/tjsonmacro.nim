@@ -624,3 +624,9 @@ block:
     Bar = object
 
   discard "null".parseJson.to Foo
+
+block:
+  # named array #12289
+  type Vec = array[2, int]
+  let arr = "[1,2]".parseJson.to Vec
+  doAssert arr == [1,2]
