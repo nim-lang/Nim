@@ -2819,10 +2819,6 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
     setLen(result, len)
 
 when defined(openbsd):
-  proc isExecutable(path: string): bool =
-    let p = getFilePermissions(path)
-    result = fpUserExec in p and fpGroupExec in p and fpOthersExec in p
-
   proc getApplOpenBsd(): string =
     # similar to getApplHeuristic, but checks current working directory
     when declared(paramStr):
@@ -2846,15 +2842,12 @@ when defined(openbsd):
             break
 
       if len(result) > 0:
-        if isExecutable(result):
-          return expandFilename(result)
-
-        return ""
+        return expandFilename(result)
 
       # search in path
       for p in split(string(getEnv("PATH")), {PathSep}):
         var x = joinPath(p, exePath)
-        if existsFile(x) and isExecutable(x):
+        if existsFile(x):
           return expandFilename(x)
     else:
       result = ""
