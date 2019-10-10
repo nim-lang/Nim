@@ -436,7 +436,7 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
     result.quotient = -quotient
   else:
     result.quotient = quotient
-  if isNegativeB:
+  if isNegativeA:
     result.remainder = -dividend
   else:
     result.remainder = dividend
@@ -676,3 +676,12 @@ when isMainModule:
 
   doAssert $high(Int128) == "170141183460469231731687303715884105727"
   doAssert $low(Int128) == "-170141183460469231731687303715884105728"
+
+  var ma = 100'i64
+  var mb = 13
+
+  # sign correctness
+  doAssert divMod(toInt128( ma),toInt128( mb)) == (toInt128( ma div  mb), toInt128( ma mod  mb))
+  doAssert divMod(toInt128(-ma),toInt128( mb)) == (toInt128(-ma div  mb), toInt128(-ma mod  mb))
+  doAssert divMod(toInt128( ma),toInt128(-mb)) == (toInt128( ma div -mb), toInt128( ma mod -mb))
+  doAssert divMod(toInt128(-ma),toInt128(-mb)) == (toInt128(-ma div -mb), toInt128(-ma mod -mb))
