@@ -320,8 +320,8 @@ proc boot(args: string) =
     # jsonbuild then uses the $project.json file to build the Nim binary.
     exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
       [nimi, bootOptions, extraOption, args, smartNimcache]
-    exec "$# jsonscript --nimcache:$# compiler" / "nim.nim" %
-      [nimi, smartNimcache]
+    exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
+      [nimi, args, smartNimcache]
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
