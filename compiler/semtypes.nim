@@ -932,7 +932,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     addSonSkipIntLit(result, t)
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
-    #if not isNilable: result.flags.incl tfNotNil
+    if not isNilable: result.flags.incl tfNotNil
     case wrapperKind
     of tyOwned:
       if optOwnedRefs in c.config.globalOptions:
@@ -1558,6 +1558,8 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     if modifier != tyNone:
       dummyName = param[0]
       dummyType = c.makeTypeWithModifier(modifier, candidateTypeSlot)
+      if modifier == tyRef:
+        dummyType.flags.incl tfNotNil
       if modifier == tyTypeDesc:
         dummyType.flags.incl tfConceptMatchedTypeSym
         dummyType.flags.incl tfCheckedForDestructor
@@ -1676,6 +1678,7 @@ proc semTypeof2(c: PContext; n: PNode; prev: PType): PType =
   result = t.typ
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
+  echo "semTypeNode ", n
   result = nil
   inc c.inTypeContext
 

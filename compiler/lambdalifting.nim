@@ -327,7 +327,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
                         info: TLineInfo): PType =
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
-    result = newType(tyRef, owner)
+    result = newRefType(owner)
     let obj = createEnvObj(c.graph, owner, info)
     rawAddSon(result, obj)
     c.ownerToType[owner.id] = result

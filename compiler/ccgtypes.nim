@@ -1246,7 +1246,7 @@ proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
   result = newType(tyTuple, owner)
   result.rawAddSon(newType(tyPointer, owner))
-  var r = newType(tyRef, owner)
+  var r = newRefType(owner)
   let obj = createObj(m.g.graph, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)

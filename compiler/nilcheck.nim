@@ -587,7 +587,9 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
     result = (Nil, map)
   
 proc typeNilability(typ: PType): Nilability =
-  if typ.isNil:
+  if not typ.isNil:
+    echo "type ", typ, " ", typ.flags
+  if typ.isNil: # TODO is it ok
     Safe
   elif tfNotNil in typ.flags:
     Safe

@@ -1001,7 +1001,7 @@ const
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
-    tyProc, tyError}
+    tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
@@ -1358,6 +1358,11 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
     if result.id == 76426:
       echo "KNID ", kind
       writeStackTrace()
+
+proc newRefType*(owner: PSym, nilable: bool = false): PType =
+  result = newType(tyRef, owner)
+  if not nilable:
+    result.flags.incl tfNotNil
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k

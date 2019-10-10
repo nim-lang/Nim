@@ -565,7 +565,7 @@ when defined(js) or defined(nimdoc):
     JsRoot* = ref object of RootObj
       ## Root type of the JavaScript object hierarchy
 
-proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
+proc unsafeNew*[T](a: var (nil ref T), size: Natural) {.magic: "New", noSideEffect.}
   ## Creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
   ##
@@ -1979,7 +1979,7 @@ else:
                                              tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string;
-                       parentException: ref Exception = nil): untyped =
+                       parentException: nil ref Exception = nil): untyped =
   ## Creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
   (ref exceptn)(msg: message, parent: parentException)

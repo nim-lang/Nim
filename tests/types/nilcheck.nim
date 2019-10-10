@@ -1,12 +1,10 @@
 import tables
 
-template may*(t: typedesc): typedesc = t
-
 type
   NonNilable* = ref object
     a*: int
     
-  Nilable* = may NonNilable
+  Nilable* = nil NonNilable
 
 # Nilable tests
 
@@ -54,6 +52,9 @@ proc test7(a: Nilable) =
     if i == 2:
       b = a
   echo b.a # can't defer b: it might be nil
+
+proc test8(a: NonNilable) =
+  echo a.a # ok
 
 var nilable: Nilable
 # test1(nilable)

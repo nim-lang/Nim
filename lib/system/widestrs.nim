@@ -51,7 +51,8 @@ else:
   template nullWide(): untyped = nil
 
   type
-    WideCString* = ref UncheckedArray[Utf16Char]
+    WideCStringBase* = ref UncheckedArray[Utf16Char]
+    WideCString* = nil WideCStringBase
     WideCStringObj* = WideCString
 
   template createWide(a; L) =
