@@ -15,18 +15,18 @@
 ##   import os
 ##
 ##   let myFile = "/path/to/my/file.nim"
-## 
+##
 ##   let pathSplit = splitPath(myFile)
 ##   assert pathSplit.head == "/path/to/my"
 ##   assert pathSplit.tail == "file.nim"
-## 
+##
 ##   assert parentDir(myFile) == "/path/to/my"
-## 
+##
 ##   let fileSplit = splitFile(myFile)
 ##   assert fileSplit.dir == "/path/to/my"
 ##   assert fileSplit.name == "file"
 ##   assert fileSplit.ext == ".nim"
-## 
+##
 ##   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
 ##
@@ -2747,32 +2747,17 @@ when not (defined(windows) or defined(macosx) or weirdTarget):
             result = joinPath(getCurrentDir(), exePath)
             break
 
-      if len(result) == 0 or not isExecutable(result):
-        # search in path
-        for p in split(string(getEnv("PATH")), {PathSep}):
-          var x = joinPath(p, exePath)
-          if existsFile(x) and isExecutable(x): 
-            result = x
-            break
-
       if len(result) > 0:
-        # expand symlinks
-        while true:
-          if result.checkSymlink:
-            var r = newString(256)
-            var len = readlink(result, r, 256)
-            if len < 0:
-              raiseOSError(osLastError())
-            if len > 256:
-              r = newString(len+1)
-              len = readlink(result, r, len)
-            setLen(r, len)
-            if isAbsolute(r):
-              result = r
-            else:
-              result = parentDir(result) / r
-          else:
-            break
+        if isExecutable(result):
+          return expandFilename(result)
+
+        return ""
+
+      # search in path
+      for p in split(string(getEnv("PATH")), {PathSep}):
+        var x = joinPath(p, exePath)
+        if existsFile(x) and isExecutable(x):
+          return expandFilename(x)
     else:
       result = ""
 
