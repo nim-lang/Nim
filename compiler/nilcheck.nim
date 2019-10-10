@@ -367,7 +367,7 @@ proc checkIsNil(n, conf, map; isElse: bool = false): Check =
   result.map = newNilMap(map)
   let value = n[1]
   let value2 = symbol(value)
-  result.map.store(value2, if not isElse: Nil else: Safe, TArg, n.info)
+  result.map.store(symbol(n[1]), if not isElse: Nil else: Safe, TArg, n.info)
 
 proc infix(l: PNode, r: PNode, magic: TMagic): PNode =
   var name = case magic:
