@@ -1359,7 +1359,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
       echo "KNID ", kind
       writeStackTrace()
 
-proc newRefType*(owner: PSym, nilable: bool = false): PType =
+proc newRefType*(owner: PSym, nilable = false): PType =
   result = newType(tyRef, owner)
   if not nilable:
     result.flags.incl tfNotNil
