@@ -2721,12 +2721,13 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
       len = readlink(procPath, result, len)
     setLen(result, len)
 
-when not (defined(windows) or defined(macosx) or weirdTarget):
+when defined(openbsd):
   proc isExecutable(path: string): bool =
     let p = getFilePermissions(path)
     result = fpUserExec in p and fpGroupExec in p and fpOthersExec in p
 
-  proc getApplHeuristic(): string =
+  proc getApplOpenBsd(): string =
+    # similar to getApplHeuristic, but checks current working directory
     when declared(paramStr):
       result = ""
 
@@ -2758,6 +2759,20 @@ when not (defined(windows) or defined(macosx) or weirdTarget):
         var x = joinPath(p, exePath)
         if existsFile(x) and isExecutable(x):
           return expandFilename(x)
+    else:
+      result = ""
+
+when not (defined(windows) or defined(macosx) or weirdTarget):
+  proc getApplHeuristic(): string =
+    when declared(paramStr):
+      result = string(paramStr(0))
+      # POSIX guaranties that this contains the executable
+      # as it has been executed by the calling process
+      if len(result) > 0 and result[0] != DirSep: # not an absolute path?
+        # iterate over any path in the $PATH environment variable
+        for p in split(string(getEnv("PATH")), {PathSep}):
+          var x = joinPath(p, result)
+          if existsFile(x): return x
     else:
       result = ""
 
@@ -2850,6 +2865,9 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noN
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
+    elif defined(openbsd):
+      result = getApplOpenBsd()
+
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()
