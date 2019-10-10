@@ -710,7 +710,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[ra].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        assert nfIsRef in regs[ra].node.flags
         regs[ra].node[] = regs[rc].regToNode[]
         regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
