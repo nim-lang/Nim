@@ -265,7 +265,7 @@ proc checkBracketExpr(n, conf, map): Check =
   result = checkRefExpr(n, conf, result)
 
 
-proc union(l: Nilability, r: Nilability): Nilability =
+template union(l: Nilability, r: Nilability): Nilability =
   if l == r:
     l
   else:
