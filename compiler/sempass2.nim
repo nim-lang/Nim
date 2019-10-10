@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions
+  modulegraphs, varpartitions, nilcheck
 
 when defined(useDfa):
   import dfa
@@ -598,7 +598,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; 
     # example that triggers it.
     if argtype.kind == tyProc and notGcSafe(argtype) and not tracked.inEnforcedGcSafe:
       localError(tracked.config, n.info, $n & " is not GC safe")
-  notNilCheck(tracked, n, paramType)
+  # notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
   # semantic check doesn't allow statements after raise, break, return or
@@ -881,7 +881,7 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n[0])
     dec tracked.leftPartOfAsgn
     addAsgnFact(tracked.guards, n[0], n[1])
-    notNilCheck(tracked, n[1], n[0].typ)
+#    notNilCheck(tracked, n[1], n[0].typ)
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n[0].typ, n.info)
@@ -904,7 +904,7 @@ proc track(tracked: PEffects, n: PNode) =
         for i in 0..<child.len-2:
           initVar(tracked, child[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child[i], last)
-          notNilCheck(tracked, last, child[i].typ)
+#          notNilCheck(tracked, last, child[i].typ)
       elif child.kind == nkVarTuple and last.kind != nkEmpty:
         for i in 0..<child.len-1:
           if child[i].kind == nkEmpty or
@@ -913,7 +913,7 @@ proc track(tracked: PEffects, n: PNode) =
           initVar(tracked, child[i], volatileCheck=false)
           if last.kind in {nkPar, nkTupleConstr}:
             addAsgnFact(tracked.guards, child[i], last[i])
-            notNilCheck(tracked, last[i], child[i].typ)
+            # notNilCheck(tracked, last[i], child[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
   of nkConstSection:
@@ -1273,7 +1273,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
+                                                                                                                   
       when false: trackWrites(s, body)
+  if s.kind == skProc:
+    checkNil(s, body, g.config)
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
