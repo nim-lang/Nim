@@ -207,7 +207,7 @@ proc checkCall(n, conf, map): Check =
     result.nilability = typeNilability(n.typ)
   # echo result.map
 
-proc event(b: History): string =
+template event(b: History): string =
   case b.kind:
   of TArg: "param with nilable type"
   of TNil: "isNil"
