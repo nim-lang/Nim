@@ -15,18 +15,18 @@
 ##   import os
 ##
 ##   let myFile = "/path/to/my/file.nim"
-## 
+##
 ##   let pathSplit = splitPath(myFile)
 ##   assert pathSplit.head == "/path/to/my"
 ##   assert pathSplit.tail == "file.nim"
-## 
+##
 ##   assert parentDir(myFile) == "/path/to/my"
-## 
+##
 ##   let fileSplit = splitFile(myFile)
 ##   assert fileSplit.dir == "/path/to/my"
 ##   assert fileSplit.name == "file"
 ##   assert fileSplit.ext == ".nim"
-## 
+##
 ##   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
 ##
@@ -2721,6 +2721,47 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
       len = readlink(procPath, result, len)
     setLen(result, len)
 
+when defined(openbsd):
+  proc isExecutable(path: string): bool =
+    let p = getFilePermissions(path)
+    result = fpUserExec in p and fpGroupExec in p and fpOthersExec in p
+
+  proc getApplOpenBsd(): string =
+    # similar to getApplHeuristic, but checks current working directory
+    when declared(paramStr):
+      result = ""
+
+      # POSIX guaranties that this contains the executable
+      # as it has been executed by the calling process
+      let exePath = string(paramStr(0))
+
+      if len(exePath) == 0:
+        return ""
+
+      if exePath[0] == DirSep:
+        # path is absolute
+        result = exePath
+      else:
+        # not an absolute path, check if it's relative to the current working directory
+        for i in 1..<len(exePath):
+          if exePath[i] == DirSep:
+            result = joinPath(getCurrentDir(), exePath)
+            break
+
+      if len(result) > 0:
+        if isExecutable(result):
+          return expandFilename(result)
+
+        return ""
+
+      # search in path
+      for p in split(string(getEnv("PATH")), {PathSep}):
+        var x = joinPath(p, exePath)
+        if existsFile(x) and isExecutable(x):
+          return expandFilename(x)
+    else:
+      result = ""
+
 when not (defined(windows) or defined(macosx) or weirdTarget):
   proc getApplHeuristic(): string =
     when declared(paramStr):
@@ -2824,6 +2865,9 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noN
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
+    elif defined(openbsd):
+      result = getApplOpenBsd()
+
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()
