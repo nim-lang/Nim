@@ -7,7 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lineinfos, strutils, sequtils, strformat, idents, treetab, hashes
+import 
+  ast, astalgo, hashes, idents, intsets, lineinfos, msgs, options, 
+  renderer, ropes, sequtils, strformat, strutils, tables, treetab, types
 
 # 
 # Env: int => nilability
