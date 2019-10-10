@@ -3511,8 +3511,8 @@ for details on how to change this behavior.
 Anonymous Procs
 ---------------
 
-Procs can also be treated as expressions, in which case it's allowed to omit
-the proc's name.
+Unnamed procedures can be used as lambda expressions to pass into other 
+procedures:
 
 .. code-block:: nim
   var cities = @["Frankfurt", "Tokyo", "New York", "Kyiv"]
@@ -3522,7 +3522,9 @@ the proc's name.
 
 
 Procs as expressions can appear both as nested procs and inside top level
-executable code.
+executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro 
+which enables a more succinct syntax for anonymous procedures resembling 
+lambdas as they are in languages like JavaScript, C#, etc.
 
 
 Func
