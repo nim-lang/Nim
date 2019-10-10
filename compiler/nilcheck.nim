@@ -7,9 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import 
-  ast, astalgo, hashes, idents, intsets, lineinfos, msgs, options, 
-  renderer, ropes, sequtils, strformat, strutils, tables, treetab, types
+import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lineinfos, strutils, sequtils, strformat, idents, treetab, hashes
 
 # 
 # Env: int => nilability
@@ -74,7 +72,7 @@ type
 
   Check = tuple[nilability: Nilability, map: NilMap]
 
-let resultId = -1
+const resultId = -1
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check
 proc checkCondition(n: PNode, conf: ConfigRef, map: NilMap, isElse: bool, base: bool): NilMap
