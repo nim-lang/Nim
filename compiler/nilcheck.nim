@@ -491,9 +491,9 @@ proc checkResult(n, conf, map) =
   let resultNilability = map[resultId] # "result"]
   case resultNilability:
   of Nil:
-    localError conf, n.info, "return value is nil"
+    message(conf, n.info, warnNilCheck, "return value is nil")
   of MaybeNil:
-    localError conf, n.info, "return value might be nil"
+    message(conf, n.info, warnNilCheck, "return value might be nil")
   of Safe:
     discard    
 
@@ -590,7 +590,7 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   
 proc typeNilability(typ: PType): Nilability =
   if not typ.isNil:
-    echo "type ", typ, " ", typ.flags
+    aecho "type ", typ, " ", typ.flags
   if typ.isNil: # TODO is it ok
     Safe
   elif tfNotNil in typ.flags:

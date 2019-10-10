@@ -916,6 +916,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     # check every except the last is an object:
     for i in isCall..<n.len-1:
       let ni = n[i]
+      echo n, " ", i, " ", ni
       if ni.kind == nkNilLit:
         isNilable = true
       else:
@@ -1678,7 +1679,7 @@ proc semTypeof2(c: PContext; n: PNode; prev: PType): PType =
   result = t.typ
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
-  echo "semTypeNode ", n
+  # echo "semTypeNode ", n
   result = nil
   inc c.inTypeContext
 

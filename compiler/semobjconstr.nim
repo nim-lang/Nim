@@ -153,6 +153,7 @@ proc collectMissingFields(c: PContext, fieldsRecList: PNode,
       if assignment == nil:
         constrCtx.missingFields.add r.sym
 
+
 proc semConstructFields(c: PContext, n: PNode,
                         constrCtx: var ObjConstrContext,
                         flags: TExprFlags): InitStatus =

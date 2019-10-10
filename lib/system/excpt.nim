@@ -69,7 +69,7 @@ var
 
 type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
-                     excHandler: PSafePoint, currException: ref Exception]
+                     excHandler: PSafePoint, currException: nil ref Exception]
 
 proc getFrameState*(): FrameState {.compilerRtl, inl.} =
   return (gcFramePtr, framePtr, excHandler, currException)

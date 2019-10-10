@@ -2703,7 +2703,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
 type
   NimNodeObj = object
 
-  NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
+  NimNode* {.magic: "PNimrodNode".} = nil ref NimNodeObj
     ## Represents a Nim AST node. Macros operate on this type.
 
 when defined(nimV2):
