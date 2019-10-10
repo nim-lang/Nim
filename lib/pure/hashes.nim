@@ -112,29 +112,32 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
+const
+  prime = 31
+
 proc hash*(x: int): Hash {.inline.} =
   ## Efficient hashing of integers.
-  result = x
+  result = x * prime
 
 proc hash*(x: int64): Hash {.inline.} =
   ## Efficient hashing of `int64` integers.
-  result = cast[int](x)
+  result = cast[int](x) * prime
 
 proc hash*(x: uint): Hash {.inline.} =
   ## Efficient hashing of unsigned integers.
-  result = cast[int](x)
+  result = cast[int](x) * prime
 
 proc hash*(x: uint64): Hash {.inline.} =
   ## Efficient hashing of `uint64` integers.
-  result = cast[int](x)
+  result = cast[int](x) * prime
 
 proc hash*(x: char): Hash {.inline.} =
   ## Efficient hashing of characters.
-  result = ord(x)
+  result = ord(x) * prime
 
 proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
-  result = ord(x)
+  result = ord(x) * prime
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
