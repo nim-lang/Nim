@@ -662,20 +662,40 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
-  var candidates: seq[string] = @[]
-  var dir = pkg
+  var
+    candidates: seq[string] = @[]
+    dir = pkg
+    nimblepkg = ""
+  let pkgname = pkg.lastPathPart()
   while true:
-    for k, f in os.walkDir(dir, relative=true):
+    for k, f in os.walkDir(dir, relative = true):
       if k == pcFile and f != "config.nims":
         let (_, name, ext) = splitFile(f)
         if ext in extensions:
           let x = changeFileExt(dir / name, ".nim")
           if fileExists(x):
             candidates.add x
+          if ext == ".nimble":
+            if nimblepkg.len == 0:
+              nimblepkg = name
+              # Scan subfolders for package source since nimble supports that.
+              # To save time we only scan with the depth of one as that's the
+              # common scenario.
+              let x = x.extractFilename()
+              for k, d in os.walkDir(dir):
+                if k == pcDir:
+                  for k, f in os.walkDir(d, relative = true):
+                    if k == pcFile and f == x:
+                      candidates.add d / f
+            else:
+              # If we found more than one nimble file, chances are that we
+              # missed the real project file, or this is an invalid nimble
+              # package. Either way, bailing is the better choice.
+              return ""
+    let pkgname = if nimblepkg.len > 0: nimblepkg else: pkgname
     for c in candidates:
-      # nim-foo foo  or  foo  nfoo
-      if (pkg in c) or (c in pkg): return c
-    if candidates.len >= 1:
+      if pkgname in c.extractFilename(): return c
+    if candidates.len > 0:
       return candidates[0]
     dir = parentDir(dir)
     if dir == "": break
