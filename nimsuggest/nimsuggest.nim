@@ -93,7 +93,7 @@ proc myLog(s: string) =
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known file.nim[;dirtyfile.nim]:line:col\n" &
+  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known|project file.nim[;dirtyfile.nim]:line:col\n" &
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
@@ -245,6 +245,7 @@ proc toStdout() {.gcsafe.} =
     of ideNone: break
     of ideMsg: echo res.doc
     of ideKnown: echo res.quality == 1
+    of ideProject: echo res.filePath
     else: echo res
 
 proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
@@ -254,6 +255,7 @@ proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
     of ideNone: break
     of ideMsg: stdoutSocket.send(res.doc & "\c\L")
     of ideKnown: stdoutSocket.send($(res.quality == 1) & "\c\L")
+    of ideProject: stdoutSocket.send(res.filePath & "\c\L")
     else: stdoutSocket.send($res & "\c\L")
 
 proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
@@ -266,6 +268,8 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
       list.add sexp(res.doc)
     of ideKnown:
       list.add sexp(res.quality == 1)
+    of ideProject:
+      list.add sexp(res.filePath)
     else:
       list.add sexp(res)
   returnEpc(client, uid, list)
@@ -435,6 +439,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
   of "known": conf.ideCmd = ideKnown
+  of "project": conf.ideCmd = ideProject
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -454,6 +459,8 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
 
   if conf.ideCmd == ideKnown:
     results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
+  elif conf.ideCmd == ideProject:
+    results.send(Suggest(section: ideProject, filePath: string conf.projectFull))
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
@@ -741,6 +748,8 @@ else:
       stderr.write s & "\n"
     if conf.ideCmd == ideKnown:
       retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
+    elif conf.ideCmd == ideProject:
+      retval.add(Suggest(section: ideProject, filePath: string conf.projectFull))
     else:
       if conf.ideCmd == ideChk:
         for cm in nimsuggest.cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
