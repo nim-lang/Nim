@@ -152,7 +152,9 @@ when defined(boehmgc):
     proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() =
-    boehmGC_set_all_interior_pointers(0)
+    when defined(boehmNoIntPtr):
+      # See #12286
+      boehmGC_set_all_interior_pointers(0)
     boehmGCinit()
     when hasThreadSupport:
       boehmGC_allow_register_threads()
