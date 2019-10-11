@@ -720,7 +720,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
 proc semCustomPragma(c: PContext, n: PNode): PNode =
   var callNode: PNode
 
-  if n.kind == nkIdent:
+  if n.kind in {nkIdent, nkSym}:
     # pragma -> pragma()
     callNode = newTree(nkCall, n)
   elif n.kind == nkExprColonExpr:
