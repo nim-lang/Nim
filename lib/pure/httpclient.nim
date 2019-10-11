@@ -297,6 +297,16 @@ proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
 
+
+proc `$`*(data: MultipartData): string =
+  ## convert MultipartData to string so it's human readable when echo
+  ## see https://github.com/nim-lang/Nim/issues/11863
+  for pos, item in data.content:
+    result &= "------------------------------  " 
+    result &= pos 
+    result &= "  ------------------------------\n"
+    result &= item[32 .. item.high]
+
 proc add*(p: var MultipartData, name, content: string, filename: string = "",
           contentType: string = "") =
   ## Add a value to the multipart data. Raises a `ValueError` exception if
