@@ -48,6 +48,7 @@ Options:
   --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
+  --find                  attempts to find the project file of the current project
 
 The server then listens to the connection and takes line-based commands.
 
@@ -549,6 +550,7 @@ proc mainCommand(graph: ModuleGraph) =
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
+  var findProject = false
   while true:
     parseopt.next(p)
     case p.kind
@@ -594,6 +596,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           gRefresh = true
       of "maxresults":
         conf.suggestMaxResults = parseInt(p.val)
+      of "find":
+        findProject = true
       else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
@@ -602,7 +606,12 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         # don't make it worse, report the error the old way:
         if conf.projectName.len == 0: conf.projectName = a
       else:
-        conf.projectName = a
+        if findProject:
+          conf.projectName = findProjectNimFile(conf, a.parentDir())
+          if conf.projectName.len == 0:
+            conf.projectName = a
+        else:
+          conf.projectName = a
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
