@@ -678,15 +678,16 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
           if ext == ".nimble":
             if nimblepkg.len == 0:
               nimblepkg = name
-              # Scan subfolders for package source since nimble supports that.
-              # To save time we only scan with the depth of one as that's the
-              # common scenario.
-              let x = x.extractFilename()
-              for k, d in os.walkDir(dir):
-                if k == pcDir:
-                  for k, f in os.walkDir(d, relative = true):
-                    if k == pcFile and f == x:
-                      candidates.add d / f
+              if dir != pkg:
+                # Scan subfolders for package source since nimble supports that.
+                # To save time we only scan with the depth of one as that's the
+                # common scenario.
+                let x = x.extractFilename()
+                for k, d in os.walkDir(dir):
+                  if k == pcDir:
+                    for k, f in os.walkDir(d, relative = true):
+                      if k == pcFile and f == x:
+                        candidates.add d / f
             else:
               # If we found more than one nimble file, chances are that we
               # missed the real project file, or this is an invalid nimble
