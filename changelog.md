@@ -7,7 +7,7 @@
 
 ### Breaking changes in the standard library
 
-
+- List Comprehension has been removed.
 
 ### Breaking changes in the compiler
 
