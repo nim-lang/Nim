@@ -258,7 +258,7 @@ when defined(windows) or defined(nimdoc):
       handles: HashSet[AsyncFD]
       vd: VirtualEventDispatcher
 
-    VirtualEventDispatcher = object
+    VirtualEventDispatcher = ref object
       virtualHandles: Table[VirtualFD, VirtualAsyncEvent] # pseudo handles for custom AsyncEvents.
       nextVirtualHandle: VirtualFD
       virtualMuxHandle: AsyncEvent # all the virtual handles get multiplexed through a single real handle.
@@ -289,7 +289,7 @@ when defined(windows) or defined(nimdoc):
       triggered: bool
       when compileOption("threads"):
         eventLock: RLock
-      p: PDispatcher
+      vd: VirtualEventDispatcher
       vFD: VirtualFD
       cb: Callback
     VirtualAsyncEvent* = ptr VirtualAsyncEventImpl
@@ -311,6 +311,7 @@ when defined(windows) or defined(nimdoc):
     result.handles = initSet[AsyncFD]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](64)
+    result.vd = new VirtualEventDispatcher
     result.vd.virtualHandles = initTable[VirtualFD, VirtualAsyncEvent]()
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
@@ -1140,7 +1141,7 @@ else:
       triggered: bool
       when compileOption("threads"):
         eventLock: RLock
-      p: PDispatcher
+      vd: VirtualEventDispatcher
       vFD: VirtualFD
       cb: Callback
     VirtualAsyncEvent* = ptr VirtualAsyncEventImpl
@@ -1149,7 +1150,7 @@ else:
       selector: Selector[AsyncData]
       vd: VirtualEventDispatcher
 
-    VirtualEventDispatcher = object
+    VirtualEventDispatcher = ref object
       virtualHandles: Table[VirtualFD, VirtualAsyncEvent] # pseudo handles for custom AsyncEvents.
       nextVirtualHandle: VirtualFD
       virtualMuxHandle: AsyncEvent # all the virtual handles get multiplexed through a single real handle.
@@ -1173,6 +1174,7 @@ else:
     result.selector = newSelector[AsyncData]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
+    result.vd = new VirtualEventDispatcher
     result.vd.virtualHandles = initTable[VirtualFD, VirtualAsyncEvent]()
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
@@ -1907,30 +1909,30 @@ proc send*(socket: AsyncFD, data: string,
 
   return retFuture
 
-proc deInitVirtualEventDispatcher(p: PDispatcher) =
-  assert p.vd.virtualHandles.len == 0, "Cannot de-Init Virtual Event Dispacter. There are still Pending Events."
-  p.vd.virtualMuxHandle.unregister()
-  p.vd.virtualMuxHandle.close()
-  p.vd.virtualMuxHandle = nil
-  p.vd.nextVirtualHandle = 0.VirtualFD
+proc close(vd: VirtualEventDispatcher) =
+  assert vd.virtualHandles.len == 0, "Cannot de-Init Virtual Event Dispacter. There are still Pending Events."
+  vd.virtualMuxHandle.unregister()
+  vd.virtualMuxHandle.close()
+  vd.virtualMuxHandle = nil
+  vd.nextVirtualHandle = 0.VirtualFD
 
 proc unregister*(ev: VirtualAsyncEvent) =
   ## Unregisters event ``ev``.
   doAssert(ev.vFD != InvalidVirtualFD, "Event is not registered in the queue!")
 
-  let oldP = ev.p
+  let vd = ev.vd
   withLockIfThreads ev.eventLock:
-    ev.p.vd.virtualHandles.del ev.vFD
-    ev.p = nil
+    ev.vd.virtualHandles.del ev.vFD
+    ev.vd = nil
     ev.cb = nil
     ev.vFD = InvalidVirtualFD
 
-  if oldP.vd.virtualHandles.len == 0:
-    # lazy de-init the physical event with the Dispatcher
+  if vd.virtualHandles.len == 0:
+    # lazy close the physical event with the Dispatcher
     # The main reason we need this is to make
     # hasPendingOperations still work
     # without modifying the ioselector code.
-    deInitVirtualEventDispatcher(oldP)
+    vd.close
 
 proc initVirtualEventDispatcher(p: PDispatcher) =
   p.vd.virtualMuxHandle = newAsyncEvent()
@@ -1978,7 +1980,7 @@ proc trigger*(ev: VirtualAsyncEvent) =
     ev.triggered = true
 
     # send the signal to wake up the dispatcher thread.
-    trigger(ev.p.vd.virtualMuxHandle)
+    trigger(ev.vd.virtualMuxHandle)
 
 proc addEvent*(ev: VirtualAsyncEvent, cb: Callback) =
   ## Registers callback ``cb`` to be called when ``ev`` will be signaled
@@ -1997,7 +1999,7 @@ proc addEvent*(ev: VirtualAsyncEvent, cb: Callback) =
     ev.vFD = p.vd.nextVirtualHandle
     p.vd.nextVirtualHandle = VirtualFD(int(p.vd.nextVirtualHandle) + 1)
     p.vd.virtualHandles[ev.vFD] = ev
-    ev.p = p
+    ev.vd = p.vd
 
 proc close*(ev: VirtualAsyncEvent) =
   ## Closes event ``ev``.
