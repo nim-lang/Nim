@@ -1835,7 +1835,10 @@ proc send*(socket: AsyncFD, data: string,
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   var retFuture = newFuture[void]("send")
-
+  if data.len == 0: 
+    retFuture.complete()
+    return retFuture
+    
   var copiedData = data
   GC_ref(copiedData) # we need to protect data until send operation is completed
                      # or failed.
