@@ -10,6 +10,10 @@
 ## Do yourself a favor and import the module
 ## as ``from htmlgen import nil`` and then fully qualify the macros.
 ##
+## *Note*: The Karax project (``nimble install karax``) has a better
+## way to achieve the same, see `https://github.com/pragmagic/karax/blob/master/tests/nativehtmlgen.nim`_
+## for an example.
+##
 ##
 ## This module implements a simple `XML`:idx: and `HTML`:idx: code
 ## generator. Each commonly used HTML tag has a corresponding macro
@@ -20,11 +24,11 @@
 ##
 ## .. code-block:: Nim
 ##   var nim = "Nim"
-##   echo h1(a(href="http://nim-lang.org", nim))
+##   echo h1(a(href="https://nim-lang.org", nim))
 ##
 ## Writes the string::
 ##
-##   <h1><a href="http://nim-lang.org">Nim</a></h1>
+##   <h1><a href="https://nim-lang.org">Nim</a></h1>
 ##
 
 import
@@ -606,7 +610,7 @@ macro wbr*(e: varargs[untyped]): untyped =
 
 runnableExamples:
   let nim = "Nim"
-  assert h1(a(href = "http://nim-lang.org", nim)) ==
-    """<h1><a href="http://nim-lang.org">Nim</a></h1>"""
+  assert h1(a(href = "https://nim-lang.org", nim)) ==
+    """<h1><a href="https://nim-lang.org">Nim</a></h1>"""
   assert form(action = "test", `accept-charset` = "Content-Type") ==
     """<form action="test" accept-charset="Content-Type"></form>"""

@@ -30,6 +30,7 @@
 
 ## Language changes
 
+- Unsigned integer operators have been fixed to allow promotion of the first operand.
 
 
 ### Tool changes
