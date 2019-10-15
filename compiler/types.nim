@@ -1123,7 +1123,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = a.sym.position == b.sym.position
   of tyBuiltInTypeClass:
     assert a.len == 1
-    assert a[0].len == 1
+    assert a[0].len == 0
     assert b.len == 1
     assert b[0].len == 0
     result = a[0].kind == b[0].kind

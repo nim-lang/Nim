@@ -10,21 +10,23 @@ hello enum
 '''
 """
 
-# SomeInteger (OK)
+
+
+# SomeInteger
 
 proc foo[T : SomeInteger](arg: T)
 proc foo[T : SomeInteger](arg: T) =
   echo "hello some integer"
 foo(123)
 
-# range (OK)
+# range
 
 proc foo2[T : range[0..100]](arg: T)
 proc foo2[T : range[0..100]](arg: T) =
   echo "hello range"
 foo2(7)
 
-# tuple (OK)
+# tuple
 
 proc foo3[T : tuple](arg: T)
 proc foo3[T : tuple](arg: T) =
@@ -32,7 +34,7 @@ proc foo3[T : tuple](arg: T) =
 
 foo3((a:123,b:321))
 
-# seq (OK)
+# seq
 
 proc foo4[T: seq](arg: T)
 proc foo4[T: seq](arg: T) =
@@ -40,7 +42,7 @@ proc foo4[T: seq](arg: T) =
 
 foo4(@[1,2,3])
 
-# object (broken)
+# object
 
 proc foo5[T : object](arg: T)
 proc foo5[T : object](arg: T) =
@@ -50,7 +52,7 @@ type MyType = object
 var mt: MyType
 foo5(mt)
 
-# distinct (broken)
+# distinct
 
 proc foo6[T : distinct](arg: T)
 proc foo6[T : distinct](arg: T) =
@@ -60,7 +62,7 @@ type MyDistinct = distinct string
 var md: MyDistinct
 foo6(md)
 
-# enum (broken)
+# enum
 
 proc foo7[T : enum](arg: T)
 proc foo7[T : enum](arg: T) =
