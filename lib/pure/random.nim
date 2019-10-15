@@ -642,7 +642,7 @@ when not defined(nimscript):
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
     ## * `initRand proc<#initRand,int64>`_
     when defined(JS):
-      let time = int64(times.epochTime() * 1000)
+      let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       randomize(time)
     else:
       let now = times.getTime()
