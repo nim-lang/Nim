@@ -677,6 +677,7 @@ when not defined(JS) and not defined(gcDestructors):
       len, reserved: int
       when defined(gogc):
         elemSize: int
+        elemAlign: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
@@ -3132,6 +3133,7 @@ when not defined(js):
       TNimType {.compilerproc.} = object
         destructor: pointer
         size: int
+        align: int
         name: cstring
       PNimType = ptr TNimType
 
@@ -3515,6 +3517,13 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
   result = if x < 0: -x else: x
 {.pop.}
 
+
+proc align(address, alignment: int): int =
+  if alignment == 0: # Actually, this is illegal. This branch exists to actively
+                     # hide problems.
+    result = address
+  else:
+    result = (address + (alignment - 1)) and not (alignment - 1)
 
 when not defined(JS):
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}

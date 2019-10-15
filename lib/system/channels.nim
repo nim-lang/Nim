@@ -119,7 +119,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     else:
       sysAssert(dest != nil, "dest == nil")
       if mode == mStore:
-        x[] = alloc0(t.region, seq.len *% mt.base.size +% GenericSeqSize)
+        x[] = alloc0(t.region, align(GenericSeqSize, mt.base.align) +% seq.len *% mt.base.size)
       else:
         unsureAsgnRef(x, newSeq(mt, seq.len))
       var dst = cast[ByteAddress](cast[PPointer](dest)[])
@@ -128,9 +128,8 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
       dstseq.reserved = seq.len
       for i in 0..seq.len-1:
         storeAux(
-          cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-          cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                        GenericSeqSize),
+          cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i*% mt.base.size),
+          cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
           mt.base, t, mode)
       if mode != mStore: dealloc(t.region, s2)
   of tyObject:
@@ -314,4 +313,3 @@ proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready
-

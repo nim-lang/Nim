@@ -250,7 +250,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     when defined(avlcorruption):
       trackLocation(a.llmem, PageSize)
     incCurrMem(a, PageSize)
-    a.llmem.size = PageSize - sizeof(LLChunk)
+    a.llmem.size = PageSize - sizeof(LLChunk) # Wrong!!!
     a.llmem.acc = sizeof(LLChunk)
     a.llmem.next = old
   result = cast[pointer](cast[ByteAddress](a.llmem) + a.llmem.acc)

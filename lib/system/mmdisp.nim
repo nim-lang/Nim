@@ -46,7 +46,7 @@ const
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
-  MemAlign = 8 # also minimal allocatable memory block
+  MemAlign = 16 # also minimal allocatable memory block
 
   BitsPerPage = PageSize div MemAlign
   UnitsPerPage = BitsPerPage div (sizeof(int)*8)
@@ -168,7 +168,7 @@ when defined(boehmgc):
     if typ.finalizer != nil:
       boehmRegisterFinalizer(result, boehmgc_finalizer, typ.finalizer, nil, nil)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-    result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+    result = newObj(typ, addInt(align(GenericSeqSize, typ.base.align), mulInt(len, typ.base.size)))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
 
@@ -305,7 +305,7 @@ elif defined(gogc):
     writebarrierptr(addr(result), newObj(typ, size))
 
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-    writebarrierptr(addr(result), newObj(typ, len * typ.base.size + GenericSeqSize))
+    writebarrierptr(addr(result), newObj(typ, align(GenericSeqSize, typ.base.align) + len * typ.base.size))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
     cast[PGenericSeq](result).elemSize = typ.base.size
@@ -314,7 +314,7 @@ elif defined(gogc):
     writebarrierptr(addr(result), newSeq(typ, len))
 
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
-    result = newObj(typ, cap * typ.base.size + GenericSeqSize)
+    result = newObj(typ, align(GenericSeqSize, typ.base.align) + cap * typ.base.size)
     cast[PGenericSeq](result).len = 0
     cast[PGenericSeq](result).reserved = cap
     cast[PGenericSeq](result).elemSize = typ.base.size
@@ -326,7 +326,9 @@ elif defined(gogc):
     var metadataOld = cast[PGenericSeq](old)
     if metadataOld.elemSize == 0:
       metadataOld.elemSize = 1
-    let oldsize = cast[PGenericSeq](old).len * cast[PGenericSeq](old).elemSize + GenericSeqSize
+    if metadataOld.elemAlign == 0:
+      metadataOld.elemAlign = 1
+    let oldsize = align(GenericSeqSize, metadataOld.elemAlign) + metadataOld.len * metadataOld.elemSize
     writebarrierptr(addr(result), goMalloc(newsize.uint))
     typedMemMove(result, old, oldsize.uint)
 
@@ -413,7 +415,7 @@ elif defined(nogc) and defined(useMalloc):
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc0(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-    result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+    result = newObj(typ, addInt(align(GenericSeqSize, typ.base.align), mulInt(len, typ.base.size)))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
 
@@ -472,7 +474,7 @@ elif defined(nogc):
     result = alloc(size)
 
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-    result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+    result = newObj(typ, addInt(align(GenericSeqSize, typ.base.align), mulInt(len, typ.base.size)))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
 
@@ -524,7 +526,7 @@ when not declared(nimNewSeqOfCap) and not defined(gcDestructors):
       let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize
       result = newStr(typ, s, ntfNoRefs notin typ.base.flags)
     else:
-      let s = addInt(mulInt(cap, typ.base.size), GenericSeqSize)
+      let s = addInt(align(GenericSeqSize, typ.base.align), mulInt(cap, typ.base.size))
       when declared(newObjNoInit):
         result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
       else:

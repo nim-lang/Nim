@@ -392,7 +392,6 @@ typedef char* NCSTRING;
 #define ALLOC_0(size)  calloc(1, size)
 #define DL_ALLOC_0(size) dlcalloc(1, size)
 
-#define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
 
 // NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0

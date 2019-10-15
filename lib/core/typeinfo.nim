@@ -12,15 +12,15 @@
 ## what this module allows you to do.
 ##
 ## Note that even though ``Any`` and its operations hide the nasty low level
-## details from its clients, it remains inherently unsafe! Also, Nim's 
+## details from its clients, it remains inherently unsafe! Also, Nim's
 ## runtime type information will evolve and may eventually be deprecated.
 ## As an alternative approach to programmatically understanding and
 ## manipulating types, consider using the `macros <macros.html>`_ package to
 ## work with the types' AST representation at compile time. See, for example,
-## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative 
+## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative
 ## approach to storing arbitrary types at runtime, consider using generics.
 ##
-## 
+##
 
 {.push hints: off.}
 
@@ -209,7 +209,7 @@ proc `[]`*(x: Any, i: int): Any =
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
       raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
-    return newAny(s +!! (GenericSeqSize+i*bs), x.rawType.base)
+    return newAny(s +!! (align(GenericSeqSize,x.rawType.base.align)+i*bs), x.rawType.base)
   else: assert false
 
 proc `[]=`*(x: Any, i: int, y: Any) =
@@ -228,7 +228,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if i >=% cast[PGenSeq](s).len:
       raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     assert y.rawType == x.rawType.base
-    genericAssign(s +!! (GenericSeqSize+i*bs), y.value, y.rawType)
+    genericAssign(s +!! (align(GenericSeqSize,x,rawType.base.align)+i*bs), y.value, y.rawType)
   else: assert false
 
 proc len*(x: Any): int =

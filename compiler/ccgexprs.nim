@@ -1290,7 +1290,7 @@ proc genNewSeq(p: BProc, e: PNode) =
   initLocExpr(p, e.sons[2], b)
   if p.config.selectedGC == gcDestructors:
     let seqtype = skipTypes(e.sons[1].typ, abstractVarRange)
-    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3), _Alignof($3));$n",
       [a.rdLoc, b.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype)])
   else:
@@ -1305,7 +1305,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   initLocExpr(p, e.sons[1], a)
   if p.config.selectedGC == gcDestructors:
     if d.k == locNone: getTemp(p, e.typ, d, needsInit=false)
-    linefmt(p, cpsStmts, "$1.len = 0; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = ($4*) #newSeqPayload($2, sizeof($3), _Alignof($3));$n",
       [d.rdLoc, a.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype)])
   else:
@@ -1405,7 +1405,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   let l = intLiteral(len(n))
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
-    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3), _Alignof($3));$n",
       [rdLoc dest[], l, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype)])
   else:
@@ -1436,7 +1436,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   let L = toInt(lengthOrd(p.config, n.sons[1].typ))
   if p.config.selectedGC == gcDestructors:
     let seqtype = n.typ
-    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3), _Alignof($3));$n",
       [rdLoc d, L, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype)])
   else:

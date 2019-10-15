@@ -90,6 +90,7 @@ type
     when defined(gcDestructors):
       head*: pointer
     size*: int
+    align*: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
     base*: ptr TNimType

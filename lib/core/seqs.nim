@@ -89,19 +89,20 @@ type
     cap: int
     allocator: Allocator
 
-proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
+proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
     let allocator = getLocalAllocator()
-    var p = cast[ptr PayloadBase](allocator.alloc(allocator, cap * elemSize + sizeof(int) + sizeof(Allocator)))
+    var p = cast[ptr PayloadBase](allocator.alloc(allocator, align(sizeof(int) + sizeof(Allocator), elemAlign) + cap * elemSize))
     p.allocator = allocator
     p.cap = cap
     result = p
   else:
     result = nil
 
-proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
+
+proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     compilerRtl, noSideEffect, raises: [].} =
   {.noSideEffect.}:
     template `+!`(p: pointer, s: int): pointer =
@@ -111,7 +112,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
     if addlen <= 0:
       result = p
     elif p == nil:
-      result = newSeqPayload(len+addlen, elemSize)
+      result = newSeqPayload(len+addlen, elemSize, elemAlign)
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
@@ -148,7 +149,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
   if xu.p == nil or xu.p.cap < newLen:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
     xu.p.data[i] = value
@@ -163,7 +164,7 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   let oldLen = x.len
   var xu = cast[ptr NimSeqV2[T]](addr x)
   if xu.p == nil or xu.p.cap < oldLen+1:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T)))
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
   xu.len = oldLen+1
   xu.p.data[oldLen] = value
 
@@ -176,7 +177,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       if newlen <= oldLen: return
       var xu = cast[ptr NimSeqV2[T]](addr s)
       if xu.p == nil or xu.p.cap < newlen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T)))
+        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
 
 when false:

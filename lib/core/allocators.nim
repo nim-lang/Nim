@@ -15,7 +15,7 @@ type
     ZerosMem    ## the allocator always zeros the memory on an allocation
   Allocator* = ptr AllocatorObj
   AllocatorObj* {.inheritable, compilerproc.} = object
-    alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [], tags: [], gcsafe.}
+    alloc*: proc (a: Allocator; size: int; alignment: int): pointer {.nimcall, raises: [], tags: [], gcsafe.}
     dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [], tags: [], gcsafe.}
     realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [], tags: [], gcsafe.}
     deallocAll*: proc (a: Allocator) {.nimcall, raises: [], tags: [], gcsafe.}
