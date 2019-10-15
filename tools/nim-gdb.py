@@ -340,7 +340,7 @@ def reprEnum(e, typ):
   return str(e) + " (invalid data!)"
 
 class NimEnumPrinter:
-  pattern = re.compile(r'^tyEnum_(\w*)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyEnum_(\w*)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val      = val
