@@ -281,11 +281,13 @@ proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
 
 proc add*(father, child: JsonNode) =
   ## Adds `child` to a JArray node `father`.
+  assert father != nil
   assert father.kind == JArray
   father.elems.add(child)
 
 proc add*(obj: JsonNode, key: string, val: JsonNode) =
   ## Sets a field from a `JObject`.
+  assert obj != nil
   assert obj.kind == JObject
   obj.fields[key] = val
 
@@ -376,6 +378,7 @@ proc `%`*(o: enum): JsonNode =
   result = %($o)
 
 proc toJson(x: NimNode): NimNode {.compileTime.} =
+  assert x != nil
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
@@ -440,6 +443,7 @@ proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
 
 proc hash*(n: JsonNode): Hash =
   ## Compute the hash for a JSON node
+  assert n != nil
   case n.kind
   of JArray:
     result = hash(n.elems)
@@ -465,6 +469,7 @@ proc len*(n: JsonNode): int =
   ## If `n` is a `JArray`, it returns the number of elements.
   ## If `n` is a `JObject`, it returns the number of pairs.
   ## Else it returns 0.
+  assert n != nil
   case n.kind
   of JArray: result = n.elems.len
   of JObject: result = n.fields.len
@@ -489,16 +494,19 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
 
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
+  assert node != nil
   assert(node.kind == JObject)
   result = node.fields.hasKey(key)
 
 proc contains*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
+  assert node != nil
   assert(node.kind == JObject)
   node.fields.hasKey(key)
 
 proc contains*(node: JsonNode, val: JsonNode): bool =
   ## Checks if `val` exists in array `node`.
+  assert node != nil
   assert(node.kind == JArray)
   find(node.elems, val) >= 0
 
@@ -545,6 +553,7 @@ template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode,
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
   ## to ``value``. If any of the keys are missing, they are added.
+  assert node != nil
   var node = node
   for i in 0..(keys.len-2):
     if not node.hasKey(keys[i]):
@@ -554,6 +563,7 @@ proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
 
 proc delete*(obj: JsonNode, key: string) =
   ## Deletes ``obj[key]``.
+  assert obj != nil
   assert(obj.kind == JObject)
   if not obj.fields.hasKey(key):
     raise newException(KeyError, "key not in object")
@@ -561,6 +571,7 @@ proc delete*(obj: JsonNode, key: string) =
 
 proc copy*(p: JsonNode): JsonNode =
   ## Performs a deep copy of `a`.
+  assert p != nil
   case p.kind
   of JString:
     result = newJString(p.str)
@@ -629,6 +640,7 @@ proc escapeJson*(s: string): string =
 
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
+  assert node != nil
   case node.kind
   of JObject:
     if lstArr: result.indent(currIndent) # Indentation
@@ -717,6 +729,7 @@ proc toUgly*(result: var string, node: JsonNode) =
   ##
   ## This provides higher efficiency than the ``pretty`` procedure as it
   ## does **not** attempt to format the resulting JSON to make it human readable.
+  assert node != nil
   var comma = false
   case node.kind:
   of JArray:
@@ -750,11 +763,13 @@ proc toUgly*(result: var string, node: JsonNode) =
 
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
+  assert node != nil
   result = newStringOfCap(node.len shl 1)
   toUgly(result, node)
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
+  assert node != nil
   assert node.kind == JArray
   for i in items(node.elems):
     yield i
@@ -762,18 +777,21 @@ iterator items*(node: JsonNode): JsonNode =
 iterator mitems*(node: var JsonNode): var JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray. Items can be
   ## modified.
+  assert node != nil
   assert node.kind == JArray
   for i in mitems(node.elems):
     yield i
 
 iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
+  assert node != nil
   assert node.kind == JObject
   for key, val in pairs(node.fields):
     yield (key, val)
 
 iterator keys*(node: JsonNode): string =
   ## Iterator for the keys in `node`. `node` has to be a JObject.
+  assert node != nil
   assert node.kind == JObject
   for key in node.fields.keys:
     yield key
@@ -781,6 +799,7 @@ iterator keys*(node: JsonNode): string =
 iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   ## Values can be modified
+  assert node != nil
   assert node.kind == JObject
   for key, val in mpairs(node.fields):
     yield (key, val)
