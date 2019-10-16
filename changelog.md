@@ -7,6 +7,7 @@
 
 ### Breaking changes in the standard library
 
+- `base64.encode` no longer supports `lineLen` and `newLine` use `base64.encodeMIME` instead.
 
 
 ### Breaking changes in the compiler
@@ -22,6 +23,7 @@
 
 ## Library changes
 
+- `base64.encode` and `base64.decode` was made faster by about 50%.
 
 
 ## Language additions
