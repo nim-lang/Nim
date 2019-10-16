@@ -15,7 +15,6 @@ type
   TTraversalClosure = object
     p: BProc
     visitorArg: string
-    typeMap: TypeCache
 
 const
   visitorFrmt  = "#nimGCvisit((void*)$1, $2);$n"
@@ -80,14 +79,10 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType;
   # seqs can be used to construct trees (recursion detection required here
   # for --gc:destructors):
   if recursive:
-    let self = c.typeMap.getOrDefault(hashType(typ.sons[0]))
+    let self = c.p.module.traverseProcs.getOrDefault(hashType(typ.sons[0]))
     if self != nil:
-      if c.visitorArg == "op":
-        lineCg(p, cpsStmts, "$1($2$4[$3], $5);$n",
-          [self, accessor, i.r, dataField(c.p), c.visitorArg])
-      else:
-        lineCg(p, cpsStmts, "$1($2$4[$3]);$n",
-          [self, accessor, i.r, dataField(c.p)])
+      lineCg(p, cpsStmts, "$1(&$2$4[$3], $5);$n",
+        [self, accessor, i.r, dataField(c.p), c.visitorArg])
     else:
       genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.sons[0])
   else:
@@ -121,12 +116,14 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     else:
       lineF(p, cpsStmts, "}$n", [])
   of tyObject:
+    discard getTypeDesc(c.p.module, typ) # ensure the type's fields are declared
     for i in 0 ..< len(typ):
       var x = typ.sons[i]
       if x != nil: x = x.skipTypes(skipPtrs)
       genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n, typ)
   of tyTuple:
+    discard getTypeDesc(c.p.module, typ) # ensure the type's fields are declared
     let typ = getUniqueType(typ)
     for i in 0 ..< len(typ):
       genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), typ.sons[i])
@@ -149,6 +146,9 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     discard
 
 proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
+  result = m.traverseProcs.getOrDefault(sig)
+  if result != nil: return result
+
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
@@ -159,23 +159,28 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
     header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [markerName]
     t = getTypeDesc(m, typ)
 
-  lineF(p, cpsLocals, "$1 a;$n", [t])
-  lineF(p, cpsInit, "a = ($1)p;$n", [t])
-
   c.p = p
   c.visitorArg = "op" # "#nimGCvisit((void*)$1, op);$n"
-  c.typeMap = initTable[SigHash, Rope]()
-  c.typeMap[sig] = result
+  m.traverseProcs[sig] = result
 
   assert typ.kind != tyTypeDesc
-  if typ.kind == tySequence:
+  case typ.kind
+  of tySequence:
+    lineF(p, cpsLocals, "$1 a;$n", [t])
+    lineF(p, cpsInit, "a = ($1)p;$n", [t])
     genTraverseProcSeq(c, "a".rope, typ, recursive = false)
-  else:
+  of tyRef:
+    lineF(p, cpsLocals, "$1 a;$n", [t])
+    lineF(p, cpsInit, "a = ($1)p;$nif(a==NIM_NIL) return;$n", [t])
     if skipTypes(typ.sons[0], typedescInst+{tyOwned}).kind == tyArray:
       # C's arrays are broken beyond repair:
       genTraverseProc(c, "a".rope, typ.sons[0])
     else:
       genTraverseProc(c, "(*a)".rope, typ.sons[0])
+  else:
+    lineF(p, cpsLocals, "$1* a;$n", [t])
+    lineF(p, cpsInit, "a = ($1*)p;$nif(!a==NIM_NIL) return;$n", [t])
+    genTraverseProc(c, "(*a)".rope, typ)
 
   let generatedProc = "$1 {$n$2$3$4}\n" %
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)]
@@ -205,7 +210,10 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
   let header = "static N_NIMCALL(void, $1)(void)" % [result]
   #genTraverseProc(c, sLoc, s.loc.t)
   let tproc = genTraverseProc(m, s.loc.t, hashType(s.loc.t))
-  lineCg(p, cpsStmts, "$1($2);$n", [tproc, sLoc])
+
+  let addrOf = if s.loc.t.skipTypes(abstractInstOwned).kind in {tyRef, tySequence}: "" else: "&"
+
+  lineCg(p, cpsStmts, "$1((void*) $2$3, 0);$n", [tproc, addrOf, sLoc])
 
   let generatedProc = "$1 {$n$2$3$4}$n" %
         [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)]

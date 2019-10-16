@@ -1745,6 +1745,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.typeStack = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
+  result.traverseProcs = initTable[SigHash, Rope]()
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack bottom initialization:
   if sfSystemModule in module.flags:

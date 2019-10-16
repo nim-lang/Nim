@@ -162,6 +162,7 @@ type
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
     ndi*: NdiFile
+    traverseProcs*: TypeCache
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
