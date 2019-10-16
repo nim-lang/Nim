@@ -3511,7 +3511,7 @@ for details on how to change this behavior.
 Anonymous Procs
 ---------------
 
-Unnamed procedures can be used as lambda expressions to pass into other 
+Unnamed procedures can be used as lambda expressions to pass into other
 procedures:
 
 .. code-block:: nim
@@ -3522,8 +3522,8 @@ procedures:
 
 
 Procs as expressions can appear both as nested procs and inside top level
-executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro 
-which enables a more succinct syntax for anonymous procedures resembling 
+executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
+which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
 
 
@@ -6223,6 +6223,25 @@ but are used to override the settings temporarily. Example:
   # speed critical
   # ... some code ...
   {.pop.} # restore old settings
+
+`push/pop`:idx: can switch on/off some standard library pragmas, example:
+
+.. code-block:: nim
+  {.push inline.}
+  proc thisIsInlined(): int = 42
+  func willBeInlined(): float = 42.0
+  {.pop.}
+  proc notInlined(): int = 9
+
+  {.push discardable, boundChecks: off, compileTime, noSideEffect, experimental.}
+  template example(): string = "https://nim-lang.org"
+  {.pop.}
+
+  {.push deprecated, hint[LineTooLong]: off, used, stackTrace: off.}
+  proc sample(): bool = true
+  {.pop.}
+
+For third party pragmas it depends on it's implementation, but uses the same syntax.
 
 
 register pragma
