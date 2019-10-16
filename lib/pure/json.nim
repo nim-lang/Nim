@@ -1126,8 +1126,8 @@ when defined(nimFixedForwardGeneric):
       dst[^1].add ofBranch
 
     of nnkObjectTy:
-      if typeNode[0].kind != nnkEmpty or typeNode[1].kind notin {nnkEmpty, nnkOfInherit}:
-        echo typeNode.treeRepr
+      typeNode[0].expectKind nnkEmpty
+      typeNode[1].expectKind {nnkEmpty, nnkOfInherit}
       if typeNode[1].kind == nnkOfInherit:
         let base = typeNode[1][0]
         var impl = getTypeImpl(base)
@@ -1138,7 +1138,6 @@ when defined(nimFixedForwardGeneric):
       foldObjectBody(dst, body, tmpSym, jsonNode, jsonPath, depth + 1)
 
     else:
-      echo typeNode.treeRepr
       error("unhandled kind: " & $typeNode.kind, typeNode)
 
 
