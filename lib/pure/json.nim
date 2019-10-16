@@ -181,6 +181,22 @@ type
     of JArray:
       elems*: seq[JsonNode]
 
+template verifyJsonExists(node: JsonNode, ast: string) =
+  if node == nil:
+    let msg = "Incorrect JSON input. Wanted a JsonNode in $1 but got nil." %
+      [ ast ]
+    raise newException(JsonKindError, msg)
+
+template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
+                        ast: string) =
+  if node == nil or node.kind notin kinds:
+    let msg = "Incorrect JSON kind. Wanted '$1' in '$2' but got '$3'." % [
+      $kinds,
+      ast,
+      if node == nil: "nil" else: $node.kind
+    ]
+    raise newException(JsonKindError, msg)
+
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
   result = JsonNode(kind: JString, str: s)
@@ -281,14 +297,12 @@ proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
 
 proc add*(father, child: JsonNode) =
   ## Adds `child` to a JArray node `father`.
-  assert father != nil
-  assert father.kind == JArray
+  verifyJsonKind(father, {JArray}, "add()")
   father.elems.add(child)
 
 proc add*(obj: JsonNode, key: string, val: JsonNode) =
   ## Sets a field from a `JObject`.
-  assert obj != nil
-  assert obj.kind == JObject
+  verifyJsonKind(obj, {JObject}, "add()")
   obj.fields[key] = val
 
 proc `%`*(s: string): JsonNode =
@@ -357,7 +371,7 @@ when false:
 
 proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`.
-  assert(obj.kind == JObject)
+  verifyJsonKind(obj, {JObject}, "`[]=`()")
   obj.fields[key] = val
 
 proc `%`*[T: object](o: T): JsonNode =
@@ -367,10 +381,10 @@ proc `%`*[T: object](o: T): JsonNode =
 
 proc `%`*(o: ref object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
-  if o.isNil:
-    result = newJNull()
-  else:
-    result = %(o[])
+  if o == nil:
+    raise newException(ValueError,
+      "nil is not implicitly convertible to JNull; use newJNull() instead.")
+  result = %(o[])
 
 proc `%`*(o: enum): JsonNode =
   ## Construct a JsonNode that represents the specified enum value as a
@@ -397,7 +411,8 @@ proc toJson(x: NimNode): NimNode {.compileTime.} =
     x.expectLen(0)
     result = newCall(bindSym"newJObject")
   of nnkNilLit:
-    result = newCall(bindSym"newJNull")
+    raise newException(ValueError,
+      "nil is not implicitly convertible to JNull; use newJNull() instead.")
   of nnkPar:
     if x.len == 1: result = toJson(x[0])
     else: result = newCall(bindSym("%", brOpen), x)
@@ -443,7 +458,7 @@ proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
 
 proc hash*(n: JsonNode): Hash =
   ## Compute the hash for a JSON node
-  assert n != nil
+  verifyJsonExists(n, "hash()")
   case n.kind
   of JArray:
     result = hash(n.elems)
@@ -469,7 +484,7 @@ proc len*(n: JsonNode): int =
   ## If `n` is a `JArray`, it returns the number of elements.
   ## If `n` is a `JObject`, it returns the number of pairs.
   ## Else it returns 0.
-  assert n != nil
+  verifyJsonExists(n, "len()")
   case n.kind
   of JArray: result = n.elems.len
   of JObject: result = n.fields.len
@@ -478,8 +493,7 @@ proc len*(n: JsonNode): int =
 proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, raises KeyError.
-  assert(not isNil(node))
-  assert(node.kind == JObject)
+  verifyJsonKind(node, {JObject}, "`[]`()")
   when defined(nimJsonGet):
     if not node.fields.hasKey(name): return nil
   result = node.fields[name]
@@ -488,26 +502,22 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds, but as long as array bound checks are enabled it will
   ## result in an exception.
-  assert(not isNil(node))
-  assert(node.kind == JArray)
+  verifyJsonKind(node, {JArray}, "`[]`()")
   return node.elems[index]
 
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
-  assert node != nil
-  assert(node.kind == JObject)
+  verifyJsonKind(node, {JObject}, "hasKey()")
   result = node.fields.hasKey(key)
 
 proc contains*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
-  assert node != nil
-  assert(node.kind == JObject)
+  verifyJsonKind(node, {JObject}, "contains()")
   node.fields.hasKey(key)
 
 proc contains*(node: JsonNode, val: JsonNode): bool =
   ## Checks if `val` exists in array `node`.
-  assert node != nil
-  assert(node.kind == JArray)
+  verifyJsonKind(node, {JArray}, "contains()")
   find(node.elems, val) >= 0
 
 proc existsKey*(node: JsonNode, key: string): bool {.
@@ -553,7 +563,7 @@ template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode,
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
   ## to ``value``. If any of the keys are missing, they are added.
-  assert node != nil
+  verifyJsonExists(node, "`{}=`()")
   var node = node
   for i in 0..(keys.len-2):
     if not node.hasKey(keys[i]):
@@ -563,15 +573,14 @@ proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
 
 proc delete*(obj: JsonNode, key: string) =
   ## Deletes ``obj[key]``.
-  assert obj != nil
-  assert(obj.kind == JObject)
+  verifyJsonKind(obj, {JObject}, "delete()")
   if not obj.fields.hasKey(key):
     raise newException(KeyError, "key not in object")
   obj.fields.del(key)
 
 proc copy*(p: JsonNode): JsonNode =
   ## Performs a deep copy of `a`.
-  assert p != nil
+  verifyJsonExists(p, "copy()")
   case p.kind
   of JString:
     result = newJString(p.str)
@@ -640,7 +649,7 @@ proc escapeJson*(s: string): string =
 
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
-  assert node != nil
+  verifyJsonExists(node, "toPretty()")
   case node.kind
   of JObject:
     if lstArr: result.indent(currIndent) # Indentation
@@ -729,7 +738,7 @@ proc toUgly*(result: var string, node: JsonNode) =
   ##
   ## This provides higher efficiency than the ``pretty`` procedure as it
   ## does **not** attempt to format the resulting JSON to make it human readable.
-  assert node != nil
+  verifyJsonExists(node, "toUgly()")
   var comma = false
   case node.kind:
   of JArray:
@@ -763,44 +772,39 @@ proc toUgly*(result: var string, node: JsonNode) =
 
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
-  assert node != nil
+  verifyJsonExists(node, "`$`()")
   result = newStringOfCap(node.len shl 1)
   toUgly(result, node)
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
-  assert node != nil
-  assert node.kind == JArray
+  verifyJsonKind(node, {JArray}, "items()")
   for i in items(node.elems):
     yield i
 
 iterator mitems*(node: var JsonNode): var JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray. Items can be
   ## modified.
-  assert node != nil
-  assert node.kind == JArray
+  verifyJsonKind(node, {JArray}, "mitems()")
   for i in mitems(node.elems):
     yield i
 
 iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
-  assert node != nil
-  assert node.kind == JObject
+  verifyJsonKind(node, {JObject}, "pairs()")
   for key, val in pairs(node.fields):
     yield (key, val)
 
 iterator keys*(node: JsonNode): string =
   ## Iterator for the keys in `node`. `node` has to be a JObject.
-  assert node != nil
-  assert node.kind == JObject
+  verifyJsonKind(node, {JObject}, "keys()")
   for key in node.fields.keys:
     yield key
 
 iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   ## Values can be modified
-  assert node != nil
-  assert node.kind == JObject
+  verifyJsonKind(node, {JObject}, "mpairs()")
   for key, val in mpairs(node.fields):
     yield (key, val)
 
@@ -993,16 +997,6 @@ proc transformJsonIndexer(jsonNode: NimNode): NimNode =
 
   for child in jsonNode:
     result.add(transformJsonIndexer(child))
-
-template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
-                        ast: string) =
-  if node.kind notin kinds:
-    let msg = "Incorrect JSON kind. Wanted '$1' in '$2' but got '$3'." % [
-      $kinds,
-      ast,
-      $node.kind
-    ]
-    raise newException(JsonKindError, msg)
 
 proc getEnum(node: JsonNode, ast: string, T: typedesc): T =
   when T is SomeInteger:
@@ -1235,6 +1229,8 @@ proc processType(typeName: NimNode, obj: NimNode,
       result = quote do:
         verifyJsonKind(`jsonNode`, {JObject, JNull}, astToStr(`jsonNode`))
         if `jsonNode`.kind == JNull:
+          # JNull should _not_ be implicitly converted to a nil ref?
+          # per https://github.com/nim-lang/Nim/issues/11894
           nil
         else:
           `result`
@@ -1701,8 +1697,11 @@ when isMainModule:
     ]
   doAssert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
-  var j4 = %*{"test": nil}
-  doAssert j4 == %{"test": newJNull()}
+  try:
+    var j4 = %*{"test": newJNull()}
+    doAssert j4 != %{"test": nil}
+  except ValueError:
+    discard
 
   let seqOfNodes = @[%1, %2]
   let jSeqOfNodes = %seqOfNodes
