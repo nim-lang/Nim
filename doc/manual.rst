@@ -6241,7 +6241,7 @@ but are used to override the settings temporarily. Example:
   proc sample(): bool = true
   {.pop.}
 
-For third party pragmas it depends on it's implementation, but uses the same syntax.
+For third party pragmas it depends on its implementation, but uses the same syntax.
 
 
 register pragma
