@@ -2703,10 +2703,10 @@ proc fromSeconds*(since1970: int64): Time
   fromUnix(since1970)
 
 proc toSeconds*(time: Time): float
-    {.tags: [], raises: [], benign, deprecated.} =
-  ## Returns the time in seconds since the unix epoch.
+    {.tags: [], raises: [], benign.} =
+  ## Returns the time in seconds since the unix epoch, with subsecond resolution.
   ##
-  ## **Deprecated since v0.18.0:** use ``toUnix`` instead
+  ## See also `toUnix` which has seconds resolution.
   time.seconds.float + time.nanosecond / convert(Seconds, Nanoseconds, 1)
 
 proc getLocalTime*(time: Time): DateTime
