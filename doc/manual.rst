@@ -3511,7 +3511,7 @@ for details on how to change this behavior.
 Anonymous Procs
 ---------------
 
-Unnamed procedures can be used as lambda expressions to pass into other 
+Unnamed procedures can be used as lambda expressions to pass into other
 procedures:
 
 .. code-block:: nim
@@ -3522,8 +3522,8 @@ procedures:
 
 
 Procs as expressions can appear both as nested procs and inside top level
-executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro 
-which enables a more succinct syntax for anonymous procedures resembling 
+executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
+which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
 
 
@@ -3696,7 +3696,7 @@ type.
 
   method eval(e: Expression): int {.base.} =
     # override this base method
-    quit "to override!"
+    raise newException(CatchableError, "Method without implementation override")
 
   method eval(e: Literal): int = return e.x
 
