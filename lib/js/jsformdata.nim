@@ -22,7 +22,7 @@ proc getAll*(formData: FormData, name: cstring): seq[cstring] {.importcpp: "getA
 
 proc has*(formData: FormData, name: cstring): bool {.importcpp: "has".} ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/has
 
-proc set*(formData: FormData, name: cstring, value: cstring, filename = "".cstring) {.importcpp: "set".} ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/append
+proc set*(formData: FormData, name: cstring, value: cstring, filename = "".cstring) {.importcpp: "set".} ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/set
 
 
 runnableExamples:
