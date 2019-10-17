@@ -40,7 +40,7 @@ options:
 
 After compilation is finished you will hopefully end up with the nim
 compiler in the ``bin`` directory. You can add Nim's ``bin`` directory to
-your ``$PATH`` or use the `install command`_ to place it where it will be
+your ``$PATH`` or use the install command to place it where it will be
 found.
 
 csource command
