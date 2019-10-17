@@ -694,7 +694,7 @@ type Tms* {.importc: "struct tms", header: "<sys/times.h>".} = object
   tms_utime*, tms_stime*,            # User and system CPU time
     tms_cutime*, tms_cstime*: Clock  # User and system CPU time of dead children
 
-proc times*(tms: ptr Tms): Clock {.importc, header: "<sys/times.h>".}
+proc times*(tms: ptr Tms): Clock {.importc, header: "<sys/times.h>", discardable.}
 
 type Rusage* {.importc: "struct rusage", header: "<sys/resource.h>",
                bycopy.} = object
