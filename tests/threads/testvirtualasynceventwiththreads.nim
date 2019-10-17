@@ -1,6 +1,5 @@
 discard """
 output: '''
-runForever should throw ValueError, this is expected
 triggerCount: 1000
 '''
 """
@@ -20,8 +19,5 @@ for i in 0 ..< 1000:
   addEvent(ev, proc(fd: AsyncFD): bool {.gcsafe,closure.} = triggerCount += 1; true)
   spawn(threadTask(ev))
 
-try:
-  runForever()
-except ValueError:
-  echo "runForever should throw ValueError, this is expected"
-  echo "triggerCount: ", triggerCount
+drain()
+echo "triggerCount: ", triggerCount

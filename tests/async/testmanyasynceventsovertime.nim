@@ -1,6 +1,5 @@
 discard """
 output: '''
-runForever should throw ValueError, this is expected
 triggerCount: 10
 '''
 """
@@ -21,9 +20,6 @@ proc main() {.async.} =
     await sleepAsync(10)
     ev.close
 
-try:
-  asyncCheck main()
-  runForever()
-except ValueError:
-  echo "runForever should throw ValueError, this is expected"
-  echo "triggerCount: ", triggerCount
+asyncCheck main()
+drain()
+echo "triggerCount: ", triggerCount

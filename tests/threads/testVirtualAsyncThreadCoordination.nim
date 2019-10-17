@@ -129,8 +129,8 @@ proc asyncProc1(args: ThreadArg) {.async.} =
     # why 50 iterations? It's arbitrary. We can't run forever, but we want to run long enough
     # to sanity check against a race condition or deadlock.
     let waiting = args.event1.wait()
-    args.event2.trigger()
     await waiting
+    args.event2.trigger()
     # Why echoes and not just a count? Because this test is about coordination of threads.
     # We need to make sure the threads get properly synchronized on each iteration.
     echo "Thread 1: iteration ", i
@@ -142,7 +142,6 @@ proc asyncProc2(args: ThreadArg) {.async.} =
     args.event1.trigger()
     await waiting
     echo "Thread 2: iteration ", i
-  args.event1.trigger()
 
 proc threadProc1(args: ThreadArg) {.thread.} =
   ## We create new dispatcher explicitly to avoid bugs.
@@ -163,6 +162,7 @@ proc main() =
   args.event1 = newVirtualAsyncEvent()
   args.event2 = newVirtualAsyncEvent()
   thread1.createThread(threadProc1, args)
+  # make sure the threads startup in order, or we will either deadlock or error.
   sleep(100)
   thread2.createThread(threadProc2, args)
   joinThreads(thread1, thread2)

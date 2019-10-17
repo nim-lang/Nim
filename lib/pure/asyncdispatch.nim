@@ -1910,7 +1910,7 @@ proc send*(socket: AsyncFD, data: string,
   return retFuture
 
 proc close(vd: VirtualEventDispatcher) =
-  assert vd.virtualHandles.len == 0, "Cannot de-Init Virtual Event Dispacter. There are still Pending Events."
+  assert vd.virtualHandles.len == 0, "Cannot close Virtual Event Dispatcher. There are still Pending Events."
   vd.virtualMuxHandle.unregister()
   vd.virtualMuxHandle.close()
   vd.virtualMuxHandle = nil
@@ -1937,28 +1937,29 @@ proc unregister*(ev: VirtualAsyncEvent) =
 proc initVirtualEventDispatcher(p: PDispatcher) =
   p.vd.virtualMuxHandle = newAsyncEvent()
 
-  proc virtualMuxCB(fd: AsyncFD): bool {.closure,gcsafe.} =
+  proc nativeEventCB(fd: AsyncFD): bool {.closure,gcsafe.} =
     # find the virtual events that triggered the physical event and
     # add them to the callback list.
     # Not very efficient, but requires the least coordination between threads.
     
-    proc vcbFactory(vfd: VirtualFD) : proc() {.closure, gcsafe.} =
-      let ev = p.vd.virtualHandles[vfd]
-      result = proc() {.closure,gcSafe.} =
-        if ev.cb(vfd.AsyncFD):
-          # the convention is that if the callback returns true, we unregister the event.
-          ev.unregister
+    proc vcbFactory(ev: VirtualAsyncEvent): proc() {.closure, gcsafe.} =
+      result =
+        proc() {.closure,gcSafe.} =
+          if ev.cb(ev.vfd.AsyncFD):
+            # the convention is that if the callback returns true,
+            # we unregister the event.
+            ev.unregister
 
     for vfd, ev in p.vd.virtualHandles:
       withLockIfThreads ev.eventLock:
         if ev.triggered:
           ev.triggered = false
-          p.callbacks.addLast(vcbFactory(vfd))
+          p.callbacks.addLast(vcbFactory(ev))
 
     # always return false b/c we never want to unregister this event
     return false
 
-  p.vd.virtualMuxHandle.addEvent(virtualMuxCB)
+  p.vd.virtualMuxHandle.addEvent(nativeEventCB)
 
 proc newVirtualAsyncEvent*(): VirtualAsyncEvent =
   ## Creates a new thread-safe ``VirtualAsyncEvent`` object.
@@ -1975,8 +1976,8 @@ proc trigger*(ev: VirtualAsyncEvent) =
   ## Sets new ``VirtualAsyncEvent`` to signaled state.
   withLockIfThreads ev.eventLock:
     if ev.vFD == InvalidVirtualFD:
-      # triggering on an event that is not registered is a noop.
-      return
+      raise newException(ValueError,
+        "VirtualAsyncEvent is not registered with a dispatcher.")
     ev.triggered = true
 
     # send the signal to wake up the dispatcher thread.
