@@ -25,26 +25,41 @@ proc debugImpl(console: Console) {.importcpp: "debug", varargs.}
 proc infoImpl(console: Console) {.importcpp: "info", varargs.}
 proc errorImpl(console: Console) {.importcpp: "error", varargs.}
 proc warnImpl(console: Console) {.importcpp: "warn", varargs.}
+proc traceImpl(console: Console) {.importcpp: "trace", varargs.}
 
 proc makeConsoleCall(console: NimNode, procName: NimNode, args: NimNode): NimNode =
   result = newCall(procName, console)
   for c in args: result.add(c)
 
 macro log*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  runnableExamples: console.log("This prints a Log message the browser console")
   makeConsoleCall(console, bindSym "logImpl", args)
 
 macro debug*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  runnableExamples: console.debug("This prints a Debug message on the browser console")
   makeConsoleCall(console, bindSym "debugImpl", args)
 
 macro info*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  runnableExamples: console.info("This prints an Information message on the browser console")
   makeConsoleCall(console, bindSym "infoImpl", args)
 
 macro error*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  runnableExamples: console.error("This prints an Error on the browser console")
   makeConsoleCall(console, bindSym "errorImpl", args)
 
+macro exception*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/error#Syntax
+  runnableExamples: console.exception("console.exception() is an alias for console.error(), they are functionally identical")
+  makeConsoleCall(console, bindSym "errorImpl", args)
+
+macro trace*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/trace
+  runnableExamples: console.trace("Prints", "Stack", "Trace", "on", "Browser")
+  makeConsoleCall(console, bindSym "traceImpl", args)
 
 macro warn*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
   ## https://developer.mozilla.org/en-US/docs/Web/API/Console/warn
+  runnableExamples: console.warn("This prints a Warning on the browser console")
   makeConsoleCall(console, bindSym "warnImpl", args)
 
 proc clear*(console: Console) {.importcpp: "clear".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/clear
@@ -64,6 +79,8 @@ proc time*(console: Console, label = "".cstring) {.importcpp: "time".} ## https:
 proc timeEnd*(console: Console, label = "".cstring) {.importcpp: "timeEnd".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeEnd
 
 proc timeLog*(console: Console, label = "".cstring) {.importcpp: "timeLog".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeLog
+
+proc table*(console: Console, data: seq[cstring|bool|SomeNumber]) {.importcpp: "table".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/table
 
 
 var console* {.importc, nodecl.}: Console
