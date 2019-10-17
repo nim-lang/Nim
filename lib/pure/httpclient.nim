@@ -454,7 +454,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
 
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
-    let auth = base64.encode(proxy.auth, newline = "")
+    let auth = base64.encode(proxy.auth)
     add(result, "Proxy-Authorization: basic " & auth & "\c\L")
 
   for key, val in headers:
