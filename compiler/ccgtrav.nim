@@ -179,7 +179,7 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
       genTraverseProc(c, "(*a)".rope, typ.sons[0])
   else:
     lineF(p, cpsLocals, "$1* a;$n", [t])
-    lineF(p, cpsInit, "a = ($1*)p;$nif(!a==NIM_NIL) return;$n", [t])
+    lineF(p, cpsInit, "a = ($1*)p;$nif(a==NIM_NIL) return;$n", [t])
     genTraverseProc(c, "(*a)".rope, typ)
 
   let generatedProc = "$1 {$n$2$3$4}\n" %
