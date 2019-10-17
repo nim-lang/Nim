@@ -690,6 +690,12 @@ proc waitid*(a1: cint, a2: Id, a3: var SigInfo, a4: cint): cint {.
 proc waitpid*(a1: Pid, a2: var cint, a3: cint): Pid {.
   importc, header: "<sys/wait.h>".}
 
+type Tms* {.importc: "struct tms", header: "<sys/times.h>".} = object
+  tms_utime*, tms_stime*,            # User and system CPU time
+    tms_cutime*, tms_cstime*: Clock  # User and system CPU time of dead children
+
+proc times*(tms: ptr Tms): Clock {.importc, header: "<sys/times.h>".}
+
 type Rusage* {.importc: "struct rusage", header: "<sys/resource.h>",
                bycopy.} = object
   ru_utime*, ru_stime*: Timeval                       # User and system time
