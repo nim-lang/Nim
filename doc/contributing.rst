@@ -188,7 +188,7 @@ the old name and introduce a new name:
   type Barz  = enum baz0, baz1 {.deprecated.}, baz2
 
 
-See also `Deprecated <https://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
+See also `Deprecated <manual.html#pragmas-deprecated-pragma>`_
 pragma in the manual.
 
 
@@ -213,7 +213,7 @@ as well as ``testament`` and guarantee they stay in sync.
       assert "baz".addBar == "bazBar"
     result = a & "Bar"
 
-See `parentDir <https://nim-lang.github.io/Nim/os.html#parentDir%2Cstring>`_
+See `parentDir <os.html#parentDir,string>`_
 example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
