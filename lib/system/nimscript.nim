@@ -312,8 +312,8 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ##
   ## The change is permanent for the rest of the execution, since this is just
   ## a shortcut for `os.setCurrentDir()
-  ## <http://nim-lang.org/docs/os.html#setCurrentDir,string>`_ . Use the `withDir()
-  ## <#withDir>`_ template if you want to perform a temporary change only.
+  ## <os.html#setCurrentDir,string>`_ . Use the `withDir()
+  ## <#withDir.t,string,untyped>`_ template if you want to perform a temporary change only.
   setCurrentDir(dir)
   checkOsError()
 
@@ -326,7 +326,7 @@ proc findExe*(bin: string): string =
 template withDir*(dir: string; body: untyped): untyped =
   ## Changes the current directory temporarily.
   ##
-  ## If you need a permanent change, use the `cd() <#cd>`_ proc. Usage example:
+  ## If you need a permanent change, use the `cd() <#cd,string>`_ proc. Usage example:
   ##
   ## .. code-block:: nim
   ##   withDir "foo":

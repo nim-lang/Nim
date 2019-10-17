@@ -35,7 +35,7 @@
 ##   # nan   (use `complex` module)
 ##
 ## This module is available for the `JavaScript target
-## <backends.html#the-javascript-target>`_.
+## <backends.html#backends-the-javascript-target>`_.
 ##
 ## **See also:**
 ## * `complex module<complex.html>`_ for complex numbers and their

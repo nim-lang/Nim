@@ -157,7 +157,7 @@ AST:
 
 As a side note, if you choose to use infix operators in a prefix form, the AST
 behaves as a
-[parenthetical function call](./macros.html#calls-expressions-call-with) with
+[parenthetical function call](#callsslashexpressions-call-with) with
 ``nnkAccQuoted``, as follows:
 
 Concrete syntax:

@@ -47,7 +47,7 @@ csource command
 ---------------
 
 The `csource`:idx: command builds the C sources for installation. It accepts
-the same options as you would pass to the `boot command`_.
+the same options as you would pass to the `boot command <#commands-boot-command>`_.
 
 temp command
 ------------
@@ -55,7 +55,7 @@ temp command
 The temp command builds the Nim compiler but with a different final name
 (``nim_temp``), so it doesn't overwrite your normal compiler. You can use
 this command to test different options, the same you would issue for the `boot
-command`_.
+command <#commands-boot-command>`_.
 
 test command
 ------------

@@ -112,7 +112,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## defined.
   ##
   ## `x` is an external symbol introduced through the compiler's
-  ## `-d:x switch <nimc.html#compile-time-symbols>`_ to enable build time
+  ## `-d:x switch <nimc.html#compiler-usage-compile-time-symbols>`_ to enable build time
   ## conditionals:
   ##
   ## .. code-block:: Nim
@@ -784,7 +784,7 @@ type
   AssertionError* = object of Defect ## \
     ## Raised when assertion is proved wrong.
     ##
-    ## Usually the result of using the `assert() template <#assert>`_.
+    ## Usually the result of using the `assert() template <assertions.html#assert.t,untyped,string>`_.
   ValueError* = object of CatchableError ## \
     ## Raised for string and object conversion errors.
   KeyError* = object of ValueError ## \
@@ -1998,7 +1998,7 @@ when defined(boehmgc):
 when taintMode:
   type TaintedString* = distinct string ## A distinct string type that
                                         ## is `tainted`:idx:, see `taint mode
-                                        ## <manual.html#taint-mode>`_ for
+                                        ## <manual_experimental.html#taint-mode>`_ for
                                         ## details. It is an alias for
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
@@ -2007,7 +2007,7 @@ when taintMode:
 else:
   type TaintedString* = string          ## A distinct string type that
                                         ## is `tainted`:idx:, see `taint mode
-                                        ## <manual.html#taint-mode>`_ for
+                                        ## <manual_experimental.html#taint-mode>`_ for
                                         ## details. It is an alias for
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
@@ -2021,11 +2021,11 @@ else:
 
 const
   QuitSuccess* = 0
-    ## is the value that should be passed to `quit <#quit>`_ to indicate
+    ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## success.
 
   QuitFailure* = 1
-    ## is the value that should be passed to `quit <#quit>`_ to indicate
+    ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
 when defined(nodejs) and not defined(nimscript):
@@ -3441,14 +3441,14 @@ when defined(nimvarargstyped):
     ## Unlike other IO operations this is guaranteed to be thread-safe as
     ## ``echo`` is very often used for debugging convenience. If you want to use
     ## ``echo`` inside a `proc without side effects
-    ## <manual.html#pragmas-noSideEffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
+    ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho,varargs[typed,]>`_
     ## instead.
 
   proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
                                             tags: [], raises: [].}
-    ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
+    ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule, ``debugEcho``
     ## pretends to be free of side effects, so that it can be used for debugging
-    ## routines marked as `noSideEffect <manual.html#pragmas-noSideEffect-pragma>`_.
+    ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
 else:
   proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
     benign, sideEffect.}
@@ -4081,7 +4081,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## `gorge <#gorge,string,string,string>`_ is an alias for ``staticExec``.
   ##
   ## Note that you can use this proc inside a pragma like
-  ## `passc <nimc.html#passc-pragma>`_ or `passl <nimc.html#passl-pragma>`_.
+  ## `passc <manual.html#implementation-specific-pragmas-passc-pragma>`_ or `passl <manual.html#implementation-specific-pragmas-passl-pragma>`_.
   ##
   ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
   ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching

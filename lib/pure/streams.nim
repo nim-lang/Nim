@@ -1150,7 +1150,7 @@ when not defined(js):
     ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
     ##   from string.
     ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
-    ##   as using `open proc <system.html#open,File,string,FileMode,int>`_
+    ##   as using `open proc <io.html#open,File,string,FileMode,int>`_
     ##   on Examples.
     ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
     ##   file stream from the file name and the mode.
