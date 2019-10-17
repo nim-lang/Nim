@@ -154,7 +154,7 @@ proc writeIndexFile*(g: var RstGenerator, outfile: string) =
   ## Writes the current index buffer to the specified output file.
   ##
   ## You previously need to add entries to the index with the `setIndexTerm()
-  ## <#setIndexTerm>`_ proc. If the index is empty the file won't be created.
+  ## <#setIndexTerm,RstGenerator,string,string,string,string,string>`_ proc. If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
 
 proc addXmlChar(dest: var string, c: char) =
@@ -308,7 +308,7 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## The `id` will be appended with a hash character only if its length is not
   ## zero, otherwise no specific anchor will be generated. In general you
   ## should only pass an empty `id` value for the title of standalone rst
-  ## documents (they are special for the `mergeIndexes() <#mergeIndexes>`_
+  ## documents (they are special for the `mergeIndexes() <#mergeIndexes,string>`_
   ## proc, see `Index (idx) file format <docgen.html#index-idx-file-format>`_
   ## for more information). Unlike other index terms, title entries are
   ## inserted at the beginning of the accumulated buffer to maintain a logical
@@ -318,8 +318,8 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## columns with their contents will be added.
   ##
   ## The index won't be written to disk unless you call `writeIndexFile()
-  ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
-  ## tools guide <docgen.html#index-switch>`_.
+  ## <#writeIndexFile,RstGenerator,string>`_. The purpose of the index is documented in the `docgen
+  ## tools guide <docgen.html#related-options-index-switch>`_.
   var
     entry = term
     isTitle = false
@@ -472,7 +472,7 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
 proc isDocumentationTitle(hyperlink: string): bool =
   ## Returns true if the hyperlink is actually a documentation title.
   ##
-  ## Documentation titles lack the hash. See `mergeIndexes() <#mergeIndexes>`_
+  ## Documentation titles lack the hash. See `mergeIndexes() <#mergeIndexes,string>`_
   ## for a more detailed explanation.
   result = hyperlink.find('#') < 0
 
@@ -650,8 +650,8 @@ proc mergeIndexes*(dir: string): string =
   ## This proc will first scan `dir` for index files with the ``.idx``
   ## extension previously created by commands like ``nim doc|rst2html``
   ## which use the ``--index:on`` switch. These index files are the result of
-  ## calls to `setIndexTerm() <#setIndexTerm>`_ and `writeIndexFile()
-  ## <#writeIndexFile>`_, so they are simple tab separated files.
+  ## calls to `setIndexTerm() <#setIndexTerm,RstGenerator,string,string,string,string,string>`_ and `writeIndexFile()
+  ## <#writeIndexFile,RstGenerator,string>`_, so they are simple tab separated files.
   ##
   ## As convention this proc will split index files into two categories:
   ## documentation and API. API indices will be all joined together into a

@@ -35,7 +35,7 @@
 ##   `filterIt<#filterIt.t,untyped,untyped>`_, etc.)
 ##
 ## The chaining of functions is possible thanks to the
-## `method call syntax<manual.html#procs-method-call-syntax>`_.
+## `method call syntax<manual.html#procedures-method-call-syntax>`_.
 ##
 ## .. code-block::
 ##   import sequtils, sugar

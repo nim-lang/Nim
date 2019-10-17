@@ -352,7 +352,8 @@ General commit rules
 
 2. If you introduce changes which affect backwards compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
-   the changes should be mentioned in `<changelog.md>`_.
+   the changes should be mentioned in `the changelog
+   <https://github.com/nim-lang/Nim/blob/devel/changelog.md>`_.
 
 3. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.

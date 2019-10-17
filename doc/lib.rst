@@ -329,7 +329,7 @@ Threading
 ---------
 
 * `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
+  Implements Nim's `spawn <manual_experimental.html#parallel-amp-spawn>`_.
 
 
 Parsers
