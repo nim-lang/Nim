@@ -19,6 +19,7 @@
 
 - `macros.newLit` now works for ref object types.
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- `posix.Tms` and `posix.times(ptr Tms)` added.
 
 ## Library changes
 
