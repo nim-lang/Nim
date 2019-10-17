@@ -123,6 +123,9 @@ use to keep track of memory are:
 * ``getOccupiedMem()`` Bytes reserved by the GC and used by objects.
 * ``getFreeMem()`` Bytes reserved by the GC and not in use.
 
+These numbers are usually only for the running thread, not for the whole heap,
+with the exception of ``--gc:boehm`` and ``--gc:go``.
+
 In addition to ``GC_ref`` and ``GC_unref`` you can avoid the GC by manually
 allocating memory with procs like ``alloc``, ``allocShared``, or
 ``allocCStringArray``. The GC won't try to free them, you need to call their
