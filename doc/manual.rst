@@ -6221,6 +6221,25 @@ but are used to override the settings temporarily. Example:
   # ... some code ...
   {.pop.} # restore old settings
 
+`push/pop`:idx: can switch on/off some standard library pragmas, example:
+
+.. code-block:: nim
+  {.push inline.}
+  proc thisIsInlined(): int = 42
+  func willBeInlined(): float = 42.0
+  {.pop.}
+  proc notInlined(): int = 9
+
+  {.push discardable, boundChecks: off, compileTime, noSideEffect, experimental.}
+  template example(): string = "https://nim-lang.org"
+  {.pop.}
+
+  {.push deprecated, hint[LineTooLong]: off, used, stackTrace: off.}
+  proc sample(): bool = true
+  {.pop.}
+
+For third party pragmas it depends on its implementation, but uses the same syntax.
+
 
 register pragma
 ---------------
