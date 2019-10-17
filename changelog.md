@@ -20,6 +20,7 @@
 
 - `macros.newLit` now works for ref object types.
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- `jsformdata` Wrapper for the `FormData` object for the JavaScript backend.
 
 ## Library changes
 
