@@ -49,7 +49,7 @@
 ## * `stats module<stats.html>`_ for statistical analysis
 ## * `strformat module<strformat.html>`_ for formatting floats for print
 ## * `system module<system.html>`_ Some very basic and trivial math operators
-## are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
+##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
 include "system/inclrtl"
