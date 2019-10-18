@@ -24,7 +24,7 @@
 ## Library changes
 
 - `base64.encode` and `base64.decode` was made faster by about 50%.
-
+- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support (ISO 40314).
 
 ## Language additions
 
