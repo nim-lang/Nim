@@ -184,6 +184,7 @@ proc `and`*(x, y: JsObject): JsObject {.importcpp: "(# && #)".}
 proc `or` *(x, y: JsObject): JsObject {.importcpp: "(# || #)".}
 proc `not`*(x:    JsObject): JsObject {.importcpp: "(!#)".}
 proc `in` *(x, y: JsObject): JsObject {.importcpp: "(# in #)".}
+proc `**` *(x, y: JsObject): JsObject {.importcpp: "(# ** #)".} ## https://developer.mozilla.org/docs/Web/JavaScript/Reference/Operators/Arithmetic_Operators#Exponentiation
 
 proc `[]`*(obj: JsObject, field: cstring): JsObject {.importcpp: getImpl.}
   ## Return the value of a property of name `field` from a JsObject `obj`.
