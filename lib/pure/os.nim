@@ -800,6 +800,8 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ##
   ## This proc is wrapped by the `expandTilde proc <#expandTilde,string>`_
   ## for the convenience of processing paths coming from user configuration files.
+  ## Its available for JavaScript, NodeJS and NimScript backends but at compile-time only.
+  ## Its available for C, C++ and ObjectiveC backends.
   ##
   ## See also:
   ## * `getConfigDir proc <#getConfigDir>`_
@@ -824,6 +826,8 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ##
   ## An OS-dependent trailing slash is always present at the end of the
   ## returned string: `\\` on Windows and `/` on all other OSs.
+  ## Its available for JavaScript, NodeJS and NimScript backends but at compile-time only.
+  ## Its available for C, C++ and ObjectiveC backends.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -846,6 +850,8 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## returns ``getHomeDir()``, and on other Unix based systems it can cause
   ## security problems too. That said, you can override this implementation
   ## by adding ``-d:tempDir=mytempname`` to your compiler invocation.
+  ## Its available for JavaScript, NodeJS and NimScript backends but at compile-time only.
+  ## Its available for C, C++ and ObjectiveC backends.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -871,6 +877,8 @@ proc expandTilde*(path: string): string {.
   ##
   ## Windows: this is still supported despite Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
+  ## Its available for JavaScript, NodeJS and NimScript backends but at compile-time only.
+  ## Its available for C, C++ and ObjectiveC backends.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -1224,12 +1232,17 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noNimScript.} =
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
   ## Returns the `current working directory`:idx:.
+  ## This is similar to Linux, Mac, BSD, Windows PowerShell ``pwd`` terminal command.
+  ## This is the path where the Nim-compiled binary is *run*.
+  ## Its not available for JavaScript and NimScript backends, nor at compile-time.
+  ## Its available for C, C++ and ObjectiveC backends.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
   ## * `getTempDir proc <#getTempDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getProjectPath proc <https://nim-lang.org/docs/macros.html#getProjectPath>`_
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:

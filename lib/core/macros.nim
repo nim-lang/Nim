@@ -1626,9 +1626,18 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
     result.add args[i]
 
 proc getProjectPath*(): string = discard
-  ## Returns the path to the currently compiling project, not to
-  ## be confused with ``system.currentSourcePath`` which returns
-  ## the path of the current module.
+  ## Returns the path to the currently compiling project,
+  ## the path of the Nim file being compiled,
+  ## not to be confused with ``system.currentSourcePath`` which returns
+  ## the path of the current module. Its available at compile-time.
+  ## Its available for JavaScript, NodeJS and NimScript backends.
+  ## Its available for C, C++ and ObjectiveC backends.
+  ##
+  ## See also:
+  ## * `getHomeDir proc <https://nim-lang.org/docs/os.html#getHomeDir>`_
+  ## * `getConfigDir proc <https://nim-lang.org/docs/os.html#getConfigDir>`_
+  ## * `getTempDir proc <https://nim-lang.org/docs/os.html#getTempDir>`_
+  ## * `setCurrentDir proc <https://nim-lang.org/docs/os.html#setCurrentDir%2Cstring>`_
 
 when defined(nimMacrosSizealignof):
   proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
