@@ -226,7 +226,6 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     case arg.normalize
     of "boehm":        result = conf.selectedGC == gcBoehm
     of "refc":         result = conf.selectedGC == gcRefc
-    of "v2":           result = false
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
     of "destructors":  result = conf.selectedGC == gcDestructors
