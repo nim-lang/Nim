@@ -47,7 +47,8 @@ csource command
 ---------------
 
 The `csource`:idx: command builds the C sources for installation. It accepts
-the same options as you would pass to the `boot command <#commands-boot-command>`_.
+the same options as you would pass to the `boot command
+<#commands-boot-command>`_.
 
 temp command
 ------------

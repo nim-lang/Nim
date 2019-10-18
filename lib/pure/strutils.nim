@@ -631,10 +631,10 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
 iterator splitLines*(s: string, keepEol = false): string =
   ## Splits the string `s` into its containing lines.
   ##
-  ## Every `character literal <manual.html#lexical-analysis-character-literals>`_ newline
-  ## combination (CR, LF, CR-LF) is supported. The result strings contain no
-  ## trailing end of line characters unless parameter ``keepEol`` is set to
-  ## ``true``.
+  ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
+  ## newline combination (CR, LF, CR-LF) is supported. The result strings
+  ## contain no trailing end of line characters unless parameter ``keepEol``
+  ## is set to ``true``.
   ##
   ## Example:
   ##
@@ -2101,7 +2101,8 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
   rtl, extern: "nsuReplaceChar".} =
   ## Replaces `sub` in `s` by the character `by`.
   ##
-  ## Optimized version of `replace <#replace,string,string,string>`_ for characters.
+  ## Optimized version of `replace <#replace,string,string,string>`_ for
+  ## characters.
   ##
   ## See also:
   ## * `find proc<#find,string,char,Natural,int>`_

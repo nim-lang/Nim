@@ -307,7 +307,8 @@ symbols in the `system module <system.html>`_.
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
   `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
-* ``template newException[](exceptn: typedesc; message: string; parentException: ref Exception = nil): untyped`` **=>**
+* ``template newException[](exceptn: typedesc; message: string;
+    parentException: ref Exception = nil): untyped`` **=>**
   `#newException.t,typedesc,string,ref.Exception
   <system.html#newException.t,typedesc,string,ref.Exception>`_
 
@@ -316,14 +317,15 @@ Index (idx) file format
 =======================
 
 Files with the ``.idx`` extension are generated when you use the `Index
-switch <#related-options-index-switch>`_ along with commands to generate documentation from source or text
-files. You can programatically generate indices with the `setIndexTerm()
-<rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_ and `writeIndexFile()
-<rstgen.html#writeIndexFile,RstGenerator,string>`_ procs. The purpose of ``idx`` files is to hold
-the interesting symbols and their HTML references so they can be later
-concatenated into a big index file with `mergeIndexes()
-<rstgen.html#mergeIndexes,string>`_.  This section documents the file format in
-detail.
+switch <#related-options-index-switch>`_ along with commands to generate
+documentation from source or text files. You can programatically generate
+indices with the `setIndexTerm()
+<rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
+The purpose of ``idx`` files is to hold the interesting symbols and their HTML
+references so they can be later concatenated into a big index file with
+`mergeIndexes() <rstgen.html#mergeIndexes,string>`_.  This section documents
+the file format in detail.
 
 Index files are line oriented and tab separated (newline and tab characters
 have to be escaped). Each line represents a record with at least two fields,

@@ -134,7 +134,8 @@
 ##   # 'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
 ##
 ## The same could have been achieved by manually iterating over a container
-## and increasing each key's value with `inc proc<#inc,CountTable[A],A,Positive>`_:
+## and increasing each key's value with `inc proc
+## <#inc,CountTable[A],A,Positive>`_:
 ##
 ## .. code-block::
 ##   import tables

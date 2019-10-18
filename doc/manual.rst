@@ -1482,7 +1482,8 @@ order. The *names* of the fields also have to be identical.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
-of the assignment operator is described `here <manual_experimental.html#type-bound-operations>`_.
+of the assignment operator is described `here
+<manual_experimental.html#type-bound-operations>`_.
 
 .. code-block:: nim
 
@@ -3484,8 +3485,8 @@ more argument in this case:
   assert x == y
 
 The command invocation syntax also can't have complex expressions as arguments.
-For example: (`anonymous procs <#procedures-anonymous-procs>`_), ``if``, ``case`` or ``try``.
-Function calls with no arguments still needs () to
+For example: (`anonymous procs <#procedures-anonymous-procs>`_), ``if``,
+``case`` or ``try``. Function calls with no arguments still needs () to
 distinguish between a call and the function itself as a first class value.
 
 
@@ -3505,8 +3506,8 @@ Creating closures in loops
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since closures capture local variables by reference it is often not wanted
-behavior inside loop bodies. See `closureScope <system.html#closureScope.t,untyped>`_
-for details on how to change this behavior.
+behavior inside loop bodies. See `closureScope
+<system.html#closureScope.t,untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
@@ -5895,9 +5896,9 @@ or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
 
-As a special semantic rule, the built-in `debugEcho <system.html#debugEcho,varargs[typed,]>`_
-pretends to be free of side effects, so that it can be used for debugging
-routines marked as ``noSideEffect``.
+As a special semantic rule, the built-in `debugEcho
+<system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects,
+so that it can be used for debugging routines marked as ``noSideEffect``.
 
 ``func`` is syntactic sugar for a proc with no side effects:
 

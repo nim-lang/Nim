@@ -114,7 +114,8 @@ Level  Description
 =====  ============================================
 0      Minimal output level for the compiler.
 1      Displays compilation of all the compiled files, including those imported
-       by other modules or through the `compile pragma<manual.html#implementation-specific-pragmas-compile-pragma>`_.
+       by other modules or through the `compile pragma
+       <manual.html#implementation-specific-pragmas-compile-pragma>`_.
        This is the default level.
 2      Displays compilation statistics, enumerates the dynamic
        libraries that will be loaded by the final binary and dumps to
@@ -130,9 +131,10 @@ Compile time symbols
 
 Through the ``-d:x`` or ``--define:x`` switch you can define compile time
 symbols for conditional compilation. The defined switches can be checked in
-source code with the `when statement <manual.html#statements-and-expressions-when-statement>`_ and
-`defined proc <system.html#defined,untyped>`_. The typical use of this switch is to
-enable builds in release mode (``-d:release``) where optimizations are
+source code with the `when statement
+<manual.html#statements-and-expressions-when-statement>`_ and
+`defined proc <system.html#defined,untyped>`_. The typical use of this switch is
+to enable builds in release mode (``-d:release``) where optimizations are
 enabled for better performance. Another common use is the ``-d:ssl`` switch to
 activate SSL sockets.
 
