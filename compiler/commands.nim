@@ -399,8 +399,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
-  of "mainmodule", "m":
-    discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
@@ -444,8 +442,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         defineSymbol(conf.symbols, "boehmgc")
       of "refc":
         conf.selectedGC = gcRefc
-      of "v2":
-        message(conf, info, warnDeprecated, "--gc:v2 is deprecated; using default gc")
       of "markandsweep":
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
@@ -474,14 +470,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":
     case arg.normalize
-    of "on", "native", "gdb":
+    of "on", "gdb":
       conf.globalOptions.incl optCDebug
       conf.options.incl optLineDir
       #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
     of "off":
       conf.globalOptions.excl optCDebug
     else:
-      localError(conf, info, "expected native|gdb|on|off but found " & arg)
+      localError(conf, info, "expected gdb|on|off but found " & arg)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir
@@ -534,7 +530,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "stylechecks": processOnOffSwitch(conf, {optStyleCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
-  of "deadcodeelim": discard # deprecated, dead code elim always on
   of "threads":
     processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: incl(conf.notes, warnGcUnsafe)
@@ -729,9 +724,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     dynlibOverride(conf, switch, arg, pass, info)
   of "dynliboverrideall":
     processOnOffSwitchG(conf, {optDynlibOverrideAll}, arg, pass, info)
-  of "cs":
-    # only supported for compatibility. Does nothing.
-    expectArg(conf, switch, arg, pass, info)
   of "experimental":
     if arg.len == 0:
       conf.features.incl oldExperimentalFeatures
