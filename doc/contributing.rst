@@ -216,8 +216,7 @@ as well as ``testament`` and guarantee they stay in sync.
       assert "baz".addBar == "bazBar"
     result = a & "Bar"
 
-See `parentDir <os.html#parentDir,string>`_
-example.
+See `parentDir <os.html#parentDir,string>`_ example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
 embedded in documentation; these are not run by ``nim doc`` and therefore are

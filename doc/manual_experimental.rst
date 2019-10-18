@@ -203,9 +203,10 @@ useful only when interfacing with imported types having such semantics.
 Automatic dereferencing
 =======================
 
-If the `experimental mode <manual.html#pragmas-experimental-pragma>`_ is active and no other match
-is found, the first argument ``a`` is dereferenced automatically if it's a
-pointer type and overloading resolution is tried with ``a[]`` instead.
+If the `experimental mode <manual.html#pragmas-experimental-pragma>`_ is active
+and no other match is found, the first argument ``a`` is dereferenced
+automatically if it's a pointer type and overloading resolution is tried
+with ``a[]`` instead.
 
 
 Automatic self insertions
