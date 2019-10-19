@@ -1526,7 +1526,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   closeScope(c)           # close scope for parameters
   popOwner(c)
   result.typ = s.typ
-  if optNimV2 in c.config.globalOptions:
+  if optOwnedRefs in c.config.globalOptions:
     result.typ = makeVarType(c, result.typ, tyOwned)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
@@ -1563,7 +1563,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   popProcCon(c)
   popOwner(c)
   closeScope(c)
-  if optNimV2 in c.config.globalOptions and result.typ != nil:
+  if optOwnedRefs in c.config.globalOptions and result.typ != nil:
     result.typ = makeVarType(c, result.typ, tyOwned)
   # alternative variant (not quite working):
   # var prc = arg[0].sym
@@ -1955,7 +1955,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if isAnon:
     n.kind = nkLambda
     result.typ = s.typ
-    if optNimV2 in c.config.globalOptions:
+    if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:

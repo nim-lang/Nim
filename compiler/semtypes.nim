@@ -877,7 +877,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
     #if not isNilable: result.flags.incl tfNotNil
-    if isOwned and optNimV2 in c.config.globalOptions:
+    if isOwned and optOwnedRefs in c.config.globalOptions:
       let t = newTypeS(tyOwned, c)
       t.flags.incl tfHasOwned
       t.rawAddSonNoPropagationOfTypeFlags result
@@ -1644,7 +1644,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeof(c, n[1], prev)
       elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
         result = semTypeof2(c, n, prev)
-      elif op.s == "owned" and optNimV2 notin c.config.globalOptions and n.len == 2:
+      elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:

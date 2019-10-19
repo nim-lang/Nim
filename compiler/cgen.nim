@@ -347,7 +347,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
         s = skipTypes(s.sons[0], skipPtrs)
     linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t, a.lode.info)])
   of frEmbedded:
-    if optNimV2 in p.config.globalOptions:
+    if optTinyRtti in p.config.globalOptions:
       localError(p.config, p.prc.info,
         "complex object initialization is not supported with --newruntime")
     # worst case for performance:

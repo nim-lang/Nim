@@ -261,7 +261,12 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     result.add(v)
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
+<<<<<<< HEAD
   createTypeBoundOpsLL(g, env.typ, n.info)
+=======
+  if optOwnedRefs in g.config.globalOptions:
+    createTypeBoundOps(g, nil, env.typ, n.info)
+>>>>>>> 61ea85687... refactoring: --newruntime consists of 3 different switches
   result.add makeClosure(g, iter, env, n.info)
 
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
@@ -612,7 +617,12 @@ proc rawClosureCreation(owner: PSym;
       localError(d.graph.config, env.info, "internal error: cannot create up reference")
   # we are not in the sem'check phase anymore! so pass 'nil' for the PContext
   # and hope for the best:
+<<<<<<< HEAD
   createTypeBoundOpsLL(d.graph, env.typ, owner.info)
+=======
+  if optOwnedRefs in d.graph.config.globalOptions:
+    createTypeBoundOps(d.graph, nil, env.typ, owner.info)
+>>>>>>> 61ea85687... refactoring: --newruntime consists of 3 different switches
 
 proc finishClosureCreation(owner: PSym; d: DetectionPass; c: LiftingPass;
                            info: TLineInfo; res: PNode) =
@@ -640,7 +650,12 @@ proc closureCreationForIter(iter: PNode;
     addVar(vs, vnode)
     result.add(vs)
   result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
+<<<<<<< HEAD
   createTypeBoundOpsLL(d.graph, vnode.typ, iter.info)
+=======
+  if optOwnedRefs in d.graph.config.globalOptions:
+    createTypeBoundOps(d.graph, nil, vnode.typ, iter.info)
+>>>>>>> 61ea85687... refactoring: --newruntime consists of 3 different switches
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -925,7 +940,8 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
-    createTypeBoundOpsLL(g, env.typ, body.info)
+    if optOwnedRefs in g.config.globalOptions:
+      createTypeBoundOps(g, nil, env.typ, body.info)
 
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon

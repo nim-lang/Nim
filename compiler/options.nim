@@ -81,7 +81,11 @@ type                          # please make sure we have under 32 options
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll
-    optNimV2
+    optSeqDestructors         # active if the implementation uses the new
+                              # string/seq implementation based on destructors
+    optTinyRtti               # active if we use the new "tiny RTTI"
+                              # implementation
+    optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optNimV019
 

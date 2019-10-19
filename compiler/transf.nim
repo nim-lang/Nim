@@ -915,7 +915,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
   if (n.typ != nil and tfHasAsgn in n.typ.flags) or
-      optNimV2 in c.graph.config.globalOptions:
+      optSeqDestructors in c.graph.config.globalOptions:
     c.needsDestroyPass = true
   case n.kind
   of nkSym:
