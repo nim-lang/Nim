@@ -671,7 +671,7 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-when not defined(JS) and not defined(gcDestructors):
+when not defined(JS) and not defined(nimSeqsV2):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -684,7 +684,7 @@ when not defined(JS) and not defined(gcDestructors):
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(nimscript):
-  when not defined(gcDestructors):
+  when not defined(nimSeqsV2):
     template space(s: PGenericSeq): int {.dirty.} =
       s.reserved and not (seqShallowFlag or strlitFlag)
   when not defined(nimV2):
@@ -1020,7 +1020,7 @@ when not defined(JS):
     ##   assert len(x) == 3
     ##   x[0] = 10
     result = newSeqOfCap[T](len)
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       cast[ptr int](addr result)[] = len
     else:
       var s = cast[PGenericSeq](result)
@@ -2111,10 +2111,10 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
-when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
+when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
-when not defined(gcDestructors) or defined(nimscript):
+when not defined(nimSeqsV2) or defined(nimscript):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
@@ -2141,7 +2141,7 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
-when defined(gcDestructors):
+when defined(nimSeqsV2):
   template movingCopy(a, b) =
     a = move(b)
 else:
@@ -3039,7 +3039,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
-        when defined(gcDestructors):
+        when defined(nimSeqsV2):
           result = cast[NimSeqV2[T]](x).p
         else:
           result = cast[pointer](x)
@@ -3135,7 +3135,7 @@ when not defined(js):
         name: cstring
       PNimType = ptr TNimType
 
-  when defined(gcDestructors) and not defined(nimscript):
+  when defined(nimSeqsV2) and not defined(nimscript):
     include "core/strs"
     include "core/seqs"
 
@@ -3784,7 +3784,7 @@ when not defined(JS): #and not defined(nimscript):
     {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc:
-      when not defined(gcDestructors):
+      when not defined(nimSeqsV2):
         include "system/sysstr"
     {.pop.}
     when hasAlloc: include "system/strmantle"
@@ -4199,7 +4199,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## perform deep copies of `s`.
   ##
   ## This is only useful for optimization purposes.
-  when not defined(JS) and not defined(nimscript) and not defined(gcDestructors):
+  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     if s == nil:
       s = cast[PGenericSeq](newString(0))
