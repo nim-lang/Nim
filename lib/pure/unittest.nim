@@ -186,7 +186,7 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
   keepIf(formatters, proc (x: OutputFormatter): bool =
     x != formatter)
 
-proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
+proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
@@ -207,7 +207,7 @@ proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
         colorOutput = true
     elif existsEnv("NIMTEST_NO_COLOR"):
       colorOutput = false
-    var outputLevel = PRINT_ALL
+    var outputLevel = OutputLevel.PRINT_ALL
     if envOutLvl.len > 0:
       for opt in countup(low(OutputLevel), high(OutputLevel)):
         if $opt == envOutLvl:
@@ -240,8 +240,8 @@ method failureOccurred*(formatter: ConsoleOutputFormatter,
 method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
   formatter.isInTest = false
 
-  if formatter.outputLevel != PRINT_NONE and
-      (formatter.outputLevel == PRINT_ALL or testResult.status == TestStatus.FAILED):
+  if formatter.outputLevel != OutputLevel.PRINT_NONE and
+      (formatter.outputLevel == OutputLevel.PRINT_ALL or testResult.status == TestStatus.FAILED):
     let prefix = if testResult.suiteName.len > 0: "  " else: ""
     template rawPrint() = echo(prefix, "[", $testResult.status, "] ",
         testResult.testName)
