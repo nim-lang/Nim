@@ -7,8 +7,6 @@
 
 ### Breaking changes in the standard library
 
-- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations` and only returns once all pending async operations are guaranteed to have completed.
-- `asyncdispatch.drain` now consistently uses the passed timeout value for all iterations of the event loop, and not just the first iteration. This is more consistent with the other asyncdispatch apis, and allows `asyncdispatch.drain` to be more efficient.
 
 
 ### Breaking changes in the compiler
@@ -24,7 +22,8 @@
 
 ## Library changes
 
-
+- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations` and only returns once all pending async operations are guaranteed to have completed.
+- `asyncdispatch.drain` now consistently uses the passed timeout value for all iterations of the event loop, and not just the first iteration. This is more consistent with the other asyncdispatch apis, and allows `asyncdispatch.drain` to be more efficient.
 
 ## Language additions
 
