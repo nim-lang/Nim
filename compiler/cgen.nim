@@ -293,13 +293,13 @@ proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     result = rdLoc(a) & ".len"
   else:
     result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
 proc dataField(p: BProc): Rope =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     result = rope".p->data"
   else:
     result = rope"->data"
@@ -377,10 +377,10 @@ proc isComplexValueType(t: PType): bool {.inline.} =
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc resetLoc(p: BProc, loc: var TLoc) =
-  let containsGcRef = p.config.selectedGC != gcDestructors and containsGarbageCollectedRef(loc.t)
+  let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
-  if p.config.selectedGC == gcDestructors and typ.kind in {tyString, tySequence}:
+  if optSeqDestructors in p.config.globalOptions and typ.kind in {tyString, tySequence}:
     assert rdLoc(loc) != nil
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
@@ -411,7 +411,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if p.config.selectedGC == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),

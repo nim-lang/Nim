@@ -342,9 +342,9 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   let obj = refObj.skipTypes({tyOwned, tyRef})
   # The assumption here is that gcDestructors means we cannot deal
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
-  # This seems to be generally correct but since it's a bit risky it's only
-  # enabled for gcDestructors.
-  let fieldType = if false: # c.graph.config.selectedGC == gcDestructors:
+  # This seems to be generally correct but since it's a bit risky it's disabled
+  # for now.
+  let fieldType = if false: # optSeqDestructors in c.graph.config.globalOptions:
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)

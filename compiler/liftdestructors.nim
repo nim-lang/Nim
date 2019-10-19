@@ -129,7 +129,7 @@ proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
 
 proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
-  result = c.g.config.selectedGC == gcDestructors and
+  result = optSeqDestructors in c.g.config.globalOptions and
     ({tfHasGCedMem, tfHasOwned} * t.flags != {} or t.isGCedMem)
 
 proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
@@ -142,7 +142,7 @@ proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
 
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
-  if c.g.config.selectedGC == gcDestructors:
+  if optSeqDestructors in c.g.config.globalOptions:
     let op = field
     if field != nil and sfOverriden in field.flags:
       if sfError in op.flags:
@@ -488,7 +488,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tySequence:
     if useNoGc(c, t):
       useSeqOrStrOp(c, t, body, x, y)
-    elif c.g.config.selectedGC == gcDestructors:
+    elif optSeqDestructors in c.g.config.globalOptions:
       # note that tfHasAsgn is propagated so we need the check on
       # 'selectedGC' here to determine if we have the new runtime.
       discard considerUserDefinedOp(c, t, body, x, y)
