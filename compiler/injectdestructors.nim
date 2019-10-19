@@ -486,7 +486,7 @@ proc p(n: PNode; c: var Con): PNode =
       result.add n[0]
       result.add p(n[1], c)
   of nkRaiseStmt:
-    if optNimV2 in c.graph.config.globalOptions and n[0].kind != nkEmpty:
+    if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       if n[0].kind in nkCallKinds:
         let call = p(n[0], c)
         result = copyNode(n)

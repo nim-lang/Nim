@@ -411,7 +411,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call.sons[0] = newSymNode(createMagic(c.g, "deepCopy", mDeepCopy))
     call.sons[1] = y
     body.add newAsgnStmt(x, call)
-  elif optNimV2 in c.g.config.globalOptions and
+  elif optOwnedRefs in c.g.config.globalOptions and
       optRefCheck in c.g.config.options:
     let xx = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
     xx.typ = getSysType(c.g, c.info, tyPointer)
@@ -457,7 +457,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if optNimV2 in c.g.config.globalOptions and
+    if optOwnedRefs in c.g.config.globalOptions and
         optRefCheck in c.g.config.options:
       weakrefOp(c, t, body, x, y)
     else:
@@ -469,7 +469,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyOwned:
     let base = t.skipTypes(abstractInstOwned)
-    if optNimV2 in c.g.config.globalOptions:
+    if optOwnedRefs in c.g.config.globalOptions:
       case base.kind
       of tyRef:
         ownedRefOp(c, base, body, x, y)

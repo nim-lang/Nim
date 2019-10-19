@@ -1365,7 +1365,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   of tySet: genSetInfo(m, t, result, info)
   of tyEnum: genEnumInfo(m, t, result, info)
   of tyObject:
-    if optNimV2 in m.config.globalOptions:
+    if optTinyRtti in m.config.globalOptions:
       genObjectInfoV2(m, t, origType, result, info)
     else:
       genObjectInfo(m, t, origType, result, info)

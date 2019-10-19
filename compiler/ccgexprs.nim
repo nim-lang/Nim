@@ -1206,7 +1206,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   if sizeExpr.isNil:
     sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
 
-  if optNimV2 in p.config.globalOptions:
+  if optOwnedRefs in p.config.globalOptions:
     b.r = ropecg(p.module, "($1) #nimNewObj($2)",
         [getTypeDesc(p.module, typ), sizeExpr])
     genAssignment(p, a, b, {})
@@ -1484,7 +1484,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   gcUsage(p.config, e)
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
-  if optNimV2 in p.config.globalOptions:
+  if optTinyRtti in p.config.globalOptions:
     result = ropecg(p.module, "#isObj($1.m_type, $2)",
       [a, genTypeInfo2Name(p.module, dest)])
   else:
@@ -1535,7 +1535,7 @@ proc genOf(p: BProc, n: PNode, d: var TLoc) =
   genOf(p, n.sons[1], n.sons[2].typ, d)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) =
-  if optNimV2 in p.config.globalOptions:
+  if optTinyRtti in p.config.globalOptions:
     localError(p.config, e.info, "'repr' is not available for --newruntime")
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
@@ -2148,7 +2148,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e.sons[1], d)
   of mEnumToStr:
-    if optNimV2 in p.config.globalOptions:
+    if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
     else:
       genRepr(p, e, d)
@@ -2423,7 +2423,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")
         t = skipTypes(t.sons[0], skipPtrs)
-    let checkFor = if optNimV2 in p.config.globalOptions:
+    let checkFor = if optTinyRtti in p.config.globalOptions:
                      genTypeInfo2Name(p.module, dest)
                    else:
                      genTypeInfo(p.module, dest, n.info)

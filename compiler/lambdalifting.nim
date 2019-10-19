@@ -257,7 +257,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     result.add(v)
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
-  if optNimV2 in g.config.globalOptions:
+  if optOwnedRefs in g.config.globalOptions:
     createTypeBoundOps(g, nil, env.typ, n.info)
   result.add makeClosure(g, iter, env, n.info)
 
@@ -323,7 +323,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
     c.ownerToType[owner.id] = result
 
 proc asOwnedRef(c: DetectionPass; t: PType): PType =
-  if optNimV2 in c.graph.config.globalOptions:
+  if optOwnedRefs in c.graph.config.globalOptions:
     assert t.kind == tyRef
     result = newType(tyOwned, t.owner)
     result.flags.incl tfHasOwned
@@ -542,7 +542,7 @@ proc setupEnvVar(owner: PSym; d: DetectionPass;
       localError d.graph.config, owner.info, "internal error: could not determine closure type"
     result = newEnvVar(d.graph.cache, owner, asOwnedRef(d, envVarType), info)
     c.envVars[owner.id] = result
-    if optNimV2 in d.graph.config.globalOptions:
+    if optOwnedRefs in d.graph.config.globalOptions:
       var v = newSym(skVar, getIdent(d.graph.cache, envName & "Alt"), owner, info)
       v.flags = {sfShadowed, sfGeneratedOp}
       v.typ = envVarType
@@ -572,14 +572,14 @@ proc rawClosureCreation(owner: PSym;
       var v = newNodeI(nkVarSection, env.info)
       addVar(v, env)
       result.add(v)
-      if optNimV2 in d.graph.config.globalOptions:
+      if optOwnedRefs in d.graph.config.globalOptions:
         let unowned = c.unownedEnvVars[owner.id]
         assert unowned != nil
         addVar(v, unowned)
 
     # add 'new' statement:
     result.add(newCall(getSysSym(d.graph, env.info, "internalNew"), env))
-    if optNimV2 in d.graph.config.globalOptions:
+    if optOwnedRefs in d.graph.config.globalOptions:
       let unowned = c.unownedEnvVars[owner.id]
       assert unowned != nil
       let env2 = copyTree(env)
@@ -608,12 +608,12 @@ proc rawClosureCreation(owner: PSym;
       localError(d.graph.config, env.info, "internal error: cannot create up reference")
   # we are not in the sem'check phase anymore! so pass 'nil' for the PContext
   # and hope for the best:
-  if optNimV2 in d.graph.config.globalOptions:
+  if optOwnedRefs in d.graph.config.globalOptions:
     createTypeBoundOps(d.graph, nil, env.typ, owner.info)
 
 proc finishClosureCreation(owner: PSym; d: DetectionPass; c: LiftingPass;
                            info: TLineInfo; res: PNode) =
-  if optNimV2 in d.graph.config.globalOptions:
+  if optOwnedRefs in d.graph.config.globalOptions:
     let unowned = c.unownedEnvVars[owner.id]
     assert unowned != nil
     let nilLit = newNodeIT(nkNilLit, info, unowned.typ)
@@ -637,7 +637,7 @@ proc closureCreationForIter(iter: PNode;
     addVar(vs, vnode)
     result.add(vs)
   result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
-  if optNimV2 in d.graph.config.globalOptions:
+  if optOwnedRefs in d.graph.config.globalOptions:
     createTypeBoundOps(d.graph, nil, vnode.typ, iter.info)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef}).n, getIdent(d.graph.cache, upName))
@@ -653,7 +653,7 @@ proc closureCreationForIter(iter: PNode;
 proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
                      c: var LiftingPass): PNode =
   var access = setupEnvVar(owner, d, c, n.info)
-  if optNimV2 in d.graph.config.globalOptions:
+  if optOwnedRefs in d.graph.config.globalOptions:
     access = c.unownedEnvVars[owner.id]
   let obj = access.typ.skipTypes({tyOwned, tyRef})
   let field = getFieldFromObj(obj, n.sym)
@@ -923,7 +923,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
-    if optNimV2 in g.config.globalOptions:
+    if optOwnedRefs in g.config.globalOptions:
       createTypeBoundOps(g, nil, env.typ, body.info)
 
   elif op.kind == nkStmtListExpr:
