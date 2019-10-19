@@ -758,7 +758,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       doAssert(conf != nil)
       incl(conf.features, destructor)
-      incl(conf.globalOptions, optNimV2)
+      incl(conf.globalOptions, optTinyRtti)
+      incl(conf.globalOptions, optOwnedRefs)
+      incl(conf.globalOptions, optSeqDestructors)
       defineSymbol(conf.symbols, "nimV2")
       conf.selectedGC = gcDestructors
       defineSymbol(conf.symbols, "gcdestructors")
