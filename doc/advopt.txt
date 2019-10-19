@@ -89,6 +89,8 @@ Advanced options:
                             strings is allowed; only for backwards compatibility
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
+  --seqsv2:on|off           use the new string/seq implementation based on
+                            destructors
   --oldast:on|off           use old AST for backwards compatibility
   --skipCfg:on|off          do not read the nim installation's configuration file
   --skipUserCfg:on|off      do not read the user's configuration file
