@@ -948,9 +948,13 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genAddSubInt(n, dest, opcAddInt)
   of mInc, mDec:
     unused(c, n, dest)
-    let opc = if m == mInc: opcAddInt else: opcSubInt
+    let isUnsigned = n.sons[1].typ.skipTypes(abstractVarRange).kind in {tyUInt..tyUInt64}
+    let opc = if not isUnsigned:
+                if m == mInc: opcAddInt else: opcSubInt
+              else:
+                if m == mInc: opcAddu else: opcSubu
     let d = c.genx(n.sons[1])
-    if n.sons[2].isInt8Lit:
+    if n.sons[2].isInt8Lit and not isUnsigned:
       c.gABI(n, succ(opc), d, d, n.sons[2].intVal)
     else:
       let tmp = c.genx(n.sons[2])
