@@ -997,13 +997,14 @@ proc genProcAux(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
+  generatedProc.genCLineDir prc.info, m.config
   if sfNoReturn in prc.flags:
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(naked) " & header
-    generatedProc = ropecg(p.module, "$N$1 {$n$2$3$4}$N$N",
+    generatedProc.add ropecg(p.module, "$1 {$n$2$3$4}$N$N",
                          [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
   else:
     if m.hcrOn and isReloadable(m, prc):
@@ -1011,7 +1012,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # This fixes the use of methods and also the case when 2 functions within the same module
       # call each other using directly the "_actual" versions (an optimization) - see issue #11608
       addf(m.s[cfsProcHeaders], "$1;\n", [header])
-    generatedProc = ropecg(p.module, "$N$1 {$N", [header])
+    generatedProc.add ropecg(p.module, "$1 {", [header])
     add(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options:
       add(generatedProc, p.s(cpsLocals))
