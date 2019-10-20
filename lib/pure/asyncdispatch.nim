@@ -1934,32 +1934,33 @@ proc unregister*(ev: VirtualAsyncEvent) =
     # without modifying the ioselector code.
     vd.close
 
-proc initVirtualEventDispatcher(p: PDispatcher) =
-  p.vd.virtualMuxHandle = newAsyncEvent()
+proc initVirtualEventDispatcher(vd: VirtualEventDispatcher) =
+  vd.virtualMuxHandle = newAsyncEvent()
 
-  proc nativeEventCB(fd: AsyncFD): bool {.closure,gcsafe.} =
+  proc nativeEventCB(fd: AsyncFD): bool {.gcsafe.} =
     # find the virtual events that triggered the physical event and
     # add them to the callback list.
     # Not very efficient, but requires the least coordination between threads.
     
-    proc vcbFactory(ev: VirtualAsyncEvent): proc() {.closure, gcsafe.} =
+    proc vcbFactory(ev: VirtualAsyncEvent): proc() {.gcsafe.} =
       result =
-        proc() {.closure,gcSafe.} =
+        proc() {.gcSafe.} =
           if ev.cb(ev.vfd.AsyncFD):
             # the convention is that if the callback returns true,
             # we unregister the event.
             ev.unregister
 
-    for vfd, ev in p.vd.virtualHandles:
+    let disp = getGlobalDispatcher()
+    for vfd, ev in vd.virtualHandles:
       withLockIfThreads ev.eventLock:
         if ev.triggered:
           ev.triggered = false
-          p.callbacks.addLast(vcbFactory(ev))
+          disp.callbacks.addLast(vcbFactory(ev))
 
     # always return false b/c we never want to unregister this event
     return false
 
-  p.vd.virtualMuxHandle.addEvent(nativeEventCB)
+  vd.virtualMuxHandle.addEvent(nativeEventCB)
 
 proc newVirtualAsyncEvent*(): VirtualAsyncEvent =
   ## Creates a new thread-safe ``VirtualAsyncEvent`` object.
@@ -1993,7 +1994,7 @@ proc addEvent*(ev: VirtualAsyncEvent, cb: Callback) =
     # lazy register the physical event with the Dispatcher
     # The main reason we need this is to make hasPendingOperations still work
     # without modifying the ioselector code.
-    initVirtualEventDispatcher(p)
+    initVirtualEventDispatcher(p.vd)
 
   withLockIfThreads ev.eventLock:
     ev.cb = cb
