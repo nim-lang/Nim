@@ -231,7 +231,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
   of tyString:
-    if conf.selectedGC == gcDestructors:
+    if optSeqDestructors in conf.globalOptions:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize
@@ -245,7 +245,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.paddingAtEnd = szIllegalRecursion
       return
     typ.align = int16(conf.target.ptrSize)
-    if typ.kind == tySequence and conf.selectedGC == gcDestructors:
+    if typ.kind == tySequence and optSeqDestructors in conf.globalOptions:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize

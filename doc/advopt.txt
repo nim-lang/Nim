@@ -61,6 +61,7 @@ Advanced options:
   --debuginfo:on|off        enables debug information
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
+  --cc:SYMBOL               specify the C compiler
   --cincludes:DIR           modify the C compiler header search path
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
@@ -88,6 +89,8 @@ Advanced options:
                             strings is allowed; only for backwards compatibility
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
+  --seqsv2:on|off           use the new string/seq implementation based on
+                            destructors
   --oldast:on|off           use old AST for backwards compatibility
   --skipCfg:on|off          do not read the nim installation's configuration file
   --skipUserCfg:on|off      do not read the user's configuration file
@@ -128,3 +131,4 @@ Advanced options:
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
+  --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()

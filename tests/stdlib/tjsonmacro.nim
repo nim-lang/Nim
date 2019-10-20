@@ -1,6 +1,8 @@
 discard """
   output: ""
+  targets: "c js"
 """
+
 import json, strutils, options, tables
 
 when true:
@@ -18,6 +20,11 @@ when true:
       case kind*: ReplayEventKind
       of FoodAppeared, FoodEaten:
         foodPos*: Point[float]
+        case subKind*: bool
+        of true:
+          it: int
+        of false:
+          ot: float
       of DirectionChanged:
         playerPos*: float
 
@@ -33,7 +40,9 @@ when true:
       ReplayEvent(
         time: 1.2345,
         kind: FoodEaten,
-        foodPos: Point[float](x: 5.0, y: 1.0)
+        foodPos: Point[float](x: 5.0, y: 1.0),
+        subKind: true,
+        it: 7
       )
     ],
     test: 18827361,
@@ -592,3 +601,34 @@ static:
   doAssert t["fruit"]["color"].getInt == 10
   doAssert t["emails"][0].getStr == "abc"
   doAssert t["emails"][1].getStr == "123"
+
+block:
+  # ref objects with cycles.
+  type
+    Misdirection = object
+      cycle: Cycle
+
+    Cycle = ref object
+      foo: string
+      cycle: Misdirection
+
+  let data = """
+    {"cycle": null}
+  """
+
+  let dataParsed = parseJson(data)
+  let dataDeser = to(dataParsed, Misdirection)
+
+block:
+  # ref object from #12316
+  type
+    Foo = ref Bar
+    Bar = object
+
+  discard "null".parseJson.to Foo
+
+block:
+  # named array #12289
+  type Vec = array[2, int]
+  let arr = "[1,2]".parseJson.to Vec
+  doAssert arr == [1,2]

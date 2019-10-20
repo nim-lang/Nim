@@ -112,6 +112,8 @@ proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
 
 proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
+proc c_fputc(c: char, f: File): cint {.
+  importc: "fputc", header: "<stdio.h>".}
 
 ## When running nim in android app stdout goes no where, so echo gets ignored
 ## To redreict echo to the android logcat use -d:androidNDK
@@ -212,6 +214,10 @@ when defined(windows):
     var i = c_fprintf(f, "%s", s)
     while i < s.len:
       if s[i] == '\0':
+        let w = c_fputc('\0', f)
+        if w != 0:
+          if doRaise: raiseEIO("cannot write string to file")
+          break
         inc i
       else:
         let w = c_fprintf(f, "%s", unsafeAddr s[i])
@@ -653,10 +659,10 @@ when defined(windows) and appType == "console" and
 
 proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
-  ## <#readAll>`_ and closes the file afterwards. Returns the string.
-  ## Raises an IO exception in case of an error. If # you need to call
+  ## <#readAll,File>`_ and closes the file afterwards. Returns the string.
+  ## Raises an IO exception in case of an error. If you need to call
   ## this inside a compile time macro you can use `staticRead
-  ## <#staticRead>`_.
+  ## <system.html#staticRead,string>`_.
   var f: File
   if open(f, filename):
     try:
@@ -679,6 +685,18 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
+proc writeFile*(filename: string, content: openArray[byte]) =
+  ## Opens a file named `filename` for writing. Then writes the
+  ## `content` completely to the file and closes the file afterwards.
+  ## Raises an IO exception in case of an error.
+  var f: File
+  if open(f, filename, fmWrite):
+    try:
+      f.writeBuffer(unsafeAddr content[0], content.len)
+    finally:
+      close(f)
+  else:
+    raise newException(IOError, "cannot open: " & filename)
 
 proc readLines*(filename: string, n = 1.Natural): seq[TaintedString] =
   ## read `n` lines from the file named `filename`. Raises an IO exception

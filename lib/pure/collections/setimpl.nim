@@ -92,7 +92,7 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
         if isEmpty(s.data[i].hcode): # end of collision cluster; So all done
           return
         r = s.data[i].hcode and msk # "home" location of key@i
-      shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
+      s.data[j] = move(s.data[i]) # data[i] will be marked EMPTY next loop
 
 template dollarImpl() {.dirty.} =
   result = "{"

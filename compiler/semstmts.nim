@@ -38,7 +38,6 @@ const
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
   errCannotAssignMacroSymbol = "cannot assign macro symbol to $1 here. Forgot to invoke the macro with '()'?"
   errInvalidTypeDescAssign = "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
-  errInlineIteratorNotFirstClass = "inline iterators are not first-class / cannot be assigned to variables"
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
@@ -456,9 +455,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if def.sym.kind == skMacro:
           localError(c.config, def.info, errCannotAssignMacroSymbol % "variable")
           def.typ = errorType(c)
-        elif isInlineIterator(def.sym):
-          localError(c.config, def.info, errInlineIteratorNotFirstClass)
-          def.typ = errorType(c)
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         # prevent the all too common 'var x = int' bug:
         localError(c.config, def.info, errInvalidTypeDescAssign)
@@ -600,9 +596,6 @@ proc semConst(c: PContext, n: PNode): PNode =
     if def.typ.kind == tyProc and def.kind == nkSym:
       if def.sym.kind == skMacro:
         localError(c.config, def.info, errCannotAssignMacroSymbol % "constant")
-        def.typ = errorType(c)
-      elif isInlineIterator(def.sym):
-        localError(c.config, def.info, errInlineIteratorNotFirstClass)
         def.typ = errorType(c)
     elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
       # prevent the all too common 'const x = int' bug:
@@ -1526,7 +1519,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   closeScope(c)           # close scope for parameters
   popOwner(c)
   result.typ = s.typ
-  if optNimV2 in c.config.globalOptions:
+  if optOwnedRefs in c.config.globalOptions:
     result.typ = makeVarType(c, result.typ, tyOwned)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
@@ -1563,7 +1556,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   popProcCon(c)
   popOwner(c)
   closeScope(c)
-  if optNimV2 in c.config.globalOptions and result.typ != nil:
+  if optOwnedRefs in c.config.globalOptions and result.typ != nil:
     result.typ = makeVarType(c, result.typ, tyOwned)
   # alternative variant (not quite working):
   # var prc = arg[0].sym
@@ -1589,7 +1582,7 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
     let resultType = sysTypeFromName(c.graph, n.info, "NimNode")
     addResult(c, resultType, n.info, s.kind)
     addResultNode(c, n)
-  elif s.typ.sons[0] != nil and not isInlineIterator(s):
+  elif s.typ.sons[0] != nil and not isInlineIterator(s.typ):
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
@@ -1955,7 +1948,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if isAnon:
     n.kind = nkLambda
     result.typ = s.typ
-    if optNimV2 in c.config.globalOptions:
+    if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
@@ -1969,7 +1962,6 @@ proc determineType(c: PContext, s: PSym) =
 
 proc semIterator(c: PContext, n: PNode): PNode =
   # gensym'ed iterator?
-  let isAnon = n[namePos].kind == nkEmpty
   if n[namePos].kind == nkSym:
     # gensym'ed iterators might need to become closure iterators:
     n[namePos].sym.owner = getCurrOwner(c)
@@ -1983,8 +1975,6 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
     localError(c.config, n.info, "iterator needs a return type")
-  if isAnon and s.typ.callConv == ccInline:
-    localError(c.config, n.info, errInlineIteratorNotFirstClass)
   # iterators are either 'inline' or 'closure'; for backwards compatibility,
   # we require first class iterators to be marked with 'closure' explicitly
   # -- at least for 0.9.2.

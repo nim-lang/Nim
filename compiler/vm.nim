@@ -436,12 +436,8 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
 
         var value = cast[BiggestUInt](src.intVal)
-        when system.cpuEndian == bigEndian:
-          value = (value shr srcDist) shl srcDist
-          value = (value shr destDist) shl destDist
-        else:
-          value = (value shl srcDist) shr srcDist
-          value = (value shl destDist) shr destDist
+        value = (value shl srcDist) shr srcDist
+        value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
@@ -714,7 +710,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[ra].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        assert nfIsRef in regs[ra].node.flags
         regs[ra].node[] = regs[rc].regToNode[]
         regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)

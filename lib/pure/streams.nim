@@ -311,7 +311,7 @@ proc write*[T](s: Stream, x: T) =
   ##
   ## .. code-block:: Nim
   ##
-  ##     s.writeData(s, addr(x), sizeof(x))
+  ##     s.writeData(s, unsafeAddr(x), sizeof(x))
   runnableExamples:
     var strm = newStringStream("")
     strm.write("abcde")
@@ -319,9 +319,7 @@ proc write*[T](s: Stream, x: T) =
     doAssert strm.readAll() == "abcde"
     strm.close()
 
-  var y: T
-  shallowCopy(y, x)
-  writeData(s, addr(y), sizeof(y))
+  writeData(s, unsafeAddr(x), sizeof(x))
 
 proc write*(s: Stream, x: string) =
   ## Writes the string `x` to the the stream `s`. No length field or

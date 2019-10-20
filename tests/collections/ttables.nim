@@ -233,7 +233,7 @@ block tablesref:
       for y in 0..1:
         assert t[(x,y)] == $x & $y
     assert($t ==
-      "{(x: 0, y: 1): \"01\", (x: 0, y: 0): \"00\", (x: 1, y: 0): \"10\", (x: 1, y: 1): \"11\"}")
+      "{(x: 1, y: 1): \"11\", (x: 0, y: 0): \"00\", (x: 0, y: 1): \"01\", (x: 1, y: 0): \"10\"}")
 
   block tableTest2:
     var t = newTable[string, float]()
@@ -340,7 +340,7 @@ block tablesref:
   block anonZipTest:
     let keys = @['a','b','c']
     let values = @[1, 2, 3]
-    doAssert "{'a': 1, 'b': 2, 'c': 3}" == $ toTable zip(keys, values)
+    doAssert "{'c': 3, 'a': 1, 'b': 2}" == $ toTable zip(keys, values)
 
   block clearTableTest:
     var t = newTable[string, float]()

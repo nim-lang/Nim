@@ -287,6 +287,7 @@ proc fillResult(conf: ConfigRef; param: PNode) =
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
+    useHeader(m, t.sym)
     result = t.sym.loc.r
   else:
     result = rope(literal)
@@ -355,7 +356,7 @@ proc addForwardStructFormat(m: BModule, structOrUnion: Rope, typename: Rope) =
     m.s[cfsForwardTypes].addf "typedef $1 $2 $2;$n", [structOrUnion, typename]
 
 proc seqStar(m: BModule): string =
-  if m.config.selectedGC == gcDestructors: result = ""
+  if optSeqDestructors in m.config.globalOptions: result = ""
   else: result = "*"
 
 proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
@@ -389,7 +390,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
       pushType(m, t)
   of tySequence:
     let sig = hashType(t)
-    if m.config.selectedGC == gcDestructors:
+    if optSeqDestructors in m.config.globalOptions:
       if skipTypes(etB.sons[0], typedescInst).kind == tyEmpty:
         internalError(m.config, "cannot map the empty seq type to a C type")
 
@@ -709,7 +710,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         result = name & star
         m.typeCache[sig] = result
     of tySequence:
-      if m.config.selectedGC == gcDestructors:
+      if optSeqDestructors in m.config.globalOptions:
         result = getTypeDescWeak(m, et, check) & star
         m.typeCache[sig] = result
       else:
@@ -769,7 +770,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             "void* ClE_0;$n} $1;$n",
              [result, rettype, desc])
   of tySequence:
-    if m.config.selectedGC == gcDestructors:
+    if optSeqDestructors in m.config.globalOptions:
       result = getTypeDescWeak(m, t, check)
     else:
       # we cannot use getTypeForward here because then t would be associated
@@ -925,7 +926,7 @@ proc finishTypeDescriptions(m: BModule) =
   var check = initIntSet()
   while i < len(m.typeStack):
     let t = m.typeStack[i]
-    if m.config.selectedGC == gcDestructors and t.skipTypes(abstractInst).kind == tySequence:
+    if optSeqDestructors in m.config.globalOptions and t.skipTypes(abstractInst).kind == tySequence:
       seqV2ContentType(m, t, check)
     else:
       discard getTypeDescAux(m, t, check)
@@ -1350,7 +1351,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC != gcDestructors:
+    if optSeqDestructors notin m.config.globalOptions:
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
         addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
@@ -1364,7 +1365,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   of tySet: genSetInfo(m, t, result, info)
   of tyEnum: genEnumInfo(m, t, result, info)
   of tyObject:
-    if optNimV2 in m.config.globalOptions:
+    if optTinyRtti in m.config.globalOptions:
       genObjectInfoV2(m, t, origType, result, info)
     else:
       genObjectInfo(m, t, origType, result, info)

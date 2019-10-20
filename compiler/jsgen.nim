@@ -975,7 +975,7 @@ proc countJsParams(typ: PType): int =
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkStringToCString,
+    nkFloatLit..nkFloat64Lit, nkPar, nkStringToCString,
     nkObjConstr, nkTupleConstr, nkBracket,
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix,
     nkCommand, nkHiddenCallConv, nkCallStrLit}

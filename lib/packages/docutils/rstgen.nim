@@ -399,11 +399,14 @@ proc hash(x: IndexEntry): Hash =
   result = result !& x.linkDesc.hash
   result = !$result
 
-proc `<-`(a: var IndexEntry, b: IndexEntry) =
-  shallowCopy a.keyword, b.keyword
-  shallowCopy a.link, b.link
-  shallowCopy a.linkTitle, b.linkTitle
-  shallowCopy a.linkDesc, b.linkDesc
+when defined(gcDestructors):
+  template `<-`(a, b: var IndexEntry) = a = move(b)
+else:
+  proc `<-`(a: var IndexEntry, b: IndexEntry) =
+    shallowCopy a.keyword, b.keyword
+    shallowCopy a.link, b.link
+    shallowCopy a.linkTitle, b.linkTitle
+    shallowCopy a.linkDesc, b.linkDesc
 
 proc sortIndex(a: var openArray[IndexEntry]) =
   # we use shellsort here; fast and simple

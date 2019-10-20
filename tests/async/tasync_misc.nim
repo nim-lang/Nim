@@ -43,4 +43,14 @@ block: #8399
 
   waitFor foo("$asd")
 
+block: # nkCheckedFieldExpr
+  proc bar(): Future[JsonNode] {.async.} =
+    return newJInt(5)
+
+  proc foo() {.async.} =
+    let n = 10 + (await bar()).num
+    doAssert(n == 15)
+
+  waitFor foo()
+
 echo "ok"

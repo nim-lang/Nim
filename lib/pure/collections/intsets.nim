@@ -387,6 +387,7 @@ proc assign*(dest: var IntSet, src: IntSet) =
   else:
     dest.counter = src.counter
     dest.max = src.max
+    dest.elems = src.elems
     newSeq(dest.data, src.data.len)
 
     var it = src.head
@@ -653,3 +654,19 @@ when isMainModule:
   xs = toSeq(items(x))
   xs.sort(cmp[int])
   assert xs == @[1, 4, 7, 1001, 1056]
+
+  proc bug12366 =
+    var
+      x = initIntSet()
+      y = initIntSet()
+      n = 3584
+
+    for i in 0..n:
+      x.incl(i)
+      y.incl(i)
+
+    let z = symmetricDifference(x, y)
+    doAssert z.len == 0
+    doAssert $z == "{}"
+
+  bug12366()

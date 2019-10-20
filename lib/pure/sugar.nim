@@ -180,7 +180,6 @@ macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped {.deprecated.} =
               newNimNode(nnkBracket))),
           result))))
 
-
 macro dump*(x: typed): untyped =
   ## Dumps the content of an expression, useful for debugging.
   ## It accepts any expression and prints a textual representation

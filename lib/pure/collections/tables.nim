@@ -540,7 +540,7 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   var index = rawGet(t, key, hc)
   result = index >= 0
   if result:
-    shallowCopy(val, t.data[index].val)
+    val = move(t.data[index].val)
     delImplIdx(t, index)
 
 proc clear*[A, B](t: var Table[A, B]) =

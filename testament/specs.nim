@@ -13,6 +13,7 @@ var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
+let isAzure* = existsEnv("TF_BUILD")
 
 var skips*: seq[string]
 
@@ -214,6 +215,8 @@ proc parseSpec*(filename: string): TSpec =
           if isTravis: result.err = reDisabled
         of "appveyor":
           if isAppVeyor: result.err = reDisabled
+        of "azure":
+          if isAzure: result.err = reDisabled
         of "32bit":
           if sizeof(int) == 4:
             result.err = reDisabled

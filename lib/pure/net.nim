@@ -1143,6 +1143,15 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): int =
   ## Higher-level version of ``recv``.
   ##
+  ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``.
+  ##
+  ## For buffered sockets this function will attempt to read all the requested
+  ## data. It will read this data in ``BufferSize`` chunks.
+  ##
+  ## For unbuffered sockets this function makes no effort to read
+  ## all the data requested. It will return as much data as the operating system
+  ## gives it.
+  ##
   ## When 0 is returned the socket's connection has been closed.
   ##
   ## This function will throw an OSError exception when an error occurs. A value
@@ -1170,6 +1179,15 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
 proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
   ## Higher-level version of ``recv`` which returns a string.
+  ##
+  ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``.
+  ##
+  ## For buffered sockets this function will attempt to read all the requested
+  ## data. It will read this data in ``BufferSize`` chunks.
+  ##
+  ## For unbuffered sockets this function makes no effort to read
+  ## all the data requested. It will return as much data as the operating system
+  ## gives it.
   ##
   ## When ``""`` is returned the socket's connection has been closed.
   ##

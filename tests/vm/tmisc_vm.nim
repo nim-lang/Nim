@@ -1,6 +1,8 @@
 discard """
   output: '''[127, 127, 0, 255]
 [127, 127, 0, 255]
+
+(data: 1)
 '''
 
   nimout: '''caught Exception
@@ -180,3 +182,35 @@ static:
   var stream = initCtsStream(file)
   parseAtlas(stream)
   echo "Done!"
+
+
+# bug #12244
+
+type
+  Apple = object
+    data: int
+
+func what(x: var Apple) =
+  x = Apple(data: 1)
+
+func oh_no(): Apple =
+  what(result)
+
+const
+  vmCrash = oh_no()
+
+debugEcho vmCrash
+
+
+# bug #12310
+
+proc someTransform(s: var array[8, uint64]) =
+  var s1 = 5982491417506315008'u64
+  s[1] += s1
+
+static:
+  var state: array[8, uint64]
+  state[1] = 7105036623409894663'u64
+  someTransform(state)
+
+  doAssert state[1] == 13087528040916209671'u64

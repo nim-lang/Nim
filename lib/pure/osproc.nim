@@ -846,17 +846,17 @@ elif not defined(useNimRtl):
          pipe(pStderr) != 0'i32:
         raiseOSError(osLastError())
 
-    var sysCommand: string
+    var data: StartProcessData
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
       const useShPath {.strdefine.} =
         when not defined(android): "/bin/sh"
         else: "/system/bin/sh"
-      sysCommand = useShPath
-      sysArgsRaw = @[sysCommand, "-c", command]
+      data.sysCommand = useShPath
+      sysArgsRaw = @[data.sysCommand, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
-      sysCommand = command
+      data.sysCommand = command
       sysArgsRaw = @[command]
       for arg in args.items:
         sysArgsRaw.add arg
@@ -873,8 +873,6 @@ elif not defined(useNimRtl):
 
     defer: deallocCStringArray(sysEnv)
 
-    var data: StartProcessData
-    shallowCopy(data.sysCommand, sysCommand)
     data.sysArgs = sysArgs
     data.sysEnv = sysEnv
     data.pStdin = pStdin

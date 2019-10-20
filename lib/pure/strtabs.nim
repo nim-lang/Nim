@@ -360,6 +360,8 @@ proc del*(t: StringTableRef, key: string) =
             break
         when defined(js):
           t.data[j] = t.data[i]
+        elif defined(gcDestructors):
+          t.data[j] = move t.data[i]
         else:
           shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
 

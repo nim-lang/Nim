@@ -417,7 +417,10 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   for i in 0 ..< len(s):
     if pred(s[i]):
       if pos != i:
-        shallowCopy(s[pos], s[i])
+        when defined(gcDestructors):
+          s[pos] = move(s[i])
+        else:
+          shallowCopy(s[pos], s[i])
       inc(pos)
   setLen(s, pos)
 
@@ -436,7 +439,10 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
   var j = min(len(s), last+1)
   var newLen = len(s)-j+i
   while i < newLen:
-    s[i].shallowCopy(s[j])
+    when defined(gcDestructors):
+      s[i] = move(s[j])
+    else:
+      s[i].shallowCopy(s[j])
     inc(i)
     inc(j)
   setLen(s, newLen)
@@ -461,7 +467,10 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
 
   # Move items after `pos` to the end of the sequence.
   while j >= pos:
-    dest[i].shallowCopy(dest[j])
+    when defined(gcDestructors):
+      dest[i] = move(dest[j])
+    else:
+      dest[i].shallowCopy(dest[j])
     dec(i)
     dec(j)
   # Insert items from `dest` into `dest` at `pos`
@@ -519,7 +528,10 @@ template keepItIf*(varSeq: seq, pred: untyped) =
     let it {.inject.} = varSeq[i]
     if pred:
       if pos != i:
-        shallowCopy(varSeq[pos], varSeq[i])
+        when defined(gcDestructors):
+          varSeq[pos] = move(varSeq[i])
+        else:
+          shallowCopy(varSeq[pos], varSeq[i])
       inc(pos)
   setLen(varSeq, pos)
 

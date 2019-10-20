@@ -160,7 +160,7 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), typ.base, cl)
     add result, "]"
 
-  when defined(gcDestructors):
+  when defined(nimSeqsV2):
     type
       GenericSeq = object
         len: int
