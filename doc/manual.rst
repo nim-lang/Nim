@@ -6350,12 +6350,19 @@ is uncertain (it may be removed any time).
 Example:
 
 .. code-block:: nim
+  import threadpool
   {.experimental: "parallel".}
+
+  proc threadedEcho(s: string) =
+    echo(s)
 
   proc useParallel() =
     parallel:
       for i in 0..4:
-        echo "echo in parallel"
+        spawn threadedEcho("echo in parallel")
+    sync()
+
+  useParallel()
 
 
 As a top level statement, the experimental pragma enables a feature for the
