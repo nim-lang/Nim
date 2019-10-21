@@ -74,7 +74,7 @@ proc semAsgnOpr(c: PContext; n: PNode): PNode =
 
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
-  result = newIntNodeT(ord(r), n, c.graph)
+  result = newIntNodeT(toInt128(ord(r)), n, c.graph)
 
 proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
@@ -171,7 +171,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
-    result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
+    result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
