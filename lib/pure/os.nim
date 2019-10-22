@@ -216,8 +216,9 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   runnableExamples:
     assert splitPath("usr/local/bin") == ("usr/local", "bin")
     assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
+    assert splitPath("/bin/") == ("/bin", "")
+    assert splitPath("/bin") == ("/", "bin")
     assert splitPath("bin") == ("", "bin")
-    assert splitPath("/bin") == ("", "bin")
     assert splitPath("") == ("", "")
 
   var sepPos = -1
@@ -226,7 +227,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
       sepPos = i
       break
   if sepPos >= 0:
-    result.head = substr(path, 0, sepPos-1)
+    result.head = substr(path, 0, max(sepPos-1, 0))
     result.tail = substr(path, sepPos+1)
   else:
     result.head = ""
@@ -597,6 +598,10 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     assert dir == "/usr/local"
     assert name == ""
     assert ext == ""
+    (dir, name, ext) = splitFile("/tmp.txt")
+    assert dir == "/"
+    assert name == "tmp"
+    assert ext == ".txt"
 
   var namePos = 0
   var dotPos = 0
