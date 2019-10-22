@@ -561,7 +561,7 @@ proc writeConfig*(dict: Config, filename: string) =
   dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =
-  ## Gets the Key value of the specified Section.
+  ## Gets the Key value of the specified Section, returns an empty string if the key does not exist.
   if dict.hasKey(section):
     if dict[section].hasKey(key):
       result = dict[section][key]
