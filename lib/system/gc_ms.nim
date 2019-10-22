@@ -244,6 +244,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
 
 proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
+  gcAssert(isAllocatedPtr(gch.region, cell), "gah, not allocated anymore! C")
   gcAssert(cell.typ != nil, "forAllChildren: 2")
   gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
   let marker = cell.typ.marker
@@ -378,9 +379,9 @@ proc mark(gch: var GcHeap, c: PCell) =
     while gch.tempStack.len > 0:
       dec gch.tempStack.len
       var d = gch.tempStack.d[gch.tempStack.len]
-      if d.refcount == rcWhite:
-        d.refcount = rcBlack
-        forAllChildren(d, waMarkPrecise)
+      #if d.refcount == rcWhite:
+      #  d.refcount = rcBlack
+      forAllChildren(d, waMarkPrecise)
 
     when defined(nimTracing):
       if gch.tracing:
@@ -399,18 +400,88 @@ proc doOperation(p: pointer, op: WalkOp) =
     when defined(nimTracing):
       if c.refcount == rcWhite: mark(gch, c)
     else:
-      add(gch.tempStack, c)
+      if c.refcount == rcWhite:
+        c.refcount = rcBlack
+        add(gch.tempStack, c)
 
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, WalkOp(op))
 
 proc freeCyclicCell(gch: var GcHeap, c: PCell) =
+  gcAssert(isAllocatedPtr(gch.region, c), "freeCyclicCell() on an invalid cell!")
   inc gch.stat.freedObjects
   prepareDealloc(c)
   when reallyDealloc: rawDealloc(gch.region, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
     zeroMem(c, sizeof(Cell))
+
+proc dispose*[T](x: var ref T) {.inline.} =
+  ## Manual freeing of the object ``x``. This is an unsafe operation but
+  ## if used wisely, can speedup your program and avoid the pauses introduced
+  ## by the tracing GC.
+  let p = cast[pointer](x)
+  if p != nil:
+    freeCyclicCell(gch, usrToCell(p))
+    x = nil
+
+proc dispose*[T: proc](x: var T) {.inline.} =
+  ## Manual freeing of the object ``x``.
+  ## This is an unsafe operation but if used wisely, can speedup your program
+  ## and avoid the pauses introduced by the tracing GC.
+  when (T is "closure") or (T is iterator):
+    let p = cast[pointer](rawEnv(x))
+    if p != nil:
+      freeCyclicCell(gch, usrToCell(p))
+      # 'rawEnv(x) = nil' does not compile, hence the '.emit':
+      {.emit: """
+      `x`->ClE_0 = NIM_NIL;
+      """.}
+
+proc deepDisposeImpl(gch: var GcHeap, c: PCell) =
+  c.refcount = rcBlack
+  gcAssert gch.tempStack.len == 0, "stack not empty!"
+  forAllChildren(c, waMarkPrecise)
+  var i = 0
+  while i < gch.tempStack.len:
+    var d = gch.tempStack.d[i]
+    #if d.refcount == rcWhite:
+    #  d.refcount = rcBlack
+    gcAssert(isAllocatedPtr(gch.region, d), "gah, not allocated anymore!")
+    forAllChildren(d, waMarkPrecise)
+    #freeCyclicCell(gch, d)
+    inc i
+
+  for j in 0..gch.tempStack.len-1:
+    let d = gch.tempStack.d[j]
+    gcAssert(isAllocatedPtr(gch.region, d), "gah, not allocated anymore! B")
+    freeCyclicCell(gch, d)
+
+  gch.tempStack.len = 0
+  gcAssert(isAllocatedPtr(gch.region, c), "gah, not allocated anymore! D")
+  freeCyclicCell(gch, c)
+
+proc deepDispose*[T](x: var ref T) {.inline.} =
+  ## Manual freeing of the object ``x`` and all of its children, recursively.
+  ## This is an unsafe operation but if used wisely, can speedup your program
+  ## and avoid the pauses introduced by the tracing GC.
+  let p = cast[pointer](x)
+  if p != nil:
+    deepDisposeImpl(gch, usrToCell(p))
+    x = nil
+
+proc deepDispose*[T: proc](x: var T) {.inline.} =
+  ## Manual freeing of the object ``x`` and all of its children, recursively.
+  ## This is an unsafe operation but if used wisely, can speedup your program
+  ## and avoid the pauses introduced by the tracing GC.
+  when (T is "closure") or (T is iterator):
+    let p = cast[pointer](rawEnv(x))
+    if p != nil:
+      deepDisposeImpl(gch, usrToCell(p))
+      # 'rawEnv(x) = nil' does not compile, hence the '.emit':
+      {.emit: """
+      `x`->ClE_0 = NIM_NIL;
+      """.}
 
 proc sweep(gch: var GcHeap) =
   when withBitvectors:
