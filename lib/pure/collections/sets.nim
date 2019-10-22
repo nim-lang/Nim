@@ -1019,9 +1019,9 @@ when isMainModule and not defined(release):
       # --> {1, 3, 5}
 
     block toSeqAndString:
-      var a = toHashSet([2, 4, 5])
+      var a = toHashSet([2, 7, 5])
       var b = initHashSet[int]()
-      for x in [2, 4, 5]: b.incl(x)
+      for x in [2, 7, 5]: b.incl(x)
       assert($a == $b)
       #echo a
       #echo toHashSet(["no", "esc'aping", "is \" provided"])

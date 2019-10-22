@@ -47,12 +47,9 @@ proc demanglePackageName*(path: string): string =
 
 proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   let x = getPackageName(conf, path.string)
-  if x.len == 0:
-    result = path
+  let (p, file, ext) = path.splitFile
+  if x == "stdlib":
+    # Hot code reloading now relies on 'stdlib_system' names etc.
+    result = p / RelativeFile((x & '_' & file) & ext)
   else:
-    let (p, file, ext) = path.splitFile
-    if x == "stdlib":
-      # Hot code reloading now relies on 'stdlib_system' names etc.
-      result = p / RelativeFile((x & '_' & file) & ext)
-    else:
-      result = p / RelativeFile(fakePackageName(conf, path))
+    result = p / RelativeFile(fakePackageName(conf, path))

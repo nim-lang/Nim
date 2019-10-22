@@ -671,7 +671,7 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-when not defined(JS) and not defined(gcDestructors):
+when not defined(JS) and not defined(nimSeqsV2):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -684,7 +684,7 @@ when not defined(JS) and not defined(gcDestructors):
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(nimscript):
-  when not defined(gcDestructors):
+  when not defined(nimSeqsV2):
     template space(s: PGenericSeq): int {.dirty.} =
       s.reserved and not (seqShallowFlag or strlitFlag)
   when not defined(nimV2):
@@ -1020,7 +1020,7 @@ when not defined(JS):
     ##   assert len(x) == 3
     ##   x[0] = 10
     result = newSeqOfCap[T](len)
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       cast[ptr int](addr result)[] = len
     else:
       var s = cast[PGenericSeq](result)
@@ -1323,65 +1323,51 @@ proc `mod`*(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
 
-when defined(nimNewShiftOps):
-
-  when defined(nimOldShiftRight) or not defined(nimAshr):
-    const shrDepMessage = "`shr` will become sign preserving."
-    proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
-    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
-    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
-    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
-    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
-  else:
-    proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
-      ## Computes the `shift right` operation of `x` and `y`, filling
-      ## vacant bit positions with the sign bit.
-      ##
-      ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
-      ## is different than in *C*.
-      ##
-      ## See also:
-      ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
-      ##
-      ## .. code-block:: Nim
-      ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
-      ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
-      ##   0b1000_0000'i8 shr 4 == 0b1111_1000'i8
-      ##   -1 shr 5 == -1
-      ##   1 shr 5 == 0
-      ##   16 shr 2 == 4
-      ##   -16 shr 2 == -4
-    proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
-    proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
-    proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
-    proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
-
-
-  proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
-    ## Computes the `shift left` operation of `x` and `y`.
+when defined(nimOldShiftRight) or not defined(nimAshr):
+  const shrDepMessage = "`shr` will become sign preserving."
+  proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+  proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+  proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+  proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+  proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
+else:
+  proc `shr`*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
+    ## Computes the `shift right` operation of `x` and `y`, filling
+    ## vacant bit positions with the sign bit.
     ##
     ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
     ## is different than in *C*.
     ##
+    ## See also:
+    ## * `ashr proc <#ashr,int,SomeInteger>`_ for arithmetic shift right
+    ##
     ## .. code-block:: Nim
-    ##  1'i32 shl 4 == 0x0000_0010
-    ##  1'i64 shl 4 == 0x0000_0000_0000_0010
-  proc `shl`*(x: int8, y: SomeInteger): int8 {.magic: "ShlI", noSideEffect.}
-  proc `shl`*(x: int16, y: SomeInteger): int16 {.magic: "ShlI", noSideEffect.}
-  proc `shl`*(x: int32, y: SomeInteger): int32 {.magic: "ShlI", noSideEffect.}
-  proc `shl`*(x: int64, y: SomeInteger): int64 {.magic: "ShlI", noSideEffect.}
-else:
-  proc `shr`*(x, y: int): int {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x, y: int8): int8 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
-  proc `shr`*(x, y: int64): int64 {.magic: "ShrI", noSideEffect.}
+    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+    ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
+    ##   0b1000_0000'i8 shr 4 == 0b1111_1000'i8
+    ##   -1 shr 5 == -1
+    ##   1 shr 5 == 0
+    ##   16 shr 2 == 4
+    ##   -16 shr 2 == -4
+  proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+  proc `shr`*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+  proc `shr`*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+  proc `shr`*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
 
-  proc `shl`*(x, y: int): int {.magic: "ShlI", noSideEffect.}
-  proc `shl`*(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
-  proc `shl`*(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
-  proc `shl`*(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
-  proc `shl`*(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
+
+proc `shl`*(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
+  ## Computes the `shift left` operation of `x` and `y`.
+  ##
+  ## **Note**: `Operator precedence <manual.html#syntax-precedence>`_
+  ## is different than in *C*.
+  ##
+  ## .. code-block:: Nim
+  ##  1'i32 shl 4 == 0x0000_0010
+  ##  1'i64 shl 4 == 0x0000_0000_0000_0010
+proc `shl`*(x: int8, y: SomeInteger): int8 {.magic: "ShlI", noSideEffect.}
+proc `shl`*(x: int16, y: SomeInteger): int16 {.magic: "ShlI", noSideEffect.}
+proc `shl`*(x: int32, y: SomeInteger): int32 {.magic: "ShlI", noSideEffect.}
+proc `shl`*(x: int64, y: SomeInteger): int64 {.magic: "ShlI", noSideEffect.}
 
 when defined(nimAshr):
   proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
@@ -1518,54 +1504,105 @@ template `>%`*(x, y: untyped): untyped = y <% x
 
 
 # unsigned integer operations:
-proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
+proc `not`*(x: uint): uint {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
+proc `not`*(x: uint8): uint8 {.magic: "BitnotI", noSideEffect.}
+proc `not`*(x: uint16): uint16 {.magic: "BitnotI", noSideEffect.}
+proc `not`*(x: uint32): uint32 {.magic: "BitnotI", noSideEffect.}
+proc `not`*(x: uint64): uint64 {.magic: "BitnotI", noSideEffect.}
 
-when defined(nimNewShiftOps):
-  proc `shr`*[T: SomeUnsignedInt](x: T, y: SomeInteger): T {.magic: "ShrI", noSideEffect.}
-    ## Computes the `shift right` operation of `x` and `y`.
-  proc `shl`*[T: SomeUnsignedInt](x: T, y: SomeInteger): T {.magic: "ShlI", noSideEffect.}
-    ## Computes the `shift left` operation of `x` and `y`.
-else:
-  proc `shr`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShrI", noSideEffect.}
-    ## Computes the `shift right` operation of `x` and `y`.
-  proc `shl`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShlI", noSideEffect.}
-    ## Computes the `shift left` operation of `x` and `y`.
+proc `shr`*(x: uint, y: SomeInteger): uint {.magic: "ShrI", noSideEffect.}
+  ## Computes the `shift right` operation of `x` and `y`.
+proc `shr`*(x: uint8, y: SomeInteger): uint8 {.magic: "ShrI", noSideEffect.}
+proc `shr`*(x: uint16, y: SomeInteger): uint16 {.magic: "ShrI", noSideEffect.}
+proc `shr`*(x: uint32, y: SomeInteger): uint32 {.magic: "ShrI", noSideEffect.}
+proc `shr`*(x: uint64, y: SomeInteger): uint64 {.magic: "ShrI", noSideEffect.}
 
-proc `and`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitandI", noSideEffect.}
+proc `shl`*(x: uint, y: SomeInteger): uint {.magic: "ShlI", noSideEffect.}
+  ## Computes the `shift left` operation of `x` and `y`.
+proc `shl`*(x: uint8, y: SomeInteger): uint8 {.magic: "ShlI", noSideEffect.}
+proc `shl`*(x: uint16, y: SomeInteger): uint16 {.magic: "ShlI", noSideEffect.}
+proc `shl`*(x: uint32, y: SomeInteger): uint32 {.magic: "ShlI", noSideEffect.}
+proc `shl`*(x: uint64, y: SomeInteger): uint64 {.magic: "ShlI", noSideEffect.}
+
+proc `and`*(x, y: uint): uint {.magic: "BitandI", noSideEffect.}
   ## Computes the `bitwise and` of numbers `x` and `y`.
+proc `and`*(x, y: uint8): uint8 {.magic: "BitandI", noSideEffect.}
+proc `and`*(x, y: uint16): uint16 {.magic: "BitandI", noSideEffect.}
+proc `and`*(x, y: uint32): uint32 {.magic: "BitandI", noSideEffect.}
+proc `and`*(x, y: uint64): uint64 {.magic: "BitandI", noSideEffect.}
 
-proc `or`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitorI", noSideEffect.}
+proc `or`*(x, y: uint): uint {.magic: "BitorI", noSideEffect.}
   ## Computes the `bitwise or` of numbers `x` and `y`.
+proc `or`*(x, y: uint8): uint8 {.magic: "BitorI", noSideEffect.}
+proc `or`*(x, y: uint16): uint16 {.magic: "BitorI", noSideEffect.}
+proc `or`*(x, y: uint32): uint32 {.magic: "BitorI", noSideEffect.}
+proc `or`*(x, y: uint64): uint64 {.magic: "BitorI", noSideEffect.}
 
-proc `xor`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitxorI", noSideEffect.}
+proc `xor`*(x, y: uint): uint {.magic: "BitxorI", noSideEffect.}
   ## Computes the `bitwise xor` of numbers `x` and `y`.
+proc `xor`*(x, y: uint8): uint8 {.magic: "BitxorI", noSideEffect.}
+proc `xor`*(x, y: uint16): uint16 {.magic: "BitxorI", noSideEffect.}
+proc `xor`*(x, y: uint32): uint32 {.magic: "BitxorI", noSideEffect.}
+proc `xor`*(x, y: uint64): uint64 {.magic: "BitxorI", noSideEffect.}
 
-proc `==`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "EqI", noSideEffect.}
+proc `==`*(x, y: uint): bool {.magic: "EqI", noSideEffect.}
   ## Compares two unsigned integers for equality.
+proc `==`*(x, y: uint8): bool {.magic: "EqI", noSideEffect.}
+proc `==`*(x, y: uint16): bool {.magic: "EqI", noSideEffect.}
+proc `==`*(x, y: uint32): bool {.magic: "EqI", noSideEffect.}
+proc `==`*(x, y: uint64): bool {.magic: "EqI", noSideEffect.}
 
-proc `+`*[T: SomeUnsignedInt](x, y: T): T {.magic: "AddU", noSideEffect.}
+proc `+`*(x, y: uint): uint {.magic: "AddU", noSideEffect.}
   ## Binary `+` operator for unsigned integers.
+proc `+`*(x, y: uint8): uint8 {.magic: "AddU", noSideEffect.}
+proc `+`*(x, y: uint16): uint16 {.magic: "AddU", noSideEffect.}
+proc `+`*(x, y: uint32): uint32 {.magic: "AddU", noSideEffect.}
+proc `+`*(x, y: uint64): uint64 {.magic: "AddU", noSideEffect.}
 
-proc `-`*[T: SomeUnsignedInt](x, y: T): T {.magic: "SubU", noSideEffect.}
+proc `-`*(x, y: uint): uint {.magic: "SubU", noSideEffect.}
   ## Binary `-` operator for unsigned integers.
+proc `-`*(x, y: uint8): uint8 {.magic: "SubU", noSideEffect.}
+proc `-`*(x, y: uint16): uint16 {.magic: "SubU", noSideEffect.}
+proc `-`*(x, y: uint32): uint32 {.magic: "SubU", noSideEffect.}
+proc `-`*(x, y: uint64): uint64 {.magic: "SubU", noSideEffect.}
 
-proc `*`*[T: SomeUnsignedInt](x, y: T): T {.magic: "MulU", noSideEffect.}
+proc `*`*(x, y: uint): uint {.magic: "MulU", noSideEffect.}
   ## Binary `*` operator for unsigned integers.
+proc `*`*(x, y: uint8): uint8 {.magic: "MulU", noSideEffect.}
+proc `*`*(x, y: uint16): uint16 {.magic: "MulU", noSideEffect.}
+proc `*`*(x, y: uint32): uint32 {.magic: "MulU", noSideEffect.}
+proc `*`*(x, y: uint64): uint64 {.magic: "MulU", noSideEffect.}
 
-proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
+proc `div`*(x, y: uint): uint {.magic: "DivU", noSideEffect.}
   ## Computes the integer division for unsigned integers.
   ## This is roughly the same as ``trunc(x/y)``.
+proc `div`*(x, y: uint8): uint8 {.magic: "DivU", noSideEffect.}
+proc `div`*(x, y: uint16): uint16 {.magic: "DivU", noSideEffect.}
+proc `div`*(x, y: uint32): uint32 {.magic: "DivU", noSideEffect.}
+proc `div`*(x, y: uint64): uint64 {.magic: "DivU", noSideEffect.}
 
-proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
+proc `mod`*(x, y: uint): uint {.magic: "ModU", noSideEffect.}
   ## Computes the integer modulo operation (remainder) for unsigned integers.
   ## This is the same as ``x - (x div y) * y``.
+proc `mod`*(x, y: uint8): uint8 {.magic: "ModU", noSideEffect.}
+proc `mod`*(x, y: uint16): uint16 {.magic: "ModU", noSideEffect.}
+proc `mod`*(x, y: uint32): uint32 {.magic: "ModU", noSideEffect.}
+proc `mod`*(x, y: uint64): uint64 {.magic: "ModU", noSideEffect.}
 
-proc `<=`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*(x, y: uint): bool {.magic: "LeU", noSideEffect.}
   ## Returns true if ``x <= y``.
+proc `<=`*(x, y: uint8): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*(x, y: uint16): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*(x, y: uint32): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*(x, y: uint64): bool {.magic: "LeU", noSideEffect.}
 
-proc `<`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LtU", noSideEffect.}
+proc `<`*(x, y: uint): bool {.magic: "LtU", noSideEffect.}
   ## Returns true if ``unsigned(x) < unsigned(y)``.
+proc `<`*(x, y: uint8): bool {.magic: "LtU", noSideEffect.}
+proc `<`*(x, y: uint16): bool {.magic: "LtU", noSideEffect.}
+proc `<`*(x, y: uint32): bool {.magic: "LtU", noSideEffect.}
+proc `<`*(x, y: uint64): bool {.magic: "LtU", noSideEffect.}
 
 # floating point operations:
 proc `+`*(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
@@ -2074,10 +2111,10 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
-when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
+when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
-when not defined(gcDestructors) or defined(nimscript):
+when not defined(nimSeqsV2) or defined(nimscript):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
@@ -2104,7 +2141,7 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
-when defined(gcDestructors):
+when defined(nimSeqsV2):
   template movingCopy(a, b) =
     a = move(b)
 else:
@@ -3002,7 +3039,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
-        when defined(gcDestructors):
+        when defined(nimSeqsV2):
           result = cast[NimSeqV2[T]](x).p
         else:
           result = cast[pointer](x)
@@ -3098,7 +3135,7 @@ when not defined(js):
         name: cstring
       PNimType = ptr TNimType
 
-  when defined(gcDestructors) and not defined(nimscript):
+  when defined(nimSeqsV2) and not defined(nimscript):
     include "core/strs"
     include "core/seqs"
 
@@ -3747,7 +3784,7 @@ when not defined(JS): #and not defined(nimscript):
     {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc:
-      when not defined(gcDestructors):
+      when not defined(nimSeqsV2):
         include "system/sysstr"
     {.pop.}
     when hasAlloc: include "system/strmantle"
@@ -4162,7 +4199,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## perform deep copies of `s`.
   ##
   ## This is only useful for optimization purposes.
-  when not defined(JS) and not defined(nimscript) and not defined(gcDestructors):
+  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     if s == nil:
       s = cast[PGenericSeq](newString(0))

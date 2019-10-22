@@ -1121,9 +1121,16 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
-  of tyGenericInvocation, tyGenericBody, tySequence,
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink, tyUncheckedArray,
-     tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt, tyOwned:
+  of tyBuiltInTypeClass:
+    assert a.len == 1
+    assert a[0].len == 0
+    assert b.len == 1
+    assert b[0].len == 0
+    result = a[0].kind == b[0].kind
+  of tyGenericInvocation, tyGenericBody, tySequence, tyOpenArray, tySet, tyRef,
+     tyPtr, tyVar, tyLent, tySink, tyUncheckedArray, tyArray, tyProc, tyVarargs,
+     tyOrdinal, tyCompositeTypeClass, tyUserTypeClass, tyUserTypeClassInst,
+     tyAnd, tyOr, tyNot, tyAnything, tyOpt, tyOwned:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c)
@@ -1280,10 +1287,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         if kind notin {skParam, skResult}: result = t
         else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
+    if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
+      # only closure iterators my be assigned to anything.
+      result = t
     let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
     for i in 1 ..< len(t):
-      result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
       if result != nil: break
+      result = typeAllowedAux(marker, t.sons[i], skParam, f-{taIsOpenArray})
     if result.isNil and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:

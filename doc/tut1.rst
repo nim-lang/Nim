@@ -142,15 +142,6 @@ comments can also be nested.
     ]#
   ]#
 
-You can also use the `discard statement <#procedures-discard-statement>`_ together with *long string
-literals* to create block comments:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  discard """ You can have any Nim code text commented
-  out inside this with no indentation restrictions.
-        yes("May I ask a pointless question?") """
-
 
 Numbers
 -------

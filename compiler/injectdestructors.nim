@@ -486,7 +486,7 @@ proc p(n: PNode; c: var Con): PNode =
       result.add n[0]
       result.add p(n[1], c)
   of nkRaiseStmt:
-    if optNimV2 in c.graph.config.globalOptions and n[0].kind != nkEmpty:
+    if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       if n[0].kind in nkCallKinds:
         let call = p(n[0], c)
         result = copyNode(n)
@@ -636,7 +636,7 @@ proc reverseDestroys(destroys: seq[PNode]): seq[PNode] =
     result.add destroys[i]
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  if sfGeneratedOp in owner.flags or isInlineIterator(owner): return n
+  if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)): return n
   var c: Con
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)

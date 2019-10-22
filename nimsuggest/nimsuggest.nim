@@ -48,6 +48,7 @@ Options:
   --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
+  --find                  attempts to find the project file of the current project
 
 The server then listens to the connection and takes line-based commands.
 
@@ -92,7 +93,7 @@ proc myLog(s: string) =
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known file.nim[;dirtyfile.nim]:line:col\n" &
+  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known|project file.nim[;dirtyfile.nim]:line:col\n" &
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
@@ -244,6 +245,7 @@ proc toStdout() {.gcsafe.} =
     of ideNone: break
     of ideMsg: echo res.doc
     of ideKnown: echo res.quality == 1
+    of ideProject: echo res.filePath
     else: echo res
 
 proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
@@ -253,6 +255,7 @@ proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
     of ideNone: break
     of ideMsg: stdoutSocket.send(res.doc & "\c\L")
     of ideKnown: stdoutSocket.send($(res.quality == 1) & "\c\L")
+    of ideProject: stdoutSocket.send(res.filePath & "\c\L")
     else: stdoutSocket.send($res & "\c\L")
 
 proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
@@ -265,6 +268,8 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
       list.add sexp(res.doc)
     of ideKnown:
       list.add sexp(res.quality == 1)
+    of ideProject:
+      list.add sexp(res.filePath)
     else:
       list.add sexp(res)
   returnEpc(client, uid, list)
@@ -319,8 +324,8 @@ proc replTcp(x: ThreadParams) {.thread.} =
     server.bindAddr(x.port, x.address)
     server.listen()
   var inp = "".TaintedString
+  var stdoutSocket: Socket
   while true:
-    var stdoutSocket = newSocket()
     accept(server, stdoutSocket)
 
     stdoutSocket.readLine(inp)
@@ -353,7 +358,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
   echo port
   stdout.flushFile()
 
-  var client = newSocket()
+  var client: Socket
   # Wait for connection
   accept(server, client)
   while true:
@@ -434,6 +439,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
   of "known": conf.ideCmd = ideKnown
+  of "project": conf.ideCmd = ideProject
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -453,6 +459,8 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
 
   if conf.ideCmd == ideKnown:
     results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
+  elif conf.ideCmd == ideProject:
+    results.send(Suggest(section: ideProject, filePath: string conf.projectFull))
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
@@ -549,6 +557,7 @@ proc mainCommand(graph: ModuleGraph) =
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
+  var findProject = false
   while true:
     parseopt.next(p)
     case p.kind
@@ -594,6 +603,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
           gRefresh = true
       of "maxresults":
         conf.suggestMaxResults = parseInt(p.val)
+      of "find":
+        findProject = true
       else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
@@ -602,7 +613,12 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         # don't make it worse, report the error the old way:
         if conf.projectName.len == 0: conf.projectName = a
       else:
-        conf.projectName = a
+        if findProject:
+          conf.projectName = findProjectNimFile(conf, a.parentDir())
+          if conf.projectName.len == 0:
+            conf.projectName = a
+        else:
+          conf.projectName = a
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
@@ -732,6 +748,8 @@ else:
       stderr.write s & "\n"
     if conf.ideCmd == ideKnown:
       retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
+    elif conf.ideCmd == ideProject:
+      retval.add(Suggest(section: ideProject, filePath: string conf.projectFull))
     else:
       if conf.ideCmd == ideChk:
         for cm in nimsuggest.cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
