@@ -16,7 +16,7 @@ pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
-pkg "chronos"
+pkg "chronos", "", true
 pkg "cligen", "nim c -o:cligenn -r cligen.nim"
 pkg "combparser"
 pkg "compactdict"
