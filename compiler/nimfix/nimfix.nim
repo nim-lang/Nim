@@ -103,7 +103,7 @@ proc handleCmdLine(config: ConfigRef) =
     processCmdLine(passCmd2, "", config)
     mainCommand()
 
-when compileOption("gc", "v2") or compileOption("gc", "refc"):
+when compileOption("gc", "refc"):
   GC_disableMarkAndSweep()
 
 condsyms.initDefines()

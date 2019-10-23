@@ -3346,7 +3346,7 @@ template accumulateResult*(iter: untyped) {.deprecated: "use `sequtils.toSeq` in
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
+  when defined(sparc) or defined(ELATE) or
     defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcRegions) or
     defined(gcMarkAndSweep):
     false
