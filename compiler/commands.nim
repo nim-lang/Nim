@@ -11,7 +11,7 @@
 
 
 # We do this here before the 'import' statement so 'defined' does not get
-# confused with 'TGCMode.gcGenerational' etc.
+# confused with other GC options, etc.
 template bootSwitch(name, expr, userString) =
   # Helper to build boot constants, for debugging you can 'echo' the else part.
   const name = if expr: " " & userString else: ""
@@ -21,7 +21,6 @@ bootSwitch(usedDanger, defined(danger), "-d:danger")
 bootSwitch(usedGnuReadline, defined(useLinenoise), "-d:useLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
-bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
@@ -102,7 +101,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & usedGnuReadline & usedNativeStacktrace &
-      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
 
@@ -227,7 +226,6 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "boehm":        result = conf.selectedGC == gcBoehm
     of "refc":         result = conf.selectedGC == gcRefc
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
-    of "generational": result = false
     of "destructors":  result = conf.selectedGC == gcDestructors
     of "go":           result = conf.selectedGC == gcGo
     of "none":         result = conf.selectedGC == gcNone
