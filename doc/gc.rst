@@ -20,10 +20,7 @@ This document describes how the GC works and how to tune it for
 The basic algorithm is *Deferred Reference Counting* with cycle detection.
 References on the stack are not counted for better performance (and easier C
 code generation). Cycle detection is currently done by a simple mark&sweep
-GC that has to scan the full (thread local heap). ``--gc:v2`` replaces this
-with an incremental mark and sweep. That it is not production ready yet,
-however.
-
+GC that has to scan the full (thread local heap).
 
 The GC is only triggered in a memory allocation operation. It is not triggered
 by some timer and does not run in a background thread.
