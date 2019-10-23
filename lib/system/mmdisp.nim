@@ -516,7 +516,7 @@ else:
   else:
     include "system/gc"
 
-when not declared(nimNewSeqOfCap) and not defined(gcDestructors):
+when not declared(nimNewSeqOfCap) and not defined(nimSeqsV2):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
     when defined(gcRegions):
       let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize

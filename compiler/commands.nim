@@ -445,6 +445,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "destructors":
         conf.selectedGC = gcDestructors
         defineSymbol(conf.symbols, "gcdestructors")
+        incl conf.globalOptions, optSeqDestructors
       of "go":
         conf.selectedGC = gcGo
         defineSymbol(conf.symbols, "gogc")
@@ -747,10 +748,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}:
       doAssert(conf != nil)
       incl(conf.features, destructor)
-      incl(conf.globalOptions, optNimV2)
+      incl(conf.globalOptions, optTinyRtti)
+      incl(conf.globalOptions, optOwnedRefs)
+      incl(conf.globalOptions, optSeqDestructors)
       defineSymbol(conf.symbols, "nimV2")
       conf.selectedGC = gcDestructors
       defineSymbol(conf.symbols, "gcdestructors")
+      defineSymbol(conf.symbols, "nimSeqsV2")
+  of "seqsv2":
+    processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      defineSymbol(conf.symbols, "nimSeqsV2")
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}

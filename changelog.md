@@ -23,6 +23,8 @@
 
 ## Library changes
 
+- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations` and only returns once all pending async operations are guaranteed to have completed.
+- `asyncdispatch.drain` now consistently uses the passed timeout value for all iterations of the event loop, and not just the first iteration. This is more consistent with the other asyncdispatch apis, and allows `asyncdispatch.drain` to be more efficient.
 - `base64.encode` and `base64.decode` was made faster by about 50%.
 - `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support (ISO 40314).
 
@@ -46,3 +48,4 @@
 
 ## Bugfixes
 
+- The `FD` variant of `selector.unregister` for `ioselector_epoll` and `ioselector_select` now properly handle the `Event.User` select event type.

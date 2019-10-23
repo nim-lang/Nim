@@ -2563,7 +2563,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # if isGenericRoutine(result.sym):
         #   localError(c.config, n.info, errInstantiateXExplicitly, s.name.s)
       # "procs literals" are 'owned'
-      if optNimV2 in c.config.globalOptions:
+      if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
     else:
       result = semSym(c, n, s, flags)
