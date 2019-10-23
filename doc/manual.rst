@@ -6372,14 +6372,13 @@ Example:
   import threadpool
   {.experimental: "parallel".}
 
-  proc threadedEcho(s: string) =
-    echo(s)
+  proc threadedEcho(s: string, i: int) =
+    echo(s, " ", $i)
 
   proc useParallel() =
     parallel:
       for i in 0..4:
-        spawn threadedEcho("echo in parallel")
-    sync()
+        spawn threadedEcho("echo in parallel", i)
 
   useParallel()
 
