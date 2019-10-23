@@ -468,14 +468,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":
     case arg.normalize
-    of "on", "gdb", "native":
+    of "on", "native", "gdb":
       conf.globalOptions.incl optCDebug
       conf.options.incl optLineDir
       #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
     of "off":
       conf.globalOptions.excl optCDebug
     else:
-      localError(conf, info, "expected gdb|on|off but found " & arg)
+      localError(conf, info, "expected native|gdb|on|off but found " & arg)
   of "g": # alias for --debugger:native
     conf.globalOptions.incl optCDebug
     conf.options.incl optLineDir
