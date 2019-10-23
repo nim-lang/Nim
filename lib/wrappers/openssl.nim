@@ -685,9 +685,9 @@ type
 
 {.push callconv:cdecl, dynlib:DLLUtilName.}
 proc md5_Init*(c: var MD5_CTX): cint{.importc: "MD5_Init".}
-proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.importc: "MD5_Update".}
+proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize_t): cint{.importc: "MD5_Update".}
 proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.importc: "MD5_Final".}
-proc md5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.importc: "MD5".}
+proc md5*(d: ptr cuchar; n: csize_t; md: ptr cuchar): ptr cuchar{.importc: "MD5".}
 proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
 {.pop.}
 
@@ -712,7 +712,7 @@ proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
 
   discard md5_Init(ctx)
   while(let bytes = f.readChars(buf, 0, sz); bytes > 0):
-    discard md5_Update(ctx, buf[0].addr, bytes)
+    discard md5_Update(ctx, buf[0].addr, cast[csize_t](bytes))
 
   discard md5_Final(buf[0].addr, ctx)
   f.close
@@ -731,7 +731,7 @@ proc md5_Str*(str: string): string =
   var i = 0
   while i < str.len:
     let L = min(str.len - i, 512)
-    discard md5_Update(ctx, input[i].addr, L)
+    discard md5_Update(ctx, input[i].addr, cast[csize_t](L))
     i += L
 
   discard md5_Final(addr res, ctx)
