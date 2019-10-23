@@ -331,3 +331,25 @@ block:
   echo jsNull.isNil
   echo jsNull.isNull
   echo jsUndefined.isUndefined
+
+
+# JavaScript Exponentiation Operator
+block:
+  echo 0 ** 0 == 1
+  echo 1 ** 1 == 1
+  echo -1 ** -1 == -1
+  echo 9 ** 4 == 6561
+  echo 4 ** 9 == 262144
+  echo -9 ** 9 == -387420489
+  echo 42 ** 2 == 1764
+  echo 127 ** 2 == 16129
+  echo 32767 ** 2 == 1073676289
+  echo 0.0 ** 0.0 == 1
+  echo 1.0 ** 1.0 == 1
+  echo -1.0 ** -1.0 == -1
+  echo 9.0 ** 4.0 == 6561
+  echo 4.0 ** 9.0 == 262144
+  echo -9.0 ** 9.0 == -387420489
+  echo 42.0 ** 2.0 == 1764
+  echo 127.0 ** 2.0 == 16129
+  echo 32767.0 ** 2.0 == 1073676289
