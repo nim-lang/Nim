@@ -43,7 +43,7 @@
 * threadpool: fix link in docs (#12258)
 * Fix spellings (#12277)
 * fix #12278, don't expose internal PCRE documentation
-* Fixed "Documentation of quitprocs is wrong" [#12279(https://github.com/nim-lang/Nim/issues/12279)
+* Fixed "Documentation of quitprocs is wrong" [#12279](https://github.com/nim-lang/Nim/issues/12279)
 * Fix typo in docs
 * Fix reference to parseSpec proc in readme
 * [doc/tut1] removed discard discussion in comments
