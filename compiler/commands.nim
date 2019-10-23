@@ -469,7 +469,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":
     case arg.normalize
-    of "on", "gdb":
+    of "on", "gdb", "native":
       conf.globalOptions.incl optCDebug
       conf.options.incl optLineDir
       #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
