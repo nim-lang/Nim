@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc getTraverseProc(p: BProc, v: PSym): Rope =
-  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
+  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcRefc} and
       optNimV2 notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
