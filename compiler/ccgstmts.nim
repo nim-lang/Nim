@@ -16,13 +16,8 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc getTraverseProc(p: BProc, v: PSym): Rope =
-<<<<<<< HEAD
   if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcRefc} and
-      optNimV2 notin p.config.globalOptions and
-=======
-  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
->>>>>>> 822078ed12a48aa61eda0c65bc9ee675836a9fd3
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
