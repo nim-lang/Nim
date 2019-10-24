@@ -99,3 +99,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimToOpenArrayCString")
   defineSymbol("nimHasUsed")
   defineSymbol("nimFixedForwardGeneric")
+  defineSymbol("nimnomagic64")
