@@ -1,5 +1,27 @@
 # <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![Build Status][badge-nim-travisci]][nim-travisci]
 
+&nbsp;
+
+&nbsp;
+
+
+# **!! MASTER BRANCH IS DEPRECATED !!**
+
+If you're looking for branches for older Nim versions, use:
+
+* [version 0.19 branch](https://github.com/nim-lang/Nim/tree/version-0-19)
+* [version 0.20 branch](https://github.com/nim-lang/Nim/tree/version-0-20)
+* [version 1.0 branch](https://github.com/nim-lang/Nim/tree/version-1-0)
+
+&nbsp;
+
+&nbsp;
+
+<hr>
+
+&nbsp;
+
+
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
 the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](https://nim-lang.github.io/Nim/).
