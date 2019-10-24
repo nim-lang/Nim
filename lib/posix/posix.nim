@@ -584,7 +584,7 @@ proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
 proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
 proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
 proc mkdir*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
-  ## Use `os.createDir() <os.html#createDir>`_ and similar.
+  ## Use `os.createDir() <os.html#createDir,string>`_ and similar.
 
 proc mkfifo*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
 proc mknod*(a1: cstring, a2: Mode, a3: Dev): cint {.

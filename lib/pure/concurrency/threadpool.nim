@@ -487,7 +487,7 @@ proc parallel*(body: untyped) {.magic: "Parallel".}
   ##
   ## ``body`` has to be in a DSL that is a particular subset of the language.
   ##
-  ## Please refer to `the manual <manual.html#parallel-amp-spawn>`_
+  ## Please refer to `the manual <manual_experimental.html#parallel-amp-spawn>`_
   ## for further information.
 
 var

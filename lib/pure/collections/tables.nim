@@ -134,7 +134,8 @@
 ##   # 'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
 ##
 ## The same could have been achieved by manually iterating over a container
-## and increasing each key's value with `inc proc<#inc,CountTable[A],A,int>`_:
+## and increasing each key's value with `inc proc
+## <#inc,CountTable[A],A,Positive>`_:
 ##
 ## .. code-block::
 ##   import tables
@@ -2236,7 +2237,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
+  ## * `inc proc<#inc,CountTable[A],A,Positive>`_ for incrementing a
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
