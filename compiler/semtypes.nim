@@ -729,7 +729,11 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                      else: rectype.sym
     for i in 0 .. len(n)-3:
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      suggestSym(c.config, n.sons[i].info, f, c.graph.usageSym)
+      let info = if n.sons[i].kind == nkPostfix:
+                   n.sons[i].sons[1].info
+                 else:
+                   n.sons[i].info
+      suggestSym(c.config, info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
       f.options = c.config.options
@@ -740,7 +744,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)
       if containsOrIncl(check, f.name.id):
-        localError(c.config, n.sons[i].info, "attempt to redefine: '" & f.name.s & "'")
+        localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
       styleCheckDef(c.config, f)
