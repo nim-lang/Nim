@@ -217,7 +217,10 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     assert splitPath("usr/local/bin") == ("usr/local", "bin")
     assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
     assert splitPath("/bin/") == ("/bin", "")
-    assert splitPath("/bin") == ("/", "bin")
+    when (NimMajor, NimMinor) <= (1, 0):
+        assert splitPath("/bin") == ("", "bin")
+    else:
+        assert splitPath("/bin") == ("/", "bin")
     assert splitPath("bin") == ("", "bin")
     assert splitPath("") == ("", "")
 
@@ -227,7 +230,12 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
       sepPos = i
       break
   if sepPos >= 0:
-    result.head = substr(path, 0, max(sepPos-1, 0))
+    result.head = substr(path, 0,
+      when (NimMajor, NimMinor) <= (1, 0):
+        sepPos-1
+      else:
+        if likely(sepPos >= 1): sepPos-1 else: 0
+    )
     result.tail = substr(path, sepPos+1)
   else:
     result.head = ""
@@ -608,7 +616,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   for i in countdown(len(path) - 1, 0):
     if path[i] in {DirSep, AltSep} or i == 0:
       if path[i] in {DirSep, AltSep}:
-        result.dir = substr(path, 0, max(0, i - 1))
+        result.dir = substr(path, 0, if likely(i >= 1): i - 1 else: 0)
         namePos = i + 1
       if dotPos > i:
         result.name = substr(path, namePos, dotPos - 1)
