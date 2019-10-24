@@ -1443,6 +1443,7 @@ proc genDeref(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
     assert n.typ != nil
     if {gfNodeAddr, gfNode} * flags == {} and fitsRegister(n.typ):
       c.gABC(n, opcNodeToReg, dest, dest)
+    c.freeTemp(tmp)
 
 proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   let tmp = c.genx(ri)
@@ -1532,6 +1533,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     c.preventFalseAlias(le, opcWrObj, dest, idx, tmp)
     c.freeTemp(idx)
     c.freeTemp(tmp)
+    c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
     let dest = c.genx(le.sons[0], {gfNode})
     let tmp = c.genx(ri)
