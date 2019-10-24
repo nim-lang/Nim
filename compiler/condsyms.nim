@@ -100,3 +100,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasUsed")
   defineSymbol("nimFixedForwardGeneric")
   defineSymbol("nimnomagic64")
+  defineSymbol("nimNewShiftOps")
