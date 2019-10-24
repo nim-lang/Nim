@@ -443,7 +443,6 @@ template optPreserveOrigSource*(conf: ConfigRef): untyped =
 const
   genSubDir* = RelativeDir"nimcache"
   NimExt* = "nim"
-  RodExt* = "rod"
   HtmlExt* = "html"
   JsonExt* = "json"
   TagsExt* = "tags"
@@ -579,7 +578,7 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
 
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
-  ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
+  ## converts "/home/a/mymodule.nim"
   let (head, tail) = splitPath(path.string)
   result = getNimcacheDir(conf) / RelativeFile changeFileExt(tail, ext)
 
