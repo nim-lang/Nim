@@ -7,7 +7,7 @@
 
 ### Breaking changes in the standard library
 
-- List Comprehension has been removed.
+- Global variable `lc` has been removed from sugar.nim.
 
 ### Breaking changes in the compiler
 
