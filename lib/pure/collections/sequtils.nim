@@ -434,7 +434,9 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest
-
+  doAssert first <= last
+  if first >= s.len:
+    return
   var i = first
   var j = min(len(s), last+1)
   var newLen = len(s)-j+i
@@ -1156,6 +1158,9 @@ when isMainModule:
     assert outcome == dest, """\
     Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     is [1,1,1,1,1,1,1,1]"""
+    var x = @[1, 2, 3]
+    x.delete(100, 100)
+    assert x == @[1, 2, 3]
 
   block: # insert tests
     var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
