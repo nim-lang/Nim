@@ -1811,10 +1811,10 @@ template detailedInfo*(sym: PSym): string =
   sym.name.s
 
 proc isInlineIterator*(typ: PType): bool {.inline.} =
-  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
+  typ != nil and typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
 
 proc isClosureIterator*(typ: PType): bool {.inline.} =
-  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
+  typ != nil and typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)
