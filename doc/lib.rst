@@ -528,7 +528,8 @@ UNIX specific
 
 * `posix <posix.html>`_
   Contains a wrapper for the POSIX standard.
-
+* `posix_utils <posix_utils.html>`_
+  Contains helpers for the POSIX standard or specialized for Linux and BSDs.
 
 Regular expressions
 -------------------
