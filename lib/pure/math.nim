@@ -35,7 +35,7 @@
 ##   # nan   (use `complex` module)
 ##
 ## This module is available for the `JavaScript target
-## <backends.html#the-javascript-target>`_.
+## <backends.html#backends-the-javascript-target>`_.
 ##
 ## **See also:**
 ## * `complex module<complex.html>`_ for complex numbers and their
@@ -48,6 +48,8 @@
 ## * `mersenne module<mersenne.html>`_ for Mersenne twister random number generator
 ## * `stats module<stats.html>`_ for statistical analysis
 ## * `strformat module<strformat.html>`_ for formatting floats for print
+## * `system module<system.html>`_ Some very basic and trivial math operators
+##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
 include "system/inclrtl"

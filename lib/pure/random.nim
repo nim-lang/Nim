@@ -75,7 +75,7 @@
 ##   generator
 ## * `stats module<stats.html>`_ for statistical analysis
 ## * `list of cryptographic and hashing modules
-##   <lib.html#pure-libraries-cryptography-and-hashing>`_
+##   <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
 import algorithm #For upperBound

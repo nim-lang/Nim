@@ -69,8 +69,8 @@
 ## See also
 ## ========
 ##
-## * `deques module <#deques.html>`_ for double-ended queues
-## * `sharedlist module <#sharedlist.html>`_ for shared singly-linked lists
+## * `deques module <deques.html>`_ for double-ended queues
+## * `sharedlist module <sharedlist.html>`_ for shared singly-linked lists
 
 
 when not defined(nimhygiene):

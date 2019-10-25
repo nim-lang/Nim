@@ -1169,7 +1169,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     first = firstOrd(p.config, typ.sons[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
-    r.res = "chckIndx($1, $2, $3.length+$2-1)-$2" % [b.res, rope(first), tmp]
+    r.res = "chckIndx($1, $2, ($3 != null ? $3.length : 0)+$2-1)-$2" % [b.res, rope(first), tmp]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:

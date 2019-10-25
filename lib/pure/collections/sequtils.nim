@@ -35,7 +35,7 @@
 ##   `filterIt<#filterIt.t,untyped,untyped>`_, etc.)
 ##
 ## The chaining of functions is possible thanks to the
-## `method call syntax<manual.html#procs-method-call-syntax>`_.
+## `method call syntax<manual.html#procedures-method-call-syntax>`_.
 ##
 ## .. code-block::
 ##   import sequtils, sugar
@@ -903,7 +903,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
 
     ## Creates a sequence of 20 random numbers from 1 to 10
     import random
-    var seqRand = newSeqWith(20, random(10))
+    var seqRand = newSeqWith(20, rand(10))
 
   var result = newSeq[type(init)](len)
   for i in 0 ..< len:

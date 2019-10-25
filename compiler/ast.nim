@@ -882,7 +882,7 @@ type
                               # for range types a nkRange node
                               # for record types a nkRecord node
                               # for enum types a list of symbols
-                              # for tyInt it can be the int literal
+                              # if kind == tyInt: it is an 'int literal(x)' type
                               # for procs and tyGenericBody, it's the
                               # formal param list
                               # for concepts, the concept body
