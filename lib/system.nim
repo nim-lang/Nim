@@ -2048,7 +2048,7 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(nodejs) and not defined(nimscript):
+when defined(js) and defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
@@ -2092,7 +2092,7 @@ elif defined(genode):
 
 
 
-elif defined(nodejs) and not defined(nimscript):
+elif defined(js) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
