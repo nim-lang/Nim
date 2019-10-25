@@ -680,7 +680,8 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   garbage collection that is used by Nim. For more information, please see the documentation of
   `CLANG_NO_SANITIZE_ADDRESS` in `lib/nimbase.h`.
  ]#
-proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl, codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
+proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl,
+    codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
   forEachStackSlot(gch, gcMark)
 
 proc collectZCT(gch: var GcHeap): bool =

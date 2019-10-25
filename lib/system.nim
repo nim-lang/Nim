@@ -4193,7 +4193,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ##
   ## This is only useful for optimization purposes.
   if s.len == 0: return
-  when not defined(JS) and not defined(nimscript):
+  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -4550,12 +4550,12 @@ type
 
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
-      ## Hook into the Genode component bootstrap process.
-      ##
-      ## This hook is called after all globals are initialized.
-      ## When this hook is set the component will not automatically exit,
-      ## call ``quit`` explicitly to do so. This is the only available method
-      ## of accessing the initial Genode environment.
+    ## Hook into the Genode component bootstrap process.
+    ##
+    ## This hook is called after all globals are initialized.
+    ## When this hook is set the component will not automatically exit,
+    ## call ``quit`` explicitly to do so. This is the only available method
+    ## of accessing the initial Genode environment.
 
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during ``Component::construct`` by the loader.
