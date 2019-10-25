@@ -672,7 +672,7 @@ the formal hidden parameter, but not ``s.typ``!
 Integer literals:
 -----------------
 
-In Nim, there is a redundant way to specify declare the type of an
+In Nim, there is a redundant way to specify the type of an
 integer literal. First of all, it should be unsurprising that every
 node has a node kind. The node of an integer literal can be any of the
 following values:
@@ -743,7 +743,7 @@ literal types.
     n.typ.n == n
 
 Other literal types, such as `uint literal(123)` that would
-automatically convert to other integer types, but refuses prefers to
+automatically convert to other integer types, but prefers to
 become a `uint` are not part of the Nim language.
 
 In an unchecked AST, the `typ` field is nil. The type checker will set
