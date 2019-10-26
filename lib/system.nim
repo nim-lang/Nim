@@ -4172,8 +4172,7 @@ when declared(File):
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## Returns the full file-system path of the current source.
   ## This is the path of the Nim source file containing this code.
-  ## Its available for JavaScript, NodeJS and NimScript backends.
-  ## Its available for C, C++ and ObjectiveC backends. Its available at compile-time.
+  ## It is available at compile-time only.
   ##
   ## See also:
   ## * `getHomeDir proc <https://nim-lang.org/docs/os.html#getHomeDir>`_
