@@ -924,6 +924,7 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
     put(g, tkParRi, ")")
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
+  # n in line after n change line to 
   if isNil(n): return
   var
     a: TContext

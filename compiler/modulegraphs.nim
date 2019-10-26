@@ -132,7 +132,7 @@ proc hash*(u: SigHash): Hash =
     result = (result shl 8) or u.MD5Digest[x].int
 
 proc hash*(x: FileIndex): Hash {.borrow.}
-
+  
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
     when compiles(c.c.graph):
