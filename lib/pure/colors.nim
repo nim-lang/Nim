@@ -6,8 +6,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements color handling for Nim. It is used by
-## the ``graphics`` module.
+## This module implements color handling for Nim.
 
 import strutils
 from algorithm import binarySearch
