@@ -441,8 +441,7 @@ Miscellaneous
   browser.
 
 * `colors <colors.html>`_
-  This module implements color handling for Nim. It is used by
-  the ``graphics`` module.
+  This module implements color handling for Nim.
 
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
