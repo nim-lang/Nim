@@ -29,6 +29,8 @@ proc complex*[T: SomeFloat](re: T; im: T): Complex[T] =
   result.im = im
 
 proc complex*[T: SomeFloat](re: T): Complex[T] =
+  # Not using a default argument for `im` here like in `complex32` and
+  # `complex64` is a workaround for #12528.
   result.re = re
   result.im = 0.0
 
