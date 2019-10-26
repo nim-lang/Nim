@@ -24,15 +24,19 @@ type
   Complex32* = Complex[float32]
     ## Alias for a pair of 32-bit floats.
 
-proc complex*[T: SomeFloat](re: T; im: T = 0.0): Complex[T] =
+proc complex*[T: SomeFloat](re: T; im: T): Complex[T] =
   result.re = re
   result.im = im
 
-proc complex32*(re: float32; im: float32 = 0.0): Complex[float32] =
+proc complex*[T: SomeFloat](re: T): Complex[T] =
+  result.re = re
+  result.im = 0.0
+
+proc complex32*(re: float32; im: float32 = 0.0'f32): Complex[float32] =
   result.re = re
   result.im = im
 
-proc complex64*(re: float64; im: float64 = 0.0): Complex[float64] =
+proc complex64*(re: float64; im: float64 = 0.0'f64): Complex[float64] =
   result.re = re
   result.im = im
 
@@ -451,3 +455,6 @@ when isMainModule:
   doAssert(sizeof(a) == 16)
 
   doAssert 123.0.im + 456.0 == complex64(456, 123)
+
+  let tmp = complex(123.456'f32)
+  doAssert tmp.im is float32
