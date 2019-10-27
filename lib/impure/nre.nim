@@ -357,11 +357,13 @@ iterator items*(pattern: Captures,
 
 proc toSeq*(pattern: CaptureBounds,
             default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc toSeq*(pattern: Captures,
             default: Option[string] = none(string)): seq[Option[string]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc `$`*(pattern: RegexMatch): string =
   return pattern.captures[-1]
