@@ -132,7 +132,6 @@ template mix*(a, b: Color, fn: untyped): untyped =
         y = if y < 0: 0 else: 255
       y
 
-  var ar, ag, ab, br, bg, bb: int
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
   rawRGB(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
