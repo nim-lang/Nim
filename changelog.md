@@ -20,6 +20,7 @@
 
 - `macros.newLit` now works for ref object types.
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- `jsfetch` [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 ## Library changes
 
