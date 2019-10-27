@@ -245,7 +245,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   var env: PNode
   if owner.isIterator:
     let it = getHiddenParam(g, owner)
-    addUniqueField(it.typ.sons[0], hp, g.cache)
+    addUniqueField(it.typ.skipTypes({tyOwned}).sons[0], hp, g.cache)
     env = indirectAccess(newSymNode(it), hp, hp.info)
   else:
     let e = newSym(skLet, iter.name, owner, n.info)
