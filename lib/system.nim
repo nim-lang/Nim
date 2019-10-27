@@ -4172,13 +4172,12 @@ when declared(File):
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## Returns the full file-system path of the current source.
   ## This is the path of the Nim source file containing this code.
-  ## It is available at compile-time only.
   ##
   ## See also:
-  ## * `getHomeDir proc <https://nim-lang.org/docs/os.html#getHomeDir>`_
-  ## * `getConfigDir proc <https://nim-lang.org/docs/os.html#getConfigDir>`_
-  ## * `getTempDir proc <https://nim-lang.org/docs/os.html#getTempDir>`_
-  ## * `setCurrentDir proc <https://nim-lang.org/docs/os.html#setCurrentDir%2Cstring>`_
+  ## * `getHomeDir proc <os.html#getHomeDir>`_
+  ## * `getConfigDir proc <os.html#getConfigDir>`_
+  ## * `getTempDir proc <os.html#getTempDir>`_
+  ## * `setCurrentDir proc <os.html#setCurrentDir%2Cstring>`_
 
 when compileOption("rangechecks"):
   template rangeCheck*(cond) =
