@@ -1,5 +1,6 @@
 image: openbsd/latest
 packages:
+- gmake
 - sqlite3
 - node
 - boehm-gc
@@ -14,20 +15,15 @@ tasks:
 - setup: |
     cd Nim
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
-    cd csources
-    sh build.sh
-    cd ../
+    gmake -C csources -j $(sysctl -n hw.ncpu)
     bin/nim c --skipUserCfg --skipParentCfg koch
-    sed -i'.original' -e 's/cc = gcc/cc = clang/g' config/nim.cfg
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
     cd Nim
-    ./koch runCI && exitcode=$? || exitcode=$?
-    if [[ $exitcode -ne 0 ]]; then
+    if ! ./koch runCI; then
       nim c -r tools/ci_testresults.nim
+      exit 1
     fi
-
-    exit $exitcode
 triggers:
 - action: email
   condition: failure
