@@ -2559,9 +2559,11 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           defaultValue = implicitConv(nkHiddenStdConv, formal.typ, defaultValue, m, c)
         # proc foo(x: T = 0.0)
         # foo()
-        if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {} and
-            idTableGet(m.bindings, formal.typ) == nil:
-          put(m, formal.typ, defaultValue.typ)
+        if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {}:
+          let existing = PType(idTableGet(m.bindings, formal.typ))
+          if existing == nil or existing.kind == tyTypeDesc:
+            # see bug #11600:
+            put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
     inc(f)
