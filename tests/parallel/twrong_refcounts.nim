@@ -28,10 +28,10 @@ proc greet(p:Person) =
 # ---
 
 proc setup =
-  for i in 0 .. <20:
+  for i in 0 ..< 20:
     people.add newPerson(i + 1)
-  for i in 0 .. <20:
-    people[i].friend = people[random(20)]
+  for i in 0 ..< 20:
+    people[i].friend = people[rand(20)]
 
 proc update =
   var countA: array[20, int]
@@ -45,7 +45,7 @@ proc update =
   for i, p in people:
     countB[i] = getRefCount(p)
 
-  for i in 0 .. <20:
+  for i in 0 ..< 20:
     doAssert countA[i] == countB[i]
   echo "Success"
 
