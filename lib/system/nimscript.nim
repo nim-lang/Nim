@@ -331,10 +331,6 @@ proc findExe*(bin: string): string =
   ## found.
   builtin
 
-proc getCurrentDir*(): string =
-  ## Returns the current working directory.
-  builtin
-
 template withDir*(dir: string; body: untyped): untyped =
   ## Changes the current directory temporarily.
   ##

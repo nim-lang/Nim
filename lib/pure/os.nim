@@ -2818,7 +2818,7 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
       len = readlink(procPath, result, len)
     setLen(result, len)
 
-when defined(openbsd):
+when not weirdTarget and defined(openbsd):
   proc getApplOpenBsd(): string =
     # similar to getApplHeuristic, but checks current working directory
     when declared(paramStr):
