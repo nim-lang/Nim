@@ -31,7 +31,7 @@ proc setup =
   for i in 0 ..< 20:
     people.add newPerson(i + 1)
   for i in 0 ..< 20:
-    people[i].friend = people[random(20)]
+    people[i].friend = people[rand(20)]
 
 proc update =
   var countA: array[20, int]
