@@ -14,10 +14,9 @@ proc threadTask(ev: AsyncEvent) =
   ev.trigger()
 
 for i in 0 ..< 1000:
-  echo "i: ", i
   var ev = newAsyncEvent()
   evs.add ev
-  addEvent(ev, proc(fd: AsyncFD): bool {.gcsafe,closure.} = triggerCount += 1; echo "triggerCount: ", triggerCount; true)
+  addEvent(ev, proc(fd: AsyncFD): bool {.gcsafe,closure.} = triggerCount += 1; true)
   spawn(threadTask(ev))
 
 drain()

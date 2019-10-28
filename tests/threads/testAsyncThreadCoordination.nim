@@ -109,13 +109,13 @@ import os, asyncdispatch
 
 type
   ThreadArg = object
-    event1: VirtualAsyncEvent
-    event2: VirtualAsyncEvent
+    event1: AsyncEvent
+    event2: AsyncEvent
 
 when not(compileOption("threads")):
   {.fatal: "Please, compile this program with the --threads:on option!".}
 
-proc wait(event: VirtualAsyncEvent): Future[void] =
+proc wait(event: AsyncEvent): Future[void] =
   var retFuture = newFuture[void]("AsyncEvent.wait")
   proc continuation(fd: AsyncFD): bool {.gcsafe.} =
     if not retFuture.finished:
@@ -130,26 +130,12 @@ proc asyncProc1(args: ThreadArg) {.async.} =
     # to sanity check against a race condition or deadlock.
     await args.event1.wait()
     args.event2.trigger()
-    #while true:
-      # the other thread may not have registered the event with it's event loop yet.
-      # keep trying to trigger, eventually the other thread will be ready.
-      #try:
-        #args.event2.trigger()
-        #break;
-      #except ValueError:
-        #continue
     # Why echoes and not just a count? Because this test is about coordination of threads.
     # We need to make sure the threads get properly synchronized on each iteration.
     echo "Thread 1: iteration ", i
 
 proc asyncProc2(args: ThreadArg) {.async.} =
   for i in 0 .. 50:
-    #while true:
-      #try:
-        #args.event1.trigger()
-        #break;
-      #except ValueError:
-        #continue
     args.event1.trigger()
     await args.event2.wait()
     echo "Thread 2: iteration ", i
@@ -170,8 +156,8 @@ proc main() =
     thread1: Thread[ThreadArg]
     thread2: Thread[ThreadArg]
 
-  args.event1 = newVirtualAsyncEvent()
-  args.event2 = newVirtualAsyncEvent()
+  args.event1 = newAsyncEvent()
+  args.event2 = newAsyncEvent()
   thread1.createThread(threadProc1, args)
   # make sure the threads startup in order, or we will either deadlock or error.
   sleep(100)
