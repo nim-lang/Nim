@@ -720,6 +720,11 @@ proc newLit*(b: bool): NimNode {.compileTime.} =
   ## Produces a new boolean literal node.
   result = if b: bindSym"true" else: bindSym"false"
 
+proc newLit*(s: string): NimNode {.compileTime.} =
+  ## Produces a new string literal node.
+  result = newNimNode(nnkStrLit)
+  result.strVal = s
+
 when false:
   # the float type is not really a distinct type as described in https://github.com/nim-lang/Nim/issues/5875
   proc newLit*(f: float): NimNode {.compileTime.} =
@@ -786,11 +791,6 @@ proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
   for a,b in arg.fieldPairs:
     result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
-
-proc newLit*(s: string): NimNode {.compileTime.} =
-  ## Produces a new string literal node.
-  result = newNimNode(nnkStrLit)
-  result.strVal = s
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
