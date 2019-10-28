@@ -3872,6 +3872,12 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
+  proc addInt*(result: var string; x: int64) =
+    result.add $x
+
+  proc addFloat*(result: var string; x: float) =
+    result.add $x
+
   when defined(JS) and not defined(nimscript):
     include "system/jssys"
     include "system/reprjs"
@@ -4326,9 +4332,9 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
-  elif T is SomeSignedInt and not defined(JS):
+  elif T is SomeSignedInt:
     s.addInt(x)
-  elif T is SomeFloat and not defined(JS):
+  elif T is SomeFloat:
     s.addFloat(x)
   elif compiles(s.add(x)):
     s.add(x)
