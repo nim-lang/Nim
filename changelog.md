@@ -8,6 +8,7 @@
 ### Breaking changes in the standard library
 
 - `base64.encode` no longer supports `lineLen` and `newLine` use `base64.encodeMIME` instead.
+- `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/" as the dir component of "/root_sub_dir" instead of the empty string.
 
 
 ### Breaking changes in the compiler
