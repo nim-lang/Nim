@@ -3,7 +3,7 @@ discard """
   output: '''443 443'''
 """
 
-import strutils, os
+import strutils, os, std / wordwrap
 
 import core / allocators
 import system / ansi_c

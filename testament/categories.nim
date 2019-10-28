@@ -696,7 +696,10 @@ proc processCategory(r: var TResults, cat: Category,
   of "nimble-packages":
     testNimblePackages(r, cat)
   of "niminaction":
-    testNimInAction(r, cat, options)
+    when false:
+      # disabled for Nim 1.1 and beyond, Nim in action targets 1.0
+      # and uses the depreated unary '<' operator.
+      testNimInAction(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
