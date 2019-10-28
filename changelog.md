@@ -20,6 +20,7 @@
 
 - `macros.newLit` now works for ref object types.
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- Added overloaded `strformat.fmt` macro that use specified characters as delimiter instead of '{' and '}'.
 
 ## Library changes
 
