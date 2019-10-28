@@ -63,9 +63,9 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
       globalError(conf, sym.info, "dynlib needs to be a string lit")
     var theAddr: pointer
-    if (lib.isNil or lib.kind == libHeader) and not gExehandle.isNil:
+    if (lib.isNil or lib.kind == libHeader) and not gExeHandle.isNil:
       # first try this exe itself:
-      theAddr = gExehandle.symAddr(name)
+      theAddr = gExeHandle.symAddr(name)
       # then try libc:
       if theAddr.isNil:
         let dllhandle = getDll(conf, gDllCache, libcDll, sym.info)
