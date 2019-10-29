@@ -625,6 +625,20 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
+proc shuffled[T](x: seq[T]): seq[T] =
+  ## Shuffled a sequence of elements not-in-place.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  ##
+  ## See also:
+  ## * `shuffle proc<#shuffle,openArray[T]>`_ that shuffles elements in-place.
+  result = x
+  shuffle(result)
+
 when not defined(nimscript):
   import times
 
@@ -668,6 +682,13 @@ when isMainModule:
     shuffle(a)
     doAssert a[0] == 1
     doAssert a[1] == 0
+
+    const b = @[0, 1]
+    let c = shuffled(b) 
+    doAssert b[0] == 0
+    doAssert b[1] == 1
+    doAssert c[0] == 1
+    doAssert c[1] == 0
 
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
