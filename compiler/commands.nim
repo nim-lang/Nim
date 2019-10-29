@@ -768,8 +768,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       incl(conf.globalOptions, optOwnedRefs)
       incl(conf.globalOptions, optSeqDestructors)
       defineSymbol(conf.symbols, "nimV2")
-      conf.selectedGC = gcDestructors
-      defineSymbol(conf.symbols, "gcdestructors")
+      conf.selectedGC = gcHooks
+      defineSymbol(conf.symbols, "gchooks")
       defineSymbol(conf.symbols, "nimSeqsV2")
   of "seqsv2":
     processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)

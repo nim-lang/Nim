@@ -571,7 +571,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   typ.attachedOps[kind] = result
 
   var tk: TTypeKind
-  if g.config.selectedGC == gcDestructors:
+  if g.config.selectedGC in {gcDestructors, gcHooks}:
     tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
   else:
     tk = tyNone # no special casing for strings and seqs
