@@ -49,7 +49,7 @@ proc satMinus(a, b: int): int {.inline.} =
 proc `+`*(a, b: Color): Color =
   ## Adds two colors.
   ##
-  ## This uses saturated artithmetic, so that each color
+  ## This uses saturated arithmetic, so that each color
   ## component cannot overflow (255 is used as a maximum).
   ##
   runnableExamples:
@@ -63,7 +63,7 @@ proc `+`*(a, b: Color): Color =
 proc `-`*(a, b: Color): Color =
   ## Subtracts two colors.
   ##
-  ## This uses saturated artithmetic, so that each color
+  ## This uses saturated arithmetic, so that each color
   ## component cannot underflow (0 is used as a minimum).
   ##
   runnableExamples:

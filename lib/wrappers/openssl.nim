@@ -31,7 +31,7 @@ const useWinVersion = defined(Windows) or defined(nimdoc)
 # To force openSSL version use -d:sslVersion=1.0.0
 # See: #10281, #10230
 # General issue:
-# Other dynamic libraries (like libpg) load diffetent openSSL version then what nim loads.
+# Other dynamic libraries (like libpg) load different openSSL version then what nim loads.
 # Having two different openSSL loaded version causes a crash.
 # Use this compile time define to force the openSSL version that your other dynamic libraries want.
 const sslVersion {.strdefine.}: string = ""
