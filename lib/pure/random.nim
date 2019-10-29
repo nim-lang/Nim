@@ -625,8 +625,26 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
-proc shuffled[T](x: seq[T]): seq[T] =
-  ## Shuffled a sequence of elements not-in-place.
+proc shuffled*[T](r: var Rand; x: seq[T]): seq[T] {.inline.} =
+  ## Shuffled a array of elements not-in-place using the given state.
+  ##
+  ## See also:
+  ## * `shuffled proc<#shuffled, seq[T]>`seq[T] that uses the default
+  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`array[I, T] that return array
+  result = x
+  shuffle(r, result)
+
+proc shuffled*[I, T](r: var Rand; x: array[I, T]): array[I, T] {.inline.} =
+  ## Shuffled a seq of elements not-in-place using the given state.
+  ##
+  ## See also:
+  ## * `shuffled proc<#shuffled, array[I, T]>`array[I, T] that uses the default
+  ## * `shuffled proc<#shuffled, Rand, seq[I, T]>`seq[I, T] that return seq
+  result = x
+  shuffle(r, result)
+
+proc shuffled*[T](x: seq[T]): seq[T] {.inline.} =
+  ## Shuffled a seq of elements not-in-place.
   ##
   ## If `randomize<#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
@@ -635,9 +653,23 @@ proc shuffled[T](x: seq[T]): seq[T] =
   ## thread-safe.
   ##
   ## See also:
-  ## * `shuffle proc<#shuffle,openArray[T]>`_ that shuffles elements in-place.
-  result = x
-  shuffle(result)
+  ## * `shuffled proc<#shuffled, Rand, seq[T]>`seq[T] that uses a provided state
+  ## * `shuffled proc<#shuffled, array[I, T]>`array[I, T] that return array
+  shuffled(state, x)
+
+proc shuffled*[I, T](x: array[I, T]): array[I, T] {.inline.} =
+  ## Shuffled a array of elements not-in-place.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  ##
+  ## See also:
+  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`array[I, T] that uses a provided state
+  ## * `shuffled proc<#shuffled, seq[I, T]>`seq[I, T] that return seq
+  shuffled(state, x)
 
 when not defined(nimscript):
   import times
@@ -684,7 +716,7 @@ when isMainModule:
     doAssert a[1] == 0
 
     const b = @[0, 1]
-    let c = shuffled(b) 
+    let c = shuffled(b)
     doAssert b[0] == 0
     doAssert b[1] == 1
     doAssert c[0] == 1
