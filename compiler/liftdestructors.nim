@@ -367,7 +367,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
   of attachedAsgn:
-    body.add genIf(c, y, callCodegenProc(c.g, "nimIncWeakRef", c.info, y))
+    body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -411,8 +411,8 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call.sons[0] = newSymNode(createMagic(c.g, "deepCopy", mDeepCopy))
     call.sons[1] = y
     body.add newAsgnStmt(x, call)
-  elif optOwnedRefs in c.g.config.globalOptions and
-      optRefCheck in c.g.config.options:
+  elif (optOwnedRefs in c.g.config.globalOptions and
+      optRefCheck in c.g.config.options) or c.g.config.selectedGC == gcDestructors:
     let xx = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
     xx.typ = getSysType(c.g, c.info, tyPointer)
     case c.kind
@@ -424,7 +424,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     of attachedAsgn:
       let yy = genBuiltin(c.g, mAccessEnv, "accessEnv", y)
       yy.typ = getSysType(c.g, c.info, tyPointer)
-      body.add genIf(c, yy, callCodegenProc(c.g, "nimIncWeakRef", c.info, yy))
+      body.add genIf(c, yy, callCodegenProc(c.g, "nimIncRef", c.info, yy))
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
     of attachedDestructor:
@@ -457,8 +457,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if optOwnedRefs in c.g.config.globalOptions and
-        optRefCheck in c.g.config.options:
+    if (optOwnedRefs in c.g.config.globalOptions and
+        optRefCheck in c.g.config.options) or c.g.config.selectedGC == gcDestructors:
       weakrefOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)

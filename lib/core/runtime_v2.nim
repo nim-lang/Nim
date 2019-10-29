@@ -63,7 +63,7 @@ proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
   else:
     dec head(p).rc
 
-proc nimIncWeakRef(p: pointer) {.compilerRtl.} =
+proc nimIncRef(p: pointer) {.compilerRtl.} =
   when hasThreadSupport:
     atomicInc head(p).rc
   else:

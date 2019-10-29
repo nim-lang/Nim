@@ -116,6 +116,7 @@ type
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcHooks,
     gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned

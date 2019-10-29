@@ -344,7 +344,8 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
   # This seems to be generally correct but since it's a bit risky it's disabled
   # for now.
-  let fieldType = if isDefined(c.graph.config, "nimCycleBreaker"):
+  let fieldType = if isDefined(c.graph.config, "nimCycleBreaker") or
+                      c.graph.config.selectedGC == gcDestructors:
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)

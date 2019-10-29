@@ -230,6 +230,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
     of "destructors":  result = conf.selectedGC == gcDestructors
+    of "hooks":        result = conf.selectedGC == gcHooks
     of "go":           result = conf.selectedGC == gcGo
     of "none":         result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
@@ -453,6 +454,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcDestructors
         defineSymbol(conf.symbols, "gcdestructors")
         incl conf.globalOptions, optSeqDestructors
+      of "hooks":
+        conf.selectedGC = gcHooks
+        defineSymbol(conf.symbols, "gchooks")
+        incl conf.globalOptions, optSeqDestructors
       of "go":
         conf.selectedGC = gcGo
         defineSymbol(conf.symbols, "gogc")
@@ -509,7 +514,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       undefSymbol(conf.symbols, "useNimRtl")
   of "oldnewlines":
     case arg.normalize
-    of "","on":
+    of "", "on":
       conf.oldNewlines = true
       defineSymbol(conf.symbols, "nimOldNewlines")
     of "off":
