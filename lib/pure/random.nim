@@ -629,8 +629,8 @@ proc shuffled*[T](r: var Rand; x: seq[T]): seq[T] {.inline.} =
   ## Shuffled a array of elements not-in-place using the given state.
   ##
   ## See also:
-  ## * `shuffled proc<#shuffled, seq[T]>`seq[T] that uses the default
-  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`array[I, T] that return array
+  ## * `shuffled proc<#shuffled, seq[T]>`_ that uses the default
+  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`_ that return array
   result = x
   shuffle(r, result)
 
@@ -638,8 +638,8 @@ proc shuffled*[I, T](r: var Rand; x: array[I, T]): array[I, T] {.inline.} =
   ## Shuffled a seq of elements not-in-place using the given state.
   ##
   ## See also:
-  ## * `shuffled proc<#shuffled, array[I, T]>`array[I, T] that uses the default
-  ## * `shuffled proc<#shuffled, Rand, seq[I, T]>`seq[I, T] that return seq
+  ## * `shuffled proc<#shuffled, array[I, T]>`_ that uses the default
+  ## * `shuffled proc<#shuffled, Rand, seq[T]>`_ that return seq
   result = x
   shuffle(r, result)
 
@@ -653,8 +653,8 @@ proc shuffled*[T](x: seq[T]): seq[T] {.inline.} =
   ## thread-safe.
   ##
   ## See also:
-  ## * `shuffled proc<#shuffled, Rand, seq[T]>`seq[T] that uses a provided state
-  ## * `shuffled proc<#shuffled, array[I, T]>`array[I, T] that return array
+  ## * `shuffled proc<#shuffled, Rand, seq[T]>`_ that uses a provided state
+  ## * `shuffled proc<#shuffled, array[I, T]>`_ that return array
   shuffled(state, x)
 
 proc shuffled*[I, T](x: array[I, T]): array[I, T] {.inline.} =
@@ -667,8 +667,8 @@ proc shuffled*[I, T](x: array[I, T]): array[I, T] {.inline.} =
   ## thread-safe.
   ##
   ## See also:
-  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`array[I, T] that uses a provided state
-  ## * `shuffled proc<#shuffled, seq[I, T]>`seq[I, T] that return seq
+  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`_ that uses a provided state
+  ## * `shuffled proc<#shuffled, seq[T]>`_ that return seq
   shuffled(state, x)
 
 when not defined(nimscript):
