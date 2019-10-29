@@ -722,6 +722,13 @@ when isMainModule:
     doAssert c[0] == 1
     doAssert c[1] == 0
 
+    const d = @[0, 1]
+    let e = shuffled(b)
+    doAssert d[0] == 0
+    doAssert d[1] == 1
+    doAssert e[0] == 1
+    doAssert e[1] == 0
+
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
 
