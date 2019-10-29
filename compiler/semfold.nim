@@ -181,7 +181,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mUnaryMinusI, mUnaryMinusI64: result = foldUnarySub(getInt(a), n, g)
   of mUnaryMinusF64: result = newFloatNodeT(-getFloat(a), n, g)
   of mNot: result = newIntNodeT(One - getInt(a), n, g)
-  of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
+  of mCard: result = newIntNodeT(toInt128(nimsets.cardSet(g.config, a)), n, g)
   of mBitnotI:
     if n.typ.isUnsigned:
       result = newIntNodeT(bitnot(getInt(a)).maskBytes(int(n.typ.size)), n, g)
@@ -214,24 +214,24 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     result = newIntNodeT(if argA > argB: argA else: argB, n, g)
   of mShlI:
     case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result = newIntNodeT(toInt8(getInt(a)) shl getInt64(b), n, g)
-    of tyInt16: result = newIntNodeT(toInt16(getInt(a)) shl getInt64(b), n, g)
-    of tyInt32: result = newIntNodeT(toInt32(getInt(a)) shl getInt64(b), n, g)
-    of tyInt64: result = newIntNodeT(toInt64(getInt(a)) shl getInt64(b), n, g)
+    of tyInt8: result = newIntNodeT(toInt128(toInt8(getInt(a)) shl toInt64(getInt(b))), n, g)
+    of tyInt16: result = newIntNodeT(toInt128(toInt16(getInt(a)) shl toInt64(getInt(b))), n, g)
+    of tyInt32: result = newIntNodeT(toInt128(toInt32(getInt(a)) shl toInt64(getInt(b))), n, g)
+    of tyInt64: result = newIntNodeT(toInt128(toInt64(getInt(a)) shl toInt64(getInt(b))), n, g)
     of tyInt:
       if g.config.target.intSize == 4:
-        result = newIntNodeT(toInt128(toInt32(getInt(a)) shl getInt64(b)), n, g)
+        result = newIntNodeT(toInt128(toInt32(getInt(a)) shl toInt64(getInt(b))), n, g)
       else:
-        result = newIntNodeT(toInt128(toInt64(getInt(a)) shl getInt64(b)), n, g)
-    of tyUInt8: result = newIntNodeT(toInt128(toUInt8(getInt(a)) shl getInt64(b)), n, g)
-    of tyUInt16: result = newIntNodeT(toInt128(toUInt16(getInt(a)) shl getInt64(b)), n, g)
-    of tyUInt32: result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl getInt64(b)), n, g)
-    of tyUInt64: result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl getInt64(b)), n, g)
+        result = newIntNodeT(toInt128(toInt64(getInt(a)) shl toInt64(getInt(b))), n, g)
+    of tyUInt8: result = newIntNodeT(toInt128(toUInt8(getInt(a)) shl toInt64(getInt(b))), n, g)
+    of tyUInt16: result = newIntNodeT(toInt128(toUInt16(getInt(a)) shl toInt64(getInt(b))), n, g)
+    of tyUInt32: result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl toInt64(getInt(b))), n, g)
+    of tyUInt64: result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl toInt64(getInt(b))), n, g)
     of tyUInt:
       if g.config.target.intSize == 4:
-        result = newIntNodeT(BiggestInt(toUInt32(getInt(a)) shl getInt64(b)), n, g)
+        result = newIntNodeT(toInt128(toUInt32(getInt(a)) shl toInt64(getInt(b))), n, g)
       else:
-        result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl getInt64(b)), n, g)
+        result = newIntNodeT(toInt128(toUInt64(getInt(a)) shl toInt64(getInt(b))), n, g)
     else: internalError(g.config, n.info, "constant folding for shl")
   of mShrI:
     var a = cast[uint64](getInt(a))
@@ -252,14 +252,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
         # unsigned and 64 bit integers don't need masking
         discard
     let c = cast[BiggestInt](a shr b)
-    result = newIntNodeT(c, n, g)
+    result = newIntNodeT(toInt128(c), n, g)
   of mAshrI:
     case skipTypes(n.typ, abstractRange).kind
-    of tyInt8: result = newIntNodeT(ashr(int8(getInt64(a)), int8(getInt64(b))), n, g)
-    of tyInt16: result = newIntNodeT(ashr(int16(getInt64(a)), int16(getInt64(b))), n, g)
-    of tyInt32: result = newIntNodeT(ashr(int32(getInt64(a)), int32(getInt64(b))), n, g)
+    of tyInt8: result =  newIntNodeT(toInt128(ashr(toInt8(getInt(a)), toInt8(getInt(b)))), n, g)
+    of tyInt16: result = newIntNodeT(toInt128(ashr(toInt16(getInt(a)), toInt16(getInt(b)))), n, g)
+    of tyInt32: result = newIntNodeT(toInt128(ashr(toInt32(getInt(a)), toInt32(getInt(b)))), n, g)
     of tyInt64, tyInt:
-      result = newIntNodeT(ashr(getInt64(a), getInt64(b)), n, g)
+      result = newIntNodeT(toInt128(ashr(toInt64(getInt(a)), toInt64(getInt(b)))), n, g)
     else: internalError(g.config, n.info, "constant folding for ashr")
   of mDivI:
     let argA = getInt(a)
@@ -276,23 +276,23 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
   of mDivF64:
     result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
-  of mIsNil: result = newIntNodeT(ord(a.kind == nkNilLit), n, g)
+  of mIsNil: result = newIntNodeT(toInt128(ord(a.kind == nkNilLit)), n, g)
   of mLtI, mLtB, mLtEnum, mLtCh:
-    result = newIntNodeT(ord(getOrdValue(a) < getOrdValue(b)), n, g)
+    result = newIntNodeT(toInt128(ord(getOrdValue(a) < getOrdValue(b))), n, g)
   of mLeI, mLeB, mLeEnum, mLeCh:
-    result = newIntNodeT(ord(getOrdValue(a) <= getOrdValue(b)), n, g)
+    result = newIntNodeT(toInt128(ord(getOrdValue(a) <= getOrdValue(b))), n, g)
   of mEqI, mEqB, mEqEnum, mEqCh:
-    result = newIntNodeT(ord(getOrdValue(a) == getOrdValue(b)), n, g)
-  of mLtF64: result = newIntNodeT(ord(getFloat(a) < getFloat(b)), n, g)
-  of mLeF64: result = newIntNodeT(ord(getFloat(a) <= getFloat(b)), n, g)
-  of mEqF64: result = newIntNodeT(ord(getFloat(a) == getFloat(b)), n, g)
-  of mLtStr: result = newIntNodeT(ord(getStr(a) < getStr(b)), n, g)
-  of mLeStr: result = newIntNodeT(ord(getStr(a) <= getStr(b)), n, g)
-  of mEqStr: result = newIntNodeT(ord(getStr(a) == getStr(b)), n, g)
+    result = newIntNodeT(toInt128(ord(getOrdValue(a) == getOrdValue(b))), n, g)
+  of mLtF64: result = newIntNodeT(toInt128(ord(getFloat(a) < getFloat(b))), n, g)
+  of mLeF64: result = newIntNodeT(toInt128(ord(getFloat(a) <= getFloat(b))), n, g)
+  of mEqF64: result = newIntNodeT(toInt128(ord(getFloat(a) == getFloat(b))), n, g)
+  of mLtStr: result = newIntNodeT(toInt128(ord(getStr(a) < getStr(b))), n, g)
+  of mLeStr: result = newIntNodeT(toInt128(ord(getStr(a) <= getStr(b))), n, g)
+  of mEqStr: result = newIntNodeT(toInt128(ord(getStr(a) == getStr(b))), n, g)
   of mLtU, mLtU64:
-    result = newIntNodeT(ord(`<%`(getOrdValue64(a), getOrdValue64(b))), n, g)
+    result = newIntNodeT(toInt128(ord(`<%`(toInt64(getOrdValue(a)), toInt64(getOrdValue(b))))), n, g)
   of mLeU, mLeU64:
-    result = newIntNodeT(ord(`<=%`(getOrdValue64(a), getOrdValue64(b))), n, g)
+    result = newIntNodeT(toInt128(ord(`<=%`(toInt64(getOrdValue(a)), toInt64(getOrdValue(b))))), n, g)
   of mBitandI, mAnd: result = newIntNodeT(bitand(a.getInt, b.getInt), n, g)
   of mBitorI, mOr: result = newIntNodeT(bitor(getInt(a), getInt(b)), n, g)
   of mBitxorI, mXor: result = newIntNodeT(bitxor(getInt(a), getInt(b)), n, g)
@@ -316,10 +316,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     let argB = maskBytes(getInt(b), int(a.typ.size))
     if argB != Zero:
       result = newIntNodeT(argA div argB, n, g)
-  of mLeSet: result = newIntNodeT(ord(containsSets(g.config, a, b)), n, g)
-  of mEqSet: result = newIntNodeT(ord(equalSets(g.config, a, b)), n, g)
+  of mLeSet: result = newIntNodeT(toInt128(ord(containsSets(g.config, a, b))), n, g)
+  of mEqSet: result = newIntNodeT(toInt128(ord(equalSets(g.config, a, b))), n, g)
   of mLtSet:
-    result = newIntNodeT(ord(containsSets(g.config, a, b) and not equalSets(g.config, a, b)), n, g)
+    result = newIntNodeT(toInt128(ord(
+      containsSets(g.config, a, b) and not equalSets(g.config, a, b))), n, g)
   of mMulSet:
     result = nimsets.intersectSets(g.config, a, b)
     result.info = n.info
@@ -333,7 +334,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     result = nimsets.symdiffSets(g.config, a, b)
     result.info = n.info
   of mConStrStr: result = newStrNodeT(getStrOrChar(a) & getStrOrChar(b), n, g)
-  of mInSet: result = newIntNodeT(ord(inSet(a, b)), n, g)
+  of mInSet: result = newIntNodeT(toInt128(ord(inSet(a, b))), n, g)
   of mRepr:
     # BUGFIX: we cannot eval mRepr here for reasons that I forgot.
     discard
@@ -360,13 +361,13 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     result = copyTree(a)
     result.typ = n.typ
   of mCompileOption:
-    result = newIntNodeT(ord(commands.testCompileOption(g.config, a.getStr, n.info)), n, g)
+    result = newIntNodeT(toInt128(ord(commands.testCompileOption(g.config, a.getStr, n.info))), n, g)
   of mCompileOptionArg:
-    result = newIntNodeT(ord(
-      testCompileOptionArg(g.config, getStr(a), getStr(b), n.info)), n, g)
+    result = newIntNodeT(toInt128(ord(
+      testCompileOptionArg(g.config, getStr(a), getStr(b), n.info))), n, g)
   of mEqProc:
-    result = newIntNodeT(ord(
-        exprStructuralEquivalent(a, b, strictSymEquality=true)), n, g)
+    result = newIntNodeT(toInt128(ord(
+        exprStructuralEquivalent(a, b, strictSymEquality=true))), n, g)
   else: discard
 
 proc getConstIfExpr(c: PSym, n: PNode; g: ModuleGraph): PNode =
@@ -446,7 +447,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
     of tyFloat..tyFloat64:
-      result = newIntNodeT(BiggestInt(getFloat(a)), n, g)
+      result = newIntNodeT(toInt128(getFloat(a)), n, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       var val = a.getOrdValue
       if check: rangeCheck(n, val, g)
@@ -549,13 +550,13 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     var s = n.sym
     case s.kind
     of skEnumField:
-      result = newIntNodeT(s.position, n, g)
+      result = newIntNodeT(toInt128(s.position), n, g)
     of skConst:
       case s.magic
-      of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n, g)
+      of mIsMainModule: result = newIntNodeT(toInt128(ord(sfMainModule in m.flags)), n, g)
       of mCompileDate: result = newStrNodeT(getDateStr(), n, g)
       of mCompileTime: result = newStrNodeT(getClockStr(), n, g)
-      of mCpuEndian: result = newIntNodeT(ord(CPU[g.config.target.targetCPU].endian), n, g)
+      of mCpuEndian: result = newIntNodeT(toInt128(ord(CPU[g.config.target.targetCPU].endian)), n, g)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.targetOS].name), n, g)
       of mHostCPU: result = newStrNodeT(platform.CPU[g.config.target.targetCPU].name.toLowerAscii, n, g)
       of mBuildOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.hostOS].name), n, g)
@@ -564,7 +565,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mIntDefine:
         if isDefined(g.config, s.name.s):
           try:
-            result = newIntNodeT(g.config.symbols[s.name.s].parseInt, n, g)
+            result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseInt), n, g)
           except ValueError:
             localError(g.config, s.info,
               "{.intdefine.} const was set to an invalid integer: '" &
@@ -575,7 +576,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mBoolDefine:
         if isDefined(g.config, s.name.s):
           try:
-            result = newIntNodeT(g.config.symbols[s.name.s].parseBool.int, n, g)
+            result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseBool.int), n, g)
           except ValueError:
             localError(g.config, s.info,
               "{.booldefine.} const was set to an invalid bool: '" &
@@ -631,12 +632,12 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           var a = getArrayConstr(m, n.sons[1], g)
           if a.kind == nkBracket:
             # we can optimize it away:
-            result = newIntNodeT(len(a)-1, n, g)
+            result = newIntNodeT(toInt128(len(a)-1), n, g)
       of mLengthOpenArray:
         var a = getArrayConstr(m, n.sons[1], g)
         if a.kind == nkBracket:
           # we can optimize it away! This fixes the bug ``len(134)``.
-          result = newIntNodeT(len(a), n, g)
+          result = newIntNodeT(toInt128(len(a)), n, g)
         else:
           result = magicCall(m, n, g)
       of mLengthArray:

@@ -407,11 +407,17 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
   if divisor > dividend:
     result.quotient = Zero
-    result.remainder = dividend
+    if isNegativeA:
+      result.remainder = -dividend
+    else:
+      result.remainder = dividend
     return
 
   if divisor == dividend:
-    result.quotient = One
+    if isNegativeA xor isNegativeB:
+      result.quotient = NegOne
+    else:
+      result.quotient = One
     result.remainder = Zero
     return
 
@@ -685,3 +691,13 @@ when isMainModule:
   doAssert divMod(toInt128(-ma),toInt128( mb)) == (toInt128(-ma div  mb), toInt128(-ma mod  mb))
   doAssert divMod(toInt128( ma),toInt128(-mb)) == (toInt128( ma div -mb), toInt128( ma mod -mb))
   doAssert divMod(toInt128(-ma),toInt128(-mb)) == (toInt128(-ma div -mb), toInt128(-ma mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( mb)) == (toInt128( mb div  mb), toInt128( mb mod  mb))
+  doAssert divMod(toInt128(-mb),toInt128( mb)) == (toInt128(-mb div  mb), toInt128(-mb mod  mb))
+  doAssert divMod(toInt128( mb),toInt128(-mb)) == (toInt128( mb div -mb), toInt128( mb mod -mb))
+  doAssert divMod(toInt128(-mb),toInt128(-mb)) == (toInt128(-mb div -mb), toInt128(-mb mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( ma)) == (toInt128( mb div  ma), toInt128( mb mod  ma))
+  doAssert divMod(toInt128(-mb),toInt128( ma)) == (toInt128(-mb div  ma), toInt128(-mb mod  ma))
+  doAssert divMod(toInt128( mb),toInt128(-ma)) == (toInt128( mb div -ma), toInt128( mb mod -ma))
+  doAssert divMod(toInt128(-mb),toInt128(-ma)) == (toInt128(-mb div -ma), toInt128(-mb mod -ma))

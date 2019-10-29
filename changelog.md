@@ -8,6 +8,7 @@
 ### Breaking changes in the standard library
 
 - `base64.encode` no longer supports `lineLen` and `newLine` use `base64.encodeMIME` instead.
+- `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/" as the dir component of "/root_sub_dir" instead of the empty string.
 
 
 ### Breaking changes in the compiler
@@ -20,6 +21,7 @@
 
 - `macros.newLit` now works for ref object types.
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- Added overloaded `strformat.fmt` macro that use specified characters as delimiter instead of '{' and '}'.
 - `jsfetch` [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 ## Library changes

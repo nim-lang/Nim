@@ -2048,7 +2048,7 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(nodejs) and not defined(nimscript):
+when defined(js) and defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
@@ -2092,7 +2092,7 @@ elif defined(genode):
 
 
 
-elif defined(nodejs) and not defined(nimscript):
+elif defined(js) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
@@ -3579,10 +3579,10 @@ const
   NimMajor* {.intdefine.}: int = 1
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 0
+  NimMinor* {.intdefine.}: int = 1
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 99
+  NimPatch* {.intdefine.}: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3871,6 +3871,12 @@ elif defined(JS):
   proc allocShared0(size: Natural): pointer = discard
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
+
+  proc addInt*(result: var string; x: int64) =
+    result.add $x
+
+  proc addFloat*(result: var string; x: float) =
+    result.add $x
 
   when defined(JS) and not defined(nimscript):
     include "system/jssys"
@@ -4193,7 +4199,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ##
   ## This is only useful for optimization purposes.
   if s.len == 0: return
-  when not defined(JS) and not defined(nimscript):
+  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -4326,9 +4332,9 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
-  elif T is SomeSignedInt and not defined(JS):
+  elif T is SomeSignedInt:
     s.addInt(x)
-  elif T is SomeFloat and not defined(JS):
+  elif T is SomeFloat:
     s.addFloat(x)
   elif compiles(s.add(x)):
     s.add(x)
@@ -4550,12 +4556,12 @@ type
 
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
-      ## Hook into the Genode component bootstrap process.
-      ##
-      ## This hook is called after all globals are initialized.
-      ## When this hook is set the component will not automatically exit,
-      ## call ``quit`` explicitly to do so. This is the only available method
-      ## of accessing the initial Genode environment.
+    ## Hook into the Genode component bootstrap process.
+    ##
+    ## This hook is called after all globals are initialized.
+    ## When this hook is set the component will not automatically exit,
+    ## call ``quit`` explicitly to do so. This is the only available method
+    ## of accessing the initial Genode environment.
 
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during ``Component::construct`` by the loader.
