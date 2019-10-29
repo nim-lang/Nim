@@ -1415,7 +1415,7 @@ proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
            else: {gfNodeAddr}
   let newflags = flags-{gfNode, gfNodeAddr}+af
 
-  if isGlobal(n.sons[0]):
+  if isGlobal(n.sons[0]) or n[0].kind in {nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}:
     gen(c, n.sons[0], dest, flags+af)
   else:
     let tmp = c.genx(n.sons[0], newflags)
@@ -1649,35 +1649,21 @@ template needsRegLoad(): untyped =
   {gfNode, gfNodeAddr} * flags == {} and
     fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
 
-proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
-                        flags: TGenFlags) =
-  let a = c.genx(n.sons[0], flags)
-  let b = c.genIndex(n.sons[1], n.sons[0].typ)
-  if dest < 0: dest = c.getTemp(n.typ)
-  if needsRegLoad():
-    var cc = c.getTemp(n.typ)
-    c.gABC(n, opc, cc, a, b)
-    c.gABC(n, opcNodeToReg, dest, cc)
-    c.freeTemp(cc)
-  else:
-    #message(n.info, warnUser, "argh")
-    #echo "FLAGS ", flags, " ", fitsRegister(n.typ), " ", typeToString(n.typ)
-    c.gABC(n, opc, dest, a, b)
-  c.freeTemp(a)
-  c.freeTemp(b)
 
 proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  let a = c.genx(n.sons[0], flags)
-  let b = genField(c, n.sons[1])
+  let objR = c.genx(n.sons[0], flags)
+  let fieldPos = genField(c, n.sons[1])
   if dest < 0: dest = c.getTemp(n.typ)
-  if needsRegLoad():
+  if {gfNode, gfNodeAddr} * flags != {}:
+    c.gABC(n, opcLdObjAddr, dest, objR, fieldPos)
+  elif needsRegLoad():
     var cc = c.getTemp(n.typ)
-    c.gABC(n, opcLdObj, cc, a, b)
+    c.gABC(n, opcLdObj, cc, objR, fieldPos)
     c.gABC(n, opcNodeToReg, dest, cc)
     c.freeTemp(cc)
   else:
-    c.gABC(n, opcLdObj, dest, a, b)
-  c.freeTemp(a)
+    c.gABC(n, opcLdObj, dest, objR, fieldPos)
+  c.freeTemp(objR)
 
 proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   internalAssert c.config, n.kind == nkCheckedFieldExpr
@@ -1714,7 +1700,6 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   var objR: TDest = -1
   genCheckedObjAccessAux(c, n, objR, flags)
-
   let accessExpr = n[0]
   # Field symbol
   var field = accessExpr[1]
@@ -1723,7 +1708,9 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   # Load the content now
   if dest < 0: dest = c.getTemp(n.typ)
   let fieldPos = genField(c, field)
-  if needsRegLoad():
+  if {gfNode, gfNodeAddr} * flags != {}:
+    c.gABC(n, opcLdObjAddr, dest, objR, fieldPos)
+  elif needsRegLoad():
     var cc = c.getTemp(accessExpr.typ)
     c.gABC(n, opcLdObj, cc, objR, fieldPos)
     c.gABC(n, opcNodeToReg, dest, cc)
@@ -1735,12 +1722,28 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
-  if arrayType in {tyString, tyCString}:
-    genArrAccessOpcode(c, n, dest, opcLdStrIdx, {})
-  elif arrayType == tyTypeDesc:
+  var opc: TOpcode
+  if arrayType == tyTypeDesc:
+    # TODO kill typedesc arrays. They are crap.
     c.genTypeLit(n.typ, dest)
   else:
-    genArrAccessOpcode(c, n, dest, opcLdArr, flags)
+    let flags = if arrayType in {tyString, tyCString}: {} else: flags
+    let opc =   if arrayType in {tyString, tyCString}: opcLdStrIdx else: opcLdArr
+    let a = c.genx(n.sons[0], flags)
+    let b = c.genIndex(n.sons[1], n.sons[0].typ)
+    if dest < 0: dest = c.getTemp(n.typ)
+
+    if {gfNode, gfNodeAddr} * flags != {}:
+      c.gABC(n, opcLdObjAddr, dest, a, b)
+    elif needsRegLoad():
+      var cc = c.getTemp(n.typ)
+      c.gABC(n, opc, cc, a, b)
+      c.gABC(n, opcNodeToReg, dest, cc)
+      c.freeTemp(cc)
+    else:
+      c.gABC(n, opc, dest, a, b)
+    c.freeTemp(a)
+    c.freeTemp(b)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
   if t != nil and t.len > 0 and t.sons[0] != nil:

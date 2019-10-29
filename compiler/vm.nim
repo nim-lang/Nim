@@ -493,6 +493,8 @@ const
     "compiler/vmdef.MaxLoopIterations and rebuild the compiler"
   errFieldXNotFound = "node lacks field: "
 
+import astalgo
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -642,6 +644,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         let n = src.sons[rc]
         regs[ra].node = n
+    of opcLdObjAddr:
+      decodeBC(rkNodeAddr)
+      let src = regs[rb].node
+      case src.kind
+      of nkEmpty..nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      of nkObjConstr:
+        let n = src.sons[rc+1]
+        if n.kind == nkExprColonExpr:
+          regs[ra].nodeAddr = addr n.sons[1]
+        else:
+          regs[ra].nodeAddr = addr src.sons[rc+1]
+      of nkBracket:
+        let idx = regs[rc].intVal
+        regs[ra].nodeAddr = addr src.sons[idx]
+      else:
+        debug(src)
+        stackTrace(c, tos, pc, "invalid argument")
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)

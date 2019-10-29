@@ -41,10 +41,11 @@ type
     opcFastAsgnComplex,
     opcNodeToReg,
 
-    opcLdArr,  # a = b[c]
-    opcWrArr,  # a[b] = c
-    opcLdObj,  # a = b.c
-    opcWrObj,  # a.b = c
+    opcLdArr,     # a = b[c]
+    opcWrArr,     # a[b] = c
+    opcLdObj,     # a = b.c
+    opcLdObjAddr, # a = addr(b.c)
+    opcWrObj,     # a.b = c
     opcAddrReg,
     opcAddrNode,
     opcLdDeref,
