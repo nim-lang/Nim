@@ -454,10 +454,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcDestructors
         defineSymbol(conf.symbols, "gcdestructors")
         incl conf.globalOptions, optSeqDestructors
+        incl conf.globalOptions, optTinyRtti
+        if pass in {passCmd2, passPP}:
+          defineSymbol(conf.symbols, "nimSeqsV2")
+          defineSymbol(conf.symbols, "nimV2")
       of "hooks":
         conf.selectedGC = gcHooks
         defineSymbol(conf.symbols, "gchooks")
         incl conf.globalOptions, optSeqDestructors
+        processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
+        if pass in {passCmd2, passPP}:
+          defineSymbol(conf.symbols, "nimSeqsV2")
       of "go":
         conf.selectedGC = gcGo
         defineSymbol(conf.symbols, "gogc")
@@ -465,7 +472,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcNone
         defineSymbol(conf.symbols, "nogc")
       of "stack", "regions":
-        conf.selectedGC= gcRegions
+        conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
@@ -771,6 +778,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.selectedGC = gcHooks
       defineSymbol(conf.symbols, "gchooks")
       defineSymbol(conf.symbols, "nimSeqsV2")
+      defineSymbol(conf.symbols, "nimOwnedEnabled")
   of "seqsv2":
     processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
     if pass in {passCmd2, passPP}:

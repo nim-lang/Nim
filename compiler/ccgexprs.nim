@@ -1206,7 +1206,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   if sizeExpr.isNil:
     sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
 
-  if optOwnedRefs in p.config.globalOptions:
+  if optTinyRtti in p.config.globalOptions:
     b.r = ropecg(p.module, "($1) #nimNewObj($2)",
         [getTypeDesc(p.module, typ), sizeExpr])
     genAssignment(p, a, b, {})

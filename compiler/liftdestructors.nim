@@ -359,6 +359,58 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     body.add genBuiltin(c.g, mDestroy, "destroy", x)
 
+proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  var actions = newNodeI(nkStmtList, c.info)
+  let elemType = t.lastSon
+
+  if isFinal(elemType):
+    addDestructorCall(c, elemType, actions, genDeref(x, nkDerefExpr))
+    actions.add callCodegenProc(c.g, "nimRawDispose", c.info, x)
+  else:
+    addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
+    actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
+
+  let cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
+  cond.typ = getSysType(c.g, x.info, tyBool)
+
+  case c.kind
+  of attachedSink:
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedAsgn:
+    body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genIf(c, cond, actions)
+  of attachedDeepCopy: assert(false, "cannot happen")
+
+proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  ## Closures are really like refs except they always use a virtual destructor
+  ## and we need to do the refcounting only on the ref field which we call 'xenv':
+  let xenv = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
+  xenv.typ = getSysType(c.g, c.info, tyPointer)
+
+  var actions = newNodeI(nkStmtList, c.info)
+  actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xenv)
+
+  let cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, xenv)
+  cond.typ = getSysType(c.g, x.info, tyBool)
+
+  case c.kind
+  of attachedSink:
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedAsgn:
+    let yenv = genBuiltin(c.g, mAccessEnv, "accessEnv", y)
+    yenv.typ = getSysType(c.g, c.info, tyPointer)
+    body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRef", c.info, yenv))
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genIf(c, cond, actions)
+  of attachedDeepCopy: assert(false, "cannot happen")
+
 proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedSink:
@@ -439,7 +491,6 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
   xx.typ = getSysType(c.g, c.info, tyPointer)
   var actions = newNodeI(nkStmtList, c.info)
-  let elemType = t.lastSon
   #discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
   actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xx)
   case c.kind
@@ -457,14 +508,19 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if (optOwnedRefs in c.g.config.globalOptions and
-        optRefCheck in c.g.config.options) or c.g.config.selectedGC == gcDestructors:
+    if c.g.config.selectedGC == gcDestructors:
+      atomicRefOp(c, t, body, x, y)
+    elif (optOwnedRefs in c.g.config.globalOptions and
+        optRefCheck in c.g.config.options):
       weakrefOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyProc:
     if t.callConv == ccClosure:
-      closureOp(c, t, body, x, y)
+      if c.g.config.selectedGC == gcDestructors:
+        atomicClosureOp(c, t, body, x, y)
+      else:
+        closureOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyOwned:
@@ -532,7 +588,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyGenericInst, tyStatic, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
 
-proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp; info: TLineInfo): PSym =
+proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
+                            kind: TTypeAttachedOp; info: TLineInfo): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ[0]
   if baseType.attachedOps[kind] == nil:
