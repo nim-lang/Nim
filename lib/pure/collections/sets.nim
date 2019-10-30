@@ -904,7 +904,7 @@ proc `$`*[A](s: OrderedSet[A]): string =
 iterator items*[A](s: OrderedSet[A]): A =
   ## Iterates over keys in the ordered set `s` in insertion order.
   ##
-  ## If you need a sequence with the elelments you can use `sequtils.toSeq
+  ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
   ## .. code-block::

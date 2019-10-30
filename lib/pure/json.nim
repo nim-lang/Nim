@@ -99,7 +99,7 @@
 ## Unmarshalling
 ## -------------
 ##
-## In addition to reading dynamic data, Nim can also unmarshall JSON directly
+## In addition to reading dynamic data, Nim can also unmarshal JSON directly
 ## into a type with the ``to`` macro.
 ##
 ## .. code-block:: Nim

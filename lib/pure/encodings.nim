@@ -468,7 +468,7 @@ proc convert*(s: string, destEncoding = "UTF-8",
                          srcEncoding = "CP1252"): string =
   ## converts `s` to `destEncoding`. It assumed that `s` is in `srcEncoding`.
   ## This opens a converter, uses it and closes it again and is thus more
-  ## convienent but also likely less efficient than re-using a converter.
+  ## convenient but also likely less efficient than re-using a converter.
   ## utf-16BE, utf-32 conversions not supported on windows
   var c = open(destEncoding, srcEncoding)
   try:

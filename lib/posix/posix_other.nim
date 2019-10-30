@@ -572,7 +572,7 @@ when defined(macosx):
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
 elif defined(solaris):
-  # Solaris dont have MSG_NOSIGNAL
+  # Solaris doesn't have MSG_NOSIGNAL
   const
     MSG_NOSIGNAL* = 0'i32
 else:
