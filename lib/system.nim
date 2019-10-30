@@ -1722,12 +1722,12 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
   ##   assert 42 isnot float
   ##   assert @[1, 2] isnot enum
 
-when (defined(nimV2) and not defined(nimscript)) or defined(nimFixedOwned):
+when (defined(nimOwnedEnabled) and not defined(nimscript)) or defined(nimFixedOwned):
   type owned*[T]{.magic: "BuiltinType".} ## type constructor to mark a ref/ptr or a closure as `owned`.
 else:
   template owned*(t: typedesc): typedesc = t
 
-when defined(nimV2) and not defined(nimscript):
+when defined(nimOwnedEnabled) and not defined(nimscript):
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it in ``a``.
@@ -3237,6 +3237,8 @@ proc `<`*[T: tuple](x, y: T): bool =
 
 
 # ----------------- GC interface ---------------------------------------------
+const
+  usesDestructors = defined(gcDestructors) or defined(gcHooks)
 
 when not defined(nimscript) and hasAlloc:
   type
@@ -3246,7 +3248,7 @@ when not defined(nimscript) and hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-  when not defined(JS) and not defined(gcDestructors):
+  when not defined(JS) and not usesDestructors:
     proc GC_disable*() {.rtl, inl, benign.}
       ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
       ## are needed to reactivate the GC.
@@ -3602,7 +3604,7 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
-    when not defined(gcRegions) and not defined(gcDestructors):
+    when not defined(gcRegions) and not usesDestructors:
       proc initGC() {.gcsafe.}
 
     proc initStackBottom() {.inline, compilerproc.} =
@@ -3620,7 +3622,7 @@ when not defined(JS): #and not defined(nimscript):
       when declared(nimGC_setStackBottom):
         nimGC_setStackBottom(locals)
 
-    when not defined(gcDestructors):
+    when not usesDestructors:
       {.push profiler: off.}
       var
         strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
@@ -3792,10 +3794,10 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/strmantle"
 
     when hasThreadSupport:
-      when hostOS != "standalone" and not defined(gcDestructors): include "system/channels"
+      when hostOS != "standalone" and not usesDestructors: include "system/channels"
 
   when not defined(nimscript) and hasAlloc:
-    when not defined(gcDestructors):
+    when not usesDestructors:
       include "system/assign"
     when not defined(nimV2):
       include "system/repr"
@@ -4396,7 +4398,7 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   discard
 
 when hasAlloc and not defined(nimscript) and not defined(JS) and
-    not defined(gcDestructors):
+    not usesDestructors:
   # XXX how to implement 'deepCopy' is an open problem.
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## Performs a deep copy of `y` and copies it into `x`.
