@@ -800,7 +800,7 @@ type
     ## Raised if an array index is out of bounds.
 
   FieldError* = object of Defect ## \
-    ## Raised if a record field is not accessible because its dicriminant's
+    ## Raised if a record field is not accessible because its discriminant's
     ## value does not fit.
   RangeError* = object of Defect ## \
     ## Raised if a range check error occurred.
@@ -1646,7 +1646,7 @@ proc `+`*[T](x, y: set[T]): set[T] {.magic: "PlusSet", noSideEffect.}
   ##     b = {2, 3, 4}
   ##   echo a + b # => {1, 2, 3, 4}
 proc `-`*[T](x, y: set[T]): set[T] {.magic: "MinusSet", noSideEffect.}
-  ## This operator computes the diference of two sets.
+  ## This operator computes the difference of two sets.
   ##
   ## .. code-block:: Nim
   ##   let
@@ -2230,13 +2230,13 @@ type
 
   BiggestInt* = int64
     ## is an alias for the biggest signed integer type the Nim compiler
-    ## supports. Currently this is ``int64``, but it is platform-dependant
+    ## supports. Currently this is ``int64``, but it is platform-dependent
     ## in general.
 
   BiggestFloat* = float64
     ## is an alias for the biggest floating point type the Nim
     ## compiler supports. Currently this is ``float64``, but it is
-    ## platform-dependant in general.
+    ## platform-dependent in general.
 
 when defined(JS):
   type BiggestUInt* = uint32

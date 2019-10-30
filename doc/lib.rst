@@ -248,7 +248,7 @@ Math libraries
 
 * `fenv <fenv.html>`_
   Floating-point environment. Handling of floating-point rounding and
-  exceptions (overflow, zero-devide, etc.).
+  exceptions (overflow, zero-divide, etc.).
 
 * `math <math.html>`_
   Mathematical operations like cosine, square root.

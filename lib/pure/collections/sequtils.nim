@@ -1361,7 +1361,7 @@ when isMainModule:
     doAssert foo1(openArray[int]([identity(1), identity(2)])) == @[10, 20]
     doAssert counter == 2
 
-    # Corner cases (openArray litterals should not be common)
+    # Corner cases (openArray literals should not be common)
     template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
     counter = 0
     doAssert foo2(openArray[int]([identity(1), identity(2)])) == @[10, 20]

@@ -215,7 +215,7 @@ type
     pattern*: string  ## the pattern that caused the problem
 
   StudyError* = ref object of RegexError
-    ## Thrown when studying the regular expression failes
+    ## Thrown when studying the regular expression fails
     ## for whatever reason. The message contains the error
     ## code.
 

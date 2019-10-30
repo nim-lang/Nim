@@ -43,7 +43,7 @@
 ## * `rationals module<rationals.html>`_ for rational numbers and their
 ##   mathematical operations
 ## * `fenv module<fenv.html>`_ for handling of floating-point rounding
-##   and exceptions (overflow, zero-devide, etc.)
+##   and exceptions (overflow, zero-divide, etc.)
 ## * `random module<random.html>`_ for fast and tiny random number generator
 ## * `mersenne module<mersenne.html>`_ for Mersenne twister random number generator
 ## * `stats module<stats.html>`_ for statistical analysis
