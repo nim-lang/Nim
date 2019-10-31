@@ -625,7 +625,7 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
-proc shuffled*[T: seq | array](x: T; r: var Rand = state): T {.inline.} =
+proc shuffled*[T: openArray](x: T; r: var Rand = state): T {.inline.} =
   ## Shuffled a seq of elements not-in-place.
   ##
   ## If `randomize<#randomize>`_ has not been called, the order of outcomes
