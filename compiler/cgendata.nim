@@ -58,7 +58,7 @@ type
     id*: int                  # the ID of the label; positive means that it
     label*: Rope              # generated text for the label
                               # nil if label is not used
-    sections*: TCProcSections # the code beloging
+    sections*: TCProcSections # the code belonging
     isLoop*: bool             # whether block is a loop
     nestedTryStmts*: int16    # how many try statements is it nested into
     nestedExceptStmts*: int16 # how many except statements is it nested into
@@ -150,7 +150,7 @@ type
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
     hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
-    inHcrInitGuard*: bool     # We are currently withing a HCR reloading guard.
+    inHcrInitGuard*: bool     # We are currently within a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation

@@ -201,7 +201,8 @@ proc writeProfile() {.noconv.} =
           let procname = profileData[i].st[ii]
           let filename = profileData[i].st.files[ii]
           if isNil(procname): break
-          writeLine(f, "  ", $filename & ": " & $procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", $filename & ": " & $procname, " ",
+                    perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:

@@ -79,7 +79,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
       # with the new semantics for 'nil' strings, we can map "" to nil and
       # save tons of allocations:
       if n.strVal.len == 0 and optNilSeqs notin p.options and
-          p.config.selectedGC != gcDestructors:
+          optSeqDestructors notin p.config.globalOptions:
         result = genNilStringLiteral(p.module, n.info)
       else:
         result = genStringLiteral(p.module, n)
@@ -250,7 +250,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # tfShallow flag for the built-in string type too! So we check only
   # here for this flag, where it is reasonably safe to do so
   # (for objects, etc.):
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     linefmt(p, cpsStmts,
         "$1 = $2;$n",
         [rdLoc(dest), rdLoc(src)])
@@ -279,7 +279,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyRef:
     genRefAssign(p, dest, src)
   of tySequence:
-    if p.config.selectedGC == gcDestructors:
+    if optSeqDestructors in p.config.globalOptions:
       genGenericAsgn(p, dest, src, flags)
     elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
@@ -288,7 +288,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
               [addrLoc(p.config, dest), rdLoc(src),
               genTypeInfo(p.module, dest.t, dest.lode.info)])
   of tyString:
-    if p.config.selectedGC == gcDestructors:
+    if optSeqDestructors in p.config.globalOptions:
       genGenericAsgn(p, dest, src, flags)
     elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode, dest):
       genRefAssign(p, dest, src)
@@ -797,7 +797,7 @@ proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
 proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
   var test, u, v: TLoc
-  for i in 1 ..< sonsLen(e):
+  for i in 1 ..< len(e):
     var it = e.sons[i]
     assert(it.kind in nkCallKinds)
     assert(it.sons[0].kind == nkSym)
@@ -934,7 +934,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
     a.r = ropecg(p.module, "(*$1)", [a.r])
 
   if lfPrepareForMutation in d.flags and ty.kind == tyString and
-      p.config.selectedGC == gcDestructors:
+      optSeqDestructors in p.config.globalOptions:
     linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
   putIntoDest(p, d, n,
               ropecg(p.module, "$1$3[$2]", [rdLoc(a), rdCharLoc(b), dataField(p)]), a.storage)
@@ -1027,7 +1027,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     dec p.splitDecls
 
 proc genEcho(p: BProc, n: PNode) =
-  # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
+  # this unusual way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert p.config, n.kind == nkBracket
   if p.config.target.targetOS == osGenode:
@@ -1060,7 +1060,7 @@ proc gcUsage(conf: ConfigRef; n: PNode) =
   if conf.selectedGC == gcNone: message(conf, n.info, warnGcMem, n.renderTree)
 
 proc strLoc(p: BProc; d: TLoc): Rope =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     result = byRefLoc(p, d)
   else:
     result = rdLoc(d)
@@ -1087,7 +1087,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in 0 .. sonsLen(e) - 2:
+  for i in 0 .. len(e) - 2:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
     if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -1126,7 +1126,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e.sons[1], dest)
-  for i in 0 .. sonsLen(e) - 3:
+  for i in 0 .. len(e) - 3:
     # compute the length expression:
     initLocExpr(p, e.sons[i + 2], a)
     if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -1141,7 +1141,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
         add(lens, " + ")
       add(appends, ropecg(p.module, "#appendString($1, $2);$n",
                         [strLoc(p, dest), rdLoc(a)]))
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     linefmt(p, cpsStmts, "#prepareAdd($1, $2$3);$n",
             [byRefLoc(p, dest), lens, L])
   else:
@@ -1193,6 +1193,8 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
+proc trivialDestructor(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
   let typ = a.t
@@ -1204,13 +1206,13 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   if sizeExpr.isNil:
     sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
 
-  if optNimV2 in p.config.globalOptions:
+  if optTinyRtti in p.config.globalOptions:
     b.r = ropecg(p.module, "($1) #nimNewObj($2)",
         [getTypeDesc(p.module, typ), sizeExpr])
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
-    if bt.destructor != nil:
+    if bt.destructor != nil and not trivialDestructor(bt.destructor):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
@@ -1286,7 +1288,7 @@ proc genNewSeq(p: BProc, e: PNode) =
   var a, b: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     let seqtype = skipTypes(e.sons[1].typ, abstractVarRange)
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
       [a.rdLoc, b.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
@@ -1301,7 +1303,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   let seqtype = skipTypes(e.typ, abstractVarRange)
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     if d.k == locNone: getTemp(p, e.typ, d, needsInit=false)
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
       [d.rdLoc, a.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
@@ -1400,8 +1402,8 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   elif d.k == locNone:
     getTemp(p, n.typ, d)
 
-  let l = intLiteral(sonsLen(n))
-  if p.config.selectedGC == gcDestructors:
+  let l = intLiteral(len(n))
+  if optSeqDestructors in p.config.globalOptions:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
       [rdLoc dest[], l, getTypeDesc(p.module, seqtype.lastSon),
@@ -1410,7 +1412,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     # generate call to newSeq before adding the elements per hand:
     genNewSeqAux(p, dest[], l,
       optNilSeqs notin p.options and n.len == 0)
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), intLiteral(i), dataField(p)])
     arr.storage = OnHeap            # we know that sequences are on the heap
@@ -1432,7 +1434,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
   let L = toInt(lengthOrd(p.config, n.sons[1].typ))
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
       [rdLoc d, L, getTypeDesc(p.module, seqtype.lastSon),
@@ -1482,7 +1484,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   gcUsage(p.config, e)
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
-  if optNimV2 in p.config.globalOptions:
+  if optTinyRtti in p.config.globalOptions:
     result = ropecg(p.module, "#isObj($1.m_type, $2)",
       [a, genTypeInfo2Name(p.module, dest)])
   else:
@@ -1533,7 +1535,7 @@ proc genOf(p: BProc, n: PNode, d: var TLoc) =
   genOf(p, n.sons[1], n.sons[2].typ, d)
 
 proc genRepr(p: BProc, e: PNode, d: var TLoc) =
-  if optNimV2 in p.config.globalOptions:
+  if optTinyRtti in p.config.globalOptions:
     localError(p.config, e.info, "'repr' is not available for --newruntime")
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
@@ -1652,7 +1654,7 @@ proc makeAddr(n: PNode): PNode =
     result.typ = makePtrType(n.typ)
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     e.sons[1] = makeAddr(e[1])
     genCall(p, e, d)
     return
@@ -1681,7 +1683,7 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   gcUsage(p.config, e)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     binaryStmtAddr(p, e, d, "setLengthStrV2")
   else:
     var a, b, call: TLoc
@@ -1726,7 +1728,7 @@ proc fewCmps(conf: ConfigRef; s: PNode): bool =
   elif elemType(s.typ).kind in {tyInt, tyInt16..tyInt64}:
     result = true             # better not emit the set if int is basetype!
   else:
-    result = sonsLen(s) <= 8  # 8 seems to be a good value
+    result = len(s) <= 8  # 8 seems to be a good value
 
 template binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
   putIntoDest(p, d, e, frmt % [rdLoc(a), rdSetElemLoc(p.config, b, a.t)])
@@ -1759,7 +1761,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
                e.sons[2]
     initLocExpr(p, ea, a)
     initLoc(b, locExpr, e, OnUnknown)
-    var length = sonsLen(e.sons[1])
+    var length = len(e.sons[1])
     if length > 0:
       b.r = rope("(")
       for i in 0 ..< length:
@@ -1895,7 +1897,7 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     if srcTyp.kind in {tyPtr, tyPointer} and etyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) (ptrdiff_t) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
-    elif p.config.selectedGC == gcDestructors and etyp.kind in {tySequence, tyString}:
+    elif optSeqDestructors in p.config.globalOptions and etyp.kind in {tySequence, tyString}:
       putIntoDest(p, d, e, "(*($1*) (&$2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
     else:
@@ -2023,7 +2025,7 @@ proc genMove(p: BProc; n: PNode; d: var TLoc) =
     resetLoc(p, a)
 
 proc genDestroy(p: BProc; n: PNode) =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     let arg = n[1].skipAddr
     let t = arg.typ.skipTypes(abstractInst)
     case t.kind
@@ -2118,7 +2120,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 
   of mConStrStr: genStrConcat(p, e, d)
   of mAppendStrCh:
-    if p.config.selectedGC == gcDestructors:
+    if optSeqDestructors in p.config.globalOptions:
       binaryStmtAddr(p, e, d, "nimAddCharV1")
     else:
       var dest, b, call: TLoc
@@ -2129,7 +2131,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genAssignment(p, dest, call, {})
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem:
-    if p.config.selectedGC == gcDestructors:
+    if optSeqDestructors in p.config.globalOptions:
       e.sons[1] = makeAddr(e[1])
       genCall(p, e, d)
     else:
@@ -2146,7 +2148,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e.sons[1], d)
   of mEnumToStr:
-    if optNimV2 in p.config.globalOptions:
+    if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
     else:
       genRepr(p, e, d)
@@ -2321,7 +2323,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     if d.k == locNone: getTemp(p, t, d)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
       initLoc(rec, locExpr, it, d.storage)
@@ -2363,7 +2365,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n.sons[i], arr)
@@ -2421,7 +2423,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")
         t = skipTypes(t.sons[0], skipPtrs)
-    let checkFor = if optNimV2 in p.config.globalOptions:
+    let checkFor = if optTinyRtti in p.config.globalOptions:
                      genTypeInfo2Name(p.module, dest)
                    else:
                      genTypeInfo(p.module, dest, n.info)
@@ -2533,6 +2535,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
         genVarPrototype(p.module, n)
+        if sfCompileTime in sym.flags:
+          genSingleVar(p, sym, n, astdef(sym))
+
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
@@ -2708,7 +2713,7 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
      tyTyped, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = rope"NIM_NIL"
   of tyString, tySequence:
-    if p.config.selectedGC == gcDestructors:
+    if optSeqDestructors in p.config.globalOptions:
       result = rope"{0, NIM_NIL}"
     else:
       result = rope"NIM_NIL"
@@ -2743,7 +2748,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
       getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj.sons[0], cons, result, count)
-    for i in 1 ..< sonsLen(obj):
+    for i in 1 ..< len(obj):
       getNullValueAux(p, t, lastSon(obj.sons[i]), cons, result, count)
   of nkSym:
     if count > 0: result.add ", "
@@ -2791,7 +2796,7 @@ proc genConstObjConstr(p: BProc; n: PNode): Rope =
     result = "{$1}$n" % [result]
 
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
-  var length = sonsLen(n)
+  var length = len(n)
   result = rope("{")
   for i in 0 .. length - 2:
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
@@ -2850,7 +2855,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkBracket, nkPar, nkTupleConstr, nkClosure:
     var t = skipTypes(n.typ, abstractInstOwned)
     if t.kind == tySequence:
-      if p.config.selectedGC == gcDestructors:
+      if optSeqDestructors in p.config.globalOptions:
         result = genConstSeqV2(p, n, n.typ)
       else:
         result = genConstSeq(p, n, n.typ)
@@ -2874,7 +2879,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
   of nkObjConstr:
     result = genConstObjConstr(p, n)
   of nkStrLit..nkTripleStrLit:
-    if p.config.selectedGC == gcDestructors:
+    if optSeqDestructors in p.config.globalOptions:
       result = genStringLiteralV2Const(p.module, n)
     else:
       var d: TLoc

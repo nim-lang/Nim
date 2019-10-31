@@ -1,3 +1,12 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
@@ -8,11 +17,11 @@ type
     function: CallbackFunc
     next: owned(ref CallbackList)
 
-  FutureBase* = ref object of RootObj ## Untyped future.
+  FutureBase* = ref object of RootObj  ## Untyped future.
     callbacks: CallbackList
 
     finished: bool
-    error*: ref Exception ## Stored exception
+    error*: ref Exception              ## Stored exception
     errorStackTrace*: string
     when not defined(release):
       stackTrace: seq[StackTraceEntry] ## For debugging purposes only.
@@ -20,7 +29,7 @@ type
       fromProc: string
 
   Future*[T] = ref object of FutureBase ## Typed future.
-    value: T ## Stored value
+    value: T                            ## Stored value
 
   FutureVar*[T] = distinct Future[T]
 
@@ -251,7 +260,7 @@ proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
   future.callbacks.next = nil
 
-proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
+proc addCallback*(future: FutureBase, cb: proc() {.closure, gcsafe.}) =
   ## Adds the callbacks proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -262,16 +271,16 @@ proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
     future.callbacks.add cb
 
 proc addCallback*[T](future: Future[T],
-                     cb: proc (future: Future[T]) {.closure,gcsafe.}) =
+                     cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Adds the callbacks proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
   future.addCallback(
     proc() =
-      cb(future)
+    cb(future)
   )
 
-proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
+proc `callback=`*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
   ## Clears the list of callbacks and sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -281,7 +290,7 @@ proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
   future.addCallback cb
 
 proc `callback=`*[T](future: Future[T],
-    cb: proc (future: Future[T]) {.closure,gcsafe.}) =
+    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.

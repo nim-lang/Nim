@@ -35,7 +35,7 @@
 ##   `filterIt<#filterIt.t,untyped,untyped>`_, etc.)
 ##
 ## The chaining of functions is possible thanks to the
-## `method call syntax<manual.html#procs-method-call-syntax>`_.
+## `method call syntax<manual.html#procedures-method-call-syntax>`_.
 ##
 ## .. code-block::
 ##   import sequtils, sugar
@@ -417,7 +417,10 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   for i in 0 ..< len(s):
     if pred(s[i]):
       if pos != i:
-        shallowCopy(s[pos], s[i])
+        when defined(gcDestructors):
+          s[pos] = move(s[i])
+        else:
+          shallowCopy(s[pos], s[i])
       inc(pos)
   setLen(s, pos)
 
@@ -436,7 +439,10 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
   var j = min(len(s), last+1)
   var newLen = len(s)-j+i
   while i < newLen:
-    s[i].shallowCopy(s[j])
+    when defined(gcDestructors):
+      s[i] = move(s[j])
+    else:
+      s[i].shallowCopy(s[j])
     inc(i)
     inc(j)
   setLen(s, newLen)
@@ -461,7 +467,10 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
 
   # Move items after `pos` to the end of the sequence.
   while j >= pos:
-    dest[i].shallowCopy(dest[j])
+    when defined(gcDestructors):
+      dest[i] = move(dest[j])
+    else:
+      dest[i].shallowCopy(dest[j])
     dec(i)
     dec(j)
   # Insert items from `dest` into `dest` at `pos`
@@ -519,7 +528,10 @@ template keepItIf*(varSeq: seq, pred: untyped) =
     let it {.inject.} = varSeq[i]
     if pred:
       if pos != i:
-        shallowCopy(varSeq[pos], varSeq[i])
+        when defined(gcDestructors):
+          varSeq[pos] = move(varSeq[i])
+        else:
+          shallowCopy(varSeq[pos], varSeq[i])
       inc(pos)
   setLen(varSeq, pos)
 
@@ -848,7 +860,7 @@ template mapIt*(s: typed, op: untyped): untyped =
     result
 
 template mapIt*(s, typ, op: untyped): untyped {.error:
-  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned seqence".} =
+  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned sequence".} =
   var result: seq[typ] = @[]
   for it {.inject.} in items(s):
     result.add(op)
@@ -883,7 +895,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
   ## or to populate fields of the created sequence.
   ##
   runnableExamples:
-    ## Creates a seqence containing 5 bool sequences, each of length of 3.
+    ## Creates a sequence containing 5 bool sequences, each of length of 3.
     var seq2D = newSeqWith(5, newSeq[bool](3))
     assert seq2D.len == 5
     assert seq2D[0].len == 3
@@ -891,7 +903,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
 
     ## Creates a sequence of 20 random numbers from 1 to 10
     import random
-    var seqRand = newSeqWith(20, random(10))
+    var seqRand = newSeqWith(20, rand(10))
 
   var result = newSeq[type(init)](len)
   for i in 0 ..< len:
@@ -1349,7 +1361,7 @@ when isMainModule:
     doAssert foo1(openArray[int]([identity(1), identity(2)])) == @[10, 20]
     doAssert counter == 2
 
-    # Corner cases (openArray litterals should not be common)
+    # Corner cases (openArray literals should not be common)
     template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
     counter = 0
     doAssert foo2(openArray[int]([identity(1), identity(2)])) == @[10, 20]

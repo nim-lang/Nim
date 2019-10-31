@@ -293,13 +293,13 @@ proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
 proc lenExpr(p: BProc; a: TLoc): Rope =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     result = rdLoc(a) & ".len"
   else:
     result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
 proc dataField(p: BProc): Rope =
-  if p.config.selectedGC == gcDestructors:
+  if optSeqDestructors in p.config.globalOptions:
     result = rope".p->data"
   else:
     result = rope"->data"
@@ -347,7 +347,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
         s = skipTypes(s.sons[0], skipPtrs)
     linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t, a.lode.info)])
   of frEmbedded:
-    if optNimV2 in p.config.globalOptions:
+    if optTinyRtti in p.config.globalOptions:
       localError(p.config, p.prc.info,
         "complex object initialization is not supported with --newruntime")
     # worst case for performance:
@@ -377,10 +377,10 @@ proc isComplexValueType(t: PType): bool {.inline.} =
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc resetLoc(p: BProc, loc: var TLoc) =
-  let containsGcRef = p.config.selectedGC != gcDestructors and containsGarbageCollectedRef(loc.t)
+  let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
   if isImportedCppType(typ): return
-  if p.config.selectedGC == gcDestructors and typ.kind in {tyString, tySequence}:
+  if optSeqDestructors in p.config.globalOptions and typ.kind in {tyString, tySequence}:
     assert rdLoc(loc) != nil
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
@@ -411,7 +411,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if p.config.selectedGC == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
@@ -990,20 +990,21 @@ proc genProcAux(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
 
-  for i in 1 ..< sonsLen(prc.typ.n):
+  for i in 1 ..< len(prc.typ.n):
     let param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
+  generatedProc.genCLineDir prc.info, m.config
   if sfNoReturn in prc.flags:
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(naked) " & header
-    generatedProc = ropecg(p.module, "$N$1 {$n$2$3$4}$N$N",
+    generatedProc.add ropecg(p.module, "$1 {$n$2$3$4}$N$N",
                          [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
   else:
     if m.hcrOn and isReloadable(m, prc):
@@ -1011,7 +1012,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # This fixes the use of methods and also the case when 2 functions within the same module
       # call each other using directly the "_actual" versions (an optimization) - see issue #11608
       addf(m.s[cfsProcHeaders], "$1;\n", [header])
-    generatedProc = ropecg(p.module, "$N$1 {$N", [header])
+    generatedProc.add ropecg(p.module, "$1 {", [header])
     add(generatedProc, initGCFrame(p))
     if optStackTrace in prc.options:
       add(generatedProc, p.s(cpsLocals))
@@ -1039,7 +1040,8 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
            m.config.cmd != cmdCompileToCpp) or (
-           sym.flags * {sfImportc, sfInfixCall, sfCompilerProc} == {sfImportc} and
+           sym.flags * {sfInfixCall, sfCompilerProc, sfMangleCpp} == {} and
+           sym.flags * {sfImportc, sfExportc} != {} and
            sym.magic == mNone and
            m.config.cmd == cmdCompileToCpp)
 
@@ -1254,7 +1256,7 @@ proc hcrGetProcLoadCode(m: BModule, sym, prefix, handle, getProcFunc: string): R
 
 proc genMainProc(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
-  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## it means raising dependency on the symbols is too late as it will not propagate
   ## into other modules, only simple rope manipulations are allowed
 
   var preMainCode: Rope
@@ -1513,7 +1515,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
 
 proc genDatInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
-  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## it means raising dependency on the symbols is too late as it will not propagate
   ## into other modules, only simple rope manipulations are allowed
 
   var moduleDatInitRequired = m.hcrOn
@@ -1557,7 +1559,7 @@ proc hcrGetProcLoadCode(m: BModule, sym, prefix, handle, getProcFunc: string): R
 
 proc genInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
-  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## it means raising dependency on the symbols is too late as it will not propagate
   ## into other modules, only simple rope manipulations are allowed
   var moduleInitRequired = m.hcrOn
   let initname = getInitName(m)
@@ -1745,7 +1747,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
   # no line tracing for the init sections of the system module so that we
-  # don't generate a TFrame which can confuse the stack botton initialization:
+  # don't generate a TFrame which can confuse the stack bottom initialization:
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)

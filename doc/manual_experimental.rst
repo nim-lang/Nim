@@ -203,9 +203,10 @@ useful only when interfacing with imported types having such semantics.
 Automatic dereferencing
 =======================
 
-If the `experimental mode <#pragmas-experimental-pragma>`_ is active and no other match
-is found, the first argument ``a`` is dereferenced automatically if it's a
-pointer type and overloading resolution is tried with ``a[]`` instead.
+If the `experimental mode <manual.html#pragmas-experimental-pragma>`_ is active
+and no other match is found, the first argument ``a`` is dereferenced
+automatically if it's a pointer type and overloading resolution is tried
+with ``a[]`` instead.
 
 
 Automatic self insertions
@@ -814,7 +815,7 @@ This mechanism will be used by most data structures that support shared memory
 like channels to implement thread safe automatic memory management.
 
 The builtin ``deepCopy`` can even clone closures and their environments. See
-the documentation of `spawn`_ for details.
+the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
 
 
 Case statement macros

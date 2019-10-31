@@ -7,8 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-## Note this API is still experimental! A variable length integer
+## A variable length integer
 ## encoding implementation inspired by SQLite.
+##
+## Unstable API.
 
 const
   maxVarIntLen* = 9 ## the maximal number of bytes a varint can take

@@ -156,7 +156,7 @@ proc createStrKeepNode(x: var TFullReg; keepNode=true) =
     x.node = newNode(nkStrLit)
     # It not only hackey, it is also wrong for tgentemplate. The primary
     # cause of bugs like these is that the VM does not properly distinguish
-    # between variable defintions (var foo = e) and variable updates (foo = e).
+    # between variable definitions (var foo = e) and variable updates (foo = e).
 
 include vmhooks
 
@@ -200,8 +200,8 @@ proc copyValue(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in 0 ..< sonsLen(src):
+    newSeq(result.sons, len(src))
+    for i in 0 ..< len(src):
       result.sons[i] = copyValue(src.sons[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
@@ -213,6 +213,18 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkInt: x.intVal = y.intVal
   of rkFloat: x.floatVal = y.floatVal
   of rkNode: x.node = copyValue(y.node)
+  of rkRegisterAddr: x.regAddr = y.regAddr
+  of rkNodeAddr: x.nodeAddr = y.nodeAddr
+
+proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
+  if x.kind != y.kind:
+    myreset(x)
+    x.kind = y.kind
+  case x.kind
+  of rkNone: discard
+  of rkInt: x.intVal = y.intVal
+  of rkFloat: x.floatVal = y.floatVal
+  of rkNode: x.node = y.node
   of rkRegisterAddr: x.regAddr = y.regAddr
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
@@ -345,7 +357,7 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
   result = -1
 
   # Traverse the stack starting from the end in order to execute the blocks in
-  # the inteded order
+  # the intended order
   for i in 1 .. f.safePoints.len:
     var pc = f.safePoints[^i]
     # Skip the `except` blocks
@@ -424,12 +436,8 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
 
         var value = cast[BiggestUInt](src.intVal)
-        when system.cpuEndian == bigEndian:
-          value = (value shr srcDist) shl srcDist
-          value = (value shr destDist) shl destDist
-        else:
-          value = (value shl srcDist) shr srcDist
-          value = (value shl destDist) shr destDist
+        value = (value shl srcDist) shr srcDist
+        value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
@@ -535,31 +543,29 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAsgnInt:
       decodeB(rkInt)
       regs[ra].intVal = regs[rb].intVal
-    of opcAsgnStr:
-      decodeBC(rkNode)
-      createStrKeepNode regs[ra], rc != 0
-      regs[ra].node.strVal = regs[rb].node.strVal
     of opcAsgnFloat:
       decodeB(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal
-    of opcAsgnIntFromFloat32:
+    of opcCastFloatToInt32:
       let rb = instr.regB
       ensureKind(rkInt)
       regs[ra].intVal = cast[int32](float32(regs[rb].floatVal))
-    of opcAsgnIntFromFloat64:
+    of opcCastFloatToInt64:
       let rb = instr.regB
       ensureKind(rkInt)
       regs[ra].intVal = cast[int64](regs[rb].floatVal)
-    of opcAsgnFloat32FromInt:
+    of opcCastIntToFloat32:
       let rb = instr.regB
       ensureKind(rkFloat)
       regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
-    of opcAsgnFloat64FromInt:
+    of opcCastIntToFloat64:
       let rb = instr.regB
       ensureKind(rkFloat)
       regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
+    of opcFastAsgnComplex:
+      fastAsgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
       asgnRef(regs[ra], regs[instr.regB])
     of opcNodeToReg:
@@ -704,7 +710,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[ra].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        assert nfIsRef in regs[ra].node.flags
         regs[ra].node[] = regs[rc].regToNode[]
         regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
@@ -782,7 +787,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       addSon(b, regs[rb].regToNode)
       var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
-      for i in 0 ..< sonsLen(r): addSon(regs[ra].node, r.sons[i])
+      for i in 0 ..< len(r): addSon(regs[ra].node, r.sons[i])
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
@@ -976,11 +981,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal.add getstr(regs[i])
     of opcAddStrCh:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].intVal.chr)
     of opcAddStrStr:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].node.strVal)
     of opcAddSeqElem:
       decodeB(rkNode)
@@ -1164,7 +1167,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in 0 .. sonsLen(branch) - 2:
+      for j in 0 .. len(branch) - 2:
         if overlap(regs[ra].regToNode, branch.sons[j]):
           cond = true
           break
@@ -1181,7 +1184,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       tos.pushSafePoint(pc + rbx)
       assert c.code[pc+rbx].opcode in {opcExcept, opcFinally}
     of opcExcept:
-      # This opcode is never executed, it only holds informations for the
+      # This opcode is never executed, it only holds information for the
       # exception handling routines.
       doAssert(false)
     of opcFinally:
@@ -1267,7 +1270,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node = getNullValue(typ, c.debug[pc], c.config)
       # opcLdNull really is the gist of the VM's problems: should it load
       # a fresh null to  regs[ra].node  or to regs[ra].node[]? This really
-      # depends on whether regs[ra] represents the variable itself or wether
+      # depends on whether regs[ra] represents the variable itself or whether
       # it holds the indirection! Due to the way registers are re-used we cannot
       # say for sure here! --> The codegen has to deal with it
       # via 'genAsgnPatch'.
@@ -1384,17 +1387,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
-        regs[ra].node = src.sons[idx]
-      else:
+      if src.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot get child of node kind: n" & $src.kind)
+      elif idx >=% src.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+      else:
+        regs[ra].node = src.sons[idx]
     of opcNSetChild:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
       if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
-      elif dest.kind in {nkEmpty..nkNilLit} or idx >=% dest.len:
+      elif dest.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot set child of node kind: n" & $dest.kind)
+      elif idx >=% dest.len:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
       else:
         dest.sons[idx] = regs[rc].node
@@ -1404,7 +1411,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         u.add(regs[rc].node)
       regs[ra].node = u
@@ -1415,7 +1422,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
         stackTrace(c, tos, pc, "typechecked nodes may not be modified")
       elif u.kind in {nkEmpty..nkNilLit}:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
         for i in 0 ..< x.len: u.add(x.sons[i])
       regs[ra].node = u
@@ -1460,6 +1467,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = copyNode(a)
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "ident")
+    of opcNodeId:
+      decodeB(rkInt)
+      when defined(useNodeIds):
+        regs[ra].intVal = regs[rb].node.id
+      else:
+        regs[ra].intVal = -1
     of opcNGetType:
       let rb = instr.regB
       let rc = instr.regC
@@ -1549,17 +1562,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module, c.config)
     of opcGorge:
-      when defined(nimcore):
-        decodeBC(rkNode)
-        inc pc
-        let rd = c.code[pc].regA
-
-        createStr regs[ra]
-        regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                      regs[rc].node.strVal, regs[rd].node.strVal,
-                                      c.debug[pc], c.config)[0]
+      decodeBC(rkNode)
+      inc pc
+      let rd = c.code[pc].regA
+      createStr regs[ra]
+      if defined(nimsuggest) or c.config.cmd == cmdCheck:
+        discard "don't run staticExec for 'nim suggest'"
+        regs[ra].node.strVal = ""
       else:
-        globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
+        when defined(nimcore):
+          regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
+                                        regs[rc].node.strVal, regs[rd].node.strVal,
+                                        c.debug[pc], c.config)[0]
+        else:
+          regs[ra].node.strVal = ""
+          globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError, opcNWarning, opcNHint:
       decodeB(rkNode)
       let a = regs[ra].node
@@ -1582,7 +1599,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
-      elif sonsLen(ast) != 1:
+      elif len(ast) != 1:
         c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
           "expected expression, but got multiple statements")
       else:

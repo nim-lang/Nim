@@ -21,7 +21,7 @@ proc countBits32(n: uint32): int {.compilerproc.} =
   v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
   result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).int
 
-proc countBits64(n: uint64): int {.compilerproc.} =
+proc countBits64(n: uint64): int {.compilerproc, inline.} =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = uint64(n)
   v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
@@ -30,6 +30,12 @@ proc countBits64(n: uint64): int {.compilerproc.} =
   result = ((v * 0x0101010101010101'u64) shr 56'u64).int
 
 proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
-  for i in 0..<len:
-    if likely(s[i] == 0): continue
+  var i = 0
+  when defined(x86) or defined(amd64):
+    while i < len - 8:
+      inc(result, countBits64((cast[ptr uint64](s[i].unsafeAddr))[]))
+      inc(i, 8)
+
+  while i < len:
     inc(result, countBits32(uint32(s[i])))
+    inc(i, 1)

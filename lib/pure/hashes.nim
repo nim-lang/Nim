@@ -45,7 +45,7 @@
 ## * `tables module <tables.html>`_ for hash tables
 
 type
-  Hash* = int  ## A hash value. Hash tables using these values should
+  Hash* = int ## A hash value. Hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
@@ -112,29 +112,32 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
+const
+  prime = uint(11)
+
 proc hash*(x: int): Hash {.inline.} =
   ## Efficient hashing of integers.
-  result = x
+  result = cast[Hash](cast[uint](x) * prime)
 
 proc hash*(x: int64): Hash {.inline.} =
   ## Efficient hashing of `int64` integers.
-  result = cast[int](x)
+  result = cast[Hash](cast[uint](x) * prime)
 
 proc hash*(x: uint): Hash {.inline.} =
   ## Efficient hashing of unsigned integers.
-  result = cast[int](x)
+  result = cast[Hash](x * prime)
 
 proc hash*(x: uint64): Hash {.inline.} =
   ## Efficient hashing of `uint64` integers.
-  result = cast[int](x)
+  result = cast[Hash](cast[uint](x) * prime)
 
 proc hash*(x: char): Hash {.inline.} =
   ## Efficient hashing of characters.
-  result = ord(x)
+  result = cast[Hash](cast[uint](ord(x)) * prime)
 
 proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of other ordinal types (e.g. enums).
-  result = ord(x)
+  result = cast[Hash](cast[uint](ord(x)) * prime)
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
@@ -451,7 +454,7 @@ when isMainModule:
     doAssert hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234")
   block smallSize: # no multibyte hashing
     let
-      xx = @['H','i']
+      xx = @['H', 'i']
       ii = @[72'u8, 105]
       ss = "Hi"
     doAssert hash(xx) == hash(ii)
@@ -460,8 +463,8 @@ when isMainModule:
     doAssert hash(ss) == hash(ss, 0, ss.high)
   block largeSize: # longer than 4 characters
     let
-      xx = @['H','e','l','l','o']
-      xxl = @['H','e','l','l','o','w','e','e','n','s']
+      xx = @['H', 'e', 'l', 'l', 'o']
+      xxl = @['H', 'e', 'l', 'l', 'o', 'w', 'e', 'e', 'n', 's']
       ssl = "Helloweens"
     doAssert hash(xxl) == hash(ssl)
     doAssert hash(xxl) == hash(xxl, 0, xxl.high)

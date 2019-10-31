@@ -339,7 +339,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         result = initPartial
         if discriminatorVal.kind == nkIntLit:
           # When the discriminator is a compile-time value, we also know
-          # which brach will be selected:
+          # which branch will be selected:
           let matchedBranch = recNode.pickCaseBranch discriminatorVal
           if matchedBranch != nil: checkMissingFields matchedBranch
         else:
@@ -380,7 +380,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
     t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink, tyOwned})
-    if optNimV2 in c.config.globalOptions:
+    if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
       # we have to watch out, there are also 'owned proc' types that can be used
       # multiple times as long as they don't have closures.

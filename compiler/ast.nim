@@ -185,7 +185,7 @@ type
     nkStmtListExpr,       # a statement list followed by an expr; this is used
                           # to allow powerful multi-line templates
     nkBlockExpr,          # a statement block ending in an expr; this is used
-                          # to allowe powerful multi-line templates that open a
+                          # to allow powerful multi-line templates that open a
                           # temporary scope
     nkStmtListType,       # a statement list ending in a type; for macros
     nkBlockType,          # a statement block ending in a type; for macros
@@ -228,7 +228,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 36 flags!
+  TSymFlag* = enum    # already 38 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -239,6 +239,7 @@ type
     sfForward,        # symbol is forward declared
     sfImportc,        # symbol is external; imported
     sfExportc,        # symbol is exported (under a specified name)
+    sfMangleCpp,      # mangle as cpp (combines with `sfExportc`)
     sfVolatile,       # variable is volatile
     sfRegister,       # variable should be placed in a register
     sfPure,           # object is "pure" that means it has no type-information
@@ -271,7 +272,7 @@ type
     sfNamedParamCall, # symbol needs named parameter call syntax in target
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
-    sfOverriden,      # proc is overriden
+    sfOverriden,      # proc is overridden
     sfCallsite        # A flag for template symbols to tell the
                       # compiler it should use line information from
                       # the calling side of the macro, not from the
@@ -282,16 +283,13 @@ type
     sfGeneratedOp     # proc is a generated '='; do not inject destructors in it
                       # variable is generated closure environment; requires early
                       # destruction for --newruntime.
+    sfTemplateParam   # symbol is a template parameter
 
 
   TSymFlags* = set[TSymFlag]
 
 const
   sfNoInit* = sfMainModule       # don't generate code to init the variable
-
-  sfCursor* = sfDispatcher
-    # local variable has been computed to be a "cursor".
-    # see cursors.nim for details about what that means.
 
   sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
     # in a generic context
@@ -533,8 +531,8 @@ type
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
     tfRefsAnonObj     # used for 'ref object' and 'ptr object'
-    tfCovariant       # covariant generic param mimicing a ptr type
-    tfWeakCovariant   # covariant generic param mimicing a seq/array type
+    tfCovariant       # covariant generic param mimicking a ptr type
+    tfWeakCovariant   # covariant generic param mimicking a seq/array type
     tfContravariant   # contravariant generic param
     tfCheckedForDestructor # type was checked for having a destructor.
                            # If it has one, t.destructor is not nil.
@@ -664,7 +662,8 @@ type
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf
+    mSymIsInstantiationOf, mNodeId
+
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -850,7 +849,6 @@ type
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
-                              # for routines a superop-ID
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
@@ -884,7 +882,7 @@ type
                               # for range types a nkRange node
                               # for record types a nkRecord node
                               # for enum types a list of symbols
-                              # for tyInt it can be the int literal
+                              # if kind == tyInt: it is an 'int literal(x)' type
                               # for procs and tyGenericBody, it's the
                               # formal param list
                               # for concepts, the concept body
@@ -1021,7 +1019,9 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-proc len*(n: PNode): int {.inline.} =
+type Indexable = PNode | PType
+
+proc len*(n: Indexable): int {.inline.} =
   when defined(nimNoNilSeqs):
     result = len(n.sons)
   else:
@@ -1044,8 +1044,6 @@ proc add*(father, son: PNode) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
-
-type Indexable = PNode | PType
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
 template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
@@ -1236,7 +1234,7 @@ proc newIntNode*(kind: TNodeKind, intVal: Int128): PNode =
   result = newNode(kind)
   result.intVal = castToInt64(intVal)
 
-proc lastSon*(n: PType): PType = n.sons[^1]
+proc lastSon*(n: Indexable): Indexable = n.sons[^1]
 
 proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## Used throughout the compiler code to test whether a type tree contains or
@@ -1248,7 +1246,7 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
 
-  # this is dirty. abstractVarRange isn't defined yet and therefor it
+  # this is dirty. abstractVarRange isn't defined yet and therefore it
   # is duplicated here.
   const abstractVarRange = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
@@ -1340,7 +1338,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
 
-proc newSons*(father: PNode, length: int) =
+proc newSons*(father: Indexable, length: int) =
   when defined(nimNoNilSeqs):
     setLen(father.sons, length)
   else:
@@ -1348,20 +1346,6 @@ proc newSons*(father: PNode, length: int) =
       newSeq(father.sons, length)
     else:
       setLen(father.sons, length)
-
-proc newSons*(father: PType, length: int) =
-  when defined(nimNoNilSeqs):
-    setLen(father.sons, length)
-  else:
-    if isNil(father.sons):
-      newSeq(father.sons, length)
-    else:
-      setLen(father.sons, length)
-
-proc sonsLen*(n: PType): int = n.sons.len
-proc len*(n: PType): int = n.sons.len
-proc sonsLen*(n: PNode): int = n.sons.len
-proc lastSon*(n: PNode): PNode = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1380,8 +1364,8 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, sonsLen(src))
-  for i in 0 ..< sonsLen(src): dest.sons[i] = src.sons[i]
+  newSons(dest, len(src))
+  for i in 0 ..< len(src): dest.sons[i] = src.sons[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1535,7 +1519,7 @@ proc delSon*(father: PNode, idx: int) =
     if father.len == 0: return
   else:
     if isNil(father.sons): return
-  var length = sonsLen(father)
+  var length = len(father)
   for i in idx .. length - 2: father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)
 
@@ -1576,7 +1560,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, sonsLen(src))
+  else: newSeq(result.sons, len(src))
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
@@ -1597,12 +1581,12 @@ proc copyTree*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in 0 ..< sonsLen(src):
+    newSeq(result.sons, len(src))
+    for i in 0 ..< len(src):
       result.sons[i] = copyTree(src.sons[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     if n.sons[i].kind == kind:
       return true
   result = false
@@ -1620,14 +1604,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.kind in kinds or containsNode(n.sons[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
         return true
     result = false
@@ -1826,11 +1810,11 @@ template getBody*(s: PSym): PNode = s.ast[bodyPos]
 template detailedInfo*(sym: PSym): string =
   sym.name.s
 
-proc isInlineIterator*(s: PSym): bool {.inline.} =
-  s.kind == skIterator and s.typ.callConv != ccClosure
+proc isInlineIterator*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv != ccClosure
 
-proc isClosureIterator*(s: PSym): bool {.inline.} =
-  s.kind == skIterator and s.typ.callConv == ccClosure
+proc isClosureIterator*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)

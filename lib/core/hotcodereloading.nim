@@ -1,3 +1,14 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2019 Nim contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## Unstable API.
+
 when defined(hotcodereloading):
   import
     macros

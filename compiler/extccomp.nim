@@ -63,8 +63,8 @@ compiler gcc:
   result = (
     name: "gcc",
     objExt: "o",
-    optSpeed: " -O3 ",
-    optSize: " -Os ",
+    optSpeed: " -O3 -fno-ident",
+    optSize: " -Os -fno-ident",
     compilerExe: "gcc",
     cppCompiler: "g++",
     compileTmpl: "-c $options $include -o $objfile $file",
@@ -138,7 +138,7 @@ compiler vcc:
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c$vccplatform$options $include /Fo$objfile $file",
+    compileTmpl: "/c$vccplatform $options $include /Fo$objfile $file",
     buildGui: " /link /SUBSYSTEM:WINDOWS ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
@@ -404,7 +404,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
                      CC[c].name & fullSuffix
     result = getConfigVar(conf, fullCCname)
     if result.len == 0:
-      # not overriden for this cross compilation setting?
+      # not overridden for this cross compilation setting?
       result = getConfigVar(conf, CC[c].name & fullSuffix)
   else:
     result = getConfigVar(conf, CC[c].name & fullSuffix)
@@ -662,6 +662,10 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
   if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
       not externalFileChanged(conf, c):
     c.flags.incl CfileFlag.Cached
+  else:
+    # make sure Nim keeps recompiling the external file on reruns
+    # if compilation is not successful
+    discard tryRemoveFile(c.obj.string)
   conf.toCompile.add(c)
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
@@ -757,7 +761,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
     # way of being able to debug and rebuild the program at the same time. This
     # is accomplished using the /PDB:<filename> flag (there also exists the
     # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
-    # atleast 300kb big (when linking statically to the runtime - or else 5mb+)
+    # at least 300kb big (when linking statically to the runtime - or else 5mb+)
     # and will quickly accumulate. There is a hacky solution: we could try to
     # delete all .pdb files with a pattern and swallow exceptions.
     #
@@ -1080,7 +1084,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
       add(cmds, c[1].getStr)
       let (_, name, _) = splitFile(c[0].getStr)
-      add(prettyCmds, "CC: " & name)
+      add(prettyCmds, "CC: " & demanglePackageName(name))
 
     let prettyCb = proc (idx: int) =
       when declared(echo):

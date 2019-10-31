@@ -1,40 +1,20 @@
-# v1.1 - XXXX-XX-XX
+# x.x - xxxx-xx-xx
 
 
 ## Changes affecting backwards compatibility
 
-- The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
-  stdin/stdout/stderr are binary files again. This change only affects
-  Windows.
-- On Windows console applications the code-page is set at program startup
-  to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
-  feature.
-
-- The language definition and compiler are now stricter about ``gensym``'ed
-  symbols in hygienic templates. See the section in the
-  [manual](https://nim-lang.org/docs/manual.html#templates-hygiene-in-templates)
-  for further details. Use the compiler switch `--useVersion:0.19` for a
-  transition period.
 
 
 ### Breaking changes in the standard library
 
-- We removed `unicode.Rune16` without any deprecation period as the name
-  was wrong (see the [RFC](https://github.com/nim-lang/RFCs/issues/151) for details)
-  and we didn't find any usages of it in the wild. If you still need it, add this
-  piece of code to your project:
-
-```nim
-
-type
-  Rune16* = distinct int16
-
-```
+- `base64.encode` no longer supports `lineLen` and `newLine` use `base64.encodeMIME` instead.
+- `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/" as the dir component of "/root_sub_dir" instead of the empty string.
 
 
 ### Breaking changes in the compiler
 
-- A bug allowing `int` to be implicitly converted to range types of smaller size (e.g `range[0'i8..10'i8]`) has been fixed.
+- Implicit conversions for `const` behave correctly now, meaning that code like `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
+  Simply write `const SOMECONST = 0` instead.
 
 - A bug that automatically lifts nodes of kind `stmtList` into lambda
   expressions has been fixed.
@@ -44,55 +24,35 @@ type
 
 ## Library additions
 
-- `encodings.getCurrentEncoding` now distinguishes between the console's
-  encoding and the OS's encoding. This distinction is only meaningful on
-  Windows.
-- Added `system.getOsFileHandle` which is usually more useful
-  than `system.getFileHandle`. This distinction is only meaningful on
-  Windows.
+- `macros.newLit` now works for ref object types.
+- `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- Added overloaded `strformat.fmt` macro that use specified characters as delimiter instead of '{' and '}'.
 
 ## Library changes
 
-- Added `os.delEnv` and `nimscript.delEnv`. (#11466)
-
-- Enabled Oid usage in hashtables. (#11472)
-
-- Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
-
-- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`,
-  `update` and `finalize` procedures from `sha1` module. (#11694)
-
-- Added the `std/monotimes` module which implements monotonic timestamps.
-
-- Consistent error handling of two `exec` overloads. (#10967)
+- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations` and only returns once all pending async operations are guaranteed to have completed.
+- `asyncdispatch.drain` now consistently uses the passed timeout value for all iterations of the event loop, and not just the first iteration. This is more consistent with the other asyncdispatch apis, and allows `asyncdispatch.drain` to be more efficient.
+- `base64.encode` and `base64.decode` was made faster by about 50%.
+- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support (ISO 40314).
 
 ## Language additions
 
-- Inline iterators returning `lent T` types are now supported, similarly to iterators returning `var T`:
-```nim
-iterator myitems[T](x: openarray[T]): lent T
-iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
-```
+
 
 ## Language changes
+
+- Unsigned integer operators have been fixed to allow promotion of the first operand.
 
 
 ### Tool changes
 
-- The Nim compiler now does not recompile the Nim project via ``nim c -r`` if
-  no dependent Nim file changed. This feature can be overridden by
-  the ``--forceBuild`` command line option.
-- The Nim compiler now warns about unused module imports. You can use a
-  top level ``{.used.}`` pragma in the module that you want to be importable
-  without producing this warning.
-- The "testament" testing tool's name was changed
-  from `tester` to `testament` and is generally available as a tool to run Nim
-  tests automatically.
 
 
 ### Compiler changes
 
-- VM can now cast integer type arbitrarily. (#11459)
+
 
 
 ## Bugfixes
+
+- The `FD` variant of `selector.unregister` for `ioselector_epoll` and `ioselector_select` now properly handle the `Event.User` select event type.

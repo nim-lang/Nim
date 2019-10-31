@@ -414,7 +414,7 @@ proc prepareDealloc(cell: PCell) =
     # the finalizer could invoke something that
     # allocates memory; this could trigger a garbage
     # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
+    # prevent recursive entering here by a lock.
     # XXX: we should set the cell's children to nil!
     inc(gch.recGcLock)
     (cast[Finalizer](t.finalizer))(cellToUsr(cell))

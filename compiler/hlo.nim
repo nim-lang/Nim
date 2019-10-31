@@ -14,7 +14,7 @@ proc hlo(c: PContext, n: PNode): PNode
 proc evalPattern(c: PContext, n, orig: PNode): PNode =
   internalAssert c.config, n.kind == nkCall and n.sons[0].kind == nkSym
   # we need to ensure that the resulting AST is semchecked. However, it's
-  # aweful to semcheck before macro invocation, so we don't and treat
+  # awful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
   var rule: string
   if optHints in c.config.options and hintPattern in c.config.notes:

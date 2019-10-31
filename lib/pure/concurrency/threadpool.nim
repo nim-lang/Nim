@@ -7,13 +7,15 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
+## Implements Nim's `spawn <manual_experimental.html#parallel-amp-spawn>`_.
 ##
 ## **See also:**
 ## * `threads module <threads.html>`_
 ## * `channels module <channels.html>`_
 ## * `locks module <locks.html>`_
 ## * `asyncdispatch module <asyncdispatch.html>`_
+##
+## Unstable API.
 
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}
@@ -485,7 +487,7 @@ proc parallel*(body: untyped) {.magic: "Parallel".}
   ##
   ## ``body`` has to be in a DSL that is a particular subset of the language.
   ##
-  ## Please refer to `the manual <manual.html#parallel-amp-spawn>`_
+  ## Please refer to `the manual <manual_experimental.html#parallel-amp-spawn>`_
   ## for further information.
 
 var

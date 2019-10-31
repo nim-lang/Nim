@@ -62,12 +62,12 @@ proc `==` *[T](x, y: Complex[T]): bool =
   ## Compare two complex numbers ``x`` and ``y`` for equality.
   result = x.re == y.re and x.im == y.im
 
-proc `+` *[T](x: T, y: Complex[T]): Complex[T] =
+proc `+` *[T](x: T; y: Complex[T]): Complex[T] =
   ## Add a real number to a complex number.
   result.re = x + y.re
   result.im = y.im
 
-proc `+` *[T](x: Complex[T], y: T): Complex[T] =
+proc `+` *[T](x: Complex[T]; y: T): Complex[T] =
   ## Add a complex number to a real number.
   result.re = x.re + y
   result.im = x.im
@@ -82,11 +82,11 @@ proc `-` *[T](z: Complex[T]): Complex[T] =
   result.re = -z.re
   result.im = -z.im
 
-proc `-` *[T](x: T, y: Complex[T]): Complex[T] =
+proc `-` *[T](x: T; y: Complex[T]): Complex[T] =
   ## Subtract a complex number from a real number.
   x + (-y)
 
-proc `-` *[T](x: Complex[T], y: T): Complex[T] =
+proc `-` *[T](x: Complex[T]; y: T): Complex[T] =
   ## Subtract a real number from a complex number.
   result.re = x.re - y
   result.im = x.im
@@ -96,12 +96,12 @@ proc `-` *[T](x, y: Complex[T]): Complex[T] =
   result.re = x.re - y.re
   result.im = x.im - y.im
 
-proc `/` *[T](x: Complex[T], y: T): Complex[T] =
+proc `/` *[T](x: Complex[T]; y: T): Complex[T] =
   ## Divide complex number ``x`` by real number ``y``.
   result.re = x.re / y
   result.im = x.im / y
 
-proc `/` *[T](x: T, y: Complex[T]): Complex[T] =
+proc `/` *[T](x: T; y: Complex[T]): Complex[T] =
   ## Divide real number ``x`` by complex number ``y``.
   result = x * inv(y)
 
@@ -119,12 +119,12 @@ proc `/` *[T](x, y: Complex[T]): Complex[T] =
     result.re = (x.re + r * x.im) / den
     result.im = (x.im - r * x.re) / den
 
-proc `*` *[T](x: T, y: Complex[T]): Complex[T] =
+proc `*` *[T](x: T; y: Complex[T]): Complex[T] =
   ## Multiply a real number and a complex number.
   result.re = x * y.re
   result.im = x * y.im
 
-proc `*` *[T](x: Complex[T], y: T): Complex[T] =
+proc `*` *[T](x: Complex[T]; y: T): Complex[T] =
   ## Multiply a complex number with a real number.
   result.re = x.re * y
   result.im = x.im * y
@@ -135,23 +135,23 @@ proc `*` *[T](x, y: Complex[T]): Complex[T] =
   result.im = x.im * y.re + x.re * y.im
 
 
-proc `+=` *[T](x: var Complex[T], y: Complex[T]) =
+proc `+=` *[T](x: var Complex[T]; y: Complex[T]) =
   ## Add ``y`` to ``x``.
   x.re += y.re
   x.im += y.im
 
-proc `-=` *[T](x: var Complex[T], y: Complex[T]) =
+proc `-=` *[T](x: var Complex[T]; y: Complex[T]) =
   ## Subtract ``y`` from ``x``.
   x.re -= y.re
   x.im -= y.im
 
-proc `*=` *[T](x: var Complex[T], y: Complex[T]) =
+proc `*=` *[T](x: var Complex[T]; y: Complex[T]) =
   ## Multiply ``y`` to ``x``.
   let im = x.im * y.re + x.re * y.im
   x.re = x.re * y.re - x.im * y.im
   x.im = im
 
-proc `/=` *[T](x: var Complex[T], y: Complex[T]) =
+proc `/=` *[T](x: var Complex[T]; y: Complex[T]) =
   ## Divide ``x`` by ``y`` in place.
   x = x / y
 
@@ -222,7 +222,7 @@ proc pow*[T](x, y: Complex[T]): Complex[T] =
     result.re = s * cos(r)
     result.im = s * sin(r)
 
-proc pow*[T](x: Complex[T], y: T): Complex[T] =
+proc pow*[T](x: Complex[T]; y: T): Complex[T] =
   ## Complex number ``x`` raised to the power ``y``.
   pow(x, complex[T](y))
 
@@ -352,18 +352,18 @@ when isMainModule:
   proc `=~`[T](x, y: Complex[T]): bool =
     result = abs(x.re-y.re) < 1e-6 and abs(x.im-y.im) < 1e-6
 
-  proc `=~`[T](x: Complex[T], y: T): bool =
+  proc `=~`[T](x: Complex[T]; y: T): bool =
     result = abs(x.re-y) < 1e-6 and abs(x.im) < 1e-6
 
   var
-    z: Complex64   = complex(0.0, 0.0)
-    oo: Complex64  = complex(1.0, 1.0)
-    a: Complex64   = complex(1.0, 2.0)
-    b: Complex64   = complex(-1.0, -2.0)
-    m1: Complex64  = complex(-1.0, 0.0)
-    i: Complex64   = complex(0.0, 1.0)
+    z: Complex64 = complex(0.0, 0.0)
+    oo: Complex64 = complex(1.0, 1.0)
+    a: Complex64 = complex(1.0, 2.0)
+    b: Complex64 = complex(-1.0, -2.0)
+    m1: Complex64 = complex(-1.0, 0.0)
+    i: Complex64 = complex(0.0, 1.0)
     one: Complex64 = complex(1.0, 0.0)
-    tt: Complex64  = complex(10.0, 20.0)
+    tt: Complex64 = complex(10.0, 20.0)
     ipi: Complex64 = complex(0.0, -PI)
 
   doAssert(a/2.0 =~ complex(0.5, 1.0))
@@ -451,3 +451,6 @@ when isMainModule:
   doAssert(sizeof(a) == 16)
 
   doAssert 123.0.im + 456.0 == complex64(456, 123)
+
+  var localA = complex(0.1'f32)
+  doAssert localA.im is float32

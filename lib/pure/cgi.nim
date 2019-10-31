@@ -58,11 +58,11 @@ proc xmlEncode*(s: string): string =
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
-  CgiError* = object of IOError  ## exception that is raised if a CGI error occurs
-  RequestMethod* = enum  ## the used request method
-    methodNone,          ## no REQUEST_METHOD environment variable
-    methodPost,          ## query uses the POST method
-    methodGet            ## query uses the GET method
+  CgiError* = object of IOError ## exception that is raised if a CGI error occurs
+  RequestMethod* = enum ## the used request method
+    methodNone,         ## no REQUEST_METHOD environment variable
+    methodPost,         ## query uses the POST method
+    methodGet           ## query uses the GET method
 
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.

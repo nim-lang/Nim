@@ -14,6 +14,7 @@ wth
 1
 0
 (total: 6)
+S1
 '''
 """
 # bug #1915
@@ -164,3 +165,33 @@ template baz(): untyped =
   echo (total: bar2(3))
 
 baz()
+
+# bug #12121
+macro state_machine_enum(states: varargs[untyped]) =
+  result = nnkTypeSection.newTree(
+    nnkTypeDef.newTree(
+      nnkPragmaExpr.newTree(ident("State"), nnkPragma.newTree(ident("pure"))),
+      newEmptyNode(),
+      nnkEnumTy.newTree(newEmptyNode())
+    )
+  )
+
+  for s in states:
+    expectKind(s, nnkIdent)
+    result[0][2].add s
+
+template mystate_machine(body: untyped) =
+  state_machine_enum(S1, S2, S3)
+  var state_stack: seq[State]
+  template state_current(): State {.inject, used.} =
+    state_stack[^1]
+  template state_push(state_name) {.inject, used.} =
+    state_stack.add State.state_name
+  template state_pop(n = 1) {.inject, used.} =
+    state_stack.setLen(state_stack.len - n)
+  body
+
+mystate_machine:
+  state_push(S1)
+  echo state_current()
+  state_pop()

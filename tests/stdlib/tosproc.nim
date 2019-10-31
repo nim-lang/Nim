@@ -35,7 +35,7 @@ when defined(case_testfile): # compiled test file for child process
       # failed. The shell (and lldb debugger) solves that by inserting a
       # helpful msg: `segmentation fault` when it detects a signal killed
       # the child.
-      # todo: expose an API that will show more diagnostic, returing
+      # todo: expose an API that will show more diagnostic, returning
       # (exitCode, signal) instead of just `shellExitCode`.
       if true: quit(139)
     of "exit_recursion": # stack overflow by infinite recursion

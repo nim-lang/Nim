@@ -27,5 +27,7 @@ FAIL: tests/shouldfail/toutputsub.nim C
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/tsortoutput.nim C
 Failure: reOutputsDiffer
+FAIL: tests/shouldfail/ttimeout.nim C
+Failure: reTimeout
 '''
 """

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# Unforunately this cannot be a module yet:
+# Unfortunately this cannot be a module yet:
 #import vmdeps, vm
 from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
@@ -16,6 +16,7 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 from md5 import getMD5
 from sighashes import symBodyDigest
+from times import cpuTime
 
 from hashes import hash
 
@@ -24,6 +25,9 @@ template mathop(op) {.dirty.} =
 
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
+
+template timesop(op) {.dirty.} =
+  registerCallback(c, "stdlib.times." & astToStr(op), `op Wrapper`)
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
@@ -75,6 +79,14 @@ template wrap1svoid(op, modop) {.dirty.} =
 template wrap2svoid(op, modop) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     op(getString(a, 0), getString(a, 1))
+  modop op
+
+template wrapDangerous(op, modop) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+      discard
+    else:
+      op(getString(a, 0), getString(a, 1))
   modop op
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
@@ -133,14 +145,18 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
-    wrap2svoid(writeFile, ioop)
+    wrapDangerous(writeFile, ioop)
     wrap1s(readFile, ioop)
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-    systemop gorgeEx
+
+    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+      discard "don't run staticExec for 'nim suggest'"
+    else:
+      systemop gorgeEx
   macrosop getProjectPath
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
@@ -186,3 +202,9 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
+
+  if optBenchmarkVM in c.config.globalOptions:
+    wrap0(cpuTime, timesop)
+  else:
+    proc cpuTime(): float = 5.391245e-44  # Randomly chosen
+    wrap0(cpuTime, timesop)

@@ -50,7 +50,7 @@ when defined(haiku):
                                                     header: "<OS.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
-  ## returns the numer of the processors/cores the machine has.
+  ## returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
     type

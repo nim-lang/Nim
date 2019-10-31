@@ -249,8 +249,11 @@ Identifiers & Keywords
 ----------------------
 
 Identifiers in Nim can be any string of letters, digits
-and underscores, beginning with a letter. Two immediate following
-underscores ``__`` are not allowed::
+and underscores, with the following restrictions:
+
+* begins with a letter
+* does not end with an underscore ``_``
+* two immediate following underscores ``__`` are not allowed::
 
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
@@ -1479,7 +1482,8 @@ order. The *names* of the fields also have to be identical.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
-of the assignment operator is described in `type-bound-operations-operator`_.
+of the assignment operator is described `here
+<manual_experimental.html#type-bound-operations>`_.
 
 .. code-block:: nim
 
@@ -2129,7 +2133,7 @@ conversions from ``string`` to ``SQL`` are allowed:
 Now we have compile-time checking against SQL injection attacks.  Since
 ``"".SQL`` is transformed to ``SQL("")`` no new syntax is needed for nice
 looking ``SQL`` string literals. The hypothetical ``SQL`` type actually
-exists in the library as the `TSqlQuery type <db_sqlite.html#TSqlQuery>`_ of
+exists in the library as the `SqlQuery type <db_common.html#SqlQuery>`_ of
 modules like `db_sqlite <db_sqlite.html>`_.
 
 
@@ -2640,7 +2644,7 @@ tuple[x: A, y: B, ...]          (default(A), default(B), ...)
                                 (analogous for objects)
 array[0..., T]                  [default(T), ...]
 range[T]                        default(T); this may be out of the valid range
-T = enum                        cast[T](0); this may be an invalid value
+T = enum                        cast[T]\(0); this may be an invalid value
 ============================    ==============================================
 
 
@@ -3481,8 +3485,8 @@ more argument in this case:
   assert x == y
 
 The command invocation syntax also can't have complex expressions as arguments.
-For example: (`anonymous procs`_), ``if``, ``case`` or ``try``.
-Function calls with no arguments still needs () to
+For example: (`anonymous procs <#procedures-anonymous-procs>`_), ``if``,
+``case`` or ``try``. Function calls with no arguments still needs () to
 distinguish between a call and the function itself as a first class value.
 
 
@@ -3502,14 +3506,14 @@ Creating closures in loops
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since closures capture local variables by reference it is often not wanted
-behavior inside loop bodies. See `closureScope <system.html#closureScope>`_
-for details on how to change this behavior.
+behavior inside loop bodies. See `closureScope
+<system.html#closureScope.t,untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
 
-Procs can also be treated as expressions, in which case it's allowed to omit
-the proc's name.
+Unnamed procedures can be used as lambda expressions to pass into other
+procedures:
 
 .. code-block:: nim
   var cities = @["Frankfurt", "Tokyo", "New York", "Kyiv"]
@@ -3519,7 +3523,9 @@ the proc's name.
 
 
 Procs as expressions can appear both as nested procs and inside top level
-executable code.
+executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
+which enables a more succinct syntax for anonymous procedures resembling
+lambdas as they are in languages like JavaScript, C#, etc.
 
 
 Func
@@ -3543,7 +3549,7 @@ Nonoverloadable builtins
 The following builtin procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
-  declared, defined, definedInScope, compiles, sizeOf,
+  declared, defined, definedInScope, compiles, sizeof,
   is, shallowCopy, getAst, astToStr, spawn, procCall
 
 Thus they act more like keywords than like ordinary identifiers; unlike a
@@ -3691,7 +3697,7 @@ type.
 
   method eval(e: Expression): int {.base.} =
     # override this base method
-    quit "to override!"
+    raise newException(CatchableError, "Method without implementation override")
 
   method eval(e: Literal): int = return e.x
 
@@ -5080,6 +5086,25 @@ The problem here is that the compiler already decided that ``something()`` as
 an iterator is not callable in this context before ``toSeq`` gets its
 chance to convert it into a sequence.
 
+It is also not possible to use fully qualified identifiers with module
+symbol in method call syntax. The order in which the dot operator
+binds to symbols prohibits this.
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+   import sequtils
+
+   var myItems = @[1,3,3,7]
+   let N1 = count(myItems, 3) # OK
+   let N2 = sequtils.count(myItems, 3) # fully qualified, OK
+   let N3 = myItems.count(3) # OK
+   let N4 = myItems.sequtils.count(3) # illegal, `myItems.sequtils` can't be resolved
+
+This means that when for some reason a procedure needs a
+disambiguation through the module name, the call needs to be
+written in function call syntax.
 
 Macros
 ======
@@ -5890,9 +5915,9 @@ or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
 
-As a special semantic rule, the built-in `debugEcho <system.html#debugEcho>`_
-pretends to be free of side effects, so that it can be used for debugging
-routines marked as ``noSideEffect``.
+As a special semantic rule, the built-in `debugEcho
+<system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects,
+so that it can be used for debugging routines marked as ``noSideEffect``.
 
 ``func`` is syntactic sugar for a proc with no side effects:
 
@@ -5927,6 +5952,31 @@ Is the same as:
 .. code-block:: nim
   proc astHelper(n: NimNode): NimNode {.compileTime.} =
     result = n
+
+``compileTime`` variables are available at runtime too. This simplifies certain
+idioms where variables are filled at compile-time (for example, lookup tables)
+but accessed at runtime:
+
+.. code-block:: nim
+    :test: "nim c -r $1"
+
+  import macros
+
+  var nameToProc {.compileTime.}: seq[(string, proc (): string {.nimcall.})]
+
+  macro registerProc(p: untyped): untyped =
+    result = newTree(nnkStmtList, p)
+
+    let procName = p[0]
+    let procNameAsStr = $p[0]
+    result.add quote do:
+      nameToProc.add((`procNameAsStr`, `procName`))
+
+  proc foo: string {.registerProc.} = "foo"
+  proc bar: string {.registerProc.} = "bar"
+  proc baz: string {.registerProc.} = "baz"
+
+  doAssert nameToProc[2][1]() == "baz"
 
 
 noReturn pragma
@@ -6138,7 +6188,8 @@ factor.
 immediate pragma
 ----------------
 
-The immediate pragma is obsolete. See `Typed vs untyped parameters`_.
+The immediate pragma is obsolete. See `Typed vs untyped parameters
+<#templates-typed-vs-untyped-parameters>`_.
 
 
 compilation option pragmas
@@ -6193,6 +6244,25 @@ but are used to override the settings temporarily. Example:
   # speed critical
   # ... some code ...
   {.pop.} # restore old settings
+
+`push/pop`:idx: can switch on/off some standard library pragmas, example:
+
+.. code-block:: nim
+  {.push inline.}
+  proc thisIsInlined(): int = 42
+  func willBeInlined(): float = 42.0
+  {.pop.}
+  proc notInlined(): int = 9
+
+  {.push discardable, boundChecks: off, compileTime, noSideEffect, experimental.}
+  template example(): string = "https://nim-lang.org"
+  {.pop.}
+
+  {.push deprecated, hint[LineTooLong]: off, used, stackTrace: off.}
+  proc sample(): bool = true
+  {.pop.}
+
+For third party pragmas it depends on its implementation, but uses the same syntax.
 
 
 register pragma
@@ -6301,12 +6371,18 @@ is uncertain (it may be removed any time).
 Example:
 
 .. code-block:: nim
+  import threadpool
   {.experimental: "parallel".}
+
+  proc threadedEcho(s: string, i: int) =
+    echo(s, " ", $i)
 
   proc useParallel() =
     parallel:
       for i in 0..4:
-        echo "echo in parallel"
+        spawn threadedEcho("echo in parallel", i)
+
+  useParallel()
 
 
 As a top level statement, the experimental pragma enables a feature for the
@@ -6570,6 +6646,14 @@ The compiler needs to be told to generate C++ (command ``cpp``) for
 this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
 
+
+ImportJs pragma
+---------------
+
+Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+the ``importjs`` pragma can be used to import Javascript methods or
+symbols in general. The generated code then uses the Javascript method
+calling syntax: ``obj.method(arg)``.
 
 Namespaces
 ~~~~~~~~~~
@@ -6968,13 +7052,14 @@ spelled*:
 .. code-block::
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
-Note that this pragma is somewhat of a misnomer: Other backends do provide
-the same feature under the same name. Also, if one is interfacing with C++
-the `ImportCpp pragma <manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
-interfacing with Objective-C the `ImportObjC pragma
-<manual.html#implementation-specific-pragmas-importobjc-pragma>`_ can be used.
+Note that this pragma has been abused in the past to also work in the
+js backand for js objects and functions. : Other backends do provide
+the same feature under the same name. Also, when the target language
+is not set to C, other pragmas are available:
 
-The string literal passed to ``importc`` can be a format string:
+ * `importcpp <manual.html#implementation-specific-pragmas-importcpp-pragma>`_
+ * `importobjc <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
+ * `importjs <manual.html#implementation-specific-pragmas-importjs-pragma>`_
 
 .. code-block:: Nim
   proc p(s: cstring) {.importc: "prefix$1".}

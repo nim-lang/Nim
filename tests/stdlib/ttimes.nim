@@ -95,7 +95,7 @@ template runTimezoneTests() =
 
   # Bug with parse not setting DST properly if the current local DST differs from
   # the date being parsed. Need to test parse dates both in and out of DST. We
-  # are testing that be relying on the fact that tranforming a TimeInfo to a Time
+  # are testing that be relying on the fact that transforming a TimeInfo to a Time
   # and back again will correctly set the DST value. With the incorrect parse
   # behavior this will introduce a one hour offset from the named time and the
   # parsed time if the DST value differs between the current time and the date we
@@ -155,7 +155,7 @@ suite "ttimes":
       # impossible time period
       check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) ==
         "2017-03-26 03:30 +02:00"
-      # In case of an ambiguous time, the earlier time is choosen
+      # In case of an ambiguous time, the earlier time is chosen
       check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) ==
         "2017-10-29 02:00 +02:00"
       # These are just dates on either side of the dst switch

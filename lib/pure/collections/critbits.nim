@@ -186,14 +186,13 @@ template get[T](c: CritBitTree[T], key: string): T =
 
   n.val
 
-proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline, deprecatedGet.} =
+proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
   ## retrieves the value at ``c[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   get(c, key)
 
-proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
-  deprecatedGet.} =
+proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   get(c, key)

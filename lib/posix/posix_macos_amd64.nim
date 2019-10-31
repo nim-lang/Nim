@@ -140,7 +140,12 @@ type
   Id* {.importc: "id_t", header: "<sys/types.h>".} = int
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
-  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = int16
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
+    when defined(openbsd) or defined(netbsd):
+      uint32
+    else:
+      uint16
+  )
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int16
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
@@ -557,7 +562,7 @@ when defined(macosx):
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
 elif defined(solaris):
-  # Solaris dont have MSG_NOSIGNAL
+  # Solaris doesn't have MSG_NOSIGNAL
   const
     MSG_NOSIGNAL* = 0'i32
 else:

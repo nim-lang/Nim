@@ -46,7 +46,7 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
-proc encodeUrl*(s: string, usePlus=true): string =
+proc encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
   ## This means that characters in the set
@@ -75,7 +75,7 @@ proc encodeUrl*(s: string, usePlus=true): string =
       add(result, '%')
       add(result, toHex(ord(c), 2))
 
-proc decodeUrl*(s: string, decodePlus=true): string =
+proc decodeUrl*(s: string, decodePlus = true): string =
   ## Decodes a URL according to RFC3986.
   ##
   ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
@@ -90,7 +90,8 @@ proc decodeUrl*(s: string, decodePlus=true): string =
   runnableExamples:
     assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
-    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test",
+        false) == "https://nim-lang.org/this is a test"
   proc handleHexChar(c: char, x: var int) {.inline.} =
     case c
     of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
@@ -119,7 +120,8 @@ proc decodeUrl*(s: string, decodePlus=true): string =
     inc(j)
   setLen(result, j)
 
-proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true): string =
+proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
+    omitEq = true): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
   ##
   ## Every (key, value) pair is URL-encoded and written as ``key=value``. If the
@@ -133,7 +135,7 @@ proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true)
   ## **See also:**
   ## * `encodeUrl proc<#encodeUrl,string>`_
   runnableExamples:
-    assert encodeQuery({:}) == ""
+    assert encodeQuery({: }) == ""
     assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
     assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
   for elem in query:
@@ -369,7 +371,8 @@ proc combine*(uris: varargs[Uri]): Uri =
   ## **See also:**
   ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
-    let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"), parseUri("manual.html"))
+    let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"),
+        parseUri("manual.html"))
     assert foo.hostname == "nim-lang.org"
     assert foo.path == "/docs/manual.html"
   result = uris[0]
@@ -716,11 +719,11 @@ when isMainModule:
     doAssert encodeQuery({:}) == ""
     doAssert encodeQuery({"foo": "bar"}) == "foo=bar"
     doAssert encodeQuery({"foo": "bar & baz"}) == "foo=bar+%26+baz"
-    doAssert encodeQuery({"foo": "bar & baz"}, usePlus=false) == "foo=bar%20%26%20baz"
+    doAssert encodeQuery({"foo": "bar & baz"}, usePlus = false) == "foo=bar%20%26%20baz"
     doAssert encodeQuery({"foo": ""}) == "foo"
-    doAssert encodeQuery({"foo": ""}, omitEq=false) == "foo="
+    doAssert encodeQuery({"foo": ""}, omitEq = false) == "foo="
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
-    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq=false) == "a=1&b=&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
 
     block:
       var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}

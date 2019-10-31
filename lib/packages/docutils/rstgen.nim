@@ -101,7 +101,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## index hyperlinks to the file, but you can pass an empty string here if you
   ## are parsing a stream in memory. If `filename` ends with the ``.nim``
   ## extension, the title for the document will be set by default to ``Module
-  ## filename``.  This default title can be overriden by the embedded rst, but
+  ## filename``.  This default title can be overridden by the embedded rst, but
   ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``RstParseOptions``, ``FindFileHandler`` and ``MsgHandler`` types
@@ -154,7 +154,8 @@ proc writeIndexFile*(g: var RstGenerator, outfile: string) =
   ## Writes the current index buffer to the specified output file.
   ##
   ## You previously need to add entries to the index with the `setIndexTerm()
-  ## <#setIndexTerm>`_ proc. If the index is empty the file won't be created.
+  ## <#setIndexTerm,RstGenerator,string,string,string,string,string>`_ proc.
+  ## If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
 
 proc addXmlChar(dest: var string, c: char) =
@@ -308,7 +309,7 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## The `id` will be appended with a hash character only if its length is not
   ## zero, otherwise no specific anchor will be generated. In general you
   ## should only pass an empty `id` value for the title of standalone rst
-  ## documents (they are special for the `mergeIndexes() <#mergeIndexes>`_
+  ## documents (they are special for the `mergeIndexes() <#mergeIndexes,string>`_
   ## proc, see `Index (idx) file format <docgen.html#index-idx-file-format>`_
   ## for more information). Unlike other index terms, title entries are
   ## inserted at the beginning of the accumulated buffer to maintain a logical
@@ -318,8 +319,9 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## columns with their contents will be added.
   ##
   ## The index won't be written to disk unless you call `writeIndexFile()
-  ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
-  ## tools guide <docgen.html#index-switch>`_.
+  ## <#writeIndexFile,RstGenerator,string>`_. The purpose of the index is
+  ## documented in the `docgen tools guide
+  ## <docgen.html#related-options-index-switch>`_.
   var
     entry = term
     isTitle = false
@@ -350,7 +352,7 @@ proc hash(n: PRstNode): int =
 proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   ## Renders the string decorated within \`foobar\`\:idx\: markers.
   ##
-  ## Additionally adds the encosed text to the index as a term. Since we are
+  ## Additionally adds the enclosed text to the index as a term. Since we are
   ## interested in different instances of the same term to have different
   ## entries, a table is used to keep track of the amount of times a term has
   ## previously appeared to give a different identifier value for each.
@@ -399,11 +401,14 @@ proc hash(x: IndexEntry): Hash =
   result = result !& x.linkDesc.hash
   result = !$result
 
-proc `<-`(a: var IndexEntry, b: IndexEntry) =
-  shallowCopy a.keyword, b.keyword
-  shallowCopy a.link, b.link
-  shallowCopy a.linkTitle, b.linkTitle
-  shallowCopy a.linkDesc, b.linkDesc
+when defined(gcDestructors):
+  template `<-`(a, b: var IndexEntry) = a = move(b)
+else:
+  proc `<-`(a: var IndexEntry, b: IndexEntry) =
+    shallowCopy a.keyword, b.keyword
+    shallowCopy a.link, b.link
+    shallowCopy a.linkTitle, b.linkTitle
+    shallowCopy a.linkDesc, b.linkDesc
 
 proc sortIndex(a: var openArray[IndexEntry]) =
   # we use shellsort here; fast and simple
@@ -469,8 +474,8 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
 proc isDocumentationTitle(hyperlink: string): bool =
   ## Returns true if the hyperlink is actually a documentation title.
   ##
-  ## Documentation titles lack the hash. See `mergeIndexes() <#mergeIndexes>`_
-  ## for a more detailed explanation.
+  ## Documentation titles lack the hash. See `mergeIndexes()
+  ## <#mergeIndexes,string>`_ for a more detailed explanation.
   result = hyperlink.find('#') < 0
 
 proc stripTocLevel(s: string): tuple[level: int, text: string] =
@@ -647,13 +652,15 @@ proc mergeIndexes*(dir: string): string =
   ## This proc will first scan `dir` for index files with the ``.idx``
   ## extension previously created by commands like ``nim doc|rst2html``
   ## which use the ``--index:on`` switch. These index files are the result of
-  ## calls to `setIndexTerm() <#setIndexTerm>`_ and `writeIndexFile()
-  ## <#writeIndexFile>`_, so they are simple tab separated files.
+  ## calls to `setIndexTerm()
+  ## <#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+  ## and `writeIndexFile() <#writeIndexFile,RstGenerator,string>`_, so they are
+  ## simple tab separated files.
   ##
   ## As convention this proc will split index files into two categories:
   ## documentation and API. API indices will be all joined together into a
   ## single big sorted index, making the bulk of the final index. This is good
-  ## for API documentation because many symbols are repated in different
+  ## for API documentation because many symbols are repeated in different
   ## modules. On the other hand, documentation indices are essentially table of
   ## contents plus a few special markers. These documents will be rendered in a
   ## separate section which tries to maintain the order and hierarchy of the

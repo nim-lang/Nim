@@ -42,7 +42,7 @@ type
 # CPU this needs to be changed:
 const
   PageShift = when defined(cpu16): 8 else: 12 # \
-    # my tests showed no improvments for using larger page sizes.
+    # my tests showed no improvements for using larger page sizes.
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
@@ -112,8 +112,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
-    proc realloc(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc realloc(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: pointer) = boehmDealloc(p)
 
@@ -122,8 +122,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
       result = allocShared(size)
-    proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc reallocShared(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = boehmDealloc(p)
 
@@ -152,7 +152,9 @@ when defined(boehmgc):
     proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() =
-    boehmGC_set_all_interior_pointers(0)
+    when defined(boehmNoIntPtr):
+      # See #12286
+      boehmGC_set_all_interior_pointers(0)
     boehmGCinit()
     when hasThreadSupport:
       boehmGC_allow_register_threads()
@@ -505,16 +507,18 @@ else:
   elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
-  elif defined(nimV2):
+  elif defined(nimV2) or usesDestructors:
     var allocator {.rtlThreadVar.}: MemRegion
     instantiateForRegion(allocator)
-  elif defined(gcMarkAndSweep) or defined(gcDestructors):
+    when defined(gcHooks):
+      include "system/gc_hooks"
+  elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"
   else:
     include "system/gc"
 
-when not declared(nimNewSeqOfCap) and not defined(gcDestructors):
+when not declared(nimNewSeqOfCap) and not defined(nimSeqsV2):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
     when defined(gcRegions):
       let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize

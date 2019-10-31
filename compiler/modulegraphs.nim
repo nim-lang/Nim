@@ -64,7 +64,7 @@ type
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
     recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
-    cacheSeqs*: Table[string, PNode] # state that is shared to suppor the 'macrocache' API
+    cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API
     cacheCounters*: Table[string, BiggestInt]
     cacheTables*: Table[string, BTree[string, PNode]]
     passes*: seq[TPass]
@@ -215,7 +215,7 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   addModuleDep(g.incr, g.config, m.info.fileIndex, dep, isIncludeFile = false)
   if g.suggestMode:
     g.deps.incl m.position.dependsOn(dep.int)
-    # we compute the transitive closure later when quering the graph lazily.
+    # we compute the transitive closure later when querying the graph lazily.
     # this improves efficiency quite a lot:
     #invalidTransitiveClosure = true
 

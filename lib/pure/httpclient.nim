@@ -254,9 +254,9 @@ type
   MultipartData* = ref object
     content: seq[string]
 
-  ProtocolError* = object of IOError   ## exception that is raised when server
-                                       ## does not conform to the implemented
-                                       ## protocol
+  ProtocolError* = object of IOError ## exception that is raised when server
+                                     ## does not conform to the implemented
+                                     ## protocol
 
   HttpRequestError* = object of IOError ## Thrown in the ``getContent`` proc
                                         ## and ``postContent`` proc,
@@ -302,11 +302,11 @@ proc add*(p: var MultipartData, name, content: string, filename: string = "",
   ## Add a value to the multipart data. Raises a `ValueError` exception if
   ## `name`, `filename` or `contentType` contain newline characters.
 
-  if {'\c','\L'} in name:
+  if {'\c', '\L'} in name:
     raise newException(ValueError, "name contains a newline character")
-  if {'\c','\L'} in filename:
+  if {'\c', '\L'} in filename:
     raise newException(ValueError, "filename contains a newline character")
-  if {'\c','\L'} in contentType:
+  if {'\c', '\L'} in contentType:
     raise newException(ValueError, "contentType contains a newline character")
 
   var str = "Content-Disposition: form-data; name=\"" & name & "\""
@@ -454,7 +454,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
 
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
-    let auth = base64.encode(proxy.auth, newline = "")
+    let auth = base64.encode(proxy.auth)
     add(result, "Proxy-Authorization: basic " & auth & "\c\L")
 
   for key, val in headers:
@@ -470,11 +470,11 @@ type
   HttpClientBase*[SocketType] = ref object
     socket: SocketType
     connected: bool
-    currentURL: Uri ## Where we are currently connected.
+    currentURL: Uri       ## Where we are currently connected.
     headers*: HttpHeaders ## Headers to send in requests.
     maxRedirects: int
     userAgent: string
-    timeout*: int ## Only used for blocking HttpClient for now.
+    timeout*: int         ## Only used for blocking HttpClient for now.
     proxy: Proxy
     ## ``nil`` or the callback to call when request progress changes.
     when SocketType is Socket:
@@ -492,7 +492,7 @@ type
       parseBodyFut: Future[void]
     else:
       bodyStream: Stream
-    getBody: bool ## When `false`, the body is never read in requestAux.
+    getBody: bool         ## When `false`, the body is never read in requestAux.
 
 type
   HttpClient* = HttpClientBase[Socket]
@@ -563,7 +563,7 @@ proc close*(client: HttpClient | AsyncHttpClient) =
     client.socket.close()
     client.connected = false
 
-proc getSocket*(client: HttpClient): Socket  =
+proc getSocket*(client: HttpClient): Socket =
   ## Get network socket, useful if you want to find out more details about the connection
   ##
   ## this example shows info about local and remote endpoints
@@ -575,7 +575,7 @@ proc getSocket*(client: HttpClient): Socket  =
   ##
   return client.socket
 
-proc getSocket*(client: AsyncHttpClient): AsyncSocket  =
+proc getSocket*(client: AsyncHttpClient): AsyncSocket =
   return client.socket
 
 proc reportProgress(client: HttpClient | AsyncHttpClient,
@@ -756,7 +756,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
 
-      result.headers.add(name, line[linei.. ^1].strip())
+      result.headers.add(name, line[linei .. ^1].strip())
       if result.headers.len > headerLimit:
         httpError("too many headers")
 
@@ -827,7 +827,8 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
         connectUrl.hostname = url.hostname
         connectUrl.port = if url.port != "": url.port else: "443"
 
-        let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect, newHttpHeaders(), "", client.proxy)
+        let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect,
+            newHttpHeaders(), "", client.proxy)
         await client.socket.send(proxyHeaderString)
         let proxyResp = await parseResponse(client, false)
 

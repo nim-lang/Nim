@@ -59,7 +59,7 @@ import strutils
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
 
-proc loadLib*(path: string, globalSymbols=false): LibHandle {.gcsafe.}
+proc loadLib*(path: string, globalSymbols = false): LibHandle {.gcsafe.}
   ## loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
@@ -96,7 +96,7 @@ proc libCandidates*(s: string, dest: var seq[string]) =
   else:
     add(dest, s)
 
-proc loadLibPattern*(pattern: string, globalSymbols=false): LibHandle =
+proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
   ## loads a library with name matching `pattern`, similar to what `dlimport`
   ## pragma does. Returns nil if the library could not be loaded.
   ## Warning: this proc uses the GC and so cannot be used to load the GC.
@@ -117,7 +117,7 @@ when defined(posix) and not defined(nintendoswitch):
   #
   import posix
 
-  proc loadLib(path: string, globalSymbols=false): LibHandle =
+  proc loadLib(path: string, globalSymbols = false): LibHandle =
     let flags =
       if globalSymbols: RTLD_NOW or RTLD_GLOBAL
       else: RTLD_NOW
@@ -141,7 +141,7 @@ elif defined(nintendoswitch):
     raise newException(OSError, "dlopen not implemented on Nintendo Switch!")
   proc dlsym(lib: LibHandle, name: cstring): pointer =
     raise newException(OSError, "dlsym not implemented on Nintendo Switch!")
-  proc loadLib(path: string, global_symbols=false): LibHandle =
+  proc loadLib(path: string, global_symbols = false): LibHandle =
     raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
   proc loadLib(): LibHandle =
     raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
@@ -158,7 +158,7 @@ elif defined(windows) or defined(dos):
   #
   type
     HMODULE {.importc: "HMODULE".} = pointer
-    FARPROC  {.importc: "FARPROC".} = pointer
+    FARPROC {.importc: "FARPROC".} = pointer
 
   proc FreeLibrary(lib: HMODULE) {.importc, header: "<windows.h>", stdcall.}
   proc winLoadLibrary(path: cstring): HMODULE {.
@@ -166,7 +166,7 @@ elif defined(windows) or defined(dos):
   proc getProcAddress(lib: HMODULE, name: cstring): FARPROC {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc loadLib(path: string, globalSymbols=false): LibHandle =
+  proc loadLib(path: string, globalSymbols = false): LibHandle =
     result = cast[LibHandle](winLoadLibrary(path))
   proc loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))

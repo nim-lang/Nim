@@ -16,13 +16,6 @@ template sdata(arg: Int128, idx: int): int32 =
 
 # encoding least significant int first (like LittleEndian)
 
-type
-  InvalidArgument = object of Exception
-
-template require(cond: bool) =
-  if unlikely(not cond):
-    raise newException(InvalidArgument, "")
-
 const
   Zero* = Int128(udata: [0'u32,0,0,0])
   One* = Int128(udata: [1'u32,0,0,0])
@@ -79,6 +72,15 @@ proc toInt64*(arg: Int128): int64 =
     assert(arg.sdata(2) == 0, "out of range")
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
+
+proc toInt64Checked*(arg: Int128; onError: int64): int64 =
+  if isNegative(arg):
+    if arg.sdata(3) != -1 or arg.sdata(2) != -1:
+      return onError
+  else:
+    if arg.sdata(3) != 0 or arg.sdata(2) != 0:
+      return onError
+  return cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
 proc toInt32*(arg: Int128): int32 =
   if isNegative(arg):
@@ -378,7 +380,6 @@ proc `*`*(lhs,rhs: Int128): Int128 =
   result = result + toInt128(a00 * b32) shl 32
 
   if isNegative != isNegative(result):
-    echo result
     assert(false, "overflow")
 
 proc `*=`*(a: var Int128, b: Int128) =
@@ -406,11 +407,17 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
   if divisor > dividend:
     result.quotient = Zero
-    result.remainder = dividend
+    if isNegativeA:
+      result.remainder = -dividend
+    else:
+      result.remainder = dividend
     return
 
   if divisor == dividend:
-    result.quotient = One
+    if isNegativeA xor isNegativeB:
+      result.quotient = NegOne
+    else:
+      result.quotient = One
     result.remainder = Zero
     return
 
@@ -435,7 +442,7 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
     result.quotient = -quotient
   else:
     result.quotient = quotient
-  if isNegativeB:
+  if isNegativeA:
     result.remainder = -dividend
   else:
     result.remainder = dividend
@@ -675,3 +682,22 @@ when isMainModule:
 
   doAssert $high(Int128) == "170141183460469231731687303715884105727"
   doAssert $low(Int128) == "-170141183460469231731687303715884105728"
+
+  var ma = 100'i64
+  var mb = 13
+
+  # sign correctness
+  doAssert divMod(toInt128( ma),toInt128( mb)) == (toInt128( ma div  mb), toInt128( ma mod  mb))
+  doAssert divMod(toInt128(-ma),toInt128( mb)) == (toInt128(-ma div  mb), toInt128(-ma mod  mb))
+  doAssert divMod(toInt128( ma),toInt128(-mb)) == (toInt128( ma div -mb), toInt128( ma mod -mb))
+  doAssert divMod(toInt128(-ma),toInt128(-mb)) == (toInt128(-ma div -mb), toInt128(-ma mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( mb)) == (toInt128( mb div  mb), toInt128( mb mod  mb))
+  doAssert divMod(toInt128(-mb),toInt128( mb)) == (toInt128(-mb div  mb), toInt128(-mb mod  mb))
+  doAssert divMod(toInt128( mb),toInt128(-mb)) == (toInt128( mb div -mb), toInt128( mb mod -mb))
+  doAssert divMod(toInt128(-mb),toInt128(-mb)) == (toInt128(-mb div -mb), toInt128(-mb mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( ma)) == (toInt128( mb div  ma), toInt128( mb mod  ma))
+  doAssert divMod(toInt128(-mb),toInt128( ma)) == (toInt128(-mb div  ma), toInt128(-mb mod  ma))
+  doAssert divMod(toInt128( mb),toInt128(-ma)) == (toInt128( mb div -ma), toInt128( mb mod -ma))
+  doAssert divMod(toInt128(-mb),toInt128(-ma)) == (toInt128(-mb div -ma), toInt128(-mb mod -ma))

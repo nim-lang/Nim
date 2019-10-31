@@ -1,4 +1,5 @@
 discard """
+cmd: "nim $target --threads:on $options $file"
 output: '''
 '''
 """

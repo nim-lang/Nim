@@ -77,11 +77,11 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
       if typ != nil:
         typ = skipTypes(typ, abstractInst)
         if typ.kind != tyProc: typ = nil
-        else: assert(sonsLen(typ) == sonsLen(typ.n))
+        else: assert(len(typ) == len(typ.n))
 
       for i in 1 ..< n.len:
         let it = n.sons[i]
-        if typ != nil and i < sonsLen(typ):
+        if typ != nil and i < len(typ):
           assert(typ.n.sons[i].kind == nkSym)
           let paramType = typ.n.sons[i]
           if paramType.typ.isCompileTimeOnly: continue
@@ -157,10 +157,10 @@ proc depsArgs(w: var W; n: PNode) =
   var typ = skipTypes(n.sons[0].typ, abstractInst)
   if typ.kind != tyProc: return
   # echo n.info, " ", n, " ", w.owner.name.s, " ", typeToString(typ)
-  assert(sonsLen(typ) == sonsLen(typ.n))
+  assert(len(typ) == len(typ.n))
   for i in 1 ..< n.len:
     let it = n.sons[i]
-    if i < sonsLen(typ):
+    if i < len(typ):
       assert(typ.n.sons[i].kind == nkSym)
       let paramType = typ.n.sons[i]
       if paramType.typ.isCompileTimeOnly: continue

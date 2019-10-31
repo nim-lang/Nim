@@ -152,7 +152,7 @@ proc createObj*(g: ModuleGraph; owner: PSym, info: TLineInfo; final=true): PType
 
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
-  field.position = sonsLen(obj.n)
+  field.position = len(obj.n)
   addSon(obj.n, newSymNode(field))
   propagateToOwner(obj, field.typ)
 
@@ -179,14 +179,14 @@ proc lookupInRecord(n: PNode, id: int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       result = lookupInRecord(n.sons[i], id)
       if result != nil: return
   of nkRecCase:
     if n.sons[0].kind != nkSym: return
     result = lookupInRecord(n.sons[0], id)
     if result != nil: return
-    for i in 1 ..< sonsLen(n):
+    for i in 1 ..< len(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n.sons[i]), id)
@@ -206,7 +206,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   field.typ = t
   assert t.kind != tyTyped
   propagateToOwner(obj, t)
-  field.position = sonsLen(obj.n)
+  field.position = len(obj.n)
   addSon(obj.n, newSymNode(field))
 
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable.} =
@@ -219,7 +219,7 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable
     field.typ = t
     assert t.kind != tyTyped
     propagateToOwner(obj, t)
-    field.position = sonsLen(obj.n)
+    field.position = len(obj.n)
     addSon(obj.n, newSymNode(field))
     result = field
 

@@ -197,7 +197,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
            "Descriptor $# is not registered in the selector!" % $fdi)
   if pkey.events != {}:
     when not defined(android):
-      if pkey.events * {Event.Read, Event.Write} != {}:
+      if Event.Read in pkey.events or Event.Write in pkey.events or Event.User in pkey.events:
         var epv = EpollEvent()
         # TODO: Refactor all these EPOLL_CTL_DEL + dec(s.count) into a proc.
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
@@ -237,7 +237,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
         if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
     else:
-      if pkey.events * {Event.Read, Event.Write} != {}:
+      if Event.Read in pkey.events or Event.Write in pkey.events or Event.User in pkey.events:
         var epv = EpollEvent()
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())

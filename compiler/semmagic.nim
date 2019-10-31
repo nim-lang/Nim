@@ -74,7 +74,7 @@ proc semAsgnOpr(c: PContext; n: PNode): PNode =
 
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
-  result = newIntNodeT(ord(r), n, c.graph)
+  result = newIntNodeT(toInt128(ord(r)), n, c.graph)
 
 proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
@@ -171,7 +171,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
-    result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
+    result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
@@ -180,7 +180,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2, c.config)
   let t = n.sons[1].typ
   internalAssert c.config, t != nil and t.kind == tyTypeDesc
-  if t.sonsLen > 0:
+  if t.len > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
     result = evalTypeTrait(c, n, t, getCurrOwner(c))
@@ -279,7 +279,7 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
     a.setResult opBindSym(c, scope, a.getNode(0), a.getInt(1).int, a.getNode(2))
 
   let
-    # altough we use VM callback here, it is not
+    # although we use VM callback here, it is not
     # executed like 'normal' VM callback
     idx = vm.registerCallback("bindSymImpl", bindSymWrapper)
     # dummy node to carry idx information to VM
@@ -293,7 +293,7 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semOf(c: PContext, n: PNode): PNode =
-  if sonsLen(n) == 3:
+  if len(n) == 3:
     n.sons[1] = semExprWithType(c, n.sons[1])
     n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
     #restoreOldStyleType(n.sons[1])

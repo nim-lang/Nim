@@ -391,7 +391,7 @@ proc setVal[K, V](table: var PConcTable[K, V], key: int, val: int,
   # Done spinning for a new slot
   var oldVal = atomic_load_n(table[idx].value.addr, ATOMIC_RELAXED)
   if val == oldVal:
-    #echo("this val is alredy in the slot")
+    #echo("this val is already in the slot")
     return oldVal
   nextTable = atomic_load_n(table.next.addr, ATOMIC_SEQ_CST)
   if nextTable == nil and

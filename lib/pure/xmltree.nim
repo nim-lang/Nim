@@ -42,12 +42,12 @@ type
     ## Use `newXmlTree proc <#newXmlTree,string,openArray[XmlNode],XmlAttributes>`_
     ## for creating a new tree.
 
-  XmlNodeKind* = enum  ## Different kinds of XML nodes.
-    xnText,             ## a text element
-    xnElement,          ## an element with 0 or more children
-    xnCData,            ## a CDATA node
-    xnEntity,           ## an entity (like ``&thing;``)
-    xnComment           ## an XML comment
+  XmlNodeKind* = enum ## Different kinds of XML nodes.
+    xnText,           ## a text element
+    xnElement,        ## an element with 0 or more children
+    xnCData,          ## a CDATA node
+    xnEntity,         ## an entity (like ``&thing;``)
+    xnComment         ## an XML comment
 
   XmlAttributes* = StringTableRef ## An alias for a string to string mapping.
     ##
@@ -62,7 +62,7 @@ type
       fTag: string
       s: seq[XmlNode]
       fAttr: XmlAttributes
-    fClientData: int              ## for other clients
+    fClientData: int    ## for other clients
 
 const
   xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
@@ -236,13 +236,19 @@ proc rawText*(n: XmlNode): string {.inline.} =
   ## Returns the underlying 'text' string by reference.
   ##
   ## This is only used for speed hacks.
-  shallowCopy(result, n.fText)
+  when defined(gcDestructors):
+    result = move(n.fText)
+  else:
+    shallowCopy(result, n.fText)
 
 proc rawTag*(n: XmlNode): string {.inline.} =
   ## Returns the underlying 'tag' string by reference.
   ##
   ## This is only used for speed hacks.
-  shallowCopy(result, n.fTag)
+  when defined(gcDestructors):
+    result = move(n.fTag)
+  else:
+    shallowCopy(result, n.fTag)
 
 proc innerText*(n: XmlNode): string =
   ## Gets the inner text of `n`:
@@ -344,7 +350,7 @@ proc kind*(n: XmlNode): XmlNodeKind {.inline.} =
     assert b.kind == xnText
   result = n.k
 
-proc `[]`* (n: XmlNode, i: int): XmlNode {.inline.} =
+proc `[]`*(n: XmlNode, i: int): XmlNode {.inline.} =
   ## Returns the `i`'th child of `n`.
   runnableExamples:
     var f = newElement("myTag")
@@ -356,7 +362,7 @@ proc `[]`* (n: XmlNode, i: int): XmlNode {.inline.} =
   assert n.k == xnElement
   result = n.s[i]
 
-proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
+proc `[]`*(n: var XmlNode, i: int): var XmlNode {.inline.} =
   ## Returns the `i`'th child of `n` so that it can be modified.
   assert n.k == xnElement
   result = n.s[i]
@@ -421,7 +427,8 @@ iterator mitems*(n: var XmlNode): var XmlNode {.inline.} =
   assert n.k == xnElement
   for i in 0 .. n.len-1: yield n[i]
 
-proc toXmlAttributes*(keyValuePairs: varargs[tuple[key, val: string]]): XmlAttributes =
+proc toXmlAttributes*(keyValuePairs: varargs[tuple[key,
+    val: string]]): XmlAttributes =
   ## Converts `{key: value}` pairs into `XmlAttributes`.
   ##
   ## .. code-block::
@@ -558,7 +565,7 @@ proc noWhitespace(n: XmlNode): bool =
     if n[i].kind in {xnText, xnEntity}: return true
 
 proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
-          addNewLines=true) =
+          addNewLines = true) =
   ## Adds the textual representation of `n` to string `result`.
   runnableExamples:
     var
@@ -654,7 +661,8 @@ proc child*(n: XmlNode, name: string): XmlNode =
       if i.tag == name:
         return i
 
-proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode], caseInsensitive = false) =
+proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode],
+    caseInsensitive = false) =
   ## Iterates over all the children of `n` returning those matching `tag`.
   ##
   ## Found nodes satisfying the condition will be appended to the `result`
@@ -752,4 +760,4 @@ macro `<>`*(x: untyped): untyped =
 
 when isMainModule:
   assert """<a href="http://nim-lang.org">Nim rules.</a>""" ==
-    $(<>a(href="http://nim-lang.org", newText("Nim rules.")))
+    $(<>a(href = "http://nim-lang.org", newText("Nim rules.")))

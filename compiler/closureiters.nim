@@ -601,7 +601,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         result.add(n)
         result.add(ctx.newEnvVarAccess(tmp))
 
-  of nkCallKinds:
+  of nkCallKinds, nkChckRange, nkChckRangeF, nkChckRange64:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -683,7 +683,8 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv:
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv,
+      nkDerefExpr, nkHiddenDeref:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -757,7 +758,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         n[0] = newSymNode(ctx.g.getSysSym(n[0].info, "true"))
         n[1] = newBody
 
-  of nkDotExpr:
+  of nkDotExpr, nkCheckedFieldExpr:
     var ns = false
     n[0] = ctx.lowerStmtListExprs(n[0], ns)
     if ns:
@@ -1286,9 +1287,9 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   ctx.fn = fn
 
   if getEnvParam(fn).isNil:
-    # Lambda lifting was not done yet. Use temporary :state sym, which
+    # Lambda lifting was not done yet. Use temporary :state sym, which will
     # be handled specially by lambda lifting. Local temp vars (if needed)
-    # should folllow the same logic.
+    # should follow the same logic.
     ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), fn, fn.info)
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn)
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), fn, fn.info)
@@ -1309,7 +1310,7 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   # Optimize empty states away
   ctx.deleteEmptyStates()
 
-  # Make new body by concating the list of states
+  # Make new body by concatenating the list of states
   result = newNodeI(nkStmtList, n.info)
   for s in ctx.states:
     assert(s.len == 2)

@@ -51,7 +51,7 @@ proc setConnected(state: bool) =
     for b in connectionButtons: disable(b)
 
 proc setActiveZone(ind: int; zone: ScZoneRecord) =
-  #hilight it or something
+  #highlight it or something
   dispmessage("Selected " & zone.name)
   connectZone(zone.ip, zone.port)
   playBtn.enable()
