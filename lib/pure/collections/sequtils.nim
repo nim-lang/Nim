@@ -720,7 +720,7 @@ template foldl*(sequence, operation: untyped): untyped =
   let s = sequence
   # assert s.len > 0, "Can't fold empty sequences"
   var result: type(s[0])
-  # result = s[0]
+  if s.len > 0: result = s[0]
   for i in 1..<s.len:
     let
       a {.inject.} = result
