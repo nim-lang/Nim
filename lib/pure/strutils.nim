@@ -1846,7 +1846,7 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   return -1
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
+  proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
   const hasCStringBuiltin = true
 else:
@@ -1872,7 +1872,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
     when hasCStringBuiltin:
       let L = last-start+1
       if L > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, L)
+        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](L))
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:

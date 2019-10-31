@@ -15,19 +15,19 @@
 when not defined(nimHasHotCodeReloading):
   {.pragma: nonReloadable.}
 
-proc c_memchr*(s: pointer, c: cint, n: csize): pointer {.
+proc c_memchr*(s: pointer, c: cint, n: csize_t): pointer {.
   importc: "memchr", header: "<string.h>".}
-proc c_memcmp*(a, b: pointer, size: csize): cint {.
+proc c_memcmp*(a, b: pointer, size: csize_t): cint {.
   importc: "memcmp", header: "<string.h>", noSideEffect.}
-proc c_memcpy*(a, b: pointer, size: csize): pointer {.
+proc c_memcpy*(a, b: pointer, size: csize_t): pointer {.
   importc: "memcpy", header: "<string.h>", discardable.}
-proc c_memmove*(a, b: pointer, size: csize): pointer {.
+proc c_memmove*(a, b: pointer, size: csize_t): pointer {.
   importc: "memmove", header: "<string.h>",discardable.}
-proc c_memset*(p: pointer, value: cint, size: csize): pointer {.
+proc c_memset*(p: pointer, value: cint, size: csize_t): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
 proc c_strcmp*(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
-proc c_strlen*(a: cstring): csize {.
+proc c_strlen*(a: cstring): csize_t {.
   importc: "strlen", header: "<string.h>", noSideEffect.}
 proc c_abort*() {.
   importc: "abort", header: "<stdlib.h>", noSideEffect, noreturn.}
@@ -132,18 +132,18 @@ proc c_sprintf*(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-proc c_malloc*(size: csize): pointer {.
+proc c_malloc*(size: csize_t): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
 proc c_free*(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
-proc c_realloc*(p: pointer, newsize: csize): pointer {.
+proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
-proc c_fwrite*(buf: pointer, size, n: csize, f: CFilePtr): cint {.
+proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
-  discard c_fwrite(s, 1, s.len, f)
+  discard c_fwrite(s, 1, cast[csize_t](s.len), f)
 
 {.pop.}
