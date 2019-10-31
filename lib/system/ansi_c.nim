@@ -15,24 +15,14 @@
 when not defined(nimHasHotCodeReloading):
   {.pragma: nonReloadable.}
 
-proc c_memchr*(s: pointer, c: cint, n: csize): pointer {.
-  importc: "memchr", header: "<string.h>", deprecated: "argument `n` should be of type `csize_t`".}
 proc c_memchr*(s: pointer, c: cint, n: csize_t): pointer {.
   importc: "memchr", header: "<string.h>".}
-proc c_memcmp*(a, b: pointer, size: csize): cint {.
-  importc: "memcmp", header: "<string.h>", noSideEffect, deprecated: "argument `size` should be of type `csize_t`".}
 proc c_memcmp*(a, b: pointer, size: csize_t): cint {.
   importc: "memcmp", header: "<string.h>", noSideEffect.}
-proc c_memcpy*(a, b: pointer, size: csize): pointer {.
-  importc: "memcpy", header: "<string.h>", discardable, deprecated: "argument `size` should be of type `csize_t`".}
 proc c_memcpy*(a, b: pointer, size: csize_t): pointer {.
   importc: "memcpy", header: "<string.h>", discardable.}
-proc c_memmove*(a, b: pointer, size: csize): pointer {.
-  importc: "memmove", header: "<string.h>",discardable, deprecated: "argument `size` should be of type `csize_t`".}
 proc c_memmove*(a, b: pointer, size: csize_t): pointer {.
   importc: "memmove", header: "<string.h>",discardable.}
-proc c_memset*(p: pointer, value: cint, size: csize): pointer {.
-  importc: "memset", header: "<string.h>", discardable, deprecated: "argument `size` should be of type `csize_t`".}
 proc c_memset*(p: pointer, value: cint, size: csize_t): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
 proc c_strcmp*(a, b: cstring): cint {.
