@@ -427,5 +427,5 @@ when isMainModule:
     else:
       echo "Status [" & $status & "] message = [" & $message & "]"
 
-  downloadToFile("https://nim-lang.org/download/mingw64-6.3.0.7z",
+  downloadToFile("https://nim-lang.org/download/mingw64.7z",
                  "test.zip", {optUseCache}, progress)
