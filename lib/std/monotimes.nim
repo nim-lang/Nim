@@ -41,7 +41,7 @@ type
   MonoTime* = object ## Represents a monotonic timestamp.
     ticks: int64
 
-when defined(macosx):
+when defined(macosx) or defined(ios):
   type
     MachTimebaseInfoData {.pure, final, importc: "mach_timebase_info_data_t",
         header: "<mach/mach_time.h>".} = object
@@ -102,7 +102,7 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   when defined(JS):
     let ticks = getJsTicks()
     result = MonoTime(ticks: (ticks * 1_000_000_000).int64)
-  elif defined(macosx):
+  elif defined(macosx) or defined(ios):
     let ticks = mach_absolute_time()
     result = MonoTime(ticks: ticks * machAbsoluteTimeFreq.numer div
       machAbsoluteTimeFreq.denom)

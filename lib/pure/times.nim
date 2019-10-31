@@ -230,7 +230,7 @@ elif defined(posix):
     when not defined(valgrind_workaround_10121):
       tzset()
 
-  when defined(macosx):
+  when defined(macosx) or defined(ios):
     proc gettimeofday(tp: var Timeval, unused: pointer = nil)
       {.importc: "gettimeofday", header: "<sys/time.h>".}
 
@@ -1200,7 +1200,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     let nanos = convert(Milliseconds, Nanoseconds,
       millis mod convert(Seconds, Milliseconds, 1).int)
     result = initTime(seconds, nanos)
-  elif defined(macosx):
+  elif defined(macosx) or defined(ios):
     var a: Timeval
     gettimeofday(a)
     result = initTime(a.tv_sec.int64,
@@ -2511,7 +2511,7 @@ when not defined(JS):
         fib.add(fib[^1] + fib[^2])
       echo "CPU time [s] ", cpuTime() - t0
       echo "Fib is [s] ", fib
-    when defined(posix) and not defined(osx) and declared(CLOCK_THREAD_CPUTIME_ID):
+    when defined(posix) and not defined(osx) and declared(CLOCK_THREAD_CPUTIME_ID) and not defined(ios):
       # 'clocksPerSec' is a compile-time constant, possibly a
       # rather awful one, so use clock_gettime instead
       var ts: Timespec
@@ -2527,7 +2527,7 @@ when not defined(JS):
     ## on the hardware/OS).
     ##
     ## ``getTime`` should generally be preferred over this proc.
-    when defined(macosx):
+    when defined(macosx) or defined(ios):
       var a: Timeval
       gettimeofday(a)
       result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(a.tv_usec)*0.00_0001

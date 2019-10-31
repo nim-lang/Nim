@@ -554,7 +554,7 @@ when defined(linux) or defined(nimdoc):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
-when defined(macosx):
+when defined(macosx) or defined(ios):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
   # Instead we should use SO_NOSIGPIPE in setsockopt
   const
