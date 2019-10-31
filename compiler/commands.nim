@@ -627,22 +627,20 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optGenMapping}, arg, pass, info)
   of "os":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd1, passPP}:
-      let theOS = platform.nameToOS(arg)
-      if theOS == osNone:
-        let osList = platform.listOSnames().join(", ")
-        localError(conf, info, "unknown OS: '$1'. Available options are: $2" % [arg, $osList])
-      elif theOS != conf.target.hostOS:
-        setTarget(conf.target, theOS, conf.target.targetCPU)
+    let theOS = platform.nameToOS(arg)
+    if theOS == osNone:
+      let osList = platform.listOSnames().join(", ")
+      localError(conf, info, "unknown OS: '$1'. Available options are: $2" % [arg, $osList])
+    else:
+      setTarget(conf.target, theOS, conf.target.targetCPU)
   of "cpu":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd1, passPP}:
-      let cpu = platform.nameToCPU(arg)
-      if cpu == cpuNone:
-        let cpuList = platform.listCPUnames().join(", ")
-        localError(conf, info, "unknown CPU: '$1'. Available options are: $2" % [ arg, cpuList])
-      elif cpu != conf.target.hostCPU:
-        setTarget(conf.target, conf.target.targetOS, cpu)
+    let cpu = platform.nameToCPU(arg)
+    if cpu == cpuNone:
+      let cpuList = platform.listCPUnames().join(", ")
+      localError(conf, info, "unknown CPU: '$1'. Available options are: $2" % [ arg, cpuList])
+    else:
+      setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
   of "errormax":
