@@ -689,7 +689,7 @@ when isMainModule:
     doAssert c[1] == 0
 
     const d = [0, 1]
-    let e = shuffled(b)
+    let e = shuffled(d)
     doAssert d[0] == 0
     doAssert d[1] == 1
     doAssert e[0] == 1
