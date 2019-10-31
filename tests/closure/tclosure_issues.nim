@@ -67,16 +67,18 @@ proc foo(): proc =
 echo foo()()
 
 
+# issue #7104
+
 block tissue7104:
   proc sp(cb: proc())=
-      cb()
+    cb()
 
-  sp:
-      var i = 0
+  sp do:
+    var i = 0
+    echo "ok ", i
+    sp do:
+      inc i
       echo "ok ", i
-      sp():
-          inc i
-          echo "ok ", i
-          sp do:
-              inc i
-              echo "ok ", i
+      sp do:
+        inc i
+        echo "ok ", i
