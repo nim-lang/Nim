@@ -1236,13 +1236,18 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noNimScript.} =
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
-  ## Returns the `current working directory`:idx:.
+  ## Returns the `current working directory`:idx: i.e. where the built
+  ## binary is run.
+  ##
+  ## So the path returned by this proc is determined at run time.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
   ## * `getTempDir proc <#getTempDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
+  ## * `getProjectPath proc <macros.html#getProjectPath>`_
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:

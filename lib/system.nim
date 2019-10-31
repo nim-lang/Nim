@@ -4183,7 +4183,19 @@ when declared(File):
   template `&=`*(f: File, x: typed) = write(f, x)
 
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
-  ## returns the full file-system path of the current source
+  ## Returns the full file-system path of the current source.
+  ##
+  ## To get the directory containing the current source, use it with
+  ## `os.parentDir() <os.html#parentDir%2Cstring>`_ as ``currentSourcePath.parentDir()``.
+  ##
+  ## The path returned by this template is set at compile time.
+  ##
+  ## See the docstring of `macros.getProjectPath() <macros.html#getProjectPath>`_
+  ## for an example to see the distinction between the ``currentSourcePath``
+  ## and ``getProjectPath``.
+  ##
+  ## See also:
+  ## * `getCurrentDir proc <os.html#getCurrentDir>`_
 
 when compileOption("rangechecks"):
   template rangeCheck*(cond) =
