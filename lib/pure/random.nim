@@ -625,25 +625,7 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
-proc shuffled*[T](r: var Rand; x: seq[T]): seq[T] {.inline.} =
-  ## Shuffled a array of elements not-in-place using the given state.
-  ##
-  ## See also:
-  ## * `shuffled proc<#shuffled, seq[T]>`_ that uses the default
-  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`_ that return array
-  result = x
-  shuffle(r, result)
-
-proc shuffled*[I, T](r: var Rand; x: array[I, T]): array[I, T] {.inline.} =
-  ## Shuffled a seq of elements not-in-place using the given state.
-  ##
-  ## See also:
-  ## * `shuffled proc<#shuffled, array[I, T]>`_ that uses the default
-  ## * `shuffled proc<#shuffled, Rand, seq[T]>`_ that return seq
-  result = x
-  shuffle(r, result)
-
-proc shuffled*[T](x: seq[T]): seq[T] {.inline.} =
+proc shuffled*[T: seq | array](x: T; r: var Rand = state): T {.inline.} =
   ## Shuffled a seq of elements not-in-place.
   ##
   ## If `randomize<#randomize>`_ has not been called, the order of outcomes
@@ -652,24 +634,8 @@ proc shuffled*[T](x: seq[T]): seq[T] {.inline.} =
   ## This proc uses the default random number generator. Thus, it is **not**
   ## thread-safe.
   ##
-  ## See also:
-  ## * `shuffled proc<#shuffled, Rand, seq[T]>`_ that uses a provided state
-  ## * `shuffled proc<#shuffled, array[I, T]>`_ that return array
-  shuffled(state, x)
-
-proc shuffled*[I, T](x: array[I, T]): array[I, T] {.inline.} =
-  ## Shuffled a array of elements not-in-place.
-  ##
-  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
-  ## from this proc will always be the same.
-  ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
-  ##
-  ## See also:
-  ## * `shuffled proc<#shuffled, Rand, array[I, T]>`_ that uses a provided state
-  ## * `shuffled proc<#shuffled, seq[T]>`_ that return seq
-  shuffled(state, x)
+  result = x
+  shuffle(r, result)
 
 when not defined(nimscript):
   import times
@@ -722,7 +688,7 @@ when isMainModule:
     doAssert c[0] == 1
     doAssert c[1] == 0
 
-    const d = @[0, 1]
+    const d = [0, 1]
     let e = shuffled(b)
     doAssert d[0] == 0
     doAssert d[1] == 1
