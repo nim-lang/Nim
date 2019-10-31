@@ -1106,9 +1106,13 @@ proc parseDoBlock(p: var TParser; info: TLineInfo): PNode =
   let pragmas = optPragmas(p)
   colcom(p, result)
   let body = parseStmt(p)
-  result = newProcNode(nkDo, info,
-    body = body, params = params, name = p.emptyNode, pattern = p.emptyNode,
-    genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
+  let legacyMode = optOldDoNode in p.lex.config.legacyFeatures
+  if legacyMode and params.len == 1 and params[0].kind == nkEmpty:
+    result = body
+  else:
+    result = newProcNode(nkDo, info,
+      body = body, params = params, name = p.emptyNode, pattern = p.emptyNode,
+      genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
 
 proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
   #| procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
@@ -1347,15 +1351,17 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
   result = x
   if p.tok.indent >= 0: return
 
-  var
-    openingParams = p.emptyNode
-    openingPragmas = p.emptyNode
+  var openingParams, openingPragmas: PNode
 
   let doToken = p.tok.tokType == tkDo
   if doToken:
     getTok(p)
     openingParams = parseParamList(p, retColon=false)
     openingPragmas = optPragmas(p)
+  else:
+    openingParams = newNodeP(nkFormalParams, p)
+    openingParams.add p.emptyNode
+    openingPragmas = p.emptyNode
 
   if p.tok.tokType == tkColon:
     result = makeCall(result)
@@ -1368,7 +1374,12 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
       if stmtList[0].kind == nkStmtList: stmtList = stmtList[0]
 
       stmtList.flags.incl nfBlockArg
-      if doToken:
+      let legacyMode = optOldDoNode in p.lex.config.legacyFeatures
+      if (legacyMode and openingParams.len > 1) or (not(legacyMode) and doToken):
+        # in legacy mode, a nkDo node is generated depending on the
+        # amount of parameters of the do node `do(a,b,c): ...` vs
+        # `do:`. This has changed, without legacy mode an `nkDo` node
+        # is generated always when also a doToken got parsed.
         result.add newProcNode(nkDo, stmtList.info, body = stmtList,
                                params = openingParams,
                                name = p.emptyNode, pattern = p.emptyNode,
@@ -1410,7 +1421,7 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
 
       if nextBlock.kind == nkElse: break
   else:
-    if openingParams.kind != nkEmpty:
+    if openingParams.len > 1:
       parMessage(p, "expected ':'")
 
 proc parseExprStmt(p: var TParser): PNode =

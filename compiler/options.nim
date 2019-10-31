@@ -146,6 +146,11 @@ type
       ## Allows to modify a NimNode where the type has already been
       ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
+    optOldDoNode
+      ## Do blocks without arguments magically become nkStmtList;
+      ## Nodes of kind nkStmtList automatically convert to lambda
+      ## expressions without arguments.
+
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
