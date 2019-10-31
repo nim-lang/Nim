@@ -36,6 +36,11 @@ type
 
 - A bug allowing `int` to be implicitly converted to range types of smaller size (e.g `range[0'i8..10'i8]`) has been fixed.
 
+- A bug that automatically lifts nodes of kind `stmtList` into lambda
+  expressions has been fixed.
+
+- Code blocks that start with a `do` are now consistent of type
+  `nkDo`.
 
 ## Library additions
 
