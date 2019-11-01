@@ -1577,6 +1577,15 @@ proc getCustomPragmaNode*(sym: NimNode, name: string): NimNode =
     result = getCustomPragmaNodeFromProcSym(sym, name)
   of nskType:
     result = getCustomPragmaNodeFromTypeSym(sym, name)
+  of nskParam:
+    # Warning: shitty typedesc handling workarounds ahead. I hate `typedesc` so much.
+    # When a typedesc parameter is passed to the macro, it will be of nskParam. , not of
+    let typeInst = getTypeInst(sym)
+    if typeInst.kind == nnkBracketExpr and eqIdent(typeInst[0], "typeDesc"):
+      warning("Pleased don't pass shitty typedesc values to this macro. Please use real type expressions, symbols of kind nskType. Thank you.", sym)
+      result = getCustomPragmaNodeFromTypeSym(typeInst[1], name)
+    else:
+      error("illegal sym kind for argument: " & $sym.symKind, sym)
   of nskVar, nskLet:
     # I think it is a bad idea to fall back to the typeSym. The API
     # explicity requests a var/let symbol, not a type symbol.
