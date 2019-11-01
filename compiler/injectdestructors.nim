@@ -173,6 +173,9 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   elif op.ast[genericParamsPos].kind != nkEmpty:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
+  dbg:
+    if kind == attachedDestructor:
+      echo "destructor is ", op.id, " ", op.ast
   if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
@@ -681,4 +684,4 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     result.add body
   dbg:
     echo ">---------transformed-to--------->"
-    echo result
+    echo renderTree(result, {renderIds})
