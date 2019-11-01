@@ -187,9 +187,12 @@ when false:
     let rhs = ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})
     result = lhs.kind == tyRef and rhs.kind == tyOwned
 
-proc canBeMoved(t: PType): bool {.inline.} =
+proc canBeMoved(c: Con; t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+  if optOwnedRefs in c.graph.config.globalOptions:
+    result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+  else:
+    result = t.attachedOps[attachedSink] != nil
 
 proc genSink(c: Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -566,7 +569,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       snk.add ri
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-        isLastRead(ri, c) and canBeMoved(dest.typ):
+        isLastRead(ri, c) and canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
       snk.add ri
@@ -589,7 +592,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     handleNested(ri): moveOrCopy(dest, node, c)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
-        canBeMoved(dest.typ):
+        canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
       snk.add ri
