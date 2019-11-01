@@ -995,19 +995,15 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   let nameHcr = tiNameForHcr(m, name)
 
   var size: Rope
-  if tfIncompleteStruct in typ.flags: size = rope"void*"
-  else: size = getTypeDesc(m, origType)
+  if tfIncompleteStruct in typ.flags:
+    size = rope"void*"
+  else:
+    size = getTypeDesc(m, origType)
 
-  # it is probably wiser to include "stdalign.h" in (Obj)C and always use "alignof"
-  let alignOfExpr =
-    if m.config.cmd in {cmdCompileToC, cmdCompileToOC}:
-      "_Alignof" # this is a keyword in C and objective C
-    else:
-      "alignof" # this is a keyword in C++
-
-  addf(m.s[cfsTypeInit3],
-       "$1.size = sizeof($2);$n$1.align = $5($2);$n$1.kind = $3;$n$1.base = $4;$n",
-       [nameHcr, size, rope(nimtypeKind), base, rope(alignOfExpr)])
+  m.s[cfsTypeInit3].addf(
+    "$1.size = sizeof($2);$n$1.align = $5($2);$n$1.kind = $3;$n$1.base = $4;$n",
+    [nameHcr, size, rope(nimtypeKind), base, rope(alignOfKw(m.config.cmd))]
+  )
   # compute type flags for GC optimization
   var flags = 0
   if not containsGarbageCollectedRef(typ): flags = flags or 1
@@ -1303,8 +1299,8 @@ proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo
   else:
     d = rope("NIM_NIL")
   addf(m.s[cfsVars], "TNimType $1;$n", [name])
-  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = _Alignof($3); $1.name = $4;$n", [
-    name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = $5($3); $1.name = $4;$n", [
+    name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t), rope(alignOfKw(m.config.cmd))])
 
 proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t

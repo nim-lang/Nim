@@ -89,6 +89,16 @@ proc useHeader(m: BModule, sym: PSym) =
     let str = getStr(sym.annex.path)
     m.includeHeader(str)
 
+proc alignOfKw(command: TCommands): string =
+  ## Returns the correstponding `alignof` keyword for the compilation
+  ## target. The keyword is `_Alignof` in C and ObjC and `alignof` in
+  ## C++. `command` must be one of `cmdCompileToC`, `cmdCompileToOC`
+  ## or `cmdCompileToCpp`.
+  if command in {cmdCompileToC, cmdCompileToOC}:
+    "_Alignof" # this is a keyword in C and objective C
+  else:
+    "alignof" # this is a keyword in C++
+
 proc cgsym(m: BModule, name: string): Rope
 
 proc getCFile(m: BModule): AbsoluteFile

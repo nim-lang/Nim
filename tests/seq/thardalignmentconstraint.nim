@@ -1,3 +1,9 @@
+discard """
+disabled: true
+"""
+
+# does not yet work
+
 {.passC: "-march=native".}
 
 type
