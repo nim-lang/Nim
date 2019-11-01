@@ -202,15 +202,12 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
-proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
+proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[(S, T)] =
   ## Returns a new sequence with a combination of the two input containers.
   ##
   ## The input containers can be of different types.
   ## If one container is shorter, the remaining items in the longer container
   ## are discarded.
-  ##
-  ## For convenience you can access the returned tuples through the named
-  ## fields `a` and `b`.
   ##
   runnableExamples:
     let
@@ -220,13 +217,13 @@ proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
       letters = "abcd"
       zip1 = zip(short, long)
       zip2 = zip(short, words)
-      zip3 = zip(long, letters)
+      zip3: seq[tuple[num: int, letter: char]] = zip(long, letters)
     assert zip1 == @[(1, 6), (2, 5), (3, 4)]
     assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
-    assert zip3 == @[(a: 6, b: 'a'), (a: 5, b: 'b'), (a: 4, b: 'c'),
-                     (a: 3, b: 'd')]
-    assert zip1[2].b == 4
-    assert zip2[2].b == "three"
+    assert zip3 == @[(6, 'a'), (5, 'b'), (4, 'c'), (3, 'd')]
+    assert zip1[2][0] == 3
+    assert zip2[1][1] == "two"
+    assert zip3[0].letter == 'a'
 
   var m = min(s1.len, s2.len)
   newSeq(result, m)
@@ -1070,18 +1067,20 @@ when isMainModule:
       zip1 = zip(short, long)
       zip2 = zip(short, words)
       zip3 = zip(ashort, along)
-      zip4 = zip(ashort, awords)
-      zip5 = zip(ashort, words)
+      # As zip returns seq of anonymous tuples, they can be assigned
+      # to any variable that's a sequence of named tuples too.
+      zipXy: seq[tuple[x: int, y: string]] = zip(ashort, awords)
+      zipMn: seq[tuple[m: int, n: string]] = zip(ashort, words)
     assert zip1 == @[(1, 6), (2, 5), (3, 4)]
     assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
     assert zip3 == @[(1, 6), (2, 5), (3, 4)]
-    assert zip4 == @[(1, "one"), (2, "two"), (3, "three")]
-    assert zip5 == @[(1, "one"), (2, "two"), (3, "three")]
-    assert zip1[2].b == 4
-    assert zip2[2].b == "three"
-    assert zip3[2].b == 4
-    assert zip4[2].b == "three"
-    assert zip5[2].b == "three"
+    assert zipXy == @[(x: 1, y: "one"), (2, "two"), (3, "three")]
+    assert zipMn == @[(m: 1, n: "one"), (2, "two"), (3, "three")]
+    assert zip1[2][1] == 4
+    assert zip2[2][1] == "three"
+    assert zip3[2][1] == 4
+    assert zipXy[2].y == "three"
+    assert zipMn[2].n == "three"
 
   block: # distribute tests
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
@@ -1228,10 +1227,10 @@ when isMainModule:
     block:
       let
         numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-        odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+        oddNumbers = toSeq(filter(numeric) do (x: int) -> bool:
           if x mod 2 == 1:
             result = true)
-      assert odd_numbers == @[1, 3, 5, 7, 9]
+      assert oddNumbers == @[1, 3, 5, 7, 9]
 
     block:
       doAssert [1, 2].toSeq == @[1, 2]
