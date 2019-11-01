@@ -1644,10 +1644,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
-      let aNode = regs[rb].node
-      let bNode = regs[rc].node
-      # these are cstring to prevent string copy, and cmpIgnoreStyle from
-      # takes cstring arguments
+      var aNode = regs[rb].node
+      var bNode = regs[rc].node
+      # Skipping both, `nkPostfix` and `nkAccQuoted` for both
+      # arguments.  `nkPostfix` exists only to tag exported symbols
+      # and therefor it can be safely skipped. Nim has no postfix
+      # operator. `nkAccQuoted` is used to quote an identifier that
+      # wouldn't be allowed to use in an unquoted context.
+      if aNode.kind == nkPostfix:
+        aNode = aNode[1]
+      if aNode.kind == nkAccQuoted:
+        aNode = aNode[0]
+      if bNode.kind == nkPostfix:
+        bNode = bNode[1]
+      if bNode.kind == nkAccQuoted:
+        bNode = bNode[0]
+      # These vars are of type `cstring` to prevent unnecessary string copy.
       var aStrVal: cstring = nil
       var bStrVal: cstring = nil
       # extract strVal from argument ``a``
@@ -1674,7 +1686,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode[0].sym.name.s.cstring
       else:
         discard
-      # set result
       regs[ra].intVal =
         if aStrVal != nil and bStrVal != nil:
           ord(idents.cmpIgnoreStyle(aStrVal, bStrVal, high(int)) == 0)
