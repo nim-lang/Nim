@@ -45,7 +45,7 @@
 
 ### Compiler changes
 
-
+- JS target indent is all spaces, instead of mixed spaces and tabs, for generated JavaScript.
 
 
 ## Bugfixes
