@@ -248,7 +248,7 @@ Math libraries
 
 * `fenv <fenv.html>`_
   Floating-point environment. Handling of floating-point rounding and
-  exceptions (overflow, zero-devide, etc.).
+  exceptions (overflow, zero-divide, etc.).
 
 * `math <math.html>`_
   Mathematical operations like cosine, square root.
@@ -329,7 +329,7 @@ Threading
 ---------
 
 * `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
+  Implements Nim's `spawn <manual_experimental.html#parallel-amp-spawn>`_.
 
 
 Parsers
@@ -441,8 +441,7 @@ Miscellaneous
   browser.
 
 * `colors <colors.html>`_
-  This module implements color handling for Nim. It is used by
-  the ``graphics`` module.
+  This module implements color handling for Nim.
 
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
@@ -528,7 +527,8 @@ UNIX specific
 
 * `posix <posix.html>`_
   Contains a wrapper for the POSIX standard.
-
+* `posix_utils <posix_utils.html>`_
+  Contains helpers for the POSIX standard or specialized for Linux and BSDs.
 
 Regular expressions
 -------------------

@@ -112,8 +112,8 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## defined.
   ##
   ## `x` is an external symbol introduced through the compiler's
-  ## `-d:x switch <nimc.html#compile-time-symbols>`_ to enable build time
-  ## conditionals:
+  ## `-d:x switch <nimc.html#compiler-usage-compile-time-symbols>`_ to enable
+  ## build time conditionals:
   ##
   ## .. code-block:: Nim
   ##   when not defined(release):
@@ -671,7 +671,7 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-when not defined(JS) and not defined(gcDestructors):
+when not defined(JS) and not defined(nimSeqsV2):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -685,7 +685,7 @@ when not defined(JS) and not defined(gcDestructors):
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(nimscript):
-  when not defined(gcDestructors):
+  when not defined(nimSeqsV2):
     template space(s: PGenericSeq): int {.dirty.} =
       s.reserved and not (seqShallowFlag or strlitFlag)
   when not defined(nimV2):
@@ -785,7 +785,8 @@ type
   AssertionError* = object of Defect ## \
     ## Raised when assertion is proved wrong.
     ##
-    ## Usually the result of using the `assert() template <#assert>`_.
+    ## Usually the result of using the `assert() template
+    ## <assertions.html#assert.t,untyped,string>`_.
   ValueError* = object of CatchableError ## \
     ## Raised for string and object conversion errors.
   KeyError* = object of ValueError ## \
@@ -800,7 +801,7 @@ type
     ## Raised if an array index is out of bounds.
 
   FieldError* = object of Defect ## \
-    ## Raised if a record field is not accessible because its dicriminant's
+    ## Raised if a record field is not accessible because its discriminant's
     ## value does not fit.
   RangeError* = object of Defect ## \
     ## Raised if a range check error occurred.
@@ -1021,7 +1022,7 @@ when not defined(JS):
     ##   assert len(x) == 3
     ##   x[0] = 10
     result = newSeqOfCap[T](len)
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       cast[ptr int](addr result)[] = len
     else:
       var s = cast[PGenericSeq](result)
@@ -1646,7 +1647,7 @@ proc `+`*[T](x, y: set[T]): set[T] {.magic: "PlusSet", noSideEffect.}
   ##     b = {2, 3, 4}
   ##   echo a + b # => {1, 2, 3, 4}
 proc `-`*[T](x, y: set[T]): set[T] {.magic: "MinusSet", noSideEffect.}
-  ## This operator computes the diference of two sets.
+  ## This operator computes the difference of two sets.
   ##
   ## .. code-block:: Nim
   ##   let
@@ -1722,12 +1723,12 @@ template `isnot`*(x, y: untyped): untyped = not (x is y)
   ##   assert 42 isnot float
   ##   assert @[1, 2] isnot enum
 
-when (defined(nimV2) and not defined(nimscript)) or defined(nimFixedOwned):
+when (defined(nimOwnedEnabled) and not defined(nimscript)) or defined(nimFixedOwned):
   type owned*[T]{.magic: "BuiltinType".} ## type constructor to mark a ref/ptr or a closure as `owned`.
 else:
   template owned*(t: typedesc): typedesc = t
 
-when defined(nimV2) and not defined(nimscript):
+when defined(nimOwnedEnabled) and not defined(nimscript):
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
     ## reference to it in ``a``.
@@ -2018,8 +2019,8 @@ when defined(boehmgc):
 when taintMode:
   type TaintedString* = distinct string ## A distinct string type that
                                         ## is `tainted`:idx:, see `taint mode
-                                        ## <manual.html#taint-mode>`_ for
-                                        ## details. It is an alias for
+                                        ## <manual_experimental.html#taint-mode>`_
+                                        ## for details. It is an alias for
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
 
@@ -2027,8 +2028,8 @@ when taintMode:
 else:
   type TaintedString* = string          ## A distinct string type that
                                         ## is `tainted`:idx:, see `taint mode
-                                        ## <manual.html#taint-mode>`_ for
-                                        ## details. It is an alias for
+                                        ## <manual_experimental.html#taint-mode>`_
+                                        ## for details. It is an alias for
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
 
@@ -2041,14 +2042,14 @@ else:
 
 const
   QuitSuccess* = 0
-    ## is the value that should be passed to `quit <#quit>`_ to indicate
+    ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## success.
 
   QuitFailure* = 1
-    ## is the value that should be passed to `quit <#quit>`_ to indicate
+    ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(nodejs) and not defined(nimscript):
+when defined(js) and defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
@@ -2092,7 +2093,7 @@ elif defined(genode):
 
 
 
-elif defined(nodejs) and not defined(nimscript):
+elif defined(js) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
@@ -2112,10 +2113,10 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
-when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
+when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
-when not defined(gcDestructors) or defined(nimscript):
+when not defined(nimSeqsV2) or defined(nimscript):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
@@ -2142,7 +2143,7 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
-when defined(gcDestructors):
+when defined(nimSeqsV2):
   template movingCopy(a, b) =
     a = move(b)
 else:
@@ -2230,13 +2231,13 @@ type
 
   BiggestInt* = int64
     ## is an alias for the biggest signed integer type the Nim compiler
-    ## supports. Currently this is ``int64``, but it is platform-dependant
+    ## supports. Currently this is ``int64``, but it is platform-dependent
     ## in general.
 
   BiggestFloat* = float64
     ## is an alias for the biggest floating point type the Nim
     ## compiler supports. Currently this is ``float64``, but it is
-    ## platform-dependant in general.
+    ## platform-dependent in general.
 
 when defined(JS):
   type BiggestUInt* = uint32
@@ -2271,7 +2272,9 @@ type # these work for most platforms:
     ## This is the same as the type ``short`` in *C*.
   cint* {.importc: "int", nodecl.} = int32
     ## This is the same as the type ``int`` in *C*.
-  csize* {.importc: "size_t", nodecl.} = uint
+  csize* {.importc: "size_t", nodecl, deprecated: "use `csize_t` instead".} = int
+    ## This isn't the same as ``size_t`` in *C*. Don't use it.
+  csize_t* {.importc: "size_t", nodecl.} = uint
     ## This is the same as the type ``size_t`` in *C*.
   clonglong* {.importc: "long long", nodecl.} = int64
     ## This is the same as the type ``long long`` in *C*.
@@ -3040,7 +3043,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
-        when defined(gcDestructors):
+        when defined(nimSeqsV2):
           result = cast[NimSeqV2[T]](x).p
         else:
           result = cast[pointer](x)
@@ -3137,7 +3140,7 @@ when not defined(js):
         name: cstring
       PNimType = ptr TNimType
 
-  when defined(gcDestructors) and not defined(nimscript):
+  when defined(nimSeqsV2) and not defined(nimscript):
     include "core/strs"
     include "core/seqs"
 
@@ -3238,6 +3241,8 @@ proc `<`*[T: tuple](x, y: T): bool =
 
 
 # ----------------- GC interface ---------------------------------------------
+const
+  usesDestructors = defined(gcDestructors) or defined(gcHooks)
 
 when not defined(nimscript) and hasAlloc:
   type
@@ -3247,7 +3252,7 @@ when not defined(nimscript) and hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-  when not defined(JS) and not defined(gcDestructors):
+  when not defined(JS) and not usesDestructors:
     proc GC_disable*() {.rtl, inl, benign.}
       ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
       ## are needed to reactivate the GC.
@@ -3462,14 +3467,15 @@ when defined(nimvarargstyped):
     ## Unlike other IO operations this is guaranteed to be thread-safe as
     ## ``echo`` is very often used for debugging convenience. If you want to use
     ## ``echo`` inside a `proc without side effects
-    ## <manual.html#pragmas-noSideEffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
-    ## instead.
+    ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
+    ## <#debugEcho,varargs[typed,]>`_ instead.
 
   proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
                                             tags: [], raises: [].}
-    ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
-    ## pretends to be free of side effects, so that it can be used for debugging
-    ## routines marked as `noSideEffect <manual.html#pragmas-noSideEffect-pragma>`_.
+    ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
+    ## ``debugEcho`` pretends to be free of side effects, so that it can be used
+    ## for debugging routines marked as `noSideEffect
+    ## <manual.html#pragmas-nosideeffect-pragma>`_.
 else:
   proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
     benign, sideEffect.}
@@ -3586,10 +3592,10 @@ const
   NimMajor* {.intdefine.}: int = 1
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 0
+  NimMinor* {.intdefine.}: int = 1
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 99
+  NimPatch* {.intdefine.}: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3609,7 +3615,7 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
-    when not defined(gcRegions) and not defined(gcDestructors):
+    when not defined(gcRegions) and not usesDestructors:
       proc initGC() {.gcsafe.}
 
     proc initStackBottom() {.inline, compilerproc.} =
@@ -3627,7 +3633,7 @@ when not defined(JS): #and not defined(nimscript):
       when declared(nimGC_setStackBottom):
         nimGC_setStackBottom(locals)
 
-    when not defined(gcDestructors):
+    when not usesDestructors:
       {.push profiler: off.}
       var
         strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
@@ -3643,7 +3649,7 @@ when not defined(JS): #and not defined(nimscript):
       when declared(memTrackerOp):
         memTrackerOp("copyMem", dest, size)
     proc moveMem(dest, source: pointer, size: Natural) =
-      c_memmove(dest, source, csize size)
+      c_memmove(dest, source, csize_t(size))
       when declared(memTrackerOp):
         memTrackerOp("moveMem", dest, size)
     proc equalMem(a, b: pointer, size: Natural): bool =
@@ -3661,7 +3667,7 @@ when not defined(JS): #and not defined(nimscript):
         else: result = 0
       else:
         let minlen = min(x.len, y.len)
-        result = int(nimCmpMem(x.cstring, y.cstring, minlen.csize))
+        result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
         if result == 0:
           result = x.len - y.len
 
@@ -3793,16 +3799,16 @@ when not defined(JS): #and not defined(nimscript):
     {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc:
-      when not defined(gcDestructors):
+      when not defined(nimSeqsV2):
         include "system/sysstr"
     {.pop.}
     when hasAlloc: include "system/strmantle"
 
     when hasThreadSupport:
-      when hostOS != "standalone" and not defined(gcDestructors): include "system/channels"
+      when hostOS != "standalone" and not usesDestructors: include "system/channels"
 
   when not defined(nimscript) and hasAlloc:
-    when not defined(gcDestructors):
+    when not usesDestructors:
       include "system/assign"
     when not defined(nimV2):
       include "system/repr"
@@ -3878,6 +3884,12 @@ elif defined(JS):
   proc allocShared0(size: Natural): pointer = discard
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
+
+  proc addInt*(result: var string; x: int64) =
+    result.add $x
+
+  proc addFloat*(result: var string; x: float) =
+    result.add $x
 
   when defined(JS) and not defined(nimscript):
     include "system/jssys"
@@ -4101,7 +4113,8 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## `gorge <#gorge,string,string,string>`_ is an alias for ``staticExec``.
   ##
   ## Note that you can use this proc inside a pragma like
-  ## `passc <nimc.html#passc-pragma>`_ or `passl <nimc.html#passl-pragma>`_.
+  ## `passc <manual.html#implementation-specific-pragmas-passc-pragma>`_ or
+  ## `passl <manual.html#implementation-specific-pragmas-passl-pragma>`_.
   ##
   ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
   ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
@@ -4179,7 +4192,19 @@ when declared(File):
   template `&=`*(f: File, x: typed) = write(f, x)
 
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
-  ## returns the full file-system path of the current source
+  ## Returns the full file-system path of the current source.
+  ##
+  ## To get the directory containing the current source, use it with
+  ## `os.parentDir() <os.html#parentDir%2Cstring>`_ as ``currentSourcePath.parentDir()``.
+  ##
+  ## The path returned by this template is set at compile time.
+  ##
+  ## See the docstring of `macros.getProjectPath() <macros.html#getProjectPath>`_
+  ## for an example to see the distinction between the ``currentSourcePath``
+  ## and ``getProjectPath``.
+  ##
+  ## See also:
+  ## * `getCurrentDir proc <os.html#getCurrentDir>`_
 
 when compileOption("rangechecks"):
   template rangeCheck*(cond) =
@@ -4199,7 +4224,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ##
   ## This is only useful for optimization purposes.
   if s.len == 0: return
-  when not defined(JS) and not defined(nimscript):
+  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -4208,7 +4233,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## perform deep copies of `s`.
   ##
   ## This is only useful for optimization purposes.
-  when not defined(JS) and not defined(nimscript) and not defined(gcDestructors):
+  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     if s == nil:
       s = cast[PGenericSeq](newString(0))
@@ -4332,9 +4357,9 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addEscapedChar(x)
     s.add("'")
   # prevent temporary string allocation
-  elif T is SomeSignedInt and not defined(JS):
+  elif T is SomeSignedInt:
     s.addInt(x)
-  elif T is SomeFloat and not defined(JS):
+  elif T is SomeFloat:
     s.addFloat(x)
   elif compiles(s.add(x)):
     s.add(x)
@@ -4396,7 +4421,7 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   discard
 
 when hasAlloc and not defined(nimscript) and not defined(JS) and
-    not defined(gcDestructors):
+    not usesDestructors:
   # XXX how to implement 'deepCopy' is an open problem.
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## Performs a deep copy of `y` and copies it into `x`.
@@ -4556,12 +4581,12 @@ type
 
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
-      ## Hook into the Genode component bootstrap process.
-      ##
-      ## This hook is called after all globals are initialized.
-      ## When this hook is set the component will not automatically exit,
-      ## call ``quit`` explicitly to do so. This is the only available method
-      ## of accessing the initial Genode environment.
+    ## Hook into the Genode component bootstrap process.
+    ##
+    ## This hook is called after all globals are initialized.
+    ## When this hook is set the component will not automatically exit,
+    ## call ``quit`` explicitly to do so. This is the only available method
+    ## of accessing the initial Genode environment.
 
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during ``Component::construct`` by the loader.

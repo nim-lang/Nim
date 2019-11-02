@@ -216,8 +216,12 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   runnableExamples:
     assert splitPath("usr/local/bin") == ("usr/local", "bin")
     assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
+    assert splitPath("/bin/") == ("/bin", "")
+    when (NimMajor, NimMinor) <= (1, 0):
+        assert splitPath("/bin") == ("", "bin")
+    else:
+        assert splitPath("/bin") == ("/", "bin")
     assert splitPath("bin") == ("", "bin")
-    assert splitPath("/bin") == ("", "bin")
     assert splitPath("") == ("", "")
 
   var sepPos = -1
@@ -226,7 +230,12 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
       sepPos = i
       break
   if sepPos >= 0:
-    result.head = substr(path, 0, sepPos-1)
+    result.head = substr(path, 0,
+      when (NimMajor, NimMinor) <= (1, 0):
+        sepPos-1
+      else:
+        if likely(sepPos >= 1): sepPos-1 else: 0
+    )
     result.tail = substr(path, sepPos+1)
   else:
     result.head = ""
@@ -597,13 +606,17 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     assert dir == "/usr/local"
     assert name == ""
     assert ext == ""
+    (dir, name, ext) = splitFile("/tmp.txt")
+    assert dir == "/"
+    assert name == "tmp"
+    assert ext == ".txt"
 
   var namePos = 0
   var dotPos = 0
   for i in countdown(len(path) - 1, 0):
     if path[i] in {DirSep, AltSep} or i == 0:
       if path[i] in {DirSep, AltSep}:
-        result.dir = substr(path, 0, max(0, i - 1))
+        result.dir = substr(path, 0, if likely(i >= 1): i - 1 else: 0)
         namePos = i + 1
       if dotPos > i:
         result.name = substr(path, namePos, dotPos - 1)
@@ -1223,13 +1236,18 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noNimScript.} =
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
-  ## Returns the `current working directory`:idx:.
+  ## Returns the `current working directory`:idx: i.e. where the built
+  ## binary is run.
+  ##
+  ## So the path returned by this proc is determined at run time.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
   ## * `getTempDir proc <#getTempDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
+  ## * `getProjectPath proc <macros.html#getProjectPath>`_
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
@@ -3012,7 +3030,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo {.noNimScript.} =
   when defined(Windows):
     var rawInfo: BY_HANDLE_FILE_INFORMATION
     # We have to use the super special '_get_osfhandle' call (wrapped above)
-    # To transform the C file descripter to a native file handle.
+    # To transform the C file descriptor to a native file handle.
     var realHandle = get_osfhandle(handle)
     if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
       raiseOSError(osLastError())

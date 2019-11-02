@@ -16,8 +16,8 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc getTraverseProc(p: BProc, v: PSym): Rope =
-  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
-      optNimV2 notin p.config.globalOptions and
+  if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcV2, gcRefc} and
+      optOwnedRefs notin p.config.globalOptions and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -692,7 +692,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
           [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
           quotedFilename(p.config, t.info), toLinenumber(t.info)])
-      if optNimV2 in p.config.globalOptions:
+      if optOwnedRefs in p.config.globalOptions:
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
     genLineDir(p, t)
@@ -1057,7 +1057,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
       for j in 0 .. blen - 2:
         assert(t.sons[i].sons[j].kind == nkType)
         if orExpr != nil: add(orExpr, "||")
-        let checkFor = if optNimV2 in p.config.globalOptions:
+        let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
           genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
@@ -1220,7 +1220,7 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   getTemp(p, a.t, tmp)
   expr(p, e.sons[1], tmp)
   let field = dotExpr.sons[1].sym
-  if optNimV2 in p.config.globalOptions:
+  if optTinyRtti in p.config.globalOptions:
     let t = dotExpr[0].typ.skipTypes(abstractInst)
     var oldVal, newVal: TLoc
     genCaseObjDiscMapping(p, e[0], t, field, oldVal)

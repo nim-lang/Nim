@@ -68,7 +68,7 @@ written as:
     assert i < x.len
     x.data[i]
 
-  proc `[]=`*[T](x: myseq[T]; i: Natural; y: sink T) =
+  proc `[]=`*[T](x: var myseq[T]; i: Natural; y: sink T) =
     assert i < x.len
     x.data[i] = y
 

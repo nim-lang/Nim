@@ -185,7 +185,7 @@ else:
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
 
-  proc setAffinity(thread: SysThread; setsize: csize; s: var CpuSet) {.
+  proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
     importc: "pthread_setaffinity_np", header: pthreadh.}
 
 

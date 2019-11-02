@@ -213,7 +213,7 @@ proc dealloc(r: var MemRegion; p: pointer; size: int) =
   if it.typ != nil and it.typ.finalizer != nil:
     (cast[Finalizer](it.typ.finalizer))(p)
   it.typ = nil
-  # it is benefitial to not use the free lists here:
+  # it is beneficial to not use the free lists here:
   if r.bump -! size == p:
     dec r.bump, size
   when false:

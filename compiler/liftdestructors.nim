@@ -129,7 +129,7 @@ proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
 
 proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
-  result = c.g.config.selectedGC == gcDestructors and
+  result = optSeqDestructors in c.g.config.globalOptions and
     ({tfHasGCedMem, tfHasOwned} * t.flags != {} or t.isGCedMem)
 
 proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
@@ -142,7 +142,7 @@ proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
 
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
-  if c.g.config.selectedGC == gcDestructors:
+  if optSeqDestructors in c.g.config.globalOptions:
     let op = field
     if field != nil and sfOverriden in field.flags:
       if sfError in op.flags:
@@ -359,6 +359,58 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     body.add genBuiltin(c.g, mDestroy, "destroy", x)
 
+proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  var actions = newNodeI(nkStmtList, c.info)
+  let elemType = t.lastSon
+
+  if isFinal(elemType):
+    addDestructorCall(c, elemType, actions, genDeref(x, nkDerefExpr))
+    actions.add callCodegenProc(c.g, "nimRawDispose", c.info, x)
+  else:
+    addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
+    actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
+
+  let cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
+  cond.typ = getSysType(c.g, x.info, tyBool)
+
+  case c.kind
+  of attachedSink:
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedAsgn:
+    body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genIf(c, cond, actions)
+  of attachedDeepCopy: assert(false, "cannot happen")
+
+proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  ## Closures are really like refs except they always use a virtual destructor
+  ## and we need to do the refcounting only on the ref field which we call 'xenv':
+  let xenv = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
+  xenv.typ = getSysType(c.g, c.info, tyPointer)
+
+  var actions = newNodeI(nkStmtList, c.info)
+  actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xenv)
+
+  let cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, xenv)
+  cond.typ = getSysType(c.g, x.info, tyBool)
+
+  case c.kind
+  of attachedSink:
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedAsgn:
+    let yenv = genBuiltin(c.g, mAccessEnv, "accessEnv", y)
+    yenv.typ = getSysType(c.g, c.info, tyPointer)
+    body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRef", c.info, yenv))
+    body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, y)
+  of attachedDestructor:
+    body.add genIf(c, cond, actions)
+  of attachedDeepCopy: assert(false, "cannot happen")
+
 proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedSink:
@@ -367,7 +419,7 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
   of attachedAsgn:
-    body.add genIf(c, y, callCodegenProc(c.g, "nimIncWeakRef", c.info, y))
+    body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
     body.add genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -411,8 +463,8 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call.sons[0] = newSymNode(createMagic(c.g, "deepCopy", mDeepCopy))
     call.sons[1] = y
     body.add newAsgnStmt(x, call)
-  elif optNimV2 in c.g.config.globalOptions and
-      optRefCheck in c.g.config.options:
+  elif (optOwnedRefs in c.g.config.globalOptions and
+      optRefCheck in c.g.config.options) or c.g.config.selectedGC == gcDestructors:
     let xx = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
     xx.typ = getSysType(c.g, c.info, tyPointer)
     case c.kind
@@ -424,7 +476,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     of attachedAsgn:
       let yy = genBuiltin(c.g, mAccessEnv, "accessEnv", y)
       yy.typ = getSysType(c.g, c.info, tyPointer)
-      body.add genIf(c, yy, callCodegenProc(c.g, "nimIncWeakRef", c.info, yy))
+      body.add genIf(c, yy, callCodegenProc(c.g, "nimIncRef", c.info, yy))
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
     of attachedDestructor:
@@ -439,7 +491,6 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let xx = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
   xx.typ = getSysType(c.g, c.info, tyPointer)
   var actions = newNodeI(nkStmtList, c.info)
-  let elemType = t.lastSon
   #discard addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(xx))
   actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xx)
   case c.kind
@@ -457,19 +508,24 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if optNimV2 in c.g.config.globalOptions and
-        optRefCheck in c.g.config.options:
+    if c.g.config.selectedGC == gcDestructors:
+      atomicRefOp(c, t, body, x, y)
+    elif (optOwnedRefs in c.g.config.globalOptions and
+        optRefCheck in c.g.config.options):
       weakrefOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyProc:
     if t.callConv == ccClosure:
-      closureOp(c, t, body, x, y)
+      if c.g.config.selectedGC == gcDestructors:
+        atomicClosureOp(c, t, body, x, y)
+      else:
+        closureOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyOwned:
     let base = t.skipTypes(abstractInstOwned)
-    if optNimV2 in c.g.config.globalOptions:
+    if optOwnedRefs in c.g.config.globalOptions:
       case base.kind
       of tyRef:
         ownedRefOp(c, base, body, x, y)
@@ -488,7 +544,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tySequence:
     if useNoGc(c, t):
       useSeqOrStrOp(c, t, body, x, y)
-    elif c.g.config.selectedGC == gcDestructors:
+    elif optSeqDestructors in c.g.config.globalOptions:
       # note that tfHasAsgn is propagated so we need the check on
       # 'selectedGC' here to determine if we have the new runtime.
       discard considerUserDefinedOp(c, t, body, x, y)
@@ -532,7 +588,8 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyGenericInst, tyStatic, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
 
-proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp; info: TLineInfo): PSym =
+proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
+                            kind: TTypeAttachedOp; info: TLineInfo): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ[0]
   if baseType.attachedOps[kind] == nil:
@@ -571,7 +628,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   typ.attachedOps[kind] = result
 
   var tk: TTypeKind
-  if g.config.selectedGC == gcDestructors:
+  if g.config.selectedGC in {gcDestructors, gcHooks}:
     tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
   else:
     tk = tyNone # no special casing for strings and seqs

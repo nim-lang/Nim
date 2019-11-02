@@ -667,3 +667,91 @@ important the hidden formal param is ``void*`` and not something more
 specialized. However the more specialized env type needs to passed to the
 backend somehow. We deal with this by modifying ``s.ast[paramPos]`` to contain
 the formal hidden parameter, but not ``s.typ``!
+
+
+Integer literals:
+-----------------
+
+In Nim, there is a redundant way to specify the type of an
+integer literal. First of all, it should be unsurprising that every
+node has a node kind. The node of an integer literal can be any of the
+following values:
+
+    nkIntLit, nkInt8Lit, nkInt16Lit, nkInt32Lit, nkInt64Lit,
+    nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit
+
+On top of that, there is also the `typ` field for the type. It the
+kind of the `typ` field can be one of the following ones, and it
+should be matching the literal kind:
+
+    tyInt, tyInt8, tyInt16, tyInt32, tyInt64, tyUInt, tyUInt8,
+    tyUInt16, tyUInt32, tyUInt64
+
+Then there is also the integer literal type. This is a specific type
+that is implicitly convertible into the requested type if the
+requested type can hold the value. For this to work, the type needs to
+know the concrete value of the literal. For example an expression
+`321` will be of type `int literal(321)`. This type is implicitly
+convertible to all integer types and ranges that contain the value
+`321`. That would be all builtin integer types except `uint8` and
+`int8` where `321` would be out of range. When this literal type is
+assigned to a new `var` or `let` variable, it's type will be resolved
+to just `int`, not `int literal(321)` unlike constants. A constant
+keeps the full `int literal(321)` type. Here is an example where that
+difference matters.
+
+
+.. code-block:: nim
+
+   proc foo(arg: int8) =
+     echo "def"
+
+   const tmp1 = 123
+   foo(tmp1)  # OK
+
+   let tmp2 = 123
+   foo(tmp2) # Error
+
+In a context with multiple overloads, the integer literal kind will
+always prefer the `int` type over all other types. If none of the
+overloads is of type `int`, then there will be an error because of
+ambiguity.
+
+.. code-block:: nim
+
+   proc foo(arg: int) =
+     echo "abc"
+   proc foo(arg: int8) =
+     echo "def"
+   foo(123) # output: abc
+
+   proc bar(arg: int16) =
+     echo "abc"
+   proc bar(arg: int8) =
+     echo "def"
+
+   bar(123) # Error ambiguous call
+
+In the compiler these integer literal types are represented with the
+node kind `nkIntLit`, type kind `tyInt` and the member `n` of the type
+pointing back to the integer literal node in the ast containing the
+integer value. These are the properties that hold true for integer
+literal types.
+
+    n.kind == nkIntLit
+    n.typ.kind == tyInt
+    n.typ.n == n
+
+Other literal types, such as `uint literal(123)` that would
+automatically convert to other integer types, but prefers to
+become a `uint` are not part of the Nim language.
+
+In an unchecked AST, the `typ` field is nil. The type checker will set
+the `typ` field accordingly to the node kind. Nodes of kind `nkIntLit`
+will get the integer literal type (e.g. `int literal(123)`). Nodes of
+kind `nkUIntLit` will get type `uint` (kind `tyUint`), etc.
+
+This also means that it is not possible to write a literal in an
+unchecked AST that will after sem checking just be of type `int` and
+not implicitly convertible to other integer types. This only works for
+all integer types that are not `int`.

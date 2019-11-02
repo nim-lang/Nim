@@ -608,7 +608,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     return result
   c.breakSyms.add(labl)
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
-      call.sons[0].typ.callConv == ccClosure:
+      call.sons[0].typ.skipTypes(abstractInst).callConv == ccClosure:
     result[1] = n.PTransNode
     result[1][^1] = transformLoopBody(c, n[^1])
     result[1][^2] = transform(c, n[^2])
@@ -914,7 +914,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
   if (n.typ != nil and tfHasAsgn in n.typ.flags) or
-      optNimV2 in c.graph.config.globalOptions:
+      optSeqDestructors in c.graph.config.globalOptions:
     c.needsDestroyPass = true
   case n.kind
   of nkSym:

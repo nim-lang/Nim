@@ -320,7 +320,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericS
     # cell is aliased by another pointer (ie proc parameter or a let variable).
     # This is a tough problem, because even if we don't zeroMem here, in the
     # presence of user defined destructors, the user will expect the cell to be
-    # "destroyed" thus creating the same problem. We can destoy the cell in the
+    # "destroyed" thus creating the same problem. We can destroy the cell in the
     # finalizer of the sequence, but this makes destruction non-deterministic.
     zeroMem(cast[pointer](cast[ByteAddress](result) +% align(GenericSeqSize, elemAlign) +%
            (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
@@ -357,7 +357,7 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
         # cell is aliased by another pointer (ie proc parameter or a let variable).
         # This is a tough problem, because even if we don't zeroMem here, in the
         # presence of user defined destructors, the user will expect the cell to be
-        # "destroyed" thus creating the same problem. We can destoy the cell in the
+        # "destroyed" thus creating the same problem. We can destroy the cell in the
         # finalizer of the sequence, but this makes destruction non-deterministic.
         zeroMem(cast[pointer](cast[ByteAddress](result) +% align(GenericSeqSize, elemAlign) +%
               (newLen*%elemSize)), (result.len-%newLen) *% elemSize)

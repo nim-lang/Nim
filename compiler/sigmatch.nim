@@ -134,11 +134,14 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
   initIdTable(c.bindings)
 
 proc put(c: var TCandidate, key, val: PType) {.inline.} =
+  ## Given: proc foo[T](x: T); foo(4)
+  ## key: 'T'
+  ## val: 'int' (typeof(4))
   when false:
     let old = PType(idTableGet(c.bindings, key))
     if old != nil:
       echo "Putting ", typeToString(key), " ", typeToString(val), " and old is ", typeToString(old)
-      if typeToString(old) == "seq[string]":
+      if typeToString(old) == "float32":
         writeStackTrace()
     if c.c.module.name.s == "temp3":
       echo "binding ", key, " -> ", val
@@ -2551,13 +2554,18 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
                       formal.name.s)
         if nfDefaultRefsParam in formal.ast.flags:
           m.call.flags.incl nfDefaultRefsParam
-        var def = copyTree(formal.ast)
-        if def.kind == nkNilLit:
-          def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
+        var defaultValue = copyTree(formal.ast)
+        if defaultValue.kind == nkNilLit:
+          defaultValue = implicitConv(nkHiddenStdConv, formal.typ, defaultValue, m, c)
+        # proc foo(x: T = 0.0)
+        # foo()
         if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {}:
-          put(m, formal.typ, def.typ)
-        def.flags.incl nfDefaultParam
-        setSon(m.call, formal.position + 1, def)
+          let existing = PType(idTableGet(m.bindings, formal.typ))
+          if existing == nil or existing.kind == tyTypeDesc:
+            # see bug #11600:
+            put(m, formal.typ, defaultValue.typ)
+        defaultValue.flags.incl nfDefaultParam
+        setSon(m.call, formal.position + 1, defaultValue)
     inc(f)
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
@@ -2590,11 +2598,6 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
     if f.kind == tyVar: f = f.lastSon
-  #if c.config.selectedGC == gcDestructors and f.kind == tySequence:
-  # use the canonical type to access the =sink and =destroy etc.
-  #  f = c.graph.sysTypes[tySequence]
-  #echo "YUP_---------Formal ", typeToString(f, preferDesc), " real ", typeToString(t, preferDesc), " ", f.id, " ", t.id
-
   if typeRel(m, f, t) == isNone:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:

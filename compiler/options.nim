@@ -81,7 +81,11 @@ type                          # please make sure we have under 32 options
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll
-    optNimV2
+    optSeqDestructors         # active if the implementation uses the new
+                              # string/seq implementation based on destructors
+    optTinyRtti               # active if we use the new "tiny RTTI"
+                              # implementation
+    optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
@@ -112,6 +116,7 @@ type
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcHooks,
     gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
@@ -665,6 +670,7 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   var
     candidates: seq[string] = @[]
     dir = pkg
+    prev = dir
     nimblepkg = ""
   let pkgname = pkg.lastPathPart()
   while true:
@@ -678,15 +684,12 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
           if ext == ".nimble":
             if nimblepkg.len == 0:
               nimblepkg = name
-              # Scan subfolders for package source since nimble supports that.
-              # To save time we only scan with the depth of one as that's the
-              # common scenario.
-              let x = x.extractFilename()
-              for k, d in os.walkDir(dir):
-                if k == pcDir:
-                  for k, f in os.walkDir(d, relative = true):
-                    if k == pcFile and f == x:
-                      candidates.add d / f
+              # Since nimble packages can have their source in a subfolder,
+              # check the last folder we were in for a possible match.
+              if dir != prev:
+                let x = prev / x.extractFilename()
+                if fileExists(x):
+                  candidates.add x
             else:
               # If we found more than one nimble file, chances are that we
               # missed the real project file, or this is an invalid nimble
@@ -697,6 +700,7 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
       if pkgname in c.extractFilename(): return c
     if candidates.len > 0:
       return candidates[0]
+    prev = dir
     dir = parentDir(dir)
     if dir == "": break
   return ""

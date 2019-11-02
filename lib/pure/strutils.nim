@@ -50,7 +50,7 @@
 ##          "Beetlejuice Beetlejuice Beetlejuice"
 ##
 ## This module is available for the `JavaScript target
-## <backends.html#the-javascript-target>`_.
+## <backends.html#backends-the-javascript-target>`_.
 ##
 ## ----
 ##
@@ -209,7 +209,7 @@ proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
   ## Returns the lower case version of character ``c``.
   ##
   ## This works only for the letters ``A-Z``. See `unicode.toLower
-  ## <unicode.html#toLower>`_ for a version that works for any Unicode
+  ## <unicode.html#toLower,Rune>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
@@ -233,7 +233,7 @@ proc toLowerAscii*(s: string): string {.noSideEffect, procvar,
   ## Converts string `s` into lower case.
   ##
   ## This works only for the letters ``A-Z``. See `unicode.toLower
-  ## <unicode.html#toLower>`_ for a version that works for any Unicode
+  ## <unicode.html#toLower,string>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
@@ -247,7 +247,7 @@ proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
   ## Converts character `c` into upper case.
   ##
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
-  ## <unicode.html#toUpper>`_ for a version that works for any Unicode
+  ## <unicode.html#toUpper,Rune>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
@@ -267,7 +267,7 @@ proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
   ## Converts string `s` into upper case.
   ##
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
-  ## <unicode.html#toUpper>`_ for a version that works for any Unicode
+  ## <unicode.html#toUpper,string>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
@@ -631,10 +631,10 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
 iterator splitLines*(s: string, keepEol = false): string =
   ## Splits the string `s` into its containing lines.
   ##
-  ## Every `character literal <manual.html#character-literals>`_ newline
-  ## combination (CR, LF, CR-LF) is supported. The result strings contain no
-  ## trailing end of line characters unless parameter ``keepEol`` is set to
-  ## ``true``.
+  ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
+  ## newline combination (CR, LF, CR-LF) is supported. The result strings
+  ## contain no trailing end of line characters unless parameter ``keepEol``
+  ## is set to ``true``.
   ##
   ## Example:
   ##
@@ -1308,8 +1308,8 @@ proc spaces*(n: Natural): string {.inline.} =
   ## to left align strings.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,Char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,Char>`_
+  ## * `align proc<#align,string,Natural,char>`_
+  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   ## * `center proc<#center,string,int,char>`_
   runnableExamples:
@@ -1330,10 +1330,10 @@ proc align*(s: string, count: Natural, padding = ' '): string {.
   ## `padding` characters (by default spaces) are added before `s` resulting in
   ## right alignment. If ``s.len >= count``, no spaces are added and `s` is
   ## returned unchanged. If you need to left align a string use the `alignLeft
-  ## proc <#alignLeft,string,Natural,Char>`_.
+  ## proc <#alignLeft,string,Natural,char>`_.
   ##
   ## See also:
-  ## * `alignLeft proc<#alignLeft,string,Natural,Char>`_
+  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   ## * `center proc<#center,string,int,char>`_
@@ -1357,10 +1357,10 @@ proc alignLeft*(s: string, count: Natural, padding = ' '): string {.
   ## `padding` characters (by default spaces) are added after `s` resulting in
   ## left alignment. If ``s.len >= count``, no spaces are added and `s` is
   ## returned unchanged. If you need to right align a string use the `align
-  ## proc <#align,string,Natural,Char>`_.
+  ## proc <#align,string,Natural,char>`_.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,Char>`_
+  ## * `align proc<#align,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   ## * `center proc<#center,string,int,char>`_
@@ -1387,8 +1387,8 @@ proc center*(s: string, width: int, fillChar: char = ' '): string {.
   ## to `s.len`.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,Char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,Char>`_
+  ## * `align proc<#align,string,Natural,char>`_
+  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
@@ -1420,8 +1420,8 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,Char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,Char>`_
+  ## * `align proc<#align,string,Natural,char>`_
+  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
   runnableExamples:
@@ -1445,8 +1445,8 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,Char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,Char>`_
+  ## * `align proc<#align,string,Natural,char>`_
+  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
@@ -1471,8 +1471,8 @@ proc unindent*(s: string): string
   ## Removes all indentation composed of whitespace from each line in ``s``.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,Char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,Char>`_
+  ## * `align proc<#align,string,Natural,char>`_
+  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
@@ -1846,7 +1846,7 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   return -1
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
+  proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
   const hasCStringBuiltin = true
 else:
@@ -1862,7 +1862,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,int,int>`_
+  ## * `rfind proc<#rfind,string,char,Natural,int>`_
   ## * `replace proc<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
   when nimvm:
@@ -1872,7 +1872,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
     when hasCStringBuiltin:
       let L = last-start+1
       if L > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, csize L)
+        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](L))
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:
@@ -1890,7 +1890,7 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],int,int>`_
+  ## * `rfind proc<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
   let last = if last == 0: s.high else: last
   for i in int(start)..last:
@@ -1907,7 +1907,7 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,int,int>`_
+  ## * `rfind proc<#rfind,string,string,Natural,int>`_
   ## * `replace proc<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
@@ -1927,7 +1927,7 @@ proc rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.noSideEf
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `find proc<#find,string,char,int,int>`_
+  ## * `find proc<#find,string,char,Natural,int>`_
   let last = if last == -1: s.high else: last
   for i in countdown(last, start):
     if sub == s[i]: return i
@@ -2101,7 +2101,8 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
   rtl, extern: "nsuReplaceChar".} =
   ## Replaces `sub` in `s` by the character `by`.
   ##
-  ## Optimized version of `replace <#replace,string,string>`_ for characters.
+  ## Optimized version of `replace <#replace,string,string,string>`_ for
+  ## characters.
   ##
   ## See also:
   ## * `find proc<#find,string,char,Natural,int>`_
