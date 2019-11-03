@@ -71,13 +71,14 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
-    when hasThreadSupport:
-      let hasDanglingRefs = atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) != 0
-    else:
-      let hasDanglingRefs = head(p).rc != 0
-    if hasDanglingRefs:
-      cstderr.rawWrite "[FATAL] dangling references exist\n"
-      quit 1
+    when defined(nimOwnedEnabled):
+      when hasThreadSupport:
+        let hasDanglingRefs = atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) != 0
+      else:
+        let hasDanglingRefs = head(p).rc != 0
+      if hasDanglingRefs:
+        cstderr.rawWrite "[FATAL] dangling references exist\n"
+        quit 1
     when defined(useMalloc):
       c_free(p -! sizeof(RefHeader))
     else:
