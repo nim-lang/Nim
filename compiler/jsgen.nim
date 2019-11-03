@@ -110,7 +110,7 @@ proc indentLine(p: PProc, r: Rope): Rope =
   var p = p
   while true:
     for i in 0 ..< p.blocks.len + p.extraIndent:
-      prepend(result, "\t".rope)
+      prepend(result, rope"  ")
     if p.up == nil or p.up.prc != p.prc.owner:
       break
     p = p.up
