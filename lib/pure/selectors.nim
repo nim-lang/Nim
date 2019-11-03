@@ -31,7 +31,8 @@ import os, strutils, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
-const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
+const ioselSupportedPlatform* = defined(macosx) or defined(ios) or
+                                defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
                                 defined(dragonfly) or
                                 (defined(linux) and not defined(android))
@@ -40,7 +41,7 @@ const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
 
 const bsdPlatform = defined(macosx) or defined(freebsd) or
                     defined(netbsd) or defined(openbsd) or
-                    defined(dragonfly)
+                    defined(dragonfly) or defined(ios)
 
 when defined(nimdoc):
   type

@@ -9,7 +9,7 @@
 
 from posix import Timespec
 
-when defined(macosx) or defined(freebsd) or defined(openbsd) or
+when defined(macosx) or defined(ios) or defined(freebsd) or defined(openbsd) or
      defined(dragonfly):
   const
     EVFILT_READ*     = -1
@@ -28,7 +28,7 @@ elif defined(netbsd):
     EVFILT_PROC*     = 4 ## attached to struct proc
     EVFILT_SIGNAL*   = 5 ## attached to struct proc
     EVFILT_TIMER*    = 6 ## timers (in ms)
-when defined(macosx):
+when defined(macosx) or defined(ios):
   const
     EVFILT_MACHPORT* = -8  ## Mach portsets
     EVFILT_FS*       = -9  ## filesystem events
@@ -70,7 +70,7 @@ const
   EV_ERROR*    = 0x4000 ## Error, data contains errno
   EV_NODATA*   = 0x1000 ## EOF and no more data
 
-when defined(macosx) or defined(freebsd) or defined(dragonfly):
+when defined(macosx) or defined(ios) or defined(freebsd) or defined(dragonfly):
   # EVFILT_USER is not supported by OpenBSD and NetBSD
   #
   # data/hint flags/masks for EVFILT_USER, shared with userspace
@@ -119,7 +119,7 @@ const
   NOTE_TRACKERR*   = 0x00000002'u32 ## could not track child
   NOTE_CHILD*      = 0x00000004'u32 ## am a child process
 
-when defined(macosx) or defined(freebsd):
+when defined(macosx) or defined(ios) or defined(freebsd):
   # additional flags for EVFILE_TIMER
   const
     NOTE_SECONDS*    = 0x00000001'u32 ## data is seconds
