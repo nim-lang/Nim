@@ -1,6 +1,6 @@
 discard """
   targets: "cpp"
-  outputsub: "Error: unhandled cpp exception: [int]"
+  outputsub: "Error: unhandled unknown cpp exception"
   exitcode: 1
 """
 type Crap {.importcpp: "int".} = object
