@@ -470,38 +470,28 @@ when defined(cpp) and appType != "lib" and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
 
+  type
+    StdException {.importcpp: "std::exception", header: "<exception>".} = object
+
+  proc what(ex: StdException): cstring {.importcpp: "((char *)#.what())".}
+
   proc setTerminate(handler: proc() {.noconv.})
     {.importc: "std::set_terminate", header: "<exception>".}
-
-  when someGcc:
-    type
-      TypeInfoObject {.header: "<typeinfo>", importcpp: "std::type_info".} = object
-      TypeInfo = ptr TypeInfoObject
-
-    proc name(self: TypeInfo): cstring {.header: "<typeinfo>", importcpp: "#.name()".}
-
-    proc cxaDemangle(mangled_name: cstring, output_buffer: cstring,
-                     length: ptr csize, status: var cint): cstring
-      {.importc: "abi::__cxa_demangle", header: "<cxxabi.h>".}
-
-    proc cxaCurrentExceptionType(): TypeInfo
-      {.importc: "abi::__cxa_current_exception_type", header: "<cxxabi.h>".}
 
   setTerminate proc() {.noconv.} =
     # Remove ourself as a handler, reinstalling the default handler.
     setTerminate(nil)
 
     var msg = "Unknown error in unexpected exception handler"
-    if currException != nil:
+    try:
+      raise
+    except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
-    else:
-      when someGcc: # defined in lib/system/atomics.nim
-        var demangleStatus: cint
-        let currCppExceptionName = cxaDemangle(cxaCurrentExceptionType().name(), nil, nil, demangleStatus)
-        msg = "Error: unhandled cpp exception: [" & $currCppExceptionName & "]"
-      else:
-        msg = "Error: unhandled unknown cpp exception"
+    except StdException as e:
+      msg = "Error: unhandled cpp exception: " & $e.what()
+    except:
+      msg = "Error: unhandled unknown cpp exception"
 
     when defined(genode):
       # stderr not available by default, use the LOG session
