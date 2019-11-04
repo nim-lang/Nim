@@ -2338,7 +2338,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     for i in 0 ..< result.len:
       # Depending on the locale either dot or comma is produced,
       # but nothing else is possible:
-      if result[i] in {'.', ','}: result[i] = decimalsep
+      if result[i] in {'.', ','}: result[i] = decimalSep
   else:
     const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
     var
@@ -2369,6 +2369,10 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
+      if result[^1] == decimalSep:
+        # remove trailing dot,
+        # compatible with Python's formatter and JS backend
+        result.setLen(len(result)-1)
     when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
       # least two digits, and only as many more digits as necessary to
@@ -3135,8 +3139,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-    when not defined(js):
-      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # <=== bug 8242
+    doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235" # bugs 8242, 12586
     doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
     doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
     doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
@@ -3200,17 +3203,6 @@ when isMainModule:
     doAssert alignLeft("a", 0) == "a"
     doAssert alignLeft("1232", 6) == "1232  "
     doAssert alignLeft("1232", 6, '#') == "1232##"
-
-    let
-      inp = """ this is a long text --  muchlongerthan10chars and here
-                 it goes"""
-      outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
-    doAssert wordWrap(inp, 10, false) == outp
-
-    let
-      longInp = """ThisIsOneVeryLongStringWhichWeWillSplitIntoEightSeparatePartsNow"""
-      longOutp = "ThisIsOn\neVeryLon\ngStringW\nhichWeWi\nllSplitI\nntoEight\nSeparate\nPartsNow"
-    doAssert wordWrap(longInp, 8, true) == longOutp
 
     doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
              "The cat eats fish."
