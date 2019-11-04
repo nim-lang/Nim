@@ -227,7 +227,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("pkg install " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)
-    elif detectOs(ArchLinux):
+    elif detectOs(ArchLinux) or detectOs(Manjaro):
       result = ("pacman -S " & p, true)
     else:
       result = ("<your package manager here> install " & p, true)
