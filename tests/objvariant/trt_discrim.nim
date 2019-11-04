@@ -5,18 +5,18 @@ template reject(x) =
   static: assert(not compiles(x))
 
 type
-  #Kind = enum k1 = 2, k2 = 33, k3 = 84, k4 = 278, k5 = 1000 # Holed enum work! #No they don't..
-  #KindObj = object
-  #  case kind: Kind
-  #  of k1, k2..k3: i32: int32
-  #  of k4: f32: float32
-  #  else: str: string
+  Kind = enum k1 = 0, k2 = 33, k3 = 84, k4 = 278, k5 = 1000 # Holed enum work! #No they don't..
+  KindObj = object
+    case kind: Kind
+    of k1, k2..k3: i32: int32
+    of k4: f32: float32
+    else: str: string
 
   IntObj = object
     case kind: uint8
-    of low(uint8) .. -1: bad: string
-    of 0: neutral: string
-    of 1 .. high(uint8): good: string
+    of low(uint8) .. 127: bad: string
+    of 128'u8: neutral: string
+    of 129 .. high(uint8): good: string
 
   OtherKind = enum ok1, ok2, ok3, ok4, ok5
   NestedKindObj = object
@@ -29,7 +29,6 @@ type
       of ok4: f32: float32
       else: nestedStr: string
 
-#[
 let kind = k4 # actual value should have no impact on the analysis.
 
 accept: # Mimics the structure of the type. The optimial case.
@@ -76,28 +75,27 @@ reject: # elif branches are ignored
   of k1, k2, k3: discard KindObj(kind: kind, i32: 1)
   elif kind == k4: discard
   else: discard KindObj(kind: kind, str: "3")
-]#
 
 let intKind = 29'u8
 
 accept:
   case intKind
-  of low(uint8) .. -1: discard IntObj(kind: intKind, bad: "bad")
-  of 0: discard IntObj(kind: intKind, neutral: "neutral")
-  of 1 .. high(uint8): discard IntObj(kind: intKind, good: "good")
+  of low(uint8) .. 127: discard IntObj(kind: intKind, bad: "bad")
+  of 128'u8: discard IntObj(kind: intKind, neutral: "neutral")
+  of 129 .. high(uint8): discard IntObj(kind: intKind, good: "good")
 
 reject: # 0 leaks to else
   case intKind
-  of low(uint8) .. -1: discard IntObj(kind: intKind, bad: "bad")
-  of 1 .. high(uint8): discard IntObj(kind: intKind, good: "good")
+  of low(uint8) .. 127: discard IntObj(kind: intKind, bad: "bad")
+  of 129 .. high(uint8): discard IntObj(kind: intKind, good: "good")
 
 accept:
   case intKind
-  of low(uint8) .. -1: discard IntObj(kind: intKind, bad: "bad")
-  of 0: discard IntObj(kind: intKind, neutral: "neutral")
-  of 10, 11 .. high(uint8), 1 .. 9: discard IntObj(kind: intKind, good: "good")
+  of low(uint8) .. 127: discard IntObj(kind: intKind, bad: "bad")
+  of 128'u8: discard IntObj(kind: intKind, neutral: "neutral")
+  of 139'u8, 140 .. high(uint8), 129'u8 .. 138'u8: discard IntObj(kind: intKind, good: "good")
 
-#[
+
 accept:
   case kind
   of {k1, k2}, [k3]: discard KindObj(kind: kind, i32: 1)
@@ -108,7 +106,6 @@ reject:
   case kind
   of {k1, k2, k3}, [k4]: discard KindObj(kind: kind, i32: 1)
   else: discard KindObj(kind: kind, str: "3")
-]#
 
 accept:
   case kind
@@ -133,7 +130,6 @@ reject:
     else: discard NestedKindObj(kind: kind, otherKind: otherKind,
                                 nestedStr: "nested")
 
-#[
 var varkind = k4
 
 reject: # not immutable.
@@ -153,7 +149,6 @@ reject:
     case kind:
     of k1: result = KindObj(kind: kind, i32: 1)
     else: discard
-]#
 
 type
   Kind3 = enum
