@@ -1,6 +1,6 @@
 discard """
-  errormsg: "branch initialization with a runtime discriminator only supports ordinal types with 2^16 elements or less."
-  line: 13
+  errormsg: "low(kind) must be 0 for discriminant"
+  line: 7
 """
 type
   HoledObj = object
