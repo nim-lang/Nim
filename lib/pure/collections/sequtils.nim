@@ -202,36 +202,49 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
-proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
-  ## Returns a new sequence with a combination of the two input containers.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  ## For convenience you can access the returned tuples through the named
-  ## fields `a` and `b`.
-  ##
-  runnableExamples:
-    let
-      short = @[1, 2, 3]
-      long = @[6, 5, 4, 3, 2, 1]
-      words = @["one", "two", "three"]
-      letters = "abcd"
-      zip1 = zip(short, long)
-      zip2 = zip(short, words)
-      zip3 = zip(long, letters)
-    assert zip1 == @[(1, 6), (2, 5), (3, 4)]
-    assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
-    assert zip3 == @[(a: 6, b: 'a'), (a: 5, b: 'b'), (a: 4, b: 'c'),
-                     (a: 3, b: 'd')]
-    assert zip1[2].b == 4
-    assert zip2[2].b == "three"
+template zipImpl(s1, s2, retType: untyped): untyped =
+  proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
+    ## Returns a new sequence with a combination of the two input containers.
+    ##
+    ## The input containers can be of different types.
+    ## If one container is shorter, the remaining items in the longer container
+    ## are discarded.
+    ##
+    ## **Note**: For Nim 1.0.x and older version, ``zip`` returned a seq of
+    ## named tuple with fields ``a`` and ``b``. For Nim versions 1.1.x and newer,
+    ## ``zip`` returns a seq of unnamed tuples.
+    runnableExamples:
+      let
+        short = @[1, 2, 3]
+        long = @[6, 5, 4, 3, 2, 1]
+        words = @["one", "two", "three"]
+        letters = "abcd"
+        zip1 = zip(short, long)
+        zip2 = zip(short, words)
+      assert zip1 == @[(1, 6), (2, 5), (3, 4)]
+      assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
+      assert zip1[2][0] == 3
+      assert zip2[1][1] == "two"
+      when (NimMajor, NimMinor) <= (1, 0):
+        let
+          zip3 = zip(long, letters)
+        assert zip3 == @[(a: 6, b: 'a'), (5, 'b'), (4, 'c'), (3, 'd')]
+        assert zip3[0].b == 'a'
+      else:
+        let
+          zip3: seq[tuple[num: int, letter: char]] = zip(long, letters)
+        assert zip3 == @[(6, 'a'), (5, 'b'), (4, 'c'), (3, 'd')]
+        assert zip3[0].letter == 'a'
 
-  var m = min(s1.len, s2.len)
-  newSeq(result, m)
-  for i in 0 ..< m:
-    result[i] = (s1[i], s2[i])
+    var m = min(s1.len, s2.len)
+    newSeq(result, m)
+    for i in 0 ..< m:
+      result[i] = (s1[i], s2[i])
+
+when (NimMajor, NimMinor) <= (1, 0):
+  zipImpl(s1, s2, seq[tuple[a: S, b: T]])
+else:
+  zipImpl(s1, s2, seq[(S, T)])
 
 proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
@@ -1070,18 +1083,29 @@ when isMainModule:
       zip1 = zip(short, long)
       zip2 = zip(short, words)
       zip3 = zip(ashort, along)
-      zip4 = zip(ashort, awords)
-      zip5 = zip(ashort, words)
     assert zip1 == @[(1, 6), (2, 5), (3, 4)]
     assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
     assert zip3 == @[(1, 6), (2, 5), (3, 4)]
-    assert zip4 == @[(1, "one"), (2, "two"), (3, "three")]
-    assert zip5 == @[(1, "one"), (2, "two"), (3, "three")]
-    assert zip1[2].b == 4
-    assert zip2[2].b == "three"
-    assert zip3[2].b == 4
-    assert zip4[2].b == "three"
-    assert zip5[2].b == "three"
+    assert zip1[2][1] == 4
+    assert zip2[2][1] == "three"
+    assert zip3[2][1] == 4
+    when (NimMajor, NimMinor) <= (1, 0):
+      let
+        # In Nim 1.0.x and older, zip returned a seq of tuple strictly
+        # with fields named "a" and "b".
+        zipAb = zip(ashort, awords)
+      assert zipAb == @[(a: 1, b: "one"), (2, "two"), (3, "three")]
+      assert zipAb[2].b == "three"
+    else:
+      let
+        # As zip returns seq of anonymous tuples, they can be assigned
+        # to any variable that's a sequence of named tuples too.
+        zipXy: seq[tuple[x: int, y: string]] = zip(ashort, awords)
+        zipMn: seq[tuple[m: int, n: string]] = zip(ashort, words)
+      assert zipXy == @[(x: 1, y: "one"), (2, "two"), (3, "three")]
+      assert zipMn == @[(m: 1, n: "one"), (2, "two"), (3, "three")]
+      assert zipXy[2].y == "three"
+      assert zipMn[2].n == "three"
 
   block: # distribute tests
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
@@ -1228,10 +1252,10 @@ when isMainModule:
     block:
       let
         numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-        odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+        oddNumbers = toSeq(filter(numeric) do (x: int) -> bool:
           if x mod 2 == 1:
             result = true)
-      assert odd_numbers == @[1, 3, 5, 7, 9]
+      assert oddNumbers == @[1, 3, 5, 7, 9]
 
     block:
       doAssert [1, 2].toSeq == @[1, 2]

@@ -9,7 +9,7 @@
 
 - `base64.encode` no longer supports `lineLen` and `newLine` use `base64.encodeMIME` instead.
 - `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/" as the dir component of "/root_sub_dir" instead of the empty string.
-
+- `sequtils.zip` now returns a sequence of anonymous tuples i.e. those tuples now do not have fields named "a" and "b".
 
 ### Breaking changes in the compiler
 
