@@ -415,7 +415,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
     of "macintosh":
       result = conf.target.targetOS in {osMacos, osMacosx, osIos}
-    of "osx":
+    of "osx", "macosx":
       result = conf.target.targetOS in {osMacosx, osIos}
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
