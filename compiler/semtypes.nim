@@ -637,7 +637,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     localError(c.config, n.sons[0].info, "selector must be of an ordinal type, float or string")
   if firstOrd(c.config, typ) != 0:
     localError(c.config, n.info, "low(" & $a.sons[0].sym.name.s &
-                                 ") must be 0 for discriminant")
+                                     ") must be 0 for discriminant")
   elif lengthOrd(c.config, typ) > 0x00007FFF:
     localError(c.config, n.info, "len($1) must be less than 32768" % a.sons[0].sym.name.s)
 
