@@ -237,3 +237,36 @@ macro distinctBase*(T: typedesc): untyped =
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
+
+when (NimMajor, NimMinor) >= (1, 1):
+  macro outplace*(x: untyped; indexOfExprToBeCopied: static[int] = 1): untyped =
+    ## Turns an `in-place`:idx: algorithm into one that works on
+    ## a copy and returns this copy. The second parameter is the
+    ## index of the calling expression that is replaced by a copy
+    ## of this expression.
+    ## **Since**: Version 1.2.
+    runnableExamples:
+      import algorithm
+
+      var a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      doAssert outplace(sort(a)) == sorted(a)
+
+    expectKind x, nnkCallKinds
+    expectMinLen x, indexOfExprToBeCopied+1
+    let tmp = gensym(nskVar, "outplaceResult")
+    var call = copyNimTree(x)
+    call[indexOfExprToBeCopied] = tmp
+    result = newTree(nnkStmtListExpr, newVarStmt(tmp, x[indexOfExprToBeCopied]), call, tmp)
+
+  when isMainModule:
+    import algorithm
+
+    var a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    doAssert outplace(sort(a)) == sorted(a)
+
+    import random
+
+    const b = @[0, 1, 2]
+    let c = outplace shuffle(b)
+    doAssert c[0] == 1
+    doAssert c[1] == 0

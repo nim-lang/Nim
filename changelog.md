@@ -23,6 +23,11 @@
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
 - Added overloaded `strformat.fmt` macro that use specified characters as delimiter instead of '{' and '}'.
 
+- Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
+  operations that work on a copy of the data and return the mutated copy. As the existing
+  `sorted` does.
+
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations` and only returns once all pending async operations are guaranteed to have completed.
