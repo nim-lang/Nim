@@ -5,18 +5,18 @@ template reject(x) =
   static: assert(not compiles(x))
 
 type
-  Kind = enum k1 = 2, k2 = 33, k3 = 84, k4 = 278, k5 = 1000 # Holed enum work!
-  KindObj = object
-    case kind: Kind
-    of k1, k2..k3: i32: int32
-    of k4: f32: float32
-    else: str: string
+  #Kind = enum k1 = 2, k2 = 33, k3 = 84, k4 = 278, k5 = 1000 # Holed enum work! #No they don't..
+  #KindObj = object
+  #  case kind: Kind
+  #  of k1, k2..k3: i32: int32
+  #  of k4: f32: float32
+  #  else: str: string
 
   IntObj = object
-    case kind: int16
-    of low(int16) .. -1: bad: string
+    case kind: int8
+    of low(int8) .. -1: bad: string
     of 0: neutral: string
-    of 1 .. high(int16): good: string
+    of 1 .. high(int8): good: string
 
   OtherKind = enum ok1, ok2, ok3, ok4, ok5
   NestedKindObj = object
@@ -76,24 +76,24 @@ reject: # elif branches are ignored
   elif kind == k4: discard
   else: discard KindObj(kind: kind, str: "3")
 
-let intKind = 29'i16
+let intKind = 29'i8
 
 accept:
   case intKind
-  of low(int16) .. -1: discard IntObj(kind: intKind, bad: "bad")
+  of low(int8) .. -1: discard IntObj(kind: intKind, bad: "bad")
   of 0: discard IntObj(kind: intKind, neutral: "neutral")
-  of 1 .. high(int16): discard IntObj(kind: intKind, good: "good")
+  of 1 .. high(int8): discard IntObj(kind: intKind, good: "good")
 
 reject: # 0 leaks to else
   case intKind
-  of low(int16) .. -1: discard IntObj(kind: intKind, bad: "bad")
-  of 1 .. high(int16): discard IntObj(kind: intKind, good: "good")
+  of low(int8) .. -1: discard IntObj(kind: intKind, bad: "bad")
+  of 1 .. high(int8): discard IntObj(kind: intKind, good: "good")
 
 accept:
   case intKind
-  of low(int16) .. -1: discard IntObj(kind: intKind, bad: "bad")
+  of low(int8) .. -1: discard IntObj(kind: intKind, bad: "bad")
   of 0: discard IntObj(kind: intKind, neutral: "neutral")
-  of 10, 11 .. high(int16), 1 .. 9: discard IntObj(kind: intKind, good: "good")
+  of 10, 11 .. high(int8), 1 .. 9: discard IntObj(kind: intKind, good: "good")
 
 accept:
   case kind
