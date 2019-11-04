@@ -49,57 +49,57 @@ proc readVu64*(z: openArray[byte]; pResult: var uint64): int =
   return 9
 
 proc varintWrite32(z: var openArray[byte]; y: uint32) =
-  z[0] = uint8(y shr 24)
-  z[1] = uint8(y shr 16)
-  z[2] = uint8(y shr 8)
-  z[3] = uint8(y)
+  z[0] = cast[uint8](y shr 24)
+  z[1] = cast[uint8](y shr 16)
+  z[2] = cast[uint8](y shr 8)
+  z[3] = cast[uint8](y)
 
 proc writeVu64*(z: var openArray[byte], x: uint64): int =
   ## Write a varint into z. The buffer z must be at least 9 characters
   ## long to accommodate the largest possible varint. Returns the number of
   ## bytes used.
   if x <= 240:
-    z[0] = uint8 x
+    z[0] = cast[uint8](x)
     return 1
   if x <= 2287:
-    let y = uint32(x - 240)
-    z[0] = uint8(y shr 8 + 241)
-    z[1] = uint8(y and 255)
+    let y = cast[uint32](x - 240)
+    z[0] = cast[uint8](y shr 8 + 241)
+    z[1] = cast[uint8](y and 255)
     return 2
   if x <= 67823:
-    let y = uint32(x - 2288)
+    let y = cast[uint32](x - 2288)
     z[0] = 249
-    z[1] = uint8(y shr 8)
-    z[2] = uint8(y and 255)
+    z[1] = cast[uint8](y shr 8)
+    z[2] = cast[uint8](y and 255)
     return 3
-  let y = uint32 x
-  let w = uint32(x shr 32)
+  let y = cast[uint32](x)
+  let w = cast[uint32](x shr 32)
   if w == 0:
     if y <= 16777215:
       z[0] = 250
-      z[1] = uint8(y shr 16)
-      z[2] = uint8(y shr 8)
-      z[3] = uint8(y)
+      z[1] = cast[uint8](y shr 16)
+      z[2] = cast[uint8](y shr 8)
+      z[3] = cast[uint8](y)
       return 4
     z[0] = 251
     varintWrite32(toOpenArray(z, 1, z.high-1), y)
     return 5
   if w <= 255:
     z[0] = 252
-    z[1] = uint8 w
+    z[1] = cast[uint8](w)
     varintWrite32(toOpenArray(z, 2, z.high-2), y)
     return 6
   if w <= 65535:
     z[0] = 253
-    z[1] = uint8(w shr 8)
-    z[2] = uint8 w
+    z[1] = cast[uint8](w shr 8)
+    z[2] = cast[uint8](w)
     varintWrite32(toOpenArray(z, 3, z.high-3), y)
     return 7
   if w <= 16777215:
     z[0] = 254
-    z[1] = uint8(w shr 16)
-    z[2] = uint8(w shr 8)
-    z[3] = uint8 w
+    z[1] = cast[uint8](w shr 16)
+    z[2] = cast[uint8](w shr 8)
+    z[3] = cast[uint8](w)
     varintWrite32(toOpenArray(z, 4, z.high-4), y)
     return 8
   z[0] = 255
