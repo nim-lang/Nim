@@ -808,7 +808,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     case arg
     of "1.0":
-      discard "the default"
+      defineSymbol(conf.symbols, "NimMajor", "1")
+      defineSymbol(conf.symbols, "NimMinor", "0")
+      # always be compatible with 1.0.2 for now:
+      defineSymbol(conf.symbols, "NimPatch", "2")
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
