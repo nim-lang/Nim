@@ -239,7 +239,7 @@ macro distinctBase*(T: typedesc): untyped =
   typeSym.freshIdentNodes
 
 when (NimMajor, NimMinor) >= (1, 1):
-  macro outplace*(x: untyped; indexOfExprToBeCopied: static[int] = 1): untyped =
+  macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T =
     ## Turns an `in-place`:idx: algorithm into one that works on
     ## a copy and returns this copy. The second parameter is the
     ## index of the calling expression that is replaced by a copy
@@ -249,24 +249,27 @@ when (NimMajor, NimMinor) >= (1, 1):
       import algorithm
 
       var a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-      doAssert outplace(sort(a)) == sorted(a)
+      doAssert a.outplace(sort()) == sorted(a)
 
-    expectKind x, nnkCallKinds
-    expectMinLen x, indexOfExprToBeCopied+1
+    expectKind call, nnkCallKinds
     let tmp = gensym(nskVar, "outplaceResult")
-    var call = copyNimTree(x)
-    call[indexOfExprToBeCopied] = tmp
-    result = newTree(nnkStmtListExpr, newVarStmt(tmp, x[indexOfExprToBeCopied]), call, tmp)
+    var ttt = call[0..^1]
+    ttt.insert(tmp, inplaceArgPosition)
+    result = newTree(nnkStmtListExpr,
+      newVarStmt(tmp, arg),
+      copyNimNode(call).add ttt,
+      tmp)
 
   when isMainModule:
     import algorithm
 
     var a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert outplace(sort(a)) == sorted(a)
+    doAssert outplace(a, sort()) == sorted(a)
+    doAssert a.outplace(sort()) == sorted(a)
 
     import random
 
     const b = @[0, 1, 2]
-    let c = outplace shuffle(b)
+    let c = b.outplace shuffle()
     doAssert c[0] == 1
     doAssert c[1] == 0
