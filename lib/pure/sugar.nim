@@ -248,8 +248,13 @@ when (NimMajor, NimMinor) >= (1, 1):
     runnableExamples:
       import algorithm
 
-      var a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
       doAssert a.outplace(sort()) == sorted(a)
+      #Chaining:
+      var aCopy = a
+      aCopy.insert(10)
+
+      doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
 
     expectKind call, nnkCallKinds
     let tmp = gensym(nskVar, "outplaceResult")
@@ -263,9 +268,13 @@ when (NimMajor, NimMinor) >= (1, 1):
   when isMainModule:
     import algorithm
 
-    var a = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
     doAssert outplace(a, sort()) == sorted(a)
     doAssert a.outplace(sort()) == sorted(a)
+    #Chaining:
+    var aCopy = a
+    aCopy.insert(10)
+    doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
 
     import random
 
