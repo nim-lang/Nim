@@ -253,11 +253,11 @@ when (NimMajor, NimMinor) >= (1, 1):
 
     expectKind call, nnkCallKinds
     let tmp = gensym(nskVar, "outplaceResult")
-    var ttt = call[0..^1]
-    ttt.insert(tmp, inplaceArgPosition)
+    var callsons = call[0..^1]
+    callsons.insert(tmp, inplaceArgPosition)
     result = newTree(nnkStmtListExpr,
       newVarStmt(tmp, arg),
-      copyNimNode(call).add ttt,
+      copyNimNode(call).add callsons,
       tmp)
 
   when isMainModule:
