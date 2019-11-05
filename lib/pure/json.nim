@@ -234,10 +234,6 @@ proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated:
-  "Deprecated since v0.18.2; use 'getInt' or 'getBiggestInt' instead".} =
-  getBiggestInt(n, default)
-
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
@@ -248,20 +244,12 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated:
-  "Deprecated since v0.18.2; use 'getFloat' instead".} =
-  getFloat(n, default)
-
 proc getBool*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JBool``, or if ``n`` is nil.
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
-
-proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated:
-  "Deprecated since v0.18.2; use 'getBool' instead".} =
-  getBool(n, default)
 
 proc getFields*(n: JsonNode,
     default = initOrderedTable[string, JsonNode](4)):
@@ -501,10 +489,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
   ## Checks if `val` exists in array `node`.
   assert(node.kind == JArray)
   find(node.elems, val) >= 0
-
-proc existsKey*(node: JsonNode, key: string): bool {.
-    deprecated: "use 'hasKey' instead".} =
-  node.hasKey(key)
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the

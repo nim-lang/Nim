@@ -41,11 +41,6 @@
 ## * `dynlib module <dynlib.html>`_
 ## * `streams module <streams.html>`_
 
-
-{.deadCodeElim: on.}  # dce option deprecated
-
-{.push debugger: off.}
-
 include "system/inclrtl"
 
 import
@@ -3130,8 +3125,6 @@ proc getCurrentProcessId*(): int {.noNimScript.} =
     result = GetCurrentProcessId().int
   else:
     result = getpid()
-
-{.pop.}
 
 proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
   ## Sets the `file`'s last modification time. `OSError` is raised in case of

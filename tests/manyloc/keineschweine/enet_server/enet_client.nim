@@ -197,7 +197,7 @@ proc lobbyInit*() =
     messageArea.scrollBack -= 1
     update(messageArea))
   gui.newButton(text = "Flood msg area", position = vec2f(185, 30), onClick = proc(b: PButton) =
-    for i in 0.. <30:
+    for i in 0..< 30:
       dispMessage($i))"""
   dirServer = newServer()
   dirServer.addHandler HChat, handleChat

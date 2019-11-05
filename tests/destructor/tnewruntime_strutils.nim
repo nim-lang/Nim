@@ -1,9 +1,9 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''443 443'''
+  output: '''422 422'''
 """
 
-import strutils, os
+import strutils, os, std / wordwrap
 
 import core / allocators
 import system / ansi_c
@@ -76,12 +76,12 @@ proc staticTests =
     inp = """ this is a long text --  muchlongerthan10chars and here
                 it goes"""
     outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
-  doAssert wordWrap(inp, 10, false) == outp
+  doAssert wrapWords(inp, 10, false) == outp
 
   let
     longInp = """ThisIsOneVeryLongStringWhichWeWillSplitIntoEightSeparatePartsNow"""
     longOutp = "ThisIsOn\neVeryLon\ngStringW\nhichWeWi\nllSplitI\nntoEight\nSeparate\nPartsNow"
-  doAssert wordWrap(longInp, 8, true) == longOutp
+  doAssert wrapWords(longInp, 8, true) == longOutp
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
             "The cat eats fish."

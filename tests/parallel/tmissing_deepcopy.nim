@@ -26,9 +26,9 @@ proc greet(p:Person) =
     " friend:", p.friend.name, "(", cast[int](addr p.friend.name),") }"
 
 proc setup =
-  for i in 0 .. <20:
+  for i in 0 ..< 20:
     people.add newPerson("Person" & $(i + 1))
-  for i in 0 .. <20:
+  for i in 0 ..< 20:
     people[i].friend = people[19-i]
 
 proc update =

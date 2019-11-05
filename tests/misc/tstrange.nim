@@ -24,5 +24,5 @@ write(stdout, ack(5, 4))
 
 # bug #1442
 let h=3
-for x in 0.. <h.int:
+for x in 0 ..< h.int:
   echo x
