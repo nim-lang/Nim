@@ -2224,6 +2224,19 @@ proc enlarge[A](t: var CountTable[A]) =
     if t.data[i].val != 0: ctRawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
+proc remove[A](t: var CountTable[A], key: A) =
+  var n: seq[tuple[key: A, val: int]]
+  newSeq(n, len(t.data))
+  var removed: bool
+  for i in countup(0, high(t.data)):
+    if t.data[i].val != 0:
+      if t.data[i].key != key:
+        ctRawInsert(t, n, t.data[i].key, t.data[i].val)
+      else:
+        removed = true
+  swap(t.data, n)
+  if removed: dec(t.counter)
+
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
@@ -2377,8 +2390,57 @@ proc len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
+proc del*[A](t: var CountTable[A], key: A) =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `take proc<#take,CountTable[A],A,int>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('c')
+    assert a == toCountTable("aa")
+
+  remove(t, key)
+
+proc take*[A](t: var CountTable[A], key: A, val: var int): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    var i = 0
+    assert a.take('b', i)
+    assert i == 3
+    i = 99
+    assert not a.take('b', i)
+    assert i == 99
+
+  var index = rawGet(t, key)
+  result = index >= 0
+  if result:
+    val = move(t.data[index].val)
+    remove(t, key)
+
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `take proc<#take,CountTable[A],A,int>`_
   clearImpl()
   t.isSorted = false
 
@@ -2667,9 +2729,36 @@ proc len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
+proc del*[A](t: CountTableRef[A], key: A) =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `take proc<#take,CountTableRef[A],A,int>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  del(t[], key)
+
+proc take*[A](t: CountTableRef[A], key: A, val: var int): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  take(t[], key, val)
+
 proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
-  clearImpl()
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `take proc<#take,CountTableRef[A],A,int>`_
+  clear(t[])
 
 proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
