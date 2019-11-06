@@ -208,6 +208,7 @@ Generic Operating System Services
   Its primary purpose is to produce output for Nimble packages,
   but it also contains the widely used **Distribution** enum
   that is useful for writing platform specific code.
+  See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
 * `dynlib <dynlib.html>`_
   This module implements the ability to access symbols from shared libraries.
