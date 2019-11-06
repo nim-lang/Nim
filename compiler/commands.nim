@@ -381,6 +381,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "nonimblepath", "nobabelpath":
     expectNoArg(conf, switch, arg, pass, info)
     disableNimblePath(conf)
+  of "clearnimblepath":
+    expectNoArg(conf, switch, arg, pass, info)
+    clearNimblePath(conf)
   of "excludepath":
     expectArg(conf, switch, arg, pass, info)
     let path = processPath(conf, arg, info)
