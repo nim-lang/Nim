@@ -201,7 +201,7 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
   else:
     processSwitch(s, val, passPP, info, config)
 
-proc readConfigFile(filename: AbsoluteFile; cache: IdentCache;
+proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
                     config: ConfigRef): bool =
   var
     L: TLexer
