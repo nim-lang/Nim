@@ -1098,7 +1098,6 @@ proc lcm*[T](x: openArray[T]): T =
     result = lcm(result, x[i])
     inc(i)
 
-
 when isMainModule and not defined(JS) and not windowsCC89:
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
