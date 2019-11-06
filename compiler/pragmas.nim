@@ -10,7 +10,7 @@
 # This module implements semantic checking for pragmas
 
 import
-  os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
+  os, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
