@@ -1,7 +1,5 @@
 import  macros
 
-from uri import `/`
-
 macro test*(a: untyped): untyped =
   var nodes: tuple[a, b: int]
   nodes.a = 4
@@ -22,7 +20,6 @@ macro test*(a: untyped): untyped =
 test:
   "hi"
 
-import strutils
 
 template assertNot(arg: untyped): untyped =
   assert(not(arg))
