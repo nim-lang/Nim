@@ -190,6 +190,12 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     checkSymbol(L, tok)
     add(val, $tok)
     confTok(L, tok, config, condStack)           # skip symbol
+    if tok.tokType in {tkColon, tkEquals}:
+      add(val, $tok) # add the :
+      confTok(L, tok, config, condStack)           # skip symbol
+      checkSymbol(L, tok)
+      add(val, $tok) # add the token after it
+      confTok(L, tok, config, condStack)           # skip symbol
     while tok.ident != nil and tok.ident.s == "&":
       confTok(L, tok, config, condStack)
       checkSymbol(L, tok)
