@@ -86,7 +86,9 @@ proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
     # assert extractRGB(a) == (r: 255.Col, g: 0.Col, b: 255.Col)
     # assert extractRGB(b) == (r: 0.Col, g: 255.Col, b: 204.Col)
     echo extractRGB(a)
+    echo typeof(extractRGB(a))
     echo extractRGB(b)
+    echo typeof(extractRGB(b))
 
   result.r = a.int shr 16 and 0xff
   result.g = a.int shr 8 and 0xff
