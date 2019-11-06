@@ -1062,19 +1062,6 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
     x -= y
   y shl shift
 
-proc gcd*[T](x: openArray[T]): T =
-  ## Computes the greatest common (positive) divisor of the elements of ``x``.
-  ##
-  ## See also:
-  ## * `gcd proc <#gcd,T,T>`_ for integer version
-  runnableExamples:
-    doAssert gcd(@[13.5, 9.0]) == 4.5
-  result = x[0]
-  var i = 1
-  while i < x.len:
-    result = gcd(result, x[i])
-    inc(i)
-
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
   ##
@@ -1085,18 +1072,7 @@ proc lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
   x div gcd(x, y) * y
 
-proc lcm*[T](x: openArray[T]): T =
-  ## Computes the least common multiple of the elements of ``x``.
-  ##
-  ## See also:
-  ## * `gcd proc <#gcd,T,T>`_ for integer version
-  runnableExamples:
-    doAssert lcm(@[24, 30]) == 120
-  result = x[0]
-  var i = 1
-  while i < x.len:
-    result = lcm(result, x[i])
-    inc(i)
+
 
 when isMainModule and not defined(JS) and not windowsCC89:
   # Check for no side effect annotation
