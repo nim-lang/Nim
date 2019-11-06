@@ -99,6 +99,7 @@ Advanced options:
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
+  --clearNimblePath         empty the list of Nimble package search paths
   --noCppExceptions         use default exception handling with C++ backend
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
