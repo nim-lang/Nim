@@ -27,6 +27,9 @@ when defined(windows):
 else:
   import posix
 
+when defined(linux) and defined(useClone):
+  import linux
+
 type
   ProcessOption* = enum ## Options that can be passed to `startProcess proc
                         ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
