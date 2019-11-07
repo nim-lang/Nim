@@ -1062,7 +1062,7 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
     x -= y
   y shl shift
 
-proc gcd*[T](x: openArray[T]): T =
+proc gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the greatest common (positive) divisor of the elements of ``x``.
   ##
   ## See also:
@@ -1085,7 +1085,7 @@ proc lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
   x div gcd(x, y) * y
 
-proc lcm*[T](x: openArray[T]): T =
+proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the least common multiple of the elements of ``x``.
   ##
   ## See also:
