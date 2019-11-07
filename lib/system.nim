@@ -2771,7 +2771,7 @@ else:
         yield T(res)
         inc(res, step)
     else:
-      var res = a
+      var res = T(a)
       while res <= b:
         yield res
         inc(res, step)
@@ -2792,14 +2792,14 @@ else:
         yield T(res)
         inc(res)
     else:
-      var res = a
+      var res = T(a)
       while res <= b:
         yield res
         inc(res)
 
   iterator `..<`*[S, T](a: S, b: T): T {.inline.} =
     mixin inc
-    var i = a
+    var i = T(a)
     while i < b:
       yield i
       inc i
