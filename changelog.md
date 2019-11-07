@@ -44,7 +44,9 @@
   This is more consistent with the other asyncdispatch apis, and allows
   `asyncdispatch.drain` to be more efficient.
 - `base64.encode` and `base64.decode` was made faster by about 50%.
-- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support (ISO 40314).
+- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
+  (ISO 40314).
+- `macros.eqIdent` is now invariant to export markers and backtick quotes.
 
 
 

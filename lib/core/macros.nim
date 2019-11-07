@@ -1378,16 +1378,22 @@ when defined(nimVmEqIdent):
     ## Style insensitive comparison.
 
   proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``a`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``a`` can be an identifier or a
+    ## symbol. ``a`` may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
   proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``b`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``b`` can be an identifier or a
+    ## symbol. ``b`` may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
   proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``a`` and ``b`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``a`` and ``b`` can be an
+    ## identifier or a symbol. Both may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
 else:
   # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
