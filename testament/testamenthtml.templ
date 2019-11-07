@@ -1,0 +1,297 @@
+#? stdtmpl(subsChar = '%', metaChar = '#', emit = "outfile.write")
+#import strutils
+#
+#proc htmlQuote*(raw: string): string =
+#  result = raw.multiReplace(
+#    ("&", "&amp;"),
+#    ("\"", "&quot;"),
+#    ("'", "&apos;"),
+#    ("<", "&lt;"),
+#    (">", "&gt;")
+#  )
+#
+#end proc
+#proc generateHtmlBegin*(outfile: File) =
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Testament Test Results</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js" integrity="sha256-ihAoc6M/JPfrIiIeayPE9xjin4UWjsx2mjW/rtmxLM4=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha256-U5ZEeKfGNOja007MMD3YBI0A3OSZOQbeG6z2f2Y0hu8=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha256-916EbMg70RQy9LHiGkXzG8hSg9EdNy97GazNG/aiY1w=" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha256-ZT4HPpdCOt2lvDkXokHuhJfdOKSPFLzeAJik5U/Q+l4=" crossorigin="anonymous" />
+    <script>
+        /**
+        * Callback function that is executed for each Element in an array.
+        * @callback executeForElement
+        * @param {Element} elem Element to operate on
+        */
+
+        /**
+        *
+        * @param {number} index
+        * @param {Element[]} elemArray
+        * @param {executeForElement} executeOnItem
+        */
+        function executeAllAsync(elemArray, index, executeOnItem) {
+            for (var i = 0; index < elemArray.length && i < 100; i++ , index++) {
+                var item = elemArray[index];
+                executeOnItem(item);
+            }
+            if (index < elemArray.length) {
+                setTimeout(executeAllAsync, 0, elemArray, index, executeOnItem);
+            }
+        }
+
+        /** @param {Element} elem */
+        function executeShowOnElement(elem) {
+            while (elem.classList.contains("hidden")) {
+                elem.classList.remove("hidden");
+            }
+        }
+
+        /** @param {Element} elem */
+        function executeHideOnElement(elem) {
+            if (!elem.classList.contains("hidden")) {
+                elem.classList.add("hidden");
+            }
+        }
+
+        /** @param {Element} elem */
+        function executeExpandOnElement(elem) {
+            $(elem).collapse("show");
+        }
+
+        /** @param {Element} elem */
+        function executeCollapseOnElement(elem) {
+            $(elem).collapse("hide");
+        }
+
+        /**
+        * @param {string} [category] Optional bootstrap panel context class (danger, warning, info, success)
+        * @param {executeForElement} executeOnEachPanel
+        */
+        function wholePanelAll(category, executeOnEachPanel) {
+            var selector = "div.panel";
+            if (typeof category === "string" && category) {
+                selector += "-" + category;
+            }
+
+            var jqPanels = $(selector);
+            /** @type {Element[]} */
+            var elemArray = jqPanels.toArray();
+
+            setTimeout(executeAllAsync, 0, elemArray, 0, executeOnEachPanel);
+        }
+
+        /**
+        * @param {string} [category] Optional bootstrap panel context class (danger, warning, info, success)
+        * @param {executeForElement} executeOnEachPanel
+        */
+        function panelBodyAll(category, executeOnEachPanelBody) {
+            var selector = "div.panel";
+            if (typeof category === "string" && category) {
+                selector += "-" + category;
+            }
+
+            var jqPanels = $(selector);
+
+            var jqPanelBodies = $("div.panel-body", jqPanels);
+            /** @type {Element[]} */
+            var elemArray = jqPanelBodies.toArray();
+
+            setTimeout(executeAllAsync, 0, elemArray, 0, executeOnEachPanelBody);
+        }
+
+        /**
+        * @param {string} [category] Optional bootstrap panel context class (danger, warning, info, success)
+        */
+        function showAll(category) {
+            wholePanelAll(category, executeShowOnElement);
+        }
+
+        /**
+        * @param {string} [category] Optional bootstrap panel context class (danger, warning, info, success)
+        */
+        function hideAll(category) {
+            wholePanelAll(category, executeHideOnElement);
+        }
+
+        /**
+        * @param {string} [category] Optional bootstrap panel context class (danger, warning, info, success)
+        */
+        function expandAll(category) {
+            panelBodyAll(category, executeExpandOnElement);
+        }
+
+        /**
+        * @param {string} [category] Optional bootstrap panel context class (danger, warning, info, success)
+        */
+        function collapseAll(category) {
+            panelBodyAll(category, executeCollapseOnElement);
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Testament Test Results <small>Nim Tester</small></h1>
+#end proc
+#proc generateHtmlAllTestsBegin*(outfile: File, machine, commit, branch: string,
+#  totalCount: BiggestInt,
+#  successCount: BiggestInt, successPercentage: string,
+#  ignoredCount: BiggestInt, ignoredPercentage: string,
+#  failedCount: BiggestInt, failedPercentage: string, onlyFailing = false) =
+        <dl class="dl-horizontal">
+            <dt>Hostname</dt>
+            <dd>%machine</dd>
+            <dt>Git Commit</dt>
+            <dd><code>%commit</code></dd>
+            <dt title="Git Branch reference">Branch ref.</dt>
+            <dd>%branch</dd>
+        </dl>
+        <dl class="dl-horizontal">
+            <dt>All Tests</dt>
+            <dd>
+                <span class="glyphicon glyphicon-th-list"></span>
+                %totalCount
+            </dd>
+            <dt>Successful Tests</dt>
+            <dd>
+                <span class="glyphicon glyphicon-ok-sign"></span>
+                %successCount (%successPercentage)
+            </dd>
+            <dt>Skipped Tests</dt>
+            <dd>
+                <span class="glyphicon glyphicon-question-sign"></span>
+                %ignoredCount (%ignoredPercentage)
+            </dd>
+            <dt>Failed Tests</dt>
+            <dd>
+                <span class="glyphicon glyphicon-exclamation-sign"></span>
+                %failedCount (%failedPercentage)
+            </dd>
+        </dl>
+        <div class="table-responsive">
+            <table class="table table-condensed">
+#  if not onlyFailing:
+                <tr>
+                    <th class="text-right" style="vertical-align:middle">All Tests</th>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-default" type="button" onclick="showAll();">Show All</button>
+                            <button class="btn btn-default" type="button" onclick="hideAll();">Hide All</button>
+                            <button class="btn btn-default" type="button" onclick="expandAll();">Expand All</button>
+                            <button class="btn btn-default" type="button" onclick="collapseAll();">Collapse All</button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-right" style="vertical-align:middle">Successful Tests</th>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-default" type="button" onclick="showAll('success');">Show All</button>
+                            <button class="btn btn-default" type="button" onclick="hideAll('success');">Hide All</button>
+                            <button class="btn btn-default" type="button" onclick="expandAll('success');">Expand All</button>
+                            <button class="btn btn-default" type="button" onclick="collapseAll('success');">Collapse All</button>
+                        </div>
+                    </td>
+                </tr>
+#  end if
+                <tr>
+                    <th class="text-right" style="vertical-align:middle">Skipped Tests</th>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-default" type="button" onclick="showAll('info');">Show All</button>
+                            <button class="btn btn-default" type="button" onclick="hideAll('info');">Hide All</button>
+                            <button class="btn btn-default" type="button" onclick="expandAll('info');">Expand All</button>
+                            <button class="btn btn-default" type="button" onclick="collapseAll('info');">Collapse All</button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-right" style="vertical-align:middle">Failed Tests</th>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-default" type="button" onclick="showAll('danger');">Show All</button>
+                            <button class="btn btn-default" type="button" onclick="hideAll('danger');">Hide All</button>
+                            <button class="btn btn-default" type="button" onclick="expandAll('danger');">Expand All</button>
+                            <button class="btn btn-default" type="button" onclick="collapseAll('danger');">Collapse All</button>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="panel-group">
+#end proc
+#proc generateHtmlTestresultPanelBegin*(outfile: File, trId, name, target, category,
+#  action, resultDescription, timestamp, result, resultSign,
+#  panelCtxClass, textCtxClass, bgCtxClass: string) =
+            <div id="panel-testResult-%trId" class="panel panel-%panelCtxClass">
+                <div class="panel-heading" style="cursor:pointer" data-toggle="collapse" data-target="#panel-body-testResult-%trId" aria-controls="panel-body-testResult-%trId" aria-expanded="false">
+                    <div class="row">
+                        <h4 class="col-xs-3 col-sm-1 panel-title">
+                            <span class="glyphicon glyphicon-%resultSign-sign"></span>
+                            <strong>%resultDescription</strong>
+                        </h4>
+                        <h4 class="col-xs-1 panel-title"><span class="badge">%target</span></h4>
+                        <h4 class="col-xs-5 col-sm-7 panel-title" title="%name"><code class="text-%textCtxClass">%name</code></h4>
+                        <h4 class="col-xs-3 col-sm-3 panel-title text-right"><span class="badge">%category</span></h4>
+                    </div>
+                </div>
+                <div id="panel-body-testResult-%trId" class="panel-body collapse bg-%bgCtxClass">
+                    <dl class="dl-horizontal">
+                        <dt>Name</dt>
+                        <dd><code class="text-%textCtxClass">%name</code></dd>
+                        <dt>Category</dt>
+                        <dd><span class="badge">%category</span></dd>
+                        <dt>Timestamp</dt>
+                        <dd>%timestamp</dd>
+                        <dt>Nim Action</dt>
+                        <dd><code class="text-%textCtxClass">%action</code></dd>
+                        <dt>Nim Backend Target</dt>
+                        <dd><span class="badge">%target</span></dd>
+                        <dt>Code</dt>
+                        <dd><code class="text-%textCtxClass">%result</code></dd>
+                    </dl>
+#end proc
+#proc generateHtmlTestresultOutputDetails*(outfile: File, expected, gotten: string) =
+                    <div class="table-responsive">
+                        <table class="table table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>Expected</th>
+                                    <th>Actual</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><pre>%expected</pre></td>
+                                    <td><pre>%gotten</pre></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+#end proc
+#proc generateHtmlTestresultOutputNone*(outfile: File) =
+                    <p class="sr-only">No output details</p>
+#end proc
+#proc generateHtmlTestresultPanelEnd*(outfile: File) =
+                </div>
+            </div>
+#end proc
+#proc generateHtmlAllTestsEnd*(outfile: File) =
+        </div>
+#end proc
+#proc generateHtmlEnd*(outfile: File, timestamp: string) =
+        <hr />
+        <footer>
+            <p>
+                Report generated by: <code>testament</code> &ndash; Nim Tester
+                <br />
+                Made with Nim. Generated on: %timestamp
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
