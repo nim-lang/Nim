@@ -1514,7 +1514,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
         rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
-proc take*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool =
+proc take*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -1988,7 +1988,7 @@ proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc take*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool =
+proc take*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -2390,7 +2390,7 @@ proc len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
-proc del*[A](t: var CountTable[A], key: A) =
+proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
   ##
   ## O(n) complexity.
@@ -2409,7 +2409,7 @@ proc del*[A](t: var CountTable[A], key: A) =
 
   remove(t, key)
 
-proc take*[A](t: var CountTable[A], key: A, val: var int): bool =
+proc take*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -2729,7 +2729,7 @@ proc len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
-proc del*[A](t: CountTableRef[A], key: A) =
+proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
   ##
   ## O(n) complexity.
@@ -2739,7 +2739,7 @@ proc del*[A](t: CountTableRef[A], key: A) =
   ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
   del(t[], key)
 
-proc take*[A](t: CountTableRef[A], key: A, val: var int): bool =
+proc take*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
