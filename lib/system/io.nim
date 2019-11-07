@@ -685,7 +685,7 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
-proc writeFile*(filename: string, content: openArray[byte]) =
+proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.
