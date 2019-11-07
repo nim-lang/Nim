@@ -733,7 +733,6 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     return n
 
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
-
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
     return n
@@ -749,7 +748,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,
-                  comesFromPush, isStatement: bool) : bool =
+                  comesFromPush, isStatement: bool): bool =
   var it = n.sons[i]
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it.sons[0] else: it
   if key.kind == nkBracketExpr:
