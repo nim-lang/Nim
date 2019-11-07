@@ -1441,8 +1441,13 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       continue
 
     doAssert r.sons[0].kind == nkSym
-    # Expand the macro here
-    result = semMacroExpr(c, r, r, r.sons[0].sym, {})
+    let m = r.sons[0].sym
+    case m.kind
+    of skMacro: result = semMacroExpr(c, r, r, m, {})
+    of skTemplate: result = semTemplateExpr(c, r, m, {})
+    else:
+      prc.sons[pragmasPos] = n
+      continue
 
     doAssert result != nil
 
