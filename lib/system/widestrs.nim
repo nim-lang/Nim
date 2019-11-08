@@ -42,7 +42,8 @@ when defined(nimv2):
   proc createWide(a: var WideCStringObj; bytes: int) =
     a.bytes = bytes
     let alor = getLocalAllocator()
-    a.data = cast[typeof(a.data)](alor.alloc(alor, bytes))
+    # actually the alignment is unknown. But 4 should be safe to use.
+    a.data = cast[typeof(a.data)](alor.alloc(alor, bytes, alignment=4))
 
   template `[]`(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
   template `[]=`(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val

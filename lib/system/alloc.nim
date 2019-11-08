@@ -45,7 +45,7 @@ type
     data: TrunkBuckets
 
 type
-  AlignType = BiggestFloat
+  AlignType {.importc: "NimAlign16Type", header: "nimalloc.h".} = object
   FreeCell {.final, pure.} = object
     next: ptr FreeCell  # next free cell in chunk (overlaid with refcount)
     zeroField: int       # 0 means cell is not used (overlaid with typ field)
@@ -65,16 +65,14 @@ type
     freeList: ptr FreeCell
     free: int            # how many bytes remain
     acc: int             # accumulator for small object allocation
-    when defined(cpu32):
-      align: int
-    data: AlignType      # start of usable memory
+    data: UncheckedArray[AlignType]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    data: AlignType      # start of usable memory
+    data: UncheckedArray[AlignType]      # start of usable memory
 
-template smallChunkOverhead(): untyped = sizeof(SmallChunk)-sizeof(AlignType)
-template bigChunkOverhead(): untyped = sizeof(BigChunk)-sizeof(AlignType)
+template smallChunkOverhead(): untyped = sizeof(SmallChunk)
+template bigChunkOverhead(): untyped = sizeof(BigChunk)
 
 # ------------- chunk table ---------------------------------------------------
 # We use a PtrSet of chunk starts and a table[Page, chunksize] for chunk

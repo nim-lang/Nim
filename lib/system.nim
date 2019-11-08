@@ -2056,6 +2056,13 @@ elif hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
 
+proc align(address, alignment: int): int =
+  if alignment == 0: # Actually, this is illegal. This branch exists to actively
+                     # hide problems.
+    result = address
+  else:
+    result = (address + (alignment - 1)) and not (alignment - 1)
+
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
     ## Stops the program immediately with an exit code.
@@ -3522,14 +3529,6 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
   ## an overflow exception is thrown (if overflow checking is turned on).
   result = if x < 0: -x else: x
 {.pop.}
-
-
-proc align(address, alignment: int): int =
-  if alignment == 0: # Actually, this is illegal. This branch exists to actively
-                     # hide problems.
-    result = address
-  else:
-    result = (address + (alignment - 1)) and not (alignment - 1)
 
 when not defined(JS):
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}

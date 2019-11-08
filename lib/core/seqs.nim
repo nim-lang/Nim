@@ -94,7 +94,7 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
     let allocator = getLocalAllocator()
-    var p = cast[ptr PayloadBase](allocator.alloc(allocator, align(sizeof(int) + sizeof(Allocator), elemAlign) + cap * elemSize))
+    var p = cast[ptr PayloadBase](allocator.alloc(allocator, align(sizeof(int) + sizeof(Allocator), elemAlign) + cap * elemSize, elemAlign))
     p.allocator = allocator
     p.cap = cap
     result = p
@@ -121,7 +121,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
       if p.allocator == nil:
         let allocator = getLocalAllocator()
         var q = cast[ptr PayloadBase](allocator.alloc(allocator,
-          headerSize + elemSize * cap))
+          headerSize + elemSize * cap, elemAlign))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
         q.allocator = allocator
         q.cap = cap

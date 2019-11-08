@@ -98,7 +98,7 @@ else:
 proc genericAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
 proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.
   importCompilerProc.}
-proc incrSeq(seq: PGenSeq, elemSize: int): PGenSeq {.importCompilerProc.}
+proc incrSeq(seq: PGenSeq, elemSize, elemAlign: int): PGenSeq {.importCompilerProc.}
 proc newObj(typ: PNimType, size: int): pointer {.importCompilerProc.}
 proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
 proc objectInit(dest: pointer, typ: PNimType) {.importCompilerProc.}
@@ -180,7 +180,7 @@ proc extendSeq*(x: Any) =
   ## performs ``setLen(x, x.len+1)``. `x` needs to represent a ``seq``.
   assert x.rawType.kind == tySequence
   var y = cast[ptr PGenSeq](x.value)[]
-  var z = incrSeq(y, x.rawType.base.size)
+  var z = incrSeq(y, x.rawType.base.size, x.rawType.base.align)
   # 'incrSeq' already freed the memory for us and copied over the RC!
   # So we simply copy the raw pointer into 'x.value':
   cast[ppointer](x.value)[] = z
@@ -194,6 +194,9 @@ proc setObjectRuntimeType*(x: Any) =
 proc skipRange(x: PNimType): PNimType {.inline.} =
   result = x
   if result.kind == tyRange: result = result.base
+
+proc align(address, alignment: int): int =
+  result = (address + (alignment - 1)) and not (alignment - 1)
 
 proc `[]`*(x: Any, i: int): Any =
   ## accessor for an any `x` that represents an array or a sequence.
@@ -209,7 +212,7 @@ proc `[]`*(x: Any, i: int): Any =
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
       raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
-    return newAny(s +!! (align(GenericSeqSize,x.rawType.base.align)+i*bs), x.rawType.base)
+    return newAny(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), x.rawType.base)
   else: assert false
 
 proc `[]=`*(x: Any, i: int, y: Any) =
@@ -228,7 +231,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if i >=% cast[PGenSeq](s).len:
       raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     assert y.rawType == x.rawType.base
-    genericAssign(s +!! (align(GenericSeqSize,x,rawType.base.align)+i*bs), y.value, y.rawType)
+    genericAssign(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), y.value, y.rawType)
   else: assert false
 
 proc len*(x: Any): int =
