@@ -2685,7 +2685,7 @@ when defined(nimNewRoof):
         yield T(res)
         inc(res, step)
     else:
-      var res: T = T(a)
+      var res = a
       while res <= b:
         yield res
         inc(res, step)
@@ -2706,7 +2706,7 @@ when defined(nimNewRoof):
         yield T(res)
         inc(res)
     else:
-      var res: T = T(a)
+      var res = a
       while res <= b:
         yield res
         inc(res)
@@ -2730,7 +2730,7 @@ when defined(nimNewRoof):
 
   iterator `..<`*[T](a, b: T): T {.inline.} =
     mixin inc
-    var i = T(a)
+    var i = a
     while i < b:
       yield i
       inc i
@@ -2771,7 +2771,7 @@ else:
         yield T(res)
         inc(res, step)
     else:
-      var res: T = T(a)
+      var res = T(a)
       while res <= b:
         yield res
         inc(res, step)
@@ -2792,7 +2792,7 @@ else:
         yield T(res)
         inc(res)
     else:
-      var res: T = T(a)
+      var res = T(a)
       while res <= b:
         yield res
         inc(res)
