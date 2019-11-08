@@ -32,7 +32,8 @@
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
 - Added overloaded `strformat.fmt` macro that use specified characters as
   delimiter instead of '{' and '}'.
-
+- introduced new procs in `tables.nim`: `OrderedTable.take`, `CountTable.del`,
+  `CountTable.take`
 
 
 ## Library changes
