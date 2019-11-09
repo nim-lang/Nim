@@ -275,6 +275,8 @@ proc p(n: PNode; c: var Con): PNode
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
+proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
+
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
@@ -285,7 +287,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, tmp, n)
     m.add p(n, c)
     result.add m
-    if isLValue(n):
+    if isLValue(n) and not isClosureEnv(n):
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "use 'move($1)' to prevent it") % $n)
