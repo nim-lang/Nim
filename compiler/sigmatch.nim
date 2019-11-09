@@ -15,9 +15,6 @@ import
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
   linter, lineinfos, lowerings, modulegraphs
 
-when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
-  import docgen
-
 type
   MismatchKind* = enum
     kUnknown, kAlreadyGiven, kUnknownNamedParam, kTypeMismatch, kVarNeeded,

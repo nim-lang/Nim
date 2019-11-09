@@ -1378,16 +1378,22 @@ when defined(nimVmEqIdent):
     ## Style insensitive comparison.
 
   proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``a`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``a`` can be an identifier or a
+    ## symbol. ``a`` may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
   proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``b`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``b`` can be an identifier or a
+    ## symbol. ``b`` may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
   proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``a`` and ``b`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``a`` and ``b`` can be an
+    ## identifier or a symbol. Both may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
 else:
   # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
@@ -1626,9 +1632,29 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
     result.add args[i]
 
 proc getProjectPath*(): string = discard
-  ## Returns the path to the currently compiling project, not to
-  ## be confused with ``system.currentSourcePath`` which returns
-  ## the path of the current module.
+  ## Returns the path to the currently compiling project.
+  ##
+  ## This is not to be confused with `system.currentSourcePath <system.html#currentSourcePath.t>`_
+  ## which returns the path of the source file containing that template
+  ## call.
+  ##
+  ## For example, assume a ``dir1/foo.nim`` that imports a ``dir2/bar.nim``,
+  ## have the ``bar.nim`` print out both ``getProjectPath`` and
+  ## ``currentSourcePath`` outputs.
+  ##
+  ## Now when ``foo.nim`` is compiled, the ``getProjectPath`` from
+  ## ``bar.nim`` will return the ``dir1/`` path, while the ``currentSourcePath``
+  ## will return the path to the ``bar.nim`` source file.
+  ##
+  ## Now when ``bar.nim`` is compiled directly, the ``getProjectPath``
+  ## will now return the ``dir2/`` path, and the ``currentSourcePath``
+  ## will still return the same path, the path to the ``bar.nim`` source
+  ## file.
+  ##
+  ## The path returned by this proc is set at compile time.
+  ##
+  ## See also:
+  ## * `getCurrentDir proc <os.html#getCurrentDir>`_
 
 when defined(nimMacrosSizealignof):
   proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =

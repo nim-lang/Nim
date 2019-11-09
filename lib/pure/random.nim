@@ -625,7 +625,7 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
-when not defined(nimscript):
+when not defined(nimscript) and not defined(standalone):
   import times
 
   proc randomize*() {.benign.} =

@@ -66,9 +66,9 @@ type
 
   Glob* {.importc: "glob_t", header: "<glob.h>",
            final, pure.} = object ## glob_t
-    gl_pathc*: csize          ## Count of paths matched by pattern.
-    gl_pathv*: cstringArray ## Pointer to a list of matched pathnames.
-    gl_offs*: csize           ## Slots to reserve at the beginning of gl_pathv.
+    gl_pathc*: csize_t            ## Count of paths matched by pattern.
+    gl_pathv*: cstringArray       ## Pointer to a list of matched pathnames.
+    gl_offs*: csize_t             ## Slots to reserve at the beginning of gl_pathv.
     gl_flags*: cint
     gl_closedir*: pointer
     gl_readdir*: pointer
@@ -382,7 +382,7 @@ type
     aio_lio_opcode*: cint     ## Operation to be performed.
     aio_reqprio*: cint        ## Request priority offset.
     aio_buf*: pointer         ## Location of buffer.
-    aio_nbytes*: csize        ## Length of transfer.
+    aio_nbytes*: csize_t        ## Length of transfer.
     aio_sigevent*: SigEvent   ## Signal number and value.
     next_prio: pointer
     abs_prio: cint
@@ -445,22 +445,22 @@ type
   IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/uio.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
-    iov_len*: csize    ## The size of the memory pointed to by iov_base.
+    iov_len*: csize_t    ## The size of the memory pointed to by iov_base.
 
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
     msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
-    msg_iovlen*: csize   ## Members in msg_iov.
+    msg_iovlen*: csize_t   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
-    msg_controllen*: csize ## Ancillary data buffer len.
+    msg_controllen*: csize_t ## Ancillary data buffer len.
     msg_flags*: cint ## Flags on received message.
 
 
   Tcmsghdr* {.importc: "struct cmsghdr", pure, final,
               header: "<sys/socket.h>".} = object ## struct cmsghdr
-    cmsg_len*: csize ## Data byte count, including the cmsghdr.
+    cmsg_len*: csize_t ## Data byte count, including the cmsghdr.
     cmsg_level*: cint   ## Originating protocol.
     cmsg_type*: cint    ## Protocol-specific type.
 

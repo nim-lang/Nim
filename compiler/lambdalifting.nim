@@ -233,6 +233,10 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
   result = conf.cmd == cmdCompileToJS and not isCompileTime
 
+proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo) =
+  createTypeBoundOps(g, nil, refType.lastSon, info)
+  createTypeBoundOps(g, nil, refType, info)
+
 proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   if liftingHarmful(g.config, owner): return n
@@ -257,8 +261,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     result.add(v)
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
-  if optOwnedRefs in g.config.globalOptions:
-    createTypeBoundOps(g, nil, env.typ, n.info)
+  createTypeBoundOpsLL(g, env.typ, n.info)
   result.add makeClosure(g, iter, env, n.info)
 
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
@@ -344,7 +347,8 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
   # This seems to be generally correct but since it's a bit risky it's disabled
   # for now.
-  let fieldType = if isDefined(c.graph.config, "nimCycleBreaker"):
+  let fieldType = if isDefined(c.graph.config, "nimCycleBreaker") or
+                      c.graph.config.selectedGC == gcDestructors:
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)
@@ -585,7 +589,7 @@ proc rawClosureCreation(owner: PSym;
       let env2 = copyTree(env)
       env2.typ = unowned.typ
       result.add newAsgnStmt(unowned, env2, env.info)
-      createTypeBoundOps(d.graph, nil, unowned.typ, env.info)
+      createTypeBoundOpsLL(d.graph, unowned.typ, env.info)
 
     # add assignment statements for captured parameters:
     for i in 1..<owner.typ.n.len:
@@ -608,8 +612,7 @@ proc rawClosureCreation(owner: PSym;
       localError(d.graph.config, env.info, "internal error: cannot create up reference")
   # we are not in the sem'check phase anymore! so pass 'nil' for the PContext
   # and hope for the best:
-  if optOwnedRefs in d.graph.config.globalOptions:
-    createTypeBoundOps(d.graph, nil, env.typ, owner.info)
+  createTypeBoundOpsLL(d.graph, env.typ, owner.info)
 
 proc finishClosureCreation(owner: PSym; d: DetectionPass; c: LiftingPass;
                            info: TLineInfo; res: PNode) =
@@ -637,8 +640,7 @@ proc closureCreationForIter(iter: PNode;
     addVar(vs, vnode)
     result.add(vs)
   result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
-  if optOwnedRefs in d.graph.config.globalOptions:
-    createTypeBoundOps(d.graph, nil, vnode.typ, iter.info)
+  createTypeBoundOpsLL(d.graph, vnode.typ, iter.info)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -923,8 +925,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
-    if optOwnedRefs in g.config.globalOptions:
-      createTypeBoundOps(g, nil, env.typ, body.info)
+    createTypeBoundOpsLL(g, env.typ, body.info)
 
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon

@@ -23,7 +23,7 @@ when false:
   var d32 = v8 + 10'i32
 
 when false:
-  # these dont work yet because unsigned.nim is stupid. XXX We need to fix this.
+  # these don't work yet because unsigned.nim is stupid. XXX We need to fix this.
   var f8  = v16 + 10'u8
   var f16 = v16 + 10'u16
   var f32 = v16 + 10'u32

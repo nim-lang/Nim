@@ -155,24 +155,6 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
-proc testIsAlphaNumeric =
-  assert isAlphaNumeric("abcdABC1234") == true
-  assert isAlphaNumeric("a") == true
-  assert isAlphaNumeric("abcABC?1234") == false
-  assert isAlphaNumeric("abcABC 1234") == false
-  assert isAlphaNumeric(".") == false
-
-testIsAlphaNumeric()
-
-proc testIsDigit =
-  assert isDigit("1") == true
-  assert isDigit("1234") == true
-  assert isDigit("abcABC?1234") == false
-  assert isDigit(".") == false
-  assert isDigit(":") == false
-
-testIsDigit()
-
 proc testFind =
   assert "0123456789ABCDEFGH".find('A') == 10
   assert "0123456789ABCDEFGH".find('A', 5) == 10
@@ -273,15 +255,6 @@ assert(insertSep($232) == "232")
 assert(insertSep($12345, ',') == "12,345")
 assert(insertSep($0) == "0")
 
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
-assert(editDistance("prefix__hallo_suffix", "prefix__HALLO_suffix") == 5)
-assert(editDistance("prefix__hallo_suffix", "prefix__ha_suffix") == 3)
-assert(editDistance("prefix__hallo_suffix", "prefix") == 14)
-assert(editDistance("prefix__hallo_suffix", "suffix") == 14)
-assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
-assert(editDistance("main", "malign") == 2)
-
 assert "/1/2/3".rfind('/') == 4
 assert "/1/2/3".rfind('/', last=1) == 0
 assert "/1/2/3".rfind('0') == -1
@@ -307,7 +280,7 @@ assert "".toHex == ""
 assert "\x00\xFF\x80".toHex == "00FF80"
 assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
 
-assert(' '.repeat(8)== "        ")
+assert(' '.repeat(8) == "        ")
 assert(" ".repeat(8) == "        ")
 assert(spaces(8) == "        ")
 

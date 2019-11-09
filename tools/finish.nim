@@ -5,7 +5,7 @@ import strutils, os, osproc, streams, browsers
 
 const
   arch = $(sizeof(int)*8)
-  mingw = "mingw$1-6.3.0.7z" % arch
+  mingw = "mingw$1.7z" % arch
   url = r"https://nim-lang.org/download/" & mingw
 
 var

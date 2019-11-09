@@ -80,20 +80,7 @@ when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
   export toLower, toUpper
 
-{.deadCodeElim: on.} # dce option deprecated
-
-{.push debugger: off.} # the user does not want to trace a part
-                       # of the standard library!
-
 include "system/inclrtl"
-
-{.pop.}
-
-# Support old split with set[char]
-when defined(nimOldSplit):
-  {.pragma: deprecatedSplit, deprecated.}
-else:
-  {.pragma: deprecatedSplit.}
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -1846,7 +1833,7 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   return -1
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
+  proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
   const hasCStringBuiltin = true
 else:
@@ -1872,7 +1859,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
     when hasCStringBuiltin:
       let L = last-start+1
       if L > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, L)
+        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](L))
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:
@@ -2338,7 +2325,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     for i in 0 ..< result.len:
       # Depending on the locale either dot or comma is produced,
       # but nothing else is possible:
-      if result[i] in {'.', ','}: result[i] = decimalsep
+      if result[i] in {'.', ','}: result[i] = decimalSep
   else:
     const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
     var
@@ -2369,6 +2356,10 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
+    when (NimMajor, NimMinor) >= (1, 1):
+      # remove trailing dot, compatible with Python's formatter and JS backend
+      if result[^1] == decimalSep:
+        result.setLen(len(result)-1)
     when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
       # least two digits, and only as many more digits as necessary to
@@ -2859,110 +2850,6 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
       break
     i = j
 
-
-
-
-
-# --------------------------------------------------------------------------
-# Deprecated procs
-
-{.push warning[Deprecated]: off.}
-proc editDistance*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuEditDistance",
-  deprecated: "use editdistance.editDistanceAscii instead".} =
-  ## Returns the edit distance between `a` and `b`.
-  ##
-  ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
-  ## memory overhead.
-  var len1 = a.len
-  var len2 = b.len
-  if len1 > len2:
-    # make `b` the longer string
-    return editDistance(b, a)
-
-  # strip common prefix:
-  var s = 0
-  while s < len1 and a[s] == b[s]:
-    inc(s)
-    dec(len1)
-    dec(len2)
-  # strip common suffix:
-  while len1 > 0 and len2 > 0 and a[s+len1-1] == b[s+len2-1]:
-    dec(len1)
-    dec(len2)
-  # trivial cases:
-  if len1 == 0: return len2
-  if len2 == 0: return len1
-
-  # another special case:
-  if len1 == 1:
-    for j in s..s+len2-1:
-      if a[s] == b[j]: return len2 - 1
-    return len2
-
-  inc(len1)
-  inc(len2)
-  var half = len1 shr 1
-  # initialize first row:
-  #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2*sizeof(int)))
-  var row: seq[int]
-  newSeq(row, len2)
-  var e = s + len2 - 1 # end marker
-  for i in 1..len2 - half - 1: row[i] = i
-  row[0] = len1 - half - 1
-  for i in 1 .. len1 - 1:
-    var char1 = a[i + s - 1]
-    var char2p: int
-    var diff, x: int
-    var p: int
-    if i >= len1 - half:
-      # skip the upper triangle:
-      var offset = i - len1 + half
-      char2p = offset
-      p = offset
-      var c3 = row[p] + ord(char1 != b[s + char2p])
-      inc(p)
-      inc(char2p)
-      x = row[p] + 1
-      diff = x
-      if x > c3: x = c3
-      row[p] = x
-      inc(p)
-    else:
-      p = 1
-      char2p = 0
-      diff = i
-      x = i
-    if i <= half + 1:
-      # skip the lower triangle:
-      e = len2 + i - half - 2
-    # main:
-    while p <= e:
-      dec(diff)
-      var c3 = diff + ord(char1 != b[char2p + s])
-      inc(char2p)
-      inc(x)
-      if x > c3: x = c3
-      diff = row[p] + 1
-      if x > diff: x = diff
-      row[p] = x
-      inc(p)
-    # lower triangle sentinel:
-    if i <= half:
-      dec(diff)
-      var c3 = diff + ord(char1 != b[char2p + s])
-      inc(x)
-      if x > c3: x = c3
-      row[p] = x
-  result = row[e]
-{.pop.}
-
-proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl,
-                                      extern: "nsuIsNilOrEmpty",
-                                      deprecated: "use 'x.len == 0' instead".} =
-  ## Checks if `s` is nil or empty.
-  result = len(s) == 0
-
 proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
     extern: "nsuIsNilOrWhitespace".} =
   ## Checks if `s` is nil or consists entirely of whitespace characters.
@@ -2971,172 +2858,10 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
     if not c.isSpaceAscii():
       return false
 
-template isImpl(call) =
-  if s.len == 0: return false
-  result = true
-  for c in s:
-    if not call(c): return false
-
-proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaAsciiStr",
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether or not `s` is alphabetical.
-  ##
-  ## This checks a-z, A-Z ASCII characters only.
-  ## Returns true if all characters in `s` are
-  ## alphabetic and there is at least one character
-  ## in `s`.
-  ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
-  runnableExamples:
-    doAssert isAlphaAscii("fooBar") == true
-    doAssert isAlphaAscii("fooBar1") == false
-    doAssert isAlphaAscii("foo Bar") == false
-  isImpl isAlphaAscii
-
-proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericStr",
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether or not `s` is alphanumeric.
-  ##
-  ## This checks a-z, A-Z, 0-9 ASCII characters only.
-  ## Returns true if all characters in `s` are
-  ## alpanumeric and there is at least one character
-  ## in `s`.
-  ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
-  runnableExamples:
-    doAssert isAlphaNumeric("fooBar") == true
-    doAssert isAlphaNumeric("fooBar1") == true
-    doAssert isAlphaNumeric("foo Bar") == false
-  isImpl isAlphaNumeric
-
-proc isDigit*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitStr",
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether or not `s` is a numeric value.
-  ##
-  ## This checks 0-9 ASCII characters only.
-  ## Returns true if all characters in `s` are
-  ## numeric and there is at least one character
-  ## in `s`.
-  runnableExamples:
-    doAssert isDigit("1908") == true
-    doAssert isDigit("fooBar1") == false
-  isImpl isDigit
-
-proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiStr",
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether or not `s` is completely whitespace.
-  ##
-  ## Returns true if all characters in `s` are whitespace
-  ## characters and there is at least one character in `s`.
-  runnableExamples:
-    doAssert isSpaceAscii("   ") == true
-    doAssert isSpaceAscii("") == false
-  isImpl isSpaceAscii
-
-template isCaseImpl(s, charProc, skipNonAlpha) =
-  var hasAtleastOneAlphaChar = false
-  if s.len == 0: return false
-  for c in s:
-    if skipNonAlpha:
-      var charIsAlpha = c.isAlphaAscii()
-      if not hasAtleastOneAlphaChar:
-        hasAtleastOneAlphaChar = charIsAlpha
-      if charIsAlpha and (not charProc(c)):
-        return false
-    else:
-      if not charProc(c):
-        return false
-  return if skipNonAlpha: hasAtleastOneAlphaChar else: true
-
-proc isLowerAscii*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether ``s`` is lower case.
-  ##
-  ## This checks ASCII characters only.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## characters in ``s`` are lower case.  Returns false if none of the
-  ## characters in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all characters
-  ## in ``s`` are alphabetical and lower case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
-  runnableExamples:
-    doAssert isLowerAscii("1foobar", false) == false
-    doAssert isLowerAscii("1foobar", true) == true
-    doAssert isLowerAscii("1fooBar", true) == false
-  isCaseImpl(s, isLowerAscii, skipNonAlpha)
-
-proc isUpperAscii*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## Checks whether ``s`` is upper case.
-  ##
-  ## This checks ASCII characters only.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## characters in ``s`` are upper case.  Returns false if none of the
-  ## characters in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all characters
-  ## in ``s`` are alphabetical and upper case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
-  runnableExamples:
-    doAssert isUpperAscii("1FOO", false) == false
-    doAssert isUpperAscii("1FOO", true) == true
-    doAssert isUpperAscii("1Foo", true) == false
-  isCaseImpl(s, isUpperAscii, skipNonAlpha)
-
-proc wordWrap*(s: string, maxLineWidth = 80,
-               splitLongWords = true,
-               seps: set[char] = Whitespace,
-               newLine = "\n"): string {.
-               noSideEffect, rtl, extern: "nsuWordWrap",
-               deprecated: "use wrapWords in std/wordwrap instead".} =
-  ## Word wraps `s`.
-  result = newStringOfCap(s.len + s.len shr 6)
-  var spaceLeft = maxLineWidth
-  var lastSep = ""
-  for word, isSep in tokenize(s, seps):
-    if isSep:
-      lastSep = word
-      spaceLeft = spaceLeft - len(word)
-      continue
-    if len(word) > spaceLeft:
-      if splitLongWords and len(word) > maxLineWidth:
-        result.add(substr(word, 0, spaceLeft-1))
-        var w = spaceLeft
-        var wordLeft = len(word) - spaceLeft
-        while wordLeft > 0:
-          result.add(newLine)
-          var L = min(maxLineWidth, wordLeft)
-          spaceLeft = maxLineWidth - L
-          result.add(substr(word, w, w+L-1))
-          inc(w, L)
-          dec(wordLeft, L)
-      else:
-        spaceLeft = maxLineWidth - len(word)
-        result.add(newLine)
-        result.add(word)
-    else:
-      spaceLeft = spaceLeft - len(word)
-      result.add(lastSep & word)
-      lastSep.setLen(0)
-
-
-
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-    when not defined(js):
-      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # <=== bug 8242
+    doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235" # bugs 8242, 12586
     doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
     doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
     doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
@@ -3200,17 +2925,6 @@ when isMainModule:
     doAssert alignLeft("a", 0) == "a"
     doAssert alignLeft("1232", 6) == "1232  "
     doAssert alignLeft("1232", 6, '#') == "1232##"
-
-    let
-      inp = """ this is a long text --  muchlongerthan10chars and here
-                 it goes"""
-      outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
-    doAssert wordWrap(inp, 10, false) == outp
-
-    let
-      longInp = """ThisIsOneVeryLongStringWhichWeWillSplitIntoEightSeparatePartsNow"""
-      longOutp = "ThisIsOn\neVeryLon\ngStringW\nhichWeWi\nllSplitI\nntoEight\nSeparate\nPartsNow"
-    doAssert wordWrap(longInp, 8, true) == longOutp
 
     doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
              "The cat eats fish."

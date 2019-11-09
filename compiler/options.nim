@@ -116,6 +116,7 @@ type
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcHooks,
     gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
@@ -414,7 +415,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
     of "macintosh":
       result = conf.target.targetOS in {osMacos, osMacosx, osIos}
-    of "osx":
+    of "osx", "macosx":
       result = conf.target.targetOS in {osMacosx, osIos}
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
@@ -543,6 +544,9 @@ proc removeTrailingDirSep*(path: string): string =
 
 proc disableNimblePath*(conf: ConfigRef) =
   incl conf.globalOptions, optNoNimblePath
+  conf.lazyPaths.setLen(0)
+
+proc clearNimblePath*(conf: ConfigRef) =
   conf.lazyPaths.setLen(0)
 
 include packagehandling

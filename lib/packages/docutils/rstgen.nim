@@ -660,7 +660,7 @@ proc mergeIndexes*(dir: string): string =
   ## As convention this proc will split index files into two categories:
   ## documentation and API. API indices will be all joined together into a
   ## single big sorted index, making the bulk of the final index. This is good
-  ## for API documentation because many symbols are repated in different
+  ## for API documentation because many symbols are repeated in different
   ## modules. On the other hand, documentation indices are essentially table of
   ## contents plus a few special markers. These documents will be rendered in a
   ## separate section which tries to maintain the order and hierarchy of the

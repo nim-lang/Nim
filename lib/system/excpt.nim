@@ -484,7 +484,9 @@ when defined(cpp) and appType != "lib" and
 
     var msg = "Unknown error in unexpected exception handler"
     try:
+      {.emit"#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
+      {.emit"#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
@@ -492,6 +494,10 @@ when defined(cpp) and appType != "lib" and
       msg = "Error: unhandled cpp exception: " & $e.what()
     except:
       msg = "Error: unhandled unknown cpp exception"
+
+    {.emit"#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
+    msg = "Error: unhandled unknown cpp exception"
+    {.emit"#endif".}
 
     when defined(genode):
       # stderr not available by default, use the LOG session

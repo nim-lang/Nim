@@ -758,13 +758,13 @@ else:
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:
-when not defined(nodejs):
-  {.emit: """
-  if (!Math.trunc) {
-    Math.trunc = function(v) {
-      v = +v;
-      if (!isFinite(v)) return v;
-
-      return (v - v % 1)   ||   (v < 0 ? -0 : v === 0 ? v : 0);
-    };
-  }""".}
+const jsMathTrunc = """
+if (!Math.trunc) {
+  Math.trunc = function(v) {
+    v = +v;
+    if (!isFinite(v)) return v;
+    return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
+  };
+}
+"""
+when not defined(nodejs): {.emit: jsMathTrunc .}

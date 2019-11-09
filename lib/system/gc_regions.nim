@@ -213,7 +213,7 @@ proc dealloc(r: var MemRegion; p: pointer; size: int) =
   if it.typ != nil and it.typ.finalizer != nil:
     (cast[Finalizer](it.typ.finalizer))(p)
   it.typ = nil
-  # it is benefitial to not use the free lists here:
+  # it is beneficial to not use the free lists here:
   if r.bump -! size == p:
     dec r.bump, size
   when false:
@@ -378,13 +378,13 @@ proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
   deprecated: "old compiler compat".} = asgnRef(dest, src)
 
 proc alloc(size: Natural): pointer =
-  result = c_malloc(size)
+  result = c_malloc(cast[csize_t](size))
   if result == nil: raiseOutOfMem()
 proc alloc0(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
 proc realloc(p: pointer, newsize: Natural): pointer =
-  result = c_realloc(p, newsize)
+  result = c_realloc(p, cast[csize_t](newsize))
   if result == nil: raiseOutOfMem()
 proc dealloc(p: pointer) = c_free(p)
 
@@ -401,13 +401,13 @@ proc alloc(r: var MemRegion; size: Natural): pointer =
 proc dealloc(r: var MemRegion; p: pointer) = dealloc(p)
 
 proc allocShared(size: Natural): pointer =
-  result = c_malloc(size)
+  result = c_malloc(cast[csize_t](size))
   if result == nil: raiseOutOfMem()
 proc allocShared0(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
 proc reallocShared(p: pointer, newsize: Natural): pointer =
-  result = c_realloc(p, newsize)
+  result = c_realloc(p, cast[csize_t](newsize))
   if result == nil: raiseOutOfMem()
 proc deallocShared(p: pointer) = c_free(p)
 

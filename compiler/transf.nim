@@ -1137,8 +1137,7 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
 
     incl(result.flags, nfTransf)
 
-    let cache = cache or prc.typ.callConv == ccInline
-    if cache:
+    if cache or prc.typ.callConv == ccInline:
       # genProc for inline procs will be called multiple times from different modules,
       # it is important to transform exactly once to get sym ids and locations right
       prc.transformedBody = result

@@ -507,10 +507,10 @@ else:
   elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
-  elif defined(nimV2) or defined(gcDestructors):
+  elif defined(nimV2) or usesDestructors:
     var allocator {.rtlThreadVar.}: MemRegion
     instantiateForRegion(allocator)
-    when defined(gcDestructors):
+    when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
