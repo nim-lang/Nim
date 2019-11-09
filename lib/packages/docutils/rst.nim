@@ -1605,7 +1605,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## <http://docutils.sourceforge.net/docs/ref/rst/directives.html#code>`_ and
   ## the nim extension ``.. code-block::``. If the block is an extension, we
   ## want the default language syntax highlighting to be Nim, so we create a
-  ## fake internal field to comminicate with the generator. The field is named
+  ## fake internal field to communicate with the generator. The field is named
   ## ``default-language``, which is unlikely to collide with a field specified
   ## by any random rst input file.
   ##

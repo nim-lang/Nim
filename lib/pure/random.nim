@@ -75,7 +75,7 @@
 ##   generator
 ## * `stats module<stats.html>`_ for statistical analysis
 ## * `list of cryptographic and hashing modules
-##   <lib.html#pure-libraries-cryptography-and-hashing>`_
+##   <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
 import algorithm #For upperBound
@@ -625,7 +625,7 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
-when not defined(nimscript):
+when not defined(nimscript) and not defined(standalone):
   import times
 
   proc randomize*() {.benign.} =

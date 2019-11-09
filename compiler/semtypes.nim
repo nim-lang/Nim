@@ -635,7 +635,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     errorUndeclaredIdentifier(c, n.sons[0].info, typ.sym.name.s)
   elif not isOrdinalType(typ):
     localError(c.config, n.sons[0].info, "selector must be of an ordinal type, float or string")
-  elif firstOrd(c.config, typ) != 0:
+  if firstOrd(c.config, typ) != 0:
     localError(c.config, n.info, "low(" & $a.sons[0].sym.name.s &
                                      ") must be 0 for discriminant")
   elif lengthOrd(c.config, typ) > 0x00007FFF:
@@ -729,7 +729,11 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                      else: rectype.sym
     for i in 0 .. len(n)-3:
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      suggestSym(c.config, n.sons[i].info, f, c.graph.usageSym)
+      let info = if n.sons[i].kind == nkPostfix:
+                   n.sons[i].sons[1].info
+                 else:
+                   n.sons[i].info
+      suggestSym(c.config, info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
       f.options = c.config.options
@@ -740,7 +744,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)
       if containsOrIncl(check, f.name.id):
-        localError(c.config, n.sons[i].info, "attempt to redefine: '" & f.name.s & "'")
+        localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
       styleCheckDef(c.config, f)

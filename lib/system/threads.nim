@@ -148,7 +148,7 @@ else:
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not defined(gcDestructors):
+  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
     var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall, gcsafe.} =
       threadProcWrapDispatch[TArg]
     # init the GC for refc/markandsweep

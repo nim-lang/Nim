@@ -57,13 +57,13 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   else:
     inc allocs
 
-proc nimDecWeakRef(p: pointer) {.compilerRtl.} =
+proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   when hasThreadSupport:
     atomicDec head(p).rc
   else:
     dec head(p).rc
 
-proc nimIncWeakRef(p: pointer) {.compilerRtl.} =
+proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when hasThreadSupport:
     atomicInc head(p).rc
   else:
@@ -71,13 +71,14 @@ proc nimIncWeakRef(p: pointer) {.compilerRtl.} =
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
-    when hasThreadSupport:
-      let hasDanglingRefs = atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) != 0
-    else:
-      let hasDanglingRefs = head(p).rc != 0
-    if hasDanglingRefs:
-      cstderr.rawWrite "[FATAL] dangling references exist\n"
-      quit 1
+    when defined(nimOwnedEnabled):
+      when hasThreadSupport:
+        let hasDanglingRefs = atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) != 0
+      else:
+        let hasDanglingRefs = head(p).rc != 0
+      if hasDanglingRefs:
+        cstderr.rawWrite "[FATAL] dangling references exist\n"
+        quit 1
     when defined(useMalloc):
       c_free(p -! sizeof(RefHeader))
     else:
@@ -106,11 +107,25 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
       cstderr.rawWrite "has destructor!\n"
   nimRawDispose(p)
 
-proc isObj(obj: PNimType, subclass: cstring): bool {.compilerproc.} =
+proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
+  if p != nil:
+    when hasThreadSupport:
+      if atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) == 0:
+        result = true
+      else:
+        if atomicDec(head(p).rc) <= 0:
+          result = true
+    else:
+      if head(p).rc == 0:
+        result = true
+      else:
+        dec head(p).rc
+
+proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
   result = strstr(obj.name, subclass) != nil
 
-proc chckObj(obj: PNimType, subclass: cstring) {.compilerproc.} =
+proc chckObj(obj: PNimType, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
   if not isObj(obj, subclass): sysFatal(ObjectConversionError, "invalid object conversion")

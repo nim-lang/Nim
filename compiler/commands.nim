@@ -227,6 +227,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "refc":         result = conf.selectedGC == gcRefc
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "destructors":  result = conf.selectedGC == gcDestructors
+    of "hooks":        result = conf.selectedGC == gcHooks
     of "go":           result = conf.selectedGC == gcGo
     of "none":         result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
@@ -377,6 +378,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "nonimblepath", "nobabelpath":
     expectNoArg(conf, switch, arg, pass, info)
     disableNimblePath(conf)
+  of "clearnimblepath":
+    expectNoArg(conf, switch, arg, pass, info)
+    clearNimblePath(conf)
   of "excludepath":
     expectArg(conf, switch, arg, pass, info)
     let path = processPath(conf, arg, info)
@@ -446,6 +450,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcDestructors
         defineSymbol(conf.symbols, "gcdestructors")
         incl conf.globalOptions, optSeqDestructors
+        incl conf.globalOptions, optTinyRtti
+        if pass in {passCmd2, passPP}:
+          defineSymbol(conf.symbols, "nimSeqsV2")
+          defineSymbol(conf.symbols, "nimV2")
+      of "hooks":
+        conf.selectedGC = gcHooks
+        defineSymbol(conf.symbols, "gchooks")
+        incl conf.globalOptions, optSeqDestructors
+        processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
+        if pass in {passCmd2, passPP}:
+          defineSymbol(conf.symbols, "nimSeqsV2")
       of "go":
         conf.selectedGC = gcGo
         defineSymbol(conf.symbols, "gogc")
@@ -453,7 +468,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcNone
         defineSymbol(conf.symbols, "nogc")
       of "stack", "regions":
-        conf.selectedGC= gcRegions
+        conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
@@ -502,7 +517,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       undefSymbol(conf.symbols, "useNimRtl")
   of "oldnewlines":
     case arg.normalize
-    of "","on":
+    of "", "on":
       conf.oldNewlines = true
       defineSymbol(conf.symbols, "nimOldNewlines")
     of "off":
@@ -607,22 +622,20 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optGenMapping}, arg, pass, info)
   of "os":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd1, passPP}:
-      let theOS = platform.nameToOS(arg)
-      if theOS == osNone:
-        let osList = platform.listOSnames().join(", ")
-        localError(conf, info, "unknown OS: '$1'. Available options are: $2" % [arg, $osList])
-      elif theOS != conf.target.hostOS:
-        setTarget(conf.target, theOS, conf.target.targetCPU)
+    let theOS = platform.nameToOS(arg)
+    if theOS == osNone:
+      let osList = platform.listOSnames().join(", ")
+      localError(conf, info, "unknown OS: '$1'. Available options are: $2" % [arg, $osList])
+    else:
+      setTarget(conf.target, theOS, conf.target.targetCPU)
   of "cpu":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd1, passPP}:
-      let cpu = platform.nameToCPU(arg)
-      if cpu == cpuNone:
-        let cpuList = platform.listCPUnames().join(", ")
-        localError(conf, info, "unknown CPU: '$1'. Available options are: $2" % [ arg, cpuList])
-      elif cpu != conf.target.hostCPU:
-        setTarget(conf.target, conf.target.targetOS, cpu)
+    let cpu = platform.nameToCPU(arg)
+    if cpu == cpuNone:
+      let cpuList = platform.listCPUnames().join(", ")
+      localError(conf, info, "unknown CPU: '$1'. Available options are: $2" % [ arg, cpuList])
+    else:
+      setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
   of "errormax":
@@ -752,9 +765,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       incl(conf.globalOptions, optOwnedRefs)
       incl(conf.globalOptions, optSeqDestructors)
       defineSymbol(conf.symbols, "nimV2")
-      conf.selectedGC = gcDestructors
-      defineSymbol(conf.symbols, "gcdestructors")
+      conf.selectedGC = gcHooks
+      defineSymbol(conf.symbols, "gchooks")
       defineSymbol(conf.symbols, "nimSeqsV2")
+      defineSymbol(conf.symbols, "nimOwnedEnabled")
   of "seqsv2":
     processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
     if pass in {passCmd2, passPP}:
@@ -786,7 +800,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     case arg
     of "1.0":
-      discard "the default"
+      defineSymbol(conf.symbols, "NimMajor", "1")
+      defineSymbol(conf.symbols, "NimMinor", "0")
+      # always be compatible with 1.0.2 for now:
+      defineSymbol(conf.symbols, "NimPatch", "2")
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":

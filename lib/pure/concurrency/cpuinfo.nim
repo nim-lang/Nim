@@ -12,10 +12,7 @@
 include "system/inclrtl"
 
 when not defined(windows):
-  import strutils, posix, os
-
-when defined(linux):
-  import linux
+  import posix
 
 when defined(freebsd) or defined(macosx):
   {.emit:"#include <sys/types.h>".}

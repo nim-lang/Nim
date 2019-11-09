@@ -161,7 +161,8 @@ you can pass ``--gc:`` on the compile command with the choosed garbage collector
 
 The same Nim code can be compiled to use any of the garbage collectors;
 the Nim syntax generally will not change from one garbage collector to another.
-No garbage collector is used for `JavaScript and NodeJS <https://nim-lang.github.io/Nim/backends.html#backends-the-javascript-target>`_ compilation targets.
-`NimScript <https://nim-lang.github.io/Nim/nims.html>`_ target uses Nim VM garbage collector.
+No garbage collector is used for `JavaScript and NodeJS
+<backends.html#backends-the-javascript-target>`_ compilation targets.
+`NimScript <nims.html>`_ target uses Nim VM garbage collector.
 
 If you are new to Nim and just starting, the default garbage collector is balanced to fit most common use cases.

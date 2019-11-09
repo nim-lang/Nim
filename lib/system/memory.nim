@@ -10,7 +10,7 @@ when useLibC:
 
 proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compilerproc, inline.} =
   when useLibC:
-    c_memcpy(dest, source, size)
+    c_memcpy(dest, source, cast[csize_t](size))
   else:
     let d = cast[ptr UncheckedArray[byte]](dest)
     let s = cast[ptr UncheckedArray[byte]](source)
@@ -21,7 +21,7 @@ proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compiler
 
 proc nimSetMem*(a: pointer, v: cint, size: Natural) {.nonReloadable, inline.} =
   when useLibC:
-    c_memset(a, v, size)
+    c_memset(a, v, cast[csize_t](size))
   else:
     let a = cast[ptr UncheckedArray[byte]](a)
     var i = 0
@@ -35,7 +35,7 @@ proc nimZeroMem*(p: pointer, size: Natural) {.compilerproc, nonReloadable, inlin
 
 proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadable, inline.} =
   when useLibC:
-    c_memcmp(a, b, size)
+    c_memcmp(a, b, cast[csize_t](size))
   else:
     let a = cast[ptr UncheckedArray[byte]](a)
     let b = cast[ptr UncheckedArray[byte]](b)
@@ -45,7 +45,7 @@ proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadabl
       if d != 0: return d
       inc i
 
-proc nimCStrLen*(a: cstring): csize {.compilerproc, nonReloadable, inline.} =
+proc nimCStrLen*(a: cstring): csize_t {.compilerproc, nonReloadable, inline.} =
   when useLibC:
     c_strlen(a)
   else:

@@ -77,7 +77,7 @@
 #   - named `performCodeReload`, requires the hotcodereloading module
 #   - explicitly called by the user - the current active callstack shouldn't contain
 #     any functions which are defined in modules that will be reloaded (or crash!).
-#     The reason is that old dynalic libraries get unloaded.
+#     The reason is that old dynamic libraries get unloaded.
 #     Example:
 #       if A is the main module and it imports B, then only B is reloadable and only
 #       if when calling hcrPerformCodeReload there is no function defined in B in the
@@ -549,7 +549,7 @@ when defined(createNimHcr):
     # problems when the GC is executed while the reload is underway.
     # Future versions of NIMHCR won't use the GC, because all globals and the
     # metadata needed to access them will be placed in shared memory, so they
-    # can be manipulted from external programs without reloading.
+    # can be manipulated from external programs without reloading.
     GC_disable()
     defer: GC_enable()
 

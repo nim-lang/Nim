@@ -99,8 +99,8 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ##
   ## The `initialSize` parameter needs to be a power of two (default: 64).
   ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo>`_ or `rightSize proc
-  ## <#rightSize,Natural>`_ from this module.
+  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
+  ## `rightSize proc <#rightSize,Natural>`_ from this module.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
@@ -645,8 +645,8 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ##
   ## The `initialSize` parameter needs to be a power of two (default: 64).
   ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo>`_ or `rightSize proc
-  ## <#rightSize,Natural>`_ from this module.
+  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
+  ## `rightSize proc <#rightSize,Natural>`_ from this module.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
@@ -904,7 +904,7 @@ proc `$`*[A](s: OrderedSet[A]): string =
 iterator items*[A](s: OrderedSet[A]): A =
   ## Iterates over keys in the ordered set `s` in insertion order.
   ##
-  ## If you need a sequence with the elelments you can use `sequtils.toSeq
+  ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
   ## .. code-block::

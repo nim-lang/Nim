@@ -608,7 +608,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     return result
   c.breakSyms.add(labl)
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
-      call.sons[0].typ.callConv == ccClosure:
+      call.sons[0].typ.skipTypes(abstractInst).callConv == ccClosure:
     result[1] = n.PTransNode
     result[1][^1] = transformLoopBody(c, n[^1])
     result[1][^2] = transform(c, n[^2])
@@ -1137,8 +1137,7 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
 
     incl(result.flags, nfTransf)
 
-    let cache = cache or prc.typ.callConv == ccInline
-    if cache:
+    if cache or prc.typ.callConv == ccInline:
       # genProc for inline procs will be called multiple times from different modules,
       # it is important to transform exactly once to get sym ids and locations right
       prc.transformedBody = result
