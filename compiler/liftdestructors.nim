@@ -45,7 +45,10 @@ proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc dotField(x: PNode, f: PSym): PNode =
   result = newNodeI(nkDotExpr, x.info, 2)
-  result.sons[0] = x
+  if x.typ.skipTypes(abstractInst).kind == tyVar:
+    result.sons[0] = x.newDeref
+  else:
+    result.sons[0] = x
   result.sons[1] = newSymNode(f, x.info)
   result.typ = f.typ
 
@@ -513,7 +516,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyOpt, tyUncheckedArray:
+      tyPtr, tyOpt, tyUncheckedArray, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
     if c.g.config.selectedGC == gcDestructors:
@@ -574,7 +577,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
-      fillBody(c, t.sons[0].skipTypes(skipPtrs), body, x, y)
+      fillBody(c, t.sons[0], body, x, y)
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
@@ -589,9 +592,6 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     #internalError(c.g.config, c.info, "assignment requested for type: " & typeToString(t))
     discard
-  of tyVar, tyLent:
-    if c.kind != attachedDestructor:
-      fillBody(c, lastSon(t), body, x, y)
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
