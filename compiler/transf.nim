@@ -1117,7 +1117,7 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
                     noDestructors = false): PNode =
   assert prc.kind in routineKinds
 
-  if prc.transformedBody != nil and not noDestructors:
+  if prc.transformedBody != nil:
     result = prc.transformedBody
   elif nfTransf in prc.ast[bodyPos].flags or prc.kind in {skTemplate}:
     result = prc.ast[bodyPos]
