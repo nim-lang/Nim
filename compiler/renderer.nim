@@ -325,7 +325,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
       if e.sym.position == x:
         result &= e.sym.name.s
         return
-  
+
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags:
     var y = if size < sizeof(BiggestInt): x and ((1 shl (size*8)) - 1)
@@ -853,7 +853,8 @@ proc gident(g: var TSrcGen, n: PNode) =
   else:
     t = tkOpr
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
-    s.genSymSuffix(n.sym)
+    s.add '_'
+    s.addInt n.sym.id
     when defined(debugMagics):
       s.add '_'
       s.add $n.sym.magic

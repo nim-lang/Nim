@@ -13,8 +13,8 @@ include "system/inclrtl"
 ## tree (`AST`:idx:). Macros operate on this tree.
 ##
 ## See also:
-## * `macros tutorial <https://nim-lang.github.io/Nim/tut3.html>`_
-## * `macros section in Nim manual <https://nim-lang.github.io/Nim/manual.html#macros>`_
+## * `macros tutorial <tut3.html>`_
+## * `macros section in Nim manual <manual.html#macros>`_
 
 ## .. include:: ../../doc/astspec.txt
 
@@ -720,6 +720,11 @@ proc newLit*(b: bool): NimNode {.compileTime.} =
   ## Produces a new boolean literal node.
   result = if b: bindSym"true" else: bindSym"false"
 
+proc newLit*(s: string): NimNode {.compileTime.} =
+  ## Produces a new string literal node.
+  result = newNimNode(nnkStrLit)
+  result.strVal = s
+
 when false:
   # the float type is not really a distinct type as described in https://github.com/nim-lang/Nim/issues/5875
   proc newLit*(f: float): NimNode {.compileTime.} =
@@ -792,11 +797,6 @@ proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
   for a,b in arg.fieldPairs:
     result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
-
-proc newLit*(s: string): NimNode {.compileTime.} =
-  ## Produces a new string literal node.
-  result = newNimNode(nnkStrLit)
-  result.strVal = s
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
@@ -1378,16 +1378,22 @@ when defined(nimVmEqIdent):
     ## Style insensitive comparison.
 
   proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``a`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``a`` can be an identifier or a
+    ## symbol. ``a`` may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
   proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``b`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``b`` can be an identifier or a
+    ## symbol. ``b`` may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
   proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
-    ## ``a`` and ``b`` can be an identifier or a symbol.
+    ## Style insensitive comparison.  ``a`` and ``b`` can be an
+    ## identifier or a symbol. Both may be wrapped in an export marker
+    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+    ## these nodes will be unwrapped.
 
 else:
   # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
@@ -1626,17 +1632,34 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
     result.add args[i]
 
 proc getProjectPath*(): string = discard
-  ## Returns the path to the currently compiling project,
-  ## the path of the Nim file being compiled,
-  ## not to be confused with ``system.currentSourcePath`` which returns
-  ## the path of the current module.
-  ## It is available at compile-time only (at run-time returns empty string).
+  ## Returns the path to the currently compiling project.
+  ##
+  ## This is not to be confused with `system.currentSourcePath <system.html#currentSourcePath.t>`_
+  ## which returns the path of the source file containing that template
+  ## call.
+  ##
+  ## For example, assume a ``dir1/foo.nim`` that imports a ``dir2/bar.nim``,
+  ## have the ``bar.nim`` print out both ``getProjectPath`` and
+  ## ``currentSourcePath`` outputs.
+  ##
+  ## Now when ``foo.nim`` is compiled, the ``getProjectPath`` from
+  ## ``bar.nim`` will return the ``dir1/`` path, while the ``currentSourcePath``
+  ## will return the path to the ``bar.nim`` source file.
+  ##
+  ## Now when ``bar.nim`` is compiled directly, the ``getProjectPath``
+  ## will now return the ``dir2/`` path, and the ``currentSourcePath``
+  ## will still return the same path, the path to the ``bar.nim`` source
+  ## file.
+  ##
+  ## The path returned by this proc is set at compile time.
   ##
   ## See also:
+  ## * `getCurrentDir proc <os.html#getCurrentDir>`_
   ## * `getHomeDir proc <os.html#getHomeDir>`_
   ## * `getConfigDir proc <os.html#getConfigDir>`_
   ## * `getTempDir proc <os.html#getTempDir>`_
   ## * `setCurrentDir proc <os.html#setCurrentDir%2Cstring>`_
+
 
 when defined(nimMacrosSizealignof):
   proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =

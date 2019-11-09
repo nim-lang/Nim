@@ -670,7 +670,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   var length = len(n)
   let iterBase = n.sons[length-2].typ
-  var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink})
+  var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink, tyOwned})
   var iterAfterVarLent = iter.skipTypes({tyLent, tyVar})
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
@@ -683,18 +683,18 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
           case iter.kind
-            of tyVar:
-              v.typ = newTypeS(tyVar, c)
-              v.typ.sons.add iterAfterVarLent[i]
-              if tfVarIsPtr in iter.flags:
-                v.typ.flags.incl tfVarIsPtr
-            of tyLent:
-              v.typ = newTypeS(tyLent, c)
-              v.typ.sons.add iterAfterVarLent[i]
-              if tfVarIsPtr in iter.flags:
-                v.typ.flags.incl tfVarIsPtr
-            else:
-              v.typ = iter.sons[i]
+          of tyVar:
+            v.typ = newTypeS(tyVar, c)
+            v.typ.sons.add iterAfterVarLent[i]
+            if tfVarIsPtr in iter.flags:
+              v.typ.flags.incl tfVarIsPtr
+          of tyLent:
+            v.typ = newTypeS(tyLent, c)
+            v.typ.sons.add iterAfterVarLent[i]
+            if tfVarIsPtr in iter.flags:
+              v.typ.flags.incl tfVarIsPtr
+          else:
+            v.typ = iter.sons[i]
           n.sons[0][i] = newSymNode(v)
           if sfGenSym notin v.flags: addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
@@ -717,14 +717,14 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       if n.sons[i].kind == nkVarTuple:
         var mutable = false
         var isLent = false
-        iter[i] = case iter[i].kind
-          of tyVar:
-            mutable = true
-            iter[i].skipTypes({tyVar})
-          of tyLent:
-            isLent = true
-            iter[i].skipTypes({tyLent})
-          else: iter[i]
+        case iter[i].kind
+        of tyVar:
+          mutable = true
+          iter[i] = iter[i].skipTypes({tyVar})
+        of tyLent:
+          isLent = true
+          iter[i] = iter[i].skipTypes({tyLent})
+        else: discard
 
         if len(n[i])-1 != len(iter[i]):
           localError(c.config, n[i].info, errWrongNumberOfVariables)
@@ -871,8 +871,7 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
       result.kind = nkParForStmt
     else:
       result = semForFields(c, n, call.sons[0].sym.magic)
-  elif isCallExpr and call.sons[0].typ.callConv == ccClosure and
-      tfIterator in call.sons[0].typ.flags:
+  elif isCallExpr and isClosureIterator(call.sons[0].typ.skipTypes(abstractInst)):
     # first class iterator:
     result = semForVars(c, n, flags)
   elif not isCallExpr or call.sons[0].kind != nkSym or
@@ -1442,8 +1441,13 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       continue
 
     doAssert r.sons[0].kind == nkSym
-    # Expand the macro here
-    result = semMacroExpr(c, r, r, r.sons[0].sym, {})
+    let m = r.sons[0].sym
+    case m.kind
+    of skMacro: result = semMacroExpr(c, r, r, m, {})
+    of skTemplate: result = semTemplateExpr(c, r, m, {})
+    else:
+      prc.sons[pragmasPos] = n
+      continue
 
     doAssert result != nil
 
@@ -1519,7 +1523,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   closeScope(c)           # close scope for parameters
   popOwner(c)
   result.typ = s.typ
-  if optNimV2 in c.config.globalOptions:
+  if optOwnedRefs in c.config.globalOptions:
     result.typ = makeVarType(c, result.typ, tyOwned)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
@@ -1556,7 +1560,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   popProcCon(c)
   popOwner(c)
   closeScope(c)
-  if optNimV2 in c.config.globalOptions and result.typ != nil:
+  if optOwnedRefs in c.config.globalOptions and result.typ != nil:
     result.typ = makeVarType(c, result.typ, tyOwned)
   # alternative variant (not quite working):
   # var prc = arg[0].sym
@@ -1948,7 +1952,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if isAnon:
     n.kind = nkLambda
     result.typ = s.typ
-    if optNimV2 in c.config.globalOptions:
+    if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
@@ -1984,6 +1988,9 @@ proc semIterator(c: PContext, n: PNode): PNode =
     s.typ.callConv = ccInline
   if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
+  if optOwnedRefs in c.config.globalOptions and result.typ != nil:
+    result.typ = makeVarType(c, result.typ, tyOwned)
+    result.typ.callConv = ccClosure
 
 proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)

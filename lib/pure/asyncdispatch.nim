@@ -1559,8 +1559,8 @@ proc drain*(timeout = 500) =
   ## Waits for completion events and processes them. Raises ``ValueError``
   ## if there are no pending operations. In contrast to ``poll`` this
   ## processes as many events as are available.
-  if runOnce(timeout):
-    while hasPendingOperations() and runOnce(0): discard
+  if runOnce(timeout) or hasPendingOperations():
+    while hasPendingOperations() and runOnce(timeout): discard
 
 proc poll*(timeout = 500) =
   ## Waits for completion events and processes them. Raises ``ValueError``

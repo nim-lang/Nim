@@ -175,8 +175,8 @@ proc decode*(s: string): string =
   ## The initial whitespace is skipped.
   ##
   ## **See also:**
-  ## * `encode proc<#encode,openArray[T],int,string>`_ for encoding an openarray
-  ## * `encode proc<#encode,string,int,string>`_ for encoding a string
+  ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
+  ## * `encode proc<#encode,string>`_ for encoding a string
   runnableExamples:
     assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
     assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"

@@ -18,7 +18,7 @@ pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
-pkg "chronos"
+pkg "chronos", "", true
 pkg "cligen", "nim c -o:cligenn -r cligen.nim"
 pkg "coco", "", true
 pkg "combparser"
@@ -37,8 +37,8 @@ pkg "gnuplot"
 pkg "hts", "nim c -o:htss -r src/hts.nim"
 pkg "illwill", "nimble examples"
 pkg "inim"
-# pkg "itertools", "nim doc src/itertools.nim"
-# pkg "iterutils"
+pkg "itertools", "nim doc src/itertools.nim"
+pkg "iterutils"
 pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "loopfusion"
@@ -48,7 +48,7 @@ pkg "neo", "nim c -d:blas=openblas tests/all.nim", true
 # pkg "nico", "", true
 pkg "nicy", "nim c src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
-pkg "nimcrypto", "nim c -r tests/testapi.nim"
+pkg "nimcrypto", "nim c -r tests/testall.nim"
 pkg "nimes", "nim c src/nimes.nim", true
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", true

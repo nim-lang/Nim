@@ -4,8 +4,8 @@ environment:
   DLLS_URL: https://nim-lang.org/download/dlls.zip
   DLLS_ARCHIVE: dlls.zip
   MINGW_DIR: mingw64
-  MINGW_URL: https://nim-lang.org/download/mingw64-6.3.0.7z
-  MINGW_ARCHIVE: mingw64-6.3.0.7z
+  MINGW_URL: https://nim-lang.org/download/mingw64.7z
+  MINGW_ARCHIVE: mingw64.7z
 
   matrix:
     - NIM_TEST_PACKAGES: false

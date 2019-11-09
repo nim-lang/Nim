@@ -15,7 +15,7 @@
 
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
+  intsets, ast, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes
 
@@ -173,6 +173,9 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   elif op.ast[genericParamsPos].kind != nkEmpty:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
+  dbg:
+    if kind == attachedDestructor:
+      echo "destructor is ", op.id, " ", op.ast
   if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
@@ -187,9 +190,12 @@ when false:
     let rhs = ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})
     result = lhs.kind == tyRef and rhs.kind == tyOwned
 
-proc canBeMoved(t: PType): bool {.inline.} =
+proc canBeMoved(c: Con; t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+  if optOwnedRefs in c.graph.config.globalOptions:
+    result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+  else:
+    result = t.attachedOps[attachedSink] != nil
 
 proc genSink(c: Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -486,7 +492,7 @@ proc p(n: PNode; c: var Con): PNode =
       result.add n[0]
       result.add p(n[1], c)
   of nkRaiseStmt:
-    if optNimV2 in c.graph.config.globalOptions and n[0].kind != nkEmpty:
+    if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       if n[0].kind in nkCallKinds:
         let call = p(n[0], c)
         result = copyNode(n)
@@ -566,7 +572,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       snk.add ri
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-        isLastRead(ri, c) and canBeMoved(dest.typ):
+        isLastRead(ri, c) and canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
       snk.add ri
@@ -589,7 +595,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     handleNested(ri): moveOrCopy(dest, node, c)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
-        canBeMoved(dest.typ):
+        canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
       snk.add ri
@@ -636,7 +642,8 @@ proc reverseDestroys(destroys: seq[PNode]): seq[PNode] =
     result.add destroys[i]
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)): return n
+  if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
+    return n
   var c: Con
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)
@@ -677,4 +684,4 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     result.add body
   dbg:
     echo ">---------transformed-to--------->"
-    echo result
+    echo renderTree(result, {renderIds})

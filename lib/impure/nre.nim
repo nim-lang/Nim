@@ -215,7 +215,7 @@ type
     pattern*: string  ## the pattern that caused the problem
 
   StudyError* = ref object of RegexError
-    ## Thrown when studying the regular expression failes
+    ## Thrown when studying the regular expression fails
     ## for whatever reason. The message contains the error
     ## code.
 
@@ -357,11 +357,13 @@ iterator items*(pattern: Captures,
 
 proc toSeq*(pattern: CaptureBounds,
             default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc toSeq*(pattern: Captures,
             default: Option[string] = none(string)): seq[Option[string]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc `$`*(pattern: RegexMatch): string =
   return pattern.captures[-1]

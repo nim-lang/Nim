@@ -110,7 +110,7 @@ proc indentLine(p: PProc, r: Rope): Rope =
   var p = p
   while true:
     for i in 0 ..< p.blocks.len + p.extraIndent:
-      prepend(result, "\t".rope)
+      prepend(result, rope"  ")
     if p.up == nil or p.up.prc != p.prc.owner:
       break
     p = p.up
@@ -1169,7 +1169,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     first = firstOrd(p.config, typ.sons[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
-    r.res = "chckIndx($1, $2, $3.length+$2-1)-$2" % [b.res, rope(first), tmp]
+    r.res = "chckIndx($1, $2, ($3 != null ? $3.length : 0)+$2-1)-$2" % [b.res, rope(first), tmp]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:

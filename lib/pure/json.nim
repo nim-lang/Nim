@@ -99,7 +99,7 @@
 ## Unmarshalling
 ## -------------
 ##
-## In addition to reading dynamic data, Nim can also unmarshall JSON directly
+## In addition to reading dynamic data, Nim can also unmarshal JSON directly
 ## into a type with the ``to`` macro.
 ##
 ## .. code-block:: Nim
@@ -234,10 +234,6 @@ proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated:
-  "Deprecated since v0.18.2; use 'getInt' or 'getBiggestInt' instead".} =
-  getBiggestInt(n, default)
-
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
@@ -248,20 +244,12 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated:
-  "Deprecated since v0.18.2; use 'getFloat' instead".} =
-  getFloat(n, default)
-
 proc getBool*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JBool``, or if ``n`` is nil.
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
-
-proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated:
-  "Deprecated since v0.18.2; use 'getBool' instead".} =
-  getBool(n, default)
 
 proc getFields*(n: JsonNode,
     default = initOrderedTable[string, JsonNode](4)):
@@ -501,10 +489,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
   ## Checks if `val` exists in array `node`.
   assert(node.kind == JArray)
   find(node.elems, val) >= 0
-
-proc existsKey*(node: JsonNode, key: string): bool {.
-    deprecated: "use 'hasKey' instead".} =
-  node.hasKey(key)
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
@@ -966,30 +950,38 @@ template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
     ]
     raise newException(JsonKindError, msg)
 
-
 when defined(nimFixedForwardGeneric):
+
+  macro isRefSkipDistinct(arg: typed): untyped =
+    var impl = getTypeImpl(arg)
+    if impl.kind == nnkBracketExpr and impl[0].eqIdent("typeDesc"):
+      impl = getTypeImpl(impl[1])
+    while impl.kind == nnkDistinctTy:
+      impl = getTypeImpl(impl[0])
+    result = newLit(impl.kind == nnkRefTy)
+
   # The following forward declarations don't work in older versions of Nim
 
   # forward declare all initFromJson
 
-  proc initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: string)
-  proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: string)
-  proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: string)
+  proc initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string)
+  proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string)
 
   # initFromJson definitions
 
-  proc initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JString, JNull}, jsonPath)
     # since strings don't have a nil state anymore, this mapping of
     # JNull to the default string is questionable. `none(string)` and
@@ -999,91 +991,115 @@ when defined(nimFixedForwardGeneric):
     else:
       dst = jsonNode.str
 
-  proc initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JBool}, jsonPath)
     dst = jsonNode.bval
 
-  proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
     dst = jsonNode.copy
 
-  proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: string) =
+  proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
     verifyJsonKind(jsonNode, {JInt}, jsonPath)
     dst = T(jsonNode.num)
 
-  proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
     if jsonNode.kind == JFloat:
       dst = T(jsonNode.fnum)
     else:
       dst = T(jsonNode.num)
 
-  proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JString}, jsonPath)
     dst = parseEnum[T](jsonNode.getStr)
 
-  proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JArray}, jsonPath)
     dst.setLen jsonNode.len
+    let orignalJsonPathLen = jsonPath.len
     for i in 0 ..< jsonNode.len:
-      initFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
+      jsonPath.add '['
+      jsonPath.addInt i
+      jsonPath.add ']'
+      initFromJson(dst[i], jsonNode[i], jsonPath)
+      jsonPath.setLen orignalJsonPathLen
 
-  proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JArray}, jsonPath)
+    let originalJsonPathLen = jsonPath.len
     for i in 0 ..< jsonNode.len:
-      initFromJson(dst[i], jsonNode[i], jsonPath & "[" & $i & "]")
+      jsonPath.add '['
+      jsonPath.addInt i
+      jsonPath.add ']'
+      initFromJson(dst[i], jsonNode[i], jsonPath)
+      jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string) =
     dst = initTable[string, T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
+    let originalJsonPathLen = jsonPath.len
     for key in keys(jsonNode.fields):
-      initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
+      jsonPath.add '.'
+      jsonPath.add key
+      initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
+      jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string) =
     dst = initOrderedTable[string,T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
+    let originalJsonPathLen = jsonPath.len
     for key in keys(jsonNode.fields):
-      initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath & "." & key)
+      jsonPath.add '.'
+      jsonPath.add key
+      initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
+      jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string) =
     if jsonNode.kind == JNull:
       dst = nil
     else:
-      dst = new(ref T)
+      dst = new(T)
       initFromJson(dst[], jsonNode, jsonPath)
 
-  proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string) =
     if jsonNode != nil and jsonNode.kind != JNull:
       dst = some(default(T))
       initFromJson(dst.get, jsonNode, jsonPath)
 
-  macro assignDistinctImpl[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: string) =
+  macro assignDistinctImpl[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string) =
     let typInst = getTypeInst(dst)
     let typImpl = getTypeImpl(dst)
     let baseTyp = typImpl[0]
-    result = quote do:
-      initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
-  proc initFromJson[T : distinct](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+    result = quote do:
+      when nimvm:
+        # workaround #12282
+        var tmp: `baseTyp`
+        initFromJson( tmp, `jsonNode`, `jsonPath`)
+        `dst` = `typInst`(tmp)
+      else:
+        initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
+
+  proc initFromJson[T : distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignDistinctImpl(dst, jsonNode, jsonPath)
 
   proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode): void =
     if typeExpr.kind == nnkTupleConstr:
       error("Use a named tuple instead of: " & typeExpr.repr, lineinfoNode)
 
-  proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath: NimNode, depth: int): void {.compileTime.} =
-    if depth > 150:
-      error("recursion limit reached", typeNode)
+  proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath, originalJsonPathLen: NimNode): void {.compileTime.} =
     case typeNode.kind
     of nnkEmpty:
       discard
     of nnkRecList, nnkTupleTy:
       for it in typeNode:
-        foldObjectBody(dst, it, tmpSym, jsonNode, jsonPath, depth + 1)
+        foldObjectBody(dst, it, tmpSym, jsonNode, jsonPath, originalJsonPathLen)
 
     of nnkIdentDefs:
       typeNode.expectLen 3
       let fieldSym = typeNode[0]
       let fieldNameLit = newLit(fieldSym.strVal)
+      let fieldPathLit = newLit("." & fieldSym.strVal)
       let fieldType = typeNode[1]
 
       # Detecting incompatiple tuple types in `assignObjectImpl` only
@@ -1092,16 +1108,30 @@ when defined(nimFixedForwardGeneric):
       detectIncompatibleType(fieldType, fieldSym)
 
       dst.add quote do:
-        initFromJson(`tmpSym`.`fieldSym`, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath` & "." & `fieldNameLit`)
+        jsonPath.add `fieldPathLit`
+        when nimvm:
+          when isRefSkipDistinct(`tmpSym`.`fieldSym`):
+            # workaround #12489
+            var tmp: `fieldType`
+            initFromJson(tmp, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath`)
+            `tmpSym`.`fieldSym` = tmp
+          else:
+            initFromJson(`tmpSym`.`fieldSym`, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath`)
+        else:
+          initFromJson(`tmpSym`.`fieldSym`, getOrDefault(`jsonNode`,`fieldNameLit`), `jsonPath`)
+        jsonPath.setLen `originalJsonPathLen`
 
     of nnkRecCase:
       let kindSym = typeNode[0][0]
       let kindNameLit = newLit(kindSym.strVal)
+      let kindPathLit = newLit("." & kindSym.strVal)
       let kindType = typeNode[0][1]
       let kindOffsetLit = newLit(uint(getOffset(kindSym)))
       dst.add quote do:
         var kindTmp: `kindType`
-        initFromJson(kindTmp, `jsonNode`[`kindNameLit`], `jsonPath` & "." & `kindNameLit`)
+        jsonPath.add `kindPathLit`
+        initFromJson(kindTmp, `jsonNode`[`kindNameLit`], `jsonPath`)
+        jsonPath.setLen `originalJsonPathLen`
         when defined js:
           `tmpSym`.`kindSym` = kindTmp
         else:
@@ -1112,14 +1142,14 @@ when defined(nimFixedForwardGeneric):
             ((cast[ptr `kindType`](cast[uint](`tmpSym`.addr) + `kindOffsetLit`))[]) = kindTmp
       dst.add nnkCaseStmt.newTree(nnkDotExpr.newTree(tmpSym, kindSym))
       for i in 1 ..< typeNode.len:
-        foldObjectBody(dst, typeNode[i], tmpSym, jsonNode, jsonPath, depth + 1)
+        foldObjectBody(dst, typeNode[i], tmpSym, jsonNode, jsonPath, originalJsonPathLen)
 
     of nnkOfBranch, nnkElse:
       let ofBranch = newNimNode(typeNode.kind)
       for i in 0 ..< typeNode.len-1:
         ofBranch.add copyNimTree(typeNode[i])
       let dstInner = newNimNode(nnkStmtListExpr)
-      foldObjectBody(dstInner, typeNode[^1], tmpSym, jsonNode, jsonPath, depth + 1)
+      foldObjectBody(dstInner, typeNode[^1], tmpSym, jsonNode, jsonPath, originalJsonPathLen)
       # resOuter now contains the inner stmtList
       ofBranch.add dstInner
       dst[^1].expectKind nnkCaseStmt
@@ -1133,26 +1163,29 @@ when defined(nimFixedForwardGeneric):
         var impl = getTypeImpl(base)
         while impl.kind in {nnkRefTy, nnkPtrTy}:
           impl = getTypeImpl(impl[0])
-        foldObjectBody(dst, impl, tmpSym, jsonNode, jsonPath, depth + 1)
+        foldObjectBody(dst, impl, tmpSym, jsonNode, jsonPath, originalJsonPathLen)
       let body = typeNode[2]
-      foldObjectBody(dst, body, tmpSym, jsonNode, jsonPath, depth + 1)
+      foldObjectBody(dst, body, tmpSym, jsonNode, jsonPath, originalJsonPathLen)
 
     else:
       error("unhandled kind: " & $typeNode.kind, typeNode)
 
 
-  macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+  macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     let typeSym = getTypeInst(dst)
+    let originalJsonPathLen = genSym(nskLet, "originalJsonPathLen")
     result = newStmtList()
+    result.add quote do:
+      let `originalJsonPathLen` = len(`jsonPath`)
     if typeSym.kind in {nnkTupleTy, nnkTupleConstr}:
       # both, `dst` and `typeSym` don't have good lineinfo. But nothing
       # else is available here.
       detectIncompatibleType(typeSym, dst)
-      foldObjectBody(result, typeSym, dst, jsonNode, jsonPath, 0)
+      foldObjectBody(result, typeSym, dst, jsonNode, jsonPath, originalJsonPathLen)
     else:
-      foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, 0)
+      foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, originalJsonPathLen)
 
-  proc initFromJson[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: string) =
+  proc initFromJson[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignObjectImpl(dst, jsonNode, jsonPath)
 
   proc to*[T](node: JsonNode, t: typedesc[T]): T =
@@ -1191,7 +1224,8 @@ when defined(nimFixedForwardGeneric):
     ##     doAssert data.person.age == 21
     ##     doAssert data.list == @[1, 2, 3, 4]
 
-    initFromJson(result, node, "")
+    var jsonPath = ""
+    initFromJson(result, node, jsonPath)
 
 when false:
   import os
@@ -1424,3 +1458,30 @@ when isMainModule:
         res.add($x)
         res.add " "
       doAssert res == fragments
+
+
+  # test isRefSkipDistinct
+  type
+    MyRef = ref object
+    MyObject = object
+    MyDistinct = distinct MyRef
+    MyOtherDistinct = distinct MyRef
+
+  var x0: ref int
+  var x1: MyRef
+  var x2: MyObject
+  var x3: MyDistinct
+  var x4: MyOtherDistinct
+
+  doAssert isRefSkipDistinct(x0)
+  doAssert isRefSkipDistinct(x1)
+  doAssert not isRefSkipDistinct(x2)
+  doAssert isRefSkipDistinct(x3)
+  doAssert isRefSkipDistinct(x4)
+
+
+  doAssert isRefSkipDistinct(ref int)
+  doAssert isRefSkipDistinct(MyRef)
+  doAssert not isRefSkipDistinct(MyObject)
+  doAssert isRefSkipDistinct(MyDistinct)
+  doAssert isRefSkipDistinct(MyOtherDistinct)
