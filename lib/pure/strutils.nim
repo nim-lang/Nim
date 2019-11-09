@@ -1637,6 +1637,19 @@ proc removePrefix*(s: var string, prefix: string) {.
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 
+proc removingPrefix*(s: string, prefix: string): string =
+  ## Return result after removing the first matching prefix from a string.
+  ##
+  ## See also:
+  ## * `removePrefix proc<#removePrefix,string,string>`_
+  ## * `removingSuffix proc<#removingSuffix,string,string>`_
+  runnableExamples:
+    var answers = "yesno"
+    var after = answers.removingPrefix("yes")
+    doAssert after == "no"
+  if s.startsWith(prefix): s[prefix.len..^1]
+  else: s
+
 proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
   ## Removes all characters from `chars` from the end of the string `s`
@@ -1695,6 +1708,18 @@ proc removeSuffix*(s: var string, suffix: string) {.
     newLen -= len(suffix)
     s.setLen(newLen)
 
+proc removingSuffix*(s: string, suffix: string): string =
+  ## Return result after removing the first matching suffix from a string.
+  ##
+  ## See also:
+  ## * `removeSuffix proc<#removeSuffix,string,string>`_
+  ## * `removingPrefix proc<#removingPrefix,string,string>`_
+  runnableExamples:
+    var answers = "yesno"
+    var after = answers.removingSuffix("no")
+    doAssert after == "yes"
+  if s.endsWith(suffix): s[0..(s.len-suffix.len-1)]
+  else: s
 
 proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
   {.noSideEffect, inline.} =
