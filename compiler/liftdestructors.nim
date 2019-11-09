@@ -327,6 +327,14 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   createTypeBoundOps(c.g, c.c, t, body.info)
+  # recursions are tricky, so we might need to forward the generated
+  # operation here:
+  var t = t
+  if t.assignment == nil or t.destructor == nil:
+    let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
+    let canon = c.g.canonTypes.getOrDefault(h)
+    if canon != nil: t = canon
+
   case c.kind
   of attachedAsgn, attachedDeepCopy:
     doAssert t.assignment != nil
@@ -682,24 +690,23 @@ template inst(field, t) =
     else:
       localError(g.config, info, "unresolved generic parameter")
 
-proc isTrival(s: PSym): bool {.inline.} = s == nil or s.ast[bodyPos].len == 0
+proc isTrival(s: PSym): bool {.inline.} =
+  s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.
-  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.skipTypes({tyAlias}).flags != {}: return
+  if orig == nil or {tfCheckedForDestructor, tfHasMeta} * orig.flags != {}: return
   incl orig.flags, tfCheckedForDestructor
 
-  let h = sighashes.hashType(orig, {CoType, CoConsiderOwned, CoDistinct})
+  let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
+
+  let h = sighashes.hashType(skipped, {CoType, CoConsiderOwned, CoDistinct})
   var canon = g.canonTypes.getOrDefault(h)
-  var overwrite = false
   if canon == nil:
-    let typ = orig.skipTypes({tyGenericInst, tyAlias, tySink})
-    g.canonTypes[h] = typ
-    canon = typ
-  if canon != orig:
-    overwrite = true
+    g.canonTypes[h] = skipped
+    canon = skipped
 
   # multiple cases are to distinguish here:
   # 1. we don't know yet if 'typ' has a nontrival destructor.
@@ -714,9 +721,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
       discard produceSym(g, c, canon, k, info)
     else:
       inst(canon.attachedOps[k], canon)
-
-  if overwrite:
-    for k in attachedDestructor..attachedSink:
+    if canon != orig:
       orig.attachedOps[k] = canon.attachedOps[k]
 
   if not isTrival(orig.destructor):
