@@ -76,7 +76,7 @@ template readBoolFromStdin*(question: string, default: bool, verbose = false): b
   ## If verbose is ``true`` the response will be printed to the terminal.
   ##
   ## .. code-block:: nim
-  ##   assert ask("Is Nim awesome?. (y/n)", false) == true
+  ##   assert readBoolFromStdin("Is Nim awesome?. (y/n)", default = true) == true
   ##
   var choice: bool
   try:
