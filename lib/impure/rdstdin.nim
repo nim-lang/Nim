@@ -12,8 +12,6 @@
 ## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
-from strutils import parseBool
-export parseBool
 
 {.deadCodeElim: on.}  # dce option deprecated
 
@@ -69,7 +67,7 @@ else:
     linenoise.free(buffer)
     result = true
 
-template ask*(question: string, postfix = "?. (y/n): ", verbose = false, default = false): bool =
+template ask*(question: string, default: bool): bool =
   ## Convenience template for ``readLineFromStdin`` and ``parseBool`` inside a ``try`` block,
   ## to ask a question to the user on the terminal and return a boolean value.
   ## You can provide a default boolean value that will be returned when ``parseBool``
@@ -78,14 +76,11 @@ template ask*(question: string, postfix = "?. (y/n): ", verbose = false, default
   ## If verbose is ``true`` the response will be printed to the terminal.
   ##
   ## .. code-block:: nim
-  ##   assert ask"Is Nim awesome" == true
+  ##   assert ask("Is Nim awesome?. (y/n)", false) == true
   ##
   var choice: bool
   try:
-    choice = readLineFromStdin(question & postfix).string.parseBool
-  except ValueError:
+    choice = readLineFromStdin(question) in ["y", "yes", "true", "1", "on"]
+  except:
     choice = default
-  finally:
-    if verbose:
-      echo choice
   choice
