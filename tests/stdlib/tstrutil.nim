@@ -200,6 +200,27 @@ proc testTrimZeros() =
   x = "1.0e2"
   x.trimZeros()
   assert x == "1e2"
+  x = "78.90"
+  x.trimZeros()
+  assert x == "78.9"
+  x = "1.23e4"
+  x.trimZeros()
+  assert x == "1.23e4"
+  x = "1.01"
+  x.trimZeros()
+  assert x == "1.01"
+  x = "1.1001"
+  x.trimZeros()
+  assert x == "1.1001"
+  x = "0.0"
+  x.trimZeros()
+  assert x == "0"
+  x = "0.01"
+  x.trimZeros()
+  assert x == "0.01"
+  x = "1e0"
+  x.trimZeros()
+  assert x == "1e0"
 
 proc testSplitLines() =
   let fixture = "a\nb\rc\r\nd"
