@@ -2400,17 +2400,13 @@ proc trimZeros*(x: var string) {.noSideEffect.} =
     var x = "123.456000000"
     x.trimZeros()
     doAssert x == "123.456"
-  var spl: seq[string]
-  if x.contains('.') or x.contains(','):
-    if x.contains('e'):
-      spl = x.split('e')
-      x = spl[0]
-    while x[x.high] == '0':
-      x.setLen(x.len-1)
-    if x[x.high] in [',', '.']:
-      x.setLen(x.len-1)
-    if spl.len > 0:
-      x &= "e" & spl[1]
+  if x.contains({'.', ','}):
+    let fE = x.find('e')
+    let last = if fE >= 0: fE-1 else: x.high
+    var first = last
+    while first >= 0 and x[first] == '0': dec(first)
+    if x[first] in {',', '.'}: dec(first)
+    x.delete(first+1, last)
 
 type
   BinaryPrefixMode* = enum ## the different names for binary prefixes
