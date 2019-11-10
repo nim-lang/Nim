@@ -39,6 +39,7 @@
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
+- Added `posix_utils.getDiskUsage` convenience template for `statvfs` to get disk usage statistics.
 
 
 ## Library changes

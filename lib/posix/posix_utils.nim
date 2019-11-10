@@ -99,3 +99,12 @@ proc mkdtemp*(prefix: string): string =
     raise newException(OSError, $strerror(errno))
   return $tmpl
 
+template getDiskUsage*(path: string): tuple[total: uint, used: uint, free: uint] =
+  ## Convenience template for ``statvfs`` to get disk usage statistics in bytes.
+  ##
+  ## .. code-block:: nim
+  ##   echo getDiskUsage"." ## (total: ..., used: ..., free: ...)
+  ##
+  var t = Statvfs()
+  discard statvfs(path, t)
+  (total: t.f_blocks * t.f_frsize, used: (t.f_blocks - t.f_bfree) * t.f_frsize, free: t.f_bavail * t.f_frsize)
