@@ -2391,7 +2391,7 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
 
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
-proc trimZeros*(x: var string) {.noSideEffect.} =
+proc trimZeros*(x: var string; decimalSep = '.') {.noSideEffect.} =
   ## Trim trailing zeros from a formatted floating point
   ## value `x` (must be declared as ``var``).
   ##
@@ -2400,13 +2400,15 @@ proc trimZeros*(x: var string) {.noSideEffect.} =
     var x = "123.456000000"
     x.trimZeros()
     doAssert x == "123.456"
-  if x.contains({'.', ','}):
-    let fE = x.find('e')
-    let last = if fE >= 0: fE-1 else: x.high
-    var first = last
-    while first >= 0 and x[first] == '0': dec(first)
-    if x[first] in {',', '.'}: dec(first)
-    x.delete(first+1, last)
+
+  var last = find(x, 'e')
+  last = if last >= 0: last - 1 else: high(x)
+  let sPos = find(x, decimalSep, last = last)
+  if sPos >= 0:
+    var pos = last
+    while pos >= 0 and x[pos] == '0': dec(pos)
+    if x[pos] != decimalSep: inc(pos)
+    x.delete(pos, last)
 
 type
   BinaryPrefixMode* = enum ## the different names for binary prefixes
@@ -2463,7 +2465,7 @@ proc formatSize*(bytes: int64,
   fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
   result = formatFloat(fbytes, format = ffDecimal, precision = 3,
       decimalSep = decimalSep)
-  result.trimZeros()
+  result.trimZeros(decimalSep)
   if includeSpace:
     result &= " "
   result &= prefixes[matchedIndex]

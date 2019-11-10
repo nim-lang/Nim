@@ -187,6 +187,20 @@ proc testRFind =
   assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=5) == 9
   assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=10) == -1
 
+proc testTrimZeros() =
+  var x = "1200"
+  x.trimZeros()
+  assert x == "1200"
+  x = "120.0"
+  x.trimZeros()
+  assert x == "120"
+  x = "0."
+  x.trimZeros()
+  assert x == "0"
+  x = "1.0e2"
+  x.trimZeros()
+  assert x == "1e2"
+
 proc testSplitLines() =
   let fixture = "a\nb\rc\r\nd"
   assert len(fixture.splitLines) == 4
@@ -246,6 +260,7 @@ proc testParseInts =
 testDelete()
 testFind()
 testRFind()
+testTrimZeros()
 testSplitLines()
 testCountLines()
 testParseInts()
