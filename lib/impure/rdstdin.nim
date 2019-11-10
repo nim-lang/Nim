@@ -67,7 +67,7 @@ else:
     linenoise.free(buffer)
     result = true
 
-template ask*(question: string, default: bool, verbose = false): bool =
+template readBoolFromStdin*(question: string, default: bool, verbose = false): bool =
   ## Convenience template for ``readLineFromStdin`` inside a ``try`` block,
   ## to ask a question to the user on the terminal and return a boolean value.
   ## You can provide a default boolean value that will be returned when ``parseBool``
