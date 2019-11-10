@@ -418,6 +418,17 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   else:
     result = p(arg, c)
 
+proc isCursor(n: PNode): bool =
+  case n.kind
+  of nkSym:
+    result = sfCursor in n.sym.flags
+  of nkDotExpr:
+    result = sfCursor in n[1].sym.flags
+  of nkCheckedFieldExpr:
+    result = isCursor(n[0])
+  else:
+    result = false
+
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkCallKinds:
@@ -459,7 +470,7 @@ proc p(n: PNode; c: var Con): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
         for j in 0..<it.len-2:
           let v = it[j]
           if v.kind == nkSym:
@@ -483,7 +494,8 @@ proc p(n: PNode; c: var Con): PNode =
         v.add itCopy
         result.add v
   of nkAsgn, nkFastAsgn:
-    if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
+    if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
+        not isCursor(n[0]):
       # rule (self-assignment-removal):
       if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
         result = newNodeI(nkEmpty, n.info)
