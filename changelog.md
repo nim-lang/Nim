@@ -34,7 +34,7 @@
   delimiter instead of '{' and '}'.
 - introduced new procs in `tables.nim`: `OrderedTable.take`, `CountTable.del`,
   `CountTable.take`
-- Added `rdstdin.ask` convenience template for `readLineFromStdin` and `parseBool` inside a `try` block,
+- Added `rdstdin.readBoolFromStdin` convenience template for `readLineFromStdin` inside a `try` block,
   to ask a question to the user on the terminal and return a boolean value.
 
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
