@@ -2401,13 +2401,13 @@ proc trimZeros*(x: var string; decimalSep = '.') {.noSideEffect.} =
     x.trimZeros()
     doAssert x == "123.456"
 
-  var last = find(x, 'e')
-  last = if last >= 0: last - 1 else: high(x)
-  let sPos = find(x, decimalSep, last = last)
+  let sPos = find(x, decimalSep)
   if sPos >= 0:
+    var last = find(x, 'e', start = sPos)
+    last = if last >= 0: last - 1 else: high(x)
     var pos = last
     while pos >= 0 and x[pos] == '0': dec(pos)
-    if x[pos] != decimalSep: inc(pos)
+    if pos > sPos: inc(pos)
     x.delete(pos, last)
 
 type
