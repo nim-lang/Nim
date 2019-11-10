@@ -67,8 +67,8 @@ else:
     linenoise.free(buffer)
     result = true
 
-template ask*(question: string, default: bool): bool =
-  ## Convenience template for ``readLineFromStdin`` and ``parseBool`` inside a ``try`` block,
+template ask*(question: string, default: bool, verbose = false): bool =
+  ## Convenience template for ``readLineFromStdin`` inside a ``try`` block,
   ## to ask a question to the user on the terminal and return a boolean value.
   ## You can provide a default boolean value that will be returned when ``parseBool``
   ## can not parse the user input, this template does not raise ``ValueError`` by itself.
@@ -83,4 +83,7 @@ template ask*(question: string, default: bool): bool =
     choice = readLineFromStdin(question) in ["y", "yes", "true", "1", "on"]
   except:
     choice = default
+  finally:
+    if verbose:
+      echo choice
   choice
