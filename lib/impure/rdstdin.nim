@@ -70,9 +70,7 @@ else:
 template readBoolFromStdin*(question: string, default: bool, verbose = false): bool =
   ## Convenience template for ``readLineFromStdin`` inside a ``try`` block,
   ## to ask a question to the user on the terminal and return a boolean value.
-  ## You can provide a default boolean value that will be returned when ``parseBool``
-  ## can not parse the user input, this template does not raise ``ValueError`` by itself.
-  ## A postfix string can be appended at the end of the question.
+  ## You can provide a default boolean value that will be returned when user input can not be parsed.
   ## If verbose is ``true`` the response will be printed to the terminal.
   ##
   ## .. code-block:: nim
