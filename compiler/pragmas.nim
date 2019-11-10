@@ -62,11 +62,11 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wPartial, wExplain, wPackage}
   fieldPragmas* = declPragmas + {
-    wGuard, wBitsize} - {wExportNims, wNodecl} # why exclude these?
+    wGuard, wBitsize, wCursor} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
@@ -833,6 +833,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wVolatile:
         noVal(c, it)
         incl(sym.flags, sfVolatile)
+      of wCursor:
+        noVal(c, it)
+        incl(sym.flags, sfCursor)
       of wRegister:
         noVal(c, it)
         incl(sym.flags, sfRegister)
