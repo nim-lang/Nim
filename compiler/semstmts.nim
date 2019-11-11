@@ -1231,7 +1231,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       internalAssert c.config, st.kind in {tyPtr, tyRef}
       internalAssert c.config, st.lastSon.sym == nil
       incl st.flags, tfRefsAnonObj
-      let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
+      let obj = newSym(skType, getIdent(c.cache, s.name.s),
                               getCurrOwner(c), s.info)
       if sfPure in s.flags:
         obj.flags.incl sfPure

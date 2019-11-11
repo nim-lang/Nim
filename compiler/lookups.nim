@@ -10,7 +10,7 @@
 # This module implements lookup helpers.
 
 import
-  intsets, ast, astalgo, idents, semdata, types, msgs, options,
+  intsets, ast, astalgo, idents, semdata, msgs, options,
   renderer, nimfix/prettybase, lineinfos, strutils
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)

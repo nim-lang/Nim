@@ -105,6 +105,20 @@ proc fn5(a, b: float): float =
 proc fn_unsafeaddr(x: int): int =
   cast[int](unsafeAddr(x))
 
+
+type
+  NotImplementedError* = ref object of system.Exception
+
+proc fn_except =
+  try:
+    echo "a"
+  except IndexError:
+    echo getCurrentExceptionMsg()
+  except ValueError as ex:
+    echo ex.msg
+  except NotImplementedError as ex:
+    echo ex.msg
+
 static:
   echo fn_unsafeaddr.repr_to_string
   let fn1s = "proc fn1(x, y: int): int =\n  result = 2 * (x + y)\n"
@@ -120,7 +134,16 @@ static:
   doAssert fn4.repr_to_string == fn4s
   doAssert fn5.repr_to_string == fn5s
   doAssert fn_unsafeaddr.repr_to_string == fnAddr
-
+  doAssert fn_except.repr_to_string == """proc fn_except() =
+  try:
+    echo ["a"]
+  except IndexError:
+    echo [getCurrentExceptionMsg()]
+  except ValueError as ex:
+    echo [ex.msg]
+  except NotImplementedError as ex:
+    echo [ex.msg]
+"""
 #------------------------------------
 # bug #8763
 

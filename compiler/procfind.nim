@@ -11,7 +11,7 @@
 # This is needed for proper handling of forward declarations.
 
 import
-  ast, astalgo, msgs, semdata, types, trees, strutils
+  ast, astalgo, msgs, semdata, types, trees, strutils, renderer
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if len(procA) != len(procB): return false
