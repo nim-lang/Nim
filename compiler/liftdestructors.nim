@@ -397,6 +397,9 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
+    when false:
+      # XXX investigate if this is necessary:
+      actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
 
@@ -423,6 +426,9 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
+    when false:
+      # XXX investigate if this is necessary:
+      actions.add newAsgnStmt(xenv, newNodeIT(nkNilLit, body.info, xenv.typ))
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
 
