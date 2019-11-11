@@ -20,7 +20,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlignas}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
@@ -803,13 +803,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         setExternName(c, sym, name, it.info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
-      of wAlign:
-        if sym.typ == nil: invalidPragma(c, it)
-        var align = expectIntLit(c, it)
-        if (not isPowerOfTwo(align) and align != 0) or align >% high(int16):
-          localError(c.config, it.info, "power of two expected")
-        else:
-          sym.typ.align = align.int16
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
@@ -822,6 +815,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           sym.typ.align = floatInt64Align(c.config)
         else:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+      of wAlignas:
+        let alignment = expectIntLit(c, it)
+        if sym.kind != skField and isTopLevel(c):
+          localError(c.config, n.info, "alignas not allowed in top level declaration")
+        elif not isPowerOfTwo(alignment):
+          localError(c.config, it.info, "power of two expected")
+        else:
+          sym.alignment = alignment
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)

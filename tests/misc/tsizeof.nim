@@ -75,7 +75,7 @@ proc strAlign(arg: string): string =
     result &= ' '
 
 macro c_offsetof(a: typed, b: untyped): int32 =
-  ## Buffet proof implementation that works on actual offsetof operator
+  ## Bullet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
   let bliteral =
@@ -89,7 +89,7 @@ macro c_offsetof(a: typed, b: untyped): int32 =
     res
 
 macro c_sizeof(a: typed): int32 =
-  ## Buffet proof implementation that works using the sizeof operator
+  ## Bullet proof implementation that works using the sizeof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
   result = quote do:
@@ -98,7 +98,7 @@ macro c_sizeof(a: typed): int32 =
     res
 
 macro c_alignof(arg: untyped): untyped =
-  ## Buffet proof implementation that works on actual alignment
+  ## Bullet proof implementation that works on actual alignment
   ## behavior measured at runtime.
   let typeSym = genSym(nskType, "AlignTestType"&arg.repr)
   result = quote do:
@@ -313,7 +313,7 @@ testinstance:
         b: int8
       c: int8
 
-    PaddingOfSetEnum33 = object
+    PaddingOfSetEnum33 {.objectconfig.} = object
       cause: int8
       theSet: set[MyEnum33]
 
@@ -332,9 +332,16 @@ testinstance:
       c: char
 
     # from issue 4763
-    GenericObject[T] = object
+    GenericObject[T] {.objectconfig.} = object
       a: int32
       b: T
+
+    # this type mixes `packed` with `alignas`.
+    MyCustomAlignPackedObject {.objectconfig.} = object
+      a: char
+      b {.alignas: 32.}: int32 # alignas overrides `packed` for this field.
+      c: char
+      d: int32  # unaligned
 
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
@@ -350,6 +357,7 @@ testinstance:
     var ro : RootObj
     var go : GenericObject[int64]
     var po : PaddingOfSetEnum33
+    var capo: MyCustomAlignPackedObject
 
     var
       e1: Enum1
@@ -368,8 +376,7 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob)
-
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo)
 
     type
       WithBitsize {.objectconfig.} = object
@@ -433,6 +440,11 @@ testinstance:
     testOffsetOf(RecursiveStuff, d1)
     testOffsetOf(RecursiveStuff, d2)
 
+    testOffsetOf(MyCustomAlignPackedObject, a)
+    testOffsetOf(MyCustomAlignPackedObject, b)
+    testOffsetOf(MyCustomAlignPackedObject, c)
+    testOffsetOf(MyCustomAlignPackedObject, d)
+
     echo "body executed" # sanity check to ensure this logic isn't skipped entirely
 
 
@@ -482,7 +494,24 @@ type
     a: int32
     b: float32
 
+  MyCustomAlignUnion {.union.} = object
+    c: char
+    a {.alignas: 32.}: int
+
+  MyCustomAlignObject = object
+    c: char
+    a {.alignas: 32.}: int
+
 doAssert sizeof(MyUnionType) == 4
+doAssert sizeof(MyCustomAlignUnion) == 32
+doAssert alignof(MyCustomAlignUnion) == 32
+doAssert sizeof(MyCustomAlignObject) == 64
+doAssert alignof(MyCustomAlignObject) == 32
+
+
+
+
+
 
 ##########################################
 # bug #9794

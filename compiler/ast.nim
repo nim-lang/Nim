@@ -820,9 +820,10 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
-    of skLet, skVar, skField, skForVar:
+    of skLet, skVar, skField, skForVar, skResult, skTemp:
       guard*: PSym
       bitsize*: int
+      alignment*: int # for alignas(X) expressions
     else: nil
     magic*: TMagic
     typ*: PType
