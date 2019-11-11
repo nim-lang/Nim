@@ -478,14 +478,14 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   if s.loc.k == locNone:
     fillLoc(s.loc, locLocalVar, n, mangleLocalName(p, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
-  result = getTypeDesc(p.module, s.typ)
+  if s.kind in {skLet, skVar} and s.alignment > 0:
+    result.addf("alignas($1) ", [rope(s.alignment)])
+  result.add getTypeDesc(p.module, s.typ)
   if s.constraint.isNil:
     if sfRegister in s.flags: add(result, " register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
     #  add(decl, " GC_GUARD")
     if sfVolatile in s.flags: add(result, " volatile")
-    if s.kind in {skLet, skVar} and s.alignment > 0:
-      result.addf(" alignas($1)", [rope(s.alignment)])
     add(result, " ")
     add(result, s.loc.r)
   else:

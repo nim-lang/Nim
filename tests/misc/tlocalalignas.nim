@@ -1,5 +1,6 @@
 discard """
-ccodeCheck: "\\i @'alignas(128) myval;' .*"
+ccodeCheck: "\\i @'alignas(128) NI myval' .*"
+target: "c cpp"
 """
 
 proc myProc() =
