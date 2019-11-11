@@ -1,9 +1,13 @@
 discard """
-  cmd: '''nim cpp --newruntime $file'''
+  cmd: '''nim cpp --newruntime --threads:on $file'''
   output: '''(field: "value")
 Indeed
 axc
-0  new: 0'''
+(v: 10)
+0  new: 0
+...
+destroying GenericObj[T] GenericObj[system.int]
+'''
 """
 
 import core / allocators
@@ -52,5 +56,64 @@ type
       x*: int
 var t: MyType
 
+# bug #11254
+proc test(p: owned proc()) =
+  let x = (proc())p
+
+test(proc() = discard)
+
+# bug #10689
+
+type
+  O = object
+    v: int
+
+proc `=sink`(d: var O, s: O) =
+  d.v = s.v
+
+proc selfAssign =
+  var o = O(v: 10)
+  o = o
+  echo o
+
+selfAssign()
+
+# bug #11833
+type FooAt = object
+
+proc testWrongAt() =
+  var x = @[@[FooAt()]]
+
+testWrongAt()
+
 let (a, d) = allocCounters()
 discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)
+
+#-------------------------------------------------
+type
+  Table[A, B] = object
+    x: seq[(A, B)]
+
+
+proc toTable[A,B](p: sink openArray[(A, B)]): Table[A, B] =
+  for zz in mitems(p):
+    result.x.add move(zz)
+
+
+let table = {"a": new(int)}.toTable()
+
+# bug # #12051
+
+type
+  GenericObj[T] = object
+    val: T
+  Generic[T] = owned ref GenericObj[T]
+
+proc `=destroy`[T](x: var GenericObj[T]) =
+  echo "destroying GenericObj[T] ", x.typeof # to know when its being destroyed
+
+proc main12() =
+  let gnrc = Generic[int](val: 42)
+  echo "..."
+
+main12()

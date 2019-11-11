@@ -374,18 +374,6 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-static N_INLINE(NI, float64ToInt32)(double x) {
-  /* nowadays no hack necessary anymore */
-  return x >= 0 ? (NI)(x+0.5) : (NI)(x-0.5);
-}
-
-static N_INLINE(NI32, float32ToInt32)(float x) {
-  /* nowadays no hack necessary anymore */
-  return x >= 0 ? (NI32)(x+0.5) : (NI32)(x-0.5);
-}
-
-#define float64ToInt64(x) ((NI64) (x))
-
 #define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
 #define STRING_LITERAL(name, str, length) \

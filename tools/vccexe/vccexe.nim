@@ -30,7 +30,7 @@ proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
   if result.len > 0:
     return
 
-  # All attempts to dicover vcc failed
+  # All attempts to discover vcc failed
 
 const 
   vccversionPrefix = "--vccversion"
@@ -73,11 +73,11 @@ Options:
                       of the VCC version specified with the --vccversion argument.
                       For each specified version the utility prints a line with the
                       following format: <version>: <path>
-  --noCommand         Flag to supress VCC secondary command execution
-                      Useful in conjuction with --vccversion and --printPath to
-                      only perfom VCC discovery, but without executing VCC tools
+  --noCommand         Flag to suppress VCC secondary command execution
+                      Useful in conjunction with --vccversion and --printPath to
+                      only perform VCC discovery, but without executing VCC tools
   --vcvarsall:<path>  Path to the Developer Command Prompt utility vcvarsall.bat that selects
-                      the appropiate devlopment settings.
+                      the appropriate development settings.
                       Usual path for Visual Studio 2015 and below:
                         %VSInstallDir%\VC\vcvarsall
                       Usual path for Visual Studio 2017 and above:
@@ -174,7 +174,7 @@ when isMainModule:
       head = "latest"
     echo "$1: $2" % [head, vcvarsallArg]
 
-  # Call vcvarsall to get the appropiate VCC process environment
+  # Call vcvarsall to get the appropriate VCC process environment
   var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg, verboseArg)
   if vcvars != nil:
     for vccEnvKey, vccEnvVal in vcvars:

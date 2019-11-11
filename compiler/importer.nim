@@ -27,7 +27,7 @@ proc importPureEnumField*(c: PContext; s: PSym) =
     if checkB == nil:
       strTableAdd(c.pureEnumFields, s)
     else:
-      # mark as ambigous:
+      # mark as ambiguous:
       incl(c.ambiguousSymbols, checkB.id)
       incl(c.ambiguousSymbols, s.id)
 
@@ -47,7 +47,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
   if s.kind == skType:
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
-      for j in 0 ..< sonsLen(etyp.n):
+      for j in 0 ..< len(etyp.n):
         var e = etyp.n.sons[j].sym
         if e.kind != skEnumField:
           internalError(c.config, s.info, "rawImportSymbol")
@@ -153,7 +153,11 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
         err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
                 toFullPath(c.config, c.graph.importStack[i+1])
       c.recursiveDep = err
+
+    discard pushOptionEntry(c)
     result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f))
+    popOptionEntry(c)
+
     #echo "set back to ", L
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
@@ -191,7 +195,7 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
 
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
-  for i in 0 ..< sonsLen(n):
+  for i in 0 ..< len(n):
     let it = n.sons[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
       let sep = it[0]
@@ -221,7 +225,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-    for i in 1 ..< sonsLen(n):
+    for i in 1 ..< len(n):
       if n.sons[i].kind != nkNilLit:
         importSymbol(c, n.sons[i], m)
 

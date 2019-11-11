@@ -812,7 +812,7 @@ let foo = if cond:
 
 let a =
   [[aaadsfas, bbb],
-   [ccc, ddd]]
+    [ccc, ddd]]
 
 let b = [
   [aaa, bbb],

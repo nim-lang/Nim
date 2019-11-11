@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "da82e3111e662fc1b12f96b3cddd66c749c0f686" # master
+  NimbleStableCommit = "4007b2a778429a978e12307bf13a038029b4c4d9" # master
 
 when defined(gcc) and defined(windows):
   when defined(x86):
@@ -169,6 +169,10 @@ proc bundleNimsuggest(args: string) =
 proc buildVccTool(args: string) =
   nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim ", options = args)
 
+proc bundleNimpretty(args: string) =
+  nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim",
+                 options = "-d:release " & args)
+
 proc bundleWinTools(args: string) =
   nimCompile("tools/finish.nim", outputDir = "", options = args)
 
@@ -176,6 +180,7 @@ proc bundleWinTools(args: string) =
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
   bundleC2nim(args)
+  nimCompile("testament/testament.nim", options = args)
   when false:
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim",
@@ -184,6 +189,7 @@ proc bundleWinTools(args: string) =
 proc zip(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
+  bundleNimpretty(args)
   bundleWinTools(args)
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
@@ -213,9 +219,10 @@ proc buildTools(args: string = "") =
   nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
-  nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim",
-                 options = "-d:release " & args)
+  bundleNimpretty(args)
   nimCompileFold("Compile nimfind", "tools/nimfind.nim",
+                 options = "-d:release " & args)
+  nimCompileFold("Compile testament", "testament/testament.nim",
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
@@ -313,8 +320,8 @@ proc boot(args: string) =
     # jsonbuild then uses the $project.json file to build the Nim binary.
     exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
       [nimi, bootOptions, extraOption, args, smartNimcache]
-    exec "$# jsonscript --nimcache:$# compiler" / "nim.nim" %
-      [nimi, smartNimcache]
+    exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
+      [nimi, args, smartNimcache]
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
@@ -417,8 +424,8 @@ proc winRelease*() =
 template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
-  nimexec "cc --opt:speed testament/tester"
-  let tester = quoteShell(getCurrentDir() / "testament/tester".exe)
+  nimexec "cc --opt:speed testament/testament"
+  let tester = quoteShell(getCurrentDir() / "testament/testament".exe)
   let success = tryExec tester & " " & (args|"all")
   if not success:
     quit("tests failed", QuitFailure)
@@ -482,7 +489,7 @@ proc runCI(cmd: string) =
     kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
-    execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-packages")
+    execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
   else:
     buildTools() # altenatively, kochExec "tools --toolsNoNimble"
 
@@ -490,10 +497,10 @@ proc runCI(cmd: string) =
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
     when defined(windows):
       # note: will be over-written below
-      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester")
+      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines")
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")

@@ -5,7 +5,7 @@ import strutils, os, osproc, streams, browsers
 
 const
   arch = $(sizeof(int)*8)
-  mingw = "mingw$1-6.3.0.7z" % arch
+  mingw = "mingw$1.7z" % arch
   url = r"https://nim-lang.org/download/" & mingw
 
 var
@@ -16,6 +16,12 @@ type
     Failure,
     Manual,
     Success
+
+proc expand(s: string): string =
+  try:
+    result = expandFilename(s)
+  except OSError, IOError:
+    result = s
 
 proc unzip(): bool =
   if not fileExists("dist" / mingw):
@@ -192,19 +198,21 @@ when defined(windows):
     let bits = $(sizeof(pointer)*8)
     for d in dirs:
       if dirExists d:
-        let x = expandFilename(d / "bin")
-        if checkGccArch(x): return x
-        else: incompat.add x
+        let x = expand(d / "bin")
+        if x.len != 0:
+          if checkGccArch(x): return x
+          else: incompat.add x
       elif dirExists(d & bits):
-        let x = expandFilename((d & bits) / "bin")
-        if checkGccArch(x): return x
-        else: incompat.add x
+        let x = expand((d & bits) / "bin")
+        if x.len != 0:
+          if checkGccArch(x): return x
+          else: incompat.add x
 
 proc main() =
   when defined(windows):
-    let nimDesiredPath = expandFilename(getCurrentDir() / "bin")
+    let nimDesiredPath = expand(getCurrentDir() / "bin")
     let nimbleBin = getEnv("USERPROFILE") / ".nimble" / "bin"
-    let nimbleDesiredPath = try: expandFilename(nimbleBin) except: nimbleBin
+    let nimbleDesiredPath = expand(nimbleBin)
     let p = tryGetUnicodeValue(r"Environment", "Path",
       HKEY_CURRENT_USER) & ";" & tryGetUnicodeValue(
         r"System\CurrentControlSet\Control\Session Manager\Environment", "Path",

@@ -10,7 +10,7 @@ tunused_imports.nim(25, 8) Warning: imported and not used: 'strutils' [UnusedImp
 
 {.warning: "BEGIN".}
 
-import net
+import net, dontmentionme
 
 echo AF_UNIX
 

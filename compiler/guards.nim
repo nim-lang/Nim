@@ -35,8 +35,8 @@ const
   someMul = {mMulI, mMulF64}
   someDiv = {mDivI, mDivF64}
   someMod = {mModI}
-  someMax = {mMaxI, mMaxF64}
-  someMin = {mMinI, mMinF64}
+  someMax = {mMaxI}
+  someMin = {mMinI}
   someBinaryOp = someAdd+someSub+someMul+someMax+someMin
 
 proc isValue(n: PNode): bool = n.kind in {nkCharLit..nkNilLit}
@@ -436,14 +436,14 @@ proc sameTree*(a, b: PNode): bool =
       if not result and a.sym.magic != mNone:
         result = a.sym.magic == b.sym.magic or sameOpr(a.sym, b.sym)
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType: result = a.typ == b.typ
     of nkEmpty, nkNilLit: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in 0 ..< sonsLen(a):
+      if len(a) == len(b):
+        for i in 0 ..< len(a):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 

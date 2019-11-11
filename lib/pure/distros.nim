@@ -32,10 +32,10 @@ when not defined(nimscript):
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
-    Windows ## some version of Windows
-    Posix   ## some Posix system
-    MacOSX  ## some version of OSX
-    Linux   ## some version of Linux
+    Windows                     ## some version of Windows
+    Posix                       ## some Posix system
+    MacOSX                      ## some version of OSX
+    Linux                       ## some version of Linux
     Ubuntu
     Debian
     Gentoo
@@ -133,8 +133,9 @@ const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
     Distribution.ArchLinux}
 
-var unameRes, releaseRes, hostnamectlRes: string ## we cache the result of the 'uname -a'
-                                                 ## execution for faster platform detections.
+# we cache the result of the 'uname -a'
+# execution for faster platform detections.
+var unameRes, releaseRes, hostnamectlRes: string
 
 template unameRelease(cmd, cache): untyped =
   if cache.len == 0:
@@ -173,7 +174,8 @@ proc detectOsImpl(d: Distribution): bool =
     result = defined(haiku)
   else:
     let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
+    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or
+              ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
@@ -184,7 +186,7 @@ template detectOs*(d: untyped): bool =
 when not defined(nimble):
   var foreignDeps: seq[string] = @[]
 
-proc foreignCmd*(cmd: string; requiresSudo=false) =
+proc foreignCmd*(cmd: string; requiresSudo = false) =
   ## Registers a foreign command to the intern list of commands
   ## that can be queried later.
   let c = (if requiresSudo: "sudo " else: "") & cmd
@@ -225,7 +227,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("pkg install " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)
-    elif detectOs(ArchLinux):
+    elif detectOs(ArchLinux) or detectOs(Manjaro):
       result = ("pacman -S " & p, true)
     else:
       result = ("<your package manager here> install " & p, true)

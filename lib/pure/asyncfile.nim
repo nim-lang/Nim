@@ -488,7 +488,7 @@ proc setFileSize*(f: AsyncFile, length: int64) =
       status = setFilePointer(f.fd.Handle, low, addr high, 0)
       lastErr = osLastError()
     if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
-       (setEndOfFile(f.fd.Handle) == 0):
+        (setEndOfFile(f.fd.Handle) == 0):
       raiseOSError(osLastError())
   else:
     # will truncate if Off is a 32-bit type!

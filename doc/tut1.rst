@@ -67,8 +67,8 @@ done with spaces only, tabulators are not allowed.
 
 String literals are enclosed in double quotes. The ``var`` statement declares
 a new variable named ``name`` of type ``string`` with the value that is
-returned by the `readLine <system.html#readLine,File>`_ procedure. Since the
-compiler knows that `readLine <system.html#readLine,File>`_ returns a string,
+returned by the `readLine <io.html#readLine,File>`_ procedure. Since the
+compiler knows that `readLine <io.html#readLine,File>`_ returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
@@ -80,7 +80,7 @@ Note that this is basically the only form of type inference that exists in
 Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: ``echo``, `readLine <system.html#readLine,File>`_, etc.
+to the compiler: ``echo``, `readLine <io.html#readLine,File>`_, etc.
 These built-ins are declared in the system_ module which is implicitly
 imported by any other module.
 
@@ -141,15 +141,6 @@ comments can also be nested.
        Note: these can be nested!!
     ]#
   ]#
-
-You can also use the `discard statement <#procedures-discard-statement>`_ together with *long string
-literals* to create block comments:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  discard """ You can have any Nim code text commented
-  out inside this with no indentation restrictions.
-        yes("May I ask a pointless question?") """
 
 
 Numbers
@@ -335,10 +326,11 @@ the compiler that for every other value nothing should be done:
   of 3, 8: echo "The number is 3 or 8"
   else: discard
 
-The empty `discard statement`_ is a *do nothing* statement. The compiler knows
-that a case statement with an else part cannot fail and thus the error
-disappears. Note that it is impossible to cover all possible string values:
-that is why string cases always need an ``else`` branch.
+The empty `discard statement <#procedures-discard-statement>`_ is a *do
+nothing* statement. The compiler knows that a case statement with an else part
+cannot fail and thus the error disappears. Note that it is impossible to cover
+all possible string values: that is why string cases always need an ``else``
+branch.
 
 In general the case statement is used for subrange types or enumerations where
 it is of great help that the compiler checks that you covered any possible
@@ -368,8 +360,8 @@ For statement
 -------------
 
 The ``for`` statement is a construct to loop over any element an *iterator*
-provides. The example uses the built-in `countup <system.html#countup>`_
-iterator:
+provides. The example uses the built-in `countup
+<system.html#countup.i,T,T,Positive>`_ iterator:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -380,8 +372,8 @@ iterator:
 
 The variable ``i`` is implicitly declared by the
 ``for`` loop and has the type ``int``, because that is what `countup
-<system.html#countup>`_ returns. ``i`` runs through the values 1, 2, .., 10.
-Each value is ``echo``-ed. This code does the same:
+<system.html#countup.i,T,T,Positive>`_ returns. ``i`` runs through the values
+1, 2, .., 10. Each value is ``echo``-ed. This code does the same:
 
 .. code-block:: nim
   echo "Counting to 10: "
@@ -400,7 +392,7 @@ Counting down can be achieved as easily (but is less often needed):
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
 Since counting up occurs so often in programs, Nim also has a `..
-<system.html#...i,S,T>`_ iterator that does the same:
+<system.html#...i,T,T>`_ iterator that does the same:
 
 .. code-block:: nim
   for i in 1..10:
@@ -579,10 +571,10 @@ an expression is allowed:
 Procedures
 ==========
 
-To define new commands like `echo <system.html#echo>`_ and `readLine
-<system.html#readLine,File>`_ in the examples, the concept of a `procedure`
-is needed. (Some languages call them *methods* or *functions*.) In Nim new
-procedures are defined with the ``proc`` keyword:
+To define new commands like `echo <system.html#echo,varargs[typed,]>`_
+and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
+`procedure` is needed. (Some languages call them *methods* or *functions*.)
+In Nim new procedures are defined with the ``proc`` keyword:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -762,7 +754,7 @@ Nim provides the ability to overload procedures similar to C++:
   echo toString(13)   # calls the toString(x: int) proc
   echo toString(true) # calls the toString(x: bool) proc
 
-(Note that ``toString`` is usually the `$ <system.html#$>`_ operator in
+(Note that ``toString`` is usually the `$ <dollars.html>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the ``toString``
 calls. How this overloading resolution algorithm works exactly is not
 discussed here (it will be specified in the manual soon).  However, it does
@@ -854,8 +846,8 @@ Let's return to the simple counting example:
   for i in countup(1, 10):
     echo i
 
-Can a `countup <system.html#countup>`_ proc be written that supports this
-loop? Lets try:
+Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
+supports this loop? Lets try:
 
 .. code-block:: nim
   proc countup(a, b: int): int =
@@ -1019,8 +1011,8 @@ floats and follow the IEEE-754 standard.
 Automatic type conversion in expressions with different kinds of floating
 point types is performed: the smaller type is converted to the larger. Integer
 types are **not** converted to floating point types automatically, nor vice
-versa. Use the `toInt <system.html#toInt>`_ and `toFloat <system.html#toFloat>`_
-procs for these conversions.
+versa. Use the `toInt <system.html#toInt,float>`_ and
+`toFloat <system.html#toFloat,int>`_ procs for these conversions.
 
 
 Type Conversion
@@ -1040,13 +1032,13 @@ type as a function:
 Internal type representation
 ============================
 
-As mentioned earlier, the built-in `$ <system.html#$>`_ (stringify) operator
+As mentioned earlier, the built-in `$ <dollars.html>`_ (stringify) operator
 turns any basic type into a string, which you can then print to the console
 using the ``echo`` proc. However, advanced types, and your own custom types,
 won't work with the ``$`` operator until you define it for them.
 Sometimes you just want to debug the current value of a complex type without
 having to write its ``$`` operator.  You can use then the `repr
-<system.html#repr>`_ proc which works with any type and even complex data
+<system.html#repr,T>`_ proc which works with any type and even complex data
 graphs with cycles. The following example shows that even for basic types
 there is a difference between the ``$`` and ``repr`` outputs:
 
@@ -1136,9 +1128,9 @@ Operation             Comment
 ``pred(x, n)``        returns the `n`'th predecessor of `x`
 -----------------     --------------------------------------------------------
 
-The `inc <system.html#inc>`_, `dec <system.html#dec>`_, `succ
-<system.html#succ>`_ and `pred <system.html#pred>`_ operations can fail by
-raising an `EOutOfRange` or `EOverflow` exception. (If the code has been
+The `inc <system.html#inc,T,int>`_, `dec <system.html#dec,T,int>`_, `succ
+<system.html#succ,T,int>`_ and `pred <system.html#pred,T,int>`_ operations can
+fail by raising an `EOutOfRange` or `EOverflow` exception. (If the code has been
 compiled with the proper runtime checks turned on.)
 
 
@@ -1159,8 +1151,8 @@ compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
 The ``system`` module defines the important `Natural <system.html#Natural>`_
-type as ``range[0..high(int)]`` (`high <system.html#high>`_ returns the
-maximal value). Other programming languages may suggest the use of unsigned
+type as ``range[0..high(int)]`` (`high <system.html#high,typedesc[T]>`_ returns
+the maximal value). Other programming languages may suggest the use of unsigned
 integers for natural numbers. This is often **unwise**: you don't want unsigned
 arithmetic (which wraps around) just because the numbers cannot be negative.
 Nim's ``Natural`` type helps to avoid this common programming error.
@@ -1198,8 +1190,9 @@ Arrays are value types, like any other Nim type. The assignment operator
 copies the whole array contents.
 
 The built-in `len <system.html#len,TOpenArray>`_ proc returns the array's
-length. `low(a) <system.html#low>`_ returns the lowest valid index for the
-array `a` and `high(a) <system.html#high>`_ the highest valid index.
+length. `low(a) <system.html#low,openArray[T]>`_ returns the lowest valid index
+for the array `a` and `high(a) <system.html#high,openArray[T]>`_ the highest
+valid index.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -1274,9 +1267,9 @@ during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
 
 Sequences are always indexed with an ``int`` starting at position 0.  The `len
-<system.html#len,seq[T]>`_, `low <system.html#low>`_ and `high
-<system.html#high>`_ operations are available for sequences too.  The notation
-``x[i]`` can be used to access the i-th element of ``x``.
+<system.html#len,seq[T]>`_, `low <system.html#low,openArray[T]>`_ and `high
+<system.html#high,openArray[T]>`_ operations are available for sequences too.
+The notation ``x[i]`` can be used to access the i-th element of ``x``.
 
 Sequences can be constructed by the array constructor ``[]`` in conjunction
 with the array to sequence operator ``@``. Another way to allocate space for
@@ -1327,10 +1320,10 @@ Open arrays
 Often fixed size arrays turn out to be too inflexible; procedures should be
 able to deal with arrays of different sizes. The `openarray`:idx: type allows
 this. Openarrays are always indexed with an ``int`` starting at position 0.
-The `len <system.html#len,TOpenArray>`_, `low <system.html#low>`_ and `high
-<system.html#high>`_ operations are available for open arrays too.  Any array
-with a compatible base type can be passed to an openarray parameter, the index
-type does not matter.
+The `len <system.html#len,TOpenArray>`_, `low <system.html#low,openArray[T]>`_
+and `high <system.html#high,openArray[T]>`_ operations are available for open
+arrays too.  Any array with a compatible base type can be passed to an
+openarray parameter, the index type does not matter.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -1386,8 +1379,8 @@ type conversions in this context:
   # is transformed by the compiler to:
   myWriteln(stdout, [$123, $"abc", $4.0])
 
-In this example `$ <system.html#$>`_ is applied to any argument that is passed
-to the parameter ``a``. Note that `$ <system.html#$>`_ applied to strings is a
+In this example `$ <dollars.html>`_ is applied to any argument that is passed
+to the parameter ``a``. Note that `$ <dollars.html>`_ applied to strings is a
 nop.
 
 
@@ -1570,8 +1563,8 @@ having the same field types.
 
 Tuples can be *unpacked* during variable assignment (and only then!). This can
 be handy to assign directly the fields of the tuples to individually named
-variables. An example of this is the `splitFile <os.html#splitFile>`_ proc
-from the `os module <os.html>`_ which returns the directory, name and
+variables. An example of this is the `splitFile <os.html#splitFile,string>`_
+proc from the `os module <os.html>`_ which returns the directory, name and
 extension of a path at the same time. For tuple unpacking to work you must
 use parentheses around the values you want to assign the unpacking to,
 otherwise you will be assigning the same value to all the individual

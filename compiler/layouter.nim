@@ -9,10 +9,7 @@
 
 ## Layouter for nimpretty.
 
-import idents, lexer, lineinfos, llstream, options, msgs, strutils,
-  pathutils
-from os import changeFileExt
-from sequtils import delete
+import idents, lexer, lineinfos, llstream, options, msgs, strutils, pathutils
 
 const
   MinLineLen = 15
@@ -24,7 +21,7 @@ type
   SemicolonKind = enum
     detectSemicolonKind, useSemicolon, dontTouch
 
-  LayoutToken = enum
+  LayoutToken* = enum
     ltSpaces,
     ltCrucialNewline, ## a semantically crucial newline (indentation!)
     ltSplittingNewline, ## newline used for splitting up long
@@ -44,8 +41,8 @@ type
     col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
     keepIndents*: int
     doIndentMore*: int
-    kinds: seq[LayoutToken]
-    tokens: seq[string]
+    kinds*: seq[LayoutToken]
+    tokens*: seq[string]
     indentStack: seq[int]
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
@@ -163,13 +160,11 @@ proc guidingInd(em: Emitter; pos: int): int =
     inc i
   result = -1
 
-proc closeEmitter*(em: var Emitter) =
+proc renderTokens*(em: var Emitter): string =
+  ## Render Emitter tokens to a string of code
   template defaultCase() =
     content.add em.tokens[i]
     inc lineLen, em.tokens[i].len
-
-  let outFile = em.config.absOutFile
-
   var content = newStringOfCap(16_000)
   var maxLhs = 0
   var lineLen = 0
@@ -246,6 +241,11 @@ proc closeEmitter*(em: var Emitter) =
       defaultCase()
     inc i
 
+  return content
+
+proc writeOut*(em: Emitter, content: string)  =
+  ## Write to disk
+  let outFile = em.config.absOutFile
   if fileExists(outFile) and readFile(outFile.string) == content:
     discard "do nothing, see #9499"
     return
@@ -255,6 +255,11 @@ proc closeEmitter*(em: var Emitter) =
     return
   f.llStreamWrite content
   llStreamClose(f)
+
+proc closeEmitter*(em: var Emitter) =
+  ## Renders emitter tokens and write to a file
+  let content = renderTokens(em)
+  em.writeOut(content)
 
 proc wr(em: var Emitter; x: string; lt: LayoutToken) =
   em.tokens.add x
@@ -314,11 +319,11 @@ proc removeSpaces(em: var Emitter) =
 
 const
   openPars = {tkParLe, tkParDotLe,
-              tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
-              tkCurlyLe}
+              tkBracketLe, tkBracketDotLe, tkBracketLeColon,
+              tkCurlyDotLe, tkCurlyLe}
   closedPars = {tkParRi, tkParDotRi,
-              tkBracketRi, tkCurlyDotRi,
-              tkCurlyRi, tkBracketDotRi}
+                tkBracketRi, tkBracketDotRi,
+                tkCurlyDotRi, tkCurlyRi}
 
   splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
@@ -444,6 +449,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       em.indentLevel = tok.indent
     elif (em.lastTok in (splitters + oprSet) and
         tok.tokType notin (closedPars - {tkBracketDotRi})):
+      if tok.tokType in openPars and tok.indent > em.indentStack[^1]:
+        while em.indentStack[^1] < tok.indent:
+          em.indentStack.add(em.indentStack[^1] + em.indWidth)
       # aka: we are in an expression context:
       let alignment = max(tok.indent - em.indentStack[^1], 0)
       em.indentLevel = alignment + em.indentStack.high * em.indWidth
@@ -499,7 +507,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     rememberSplit(splitComma)
     wrSpace em
   of openPars:
-    if tok.strongSpaceA > 0 and not em.endsInWhite and not em.wasExportMarker:
+    if tok.strongSpaceA > 0 and not em.endsInWhite and
+        (not em.wasExportMarker or tok.tokType == tkCurlyDotLe):
       wrSpace em
     wr(em, TokTypeToStr[tok.tokType], ltSomeParLe)
     rememberSplit(splitParLe)

@@ -18,14 +18,15 @@
 import hashes, times, endians
 
 type
-  Oid* = object ## an OID
+  Oid* = object  ## an OID
     time: int32  ##
     fuzz: int32  ##
     count: int32 ##
 
 proc `==`*(oid1: Oid, oid2: Oid): bool =
   ## Compare two Mongo Object IDs for equality
-  return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and (oid1.count == oid2.count)
+  return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and
+          (oid1.count == oid2.count)
 
 proc hash*(oid: Oid): Hash =
   ## Generate hash of Oid for use in hashtables

@@ -1,6 +1,6 @@
 #
 #
-#            Nim Tester
+#            Nim Testament
 #        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
@@ -12,7 +12,7 @@
 import
   strutils, pegs, os, osproc, streams, json,
   backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, md5, sequtils
+  algorithm, times, md5, sequtils, azure
 
 include compiler/nodejs
 
@@ -25,9 +25,10 @@ const
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
   Usage = """Usage:
-  tester [options] command [arguments]
+  testament [options] command [arguments]
 
 Command:
+  p|pat|pattern <glob>        run all the tests matching the given pattern
   all                         run all tests
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
@@ -243,13 +244,16 @@ proc `$`(x: TResults): string =
             [$x.passed, $x.skipped, $x.total]
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
-               expected, given: string, success: TResultEnum) =
+               expected, given: string, successOrig: TResultEnum) =
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshouldfail.nim
   var name = test.name.replace(DirSep, '/')
   name.add " " & $target & test.options
 
   let duration = epochTime() - test.startTime
+  let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
+                else: successOrig
+
   let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
   if backendLogging:
     backend.writeTestResult(name = name,
@@ -280,7 +284,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       maybeStyledEcho styleBright, given, "\n"
 
 
-  if backendLogging and existsEnv("APPVEYOR"):
+  if backendLogging and (isAppVeyor or isAzure):
     let (outcome, msg) =
       case success
       of reSuccess:
@@ -291,14 +295,17 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
         ("Failed", "Failure: " & $success & "\n" & given)
       else:
         ("Failed", "Failure: " & $success & "\nExpected:\n" & expected & "\n\n" & "Gotten:\n" & given)
-    var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options,
-                         "-Framework", "nim-testament", "-FileName",
-                         test.cat.string,
-                         "-Outcome", outcome, "-ErrorMessage", msg,
-                         "-Duration", $(duration*1000).int],
-                         options={poStdErrToStdOut, poUsePath, poParentStreams})
-    discard waitForExit(p)
-    close(p)
+    if isAzure:
+      azure.addTestResult(name, test.cat.string, int(duration * 1000), msg, success)
+    else:
+      var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options,
+                           "-Framework", "nim-testament", "-FileName",
+                           test.cat.string,
+                           "-Outcome", outcome, "-ErrorMessage", msg,
+                           "-Duration", $(duration*1000).int],
+                           options={poStdErrToStdOut, poUsePath, poParentStreams})
+      discard waitForExit(p)
+      close(p)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
   if strip(expected.msg) notin strip(given.msg):
@@ -331,8 +338,7 @@ proc generatedFile(test: TTest, target: TTarget): string =
   else:
     let (_, name, _) = test.name.splitFile
     let ext = targetToExt[target]
-    result = nimcacheDir(test.name, test.options, target) /
-              name.replace("_", "__").changeFileExt(ext)
+    result = nimcacheDir(test.name, test.options, target) / "@m" & name.changeFileExt(ext)
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
@@ -435,6 +441,10 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
           if isJsTarget:
             exeCmd = nodejs
             args = concat(@[exeFile], args)
+          elif defined(posix) and not exeFile.contains('/'):
+            # "security" in Posix is actually just a euphemism
+            # for "unproductive arbitrary shit"
+            exeCmd = "./" & exeFile
           else:
             exeCmd = exeFile
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
@@ -551,6 +561,10 @@ const disabledFilesDefault = @[
   "setimpl.nim",
   "hashcommon.nim",
 
+  # Requires compiling with '--threads:on`
+  "sharedlist.nim",
+  "sharedtables.nim",
+
   # Error: undeclared identifier: 'hasThreadSupport'
   "ioselectors_epoll.nim",
   "ioselectors_kqueue.nim",
@@ -594,7 +608,7 @@ proc main() =
 
   var p = initOptParser()
   p.next()
-  while p.kind == cmdLongoption:
+  while p.kind in {cmdLongoption, cmdShortOption}:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
@@ -634,6 +648,8 @@ proc main() =
         quit Usage
     of "skipfrom":
       skipFrom = p.val.string
+    of "azurerunid":
+      runId = p.val.parseInt
     else:
       quit Usage
     p.next()
@@ -646,7 +662,8 @@ proc main() =
   of "all":
     #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
 
-    var myself = quoteShell(findExe("testament" / "tester"))
+    azure.start()
+    var myself = quoteShell(findExe("testament" / "testament"))
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
@@ -654,6 +671,8 @@ proc main() =
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
+    if isAzure:
+      myself &= " " & quoteShell("--azureRunId:" & $runId)
 
     var cats: seq[string]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
@@ -679,13 +698,16 @@ proc main() =
         progressStatus(i)
         processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
     else:
+      addQuitProc azure.finish
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
+    azure.start()
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
   of "pcat":
+    azure.start()
     skips = loadSkipFrom(skipFrom)
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
@@ -694,7 +716,13 @@ proc main() =
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
+  of "p", "pat", "pattern":
+    skips = loadSkipFrom(skipFrom)
+    let pattern = p.key
+    p.next
+    processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
+    azure.start()
     # at least one directory is required in the path, to use as a category name
     let pathParts = split(p.key.string, {DirSep, AltSep})
     # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
@@ -710,6 +738,7 @@ proc main() =
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
   backend.close()
+  if isMainProcess: azure.finish()
   var failed = r.total - r.passed - r.skipped
   if failed != 0:
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",

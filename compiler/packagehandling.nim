@@ -39,22 +39,17 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     if parents <= 0: break
 
 proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
-  # foo/../bar becomes foo7_7bar
-  result = relativeTo(path, conf.projectPath, '/').string.multiReplace(
-    {"/": "7", "..": "_", "7": "77", "_": "__", ":": "8", "8": "88"})
+  # foo-#head/../bar becomes @foo-@hhead@s..@sbar
+  result = "@m" & relativeTo(path, conf.projectPath, '/').string.multiReplace({"/": "@s", "#": "@h", "@": "@@", ":": "@c"})
 
 proc demanglePackageName*(path: string): string =
-  result = path.multiReplace(
-    {"88": "8", "8": ":", "77": "7", "__": "_", "_7": "../", "7": "/"})
+  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
 
 proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   let x = getPackageName(conf, path.string)
-  if x.len == 0:
-    result = path
+  let (p, file, ext) = path.splitFile
+  if x == "stdlib":
+    # Hot code reloading now relies on 'stdlib_system' names etc.
+    result = p / RelativeFile((x & '_' & file) & ext)
   else:
-    let (p, file, ext) = path.splitFile
-    if x == "stdlib":
-      # Hot code reloading now relies on 'stdlib_system' names etc.
-      result = p / RelativeFile((x & '_' & file) & ext)
-    else:
-      result = p / RelativeFile(fakePackageName(conf, path))
+    result = p / RelativeFile(fakePackageName(conf, path))

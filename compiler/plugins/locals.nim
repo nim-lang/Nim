@@ -17,25 +17,24 @@ proc semLocals*(c: PContext, n: PNode): PNode =
   var tupleType = newTypeS(tyTuple, c)
   result = newNodeIT(nkPar, n.info, tupleType)
   tupleType.n = newNodeI(nkRecList, n.info)
+  let owner = getCurrOwner(c)
   # for now we skip openarrays ...
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: break
     for it in items(scope.symbols):
-      # XXX parameters' owners are wrong for generics; this caused some pain
-      # for closures too; we should finally fix it.
-      #if it.owner != c.p.owner: return result
       if it.kind in skLocalVars and
           it.typ.skipTypes({tyGenericInst, tyVar}).kind notin
             {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyUntyped, tyTyped, tyEmpty}:
 
-        var field = newSym(skField, it.name, getCurrOwner(c), n.info)
-        field.typ = it.typ.skipTypes({tyVar})
-        field.position = counter
-        inc(counter)
+        if it.owner == owner:
+          var field = newSym(skField, it.name, owner, n.info)
+          field.typ = it.typ.skipTypes({tyVar})
+          field.position = counter
+          inc(counter)
 
-        addSon(tupleType.n, newSymNode(field))
-        addSonSkipIntLit(tupleType, field.typ)
+          addSon(tupleType.n, newSymNode(field))
+          addSonSkipIntLit(tupleType, field.typ)
 
-        var a = newSymNode(it, result.info)
-        if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
-        result.add(a)
+          var a = newSymNode(it, result.info)
+          if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
+          result.add(a)

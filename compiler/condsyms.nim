@@ -48,13 +48,11 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
   defineSymbol("nimnode")
-  defineSymbol("nimnomagic64")
   defineSymbol("nimvarargstyped")
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
   defineSymbol("nimHasalignOf")
-  defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
   defineSymbol("nimGenericInOutFlags")
@@ -87,6 +85,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDefault")
   defineSymbol("nimMacrosSizealignof")
   defineSymbol("nimNoZeroExtendMagic")
+  defineSymbol("nimMacrosGetNodeId")
   for f in low(Feature)..high(Feature):
     defineSymbol("nimHas" & $f)
 
@@ -97,3 +96,8 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimFixedOwned")
   defineSymbol("nimHasStyleChecks")
+  defineSymbol("nimToOpenArrayCString")
+  defineSymbol("nimHasUsed")
+  defineSymbol("nimFixedForwardGeneric")
+  defineSymbol("nimnomagic64")
+  defineSymbol("nimNewShiftOps")

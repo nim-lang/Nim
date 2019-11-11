@@ -8,6 +8,8 @@
 #
 
 ## Shared list support.
+##
+## Unstable API.
 
 {.push stackTrace: off.}
 

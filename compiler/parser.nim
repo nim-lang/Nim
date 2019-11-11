@@ -710,7 +710,7 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
     result = parseCast(p)
   else:
     parMessage(p, errExprExpected, p.tok)
-    getTok(p)  # we must consume a token here to prevend endless loops!
+    getTok(p)  # we must consume a token here to prevent endless loops!
     result = p.emptyNode
 
 proc namedParams(p: var TParser, callee: PNode,

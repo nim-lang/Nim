@@ -134,7 +134,8 @@
 ##   # 'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
 ##
 ## The same could have been achieved by manually iterating over a container
-## and increasing each key's value with `inc proc<#inc,CountTable[A],A,int>`_:
+## and increasing each key's value with `inc proc
+## <#inc,CountTable[A],A,Positive>`_:
 ##
 ## .. code-block::
 ##   import tables
@@ -307,6 +308,22 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
 
+proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toTable
+
+  putImpl(enlarge)
+
 proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## Creates a new hash table that contains the given ``pairs``.
   ##
@@ -361,22 +378,6 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
-  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -540,7 +541,7 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   var index = rawGet(t, key, hc)
   result = index >= 0
   if result:
-    shallowCopy(val, t.data[index].val)
+    val = move(t.data[index].val)
     delImplIdx(t, index)
 
 proc clear*[A, B](t: var Table[A, B]) =
@@ -1285,6 +1286,22 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
 
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
+  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initOrderedTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
+
+  putImpl(enlarge)
+
 proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given ``pairs``.
   ##
@@ -1341,22 +1358,6 @@ proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
-  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initOrderedTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -1487,6 +1488,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## O(n) complexity.
   ##
   ## See also:
+  ## * `take proc<#take,OrderedTable[A,B],A,B>`_
   ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
@@ -1512,11 +1514,42 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
         rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
+proc take*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
+  runnableExamples:
+    var
+      a = {'c': 5, 'b': 9, 'a': 13}.toOrderedTable
+      i: int
+    doAssert a.take('b', i) == true
+    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
+    doAssert i == 9
+    i = 0
+    doAssert a.take('z', i) == false
+    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
+    doAssert i == 0
+
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = index >= 0
+  if result:
+    val = move(t.data[index].val)
+    del(t, key)
+
 proc clear*[A, B](t: var OrderedTable[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
   ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `take proc<#take,OrderedTable[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     doAssert len(a) == 3
@@ -1941,7 +1974,7 @@ proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
-proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
+proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
   ## See also:
@@ -1955,11 +1988,34 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc clear*[A, B](t: var OrderedTableRef[A, B]) =
+proc take*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## See also:
+  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
+  ## * `clear proc<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
+  runnableExamples:
+    var
+      a = {'c': 5, 'b': 9, 'a': 13}.newOrderedTable
+      i: int
+    doAssert a.take('b', i) == true
+    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
+    doAssert i == 9
+    i = 0
+    doAssert a.take('z', i) == false
+    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
+    doAssert i == 0
+
+  take(t[], key, val)
+
+proc clear*[A, B](t: OrderedTableRef[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     doAssert len(a) == 3
@@ -2168,6 +2224,19 @@ proc enlarge[A](t: var CountTable[A]) =
     if t.data[i].val != 0: ctRawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
+proc remove[A](t: var CountTable[A], key: A) =
+  var n: seq[tuple[key: A, val: int]]
+  newSeq(n, len(t.data))
+  var removed: bool
+  for i in countup(0, high(t.data)):
+    if t.data[i].val != 0:
+      if t.data[i].key != key:
+        ctRawInsert(t, n, t.data[i].key, t.data[i].val)
+      else:
+        removed = true
+  swap(t.data, n)
+  if removed: dec(t.counter)
+
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
@@ -2181,7 +2250,7 @@ template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1)
+proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
 
 # ----------------------------------------------------------------------
 
@@ -2236,7 +2305,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
+  ## * `inc proc<#inc,CountTable[A],A,Positive>`_ for incrementing a
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
@@ -2246,8 +2315,11 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   else:
     insertImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
+  ##
+  ## ``val`` must be a positive number. If you need to decrement a value,
+  ## use a regular ``Table`` instead.
   runnableExamples:
     var a = toCountTable("aab")
     a.inc('a')
@@ -2318,8 +2390,57 @@ proc len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
+proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `take proc<#take,CountTable[A],A,int>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('c')
+    assert a == toCountTable("aa")
+
+  remove(t, key)
+
+proc take*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    var i = 0
+    assert a.take('b', i)
+    assert i == 3
+    i = 99
+    assert not a.take('b', i)
+    assert i == 99
+
+  var index = rawGet(t, key)
+  result = index >= 0
+  if result:
+    val = move(t.data[index].val)
+    remove(t, key)
+
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `take proc<#take,CountTable[A],A,int>`_
   clearImpl()
   t.isSorted = false
 
@@ -2608,9 +2729,36 @@ proc len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
+proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `take proc<#take,CountTableRef[A],A,int>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  del(t[], key)
+
+proc take*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  take(t[], key, val)
+
 proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
-  clearImpl()
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `take proc<#take,CountTableRef[A],A,int>`_
+  clear(t[])
 
 proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the

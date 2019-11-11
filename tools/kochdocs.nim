@@ -97,6 +97,7 @@ doc/apis.rst
 doc/lib.rst
 doc/manual.rst
 doc/manual_experimental.rst
+doc/destructors.rst
 doc/tut1.rst
 doc/tut2.rst
 doc/tut3.rst
@@ -155,6 +156,7 @@ lib/experimental/diff.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim
 lib/windows/winlean.nim
+lib/windows/registry.nim
 lib/pure/random.nim
 lib/pure/complex.nim
 lib/pure/times.nim

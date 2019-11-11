@@ -27,13 +27,11 @@ method eval(e: ref TPlusExpr): int =
 
 proc newLit(x: int): ref TLiteral =
   new(result)
-  {.watchpoint: result.}
   result.x = x
   result.op1 = $getOccupiedMem()
 
 proc newPlus(a, b: ref TExpr): ref TPlusExpr =
   new(result)
-  {.watchpoint: result.}
   result.a = a
   result.b = b
   result.op2 = $getOccupiedMem()

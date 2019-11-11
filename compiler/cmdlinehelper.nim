@@ -13,6 +13,8 @@ import
   options, idents, nimconf, scriptconfig, extccomp, commands, msgs,
   lineinfos, modulegraphs, condsyms, os, pathutils
 
+from strutils import normalize
+
 type
   NimProg* = ref object
     suggestMode*: bool
@@ -72,7 +74,11 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
       runNimScriptIfExists(scriptFile)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if fileExists(scriptFile) and scriptFile == conf.projectFull:
-        return false
+        if conf.command == "":
+          conf.command = "e"
+          return false
+        elif conf.command.normalize == "e":
+          return false
     else:
       if scriptFile != conf.projectFull:
         runNimScriptIfExists(scriptFile)
@@ -81,7 +87,7 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
         discard
 
   # now process command line arguments again, because some options in the
-  # command line can overwite the config file's settings
+  # command line can overwrite the config file's settings
   extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
   if conf.command == "":

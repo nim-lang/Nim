@@ -9,6 +9,8 @@
 
 ## This module defines compile-time reflection procs for
 ## working with types.
+##
+## Unstable API.
 
 export system.`$` # for backward compatibility
 

@@ -58,7 +58,7 @@ type
     id*: int                  # the ID of the label; positive means that it
     label*: Rope              # generated text for the label
                               # nil if label is not used
-    sections*: TCProcSections # the code beloging
+    sections*: TCProcSections # the code belonging
     isLoop*: bool             # whether block is a loop
     nestedTryStmts*: int16    # how many try statements is it nested into
     nestedExceptStmts*: int16 # how many except statements is it nested into
@@ -73,7 +73,7 @@ type
     noSafePoints*: bool       # the proc doesn't use safe points in exception handling
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # bool is true when are in the except part of a try block
@@ -117,8 +117,6 @@ type
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
-    breakPointId*: int
-    breakpoints*: Rope # later the breakpoints are inserted into the main proc
     typeInfoMarker*: TypeCacheWithOwner
     config*: ConfigRef
     graph*: ModuleGraph
@@ -152,7 +150,7 @@ type
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
     hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
-    inHcrInitGuard*: bool     # We are currently withing a HCR reloading guard.
+    inHcrInitGuard*: bool     # We are currently within a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation

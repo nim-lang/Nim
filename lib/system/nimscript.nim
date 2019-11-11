@@ -239,8 +239,14 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
     copyDir `from`, to
     checkOsError()
 
-proc exec*(command: string) =
-  ## Executes an external process.
+proc exec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
+  ##
+  ## **Note:** If you need a version of ``exec`` that returns the exit code
+  ## and text output of the command, you can use `system.gorgeEx
+  ## <system.html#gorgeEx,string,string,string>`_.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
@@ -248,11 +254,16 @@ proc exec*(command: string) =
 
 proc exec*(command: string, input: string, cache = "") {.
   raises: [OSError], tags: [ExecIOEffect].} =
-  ## Executes an external process.
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
   log "exec: " & command:
-    echo staticExec(command, input, cache)
+    let (output, exitCode) = gorgeEx(command, input, cache)
+    if exitCode != 0:
+      raise newException(OSError, "FAILED: " & command)
+    echo output
 
-proc selfExec*(command: string) =
+proc selfExec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external command with the current nim/nimble executable.
   ## ``Command`` must not contain the "nim " part.
   let c = selfExe() & " " & command
@@ -300,9 +311,9 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ## Changes the current directory.
   ##
   ## The change is permanent for the rest of the execution, since this is just
-  ## a shortcut for `os.setCurrentDir()
-  ## <http://nim-lang.org/docs/os.html#setCurrentDir,string>`_ . Use the `withDir()
-  ## <#withDir>`_ template if you want to perform a temporary change only.
+  ## a shortcut for `os.setCurrentDir() <os.html#setCurrentDir,string>`_ . Use
+  ## the `withDir() <#withDir.t,string,untyped>`_ template if you want to
+  ## perform a temporary change only.
   setCurrentDir(dir)
   checkOsError()
 
@@ -315,7 +326,8 @@ proc findExe*(bin: string): string =
 template withDir*(dir: string; body: untyped): untyped =
   ## Changes the current directory temporarily.
   ##
-  ## If you need a permanent change, use the `cd() <#cd>`_ proc. Usage example:
+  ## If you need a permanent change, use the `cd() <#cd,string>`_ proc.
+  ## Usage example:
   ##
   ## .. code-block:: nim
   ##   withDir "foo":

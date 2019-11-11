@@ -37,18 +37,16 @@ type
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
     wIntDefine, wStrDefine, wBoolDefine
 
-    wCursor,
-
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wExportNims, wIncompleteStruct, wRequiresInit,
+    wImportc, wImportJs, wExportc, wExportCpp, wExportNims, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideEffect, wHeader,
     wNoSideEffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
     wCompilerProc, wCore, wProcVar, wBase, wUsed,
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
     wLineDir, wStackTrace, wLineTrace, wLink, wCompile,
-    wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger,
+    wLinksys, wDeprecated, wVarargs, wCallconv, wDebugger,
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks,
@@ -62,8 +60,7 @@ type
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
     wFieldChecks,
-    wWatchPoint, wSubsChar,
-    wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
+    wSubsChar, wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
     wInjectStmt, wExperimental,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit,
     wAsmNoStackFrame,
@@ -126,11 +123,9 @@ const
     "magic", "thread", "final", "profiler", "memtracker", "objchecks",
     "intdefine", "strdefine", "booldefine",
 
-    "cursor",
-
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
-    "importcompilerproc", "importc", "exportc", "exportnims",
+    "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
     "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
@@ -138,7 +133,7 @@ const
     "fatal", "error", "warning", "hint", "line",
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
     "link", "compile", "linksys", "deprecated", "varargs",
-    "callconv", "breakpoint", "debugger", "nimcall", "stdcall",
+    "callconv", "debugger", "nimcall", "stdcall",
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
@@ -152,7 +147,6 @@ const
     "pragma",
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",
-    "watchpoint",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "computedgoto", "injectstmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
@@ -211,7 +205,7 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wLinearScanEnd: "linearScanEnd"
   of wComputedGoto: "computedGoto"
   of wInjectStmt: "injectStmt"
-  of wAsmNoStackFrame: "asmNoStackframe"
+  of wAsmNoStackFrame: "asmNoStackFrame"
   of wImplicitStatic: "implicitStatic"
   of wCodegenDecl: "codegenDecl"
   of wLiftLocals: "liftLocals"

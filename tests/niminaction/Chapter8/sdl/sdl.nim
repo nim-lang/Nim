@@ -1,9 +1,13 @@
 when defined(Windows):
   const libName* = "SDL2.dll"
-elif defined(Linux):
+elif defined(Linux) or defined(freebsd):
   const libName* = "libSDL2.so"
 elif defined(MacOsX):
   const libName* = "libSDL2.dylib"
+elif defined(openbsd):
+  const libName* = "libSDL2.so.0.6"
+else:
+  {.error: "SDL library name not set for this platform".}
 
 type
   SdlWindow = object

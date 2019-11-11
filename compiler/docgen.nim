@@ -406,6 +406,7 @@ proc runAllExamples(d: PDoc) =
                 elif isDefined(d.conf, "objc"): "objc"
                 else: "c"
   if os.execShellCmd(os.getAppFilename() & " " & backend &
+                    " --warning[UnusedImport]:off" &
                     " --path:" & quoteShell(d.conf.projectPath) &
                     " --nimcache:" & quoteShell(outputDir) &
                     " -r " & quoteShell(outp)) != 0:
@@ -591,7 +592,7 @@ proc docstringSummary(rstText: string): string =
   ##
   ## Most docstrings will contain a one liner summary, so stripping at the
   ## first newline is usually fine. If after that the content is still too big,
-  ## it is stripped at the first comma, colon or dot, usual english sentence
+  ## it is stripped at the first comma, colon or dot, usual English sentence
   ## separators.
   ##
   ## No guarantees are made on the size of the output, but it should be small.
@@ -871,13 +872,13 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< sonsLen(n): generateDoc(d, n.sons[i], orig)
+    for i in 0 ..< len(n): generateDoc(d, n.sons[i], orig)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
@@ -925,13 +926,13 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       generateJson(d, n.sons[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
@@ -968,13 +969,13 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
     when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         r.add genTagsItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       generateTags(d, n.sons[i], r)
   of nkWhenStmt:
     # generate documentation for the first branch only:

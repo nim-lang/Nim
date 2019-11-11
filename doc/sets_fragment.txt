@@ -83,4 +83,4 @@ Note how the set turns enum values into powers of 2.
 If using enums and sets with C, use distinct cint.
 
 For interoperability with C see also the
-`bitsize pragma <#implementation-specific-pragmas-bitsize-pragma>`_.
+`bitsize pragma <manual.html#implementation-specific-pragmas-bitsize-pragma>`_.

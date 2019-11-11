@@ -13,7 +13,7 @@
 import ropes, tables, pathutils
 
 const
-  explanationsBaseUrl* = "https://nim-lang.org/docs/manual"
+  explanationsBaseUrl* = "https://nim-lang.org/docs"
 
 type
   TMsgKind* = enum

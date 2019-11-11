@@ -134,7 +134,7 @@ type
   TErrorHandler* = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string)
   TLexer* = object of TBaseLexer
     fileIdx*: FileIndex
-    indentAhead*: int         # if > 0 an indendation has already been read
+    indentAhead*: int         # if > 0 an indentation has already been read
                               # this is needed because scanning comments
                               # needs so much look-ahead
     currLineIndent*: int
@@ -565,7 +565,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       case result.tokType
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
-      of tkUInt64Lit:
+      of tkUInt64Lit, tkUIntLit:
         var iNumber: uint64
         var len: int
         try:
@@ -864,7 +864,9 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '
   var c = L.buf[L.bufpos]
   case c
-  of '\0'..pred(' '), '\'': lexMessage(L, errGenerated, "invalid character literal")
+  of '\0'..pred(' '), '\'':
+    lexMessage(L, errGenerated, "invalid character literal")
+    tok.literal = $c
   of '\\': getEscapedChar(L, tok)
   else:
     tok.literal = $c

@@ -30,7 +30,6 @@ type                          # please make sure we have under 32 options
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
-    optEndb,                  # embedded debugger
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
     optProfiler,              # profiler turned on
@@ -82,8 +81,14 @@ type                          # please make sure we have under 32 options
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll
-    optNimV2
+    optSeqDestructors         # active if the implementation uses the new
+                              # string/seq implementation based on destructors
+    optTinyRtti               # active if we use the new "tiny RTTI"
+                              # implementation
+    optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
+    optNimV019
+    optBenchmarkVM            # Enables cpuTime() in the VM
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -110,14 +115,15 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcHooks,
     gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
-    ideHighlight, ideOutline, ideKnown, ideMsg
+    ideHighlight, ideOutline, ideKnown, ideMsg, ideProject
 
   Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
@@ -140,7 +146,7 @@ type
   LegacyFeature* = enum
     allowSemcheckedAstModification,
       ## Allows to modify a NimNode where the type has already been
-      ## flaged with nfSem. If you actually do this, it will cause
+      ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
 
   SymbolFilesOption* = enum
@@ -399,7 +405,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osDragonfly, osMacosx,
+                            osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
                             osAndroid, osNintendoSwitch}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
@@ -409,8 +415,10 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = platform.OS[conf.target.targetOS].props.contains(ospLacksThreadVars)
     of "msdos": result = conf.target.targetOS == osDos
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
-    of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
-    of "osx": result = conf.target.targetOS == osMacosx
+    of "macintosh":
+      result = conf.target.targetOS in {osMacos, osMacosx, osIos}
+    of "osx", "macosx":
+      result = conf.target.targetOS in {osMacosx, osIos}
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
@@ -473,12 +481,16 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
-  conf.outDir / conf.outFile
+  result = conf.outDir / conf.outFile
+  if dirExists(result.string):
+    result.string.add ".out"
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
   createDir conf.outDir
-  return conf.outDir / conf.outFile
+  result = conf.outDir / conf.outFile
+  if dirExists(result.string):
+    result.string.add ".out"
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
@@ -534,6 +546,9 @@ proc removeTrailingDirSep*(path: string): string =
 
 proc disableNimblePath*(conf: ConfigRef) =
   incl conf.globalOptions, optNoNimblePath
+  conf.lazyPaths.setLen(0)
+
+proc clearNimblePath*(conf: ConfigRef) =
   conf.lazyPaths.setLen(0)
 
 include packagehandling
@@ -657,21 +672,40 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
-  var candidates: seq[string] = @[]
-  var dir = pkg
+  var
+    candidates: seq[string] = @[]
+    dir = pkg
+    prev = dir
+    nimblepkg = ""
+  let pkgname = pkg.lastPathPart()
   while true:
-    for k, f in os.walkDir(dir, relative=true):
+    for k, f in os.walkDir(dir, relative = true):
       if k == pcFile and f != "config.nims":
         let (_, name, ext) = splitFile(f)
         if ext in extensions:
           let x = changeFileExt(dir / name, ".nim")
           if fileExists(x):
             candidates.add x
+          if ext == ".nimble":
+            if nimblepkg.len == 0:
+              nimblepkg = name
+              # Since nimble packages can have their source in a subfolder,
+              # check the last folder we were in for a possible match.
+              if dir != prev:
+                let x = prev / x.extractFilename()
+                if fileExists(x):
+                  candidates.add x
+            else:
+              # If we found more than one nimble file, chances are that we
+              # missed the real project file, or this is an invalid nimble
+              # package. Either way, bailing is the better choice.
+              return ""
+    let pkgname = if nimblepkg.len > 0: nimblepkg else: pkgname
     for c in candidates:
-      # nim-foo foo  or  foo  nfoo
-      if (pkg in c) or (c in pkg): return c
-    if candidates.len >= 1:
+      if pkgname in c.extractFilename(): return c
+    if candidates.len > 0:
       return candidates[0]
+    prev = dir
     dir = parentDir(dir)
     if dir == "": break
   return ""
@@ -704,6 +738,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "outline": ideOutline
   of "known": ideKnown
   of "msg": ideMsg
+  of "project": ideProject
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -720,3 +755,14 @@ proc `$`*(c: IdeCmd): string =
   of ideOutline: "outline"
   of ideKnown: "known"
   of ideMsg: "msg"
+  of ideProject: "project"
+
+proc floatInt64Align*(conf: ConfigRef): int16 =
+  ## Returns either 4 or 8 depending on reasons.
+  if conf != nil and conf.target.targetCPU == cpuI386:
+    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
+    if conf.target.targetOS != osWindows:
+      # on i386 for all known POSIX systems, 64bits ints are aligned
+      # to 4bytes (except with -malign-double)
+      return 4
+  return 8

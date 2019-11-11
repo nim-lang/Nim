@@ -48,7 +48,7 @@ proc methodCall*(n: PNode; conf: ConfigRef): PNode =
   if disp != nil:
     result.sons[0].sym = disp
     # change the arguments to up/downcasts to fit the dispatcher's parameters:
-    for i in 1 ..< sonsLen(result):
+    for i in 1 ..< len(result):
       result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true, conf)
   else:
     localError(conf, n.info, "'" & $result.sons[0] & "' lacks a dispatcher")
@@ -58,10 +58,10 @@ type
 
 proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   if a.name.id != b.name.id: return
-  if sonsLen(a.typ) != sonsLen(b.typ):
+  if len(a.typ) != len(b.typ):
     return
 
-  for i in 1 ..< sonsLen(a.typ):
+  for i in 1 ..< len(a.typ):
     var aa = a.typ.sons[i]
     var bb = b.typ.sons[i]
     while true:
@@ -118,7 +118,7 @@ proc createDispatcher(s: PSym): PSym =
   disp.ast.sons[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = nil
   if s.typ.sons[0] != nil:
-    if disp.ast.sonsLen > resultPos:
+    if disp.ast.len > resultPos:
       disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
     else:
       # We've encountered a method prototype without a filled-in
@@ -136,7 +136,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
   # from later definitions, particularly the resultPos slot. Also,
   # the lock level of the dispatcher needs to be updated/checked
   # against that of the method.
-  if disp.ast.sonsLen > resultPos and meth.ast.sonsLen > resultPos and
+  if disp.ast.len > resultPos and meth.ast.len > resultPos and
      disp.ast.sons[resultPos].kind == nkEmpty:
     disp.ast.sons[resultPos] = copyTree(meth.ast.sons[resultPos])
 
@@ -198,7 +198,7 @@ proc relevantCol(methods: seq[PSym], col: int): bool =
         return true
 
 proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
-  for col in 1 ..< sonsLen(a.typ):
+  for col in 1 ..< len(a.typ):
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
       var bb = skipTypes(b.typ.sons[col], skipPtrs)
@@ -228,7 +228,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
 proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
-  var paramLen = sonsLen(base.typ)
+  var paramLen = len(base.typ)
   var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysMagic(g, unknownLineInfo(), "and", mAnd)
@@ -288,7 +288,7 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
   for bucket in 0 ..< len(g.methods):
     var relevantCols = initIntSet()
-    for col in 1 ..< sonsLen(g.methods[bucket].methods[0].typ):
+    for col in 1 ..< len(g.methods[bucket].methods[0].typ):
       if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
       if optMultiMethods notin g.config.globalOptions:
         # if multi-methods are not enabled, we are interested only in the first field

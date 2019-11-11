@@ -7,16 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
+## Unstable API.
+
 type
   AllocatorFlag* {.pure.} = enum  ## flags describing the properties of the allocator
     ThreadLocal ## the allocator is thread local only.
     ZerosMem    ## the allocator always zeros the memory on an allocation
   Allocator* = ptr AllocatorObj
   AllocatorObj* {.inheritable, compilerproc.} = object
-    alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [], tags: [].}
-    dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [], tags: [].}
-    realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [], tags: [].}
-    deallocAll*: proc (a: Allocator) {.nimcall, raises: [], tags: [].}
+    alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [], tags: [], gcsafe.}
+    dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [], tags: [], gcsafe.}
+    realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [], tags: [], gcsafe.}
+    deallocAll*: proc (a: Allocator) {.nimcall, raises: [], tags: [], gcsafe.}
     flags*: set[AllocatorFlag]
     name*: cstring
     allocCount: int

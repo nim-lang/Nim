@@ -1,4 +1,5 @@
 discard """
+  disabled: "windows"
   outputsub: "send has errored. As expected. All good!"
   exitcode: 0
 """

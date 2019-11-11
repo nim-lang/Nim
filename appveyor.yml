@@ -4,8 +4,8 @@ environment:
   DLLS_URL: https://nim-lang.org/download/dlls.zip
   DLLS_ARCHIVE: dlls.zip
   MINGW_DIR: mingw64
-  MINGW_URL: https://nim-lang.org/download/mingw64-6.3.0.7z
-  MINGW_ARCHIVE: mingw64-6.3.0.7z
+  MINGW_URL: https://nim-lang.org/download/mingw64.7z
+  MINGW_ARCHIVE: mingw64.7z
 
   matrix:
     - NIM_TEST_PACKAGES: false
@@ -15,10 +15,6 @@ cache:
     - '%MINGW_ARCHIVE%'
     - '%DLLS_ARCHIVE%'
 
-matrix:
-  #allow_failures:
-  #  - NIM_TEST_PACKAGES: true
-  fast_finish: true
 
 install:
   - ps: Install-Product node 8 # node 8 or later is required to test js async stuff

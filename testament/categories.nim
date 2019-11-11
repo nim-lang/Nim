@@ -322,40 +322,44 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "niminaction/Chapter8/sdl/sdl_test"
     ]
 
-  # Verify that the files have not been modified. Death shall fall upon
-  # whoever edits these hashes without dom96's permission, j/k. But please only
-  # edit when making a conscious breaking change, also please try to make your
-  # commit message clear and notify me so I can easily compile an errata later.
-  const refHashes = @[
-    "51afdfa84b3ca3d810809d6c4e5037ba",
-    "30f07e4cd5eaec981f67868d4e91cfcf",
-    "d14e7c032de36d219c9548066a97e846",
-    "b335635562ff26ec0301bdd86356ac0c",
-    "6c4add749fbf50860e2f523f548e6b0e",
-    "76de5833a7cc46f96b006ce51179aeb1",
-    "705eff79844e219b47366bd431658961",
-    "a1e87b881c5eb161553d119be8b52f64",
-    "2d706a6ec68d2973ec7e733e6d5dce50",
-    "c11a013db35e798f44077bc0763cc86d",
-    "3e32e2c5e9a24bd13375e1cd0467079c",
-    "a5452722b2841f0c1db030cf17708955",
-    "dc6c45eb59f8814aaaf7aabdb8962294",
-    "69d208d281a2e7bffd3eaf4bab2309b1",
-    "ec05666cfb60211bedc5e81d4c1caf3d",
-    "da520038c153f4054cb8cc5faa617714",
-    "59906c8cd819cae67476baa90a36b8c1",
-    "9a8fe78c588d08018843b64b57409a02",
-    "8b5d28e985c0542163927d253a3e4fc9",
-    "783299b98179cc725f9c46b5e3b5381f",
-    "1a2b3fba1187c68d6a9bfa66854f3318",
-    "391ff57b38d9ea6f3eeb3fe69ab539d3"
-  ]
+  when false:
+    # Verify that the files have not been modified. Death shall fall upon
+    # whoever edits these hashes without dom96's permission, j/k. But please only
+    # edit when making a conscious breaking change, also please try to make your
+    # commit message clear and notify me so I can easily compile an errata later.
+    # ---------------------------------------------------------
+    # Hash-checks are disabled for Nim 1.1 and beyond
+    # since we needed to fix the deprecated unary '<' operator.
+    const refHashes = @[
+      "51afdfa84b3ca3d810809d6c4e5037ba",
+      "30f07e4cd5eaec981f67868d4e91cfcf",
+      "d14e7c032de36d219c9548066a97e846",
+      "b335635562ff26ec0301bdd86356ac0c",
+      "6c4add749fbf50860e2f523f548e6b0e",
+      "76de5833a7cc46f96b006ce51179aeb1",
+      "705eff79844e219b47366bd431658961",
+      "a1e87b881c5eb161553d119be8b52f64",
+      "2d706a6ec68d2973ec7e733e6d5dce50",
+      "c11a013db35e798f44077bc0763cc86d",
+      "3e32e2c5e9a24bd13375e1cd0467079c",
+      "a5452722b2841f0c1db030cf17708955",
+      "dc6c45eb59f8814aaaf7aabdb8962294",
+      "69d208d281a2e7bffd3eaf4bab2309b1",
+      "ec05666cfb60211bedc5e81d4c1caf3d",
+      "da520038c153f4054cb8cc5faa617714",
+      "59906c8cd819cae67476baa90a36b8c1",
+      "9a8fe78c588d08018843b64b57409a02",
+      "8b5d28e985c0542163927d253a3e4fc9",
+      "783299b98179cc725f9c46b5e3b5381f",
+      "1a2b3fba1187c68d6a9bfa66854f3318",
+      "391ff57b38d9ea6f3eeb3fe69ab539d3"
+    ]
+    for i, test in tests:
+      let filename = testsDir / test.addFileExt("nim")
+      let testHash = getMD5(readFile(filename).string)
+      doAssert testHash == refHashes[i], "Nim in Action test " & filename &
+          " was changed: " & $(i: i, testHash: testHash, refHash: refHashes[i])
 
-  for i, test in tests:
-    let filename = testsDir / test.addFileExt("nim")
-    let testHash = getMD5(readFile(filename).string)
-    doAssert testHash == refHashes[i], "Nim in Action test " & filename &
-        " was changed: " & $(i: i, testHash: testHash, refHash: refHashes[i])
   # Run the tests.
   for testfile in tests:
     test "tests/" & testfile & ".nim"
@@ -506,6 +510,7 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
+
     errors = r.total - r.passed
     if errors == 0:
       r.addResult(packageFileTest, targetC, "", "", reSuccess)
@@ -568,7 +573,7 @@ proc quoted(a: string): string =
   result.addQuoted(a)
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
-  ## returs a list of tests that have problems
+  ## returns a list of tests that have problems
   var specs: seq[TSpec] = @[]
   for kind, dir in walkDir(testsDir):
     assert testsDir.startsWith(testsDir)
@@ -658,7 +663,8 @@ proc processCategory(r: var TResults, cat: Category,
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
   of "ic":
-    icTests(r, testsDir, cat, options)
+    when false:
+      icTests(r, testsDir, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:
@@ -717,3 +723,15 @@ proc processCategory(r: var TResults, cat: Category,
       inc testsRun
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
+
+proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
+  var testsRun = 0
+  for name in walkPattern(pattern):
+    if simulate:
+      echo "Detected test: ", name
+    else:
+      var test = makeTest(name, options, Category"pattern")
+      testSpec r, test
+    inc testsRun
+  if testsRun == 0:
+    echo "no tests were found for pattern: ", pattern

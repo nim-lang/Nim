@@ -1,11 +1,12 @@
 discard """
-  output: '''ob @[]
-ob3 @[]
-ob2 @[]
-3
+  output: '''ob2 @[]
 ob @[]
 ob3 @[]
-ob2 @[]'''
+3
+ob2 @[]
+ob @[]
+ob3 @[]
+'''
   cmd: "nim c -r --threads:on $file"
 """
 

@@ -49,7 +49,6 @@ echo(["a", "b", "c", "d"].len)
 for x in items(["What's", "your", "name", "?", ]):
   echo(x)
 var `name` = readLine(stdin)
-{.breakpoint.}
 echo("Hi " & thallo.name & "!\n")
 debug(name)
 

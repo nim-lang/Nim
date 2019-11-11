@@ -31,6 +31,15 @@ when declared(echo):
   proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
   proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
+  proc typekinds*(t: PType) {.deprecated.} =
+    var t = t
+    var s = ""
+    while t != nil and t.len > 0:
+      s.add $t.kind
+      s.add " "
+      t = t.lastSon
+    echo s
+
   template debug*(x: PSym|PType|PNode) {.deprecated.} =
     when compiles(c.config):
       debug(c.config, x)
@@ -77,7 +86,6 @@ proc idNodeTablePut*(t: var TIdNodeTable, key: PIdObj, val: PNode)
 
 # ---------------------------------------------------------------------------
 
-proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
 proc mustRehash*(length, counter: int): bool
 proc nextTry*(h, maxHash: Hash): Hash {.inline.}
@@ -117,7 +125,7 @@ proc sameValue*(a, b: PNode): bool =
   result = false
   case a.kind
   of nkCharLit..nkUInt64Lit:
-    if b.kind in {nkCharLit..nkUInt64Lit}: result = a.intVal == b.intVal
+    if b.kind in {nkCharLit..nkUInt64Lit}: result = getInt(a) == getInt(b)
   of nkFloatLit..nkFloat64Lit:
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal == b.floatVal
   of nkStrLit..nkTripleStrLit:
@@ -131,8 +139,8 @@ proc leValue*(a, b: PNode): bool =
   # a <= b?
   result = false
   case a.kind
-  of nkCharLit..nkUInt32Lit:
-    if b.kind in {nkCharLit..nkUInt32Lit}: result = a.intVal <= b.intVal
+  of nkCharLit..nkUInt64Lit:
+    if b.kind in {nkCharLit..nkUInt64Lit}: result = getInt(a) <= getInt(b)
   of nkFloatLit..nkFloat64Lit:
     if b.kind in {nkFloatLit..nkFloat64Lit}: result = a.floatVal <= b.floatVal
   of nkStrLit..nkTripleStrLit:
@@ -152,14 +160,14 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< sonsLen(n):
+    for i in 0 ..< len(n):
       result = lookupInRecord(n.sons[i], field)
       if result != nil: return
   of nkRecCase:
     if (n.sons[0].kind != nkSym): return nil
     result = lookupInRecord(n.sons[0], field)
     if result != nil: return
-    for i in 1 ..< sonsLen(n):
+    for i in 1 ..< len(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n.sons[i]), field)
@@ -174,13 +182,53 @@ proc getModule*(s: PSym): PSym =
   assert((result.kind == skModule) or (result.owner != result))
   while result != nil and result.kind != skModule: result = result.owner
 
-proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
-  for i in start ..< sonsLen(list):
+proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
+  for i in start ..< len(list):
     if list.sons[i].kind == nkSym:
       result = list.sons[i].sym
       if result.name.id == ident.id: return
     else: return nil
   result = nil
+
+proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
+  if a[0] != b[0]: return false
+  var alen = a.len - 1
+  while alen > 0 and a[alen] != '`': dec(alen)
+  if alen <= 0: alen = a.len
+
+  var i = 1
+  var j = 1
+  while true:
+    while i < alen and a[i] == '_': inc i
+    while j < b.len and b[j] == '_': inc j
+    var aa = if i < alen: toLowerAscii(a[i]) else: '\0'
+    var bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
+    if aa != bb: return false
+
+    # the characters are identical:
+    if i >= alen:
+      # both cursors at the end:
+      if j >= b.len: return true
+      # not yet at the end of 'b':
+      return false
+    elif j >= b.len:
+      return false
+    inc i
+    inc j
+
+proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
+  ## Named parameters are special because a named parameter can be
+  ## gensym'ed and then they have '`<number>' suffix that we need to
+  ## ignore, see compiler / evaltempl.nim, snippet:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
+  ##            if c.instLines: actual.info else: templ.info)
+  for i in 1 ..< len(list):
+    let it = list[i].sym
+    if it.name.id == ident.id or
+        sameIgnoreBacktickGensymInfo(it.name.s, ident.s): return it
 
 proc hashNode(p: RootRef): Hash =
   result = hash(cast[pointer](p))
@@ -279,9 +327,9 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
         strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
   else:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       sonsRope = rope("[")
-      for i in 0 ..< sonsLen(n):
+      for i in 0 ..< len(n):
         if i > 0: add(sonsRope, ",")
         addf(sonsRope, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n.sons[i],
             marker, indent + 4, maxRecDepth - 1)])
@@ -328,9 +376,9 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
-        if sonsLen(n) > 0:
+        if len(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
-          for i in 0 ..< sonsLen(n):
+          for i in 0 ..< len(n):
             if i > 0: add(result, ",")
             addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(conf, n.sons[i],
                 marker, indent + 4, maxRecDepth - 1)])
@@ -515,12 +563,12 @@ proc value(this: var DebugPrinter; value: PType) =
     this.key "n"
     this.value value.n
 
-  if sonsLen(value) > 0:
+  if len(value) > 0:
     this.key "sons"
     this.openBracket
-    for i in 0 ..< sonsLen(value):
+    for i in 0 ..< len(value):
       this.value value.sons[i]
-      if i != sonsLen(value) - 1:
+      if i != len(value) - 1:
         this.comma
     this.closeBracket
 
@@ -568,12 +616,12 @@ proc value(this: var DebugPrinter; value: PNode) =
     if this.renderSymType and value.typ != nil:
       this.key "typ"
       this.value value.typ
-    if sonsLen(value) > 0:
+    if len(value) > 0:
       this.key "sons"
       this.openBracket
-      for i in 0 ..< sonsLen(value):
+      for i in 0 ..< len(value):
         this.value value.sons[i]
-        if i != sonsLen(value) - 1:
+        if i != len(value) - 1:
           this.comma
       this.closeBracket
 

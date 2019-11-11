@@ -110,7 +110,7 @@ proc setNestingLevel(self: ref SimpleLoop, level: int) =
   self.nestingLevel = level
   if level == 0: self.isRoot = true
 
-var loop_counter: int = 0
+var loopCounter: int = 0
 
 type
   Lsg = object
@@ -119,8 +119,8 @@ type
 
 proc createNewLoop(self: var Lsg): ref SimpleLoop =
   result = newSimpleLoop()
-  loop_counter += 1
-  result.counter = loop_counter
+  loopCounter += 1
+  result.counter = loopCounter
 
 proc addLoop(self: var Lsg, l: ref SimpleLoop) =
   self.loops.add l
@@ -170,13 +170,13 @@ proc union(self: ref UnionFindNode, unionFindNode: ref UnionFindNode) =
 
 
 const
-  BB_TOP          = 0 # uninitialized
-  BB_NONHEADER    = 1 # a regular BB
-  BB_REDUCIBLE    = 2 # reducible loop
-  BB_SELF         = 3 # single BB loop
-  BB_IRREDUCIBLE  = 4 # irreducible loop
-  BB_DEAD         = 5 # a dead BB
-  BB_LAST         = 6 # Sentinel
+  BB_TOP = 0 # uninitialized
+  BB_NONHEADER = 1 # a regular BB
+  BB_REDUCIBLE = 2 # reducible loop
+  BB_SELF = 3 # single BB loop
+  BB_IRREDUCIBLE = 4 # irreducible loop
+  BB_DEAD = 5 # a dead BB
+  BB_LAST = 6 # Sentinel
 
   # # Marker for uninitialized nodes.
   UNVISITED = -1
@@ -196,7 +196,9 @@ proc newHavlakLoopFinder(cfg: Cfg, lsg: Lsg): HavlakLoopFinder =
 proc isAncestor(w: int, v: int, last: seq[int]): bool =
   w <= v and v <= last[w]
 
-proc dfs(currentNode: ref BasicBlock, nodes: var seq[ref UnionFindNode], number: var Table[ref BasicBlock, int], last: var seq[int], current: int): int =
+proc dfs(currentNode: ref BasicBlock, nodes: var seq[ref UnionFindNode],
+         number: var Table[ref BasicBlock, int],
+         last: var seq[int], current: int): int =
   var stack = @[(currentNode, current)]
   while stack.len > 0:
     let (currentNode, current) = stack.pop()
@@ -215,13 +217,13 @@ proc findLoops(self: var HavlakLoopFinder): int =
   if startNode == nil: return 0
   var size = self.cfg.getNumNodes
 
-  var nonBackPreds    = newSeq[HashSet[int]]()
-  var backPreds       = newSeq[seq[int]]()
-  var number          = initTable[ref BasicBlock, int]()
-  var header          = newSeq[int](size)
-  var types           = newSeq[int](size)
-  var last            = newSeq[int](size)
-  var nodes           = newSeq[ref UnionFindNode]()
+  var nonBackPreds = newSeq[HashSet[int]]()
+  var backPreds = newSeq[seq[int]]()
+  var number = initTable[ref BasicBlock, int]()
+  var header = newSeq[int](size)
+  var types = newSeq[int](size)
+  var last = newSeq[int](size)
+  var nodes = newSeq[ref UnionFindNode]()
 
   for i in 1..size:
     nonBackPreds.add initSet[int](1)

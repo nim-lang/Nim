@@ -4,6 +4,14 @@ int32
 int32
 1280
 1280
+3
+1
+2
+2
+3
+4294967295
+2
+0
 '''
 """
 
@@ -54,6 +62,7 @@ block tcast:
   crossCheck(uint16, uint16.high + 5'u16)
   crossCheck(uint32, uint32.high + 5'u32)
   crossCheck(uint64, 0xFFFFFFFFFFFFFFFF'u64 + 5'u64)
+  crossCheck(uint64, uint64.high + 5'u64)
 
   doAssert $sub1(0'u8) == "255"
   doAssert $sub1(0'u16) == "65535"
@@ -142,5 +151,19 @@ block tsubrange:
   var level: n16 = 1
   let maxLevel: n16 = 1
 
-  level = min(level + 2, maxLevel)
+  level = min(level + 2, maxLevel).n16
   doAssert level == 1
+
+block tissue12177:
+  var a: uint16 = 1
+  var b: uint32 = 2
+
+  echo(b + a)
+  echo(b - a)
+  echo(b * a)
+  echo(b div a)
+
+  echo(a + b)
+  echo(a - b)
+  echo(a * b)
+  echo(a div b)

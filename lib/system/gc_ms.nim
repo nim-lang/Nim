@@ -254,7 +254,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
     of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
-      when not defined(gcDestructors):
+      when not defined(nimSeqsV2):
         var d = cast[ByteAddress](cellToUsr(cell))
         var s = cast[PGenericSeq](d)
         if s != nil:
@@ -304,7 +304,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-when not defined(gcDestructors):
+when not defined(nimSeqsV2):
   proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
     # `newObj` already uses locks, so no need for them here.
     let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
@@ -511,7 +511,7 @@ when not defined(useNimRtl):
       gch.tracing = true
 
   proc GC_fullCollect() =
-    var oldThreshold = gch.cycleThreshold
+    let oldThreshold = gch.cycleThreshold
     gch.cycleThreshold = 0 # forces cycle collection
     collectCT(gch, 0)
     gch.cycleThreshold = oldThreshold

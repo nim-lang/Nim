@@ -2,9 +2,77 @@ discard """
 action: compile
 """
 
-# this test should ensure that the AST doesn't change slighly without it getting noticed.
+# this test should ensure that the AST doesn't change slightly without it getting noticed.
 
 import ../ast_pattern_matching
+
+template expectNimNode(arg: untyped): NimNode = arg
+  ## This template here is just to be injected by `myquote`, so that
+  ## a nice error message appears when the captured symbols are not of
+  ## type `NimNode`.
+
+proc substitudeComments(symbols, values, n: NimNode): NimNode =
+  ## substitutes all nodes of kind nnkCommentStmt to parameter
+  ## symbols. Consumes the argument `n`.
+  if n.kind == nnkCommentStmt:
+    values.add newCall(bindSym"newCommentStmtNode", newLit(n.strVal))
+    # Gensym doesn't work for parameters. These identifiers won't
+    # clash unless an argument is constructed to clash here.
+    symbols.add ident("comment" & $values.len & "_XObBdOnh6meCuJK2smZV")
+    return symbols[^1]
+  for i in 0 ..< n.len:
+    n[i] = substitudeComments(symbols, values, n[i])
+  return n
+
+macro myquote*(args: varargs[untyped]): untyped =
+  expectMinLen(args, 1)
+
+  # This is a workaround for #10430 where comments are removed in
+  # template expansions. This workaround lifts all comments
+  # statements to be arguments of the temporary template.
+
+  let extraCommentSymbols = newNimNode(nnkBracket)
+  let extraCommentGenExpr = newNimNode(nnkBracket)
+  let body = substitudeComments(
+    extraCommentSymbols, extraCommentGenExpr, args[^1]
+  )
+
+  let formalParams = nnkFormalParams.newTree(ident"untyped")
+  for i in 0 ..< args.len-1:
+    formalParams.add nnkIdentDefs.newTree(
+      args[i], ident"untyped", newEmptyNode()
+    )
+  for sym in extraCommentSymbols:
+    formalParams.add nnkIdentDefs.newTree(
+      sym, ident"untyped", newEmptyNode()
+    )
+
+  let templateSym = genSym(nskTemplate)
+  let templateDef = nnkTemplateDef.newTree(
+    templateSym,
+    newEmptyNode(),
+    newEmptyNode(),
+    formalParams,
+    nnkPragma.newTree(ident"dirty"),
+    newEmptyNode(),
+    args[^1]
+  )
+
+  let templateCall = newCall(templateSym)
+  for i in 0 ..< args.len-1:
+    let symName = args[i]
+    # identifiers and quoted identifiers are allowed.
+    if symName.kind == nnkAccQuoted:
+      symName.expectLen 1
+      symName[0].expectKind nnkIdent
+    else:
+      symName.expectKind nnkIdent
+    templateCall.add newCall(bindSym"expectNimNode", symName)
+  for expr in extraCommentGenExpr:
+    templateCall.add expr
+  let getAstCall = newCall(bindSym"getAst", templateCall)
+  result = newStmtList(templateDef, getAstCall)
+
 
 macro testAddrAst(arg: typed): bool =
   arg.expectKind nnkStmtListExpr
@@ -49,34 +117,35 @@ static:
       echo "OK"
 
 
-  testPattern nnkIntLit(intVal = 42)            , 42
-  testPattern nnkInt8Lit(intVal = 42)           , 42'i8
-  testPattern nnkInt16Lit(intVal = 42)          , 42'i16
-  testPattern nnkInt32Lit(intVal = 42)          , 42'i32
-  testPattern nnkInt64Lit(intVal = 42)          , 42'i64
-  testPattern nnkUInt8Lit(intVal = 42)          , 42'u8
-  testPattern nnkUInt16Lit(intVal = 42)         , 42'u16
-  testPattern nnkUInt32Lit(intVal = 42)         , 42'u32
-  testPattern nnkUInt64Lit(intVal = 42)         , 42'u64
-  #testPattern nnkFloat64Lit(floatVal = 42.0)      , 42.0
-  testPattern nnkFloat32Lit(floatVal = 42.0)      , 42.0'f32
-  #testPattern nnkFloat64Lit(floatVal = 42.0)      , 42.0'f64
-  testPattern nnkStrLit(strVal = "abc")         , "abc"
-  testPattern nnkRStrLit(strVal = "abc")        , r"abc"
-  testPattern nnkTripleStrLit(strVal = "abc")   , """abc"""
-  testPattern nnkCharLit(intVal = 32)           , ' '
-  testPattern nnkNilLit()              , nil
-  testPattern nnkIdent(strVal = "myIdentifier") , myIdentifier
+  testPattern nnkIntLit(intVal = 42), 42
+  testPattern nnkInt8Lit(intVal = 42), 42'i8
+  testPattern nnkInt16Lit(intVal = 42), 42'i16
+  testPattern nnkInt32Lit(intVal = 42), 42'i32
+  testPattern nnkInt64Lit(intVal = 42), 42'i64
+  testPattern nnkUInt8Lit(intVal = 42), 42'u8
+  testPattern nnkUInt16Lit(intVal = 42), 42'u16
+  testPattern nnkUInt32Lit(intVal = 42), 42'u32
+  testPattern nnkUInt64Lit(intVal = 42), 42'u64
+  #testPattern nnkFloat64Lit(floatVal = 42.0), 42.0
+  testPattern nnkFloat32Lit(floatVal = 42.0), 42.0'f32
+  #testPattern nnkFloat64Lit(floatVal = 42.0), 42.0'f64
+  testPattern nnkStrLit(strVal = "abc"), "abc"
+  testPattern nnkRStrLit(strVal = "abc"), r"abc"
+  testPattern nnkTripleStrLit(strVal = "abc"), """abc"""
+  testPattern nnkCharLit(intVal = 32), ' '
+  testPattern nnkNilLit(), nil
+  testPattern nnkIdent(strVal = "myIdentifier"), myIdentifier
 
-  testPatternFail nnkInt8Lit(intVal = 42)           , 42'i16
-  testPatternFail nnkInt16Lit(intVal = 42)          , 42'i8
+  testPatternFail nnkInt8Lit(intVal = 42), 42'i16
+  testPatternFail nnkInt16Lit(intVal = 42), 42'i8
+
 
 
 # this should be just `block` but it doesn't work that way anymore because of VM.
 macro scope(arg: untyped): untyped =
   let procSym = genSym(nskProc)
   result = quote do:
-    proc `procSym`(): void {.compileTime.} =
+    proc `procSym`() {.compileTime.} =
       `arg`
 
     `procSym`()
@@ -85,7 +154,7 @@ static:
   ## Command call
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       echo "abc", "xyz"
 
     ast.matchAst:
@@ -95,7 +164,7 @@ static:
   ## Call with ``()``
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       echo("abc", "xyz")
 
     ast.matchAst:
@@ -140,7 +209,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       ? "xyz"
 
     ast.matchAst(err):
@@ -155,7 +224,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       proc identifier*
 
     ast[0].matchAst(err):
@@ -185,7 +254,7 @@ static:
 
   ## Call with raw string literal
   scope:
-    let ast = quote do:
+    let ast = myquote:
       echo"abc"
 
 
@@ -230,7 +299,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       cast[T](x)
 
     ast.matchAst:
@@ -242,7 +311,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       x.y
 
     ast.matchAst:
@@ -264,7 +333,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       (1, 2, (3))
 
     ast.matchAst:
@@ -276,7 +345,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       {1, 2, 3}
 
     ast.matchAst:
@@ -285,7 +354,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       {a: 3, b: 5}
 
     ast.matchAst:
@@ -300,7 +369,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       [1, 2, 3]
 
     ast.matchAst:
@@ -312,7 +381,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       1..3
 
     ast.matchAst:
@@ -328,7 +397,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       if cond1: expr1 elif cond2: expr2 else: expr3
 
     ast.matchAst:
@@ -343,7 +412,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       ## This is a comment
       ## This is part of the first comment
       stmt1
@@ -357,12 +426,12 @@ static:
     ):
       echo "ok"
     else:
-      echo "NOT OK!!!"
+      echo "warning!"
       echo ast.treeRepr
       echo "TEST causes no fail, because of a regression in Nim."
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       {.emit: "#include <stdio.h>".}
 
     ast.matchAst:
@@ -375,7 +444,7 @@ static:
       echo "ok"
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       {.pragma: cdeclRename, cdecl.}
 
     ast.matchAst:
@@ -391,7 +460,7 @@ static:
 
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       if cond1:
         stmt1
       elif cond2:
@@ -413,7 +482,7 @@ static:
 
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       x = 42
 
     ast.matchAst:
@@ -423,7 +492,7 @@ static:
 
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       stmt1
       stmt2
       stmt3
@@ -439,7 +508,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       case expr1
       of expr2, expr3..expr4:
         stmt1
@@ -464,7 +533,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       while expr1:
         stmt1
 
@@ -477,7 +546,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       for ident1, ident2 in expr1:
         stmt1
 
@@ -490,7 +559,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       try:
         stmt1
       except e1, e2:
@@ -517,7 +586,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       return expr1
 
     ast.matchAst:
@@ -528,7 +597,7 @@ static:
   ## Continue statement
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       continue
 
     ast.matchAst:
@@ -539,7 +608,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       break otherLocation
 
     ast.matchAst:
@@ -550,9 +619,11 @@ static:
 
   scope:
 
-    let ast = quote do:
+    template blockStatement {.dirty.} =
       block name:
         discard
+
+    let ast = getAst(blockStatement())
 
     ast.matchAst:
     of nnkBlockStmt(ident"name", nnkStmtList):
@@ -562,7 +633,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       asm """some asm"""
 
     ast.matchAst:
@@ -576,7 +647,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       import math
 
     ast.matchAst:
@@ -585,7 +656,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       import math except pow
 
     ast.matchAst:
@@ -594,7 +665,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       import strutils as su
 
     ast.matchAst:
@@ -611,7 +682,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       from math import pow
 
     ast.matchAst:
@@ -622,7 +693,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       export unsigned
 
     ast.matchAst:
@@ -631,7 +702,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       export math except pow # we're going to implement our own exponentiation
 
     ast.matchAst:
@@ -642,7 +713,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       include blocks
 
     ast.matchAst:
@@ -653,7 +724,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       var a = 3
 
     ast.matchAst:
@@ -670,7 +741,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       let a = 3
 
     ast.matchAst:
@@ -687,7 +758,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       const a = 3
 
     ast.matchAst:
@@ -704,7 +775,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       type A = int
 
     ast.matchAst:
@@ -719,7 +790,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       type MyInt = distinct int
 
     ast.peelOff({nnkTypeSection}).matchAst:
@@ -735,7 +806,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       type A[T] = expr1
 
     ast.matchAst:
@@ -757,7 +828,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       type IO = object of RootObj
 
     ast.peelOff(nnkTypeSection).matchAst:
@@ -840,7 +911,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       type X = enum
         First
 
@@ -853,7 +924,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       type Con = concept x,y,z
         (x & y & z) is string
 
@@ -865,7 +936,7 @@ static:
 
   scope:
 
-    let astX = quote do:
+    let astX = myquote:
       type
         A[T: static[int]] = object
 
@@ -880,7 +951,7 @@ static:
 
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       type MyProc[T] = proc(x: T)
 
     ast.peelOff({nnkStmtList, nnkTypeSection}).matchAst(err):
@@ -952,7 +1023,7 @@ static:
     proc hello*[T: SomeInteger](x: int = 3, y: float32): int {.inline.} = discard
 
   scope:
-    var ast = quote do:
+    var ast = myquote:
       proc foobar(a, b: int): void
 
     ast = ast[3]
@@ -971,7 +1042,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       proc hello(): var int
 
     ast[3].matchAst: # subAst
@@ -986,7 +1057,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       iterator nonsense[T](x: seq[T]): float {.closure.} =
         discard
 
@@ -998,7 +1069,7 @@ static:
 
   scope:
 
-    let ast = quote do:
+    let ast = myquote:
       converter toBool(x: float): bool
 
     ast.matchAst:
@@ -1008,7 +1079,7 @@ static:
   ## Template declaration
 
   scope:
-    let ast = quote do:
+    let ast = myquote:
       template optOpt{expr1}(a: int): int
 
     ast.matchAst:

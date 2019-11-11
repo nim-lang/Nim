@@ -3,12 +3,14 @@ discard """
 void; ntyVoid; void; void
 int; ntyInt; int; int
 proc (); ntyProc; proc[void]; proc ()
-voidProc; ntyProc; proc[void]; proc ()'''
+voidProc; ntyProc; proc[void]; proc ()
+typeDesc[range[1 .. 5]]; ntyTypeDesc; typeDesc[range[1, 5]]; typeDesc[range[1 .. 5]]
+typeDesc[range]; ntyTypeDesc; typeDesc[range[T]]; typeDesc[range]'''
 """
 
 import macros
 
-macro checkType(ex: typed; expected: string): untyped =
+macro checkType(ex: typed): untyped =
   echo ex.getTypeInst.repr, "; ", ex.typeKind, "; ", ex.getType.repr, "; ", ex.getTypeImpl.repr
 
 macro checkProcType(fn: typed): untyped =
@@ -19,9 +21,9 @@ macro checkProcType(fn: typed): untyped =
 proc voidProc = echo "hello"
 proc intProc(a: int, b: float): int {.checkProcType.} = 10
 
-checkType(voidProc(), "void")
-checkType(intProc(10, 20.0), "int")
-checkType(voidProc, "procTy")
+checkType(voidProc())
+checkType(intProc(10, 20.0))
+checkType(voidProc)
 checkProcType(voidProc)
 
 # bug #10548
@@ -68,3 +70,6 @@ macro foobar(arg: typed): untyped =
 var x: Vec2f
 
 foobar(x)
+
+checkType(range[1..5])
+checkType(range)

@@ -176,3 +176,18 @@ proc myfuncLoop(x: int): MySeqNonCopyable =
     result = cc
 
 discard myfuncLoop(3)
+
+#------------------------------------------------------------
+# Move into table via openarray
+#------------------------------------------------------------
+
+type
+  TableNonCopyable = object
+    x: seq[(string, MySeqNonCopyable)]
+
+proc toTable(pairs: sink openArray[(string, MySeqNonCopyable)]): TableNonCopyable =
+  discard
+
+
+let mytable = {"a": newMySeq(2, 5.0)}.toTable
+
