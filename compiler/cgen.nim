@@ -484,7 +484,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
     #  add(decl, " GC_GUARD")
     if sfVolatile in s.flags: add(result, " volatile")
-    if s.alignment > 0:
+    if s.kind in {skLet, skVar} and s.alignment > 0:
       result.addf(" alignas($1)", [rope(s.alignment)])
     add(result, " ")
     add(result, s.loc.r)

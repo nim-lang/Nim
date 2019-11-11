@@ -820,7 +820,7 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
-    of skLet, skVar, skField, skForVar, skResult, skTemp:
+    of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
       alignment*: int # for alignas(X) expressions
