@@ -531,6 +531,8 @@ proc assignGlobalVar(p: BProc, n: PNode) =
       var decl: Rope = nil
       var td = getTypeDesc(p.module, s.loc.t)
       if s.constraint.isNil:
+        if s.alignment > 0:
+          decl.addf "alignas($1) ", [rope(s.alignment)]
         if p.hcrOn: add(decl, "static ")
         elif sfImportc in s.flags: add(decl, "extern ")
         add(decl, td)
@@ -1189,6 +1191,8 @@ proc genVarPrototype(m: BModule, n: PNode) =
       declareThreadVar(m, sym, true)
     else:
       incl(m.declaredThings, sym.id)
+      if sym.alignment > 0:
+        m.s[cfsVars].addf "alignas($1) ", [rope(sym.alignment)]
       add(m.s[cfsVars], if m.hcrOn: "static " else: "extern ")
       add(m.s[cfsVars], getTypeDesc(m, sym.loc.t))
       if m.hcrOn: add(m.s[cfsVars], "*")

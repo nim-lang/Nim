@@ -6436,11 +6436,13 @@ generates:
 Alignas pragma
 --------------
 
-The ``alignas`` pragma is for local variables and object field
-members. It modifies the alignment requirement of the object being
-declared. The argument must be a constant power of 2 or 0. ``alignas`` does not
-weaken the alignment the type would have naturally. ``alignas(0)``
-does not have any effect.
+The ``alignas`` pragma is for variables and object field members. It
+modifies the alignment requirement of the thing being declared. The
+argument must be a constant power of 2 or 0.  Valid non-zero
+alignments that are weaker than another alignas pragmas on the same
+declaration are ignored.  Alignments that are weaker that the
+alignment requirement of the type are ignored. ``alignas(0)`` is
+always ignored.
 
 .. code-block:: Nim
 
@@ -6462,10 +6464,7 @@ does not have any effect.
 
    main()
 
-
 This pragma has no effect on nimvm or the js backend.
-
-**Note**: This pragma is not yet implemented for the LLVM backend.
 
 Volatile pragma
 ---------------

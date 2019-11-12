@@ -817,12 +817,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wAlignas:
         let alignment = expectIntLit(c, it)
-        if sym.kind != skField and isTopLevel(c):
-          localError(c.config, n.info, "alignas not allowed in top level declaration")
-        elif not isPowerOfTwo(alignment):
-          localError(c.config, it.info, "power of two expected")
+        if alignment == 0:
+          discard
+        elif isPowerOfTwo(alignment):
+          sym.alignment = max(sym.alignment, alignment)
         else:
-          sym.alignment = alignment
+          localError(c.config, it.info, "power of two or 0 expected")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
