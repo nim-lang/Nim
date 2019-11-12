@@ -527,7 +527,7 @@ proc p(n: PNode; c: var Con): PNode =
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef,
       nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt, nkExportStmt,
-      nkPragma, nkCommentStmt, nkBreakStmt:
+      nkPragma, nkCommentStmt, nkBreakStmt, nkBreakState:
     result = n
   of nkWhileStmt:
     result = copyNode(n)

@@ -1,5 +1,6 @@
 discard """
   output: '''Success
+@["a", "b", "c"]
 0'''
   cmd: '''nim c --gc:destructors $file'''
 """
@@ -23,6 +24,15 @@ proc mkManyLeaks() =
     mkleak()
   echo "Success"
 
+iterator foobar(c: string): seq[string] {.closure.} =
+  yield @["a", "b", c]
+
+proc tsimpleClosureIterator =
+  var myc = "c"
+  for it in foobar(myc):
+    echo it
+
 let startMem = getOccupiedMem()
 mkManyLeaks()
+tsimpleClosureIterator()
 echo getOccupiedMem() - startMem
