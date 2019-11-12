@@ -1724,7 +1724,7 @@ proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1, c.config)
   if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or
-      isClosureIterator(c.p.owner):
+      (not c.p.owner.typ.isNil and isClosureIterator(c.p.owner.typ)):
     if n.sons[0].kind != nkEmpty:
       # transform ``return expr`` to ``result = expr; return``
       if c.p.resultSym != nil:
@@ -1771,7 +1771,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
     else:
       localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
         c.p.owner.name.s)
-  if isInlineIterator(c.p.owner) and c.p.owner.typ.sons[0] != nil and
+  if isInlineIterator(c.p.owner.typ) and c.p.owner.typ.sons[0] != nil and
       c.p.owner.typ.sons[0].kind == tyUntyped:
     localError(c.config, c.p.owner.info, errCannotInferReturnType %
       c.p.owner.name.s)
@@ -2563,7 +2563,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # if isGenericRoutine(result.sym):
         #   localError(c.config, n.info, errInstantiateXExplicitly, s.name.s)
       # "procs literals" are 'owned'
-      if optNimV2 in c.config.globalOptions:
+      if optOwnedRefs in c.config.globalOptions:
         result.typ = makeVarType(c, result.typ, tyOwned)
     else:
       result = semSym(c, n, s, flags)

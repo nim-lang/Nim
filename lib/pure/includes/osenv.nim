@@ -3,7 +3,8 @@
 when not declared(os) and not declared(ospaths):
   {.error: "This is an include file for os.nim!".}
 
-from parseutils import skipIgnoreCase
+when defined(windows):
+  from parseutils import skipIgnoreCase
 
 proc c_getenv(env: cstring): cstring {.
   importc: "getenv", header: "<stdlib.h>".}

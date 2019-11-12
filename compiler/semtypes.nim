@@ -635,6 +635,12 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     errorUndeclaredIdentifier(c, n.sons[0].info, typ.sym.name.s)
   elif not isOrdinalType(typ):
     localError(c.config, n.sons[0].info, "selector must be of an ordinal type, float or string")
+  if firstOrd(c.config, typ) != 0:
+    localError(c.config, n.info, "low(" & $a.sons[0].sym.name.s &
+                                     ") must be 0 for discriminant")
+  elif lengthOrd(c.config, typ) > 0x00007FFF:
+    localError(c.config, n.info, "len($1) must be less than 32768" % a.sons[0].sym.name.s)
+
   for i in 1 ..< len(n):
     var b = copyTree(n.sons[i])
     addSon(a, b)
@@ -723,7 +729,11 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                      else: rectype.sym
     for i in 0 .. len(n)-3:
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      suggestSym(c.config, n.sons[i].info, f, c.graph.usageSym)
+      let info = if n.sons[i].kind == nkPostfix:
+                   n.sons[i].sons[1].info
+                 else:
+                   n.sons[i].info
+      suggestSym(c.config, info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
       f.options = c.config.options
@@ -734,7 +744,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)
       if containsOrIncl(check, f.name.id):
-        localError(c.config, n.sons[i].info, "attempt to redefine: '" & f.name.s & "'")
+        localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
       styleCheckDef(c.config, f)
@@ -871,7 +881,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
     #if not isNilable: result.flags.incl tfNotNil
-    if isOwned and optNimV2 in c.config.globalOptions:
+    if isOwned and optOwnedRefs in c.config.globalOptions:
       let t = newTypeS(tyOwned, c)
       t.flags.incl tfHasOwned
       t.rawAddSonNoPropagationOfTypeFlags result
@@ -1638,7 +1648,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeof(c, n[1], prev)
       elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeOf:
         result = semTypeof2(c, n, prev)
-      elif op.s == "owned" and optNimV2 notin c.config.globalOptions and n.len == 2:
+      elif op.s == "owned" and optOwnedRefs notin c.config.globalOptions and n.len == 2:
         result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
@@ -1662,26 +1672,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq:
-      if false: # c.config.selectedGC == gcDestructors and optNimV2 notin c.config.globalOptions:
-        let s = c.graph.sysTypes[tySequence]
-        assert s != nil
-        assert prev == nil
-        result = copyType(s, s.owner, keepId=false)
-        # Remove the 'T' parameter from tySequence:
-        result.sons.setLen 0
-        result.n = nil
-        result.flags = {tfHasAsgn}
-        semContainerArg(c, n, "seq", result)
-        if result.len > 0:
-          var base = result[0]
-          if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
-          if not containsGenericType(base):
-            # base.kind != tyGenericParam:
-            c.typesWithOps.add((result, result))
-      else:
-        result = semContainer(c, n, tySequence, "seq", prev)
-        if c.config.selectedGC == gcDestructors:
-          incl result.flags, tfHasAsgn
+      result = semContainer(c, n, tySequence, "seq", prev)
+      if optSeqDestructors in c.config.globalOptions:
+        incl result.flags, tfHasAsgn
     of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mType, mTypeOf:
@@ -1856,7 +1849,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mString:
     setMagicType(c.config, m, tyString, szUncomputedSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
-    if c.config.selectedGC == gcDestructors:
+    if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
   of mCstring:
     setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
@@ -1897,7 +1890,7 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyUncheckedArray, szUncomputedSize)
   of mSeq:
     setMagicType(c.config, m, tySequence, szUncomputedSize)
-    if c.config.selectedGC == gcDestructors:
+    if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
     assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ

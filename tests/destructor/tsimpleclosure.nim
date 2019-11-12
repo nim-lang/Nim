@@ -44,5 +44,21 @@ ok0()
 var ok1 = say
 ok1()
 
+when false:
+  # bug #12443
+  func newStringIterator(s: string): owned(iterator(): char) =
+    result = iterator(): char =
+      var pos = 0
+      while pos < s.len:
+        yield s[pos]
+        inc pos
+
+  proc stringIter() =
+    let si = newStringIterator("foo")
+    for i in si():
+      echo i
+
+  stringIter()
+
 let (a, d) = allocCounters()
 discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, system.allocs)

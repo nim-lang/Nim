@@ -152,7 +152,9 @@ when defined(boehmgc):
     proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() =
-    boehmGC_set_all_interior_pointers(0)
+    when defined(boehmNoIntPtr):
+      # See #12286
+      boehmGC_set_all_interior_pointers(0)
     boehmGCinit()
     when hasThreadSupport:
       boehmGC_allow_register_threads()
@@ -505,10 +507,10 @@ else:
   elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
-  elif defined(nimV2) or defined(gcDestructors):
+  elif defined(nimV2) or usesDestructors:
     var allocator {.rtlThreadVar.}: MemRegion
     instantiateForRegion(allocator)
-    when defined(gcDestructors):
+    when defined(gcHooks):
       include "system/gc_hooks"
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
@@ -516,7 +518,7 @@ else:
   else:
     include "system/gc"
 
-when not declared(nimNewSeqOfCap) and not defined(gcDestructors):
+when not declared(nimNewSeqOfCap) and not defined(nimSeqsV2):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
     when defined(gcRegions):
       let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize

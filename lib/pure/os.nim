@@ -15,18 +15,18 @@
 ##   import os
 ##
 ##   let myFile = "/path/to/my/file.nim"
-## 
+##
 ##   let pathSplit = splitPath(myFile)
 ##   assert pathSplit.head == "/path/to/my"
 ##   assert pathSplit.tail == "file.nim"
-## 
+##
 ##   assert parentDir(myFile) == "/path/to/my"
-## 
+##
 ##   let fileSplit = splitFile(myFile)
 ##   assert fileSplit.dir == "/path/to/my"
 ##   assert fileSplit.name == "file"
 ##   assert fileSplit.ext == ".nim"
-## 
+##
 ##   assert myFile.changeFileExt("c") == "/path/to/my/file.c"
 
 ##
@@ -40,11 +40,6 @@
 ## * `distros module <distros.html>`_
 ## * `dynlib module <dynlib.html>`_
 ## * `streams module <streams.html>`_
-
-
-{.deadCodeElim: on.}  # dce option deprecated
-
-{.push debugger: off.}
 
 include "system/inclrtl"
 
@@ -216,8 +211,12 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   runnableExamples:
     assert splitPath("usr/local/bin") == ("usr/local", "bin")
     assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
+    assert splitPath("/bin/") == ("/bin", "")
+    when (NimMajor, NimMinor) <= (1, 0):
+        assert splitPath("/bin") == ("", "bin")
+    else:
+        assert splitPath("/bin") == ("/", "bin")
     assert splitPath("bin") == ("", "bin")
-    assert splitPath("/bin") == ("", "bin")
     assert splitPath("") == ("", "")
 
   var sepPos = -1
@@ -226,7 +225,12 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
       sepPos = i
       break
   if sepPos >= 0:
-    result.head = substr(path, 0, sepPos-1)
+    result.head = substr(path, 0,
+      when (NimMajor, NimMinor) <= (1, 0):
+        sepPos-1
+      else:
+        if likely(sepPos >= 1): sepPos-1 else: 0
+    )
     result.tail = substr(path, sepPos+1)
   else:
     result.head = ""
@@ -597,13 +601,17 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     assert dir == "/usr/local"
     assert name == ""
     assert ext == ""
+    (dir, name, ext) = splitFile("/tmp.txt")
+    assert dir == "/"
+    assert name == "tmp"
+    assert ext == ".txt"
 
   var namePos = 0
   var dotPos = 0
   for i in countdown(len(path) - 1, 0):
     if path[i] in {DirSep, AltSep} or i == 0:
       if path[i] in {DirSep, AltSep}:
-        result.dir = substr(path, 0, max(0, i - 1))
+        result.dir = substr(path, 0, if likely(i >= 1): i - 1 else: 0)
         namePos = i + 1
       if dotPos > i:
         result.name = substr(path, namePos, dotPos - 1)
@@ -1223,13 +1231,18 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noNimScript.} =
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
-  ## Returns the `current working directory`:idx:.
+  ## Returns the `current working directory`:idx: i.e. where the built
+  ## binary is run.
+  ##
+  ## So the path returned by this proc is determined at run time.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
   ## * `getTempDir proc <#getTempDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
+  ## * `getProjectPath proc <macros.html#getProjectPath>`_
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
@@ -2721,6 +2734,47 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
       len = readlink(procPath, result, len)
     setLen(result, len)
 
+when defined(openbsd):
+  proc isExecutable(path: string): bool =
+    let p = getFilePermissions(path)
+    result = fpUserExec in p and fpGroupExec in p and fpOthersExec in p
+
+  proc getApplOpenBsd(): string =
+    # similar to getApplHeuristic, but checks current working directory
+    when declared(paramStr):
+      result = ""
+
+      # POSIX guaranties that this contains the executable
+      # as it has been executed by the calling process
+      let exePath = string(paramStr(0))
+
+      if len(exePath) == 0:
+        return ""
+
+      if exePath[0] == DirSep:
+        # path is absolute
+        result = exePath
+      else:
+        # not an absolute path, check if it's relative to the current working directory
+        for i in 1..<len(exePath):
+          if exePath[i] == DirSep:
+            result = joinPath(getCurrentDir(), exePath)
+            break
+
+      if len(result) > 0:
+        if isExecutable(result):
+          return expandFilename(result)
+
+        return ""
+
+      # search in path
+      for p in split(string(getEnv("PATH")), {PathSep}):
+        var x = joinPath(p, exePath)
+        if existsFile(x) and isExecutable(x):
+          return expandFilename(x)
+    else:
+      result = ""
+
 when not (defined(windows) or defined(macosx) or weirdTarget):
   proc getApplHeuristic(): string =
     when declared(paramStr):
@@ -2824,6 +2878,9 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noN
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
+    elif defined(openbsd):
+      result = getApplOpenBsd()
+
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()
@@ -2968,7 +3025,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo {.noNimScript.} =
   when defined(Windows):
     var rawInfo: BY_HANDLE_FILE_INFORMATION
     # We have to use the super special '_get_osfhandle' call (wrapped above)
-    # To transform the C file descripter to a native file handle.
+    # To transform the C file descriptor to a native file handle.
     var realHandle = get_osfhandle(handle)
     if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
       raiseOSError(osLastError())
@@ -3068,8 +3125,6 @@ proc getCurrentProcessId*(): int {.noNimScript.} =
     result = GetCurrentProcessId().int
   else:
     result = getpid()
-
-{.pop.}
 
 proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
   ## Sets the `file`'s last modification time. `OSError` is raised in case of

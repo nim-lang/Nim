@@ -132,6 +132,13 @@ else:
         abi: array[56 div sizeof(clong), clong]
       ThreadVarSlot {.importc: "pthread_key_t",
                     header: "<sys/types.h>".} = distinct cuint
+  elif defined(openbsd) and defined(amd64):
+    type
+      SysThread* {.importc: "pthread_t", header: "<pthread.h>".} = object
+      Pthread_attr {.importc: "pthread_attr_t",
+                       header: "<pthread.h>".} = object
+      ThreadVarSlot {.importc: "pthread_key_t",
+                     header: "<pthread.h>".} = cint
   else:
     type
       SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = object
@@ -185,7 +192,7 @@ else:
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
 
-  proc setAffinity(thread: SysThread; setsize: csize; s: var CpuSet) {.
+  proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
     importc: "pthread_setaffinity_np", header: pthreadh.}
 
 

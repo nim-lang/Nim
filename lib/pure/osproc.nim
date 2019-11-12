@@ -27,7 +27,7 @@ when defined(windows):
 else:
   import posix
 
-when defined(linux):
+when defined(linux) and defined(useClone):
   import linux
 
 type

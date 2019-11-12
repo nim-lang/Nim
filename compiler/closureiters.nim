@@ -683,7 +683,8 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv:
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv,
+      nkDerefExpr, nkHiddenDeref:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -757,7 +758,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         n[0] = newSymNode(ctx.g.getSysSym(n[0].info, "true"))
         n[1] = newBody
 
-  of nkDotExpr:
+  of nkDotExpr, nkCheckedFieldExpr:
     var ns = false
     n[0] = ctx.lowerStmtListExprs(n[0], ns)
     if ns:

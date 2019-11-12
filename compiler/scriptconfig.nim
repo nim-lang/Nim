@@ -217,7 +217,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   let oldGlobalOptions = conf.globalOptions
   let oldSelectedGC = conf.selectedGC
   undefSymbol(conf.symbols, "nimv2")
-  conf.globalOptions.excl optNimV2
+  conf.globalOptions.excl {optTinyRtti, optOwnedRefs, optSeqDestructors}
   conf.selectedGC = gcUnselected
 
   var m = graph.makeModule(scriptName)
@@ -229,8 +229,8 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
-  if optNimV2 in oldGlobalOptions:
-    conf.globalOptions.incl optNimV2
+  if optOwnedRefs in oldGlobalOptions:
+    conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
   if conf.selectedGC == gcUnselected:
     conf.selectedGC = oldSelectedGC

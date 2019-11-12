@@ -12,9 +12,6 @@ import
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
   modulegraphs
 
-when not defined(leanCompiler):
-  import writetracking
-
 when defined(useDfa):
   import dfa
 
