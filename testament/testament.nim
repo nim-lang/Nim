@@ -441,12 +441,15 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
           if isJsTarget:
             exeCmd = nodejs
             args = concat(@[exeFile], args)
-          elif defined(posix) and not exeFile.contains('/'):
-            # "security" in Posix is actually just a euphemism
-            # for "unproductive arbitrary shit"
-            exeCmd = "./" & exeFile
           else:
-            exeCmd = exeFile
+            if defined(posix) and not exeFile.contains('/'):
+              # "security" in Posix is actually just a euphemism
+              # for "unproductive arbitrary shit"
+              exeCmd = "./" & exeFile
+            else:
+              exeCmd = exeFile
+            if expected.useValgrind:
+              exeCmd = "valgrind " & exeCmd
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.

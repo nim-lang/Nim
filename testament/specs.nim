@@ -72,6 +72,7 @@ type
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
+    useValgrind*: bool
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
 
@@ -195,6 +196,12 @@ proc parseSpec*(filename: string): TSpec =
         result.nimout = e.value
       of "joinable":
         result.unjoinable = not parseCfgBool(e.value)
+      of "valgrind":
+        result.useValgrind = parseCfgBool(e.value)
+        when defined(windows):
+          # Windows lacks valgrind. Silly OS.
+          result.useValgrind = false
+        result.unjoinable = true
       of "disabled":
         case e.value.normalize
         of "y", "yes", "true", "1", "on": result.err = reDisabled
