@@ -549,8 +549,6 @@ template bitor(a,b,c: Int128): Int128 = bitor(bitor(a,b), c)
 
 proc toInt128*(arg: float64): Int128 =
   let isNegative = arg < 0
-  assert(arg <  0x47E0000000000000'f64, "out of range")
-  assert(arg >= 0xC7E0000000000000'f64, "out of range")
   let v0 = ldexp(abs(arg), -100)
   let w0 = uint64(trunc(v0))
   let v1 = ldexp(v0 - float64(w0), 50)
