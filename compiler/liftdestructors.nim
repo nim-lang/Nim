@@ -52,11 +52,24 @@ proc dotField(x: PNode, f: PSym): PNode =
   result.sons[1] = newSymNode(f, x.info)
   result.typ = f.typ
 
+proc newAsgnStmt(le, ri: PNode): PNode =
+  result = newNodeI(nkAsgn, le.info, 2)
+  result.sons[0] = le
+  result.sons[1] = ri
+
+proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  if c.kind != attachedDestructor:
+    body.add newAsgnStmt(x, y)
+
 proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
   case n.kind
   of nkSym:
     let f = n.sym
-    fillBody(c, f.typ, body, x.dotField(f), y.dotField(f))
+    if sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
+        c.g.config.selectedGC == gcDestructors:
+      defaultOp(c, f.typ, body, x.dotField(f), y.dotField(f))
+    else:
+      fillBody(c, f.typ, body, x.dotField(f), y.dotField(f))
   of nkNilLit: discard
   of nkRecCase:
     if c.kind in {attachedSink, attachedAsgn, attachedDeepCopy}:
@@ -112,11 +125,6 @@ proc newAsgnCall(g: ModuleGraph; op: PSym; x, y: PNode): PNode =
   result.add newSymNode(op)
   result.add genAddr(g, x)
   result.add y
-
-proc newAsgnStmt(le, ri: PNode): PNode =
-  result = newNodeI(nkAsgn, le.info, 2)
-  result.sons[0] = le
-  result.sons[1] = ri
 
 proc newOpCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
@@ -235,10 +243,6 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       onUse(c.info, op)
       body.add newDeepCopyCall(op, x, y)
       result = true
-
-proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  if c.kind != attachedDestructor:
-    body.add newAsgnStmt(x, y)
 
 proc addVar(father, v, value: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -393,6 +397,9 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
+    when false:
+      # XXX investigate if this is necessary:
+      actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
 
@@ -419,6 +426,9 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
+    when false:
+      # XXX investigate if this is necessary:
+      actions.add newAsgnStmt(xenv, newNodeIT(nkNilLit, body.info, xenv.typ))
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
 

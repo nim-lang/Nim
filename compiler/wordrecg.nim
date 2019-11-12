@@ -35,7 +35,7 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
-    wIntDefine, wStrDefine, wBoolDefine
+    wIntDefine, wStrDefine, wBoolDefine, wCursor,
 
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
@@ -121,7 +121,7 @@ const
     ":", "::", "=", ".", "..",
     "*", "-",
     "magic", "thread", "final", "profiler", "memtracker", "objchecks",
-    "intdefine", "strdefine", "booldefine",
+    "intdefine", "strdefine", "booldefine", "cursor",
 
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",

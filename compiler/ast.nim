@@ -228,7 +228,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 38 flags!
+  TSymFlag* = enum    # 39 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -284,6 +284,7 @@ type
                       # variable is generated closure environment; requires early
                       # destruction for --newruntime.
     sfTemplateParam   # symbol is a template parameter
+    sfCursor          # variable/field is a cursor, see RFC 177 for details
 
 
   TSymFlags* = set[TSymFlag]
