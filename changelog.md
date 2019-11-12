@@ -24,6 +24,9 @@
   `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
   Simply write `const SOMECONST = 0` instead.
 
+- The object type names behind ref object and ptr object types have changed in order to 
+  make rendered code compilable. Previously, `Matrix = ref object` had type name
+  `Matrix:ObjectType` now it is simply `Matrix`.
 
 
 ## Library additions
