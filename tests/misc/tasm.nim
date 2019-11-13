@@ -1,9 +1,13 @@
 discard """
-disabled: "windows"
+disabled: windows
+disabled: macosx
+joinable: false
+targets: "c cpp"
 """
 
 # This tests an asm statement that contains quote characters.
 # MSVC does not have inline assembly, therefore it is diabled there.
+# The directives are different for Apple branded compilers.
 asm """
 string_txt:
     .incbin "../testdata/string.txt"
