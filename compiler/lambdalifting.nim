@@ -347,8 +347,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
   # This seems to be generally correct but since it's a bit risky it's disabled
   # for now.
-  let fieldType = if isDefined(c.graph.config, "nimCycleBreaker") or
-                      c.graph.config.selectedGC == gcDestructors:
+  let fieldType = if isDefined(c.graph.config, "nimCycleBreaker"):
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)
@@ -360,9 +359,14 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   if upField != nil:
     if upField.typ.skipTypes({tyOwned, tyRef, tyPtr}) != fieldType.skipTypes({tyOwned, tyRef, tyPtr}):
       localError(c.graph.config, dep.info, "internal error: up references do not agree")
+
+    if c.graph.config.selectedGC == gcDestructors and sfCursor notin upField.flags:
+      localError(c.graph.config, dep.info, "internal error: up reference is not a .cursor")
   else:
     let result = newSym(skField, upIdent, obj.owner, obj.owner.info)
     result.typ = fieldType
+    if c.graph.config.selectedGC == gcDestructors:
+      result.flags.incl sfCursor
     rawAddField(obj, result)
 
 discard """
