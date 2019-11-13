@@ -1,5 +1,7 @@
 discard """
-  output: '''Success
+  output: '''
+@[1, 2, 3]
+Success
 @["a", "b", "c"]
 0'''
   cmd: '''nim c --gc:destructors $file'''
@@ -32,7 +34,18 @@ proc tsimpleClosureIterator =
   for it in foobar(myc):
     echo it
 
+type
+  LazyList = ref object
+    c: proc() {.closure.}
+
+proc tlazyList =
+  let dep = @[1, 2, 3]
+  var x = LazyList(c: proc () = echo(dep))
+  x.c()
+
 let startMem = getOccupiedMem()
+tlazyList()
+
 mkManyLeaks()
 tsimpleClosureIterator()
 echo getOccupiedMem() - startMem

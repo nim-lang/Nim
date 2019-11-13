@@ -382,9 +382,16 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # sink parameter (bug #11524). Note that the string implementation is
       # different and can deal with 'const string sunk into var'.
       result = passCopyToSink(arg, c)
-    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure} + nkLiterals:
+    elif arg.kind in nkLiterals:
+      result = arg # literal to sink parameter: nothing to do
+    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure}:
       # object construction to sink parameter: nothing to do
-      result = arg
+      result = copyTree(arg)
+      for i in ord(arg.kind in {nkObjConstr, nkClosure})..<arg.len:
+        if arg[i].kind == nkExprColonExpr:
+          result[i][1] = pArg(arg[i][1], c, isSink = true)
+        else:
+          result[i] = pArg(arg[i], c, isSink = true)
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
@@ -396,6 +403,12 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result = destructiveMoveVar(arg, c)
     elif arg.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr, nkIfStmt, nkCaseStmt}:
       handleNested(arg): pArg(node, c, isSink)
+    elif arg.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
+      result = copyTree(arg)
+      result[1] = pArg(arg[1], c, isSink = true)
+    elif arg.kind in {nkObjDownConv, nkObjUpConv}:
+      result = copyTree(arg)
+      result[0] = pArg(arg[0], c, isSink = true)
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
