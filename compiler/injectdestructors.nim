@@ -382,7 +382,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # sink parameter (bug #11524). Note that the string implementation is
       # different and can deal with 'const string sunk into var'.
       result = passCopyToSink(arg, c)
-    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr} + nkLiterals:
+    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure} + nkLiterals:
       # object construction to sink parameter: nothing to do
       result = arg
     elif arg.kind == nkSym and isSinkParam(arg.sym):
@@ -548,7 +548,7 @@ proc p(n: PNode; c: var Con): PNode =
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   # unfortunately, this needs to be kept consistent with the cases
   # we handle in the 'case of' statement below:
-  const movableNodeKinds = (nkCallKinds + {nkSym, nkTupleConstr, nkObjConstr,
+  const movableNodeKinds = (nkCallKinds + {nkSym, nkTupleConstr, nkClosure, nkObjConstr,
                                            nkBracket, nkBracketExpr, nkNilLit})
 
   case ri.kind
