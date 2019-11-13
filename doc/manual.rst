@@ -6433,6 +6433,38 @@ generates:
     unsigned int flag:1;
   };
 
+Alignas pragma
+--------------
+
+The ``alignas`` pragma is for variables and object field members. It
+modifies the alignment requirement of the thing being declared. The
+argument must be a constant power of 2 or 0.  Valid non-zero
+alignments that are weaker than another alignas pragmas on the same
+declaration are ignored.  Alignments that are weaker that the
+alignment requirement of the type are ignored. ``alignas(0)`` is
+always ignored.
+
+.. code-block:: Nim
+
+   type
+     sseType = object
+       sseData {.alignas(16).}: array[4,float32]
+
+     # every object will be aligned to 128-byte boundary
+     Data = object
+       x: char
+       cacheline {.alignas(128).}: array[128, char] # over-aligned array of char,
+
+   proc main() =
+     echo "sizeof(Data) = ", sizeof(Data), " (1 byte + 127 bytes padding + 128-byte array)"
+     # output: sizeof(Data) = 256 (1 byte + 127 bytes padding + 128-byte array)
+     echo "alignment of sseType is ", alignof(sseType)
+     # output: alignment of sseType is 16
+     var d {.alignas(2048).}: Data # this instance of data is aligned even stricter
+
+   main()
+
+This pragma has no effect on nimvm or the js backend.
 
 Volatile pragma
 ---------------

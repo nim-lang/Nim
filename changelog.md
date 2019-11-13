@@ -58,7 +58,8 @@
 
 ## Language additions
 
-
+- `alignas` pragma can now be used similar to the `alignas`
+  declaration modifier in C/C++.
 
 ## Language changes
 

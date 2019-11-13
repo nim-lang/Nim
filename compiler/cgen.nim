@@ -478,7 +478,9 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   if s.loc.k == locNone:
     fillLoc(s.loc, locLocalVar, n, mangleLocalName(p, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
-  result = getTypeDesc(p.module, s.typ)
+  if s.kind in {skLet, skVar} and s.alignment > 0:
+    result.addf("alignas($1) ", [rope(s.alignment)])
+  result.add getTypeDesc(p.module, s.typ)
   if s.constraint.isNil:
     if sfRegister in s.flags: add(result, " register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
@@ -529,6 +531,8 @@ proc assignGlobalVar(p: BProc, n: PNode) =
       var decl: Rope = nil
       var td = getTypeDesc(p.module, s.loc.t)
       if s.constraint.isNil:
+        if s.alignment > 0:
+          decl.addf "alignas($1) ", [rope(s.alignment)]
         if p.hcrOn: add(decl, "static ")
         elif sfImportc in s.flags: add(decl, "extern ")
         add(decl, td)
@@ -1187,6 +1191,8 @@ proc genVarPrototype(m: BModule, n: PNode) =
       declareThreadVar(m, sym, true)
     else:
       incl(m.declaredThings, sym.id)
+      if sym.alignment > 0:
+        m.s[cfsVars].addf "alignas($1) ", [rope(sym.alignment)]
       add(m.s[cfsVars], if m.hcrOn: "static " else: "extern ")
       add(m.s[cfsVars], getTypeDesc(m, sym.loc.t))
       if m.hcrOn: add(m.s[cfsVars], "*")

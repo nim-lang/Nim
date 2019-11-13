@@ -824,6 +824,7 @@ type
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
+      alignment*: int # for alignas(X) expressions
     else: nil
     magic*: TMagic
     typ*: PType
