@@ -1113,19 +1113,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
       res.add($a.rdLoc)
 
   if isAsmStmt and hasGnuAsm in CC[p.config.cCompiler].props:
-    for x in splitLines(res):
-      var j = 0
-      while j < x.len and x[j] in {' ', '\t'}: inc(j)
-      if j < x.len:
-        if x[j] in {'"', ':'}:
-          # don't modify the line if already in quotes or
-          # some clobber register list:
-          add(result, x); add(result, "\L")
-        else:
-          # ignore empty lines
-          add(result, "\"")
-          add(result, x)
-          add(result, "\\n\"\n")
+    result = makeCString(res)
   else:
     res.add("\L")
     result = res.rope
