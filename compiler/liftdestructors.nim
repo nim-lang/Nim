@@ -66,7 +66,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
   of nkSym:
     let f = n.sym
     if sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
-        c.g.config.selectedGC == gcDestructors:
+        c.g.config.selectedGC in {gcDestructors, gcHooks}:
       defaultOp(c, f.typ, body, x.dotField(f), y.dotField(f))
     else:
       fillBody(c, f.typ, body, x.dotField(f), y.dotField(f))
