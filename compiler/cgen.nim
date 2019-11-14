@@ -14,7 +14,8 @@ import
   nversion, nimsets, msgs, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, ccgmerge, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr
+  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
+  injectdestructors
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -531,7 +532,7 @@ proc assignGlobalVar(p: BProc, n: PNode) =
       var decl: Rope = nil
       var td = getTypeDesc(p.module, s.loc.t)
       if s.constraint.isNil:
-        if s.alignment > 0:
+        if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
           decl.addf "alignas($1) ", [rope(s.alignment)]
         if p.hcrOn: add(decl, "static ")
         elif sfImportc in s.flags: add(decl, "extern ")
@@ -957,7 +958,10 @@ proc genProcAux(m: BModule, prc: PSym) =
   var header = genProcHeader(m, prc)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
-  let procBody = transformBody(m.g.graph, prc, cache = false)
+
+  var procBody = transformBody(m.g.graph, prc, cache = false)
+  if sfInjectDestructors in prc.flags:
+    procBody = injectDestructorCalls(m.g.graph, prc, procBody)
 
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     if resultPos >= prc.ast.len:
@@ -1857,7 +1861,10 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  let transformedN = transformStmt(m.g.graph, m.module, n)
+  var transformedN = transformStmt(m.g.graph, m.module, n)
+  if sfInjectDestructors in m.module.flags:
+    transformedN = injectDestructorCalls(m.g.graph, m.module, transformedN)
+
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
