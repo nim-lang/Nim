@@ -959,10 +959,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
 
-  var requiresDestructors = false
-  var procBody = transformBody(m.g.graph, prc, cache = false,
-                                      requiresDestructors)
-  if requiresDestructors:
+  var procBody = transformBody(m.g.graph, prc, cache = false)
+  if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, prc, procBody)
 
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
@@ -1863,9 +1861,8 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  var requiresDestructors = false
-  var transformedN = transformStmt(m.g.graph, m.module, n, requiresDestructors)
-  if requiresDestructors:
+  var transformedN = transformStmt(m.g.graph, m.module, n)
+  if sfInjectDestructors in m.module.flags:
     transformedN = injectDestructorCalls(m.g.graph, m.module, transformedN)
 
   if m.hcrOn:

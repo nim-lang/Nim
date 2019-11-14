@@ -296,7 +296,7 @@ type
   DetectionPass = object
     processed, capturedVars: IntSet
     ownerToType: Table[int, PType]
-    somethingToDo, detectedDestructors: bool
+    somethingToDo: bool
     graph: ModuleGraph
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym): DetectionPass =
@@ -423,8 +423,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        let body = transformBody(c.graph, s, cache = true,
-                                 c.detectedDestructors)
+        let body = transformBody(c.graph, s, cache = true)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
@@ -714,8 +713,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var detectedDestructors = false
-        var body = transformBody(d.graph, s, cache = false, detectedDestructors)
+        var body = transformBody(d.graph, s, cache = false)
         body = liftCapturedVars(body, s, d, c)
         if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
@@ -834,8 +832,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.kind = oldKind
   fn.typ.callConv = oldCC
 
-proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
-                  detectedDestructors: var bool): PNode =
+proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -864,8 +861,6 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
         finishClosureCreation(fn, d, c, body.info, result)
     else:
       result = body
-    if d.detectedDestructors:
-      detectedDestructors = d.detectedDestructors
     #if fn.name.s == "get2":
     #  echo "had something to do ", d.somethingToDo
     #  echo renderTree(result, {renderIds})

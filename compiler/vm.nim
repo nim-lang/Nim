@@ -1012,8 +1012,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             let ast = a.sym.ast.shallowCopy
             for i in 0..<a.sym.ast.len:
               ast[i] = a.sym.ast[i]
-            var detectedDestructors = false
-            ast[bodyPos] = transformBody(c.graph, a.sym, cache=true, detectedDestructors)
+            ast[bodyPos] = transformBody(c.graph, a.sym, cache=true)
             ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
@@ -1986,8 +1985,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       "NimScript: attempt to call non-routine: " & sym.name.s)
 
 proc evalStmt*(c: PCtx, n: PNode) =
-  var detectedDestructors = false
-  let n = transformExpr(c.graph, c.module, n, detectedDestructors)
+  let n = transformExpr(c.graph, c.module, n)
   let start = genStmt(c, n)
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
@@ -1995,8 +1993,7 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
-  var detectedDestructors = false
-  let n = transformExpr(c.graph, c.module, n, detectedDestructors)
+  let n = transformExpr(c.graph, c.module, n)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
@@ -2042,8 +2039,7 @@ proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   if g.config.errorCounter > 0: return n
-  var detectedDestructors = false
-  let n = transformExpr(g, module, n, detectedDestructors)
+  let n = transformExpr(g, module, n)
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode

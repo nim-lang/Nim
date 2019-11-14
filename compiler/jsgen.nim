@@ -2259,10 +2259,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var requiresDestructors = false
-  var transformedBody = transformBody(oldProc.module.graph, prc, cache = false,
-                                      requiresDestructors)
-  if requiresDestructors:
+  var transformedBody = transformBody(oldProc.module.graph, prc, cache = false)
+  if sfInjectDestructors in prc.flags:
     transformedBody = injectDestructorCalls(oldProc.module.graph, prc, transformedBody)
 
   p.nested: genStmt(p, transformedBody)
@@ -2545,9 +2543,8 @@ proc genModule(p: PProc, n: PNode) =
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
-  var detectedDestructors = false
-  var transformedN = transformStmt(p.module.graph, p.module.module, n, detectedDestructors)
-  if detectedDestructors:
+  var transformedN = transformStmt(p.module.graph, p.module.module, n)
+  if sfInjectDestructors in p.module.module.flags:
     transformedN = injectDestructorCalls(p.module.graph, p.module.module, transformedN)
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module

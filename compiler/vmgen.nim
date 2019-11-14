@@ -2243,9 +2243,7 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    var detectedDestructors = false
-    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s),
-                             detectedDestructors)
+    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc
