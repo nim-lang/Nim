@@ -626,9 +626,35 @@ proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
         result = true
         break
 
-proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
+proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true, continueStmtExpr=false) =
   if n.kind == nkEmpty: return
-  if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+  if n.kind == nkStmtListExpr or continueStmtExpr:
+    if not continueStmtExpr: put(g, tkParLe, "(")
+    var wasIndented = false
+    var pendingSemicolon = false
+    let L = n.len
+    for i in 0 .. L-1:
+      if n[i].kind == nkEmpty: continue
+      if pendingSemicolon:
+        put(g, tkSemiColon, ";")
+        pendingSemicolon = false
+        if doIndent and not wasIndented:
+          indentNL(g)
+          wasIndented = true
+        elif i > 0:
+          optNL(g, n[i-1], n[i])
+        else:
+          optNL(g)
+      if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+        gstmts(g, n[i], c, doIndent=false, continueStmtExpr=true)
+      else:
+        gsub(g, n[i])
+      pendingSemicolon = true
+      gcoms(g)
+    if not continueStmtExpr: put(g, tkParRi, ")")
+    if wasIndented: dedent(g)
+
+  elif n.kind in {nkStmtList, nkStmtListType}:
     if doIndent: indentNL(g)
     let L = n.len
     for i in 0 .. L-1:
@@ -649,17 +675,9 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
     dedent(g)
     optNL(g)
 
-
-proc gcond(g: var TSrcGen, n: PNode) =
-  if n.kind == nkStmtListExpr:
-    put(g, tkParLe, "(")
-  gsub(g, n)
-  if n.kind == nkStmtListExpr:
-    put(g, tkParRi, ")")
-
 proc gif(g: var TSrcGen, n: PNode) =
   var c: TContext
-  gcond(g, n.sons[0].sons[0])
+  gsub(g, n.sons[0].sons[0])
   initContext(c)
   putWithSpace(g, tkColon, ":")
   if longMode(g, n) or (lsub(g, n.sons[0].sons[1]) + g.lineLen > MaxLineLen):
@@ -674,7 +692,7 @@ proc gif(g: var TSrcGen, n: PNode) =
 proc gwhile(g: var TSrcGen, n: PNode) =
   var c: TContext
   putWithSpace(g, tkWhile, "while")
-  gcond(g, n.sons[0])
+  gsub(g, n.sons[0])
   putWithSpace(g, tkColon, ":")
   initContext(c)
   if longMode(g, n) or (lsub(g, n.sons[1]) + g.lineLen > MaxLineLen):
@@ -738,7 +756,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
   var last = if n.sons[length-1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
   putWithSpace(g, tkCase, "case")
-  gcond(g, n.sons[0])
+  gsub(g, n[0])
   gcoms(g)
   optNL(g)
   gsons(g, n, c, 1, last)
@@ -1185,13 +1203,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkAccent, "`")
   of nkIfExpr:
     putWithSpace(g, tkIf, "if")
-    if n.len > 0: gcond(g, n.sons[0].sons[0])
+    if n.len > 0: gsub(g, n.sons[0], 0)
     putWithSpace(g, tkColon, ":")
     if n.len > 0: gsub(g, n.sons[0], 1)
     gsons(g, n, emptyContext, 1)
   of nkElifExpr:
     putWithSpace(g, tkElif, " elif")
-    gcond(g, n[0])
+    gsub(g, n, 0)
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 1)
   of nkElseExpr:

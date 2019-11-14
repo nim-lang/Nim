@@ -74,6 +74,8 @@ proc test_cond_stmtlist(x, y: int): int =
   if x > y:
     result = x
 
+proc test_raise =
+  raise newException(ValueError, "Test")
 
 #------------------------------------
 # bug #8762
@@ -140,3 +142,4 @@ repr_and_parse(test_block)
 repr_and_parse(test_cond_stmtlist)
 repr_and_parse(t2)
 repr_and_parse(test_pure_enums)
+repr_and_parse(test_raise)
