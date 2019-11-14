@@ -296,7 +296,7 @@ type
   DetectionPass = object
     processed, capturedVars: IntSet
     ownerToType: Table[int, PType]
-    somethingToDo, noDestructors: bool
+    somethingToDo, detectedDestructors: bool
     graph: ModuleGraph
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym): DetectionPass =
@@ -424,7 +424,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
         let body = transformBody(c.graph, s, cache = true,
-                                 noDestructors = c.noDestructors)
+                                 c.detectedDestructors)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
@@ -714,7 +714,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = transformBody(d.graph, s)
+        var detectedDestructors = false
+        var body = transformBody(d.graph, s, cache = false, detectedDestructors)
         body = liftCapturedVars(body, s, d, c)
         if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
@@ -834,7 +835,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.typ.callConv = oldCC
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
-                  noDestructors: bool): PNode =
+                  detectedDestructors: var bool): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -850,7 +851,6 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
     tooEarly = true
   else:
     var d = initDetectionPass(g, fn)
-    d.noDestructors = noDestructors
     detectCapturedVars(body, fn, d)
     if not d.somethingToDo and fn.isIterator:
       addClosureParam(d, fn, body.info)
@@ -864,6 +864,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
         finishClosureCreation(fn, d, c, body.info, result)
     else:
       result = body
+    detectedDestructors = d.detectedDestructors
     #if fn.name.s == "get2":
     #  echo "had something to do ", d.somethingToDo
     #  echo renderTree(result, {renderIds})

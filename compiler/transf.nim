@@ -21,11 +21,11 @@
 import
   options, ast, astalgo, trees, msgs,
   idents, renderer, types, semfold, magicsys, cgmeth,
-  lowerings, injectdestructors, liftlocals,
+  lowerings, liftlocals,
   modulegraphs, lineinfos
 
-proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
-                    noDestructors = false): PNode
+proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool;
+                    detectedDestructors: var bool): PNode
 
 import closureiters, lambdalifting
 
@@ -49,7 +49,7 @@ type
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
-    deferDetected, tooEarly, needsDestroyPass, noDestructors: bool
+    deferDetected, tooEarly, detectedDestructors: bool
     graph: ModuleGraph
   PTransf = ref TTransfContext
 
@@ -131,7 +131,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
     if s.kind in routineKinds:
-      discard transformBody(c.graph, s, true, c.noDestructors)
+      discard transformBody(c.graph, s, true, c.detectedDestructors)
     if s.kind == skIterator:
       if c.tooEarly: return n
       else: return liftIterSym(c.graph, n, getCurrOwner(c))
@@ -678,7 +678,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = transformBody(c.graph, iter, true, c.noDestructors)
+  let body = transformBody(c.graph, iter, true, c.detectedDestructors)
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   add(stmtList, transform(c, body))
@@ -915,7 +915,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       c.deferAnchor = n
   if (n.typ != nil and tfHasAsgn in n.typ.flags) or
       optSeqDestructors in c.graph.config.globalOptions:
-    c.needsDestroyPass = true
+    c.detectedDestructors = true
   case n.kind
   of nkSym:
     result = transformSym(c, n)
@@ -1113,8 +1113,8 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
-                    noDestructors = false): PNode =
+proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool;
+                    detectedDestructors: var bool): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
@@ -1124,13 +1124,10 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "")
-    c.noDestructors = noDestructors
-    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly, noDestructors)
+    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly, c.detectedDestructors)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
-    if c.needsDestroyPass and not noDestructors:
-      result = injectDestructorCalls(g, prc, result)
 
     if prc.isIterator:
       result = g.transformClosureIterator(prc, result)
@@ -1143,8 +1140,10 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true;
       prc.transformedBody = result
     else:
       prc.transformedBody = nil
+    detectedDestructors = c.detectedDestructors
 
-proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
+proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode;
+                    detectedDestructors: var bool): PNode =
   if nfTransf in n.flags:
     result = n
   else:
@@ -1152,12 +1151,11 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
-    if c.needsDestroyPass:
-      result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
+    detectedDestructors = c.detectedDestructors
 
 proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode;
-                    noDestructors = false): PNode =
+                    detectedDestructors: var bool): PNode =
   if nfTransf in n.flags:
     result = n
   else:
@@ -1166,6 +1164,5 @@ proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode;
     liftDefer(c, result)
     # expressions are not to be injected with destructor calls as that
     # the list of top level statements needs to be collected before.
-    if c.needsDestroyPass and not noDestructors:
-      result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
+    detectedDestructors = c.detectedDestructors
