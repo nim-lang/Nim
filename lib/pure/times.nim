@@ -2432,7 +2432,7 @@ proc parseTime*(input: string, f: static[string], zone: Timezone): Time
 
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
-  ## It uses the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  ## It uses the format ``yyyy-MM-dd'T'HH:mm:sszzz``.
   runnableExamples:
     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
     doAssert $dt == "2000-01-01T12:00:00Z"
