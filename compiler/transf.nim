@@ -1113,19 +1113,41 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
+proc detectDestructors(n: PNode): bool =
+  result = false
+  if n.typ != nil and tfHasAsgn in n.typ.flags:
+    result = true
+  else:
+    for i in 0..<safeLen(n):
+      if detectDestructors(n[i]): return true
+
+proc recomputeDestructorsDetection(g: ModuleGraph, n: PNode): bool {.inline.} =
+  if optSeqDestructors in g.config.globalOptions:
+    result = true
+  else:
+    result = detectDestructors(n)
+
 proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool;
                     detectedDestructors: var bool): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
     result = prc.transformedBody
+    detectedDestructors = recomputeDestructorsDetection(g, result)
   elif nfTransf in prc.ast[bodyPos].flags or prc.kind in {skTemplate}:
     result = prc.ast[bodyPos]
+    detectedDestructors = recomputeDestructorsDetection(g, result)
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "")
     result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly, c.detectedDestructors)
+    if prc.name.s == "preventThis":
+      echo "not cached here ", prc.name.s, " ", detectedDestructors, " zgg ", detectDestructors(result)
+
     result = processTransf(c, result, prc)
+    if prc.name.s == "preventThis":
+      echo "not cached here ", prc.name.s, " ", detectedDestructors, " zgg ", detectDestructors(result)
+
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
 
@@ -1141,11 +1163,14 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool;
     else:
       prc.transformedBody = nil
     detectedDestructors = c.detectedDestructors
+    if prc.name.s == "preventThis":
+      echo "not cached here ", prc.name.s, " ", detectedDestructors, " zgg ", detectDestructors(result)
 
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode;
                     detectedDestructors: var bool): PNode =
   if nfTransf in n.flags:
     result = n
+    detectedDestructors = recomputeDestructorsDetection(g, result)
   else:
     var c = openTransf(g, module, "")
     result = processTransf(c, n, module)
@@ -1158,6 +1183,7 @@ proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode;
                     detectedDestructors: var bool): PNode =
   if nfTransf in n.flags:
     result = n
+    detectedDestructors = recomputeDestructorsDetection(g, result)
   else:
     var c = openTransf(g, module, "")
     result = processTransf(c, n, module)

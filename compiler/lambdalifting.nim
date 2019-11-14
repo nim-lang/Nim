@@ -864,7 +864,8 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
         finishClosureCreation(fn, d, c, body.info, result)
     else:
       result = body
-    detectedDestructors = d.detectedDestructors
+    if d.detectedDestructors:
+      detectedDestructors = d.detectedDestructors
     #if fn.name.s == "get2":
     #  echo "had something to do ", d.somethingToDo
     #  echo renderTree(result, {renderIds})
