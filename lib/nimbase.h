@@ -257,7 +257,7 @@ __clang__
 #include <limits.h>
 #include <stddef.h>
 #ifndef __cplusplus
-#include <stdalign.h>
+#  include <stdalign.h>
 #endif
 
 /* C99 compiler? */
