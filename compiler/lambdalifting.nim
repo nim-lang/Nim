@@ -233,9 +233,12 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
   result = conf.cmd == cmdCompileToJS and not isCompileTime
 
-proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo) =
+proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; owner: PSym) =
   createTypeBoundOps(g, nil, refType.lastSon, info)
   createTypeBoundOps(g, nil, refType, info)
+  if (tfHasAsgn in refType.flags) or
+      optSeqDestructors in g.config.globalOptions:
+    owner.flags.incl sfInjectDestructors
 
 proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
@@ -261,7 +264,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     result.add(v)
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
-  createTypeBoundOpsLL(g, env.typ, n.info)
+  createTypeBoundOpsLL(g, env.typ, n.info, owner)
   result.add makeClosure(g, iter, env, n.info)
 
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
@@ -592,7 +595,7 @@ proc rawClosureCreation(owner: PSym;
       let env2 = copyTree(env)
       env2.typ = unowned.typ
       result.add newAsgnStmt(unowned, env2, env.info)
-      createTypeBoundOpsLL(d.graph, unowned.typ, env.info)
+      createTypeBoundOpsLL(d.graph, unowned.typ, env.info, owner)
 
     # add assignment statements for captured parameters:
     for i in 1..<owner.typ.n.len:
@@ -615,7 +618,7 @@ proc rawClosureCreation(owner: PSym;
       localError(d.graph.config, env.info, "internal error: cannot create up reference")
   # we are not in the sem'check phase anymore! so pass 'nil' for the PContext
   # and hope for the best:
-  createTypeBoundOpsLL(d.graph, env.typ, owner.info)
+  createTypeBoundOpsLL(d.graph, env.typ, owner.info, owner)
 
 proc finishClosureCreation(owner: PSym; d: DetectionPass; c: LiftingPass;
                            info: TLineInfo; res: PNode) =
@@ -643,7 +646,7 @@ proc closureCreationForIter(iter: PNode;
     addVar(vs, vnode)
     result.add(vs)
   result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
-  createTypeBoundOpsLL(d.graph, vnode.typ, iter.info)
+  createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, owner)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -926,7 +929,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
-    createTypeBoundOpsLL(g, env.typ, body.info)
+    createTypeBoundOpsLL(g, env.typ, body.info, owner)
 
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon

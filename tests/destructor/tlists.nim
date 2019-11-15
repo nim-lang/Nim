@@ -43,9 +43,18 @@ proc tlazyList =
   var x = LazyList(c: proc () = echo(dep))
   x.c()
 
+type
+  Foo = ref object
+
+proc tleakingNewStmt =
+  var x: Foo
+  for i in 0..10:
+    new(x)
+
 let startMem = getOccupiedMem()
 tlazyList()
 
 mkManyLeaks()
 tsimpleClosureIterator()
+tleakingNewStmt()
 echo getOccupiedMem() - startMem

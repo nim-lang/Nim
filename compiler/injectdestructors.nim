@@ -32,7 +32,7 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
-const toDebug = "" # "server" # "serverNimAsyncContinue"
+const toDebug {.strdefine.} = "" # "server" # "serverNimAsyncContinue"
 
 template dbg(body) =
   when toDebug.len > 0:
@@ -450,7 +450,11 @@ proc p(n: PNode; c: var Con): PNode =
     for i in 1..<n.len:
       n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
     result = n
-  of nkDiscardStmt: #Small optimization
+    if result[0].kind == nkSym and result[0].sym.magic in {mNew, mNewFinalize}:
+      if c.graph.config.selectedGC in {gcHooks, gcDestructors}:
+        let destroyOld = genDestroy(c, result[1])
+        result = newTree(nkStmtList, destroyOld, result)
+  of nkDiscardStmt: # Small optimization
     if n[0].kind != nkEmpty:
       n[0] = pArg(n[0], c, false)
     result = n
