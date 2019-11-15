@@ -53,7 +53,7 @@
 - `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
-
+- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 
 
 ## Language additions
