@@ -231,6 +231,12 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
   # for e.g. mNAdd[Multiple]:
   let k = if typ.isNil: slotTempComplex else: typ.getSlotKind
   result = getFreeRegister(cc, k, start = 0)
+  when false:
+    # enable this to find "register" leaks:
+    if result == 4:
+      echo "begin ---------------"
+      writeStackTrace()
+      echo "end ----------------"
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
@@ -1703,6 +1709,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let setLit = c.genx(checkExpr[1])
   var rs = c.getTemp(getSysType(c.graph, n.info, tyBool))
   c.gABC(n, opcContainsSet, rs, setLit, discVal)
+  c.freeTemp(discVal)
   c.freeTemp(setLit)
   # If the check fails let the user know
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
@@ -2236,8 +2243,7 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s),
-                             noDestructors = true)
+    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

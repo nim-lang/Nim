@@ -22,10 +22,10 @@ proc newFoo*(): ref TFoo =
   alive_foos.add result.id
   inc foo_counter
 
-for i in 0 .. <10:
+for i in 0 ..< 10:
  discard newFoo()
 
-for i in 0 .. <10:
+for i in 0 ..< 10:
   let f = newFoo()
   f.fn = proc =
     echo f.id

@@ -97,6 +97,8 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
 
 when (defined(linux) and not defined(android)) and defined(amd64):
   include posix_linux_amd64
+elif defined(openbsd) and defined(amd64):
+  include posix_openbsd_amd64
 elif (defined(macos) or defined(macosx) or defined(bsd)) and defined(cpu64):
   include posix_macos_amd64
 elif defined(nintendoswitch):
@@ -870,9 +872,15 @@ proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
 proc CMSG_SPACE*(len: csize): csize {.
+  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+
+proc CMSG_SPACE*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
 
 proc CMSG_LEN*(len: csize): csize {.
+  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+
+proc CMSG_LEN*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
 
 const

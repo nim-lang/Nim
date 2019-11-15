@@ -549,6 +549,8 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
     fillLoc(field.loc, locField, n, sname, OnUnknown)
+    if field.alignment > 0:
+      result.addf "alignas($1) ", [rope(field.alignment)]
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
@@ -1275,6 +1277,8 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
     it = it.sons[0]
   result = makeCString(res)
 
+proc trivialDestructor(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+
 proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
   assert t.kind == tyObject
   if incompleteType(t):
@@ -1282,7 +1286,7 @@ proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo
                       typeToString(t))
 
   var d: Rope
-  if t.destructor != nil:
+  if t.destructor != nil and not trivialDestructor(t.destructor):
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:

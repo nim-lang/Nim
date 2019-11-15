@@ -233,6 +233,13 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
   result = conf.cmd == cmdCompileToJS and not isCompileTime
 
+proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; owner: PSym) =
+  createTypeBoundOps(g, nil, refType.lastSon, info)
+  createTypeBoundOps(g, nil, refType, info)
+  if (tfHasAsgn in refType.flags) or
+      optSeqDestructors in g.config.globalOptions:
+    owner.flags.incl sfInjectDestructors
+
 proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   if liftingHarmful(g.config, owner): return n
@@ -257,8 +264,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     result.add(v)
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
-  if optOwnedRefs in g.config.globalOptions:
-    createTypeBoundOps(g, nil, env.typ, n.info)
+  createTypeBoundOpsLL(g, env.typ, n.info, owner)
   result.add makeClosure(g, iter, env, n.info)
 
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
@@ -293,7 +299,7 @@ type
   DetectionPass = object
     processed, capturedVars: IntSet
     ownerToType: Table[int, PType]
-    somethingToDo, noDestructors: bool
+    somethingToDo: bool
     graph: ModuleGraph
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym): DetectionPass =
@@ -356,9 +362,14 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   if upField != nil:
     if upField.typ.skipTypes({tyOwned, tyRef, tyPtr}) != fieldType.skipTypes({tyOwned, tyRef, tyPtr}):
       localError(c.graph.config, dep.info, "internal error: up references do not agree")
+
+    if c.graph.config.selectedGC == gcDestructors and sfCursor notin upField.flags:
+      localError(c.graph.config, dep.info, "internal error: up reference is not a .cursor")
   else:
     let result = newSym(skField, upIdent, obj.owner, obj.owner.info)
     result.typ = fieldType
+    if c.graph.config.selectedGC == gcDestructors:
+      result.flags.incl sfCursor
     rawAddField(obj, result)
 
 discard """
@@ -415,8 +426,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        let body = transformBody(c.graph, s, cache = true,
-                                 noDestructors = c.noDestructors)
+        let body = transformBody(c.graph, s, cache = true)
         detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
@@ -585,7 +595,7 @@ proc rawClosureCreation(owner: PSym;
       let env2 = copyTree(env)
       env2.typ = unowned.typ
       result.add newAsgnStmt(unowned, env2, env.info)
-      createTypeBoundOps(d.graph, nil, unowned.typ, env.info)
+      createTypeBoundOpsLL(d.graph, unowned.typ, env.info, owner)
 
     # add assignment statements for captured parameters:
     for i in 1..<owner.typ.n.len:
@@ -608,8 +618,7 @@ proc rawClosureCreation(owner: PSym;
       localError(d.graph.config, env.info, "internal error: cannot create up reference")
   # we are not in the sem'check phase anymore! so pass 'nil' for the PContext
   # and hope for the best:
-  if optOwnedRefs in d.graph.config.globalOptions:
-    createTypeBoundOps(d.graph, nil, env.typ, owner.info)
+  createTypeBoundOpsLL(d.graph, env.typ, owner.info, owner)
 
 proc finishClosureCreation(owner: PSym; d: DetectionPass; c: LiftingPass;
                            info: TLineInfo; res: PNode) =
@@ -637,8 +646,7 @@ proc closureCreationForIter(iter: PNode;
     addVar(vs, vnode)
     result.add(vs)
   result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
-  if optOwnedRefs in d.graph.config.globalOptions:
-    createTypeBoundOps(d.graph, nil, vnode.typ, iter.info)
+  createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, owner)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -708,7 +716,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = transformBody(d.graph, s)
+        var body = transformBody(d.graph, s, cache = false)
         body = liftCapturedVars(body, s, d, c)
         if c.envVars.getOrDefault(s.id).isNil:
           s.transformedBody = body
@@ -827,8 +835,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.kind = oldKind
   fn.typ.callConv = oldCC
 
-proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
-                  noDestructors: bool): PNode =
+proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -844,7 +851,6 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
     tooEarly = true
   else:
     var d = initDetectionPass(g, fn)
-    d.noDestructors = noDestructors
     detectCapturedVars(body, fn, d)
     if not d.somethingToDo and fn.isIterator:
       addClosureParam(d, fn, body.info)
@@ -923,8 +929,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
-    if optOwnedRefs in g.config.globalOptions:
-      createTypeBoundOps(g, nil, env.typ, body.info)
+    createTypeBoundOpsLL(g, env.typ, body.info, owner)
 
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon

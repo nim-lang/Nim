@@ -256,6 +256,7 @@ __clang__
 
 #include <limits.h>
 #include <stddef.h>
+#include <stdalign.h>
 
 /* C99 compiler? */
 #if (defined(__STD_VERSION__) && (__STD_VERSION__ >= 199901))

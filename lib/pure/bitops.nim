@@ -173,7 +173,7 @@ proc fastlog2Nim(x: uint64): int {.inline, noSideEffect.} =
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
 # sets.nim cannot import bitops, but bitops can use include
-# system/sets to eleminate code duplication. sets.nim defines defines
+# system/sets to eliminate code duplication. sets.nim defines
 # countBits32 and countBits64.
 include system/sets
 

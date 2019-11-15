@@ -28,13 +28,11 @@ In addition, all command line options of Nim that do not affect code generation
 are supported.
 """
 
-import strutils, os, parseopt, parseutils
+import strutils, os, parseopt
 
 import "../compiler" / [options, commands, modules, sem,
-  passes, passaux, msgs, nimconf,
-  extccomp, condsyms,
-  ast, scriptconfig,
-  idents, modulegraphs, vm, prefixmatches, lineinfos, cmdlinehelper,
+  passes, passaux, msgs, ast,
+  idents, modulegraphs, lineinfos, cmdlinehelper,
   pathutils]
 
 import db_sqlite
