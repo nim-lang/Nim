@@ -1830,20 +1830,19 @@ proc accept*(socket: AsyncFD,
         retFut.complete(future.read.client)
   return retFut
 
+proc keepAlive(x: string) =
+  discard "mark 'x' as escaping so that it is put into a closure for us to keep the data alive"
+
 proc send*(socket: AsyncFD, data: string,
            flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   var retFuture = newFuture[void]("send")
 
-  var copiedData = data
-  GC_ref(copiedData) # we need to protect data until send operation is completed
-                     # or failed.
-
-  let sendFut = socket.send(addr copiedData[0], data.len, flags)
+  let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
   sendFut.callback =
     proc () =
-      GC_unref(copiedData)
+      keepAlive(data)
       if sendFut.failed:
         retFuture.fail(sendFut.error)
       else:

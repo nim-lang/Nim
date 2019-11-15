@@ -872,13 +872,6 @@ template mapIt*(s: typed, op: untyped): untyped =
       result.add(op)
     result
 
-template mapIt*(s, typ, op: untyped): untyped {.error:
-  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned sequence".} =
-  var result: seq[typ] = @[]
-  for it {.inject.} in items(s):
-    result.add(op)
-  result
-
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
   ##

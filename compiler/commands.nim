@@ -224,15 +224,15 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
   case switch.normalize
   of "gc":
     case arg.normalize
-    of "boehm":        result = conf.selectedGC == gcBoehm
-    of "refc":         result = conf.selectedGC == gcRefc
-    of "v2":           result = false
+    of "boehm": result = conf.selectedGC == gcBoehm
+    of "refc": result = conf.selectedGC == gcRefc
+    of "v2": result = false
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
-    of "destructors":  result = conf.selectedGC == gcDestructors
-    of "hooks":        result = conf.selectedGC == gcHooks
-    of "go":           result = conf.selectedGC == gcGo
-    of "none":         result = conf.selectedGC == gcNone
+    of "destructors", "arc": result = conf.selectedGC == gcDestructors
+    of "hooks": result = conf.selectedGC == gcHooks
+    of "go": result = conf.selectedGC == gcGo
+    of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
@@ -244,9 +244,9 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
   of "verbosity": result = $conf.verbosity == arg
   of "app":
     case arg.normalize
-    of "gui":       result = contains(conf.globalOptions, optGenGuiApp)
-    of "console":   result = not contains(conf.globalOptions, optGenGuiApp)
-    of "lib":       result = contains(conf.globalOptions, optGenDynLib) and
+    of "gui": result = contains(conf.globalOptions, optGenGuiApp)
+    of "console": result = not contains(conf.globalOptions, optGenGuiApp)
+    of "lib": result = contains(conf.globalOptions, optGenDynLib) and
                       not contains(conf.globalOptions, optGenGuiApp)
     of "staticlib": result = contains(conf.globalOptions, optGenStaticLib) and
                       not contains(conf.globalOptions, optGenGuiApp)
@@ -453,7 +453,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "markandsweep":
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
-      of "destructors":
+      of "destructors", "arc":
         conf.selectedGC = gcDestructors
         defineSymbol(conf.symbols, "gcdestructors")
         incl conf.globalOptions, optSeqDestructors

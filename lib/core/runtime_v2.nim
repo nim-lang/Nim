@@ -28,8 +28,8 @@ hash of ``package & "." & module & "." & name`` to save space.
 type
   RefHeader = object
     rc: int # the object header is now a single RC field.
-            # we could remove it in non-debug builds but this seems
-            # unwise.
+            # we could remove it in non-debug builds for the 'owned ref'
+            # design but this seems unwise.
 
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
@@ -47,7 +47,7 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   when defined(nimscript):
     discard
   elif defined(useMalloc):
-    var orig = c_malloc(s)
+    var orig = c_malloc(cuint s)
     nimZeroMem(orig, s)
     result = orig +! sizeof(RefHeader)
   else:
@@ -120,6 +120,17 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
         result = true
       else:
         dec head(p).rc
+
+proc GC_unref*[T](x: ref T) =
+  ## New runtime only supports this operation for 'ref T'.
+  if nimDecRefIsLast(cast[pointer](x)):
+    # XXX this does NOT work for virtual destructors!
+    `=destroy`(x[])
+    nimRawDispose(cast[pointer](x))
+
+proc GC_ref*[T](x: ref T) =
+  ## New runtime only supports this operation for 'ref T'.
+  if x != nil: nimIncRef(cast[pointer](x))
 
 proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}

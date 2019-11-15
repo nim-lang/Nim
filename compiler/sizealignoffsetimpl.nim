@@ -156,6 +156,8 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
       size = n.sym.typ.size.int
       align = if packed: 1 else: n.sym.typ.align.int
     accum.align(align)
+    if n.sym.alignment > 0:
+      accum.align(n.sym.alignment)
     n.sym.offset = accum.offset
     accum.inc(size)
   else:
@@ -183,6 +185,8 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var
       size = n.sym.typ.size.int
       align = n.sym.typ.align.int
     accum.align(align)
+    if n.sym.alignment > 0:
+      accum.align(n.sym.alignment)
     n.sym.offset = accum.offset
     accum.inc(size)
   else:

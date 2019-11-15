@@ -3269,7 +3269,7 @@ when not defined(nimscript) and hasAlloc:
         ## Expands operating GC stack range to `theStackBottom`. Does nothing
         ## if current stack bottom is already lower than `theStackBottom`.
 
-  else:
+  elif defined(JS):
     template GC_disable* =
       {.warning: "GC_disable is a no-op in JavaScript".}
 

@@ -20,7 +20,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlignas}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
@@ -62,11 +62,11 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wPartial, wExplain, wPackage}
   fieldPragmas* = declPragmas + {
-    wGuard, wBitsize} - {wExportNims, wNodecl} # why exclude these?
+    wGuard, wBitsize, wCursor} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
@@ -803,13 +803,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         setExternName(c, sym, name, it.info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
-      of wAlign:
-        if sym.typ == nil: invalidPragma(c, it)
-        var align = expectIntLit(c, it)
-        if (not isPowerOfTwo(align) and align != 0) or align >% high(int16):
-          localError(c.config, it.info, "power of two expected")
-        else:
-          sym.typ.align = align.int16
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
@@ -822,6 +815,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           sym.typ.align = floatInt64Align(c.config)
         else:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+      of wAlignas:
+        let alignment = expectIntLit(c, it)
+        if alignment == 0:
+          discard
+        elif isPowerOfTwo(alignment):
+          sym.alignment = max(sym.alignment, alignment)
+        else:
+          localError(c.config, it.info, "power of two or 0 expected")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
@@ -833,6 +834,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wVolatile:
         noVal(c, it)
         incl(sym.flags, sfVolatile)
+      of wCursor:
+        noVal(c, it)
+        incl(sym.flags, sfCursor)
       of wRegister:
         noVal(c, it)
         incl(sym.flags, sfRegister)
