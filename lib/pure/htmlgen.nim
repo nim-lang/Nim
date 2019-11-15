@@ -313,7 +313,7 @@ macro header*(e: varargs[untyped]): untyped =
 
 macro html*(e: varargs[untyped]): untyped =
   ## generates the HTML ``html`` element.
-  result = xmlCheckedTag(e, "html", "xmlns", "")
+  result = xmlCheckedTag(e, "html", "xmlns" & commonAttr, "")
 
 macro hr*(): untyped =
   ## generates the HTML ``hr`` element.
