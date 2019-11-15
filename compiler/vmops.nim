@@ -152,7 +152,11 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-    systemop gorgeEx
+
+    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+      discard "don't run staticExec for 'nim suggest'"
+    else:
+      systemop gorgeEx
   macrosop getProjectPath
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =

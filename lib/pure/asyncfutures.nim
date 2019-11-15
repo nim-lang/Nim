@@ -149,7 +149,7 @@ proc checkFinished[T](future: Future[T]) =
       msg.add("\n" & indent(($future.stackTrace).strip(), 4))
       when T is string:
         msg.add("\n  Contents (string): ")
-        msg.add("\n" & indent(future.value.repr, 4))
+        msg.add("\n" & indent($future.value, 4))
       msg.add("\n  Stack trace to moment of secondary completion:")
       msg.add("\n" & indent(getStackTrace().strip(), 4))
       var err = newException(FutureError, msg)

@@ -592,7 +592,7 @@ proc docstringSummary(rstText: string): string =
   ##
   ## Most docstrings will contain a one liner summary, so stripping at the
   ## first newline is usually fine. If after that the content is still too big,
-  ## it is stripped at the first comma, colon or dot, usual english sentence
+  ## it is stripped at the first comma, colon or dot, usual English sentence
   ## separators.
   ##
   ## No guarantees are made on the size of the output, but it should be small.

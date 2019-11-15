@@ -156,6 +156,8 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
       size = n.sym.typ.size.int
       align = if packed: 1 else: n.sym.typ.align.int
     accum.align(align)
+    if n.sym.alignment > 0:
+      accum.align(n.sym.alignment)
     n.sym.offset = accum.offset
     accum.inc(size)
   else:
@@ -183,6 +185,8 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var
       size = n.sym.typ.size.int
       align = n.sym.typ.align.int
     accum.align(align)
+    if n.sym.alignment > 0:
+      accum.align(n.sym.alignment)
     n.sym.offset = accum.offset
     accum.inc(size)
   else:
@@ -231,7 +235,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
   of tyString:
-    if conf.selectedGC == gcDestructors:
+    if optSeqDestructors in conf.globalOptions:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize
@@ -245,7 +249,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.paddingAtEnd = szIllegalRecursion
       return
     typ.align = int16(conf.target.ptrSize)
-    if typ.kind == tySequence and conf.selectedGC == gcDestructors:
+    if typ.kind == tySequence and optSeqDestructors in conf.globalOptions:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize

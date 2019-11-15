@@ -293,7 +293,7 @@ proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Sugge
   else: discard
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool =
-  var op = n.sons[0]
+  var op = if n.kind in nkCallKinds: n.sons[0] else: n
   if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op.sons[0]
   var opr: PIdent
   case op.kind
@@ -316,6 +316,10 @@ proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var Suggestions) =
   let info = n.info
   wholeSymTab(filterSym(it, nil, pm) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
               ideCon)
+
+proc suggestVar(c: PContext, n: PNode, outputs: var Suggestions) =
+  let info = n.info
+  wholeSymTab(nameFits(c, it, n), ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
   if s.typ != nil and len(s.typ) > 1 and s.typ.sons[1] != nil:
@@ -601,6 +605,10 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
         if x.kind == nkEmpty or x.typ == nil: break
         addSon(a, x)
       suggestCall(c, a, n, outputs)
+    elif n.kind in nkIdentKinds:
+      var x = safeSemExpr(c, n)
+      if x.kind == nkEmpty or x.typ == nil: x = n
+      suggestVar(c, x, outputs)
 
   dec(c.compilesContextId)
   if outputs.len > 0 and c.config.ideCmd in {ideSug, ideCon, ideDef}:

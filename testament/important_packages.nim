@@ -5,9 +5,8 @@ template pkg(name: string; cmd = "nimble test"; hasDeps = false; url = ""): unty
 var packages*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
 
 
-pkg "NimData", "nim c -o:nimdataa src/nimdata.nim", true
 pkg "argparse"
-pkg "arraymancer", "nim c -r src/arraymancer.nim", true
+pkg "arraymancer", "nim c tests/tests_cpu.nim", true
 pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
 pkg "asyncmysql", "", true
 pkg "bigints"
@@ -18,10 +17,11 @@ pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
-pkg "chronos"
+pkg "chronos", "", true
 pkg "cligen", "nim c -o:cligenn -r cligen.nim"
+pkg "coco", "", true
 pkg "combparser"
-pkg "compactdict", "", false, "https://github.com/Clyybber/compactdict"
+pkg "compactdict"
 pkg "comprehension", "", false, "https://github.com/alehander42/comprehension"
 pkg "criterion"
 pkg "dashing", "nim c tests/functional.nim"
@@ -36,8 +36,8 @@ pkg "gnuplot"
 pkg "hts", "nim c -o:htss -r src/hts.nim"
 pkg "illwill", "nimble examples"
 pkg "inim"
-# pkg "itertools", "nim doc src/itertools.nim"
-# pkg "iterutils"
+pkg "itertools", "nim doc src/itertools.nim"
+pkg "iterutils"
 pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "loopfusion"
@@ -47,7 +47,8 @@ pkg "neo", "nim c -d:blas=openblas tests/all.nim", true
 # pkg "nico", "", true
 pkg "nicy", "nim c src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
-pkg "nimcrypto", "nim c -r tests/testapi.nim"
+pkg "nimcrypto", "nim c -r tests/testall.nim"
+pkg "NimData", "nim c -o:nimdataa src/nimdata.nim", true
 pkg "nimes", "nim c src/nimes.nim", true
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", true

@@ -153,7 +153,11 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
         err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
                 toFullPath(c.config, c.graph.importStack[i+1])
       c.recursiveDep = err
+
+    discard pushOptionEntry(c)
     result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f))
+    popOptionEntry(c)
+
     #echo "set back to ", L
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of

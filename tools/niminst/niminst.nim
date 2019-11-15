@@ -14,7 +14,7 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
+  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
   std / sha1
 
 const
