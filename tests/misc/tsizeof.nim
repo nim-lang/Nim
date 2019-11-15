@@ -336,10 +336,10 @@ testinstance:
       a: int32
       b: T
 
-    # this type mixes `packed` with `alignas`.
+    # this type mixes `packed` with `align`.
     MyCustomAlignPackedObject {.objectconfig.} = object
       a: char
-      b {.alignas: 32.}: int32 # alignas overrides `packed` for this field.
+      b {.align: 32.}: int32 # align overrides `packed` for this field.
       c: char
       d: int32  # unaligned
 
@@ -496,11 +496,11 @@ type
 
   MyCustomAlignUnion {.union.} = object
     c: char
-    a {.alignas: 32.}: int
+    a {.align: 32.}: int
 
   MyCustomAlignObject = object
     c: char
-    a {.alignas: 32.}: int
+    a {.align: 32.}: int
 
 doAssert sizeof(MyUnionType) == 4
 doAssert sizeof(MyCustomAlignUnion) == 32

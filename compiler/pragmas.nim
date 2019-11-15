@@ -20,7 +20,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlignas}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
@@ -815,7 +815,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           sym.typ.align = floatInt64Align(c.config)
         else:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
-      of wAlignas:
+      of wAlign:
         let alignment = expectIntLit(c, it)
         if alignment == 0:
           discard
