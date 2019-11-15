@@ -1,10 +1,8 @@
 discard """
 errormsg: "in expression '("
 nimout: '''
-Error: in expression '(
-  890)': identifier expected, but found ''
+Error: in expression '((890))': identifier expected, but found ''
 '''
-
 line: 11
 """
 
