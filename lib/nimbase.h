@@ -467,6 +467,16 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  define NIM_EXTERNC
 #endif
 
+#if defined(_MSC_VER)
+#  define NIM_ALIGN(x)  __declspec(align(x))
+#elif defined(__cplusplus)
+#  define NIM_ALIGN(x)  alignas(x)
+#elif (defined(__STD_VERSION__) && (__STD_VERSION__ >= 199901))
+#  define NIM_ALIGN(x)  _Alignas(x)
+#else
+#  define NIM_ALIGN(x)
+#endif
+
 /* ---------------- platform specific includes ----------------------- */
 
 /* VxWorks related includes */
