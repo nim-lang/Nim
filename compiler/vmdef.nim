@@ -42,8 +42,10 @@ type
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
+    opcLdArrAddr, # a = addr(b[c])
     opcWrArr,  # a[b] = c
     opcLdObj,  # a = b.c
+    opcLdObjAddr, # a = addr(b.c)
     opcWrObj,  # a.b = c
     opcAddrReg,
     opcAddrNode,
