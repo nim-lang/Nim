@@ -354,8 +354,8 @@ proc atom(g: TSrcGen; n: PNode): string =
   var f: float32
   case n.kind
   of nkEmpty: result = ""
-  of nkIdent: result = n.ident.s
-  of nkSym: result = n.sym.name.s
+  of nkIdent: result = replace(n.ident.s, '`', '_')
+  of nkSym: result = replace(n.sym.name.s, '`', '_')
   of nkStrLit: result = ""; result.addQuoted(n.strVal)
   of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"") & '\"'
   of nkTripleStrLit: result = "\"\"\"" & n.strVal & "\"\"\""
