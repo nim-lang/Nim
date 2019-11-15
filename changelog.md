@@ -58,8 +58,8 @@
 
 ## Language additions
 
-- `alignas` pragma can now be used similar to the `alignas`
-  declaration modifier in C/C++.
+- An `align` pragma can now be used for variables and object fields, similar
+  to the `alignas` declaration modifier in C/C++.
 
 ## Language changes
 
