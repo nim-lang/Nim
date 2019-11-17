@@ -218,10 +218,10 @@ proc makeClosure*(g: ModuleGraph; prc: PSym; env: PNode; info: TLineInfo): PNode
     if env.skipConv.kind == nkClosure:
       localError(g.config, info, "internal error: taking closure of closure")
     result.add(env)
-  if isClosureIterator(result.typ):
-    createTypeBoundOps(g, nil, result.typ, info)
-    if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
-      prc.flags.incl sfInjectDestructors
+  #if isClosureIterator(result.typ):
+  createTypeBoundOps(g, nil, result.typ, info)
+  if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
+    prc.flags.incl sfInjectDestructors
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   # XXX optimization: Only lift the variable if it lives across
