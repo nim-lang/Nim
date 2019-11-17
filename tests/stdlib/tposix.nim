@@ -23,6 +23,9 @@ when not defined(windows):
     # lib/posix/posix_utils.nim
     let diskInfo = posix_utils.getDiskUsage(".")
     doAssert diskInfo is tuple
-    doAssert diskInfo[0] is SomeInteger
-    doAssert diskInfo[1] is SomeInteger
-    doAssert diskInfo[2] is SomeInteger
+    doAssert diskInfo[0] is uint
+    doAssert diskInfo[1] is uint
+    doAssert diskInfo[2] is uint
+    doAssert diskInfo.total > 0.uint
+    doAssert diskInfo.used > 0.uint
+    doAssert diskInfo.free > 0.uint
