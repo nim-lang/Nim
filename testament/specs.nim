@@ -197,11 +197,13 @@ proc parseSpec*(filename: string): TSpec =
       of "joinable":
         result.unjoinable = not parseCfgBool(e.value)
       of "valgrind":
-        result.useValgrind = parseCfgBool(e.value)
-        when defined(windows):
+        when defined(linux) and sizeof(int) == 8:
+          result.useValgrind = parseCfgBool(e.value)
+          result.unjoinable = true
+        else:
           # Windows lacks valgrind. Silly OS.
+          # Valgrind only supports OSX <= 17.x
           result.useValgrind = false
-        result.unjoinable = true
       of "disabled":
         case e.value.normalize
         of "y", "yes", "true", "1", "on": result.err = reDisabled

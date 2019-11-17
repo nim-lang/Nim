@@ -100,8 +100,8 @@ proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: str
   for arg in args:
     result.cmdLine.add ' '
     result.cmdLine.add quoteShell(arg)
-
-  var p = startProcess(command, workingDir=workingDir, args=args, options={poStdErrToStdOut, poUsePath})
+  var p = startProcess(command, workingDir=workingDir, args=args,
+                       options={poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -449,7 +449,8 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
             else:
               exeCmd = exeFile
             if expected.useValgrind:
-              exeCmd = "valgrind " & exeCmd
+              args = exeCmd & args
+              exeCmd = "valgrind"
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
