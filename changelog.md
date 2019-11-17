@@ -54,13 +54,13 @@
 - `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
-
+- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 
 
 ## Language additions
 
-- `alignas` pragma can now be used similar to the `alignas`
-  declaration modifier in C/C++.
+- An `align` pragma can now be used for variables and object fields, similar
+  to the `alignas` declaration modifier in C/C++.
 
 ## Language changes
 
