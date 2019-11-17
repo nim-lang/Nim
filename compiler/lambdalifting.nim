@@ -607,6 +607,7 @@ proc rawClosureCreation(owner: PSym;
         let fieldAccess = indirectAccess(env, local, env.info)
         # add ``env.param = param``
         result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
+        createTypeBoundOpsLL(d.graph, fieldAccess.typ, env.info, owner)
 
   let upField = lookupInRecord(env.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -630,6 +631,7 @@ proc finishClosureCreation(owner: PSym; d: DetectionPass; c: LiftingPass;
     assert unowned != nil
     let nilLit = newNodeIT(nkNilLit, info, unowned.typ)
     res.add newAsgnStmt(unowned, nilLit, info)
+    createTypeBoundOpsLL(d.graph, unowned.typ, info, owner)
 
 proc closureCreationForIter(iter: PNode;
                             d: DetectionPass; c: var LiftingPass): PNode =
