@@ -5,7 +5,7 @@ import strutils, os, osproc, streams, browsers
 
 const
   arch = $(sizeof(int)*8)
-  mingw = "mingw$1-6.3.0.7z" % arch
+  mingw = "mingw$1.7z" % arch
   url = r"https://nim-lang.org/download/" & mingw
 
 var
@@ -225,6 +225,8 @@ proc main() =
       if x.len == 0: continue
       let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
                                     substr(x, 1, x.len-2) else: x)
+              except OSError as e:
+                if e.errorCode == 0: x else: ""
               except: ""
       if y.cmpIgnoreCase(nimDesiredPath) == 0:
         nimAlreadyInPath = true

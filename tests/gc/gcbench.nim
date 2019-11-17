@@ -44,7 +44,7 @@ discard """
 # - No way to check on memory use
 # - No cyclic data structures
 # - No attempt to measure variation with object size
-# - Results are sensitive to locking cost, but we dont
+# - Results are sensitive to locking cost, but we don't
 #   check for proper locking
 #
 

@@ -63,8 +63,8 @@ compiler gcc:
   result = (
     name: "gcc",
     objExt: "o",
-    optSpeed: " -O3 ",
-    optSize: " -Os ",
+    optSpeed: " -O3 -fno-ident",
+    optSize: " -Os -fno-ident",
     compilerExe: "gcc",
     cppCompiler: "g++",
     compileTmpl: "-c $options $include -o $objfile $file",
@@ -138,7 +138,7 @@ compiler vcc:
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c$vccplatform$options $include /Fo$objfile $file",
+    compileTmpl: "/c$vccplatform $options $include /Fo$objfile $file",
     buildGui: " /link /SUBSYSTEM:WINDOWS ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
@@ -664,7 +664,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns
-    # if compilation is not successful  
+    # if compilation is not successful
     discard tryRemoveFile(c.obj.string)
   conf.toCompile.add(c)
 

@@ -17,7 +17,7 @@ type
     visitorFrmt: string
 
 const
-  visitorFrmt  = "#nimGCvisit((void*)$1, $2);$n"
+  visitorFrmt = "#nimGCvisit((void*)$1, $2);$n"
 
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
@@ -104,7 +104,8 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     elif containsGarbageCollectedRef(typ.lastSon):
       # destructor based seqs are themselves not traced but their data is, if
       # they contain a GC'ed type:
-      genTraverseProcSeq(c, accessor, typ)
+      lineCg(p, cpsStmts, "#nimGCvisitSeq((void*)$1, $2);$n", [accessor, c.visitorFrmt])
+      #genTraverseProcSeq(c, accessor, typ)
   of tyString:
     if tfHasAsgn notin typ.flags:
       lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])

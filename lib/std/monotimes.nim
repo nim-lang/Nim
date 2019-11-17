@@ -58,6 +58,7 @@ when defined(macosx):
 
 when defined(js):
   proc getJsTicks: float =
+    ## Returns ticks in the unit seconds
     {.emit: """
       var isNode = typeof module !== 'undefined' && module.exports
 
@@ -66,7 +67,7 @@ when defined(js):
         var time = process.hrtime()
         return time[0] + time[1] / 1000000000;
       } else {
-        return window.performance.now() * 1000000;
+        return window.performance.now() / 1000;
       }
     """.}
 

@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf
+  transf, injectdestructors
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -110,7 +110,7 @@ proc indentLine(p: PProc, r: Rope): Rope =
   var p = p
   while true:
     for i in 0 ..< p.blocks.len + p.extraIndent:
-      prepend(result, "\t".rope)
+      prepend(result, rope"  ")
     if p.up == nil or p.up.prc != p.prc.owner:
       break
     p = p.up
@@ -1169,7 +1169,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     first = firstOrd(p.config, typ.sons[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
-    r.res = "chckIndx($1, $2, $3.length+$2-1)-$2" % [b.res, rope(first), tmp]
+    r.res = "chckIndx($1, $2, ($3 != null ? $3.length : 0)+$2-1)-$2" % [b.res, rope(first), tmp]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:
@@ -2259,7 +2259,10 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  let transformedBody = transformBody(oldProc.module.graph, prc, cache = false)
+  var transformedBody = transformBody(oldProc.module.graph, prc, cache = false)
+  if sfInjectDestructors in prc.flags:
+    transformedBody = injectDestructorCalls(oldProc.module.graph, prc, transformedBody)
+
   p.nested: genStmt(p, transformedBody)
 
   var def: Rope
@@ -2540,7 +2543,9 @@ proc genModule(p: PProc, n: PNode) =
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
-  let transformedN = transformStmt(p.module.graph, p.module.module, n)
+  var transformedN = transformStmt(p.module.graph, p.module.module, n)
+  if sfInjectDestructors in p.module.module.flags:
+    transformedN = injectDestructorCalls(p.module.graph, p.module.module, transformedN)
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &

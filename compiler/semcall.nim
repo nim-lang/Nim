@@ -474,7 +474,8 @@ proc updateDefaultParams(call: PNode) =
 
 proc getCallLineInfo(n: PNode): TLineInfo =
   case n.kind
-  of nkAccQuoted, nkBracketExpr, nkCall, nkCommand: getCallLineInfo(n.sons[0])
+  of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
+    getCallLineInfo(n.sons[0])
   of nkDotExpr: getCallLineInfo(n.sons[1])
   else: n.info
 

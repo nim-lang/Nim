@@ -188,7 +188,7 @@ the old name and introduce a new name:
   type Barz  = enum baz0, baz1 {.deprecated.}, baz2
 
 
-See also `Deprecated <https://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
+See also `Deprecated <manual.html#pragmas-deprecated-pragma>`_
 pragma in the manual.
 
 
@@ -213,8 +213,7 @@ as well as ``testament`` and guarantee they stay in sync.
       assert "baz".addBar == "bazBar"
     result = a & "Bar"
 
-See `parentDir <https://nim-lang.github.io/Nim/os.html#parentDir%2Cstring>`_
-example.
+See `parentDir <os.html#parentDir,string>`_ example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
 embedded in documentation; these are not run by ``nim doc`` and therefore are
@@ -352,7 +351,8 @@ General commit rules
 
 2. If you introduce changes which affect backwards compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
-   the changes should be mentioned in `<changelog.md>`_.
+   the changes should be mentioned in `the changelog
+   <https://github.com/nim-lang/Nim/blob/devel/changelog.md>`_.
 
 3. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.

@@ -407,11 +407,17 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
   if divisor > dividend:
     result.quotient = Zero
-    result.remainder = dividend
+    if isNegativeA:
+      result.remainder = -dividend
+    else:
+      result.remainder = dividend
     return
 
   if divisor == dividend:
-    result.quotient = One
+    if isNegativeA xor isNegativeB:
+      result.quotient = NegOne
+    else:
+      result.quotient = One
     result.remainder = Zero
     return
 
@@ -543,8 +549,6 @@ template bitor(a,b,c: Int128): Int128 = bitor(bitor(a,b), c)
 
 proc toInt128*(arg: float64): Int128 =
   let isNegative = arg < 0
-  assert(arg <  0x47E0000000000000'f64, "out of range")
-  assert(arg >= 0xC7E0000000000000'f64, "out of range")
   let v0 = ldexp(abs(arg), -100)
   let w0 = uint64(trunc(v0))
   let v1 = ldexp(v0 - float64(w0), 50)
@@ -685,3 +689,13 @@ when isMainModule:
   doAssert divMod(toInt128(-ma),toInt128( mb)) == (toInt128(-ma div  mb), toInt128(-ma mod  mb))
   doAssert divMod(toInt128( ma),toInt128(-mb)) == (toInt128( ma div -mb), toInt128( ma mod -mb))
   doAssert divMod(toInt128(-ma),toInt128(-mb)) == (toInt128(-ma div -mb), toInt128(-ma mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( mb)) == (toInt128( mb div  mb), toInt128( mb mod  mb))
+  doAssert divMod(toInt128(-mb),toInt128( mb)) == (toInt128(-mb div  mb), toInt128(-mb mod  mb))
+  doAssert divMod(toInt128( mb),toInt128(-mb)) == (toInt128( mb div -mb), toInt128( mb mod -mb))
+  doAssert divMod(toInt128(-mb),toInt128(-mb)) == (toInt128(-mb div -mb), toInt128(-mb mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( ma)) == (toInt128( mb div  ma), toInt128( mb mod  ma))
+  doAssert divMod(toInt128(-mb),toInt128( ma)) == (toInt128(-mb div  ma), toInt128(-mb mod  ma))
+  doAssert divMod(toInt128( mb),toInt128(-ma)) == (toInt128( mb div -ma), toInt128( mb mod -ma))
+  doAssert divMod(toInt128(-mb),toInt128(-ma)) == (toInt128(-mb div -ma), toInt128(-mb mod -ma))

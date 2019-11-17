@@ -28,7 +28,7 @@ Examples of things that can be implemented in macros:
 
 * Symbolic differentiation of an expression.
   ``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)`` is converted to
-  ``3*a*pow(x,2) + 2*a*x + c``
+  ``3*a*pow(x,2) + 2*b*x + c``
 
 
 Macro Arguments

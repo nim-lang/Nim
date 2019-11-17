@@ -1005,13 +1005,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let a = regs[rb].node
       if a.kind == nkSym:
-        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
-                        else:
-                          let ast = a.sym.ast.shallowCopy
-                          for i in 0..<a.sym.ast.len:
-                            ast[i] = a.sym.ast[i]
-                          ast[bodyPos] = transformBody(c.graph, a.sym)
-                          ast.copyTree()
+        regs[ra].node =
+          if a.sym.ast.isNil:
+            newNode(nkNilLit)
+          else:
+            let ast = a.sym.ast.shallowCopy
+            for i in 0..<a.sym.ast.len:
+              ast[i] = a.sym.ast[i]
+            ast[bodyPos] = transformBody(c.graph, a.sym, cache=true)
+            ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
       let a = regs[rb].node
@@ -1644,10 +1646,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
-      let aNode = regs[rb].node
-      let bNode = regs[rc].node
-      # these are cstring to prevent string copy, and cmpIgnoreStyle from
-      # takes cstring arguments
+      var aNode = regs[rb].node
+      var bNode = regs[rc].node
+      # Skipping both, `nkPostfix` and `nkAccQuoted` for both
+      # arguments.  `nkPostfix` exists only to tag exported symbols
+      # and therefor it can be safely skipped. Nim has no postfix
+      # operator. `nkAccQuoted` is used to quote an identifier that
+      # wouldn't be allowed to use in an unquoted context.
+      if aNode.kind == nkPostfix:
+        aNode = aNode[1]
+      if aNode.kind == nkAccQuoted:
+        aNode = aNode[0]
+      if bNode.kind == nkPostfix:
+        bNode = bNode[1]
+      if bNode.kind == nkAccQuoted:
+        bNode = bNode[0]
+      # These vars are of type `cstring` to prevent unnecessary string copy.
       var aStrVal: cstring = nil
       var bStrVal: cstring = nil
       # extract strVal from argument ``a``
@@ -1674,7 +1688,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode[0].sym.name.s.cstring
       else:
         discard
-      # set result
       regs[ra].intVal =
         if aStrVal != nil and bStrVal != nil:
           ord(idents.cmpIgnoreStyle(aStrVal, bStrVal, high(int)) == 0)
@@ -1972,7 +1985,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       "NimScript: attempt to call non-routine: " & sym.name.s)
 
 proc evalStmt*(c: PCtx, n: PNode) =
-  let n = transformExpr(c.graph, c.module, n, noDestructors = true)
+  let n = transformExpr(c.graph, c.module, n)
   let start = genStmt(c, n)
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
@@ -1980,7 +1993,7 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
-  let n = transformExpr(c.graph, c.module, n, noDestructors = true)
+  let n = transformExpr(c.graph, c.module, n)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
@@ -2026,7 +2039,7 @@ proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   if g.config.errorCounter > 0: return n
-  let n = transformExpr(g, module, n, noDestructors = true)
+  let n = transformExpr(g, module, n)
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode
