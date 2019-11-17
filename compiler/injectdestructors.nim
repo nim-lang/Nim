@@ -271,7 +271,7 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc p(n: PNode; c: var Con): PNode
+proc p(n: PNode; c: var Con; consumed = false): PNode
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
@@ -366,6 +366,20 @@ template handleNested(n: untyped, processCall: untyped) =
       result.add branch
   else: assert(false)
 
+proc handleClosureCall(arg: PNode; c: var Con): PNode =
+  if arg.kind == nkClosure and arg.typ != nil and hasDestructor(arg.typ):
+    # produce temp creation for (fn, env). But we need to move 'env'?
+    # This was already done in the sink parameter handling logic.
+    result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
+    let tmp = getTemp(c, arg.typ, arg.info)
+    var sinkExpr = genSink(c, tmp, arg)
+    sinkExpr.add arg
+    result.add sinkExpr
+    result.add tmp
+    c.destroys.add genDestroy(c, tmp)
+  else:
+    result = arg
+
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   if isSink:
     if arg.kind in nkCallKinds:
@@ -374,7 +388,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result = copyNode(arg)
       let parameters = arg[0].typ
       let L = if parameters != nil: parameters.len else: 0
-      result.add arg[0]
+      result.add pArg(arg[0], c, isSink = false)
       for i in 1..<arg.len:
         result.add pArg(arg[i], c, i < L and isSinkTypeForParam(parameters[i]))
     elif arg.containsConstSeq:
@@ -392,6 +406,9 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
           result[i][1] = pArg(arg[i][1], c, isSink = true)
         else:
           result[i] = pArg(arg[i], c, isSink = true)
+      #if arg.kind == nkClosure:
+      #  result = handleClosureCall(result, c)
+      # Not required here because the nkClosure will be consumed!
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
@@ -442,7 +459,7 @@ proc isCursor(n: PNode): bool =
   else:
     result = false
 
-proc p(n: PNode; c: var Con): PNode =
+proc p(n: PNode; c: var Con; consumed = false): PNode =
   case n.kind
   of nkCallKinds:
     let parameters = n[0].typ
@@ -454,6 +471,8 @@ proc p(n: PNode; c: var Con): PNode =
       if c.graph.config.selectedGC in {gcHooks, gcDestructors}:
         let destroyOld = genDestroy(c, result[1])
         result = newTree(nkStmtList, destroyOld, result)
+    else:
+      result[0] = pArg(result[0], c, isSink = false)
   of nkDiscardStmt: # Small optimization
     if n[0].kind != nkEmpty:
       n[0] = pArg(n[0], c, false)
@@ -479,6 +498,8 @@ proc p(n: PNode; c: var Con): PNode =
         result[i][1] = pArg(n[i][1], c, isSink = true)
       else:
         result[i] = pArg(n[i], c, isSink = true)
+    if not consumed and n.kind == nkClosure:
+      result = handleClosureCall(result, c)
   of nkVarSection, nkLetSection:
     # transform; var x = y to  var x; x op y  where op is a move or copy
     result = newNodeI(nkStmtList, n.info)
@@ -571,12 +592,12 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   case ri.kind
   of nkCallKinds:
     result = genSink(c, dest, ri)
-    result.add p(ri, c)
+    result.add p(ri, c, consumed = true)
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
       # unpacking of tuple: move out the elements
       result = genSink(c, dest, ri)
-      result.add p(ri, c)
+      result.add p(ri, c, consumed = true)
     elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
@@ -584,17 +605,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
-      result.add p(ri, c)
+      result.add p(ri, c, consumed = true)
   of nkBracket:
     # array constructor
     if ri.len > 0 and isDangerousSeq(ri.typ):
       result = genCopy(c, dest, ri)
     else:
       result = genSink(c, dest, ri)
-    result.add p(ri, c)
+    result.add p(ri, c, consumed = true)
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
     result = genSink(c, dest, ri)
-    result.add p(ri, c)
+    result.add p(ri, c, consumed = true)
   of nkSym:
     if isSinkParam(ri.sym):
       # Rule 3: `=sink`(x, z); wasMoved(z)
@@ -610,7 +631,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
-      result.add p(ri, c)
+      result.add p(ri, c, consumed = true)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
     result = moveOrCopy(dest, ri[1], c)
     if not sameType(ri.typ, ri[1].typ):
@@ -633,7 +654,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
-      result.add p(ri, c)
+      result.add p(ri, c, consumed = true)
 
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:
