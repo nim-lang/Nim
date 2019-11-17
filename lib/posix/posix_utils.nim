@@ -99,12 +99,14 @@ proc mkdtemp*(prefix: string): string =
     raise newException(OSError, $strerror(errno))
   return $tmpl
 
-proc getDiskUsage*(path: string): tuple[total: uint, used: uint, free: uint] {.inline.} =
-  ## Convenience proc for ``statvfs`` to get disk usage statistics in bytes.
-  ##
-  ## .. code-block:: nim
-  ##   echo getDiskUsage(".") ## (total: ..., used: ..., free: ...)
-  ##
-  var t = Statvfs()
-  discard statvfs(path, t)
-  (total: uint(t.f_blocks * t.f_frsize), used: uint((t.f_blocks - t.f_bfree) * t.f_frsize), free: uint(t.f_bavail * t.f_frsize))
+when defined(amd64):
+  proc getDiskUsage*(path: string): tuple[total: uint, used: uint, free: uint] {.inline.} =
+    ## Convenience proc for ``statvfs`` to get disk usage statistics in bytes.
+    ## This proc is available for 64 Bit architectures and operating systems.
+    ##
+    ## .. code-block:: nim
+    ##   echo getDiskUsage(".") ## (total: ..., used: ..., free: ...)
+    ##
+    var t = Statvfs()
+    discard statvfs(path, t)
+    (total: uint(t.f_blocks * t.f_frsize), used: uint((t.f_blocks - t.f_bfree) * t.f_frsize), free: uint(t.f_bavail * t.f_frsize))
