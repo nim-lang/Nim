@@ -51,6 +51,8 @@ addons:
     - libsdl1.2-dev
     - libgc-dev
     - libsfml-dev
+    - libc6-dbg
+    - valgrind
   homebrew:
     packages:
     - boehmgc
