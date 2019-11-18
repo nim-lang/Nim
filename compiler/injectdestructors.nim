@@ -366,8 +366,10 @@ template handleNested(n: untyped, processCall: untyped) =
       result.add branch
   else: assert(false)
 
-proc handleClosureCall(arg: PNode; c: var Con): PNode =
-  if arg.kind == nkClosure and arg.typ != nil and hasDestructor(arg.typ):
+proc ensureDestruction(arg: PNode; c: var Con): PNode =
+  # it can happen that we need to destroy expression contructors
+  # like [], (), closures explicitly in order to not leak them.
+  if arg.typ != nil and hasDestructor(arg.typ):
     # produce temp creation for (fn, env). But we need to move 'env'?
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
@@ -483,12 +485,16 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
       # everything that is passed to an array constructor is consumed,
       # so these all act like 'sink' parameters:
       result[i] = pArg(n[i], c, isSink = true)
+    if not consumed:
+      result = ensureDestruction(result, c)
   of nkObjConstr:
     result = copyTree(n)
     for i in 1..<n.len:
       # everything that is passed to an object constructor is consumed,
       # so these all act like 'sink' parameters:
       result[i][1] = pArg(n[i][1], c, isSink = true)
+    if not consumed:
+      result = ensureDestruction(result, c)
   of nkTupleConstr, nkClosure:
     result = copyTree(n)
     for i in ord(n.kind == nkClosure)..<n.len:
@@ -498,8 +504,8 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
         result[i][1] = pArg(n[i][1], c, isSink = true)
       else:
         result[i] = pArg(n[i], c, isSink = true)
-    if not consumed and n.kind == nkClosure:
-      result = handleClosureCall(result, c)
+    if not consumed:
+      result = ensureDestruction(result, c)
   of nkVarSection, nkLetSection:
     # transform; var x = y to  var x; x op y  where op is a move or copy
     result = newNodeI(nkStmtList, n.info)
@@ -577,11 +583,11 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
     result = copyTree(n)
     result[1][0] = p(result[1][0], c)
   of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt:
-    handleNested(n): p(node, c)
+    handleNested(n): p(node, c, consumed)
   else:
     result = shallowCopy(n)
     for i in 0..<n.len:
-      result[i] = p(n[i], c)
+      result[i] = p(n[i], c, consumed)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   # unfortunately, this needs to be kept consistent with the cases

@@ -709,11 +709,11 @@ proc track(tracked: PEffects, n: PNode) =
     # p's effects are ours too:
     var a = n.sons[0]
     let op = a.typ
-    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
-      return
     if n.typ != nil:
       if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         createTypeBoundOps(tracked, n.typ, n.info)
+    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
+      return
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
@@ -883,6 +883,9 @@ proc track(tracked: PEffects, n: PNode) =
     if n.len == 2: track(tracked, n.sons[1])
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.len == 1: track(tracked, n.sons[0])
+  of nkBracket:
+    for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
+    createTypeBoundOps(tracked, n.typ, n.info)
   else:
     for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
 
