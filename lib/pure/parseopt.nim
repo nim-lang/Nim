@@ -227,9 +227,9 @@ when declared(os.paramCount):
     if cmdline != "":
       result.cmds = parseCmdLine(cmdline)
     else:
-      result.cmds = newSeq[string](paramCount())
-      for i in countup(1, paramCount()):
-        result.cmds[i-1] = paramStr(i).string
+      result.cmds = newSeq[string](os.paramCount())
+      for i in countup(1, os.paramCount()):
+        result.cmds[i-1] = os.paramStr(i).string
 
     result.kind = cmdEnd
     result.key = TaintedString""
@@ -264,9 +264,9 @@ when declared(os.paramCount):
       for i in 0..<cmdline.len:
         result.cmds[i] = cmdline[i].string
     else:
-      result.cmds = newSeq[string](paramCount())
-      for i in countup(1, paramCount()):
-        result.cmds[i-1] = paramStr(i).string
+      result.cmds = newSeq[string](os.paramCount())
+      for i in countup(1, os.paramCount()):
+        result.cmds[i-1] = os.paramStr(i).string
     result.kind = cmdEnd
     result.key = TaintedString""
     result.val = TaintedString""
