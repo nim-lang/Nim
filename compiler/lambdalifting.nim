@@ -607,7 +607,9 @@ proc rawClosureCreation(owner: PSym;
         let fieldAccess = indirectAccess(env, local, env.info)
         # add ``env.param = param``
         result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
-        createTypeBoundOpsLL(d.graph, fieldAccess.typ, env.info, owner)
+        createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info)
+        if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
+          owner.flags.incl sfInjectDestructors
 
   let upField = lookupInRecord(env.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
