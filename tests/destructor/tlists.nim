@@ -51,7 +51,26 @@ proc tleakingNewStmt =
   for i in 0..10:
     new(x)
 
+iterator infinite(): int {.closure.} =
+  var i = 0
+  while true:
+    yield i
+    inc i
+
+iterator take(it: iterator (): int, numToTake: int): int {.closure.} =
+  var i = 0
+  for x in it():
+    if i >= numToTake:
+      break
+    yield x
+    inc i
+
+proc take3 =
+  for x in infinite.take(3):
+    discard
+
 let startMem = getOccupiedMem()
+take3()
 tlazyList()
 
 mkManyLeaks()
