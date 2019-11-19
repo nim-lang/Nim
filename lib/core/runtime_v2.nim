@@ -68,6 +68,7 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
     atomicInc head(p).rc
   else:
     inc head(p).rc
+    #cprintf("[INCREF] %p\n", p)
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
@@ -113,13 +114,15 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
       if atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) == 0:
         result = true
       else:
-        if atomicDec(head(p).rc) <= 0:
-          result = true
+        discard atomicDec(head(p).rc)
     else:
       if head(p).rc == 0:
         result = true
+        #cprintf("[DESTROY] %p\n", p)
       else:
         dec head(p).rc
+        # According to Lins it's correct to do nothing else here.
+        #cprintf("[DeCREF] %p\n", p)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
