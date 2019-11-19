@@ -7,6 +7,7 @@ packages:
 - devel/sfml
 - www/node
 - devel/gmake
+- devel/git
 sources:
 - https://github.com/nim-lang/Nim
 environment:
