@@ -4,7 +4,7 @@ discard """
 Success
 @["a", "b", "c"]
 0'''
-  cmd: '''nim c --gc:destructors $file'''
+  cmd: '''nim c --gc:arc $file'''
 """
 
 import os
@@ -69,10 +69,23 @@ proc take3 =
   for x in infinite.take(3):
     discard
 
+
+type
+  A = ref object of RootObj
+    x: int
+
+  B = ref object of A
+    more: string
+
+proc inheritanceBug(param: string) =
+  var s: (A, A)
+  s[0] = B(more: "a" & param)
+  s[1] = B(more: "a" & param)
+
 let startMem = getOccupiedMem()
 take3()
 tlazyList()
-
+inheritanceBug("whatever")
 mkManyLeaks()
 tsimpleClosureIterator()
 tleakingNewStmt()
