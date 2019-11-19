@@ -1766,8 +1766,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       onUse(n.info, n.sym)
     else:
       if s.kind != skError:
-        localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
-          [s.name.s, substr($s.kind, 2)])
+        if s.typ == nil:
+          localError(c.config, n.info, "type expected, but symbol '$1' has no type." % [s.name.s])
+        else:
+          localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
+            [s.name.s, substr($s.kind, 2)])
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
   of nkTupleTy: result = semTuple(c, n, prev)
