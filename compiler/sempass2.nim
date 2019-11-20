@@ -855,6 +855,8 @@ proc track(tracked: PEffects, n: PNode) =
       if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards.s, oldFacts)
+    if tracked.owner.kind != skMacro:
+      createTypeBoundOps(tracked, n.typ, n.info)
   of nkPragmaBlock:
     let pragmaList = n.sons[0]
     let oldLocked = tracked.locked.len
@@ -885,7 +887,8 @@ proc track(tracked: PEffects, n: PNode) =
     if n.len == 1: track(tracked, n.sons[0])
   of nkBracket:
     for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
-    createTypeBoundOps(tracked, n.typ, n.info)
+    if tracked.owner.kind != skMacro:
+      createTypeBoundOps(tracked, n.typ, n.info)
   else:
     for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
 
