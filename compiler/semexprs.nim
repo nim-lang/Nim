@@ -296,14 +296,10 @@ proc semConv(c: PContext, n: PNode): PNode =
         localError(c.config, n.info, "illegal conversion from '$1' to '$2'" %
           [op.typ.typeToString, result.typ.typeToString])
     of convNotInRange:
-      if (skipTypes(result.typ, abstractVar).kind in {tyUInt..tyUInt64} and
-          checkUnsignedConversions notin c.config.legacyFeatures):
-        discard
-      else:
-        let value =
-          if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
-        localError(c.config, n.info, errGenerated, value & " can't be converted to " &
-          result.typ.typeToString)
+      let value =
+        if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
+      localError(c.config, n.info, errGenerated, value & " can't be converted to " &
+        result.typ.typeToString)
   else:
     for i in 0 ..< len(op):
       let it = op.sons[i]
