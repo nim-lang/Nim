@@ -433,15 +433,12 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   let dstTyp = skipTypes(n.typ, abstractRange - {tyTypeDesc})
   let srcTyp = skipTypes(a.typ, abstractRange - {tyTypeDesc})
 
-
   # if srcTyp.kind == tyUInt64 and "FFFFFF" in $n:
   #   echo "n: ", n, " a: ", a
   #   echo "from: ", srcTyp, " to: ", dstTyp, " check: ", check
   #   echo getInt(a)
   #   echo high(int64)
   #   writeStackTrace()
-
-  # XXX range checks?
   case dstTyp.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
@@ -449,9 +446,10 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       result = newIntNodeT(BiggestInt(getFloat(a)), n, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       var val = a.getOrdValue
+
       if check: rangeCheck(n, val, g)
       result = newIntNodeT(val, n, g)
-      if dstTyp.kind in {tyUInt .. tyUInt64}:
+      if dstTyp.kind in {tyUInt..tyUInt64}:
         result.kind = nkUIntLit
     else:
       result = a
