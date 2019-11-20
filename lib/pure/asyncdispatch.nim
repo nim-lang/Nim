@@ -1266,14 +1266,19 @@ else:
 
     let data = selector.getData(sock.SocketHandle)
     sock.unregister()
-    sock.SocketHandle.close()
     # We need to unblock the read and write callbacks which could still be
     # waiting for the socket to become readable and/or writeable.
-    for cb in data.readList & data.writeList:
+    for cb in data.readList:
       if not cb(sock):
         raise newException(
           ValueError, "Expecting async operations to stop when fd has closed."
         )
+    for cb in data.writeList:
+      if not cb(sock):
+        raise newException(
+          ValueError, "Expecting async operations to stop when fd has closed."
+        )
+    sock.SocketHandle.close()
 
 
   proc runOnce(timeout = 500): bool =
