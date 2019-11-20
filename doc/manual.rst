@@ -3188,6 +3188,7 @@ has lots of advantages:
 
 Type conversions
 ----------------
+
 Syntactically a `type conversion` is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
@@ -3206,6 +3207,19 @@ A type conversion can also be used to disambiguate overloaded routines:
 
   let procVar = (proc(x: string))(p)
   procVar("a")
+
+Since operations on unsigned numbers wrap around and are unchecked so are
+type conversion to unsigned integers and between unsigned integers. The
+rationale for this is mostly better interoperability with the C Programming
+language when algorithms are ported from C to Nim.
+
+Exception: Values that are converted to an unsigned type at compile time
+are checked so that code like ``byte(-1)`` does not compile.
+
+**Note**: Historically the operations
+were unchecked and the conversions were sometimes checked but starting with
+the revision 1.0.4 of this document and the language implementation the
+conversions too are now *always unchecked*.
 
 
 Type casts

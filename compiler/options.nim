@@ -146,6 +146,10 @@ type
       ## Allows to modify a NimNode where the type has already been
       ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
+    checkUnsignedConversions
+      ## Historically and especially in version 1.0.0 of the language
+      ## conversions to unsigned numbers were checked. In 1.0.4 they
+      ## are not anymore.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
