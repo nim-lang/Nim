@@ -471,7 +471,8 @@ template handleJmpBack() {.dirty.} =
   dec(c.loopIterations)
 
 proc recSetFlagIsRef(arg: PNode) =
-  arg.flags.incl(nfIsRef)
+  if arg.kind notin {nkStrLit..nkTripleStrLit}:
+    arg.flags.incl(nfIsRef)
   for i in 0 ..< arg.safeLen:
     arg.sons[i].recSetFlagIsRef
 

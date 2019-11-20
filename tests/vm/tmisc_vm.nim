@@ -12,6 +12,9 @@ main:end
 (width: 0, height: 0, path: "")
 @[(width: 0, height: 0, path: ""), (width: 0, height: 0, path: "")]
 Done!
+foo4
+foo4
+foo4
 '''
 """
 
@@ -214,3 +217,20 @@ static:
   someTransform(state)
 
   doAssert state[1] == 13087528040916209671'u64
+
+import macros
+# bug #12670
+
+macro fooImpl(arg: untyped) =
+  result = quote do:
+    `arg`
+
+proc foo(): string {.compileTime.} =
+  fooImpl:
+    result = "foo"
+    result.addInt 4
+
+static:
+  echo foo()
+  echo foo()
+  echo foo()
