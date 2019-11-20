@@ -2354,6 +2354,14 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
         linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
                 [d.rdLoc, a.rdLoc, b.rdLoc])
     else:
+      # make a copy of env (b)
+      if b.t.kind != tyNil:
+        var copy: TLoc
+        getTemp(p, b.t, copy)
+        rawGenNew(p, copy, copy.r)
+        genDeepCopy(p, copy, b)
+        b = copy
+
       getTemp(p, n.typ, tmp)
       linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
               [tmp.rdLoc, a.rdLoc, b.rdLoc])
