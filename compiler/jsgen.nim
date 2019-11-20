@@ -2155,7 +2155,10 @@ proc upConv(p: PProc, n: PNode, r: var TCompRes) =
 proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   var a, b: TCompRes
   gen(p, n.sons[0], r)
-  if optRangeCheck in p.options:
+  if optRangeCheck notin p.options or (skipTypes(n.typ, abstractVar).kind in {tyUInt..tyUInt64} and
+      checkUnsignedConversions notin p.config.legacyFeatures):
+    discard "XXX maybe emit masking instructions here"
+  else:
     gen(p, n.sons[1], a)
     gen(p, n.sons[2], b)
     useMagic(p, "chckRange")

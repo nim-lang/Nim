@@ -441,8 +441,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   #   echo getInt(a)
   #   echo high(int64)
   #   writeStackTrace()
-
-  # XXX range checks?
+  var check = check
   case dstTyp.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
@@ -450,9 +449,13 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       result = newIntNodeT(toInt128(getFloat(a)), n, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       var val = a.getOrdValue
-      if check: rangeCheck(n, val, g)
+
+      if (dstTyp.kind in {tyUInt..tyUInt64} and
+          checkUnsignedConversions notin g.config.legacyFeatures):
+        check = false
+      elif check: rangeCheck(n, val, g)
       result = newIntNodeT(val, n, g)
-      if dstTyp.kind in {tyUInt .. tyUInt64}:
+      if dstTyp.kind in {tyUInt..tyUInt64}:
         result.kind = nkUIntLit
     else:
       result = a
@@ -711,7 +714,11 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   of nkChckRangeF, nkChckRange64, nkChckRange:
     var a = getConstExpr(m, n.sons[0], g)
     if a == nil: return
-    if leValueConv(n.sons[1], a) and leValueConv(a, n.sons[2]):
+    if (skipTypes(n.typ, abstractVar).kind in {tyUInt..tyUInt64} and
+        checkUnsignedConversions notin g.config.legacyFeatures):
+      result = a # just accept it, no questions asked, see the spec
+      result.typ = n.typ
+    elif leValueConv(n.sons[1], a) and leValueConv(a, n.sons[2]):
       result = a              # a <= x and x <= b
       result.typ = n.typ
     else:

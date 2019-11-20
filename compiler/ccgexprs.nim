@@ -1929,7 +1929,8 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
 proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   var a: TLoc
   var dest = skipTypes(n.typ, abstractVar)
-  if optRangeCheck notin p.options:
+  if optRangeCheck notin p.options or (dest.kind in {tyUInt..tyUInt64} and
+      checkUnsignedConversions notin p.config.legacyFeatures):
     initLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, n, "(($1) ($2))" %
         [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
