@@ -89,6 +89,7 @@ type                          # please make sure we have under 32 options
     optMultiMethods
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
+    optProduceAsm             # produce assembler code
 
   TGlobalOptions* = set[TGlobalOption]
 
