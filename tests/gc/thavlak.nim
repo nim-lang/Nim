@@ -18,38 +18,38 @@ when not declared(withScratchRegion):
   template withScratchRegion(body: untyped) = body
 
 type
-  BasicBlock = object
-    inEdges: seq[ref BasicBlock]
-    outEdges: seq[ref BasicBlock]
+  BasicBlock = ref object
+    inEdges: seq[BasicBlock]
+    outEdges: seq[BasicBlock]
     name: int
 
-proc newBasicBlock(name: int): ref BasicBlock =
-  result = (ref BasicBlock)(
-    inEdges: newSeq[ref BasicBlock](),
-    outEdges: newSeq[ref BasicBlock](),
+proc newBasicBlock(name: int): BasicBlock =
+  result = BasicBlock(
+    inEdges: newSeq[BasicBlock](),
+    outEdges: newSeq[BasicBlock](),
     name: name
   )
 
-proc hash(x: ref BasicBlock): int {.inline.} =
+proc hash(x: BasicBlock): int {.inline.} =
   result = x.name
 
 type
   BasicBlockEdge = object
-    fr: ref BasicBlock
-    to: ref BasicBlock
+    fr: BasicBlock
+    to: BasicBlock
 
   Cfg = object
-    basicBlockMap: Table[int, ref BasicBlock]
+    basicBlockMap: Table[int, BasicBlock]
     edgeList: seq[BasicBlockEdge]
-    startNode: ref BasicBlock
+    startNode: BasicBlock
 
 proc newCfg(): Cfg =
   result = Cfg(
-    basicBlockMap: initTable[int, ref BasicBlock](),
+    basicBlockMap: initTable[int, BasicBlock](),
     edgeList: newSeq[BasicBlockEdge](),
     startNode: nil)
 
-proc createNode(self: var Cfg, name: int): ref BasicBlock =
+proc createNode(self: var Cfg, name: int): BasicBlock =
   result = self.basicBlockMap.getOrDefault(name)
   if result == nil:
     result = newBasicBlock(name)
@@ -68,23 +68,23 @@ proc newBasicBlockEdge(cfg: var Cfg, fromName, toName: int) =
   cfg.edgeList.add(result)
 
 type
-  SimpleLoop = object
-    basicBlocks: seq[ref BasicBlock] # TODO: set here
-    children: seq[ref SimpleLoop] # TODO: set here
-    parent: ref SimpleLoop
-    header: ref BasicBlock
+  SimpleLoop = ref object
+    basicBlocks: seq[BasicBlock] # TODO: set here
+    children: seq[SimpleLoop] # TODO: set here
+    parent: SimpleLoop
+    header: BasicBlock
     isRoot, isReducible: bool
     counter, nestingLevel, depthLevel: int
 
-proc setParent(self: ref SimpleLoop, parent: ref SimpleLoop) =
+proc setParent(self: SimpleLoop, parent: SimpleLoop) =
   self.parent = parent
   self.parent.children.add self
 
-proc setHeader(self: ref SimpleLoop, bb: ref BasicBlock) =
+proc setHeader(self: SimpleLoop, bb: BasicBlock) =
   self.basicBlocks.add(bb)
   self.header = bb
 
-proc setNestingLevel(self: ref SimpleLoop, level: int) =
+proc setNestingLevel(self: SimpleLoop, level: int) =
   self.nestingLevel = level
   if level == 0: self.isRoot = true
 
@@ -92,40 +92,40 @@ var loopCounter: int = 0
 
 type
   Lsg = object
-    loops: seq[ref SimpleLoop]
-    root: ref SimpleLoop
+    loops: seq[SimpleLoop]
+    root: SimpleLoop
 
-proc createNewLoop(self: var Lsg): ref SimpleLoop =
-  result = (ref SimpleLoop)(
-    basicBlocks: newSeq[ref BasicBlock](),
-    children: newSeq[ref SimpleLoop](),
+proc createNewLoop(self: var Lsg): SimpleLoop =
+  result = SimpleLoop(
+    basicBlocks: newSeq[BasicBlock](),
+    children: newSeq[SimpleLoop](),
     isReducible: true)
   loopCounter += 1
   result.counter = loopCounter
 
-proc addLoop(self: var Lsg, l: ref SimpleLoop) =
+proc addLoop(self: var Lsg, l: SimpleLoop) =
   self.loops.add l
 
 proc newLsg(): Lsg =
-  result = Lsg(loops: newSeq[ref SimpleLoop](),
+  result = Lsg(loops: newSeq[SimpleLoop](),
     root: result.createNewLoop())
   result.root.setNestingLevel(0)
   result.addLoop(result.root)
 
 type
-  UnionFindNode = object
-    parent {.cursor.}: ref UnionFindNode
-    bb: ref BasicBlock
-    l: ref SimpleLoop
+  UnionFindNode = ref object
+    parent {.cursor.}: UnionFindNode
+    bb: BasicBlock
+    l: SimpleLoop
     dfsNumber: int
 
-proc initNode(self: ref UnionFindNode, bb: ref BasicBlock, dfsNumber: int) =
+proc initNode(self: UnionFindNode, bb: BasicBlock, dfsNumber: int) =
   self.parent = self
   self.bb = bb
   self.dfsNumber = dfsNumber
 
-proc findSet(self: ref UnionFindNode): ref UnionFindNode =
-  var nodeList = newSeq[ref UnionFindNode]()
+proc findSet(self: UnionFindNode): UnionFindNode =
+  var nodeList = newSeq[UnionFindNode]()
   var it {.cursor.} = self
 
   while it != it.parent:
@@ -136,7 +136,7 @@ proc findSet(self: ref UnionFindNode): ref UnionFindNode =
   for iter in nodeList: iter.parent = it.parent
   result = it
 
-proc union(self: ref UnionFindNode, unionFindNode: ref UnionFindNode) =
+proc union(self: UnionFindNode, unionFindNode: UnionFindNode) =
   self.parent = unionFindNode
 
 
@@ -164,8 +164,8 @@ proc newHavlakLoopFinder(cfg: Cfg, lsg: sink Lsg): HavlakLoopFinder =
 proc isAncestor(w, v: int, last: seq[int]): bool =
   w <= v and v <= last[w]
 
-proc dfs(currentNode: ref BasicBlock, nodes: var seq[ref UnionFindNode],
-         number: var Table[ref BasicBlock, int],
+proc dfs(currentNode: BasicBlock, nodes: var seq[UnionFindNode],
+         number: var Table[BasicBlock, int],
          last: var seq[int], current: int) =
   var stack = @[(currentNode, current)]
   while stack.len > 0:
@@ -186,16 +186,16 @@ proc findLoops(self: var HavlakLoopFinder): int =
 
   var nonBackPreds = newSeq[HashSet[int]]()
   var backPreds = newSeq[seq[int]]()
-  var number = initTable[ref BasicBlock, int]()
+  var number = initTable[BasicBlock, int]()
   var header = newSeq[int](size)
   var types = newSeq[int](size)
   var last = newSeq[int](size)
-  var nodes = newSeq[ref UnionFindNode]()
+  var nodes = newSeq[UnionFindNode]()
 
   for i in 1..size:
     nonBackPreds.add initHashSet[int](1)
     backPreds.add newSeq[int]()
-    nodes.add((ref UnionFindNode)())
+    nodes.add(UnionFindNode())
 
   # Step a:
   #   - initialize all nodes as unvisited.
@@ -248,7 +248,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
 
   for w in countdown(size - 1, 0):
     # this is 'P' in Havlak's paper
-    var nodePool = newSeq[ref UnionFindNode]()
+    var nodePool = newSeq[UnionFindNode]()
 
     var nodeW = nodes[w].bb
     if nodeW != nil: # dead BB
@@ -261,7 +261,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
 
       # Copy nodePool to workList.
       #
-      var workList = newSeq[ref UnionFindNode]()
+      var workList = newSeq[UnionFindNode]()
       for x in nodePool: workList.add x
 
       if nodePool.len != 0: types[w] = BB_REDUCIBLE
