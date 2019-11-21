@@ -1,4 +1,4 @@
-# x.x - xxxx-xx-xx
+# 1.2 - xxxx-xx-xx
 
 
 ## Changes affecting backwards compatibility
@@ -77,7 +77,8 @@
 
 - JS target indent is all spaces, instead of mixed spaces and tabs, for
   generated JavaScript.
-
+- The Nim compiler now supports the ``--asm`` command option for easier
+  inspection of the produced assembler code.
 
 
 ## Bugfixes
