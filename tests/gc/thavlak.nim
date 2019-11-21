@@ -161,7 +161,7 @@ type
 proc newHavlakLoopFinder(cfg: Cfg, lsg: sink Lsg): HavlakLoopFinder =
   result = HavlakLoopFinder(cfg: cfg, lsg: lsg)
 
-proc isAncestor(w: int, v: int, last: seq[int]): bool =
+proc isAncestor(w, v: int, last: seq[int]): bool =
   w <= v and v <= last[w]
 
 proc dfs(currentNode: ref BasicBlock, nodes: var seq[ref UnionFindNode],
@@ -269,7 +269,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
       # work the list...
       #
       while workList.len > 0:
-        var x = workList[0]
+        let x = workList[0]
         workList.del(0)
 
         # Step e:
@@ -355,10 +355,10 @@ proc buildDiamond(self: var LoopTesterApp, start: int): int =
   newBasicBlockEdge(self.cfg, start + 2, start + 3)
   result = start + 3
 
-proc buildConnect(self: var LoopTesterApp, start1: int, end1: int) =
+proc buildConnect(self: var LoopTesterApp, start1, end1: int) =
   newBasicBlockEdge(self.cfg, start1, end1)
 
-proc buildStraight(self: var LoopTesterApp, start: int, n: int): int =
+proc buildStraight(self: var LoopTesterApp, start, n: int): int =
   for i in 0..n-1:
     self.buildConnect(start + i, start + i + 1)
   result = start + n
