@@ -55,18 +55,17 @@ proc createNode(self: var Cfg, name: int): ref BasicBlock =
   if self.startNode == nil:
     self.startNode = result
 
-proc addEdge(self: var Cfg, edge: BasicBlockEdge) =
-  self.edgeList.add(edge)
-
 proc getNumNodes(self: Cfg): int =
   self.basicBlockMap.len
 
-proc newBasicBlockEdge(cfg: var Cfg, fromName: int, toName: int): BasicBlockEdge =
-  result.fr = cfg.createNode(fromName)
-  result.to = cfg.createNode(toName)
+proc newBasicBlockEdge(cfg: var Cfg, fromName: int, toName: int) =
+  var result = BasicBlockEdge(
+    fr: cfg.createNode(fromName),
+    to: cfg.createNode(toName)
+  )
   result.fr.outEdges.add(result.to)
   result.to.inEdges.add(result.fr)
-  cfg.addEdge(result)
+  cfg.edgeList.add(result)
 
 type
   SimpleLoop = object
@@ -92,15 +91,9 @@ proc newSimpleLoop(): ref SimpleLoop =
   result.nestingLevel = 0
   result.depthLevel = 0
 
-proc addNode(self: ref SimpleLoop, bb: ref BasicBlock) =
-  self.basicBlocks.add bb
-
-proc addChildLoop(self: ref SimpleLoop, loop: ref SimpleLoop) =
-  self.children.add loop
-
 proc setParent(self: ref SimpleLoop, parent: ref SimpleLoop) =
   self.parent = parent
-  self.parent.addChildLoop(self)
+  self.parent.children.add self
 
 proc setHeader(self: ref SimpleLoop, bb: ref BasicBlock) =
   self.basicBlocks.add(bb)
@@ -136,7 +129,7 @@ proc getNumLoops(self: Lsg): int =
 
 type
   UnionFindNode = object
-    parent: ref UnionFindNode
+    parent {.cursor.}: ref UnionFindNode
     bb: ref BasicBlock
     l: ref SimpleLoop
     dfsNumber: int
@@ -335,7 +328,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
       # Collapse/Unionize nodes in a SCC to a single node
       # For every SCC found, create a loop descriptor and link it in.
       #
-      if (nodePool.len > 0) or (types[w] == BB_SELF):
+      if nodePool.len > 0 or types[w] == BB_SELF:
         var l = self.lsg.createNewLoop
 
         l.setHeader(nodeW)
@@ -361,11 +354,11 @@ proc findLoops(self: var HavlakLoopFinder): int =
           node.union(nodes[w])
 
           # Nested loops are not added, but linked together.
-          var node_l = node.l
-          if node_l != nil:
-            node_l.setParent(l)
+          var nodeL = node.l
+          if nodeL != nil:
+            nodeL.setParent(l)
           else:
-            l.addNode(node.bb)
+            l.basicBlocks.add node.bb
 
         self.lsg.addLoop(l)
 
@@ -383,14 +376,14 @@ proc newLoopTesterApp(): LoopTesterApp =
 
 proc buildDiamond(self: var LoopTesterApp, start: int): int =
   var bb0 = start
-  var x1 = newBasicBlockEdge(self.cfg, bb0, bb0 + 1)
-  var x2 = newBasicBlockEdge(self.cfg, bb0, bb0 + 2)
-  var x3 = newBasicBlockEdge(self.cfg, bb0 + 1, bb0 + 3)
-  var x4 = newBasicBlockEdge(self.cfg, bb0 + 2, bb0 + 3)
+  newBasicBlockEdge(self.cfg, bb0, bb0 + 1)
+  newBasicBlockEdge(self.cfg, bb0, bb0 + 2)
+  newBasicBlockEdge(self.cfg, bb0 + 1, bb0 + 3)
+  newBasicBlockEdge(self.cfg, bb0 + 2, bb0 + 3)
   result = bb0 + 3
 
 proc buildConnect(self: var LoopTesterApp, start1: int, end1: int) =
-  var x1 = newBasicBlockEdge(self.cfg, start1, end1)
+  newBasicBlockEdge(self.cfg, start1, end1)
 
 proc buildStraight(self: var LoopTesterApp, start: int, n: int): int =
   for i in 0..n-1:
@@ -398,11 +391,11 @@ proc buildStraight(self: var LoopTesterApp, start: int, n: int): int =
   result = start + n
 
 proc buildBaseLoop(self: var LoopTesterApp, from1: int): int =
-  var header   = self.buildStraight(from1, 1)
+  var header = self.buildStraight(from1, 1)
   var diamond1 = self.buildDiamond(header)
-  var d11      = self.buildStraight(diamond1, 1)
+  var d11 = self.buildStraight(diamond1, 1)
   var diamond2 = self.buildDiamond(d11)
-  var footer   = self.buildStraight(diamond2, 1)
+  var footer = self.buildStraight(diamond2, 1)
 
   self.buildConnect(diamond2, d11)
   self.buildConnect(diamond1, header)
