@@ -16,7 +16,7 @@
 - `strutils.formatFloat` with `precision = 0` has the same behavior in all
   backends, and it is compatible with Python's behavior,
   e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
-
+- Global variable `lc` has been removed from sugar.nim.
 
 ### Breaking changes in the compiler
 
