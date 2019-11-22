@@ -851,6 +851,8 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
         extccomp.addLinkOption(g.config, n[1].strVal)
       of "passc":
         extccomp.addCompileOption(g.config, n[1].strVal)
+      of "localpassc":
+        extccomp.addLocalCompileOption(g.config, n[1].strVal, toFullPathConsiderDirty(g.config, module.info.fileIndex))
       of "cppdefine":
         options.cppDefine(g.config, n[1].strVal)
       of "inc":
