@@ -1003,8 +1003,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     size = getTypeDesc(m, origType)
 
   m.s[cfsTypeInit3].addf(
-    "$1.size = sizeof($2);$n$1.align = $5($2);$n$1.kind = $3;$n$1.base = $4;$n",
-    [nameHcr, size, rope(nimtypeKind), base, rope(alignOfKw(m.config.cmd))]
+    "$1.size = sizeof($2);$n$1.align = NIM_ALIGNOF($2);$n$1.kind = $3;$n$1.base = $4;$n",
+    [nameHcr, size, rope(nimtypeKind), base]
   )
   # compute type flags for GC optimization
   var flags = 0
@@ -1303,8 +1303,8 @@ proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo
   else:
     d = rope("NIM_NIL")
   addf(m.s[cfsVars], "TNimType $1;$n", [name])
-  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = $5($3); $1.name = $4;$n", [
-    name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t), rope(alignOfKw(m.config.cmd))])
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n", [
+    name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
 
 proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
