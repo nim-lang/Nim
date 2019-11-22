@@ -39,7 +39,7 @@
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
-
+- Added `sugar.collect` that does comprehension for seq/set/table collections.
 
 ## Library changes
 
