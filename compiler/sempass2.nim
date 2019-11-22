@@ -692,6 +692,8 @@ proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkSym:
     useVar(tracked, n)
+    if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
+      tracked.owner.flags.incl sfInjectDestructors
   of nkRaiseStmt:
     if n[0].kind != nkEmpty:
       n.sons[0].info = n.info

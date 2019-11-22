@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils, sequtils, times
+  lineinfos, std / sha1, streams, pathutils, sequtils, times, strtabs
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -471,6 +471,13 @@ proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
 
+proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
+  let key = completeCfilePath(conf, withPackageName(conf, nimfile)).string
+  var value = conf.cfileSpecificOptions.getOrDefault(key)
+  if strutils.find(value, option, 0) < 0:
+    addOpt(value, option)
+    conf.cfileSpecificOptions[key] = value
+
 proc resetCompilationLists*(conf: ConfigRef) =
   conf.toCompile.setLen 0
   ## XXX: we must associate these with their originating module
@@ -523,8 +530,10 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
-proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
+proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
+  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
+
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
       addOpt(result, option)
@@ -545,7 +554,7 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
 
 proc getCompileOptions(conf: ConfigRef): string =
-  result = cFileSpecificOptions(conf, "__dummy__")
+  result = cFileSpecificOptions(conf, "__dummy__", "__dummy__")
 
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
@@ -589,7 +598,9 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
                          isMainFile = false; produceOutput = false): string =
   var c = conf.cCompiler
-  var options = cFileSpecificOptions(conf, cfile.nimname)
+  # We produce files like module.nim.cpp, so the absolute Nim filename is not
+  # cfile.name but `cfile.cname.changeFileExt("")`:
+  var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
