@@ -79,6 +79,9 @@
   generated JavaScript.
 - The Nim compiler now supports the ``--asm`` command option for easier
   inspection of the produced assembler code.
+- The Nim compiler now supports a new pragma called ``.localPassc`` to
+  pass specific compiler options to the C(++) backend for the C(++) file
+  that was produced from the current Nim module.
 
 
 ## Bugfixes
