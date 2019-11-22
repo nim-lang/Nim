@@ -203,11 +203,11 @@ when defined(windows):
       add(result, c)
 
   proc sendMessages(client: AsyncFD) {.async.} =
-    for i in 0 .. <messagesToSend:
+    for i in 0 ..< messagesToSend:
       await winSend(client, "Message " & $i & "\c\L")
 
   proc launchSwarm(port: Port) {.async.} =
-    for i in 0 .. <swarmSize:
+    for i in 0 ..< swarmSize:
       var sock = newNativeSocket()
       setBlocking(sock, false)
 

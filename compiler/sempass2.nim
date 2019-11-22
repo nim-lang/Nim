@@ -12,9 +12,6 @@ import
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
   modulegraphs
 
-when not defined(leanCompiler):
-  import writetracking
-
 when defined(useDfa):
   import dfa
 
@@ -674,6 +671,12 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
+proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
+  createTypeBoundOps(tracked.graph, tracked.c, typ, info)
+  if (typ != nil and tfHasAsgn in typ.flags) or
+      optSeqDestructors in tracked.config.globalOptions:
+    tracked.owner.flags.incl sfInjectDestructors
+
 proc track(tracked: PEffects, n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
@@ -696,7 +699,7 @@ proc track(tracked: PEffects, n: PNode) =
       addEffect(tracked, n.sons[0], useLineInfo=false)
       for i in 0 ..< safeLen(n):
         track(tracked, n.sons[i])
-      createTypeBoundOps(tracked.graph, tracked.c, n[0].typ, n.info)
+      createTypeBoundOps(tracked, n[0].typ, n.info)
     else:
       # A `raise` with no arguments means we're going to re-raise the exception
       # being handled or, if outside of an `except` block, a `ReraiseError`.
@@ -706,11 +709,11 @@ proc track(tracked: PEffects, n: PNode) =
     # p's effects are ours too:
     var a = n.sons[0]
     let op = a.typ
-    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
-      return
     if n.typ != nil:
       if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        createTypeBoundOps(tracked.graph, tracked.c, n.typ, n.info)
+        createTypeBoundOps(tracked, n.typ, n.info)
+    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
+      return
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
@@ -753,7 +756,7 @@ proc track(tracked: PEffects, n: PNode) =
           message(tracked.config, arg.info, warnProveInit, $arg)
       # check required for 'nim check':
       if n[1].typ.len > 0:
-        createTypeBoundOps(tracked.graph, tracked.c, n[1].typ.lastSon, n.info)
+        createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:
@@ -774,18 +777,18 @@ proc track(tracked: PEffects, n: PNode) =
     notNilCheck(tracked, n.sons[1], n.sons[0].typ)
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
-      createTypeBoundOps(tracked.graph, tracked.c, n[0].typ, n.info)
+      createTypeBoundOps(tracked, n[0].typ, n.info)
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
       if last.kind != nkEmpty: track(tracked, last)
       if tracked.owner.kind != skMacro:
         if child.kind == nkVarTuple:
-          createTypeBoundOps(tracked.graph, tracked.c, child[^1].typ, child.info)
+          createTypeBoundOps(tracked, child[^1].typ, child.info)
           for i in 0..child.len-3:
-            createTypeBoundOps(tracked.graph, tracked.c, child[i].typ, child.info)
+            createTypeBoundOps(tracked, child[i].typ, child.info)
         else:
-          createTypeBoundOps(tracked.graph, tracked.c, child[0].typ, child.info)
+          createTypeBoundOps(tracked, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)
@@ -831,15 +834,15 @@ proc track(tracked: PEffects, n: PNode) =
       if tracked.owner.kind != skMacro:
         if it.kind == nkVarTuple:
           for x in it:
-            createTypeBoundOps(tracked.graph, tracked.c, x.typ, x.info)
+            createTypeBoundOps(tracked, x.typ, x.info)
         else:
-          createTypeBoundOps(tracked.graph, tracked.c, it.typ, it.info)
+          createTypeBoundOps(tracked, it.typ, it.info)
     let iterCall = n[n.len-2]
     let loopBody = n[n.len-1]
     if tracked.owner.kind != skMacro and iterCall.safeLen > 1:
       # XXX this is a bit hacky:
       if iterCall[1].typ != nil and iterCall[1].typ.skipTypes(abstractVar).kind notin {tyVarargs, tyOpenArray}:
-        createTypeBoundOps(tracked.graph, tracked.c, iterCall[1].typ, iterCall[1].info)
+        createTypeBoundOps(tracked, iterCall[1].typ, iterCall[1].info)
     track(tracked, iterCall)
     track(tracked, loopBody)
     setLen(tracked.init, oldState)
@@ -852,6 +855,8 @@ proc track(tracked: PEffects, n: PNode) =
       if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards.s, oldFacts)
+    if tracked.owner.kind != skMacro:
+      createTypeBoundOps(tracked, n.typ, n.info)
   of nkPragmaBlock:
     let pragmaList = n.sons[0]
     let oldLocked = tracked.locked.len
@@ -880,6 +885,10 @@ proc track(tracked: PEffects, n: PNode) =
     if n.len == 2: track(tracked, n.sons[1])
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.len == 1: track(tracked, n.sons[0])
+  of nkBracket:
+    for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
+    if tracked.owner.kind != skMacro:
+      createTypeBoundOps(tracked, n.typ, n.info)
   else:
     for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
 

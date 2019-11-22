@@ -136,13 +136,16 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
         result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
-  mixin `=destroy`
-  sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
-  when not supportsCopyMem(T):
-    for i in countdown(x.len - 1, newLen):
-      `=destroy`(x[i])
-  # XXX This is wrong for const seqs that were moved into 'x'!
-  cast[ptr NimSeqV2[T]](addr x).len = newLen
+  when nimvm:
+    setLen(x, newLen)
+  else:
+    mixin `=destroy`
+    sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
+    when not supportsCopyMem(T):
+      for i in countdown(x.len - 1, newLen):
+        `=destroy`(x[i])
+    # XXX This is wrong for const seqs that were moved into 'x'!
+    cast[ptr NimSeqV2[T]](addr x).len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len

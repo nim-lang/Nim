@@ -164,9 +164,6 @@ proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
-when defined(useNimRtl):
-  {.deadCodeElim: on.}  # dce option deprecated
-
 proc declaredInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -900,17 +897,6 @@ when defined(nimHasalignOf):
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
-proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.0**. For the common excluding range
-  ## write ``0 ..< 10`` instead of ``0 .. < 10`` (look at the spacing).
-  ## For ``<x`` write ``pred(x)``.
-  ##
-  ## Unary ``<`` that can be used for excluding ranges.
-  ## Semantically this is the same as `pred <#pred,T,int>`_.
-  ##
-  ## .. code-block:: Nim
-  ##   for i in 0 .. <10: echo i # => 0 1 2 3 4 5 6 7 8 9
-  ##
 
 proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.}
   ## Returns the ``y``-th successor (default: 1) of the value ``x``.
@@ -2605,19 +2591,6 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     # unnecessary slow down in this case.
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
-
-# undocumented:
-proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
-proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
-proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect,
-  deprecated: "the refcount was never reliable, the GC does not use traditional refcounting".}
-  ##
-  ## Retrieves the reference count of an heap-allocated object. The
-  ## value is implementation-dependent.
-
-
 const
   Inf* = 0x7FF0000000000000'f64
     ## Contains the IEEE floating point value of positive infinity.
@@ -2720,7 +2693,7 @@ when defined(nimNewRoof):
         yield T(res)
         inc(res, step)
     else:
-      var res: T = T(a)
+      var res = a
       while res <= b:
         yield res
         inc(res, step)
@@ -2741,7 +2714,7 @@ when defined(nimNewRoof):
         yield T(res)
         inc(res)
     else:
-      var res: T = T(a)
+      var res = a
       while res <= b:
         yield res
         inc(res)
@@ -2765,7 +2738,7 @@ when defined(nimNewRoof):
 
   iterator `..<`*[T](a, b: T): T {.inline.} =
     mixin inc
-    var i = T(a)
+    var i = a
     while i < b:
       yield i
       inc i
@@ -2806,7 +2779,7 @@ else:
         yield T(res)
         inc(res, step)
     else:
-      var res: T = T(a)
+      var res = T(a)
       while res <= b:
         yield res
         inc(res, step)
@@ -2827,7 +2800,7 @@ else:
         yield T(res)
         inc(res)
     else:
-      var res: T = T(a)
+      var res = T(a)
       while res <= b:
         yield res
         inc(res)
@@ -3305,7 +3278,7 @@ when not defined(nimscript) and hasAlloc:
         ## Expands operating GC stack range to `theStackBottom`. Does nothing
         ## if current stack bottom is already lower than `theStackBottom`.
 
-  else:
+  elif defined(JS):
     template GC_disable* =
       {.warning: "GC_disable is a no-op in JavaScript".}
 
@@ -3345,16 +3318,6 @@ when not defined(nimscript) and hasAlloc:
     template GC_getStatistics*(): string =
       {.warning: "GC_getStatistics is a no-op in JavaScript".}
       ""
-
-template accumulateResult*(iter: untyped) {.deprecated: "use `sequtils.toSeq` instead (more hygienic, sometimes more efficient)".} =
-  ## **Deprecated since v0.19.2:** use `sequtils.toSeq
-  ## <sequtils.html#toSeq.t,untyped>`_ instead.
-  ##
-  ## Helps to convert an iterator to a proc.
-  ## `sequtils.toSeq <sequtils.html#toSeq.t,untyped>`_ is more hygienic and efficient.
-  ##
-  result = @[]
-  for x in iter: add(result, x)
 
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
@@ -3594,7 +3557,7 @@ const
   NimMinor* {.intdefine.}: int = 1
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 0
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3822,19 +3785,6 @@ when not defined(JS): #and not defined(nimscript):
       ## exception; if there is none, `""` is returned.
       var e = getCurrentException()
       return if e == nil: "" else: e.msg
-
-    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) {.deprecated.} =
-      ## **Deprecated since version 0.18.1**: No good usages of this
-      ## feature are known.
-      ##
-      ## Can be used in a ``try`` statement to setup a Lisp-like
-      ## `condition system`:idx:\: This prevents the 'raise' statement to
-      ## raise an exception but instead calls ``action``.
-      ## If ``action`` returns false, the exception has been handled and
-      ## does not propagate further through the call stack.
-      if not isNil(excHandler):
-        excHandler.hasRaiseAction = true
-        excHandler.raiseAction = action
 
     proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
       ## Sets the current exception.
@@ -4365,34 +4315,6 @@ proc addQuoted*[T](s: var string, x: T) =
   else:
     s.add($x)
 
-when hasAlloc:
-  # XXX: make these the default (or implement the NilObject optimization)
-  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
-    ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
-    ## ``x`` becomes ``@[y]``.
-    when defined(nimNoNilSeqs):
-      x.add(y)
-    else:
-      if x == nil: x = @[y]
-      else: x.add(y)
-
-  proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
-    ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``.
-    when defined(nimNoNilSeqs):
-      x.add(y)
-    else:
-      if x == nil: x = ""
-      x.add(y)
-
-  proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
-    ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that
-    ## case, ``x`` becomes ``y``.
-    when defined(nimNoNilSeqs):
-      x.add(y)
-    else:
-      if x == nil: x = y
-      else: x.add(y)
-
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## Generates a tuple constructor expression listing all the local variables
   ## in the current scope.
@@ -4442,18 +4364,6 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ## .. code-block:: Nim
   ##   # 'someMethod' will be resolved fully statically:
   ##   procCall someMethod(a, b)
-  discard
-
-proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect,
-                             deprecated: "use len() instead".} =
-  ## **Deprecated since version 0.18.1**. Use `len()` instead.
-  discard
-proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect,
-                                deprecated: "use len() instead".} =
-  ## **Deprecated since version 0.18.1**. Use `len()` instead.
-  ##
-  ## Returns the length of a sequence or a string without testing for 'nil'.
-  ## This is an optimization that rarely makes sense.
   discard
 
 

@@ -102,6 +102,7 @@ Advanced options:
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
+  --clearNimblePath         empty the list of Nimble package search paths
   --noCppExceptions         use default exception handling with C++ backend
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
@@ -116,6 +117,7 @@ Advanced options:
   --dynlibOverrideAll
                             disables the effects of the dynlib pragma
   --listCmd                 list the commands used to execute external programs
+  --asm                     produce assembler code
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --incremental:on|off      only recompile the changed modules (experimental!)

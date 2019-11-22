@@ -17,10 +17,9 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
 import compiler / [options, commands, modules, sem,
-  passes, passaux, msgs, nimconf,
-  extccomp, condsyms,
-  sigmatch, ast, scriptconfig,
-  idents, modulegraphs, vm, prefixmatches, lineinfos, cmdlinehelper,
+  passes, passaux, msgs,
+  sigmatch, ast,
+  idents, modulegraphs, prefixmatches, lineinfos, cmdlinehelper,
   pathutils]
 
 when defined(windows):

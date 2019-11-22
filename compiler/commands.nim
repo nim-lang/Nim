@@ -224,15 +224,15 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
   case switch.normalize
   of "gc":
     case arg.normalize
-    of "boehm":        result = conf.selectedGC == gcBoehm
-    of "refc":         result = conf.selectedGC == gcRefc
-    of "v2":           result = false
+    of "boehm": result = conf.selectedGC == gcBoehm
+    of "refc": result = conf.selectedGC == gcRefc
+    of "v2": result = false
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
-    of "destructors":  result = conf.selectedGC == gcDestructors
-    of "hooks":        result = conf.selectedGC == gcHooks
-    of "go":           result = conf.selectedGC == gcGo
-    of "none":         result = conf.selectedGC == gcNone
+    of "destructors", "arc": result = conf.selectedGC == gcDestructors
+    of "hooks": result = conf.selectedGC == gcHooks
+    of "go": result = conf.selectedGC == gcGo
+    of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
@@ -244,9 +244,9 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
   of "verbosity": result = $conf.verbosity == arg
   of "app":
     case arg.normalize
-    of "gui":       result = contains(conf.globalOptions, optGenGuiApp)
-    of "console":   result = not contains(conf.globalOptions, optGenGuiApp)
-    of "lib":       result = contains(conf.globalOptions, optGenDynLib) and
+    of "gui": result = contains(conf.globalOptions, optGenGuiApp)
+    of "console": result = not contains(conf.globalOptions, optGenGuiApp)
+    of "lib": result = contains(conf.globalOptions, optGenDynLib) and
                       not contains(conf.globalOptions, optGenGuiApp)
     of "staticlib": result = contains(conf.globalOptions, optGenStaticLib) and
                       not contains(conf.globalOptions, optGenGuiApp)
@@ -381,6 +381,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "nonimblepath", "nobabelpath":
     expectNoArg(conf, switch, arg, pass, info)
     disableNimblePath(conf)
+  of "clearnimblepath":
+    expectNoArg(conf, switch, arg, pass, info)
+    clearNimblePath(conf)
   of "excludepath":
     expectArg(conf, switch, arg, pass, info)
     let path = processPath(conf, arg, info)
@@ -450,7 +453,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "markandsweep":
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
-      of "destructors":
+      of "destructors", "arc":
         conf.selectedGC = gcDestructors
         defineSymbol(conf.symbols, "gcdestructors")
         incl conf.globalOptions, optSeqDestructors
@@ -623,6 +626,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
+  of "asm":
+    processOnOffSwitchG(conf, {optProduceAsm}, arg, pass, info)
   of "genmapping":
     processOnOffSwitchG(conf, {optGenMapping}, arg, pass, info)
   of "os":
@@ -808,7 +813,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     case arg
     of "1.0":
-      discard "the default"
+      defineSymbol(conf.symbols, "NimMajor", "1")
+      defineSymbol(conf.symbols, "NimMinor", "0")
+      # always be compatible with 1.0.2 for now:
+      defineSymbol(conf.symbols, "NimPatch", "2")
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":

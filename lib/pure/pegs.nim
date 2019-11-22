@@ -1154,7 +1154,8 @@ proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
-  accumulateResult(findAll(s, pattern, start))
+  result = @[]
+  for it in findAll(s, pattern, start): result.add it
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -1372,7 +1373,8 @@ iterator split*(s: string, sep: Peg): string =
 proc split*(s: string, sep: Peg): seq[string] {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## Splits the string `s` into substrings.
-  accumulateResult(split(s, sep))
+  result = @[]
+  for it in split(s, sep): result.add it
 
 # ------------------- scanner -------------------------------------------------
 

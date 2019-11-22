@@ -3188,6 +3188,7 @@ has lots of advantages:
 
 Type conversions
 ----------------
+
 Syntactically a `type conversion` is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
@@ -3206,6 +3207,19 @@ A type conversion can also be used to disambiguate overloaded routines:
 
   let procVar = (proc(x: string))(p)
   procVar("a")
+
+Since operations on unsigned numbers wrap around and are unchecked so are
+type conversion to unsigned integers and between unsigned integers. The
+rationale for this is mostly better interoperability with the C Programming
+language when algorithms are ported from C to Nim.
+
+Exception: Values that are converted to an unsigned type at compile time
+are checked so that code like ``byte(-1)`` does not compile.
+
+**Note**: Historically the operations
+were unchecked and the conversions were sometimes checked but starting with
+the revision 1.0.4 of this document and the language implementation the
+conversions too are now *always unchecked*.
 
 
 Type casts
@@ -6432,6 +6446,39 @@ generates:
   struct mybitfield {
     unsigned int flag:1;
   };
+
+
+Align pragma
+------------
+
+The `align`:idx: pragma is for variables and object field members. It
+modifies the alignment requirement of the entity being declared. The
+argument must be a constant power of 2. Valid non-zero
+alignments that are weaker than nother align pragmas on the same
+declaration are ignored. Alignments that are weaker that the
+alignment requirement of the type are ignored.
+
+.. code-block:: Nim
+
+   type
+     sseType = object
+       sseData {.align(16).}: array[4,float32]
+
+     # every object will be aligned to 128-byte boundary
+     Data = object
+       x: char
+       cacheline {.align(128).}: array[128, char] # over-aligned array of char,
+
+   proc main() =
+     echo "sizeof(Data) = ", sizeof(Data), " (1 byte + 127 bytes padding + 128-byte array)"
+     # output: sizeof(Data) = 256 (1 byte + 127 bytes padding + 128-byte array)
+     echo "alignment of sseType is ", alignof(sseType)
+     # output: alignment of sseType is 16
+     var d {.align(2048).}: Data # this instance of data is aligned even stricter
+
+   main()
+
+This pragma has no effect for the JS backend.
 
 
 Volatile pragma

@@ -89,6 +89,7 @@ type                          # please make sure we have under 32 options
     optMultiMethods
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
+    optProduceAsm             # produce assembler code
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -146,6 +147,10 @@ type
       ## Allows to modify a NimNode where the type has already been
       ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
+    checkUnsignedConversions
+      ## Historically and especially in version 1.0.0 of the language
+      ## conversions to unsigned numbers were checked. In 1.0.4 they
+      ## are not anymore.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -415,7 +420,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
     of "macintosh":
       result = conf.target.targetOS in {osMacos, osMacosx, osIos}
-    of "osx":
+    of "osx", "macosx":
       result = conf.target.targetOS in {osMacosx, osIos}
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
@@ -544,6 +549,9 @@ proc removeTrailingDirSep*(path: string): string =
 
 proc disableNimblePath*(conf: ConfigRef) =
   incl conf.globalOptions, optNoNimblePath
+  conf.lazyPaths.setLen(0)
+
+proc clearNimblePath*(conf: ConfigRef) =
   conf.lazyPaths.setLen(0)
 
 include packagehandling

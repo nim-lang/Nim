@@ -1526,6 +1526,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
 
   of nkBreakState:
     put(g, tkTuple, "breakstate")
+    if renderIds in g.flags:
+      gsons(g, n, c, 0)
   of nkTypeClassTy:
     gTypeClassTy(g, n)
   else:

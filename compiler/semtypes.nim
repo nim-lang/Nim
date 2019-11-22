@@ -635,7 +635,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     errorUndeclaredIdentifier(c, n.sons[0].info, typ.sym.name.s)
   elif not isOrdinalType(typ):
     localError(c.config, n.sons[0].info, "selector must be of an ordinal type, float or string")
-  elif firstOrd(c.config, typ) != 0:
+  if firstOrd(c.config, typ) != 0:
     localError(c.config, n.info, "low(" & $a.sons[0].sym.name.s &
                                      ") must be 0 for discriminant")
   elif lengthOrd(c.config, typ) > 0x00007FFF:
@@ -1766,8 +1766,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       onUse(n.info, n.sym)
     else:
       if s.kind != skError:
-        localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
-          [s.name.s, substr($s.kind, 2)])
+        if s.typ == nil:
+          localError(c.config, n.info, "type expected, but symbol '$1' has no type." % [s.name.s])
+        else:
+          localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
+            [s.name.s, substr($s.kind, 2)])
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
   of nkTupleTy: result = semTuple(c, n, prev)

@@ -465,6 +465,12 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  define NIM_EXTERNC
 #endif
 
+#if defined(_MSC_VER)
+#  define NIM_ALIGN(x)  __declspec(align(x))
+#else
+#  define NIM_ALIGN(x)  __attribute__((aligned(x)))
+#endif
+
 /* ---------------- platform specific includes ----------------------- */
 
 /* VxWorks related includes */

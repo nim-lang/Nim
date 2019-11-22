@@ -212,13 +212,28 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.dynlib = nil
   result.notes = conf.notes
 
+proc pushOptionEntry*(c: PContext): POptionEntry =
+  new(result)
+  var prev = c.optionStack[^1]
+  result.options = c.config.options
+  result.defaultCC = prev.defaultCC
+  result.dynlib = prev.dynlib
+  result.notes = c.config.notes
+  result.features = c.features
+  c.optionStack.add(result)
+
+proc popOptionEntry*(c: PContext) =
+  c.config.options = c.optionStack[^1].options
+  c.config.notes = c.optionStack[^1].notes
+  c.features = c.optionStack[^1].features
+  c.optionStack.setLen(c.optionStack.len - 1)
+
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
   result.enforceVoidContext = PType(kind: tyTyped)
   result.ambiguousSymbols = initIntSet()
-  result.optionStack = @[]
+  result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
-  result.optionStack.add(newOptionEntry(graph.config))
   result.module = module
   result.friendModules = @[module]
   result.converters = @[]

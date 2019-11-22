@@ -431,7 +431,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mNewFinalize:
     # Make sure the finalizer procedure refers to a procedure
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
-      localError(c.config, n.info, "finalizer must be a direct reference to a procedure")
+      localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     result = n
   of mDestroy:
     result = n
