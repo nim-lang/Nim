@@ -6,9 +6,6 @@ once compiler can depend on nimble
 type Cell* = object
   text*: string
   width*, row*, col*, ncols*, nrows*: int
-  # padding for 64 byte alignment
-  padding1: uint64
-  padding2: uint64
 
 iterator parseTableCells*(s: string, delim = '\t'): Cell =
   ## iterates over all cells in a `delim`-delimited `s`, after a 1st
