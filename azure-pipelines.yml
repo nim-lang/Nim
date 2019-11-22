@@ -46,7 +46,7 @@ steps:
       sudo apt-fast update -qq
       DEBIAN_FRONTEND='noninteractive' \
         sudo apt-fast install --no-install-recommends -yq \
-          libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev
+          libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
     displayName: 'Install dependencies (amd64 Linux)'
     condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
@@ -97,7 +97,7 @@ steps:
 
   - bash: |
       mkdir dist
-      curl -L https://nim-lang.org/download/mingw64-6.3.0.7z -o dist/mingw64.7z
+      curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
       curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
       7z x dist/mingw64.7z -odist
       7z x dist/dlls.zip -obin

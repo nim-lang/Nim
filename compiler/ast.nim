@@ -228,7 +228,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 38 flags!
+  TSymFlag* = enum    # 40 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -284,7 +284,8 @@ type
                       # variable is generated closure environment; requires early
                       # destruction for --newruntime.
     sfTemplateParam   # symbol is a template parameter
-
+    sfCursor          # variable/field is a cursor, see RFC 177 for details
+    sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
 
   TSymFlags* = set[TSymFlag]
 
@@ -823,6 +824,7 @@ type
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
+      alignment*: int # for alignas(X) expressions
     else: nil
     magic*: TMagic
     typ*: PType
@@ -882,7 +884,7 @@ type
                               # for range types a nkRange node
                               # for record types a nkRecord node
                               # for enum types a list of symbols
-                              # for tyInt it can be the int literal
+                              # if kind == tyInt: it is an 'int literal(x)' type
                               # for procs and tyGenericBody, it's the
                               # formal param list
                               # for concepts, the concept body

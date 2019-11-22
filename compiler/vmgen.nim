@@ -202,29 +202,41 @@ proc bestEffort(c: PCtx): TLineInfo =
   else:
     c.module.info
 
-proc getTemp(cc: PCtx; tt: PType): TRegister =
-  let typ = tt.skipTypesOrNil({tyStatic})
+proc getFreeRegister(cc: PCtx; k: TSlotKind; start: int): TRegister =
   let c = cc.prc
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
   # for e.g. mNAdd[Multiple]:
-  let k = if typ.isNil: slotTempComplex else: typ.getSlotKind
-  for i in 0 .. c.maxSlots-1:
+  for i in start .. c.maxSlots-1:
     if c.slots[i].kind == k and not c.slots[i].inUse:
       c.slots[i].inUse = true
       return TRegister(i)
 
   # if register pressure is high, we re-use more aggressively:
-  if c.maxSlots >= HighRegisterPressure and false:
-    for i in 0 .. c.maxSlots-1:
+  if c.maxSlots >= high(TRegister):
+    for i in start .. c.maxSlots-1:
       if not c.slots[i].inUse:
         c.slots[i] = (inUse: true, kind: k)
         return TRegister(i)
   if c.maxSlots >= high(TRegister):
     globalError(cc.config, cc.bestEffort, "VM problem: too many registers required")
-  result = TRegister(c.maxSlots)
-  c.slots[c.maxSlots] = (inUse: true, kind: k)
-  inc c.maxSlots
+  result = TRegister(max(c.maxSlots, start))
+  c.slots[result] = (inUse: true, kind: k)
+  c.maxSlots = result + 1
+
+proc getTemp(cc: PCtx; tt: PType): TRegister =
+  let typ = tt.skipTypesOrNil({tyStatic})
+  # we prefer the same slot kind here for efficiency. Unfortunately for
+  # discardable return types we may not know the desired type. This can happen
+  # for e.g. mNAdd[Multiple]:
+  let k = if typ.isNil: slotTempComplex else: typ.getSlotKind
+  result = getFreeRegister(cc, k, start = 0)
+  when false:
+    # enable this to find "register" leaks:
+    if result == 4:
+      echo "begin ---------------"
+      writeStackTrace()
+      echo "end ----------------"
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
@@ -278,7 +290,9 @@ proc gen(c: PCtx; n: PNode; dest: TRegister; flags: TGenFlags = {}) =
 proc gen(c: PCtx; n: PNode; flags: TGenFlags = {}) =
   var tmp: TDest = -1
   gen(c, n, tmp, flags)
-  #if n.typ.isEmptyType: InternalAssert tmp < 0
+  if tmp >= 0:
+    freeTemp(c, tmp)
+  #if n.typ.isEmptyType: internalAssert tmp < 0
 
 proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
   var tmp: TDest = -1
@@ -335,7 +349,15 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
     c.gen(n.sons[1], dest)
 
   for i in oldRegisterCount ..< c.prc.maxSlots:
-    if c.prc.slots[i].kind in {slotFixedVar, slotFixedLet}:
+    #if c.prc.slots[i].kind in {slotFixedVar, slotFixedLet}:
+    if i != dest:
+      when not defined(release):
+        if c.prc.slots[i].inUse and c.prc.slots[i].kind in {slotTempUnknown,
+                                  slotTempInt,
+                                  slotTempFloat,
+                                  slotTempStr,
+                                  slotTempComplex}:
+          doAssert false, "leaking temporary " & $i & " " & $c.prc.slots[i].kind
       c.prc.slots[i] = (inUse: false, kind: slotEmpty)
 
   c.clearDest(n, dest)
@@ -752,6 +774,7 @@ proc genBinaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
     tmp = c.genx(n.sons[2])
   c.gABC(n, opc, dest, tmp, 0)
   c.freeTemp(tmp)
+  c.freeTemp(dest)
 
 proc genBinaryStmtVar(c: PCtx; n: PNode; opc: TOpcode) =
   var x = n.sons[1]
@@ -762,6 +785,7 @@ proc genBinaryStmtVar(c: PCtx; n: PNode; opc: TOpcode) =
   c.gABC(n, opc, dest, tmp, 0)
   #c.genAsgnPatch(n.sons[1], dest)
   c.freeTemp(tmp)
+  c.freeTemp(dest)
 
 proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
   let tmp = c.genx(n.sons[1])
@@ -948,9 +972,13 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genAddSubInt(n, dest, opcAddInt)
   of mInc, mDec:
     unused(c, n, dest)
-    let opc = if m == mInc: opcAddInt else: opcSubInt
+    let isUnsigned = n.sons[1].typ.skipTypes(abstractVarRange).kind in {tyUInt..tyUInt64}
+    let opc = if not isUnsigned:
+                if m == mInc: opcAddInt else: opcSubInt
+              else:
+                if m == mInc: opcAddu else: opcSubu
     let d = c.genx(n.sons[1])
-    if n.sons[2].isInt8Lit:
+    if n.sons[2].isInt8Lit and not isUnsigned:
       c.gABI(n, succ(opc), d, d, n.sons[2].intVal)
     else:
       let tmp = c.genx(n.sons[2])
@@ -1081,6 +1109,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABC(n, if m == mSetLengthStr: opcSetLenStr else: opcSetLenSeq, d, tmp)
     c.genAsgnPatch(n.sons[1], d)
     c.freeTemp(tmp)
+    c.freeTemp(d)
   of mSwap:
     unused(c, n, dest)
     c.gen(lowerSwap(c.graph, n, if c.prc == nil: c.module else: c.prc.sym))
@@ -1420,6 +1449,7 @@ proc genDeref(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
     assert n.typ != nil
     if {gfNodeAddr, gfNode} * flags == {} and fitsRegister(n.typ):
       c.gABC(n, opcNodeToReg, dest, dest)
+    c.freeTemp(tmp)
 
 proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   let tmp = c.genx(ri)
@@ -1430,13 +1460,7 @@ proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
 proc setSlot(c: PCtx; v: PSym) =
   # XXX generate type initialization here?
   if v.position == 0:
-    if c.prc.maxSlots == 0: c.prc.maxSlots = 1
-    if c.prc.maxSlots >= high(TRegister):
-      globalError(c.config, v.info, "cannot generate code; too many registers required")
-    v.position = c.prc.maxSlots
-    c.prc.slots[v.position] = (inUse: true,
-        kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
-    inc c.prc.maxSlots
+    v.position = getFreeRegister(c, if v.kind == skLet: slotFixedLet else: slotFixedVar, start = 1)
 
 proc cannotEval(c: PCtx; n: PNode) {.noinline.} =
   globalError(c.config, n.info, "cannot evaluate at compile time: " &
@@ -1459,7 +1483,10 @@ proc checkCanEval(c: PCtx; n: PNode) =
   if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
-    cannotEval(c, n)
+    # little hack ahead for bug #12612: assume gensym'ed variables
+    # are in the right scope:
+    if sfGenSym in s.flags and c.prc.sym == nil: discard
+    else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
     cannotEval(c, n)
@@ -1497,6 +1524,8 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     else:
       c.preventFalseAlias(le, opcWrArr, dest, idx, tmp)
     c.freeTemp(tmp)
+    c.freeTemp(idx)
+    c.freeTemp(dest)
   of nkCheckedFieldExpr:
     var objR: TDest = -1
     genCheckedObjAccessAux(c, le, objR, {gfNode})
@@ -1504,17 +1533,21 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let tmp = c.genx(ri)
     c.preventFalseAlias(le[0], opcWrObj, objR, idx, tmp)
     c.freeTemp(tmp)
+    c.freeTemp(idx)
     c.freeTemp(objR)
   of nkDotExpr:
     let dest = c.genx(le.sons[0], {gfNode})
     let idx = genField(c, le.sons[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(le, opcWrObj, dest, idx, tmp)
+    c.freeTemp(idx)
     c.freeTemp(tmp)
+    c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
     let dest = c.genx(le.sons[0], {gfNode})
     let tmp = c.genx(ri)
     c.preventFalseAlias(le, opcWrDeref, dest, 0, tmp)
+    c.freeTemp(dest)
     c.freeTemp(tmp)
   of nkSym:
     let s = le.sym
@@ -1528,7 +1561,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     else:
       if s.kind == skForVar: c.setSlot s
       internalAssert c.config, s.position > 0 or (s.position == 0 and
-                                        s.kind in {skParam,skResult})
+                                        s.kind in {skParam, skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
       assert le.typ != nil
       if needsAdditionalCopy(le) and s.kind in {skResult, skVar, skParam}:
@@ -1541,6 +1574,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   else:
     let dest = c.genx(le, {gfNodeAddr})
     genAsgn(c, dest, ri, requiresCopy)
+    c.freeTemp(dest)
 
 proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   var n = newNode(nkType)
@@ -1607,7 +1641,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   else:
     if s.kind == skForVar and c.mode == emRepl: c.setSlot(s)
     if s.position > 0 or (s.position == 0 and
-                          s.kind in {skParam,skResult}):
+                          s.kind in {skParam, skResult}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
         internalAssert(c.config, c.prc.slots[dest].kind < slotSomeTemp)
@@ -1624,8 +1658,8 @@ template needsRegLoad(): untyped =
   {gfNode, gfNodeAddr} * flags == {} and
     fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
 
-proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
-                   flags: TGenFlags) =
+proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
+                        flags: TGenFlags) =
   let a = c.genx(n.sons[0], flags)
   let b = c.genIndex(n.sons[1], n.sons[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
@@ -1678,6 +1712,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   let setLit = c.genx(checkExpr[1])
   var rs = c.getTemp(getSysType(c.graph, n.info, tyBool))
   c.gABC(n, opcContainsSet, rs, setLit, discVal)
+  c.freeTemp(discVal)
   c.freeTemp(setLit)
   # If the check fails let the user know
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
@@ -1711,11 +1746,11 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   if arrayType in {tyString, tyCString}:
-    genArrAccess2(c, n, dest, opcLdStrIdx, {})
+    genArrAccessOpcode(c, n, dest, opcLdStrIdx, {})
   elif arrayType == tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
-    genArrAccess2(c, n, dest, opcLdArr, flags)
+    genArrAccessOpcode(c, n, dest, opcLdArr, flags)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
   if t != nil and t.len > 0 and t.sons[0] != nil:
@@ -2211,8 +2246,7 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s),
-                             noDestructors = true)
+    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

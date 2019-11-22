@@ -12,10 +12,7 @@
 include "system/inclrtl"
 
 when not defined(windows):
-  import strutils, posix, os
-
-when defined(linux):
-  import linux
+  import posix
 
 when defined(freebsd) or defined(macosx):
   {.emit:"#include <sys/types.h>".}
@@ -79,7 +76,7 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
       len: csize
     mib[0] = CTL_HW
     mib[1] = HW_AVAILCPU
-    len = csize sizeof(numCPU)
+    len = sizeof(numCPU)
     discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
     if numCPU < 1:
       mib[1] = HW_NCPU

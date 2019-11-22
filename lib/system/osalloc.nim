@@ -153,7 +153,7 @@ elif defined(nintendoswitch):
     # size, as well as space to store our structure
     let realSize = alignSize(size + sizeof(NSwitchBlock))
 
-    let heap = memalign(PageSize, realSize.csize)
+    let heap = memalign(PageSize, realSize)
 
     if heap.isNil:
       outOfMemoryStmt
@@ -215,24 +215,24 @@ elif defined(posix):
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
       MAP_PRIVATE {.importc: "MAP_PRIVATE", header: "<sys/mman.h>".}: cint
 
-  proc mmap(adr: pointer, len: csize, prot, flags, fildes: cint,
+  proc mmap(adr: pointer, len: csize_t, prot, flags, fildes: cint,
             off: int): pointer {.header: "<sys/mman.h>".}
 
-  proc munmap(adr: pointer, len: csize): cint {.header: "<sys/mman.h>".}
+  proc munmap(adr: pointer, len: csize_t): cint {.header: "<sys/mman.h>".}
 
   proc osAllocPages(size: int): pointer {.inline.} =
-    result = mmap(nil, csize size, PROT_READ or PROT_WRITE,
+    result = mmap(nil, cast[csize_t](size), PROT_READ or PROT_WRITE,
                              MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
     if result == nil or result == cast[pointer](-1):
       raiseOutOfMem()
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
-    result = mmap(nil, csize size, PROT_READ or PROT_WRITE,
+    result = mmap(nil, cast[csize_t](size), PROT_READ or PROT_WRITE,
                              MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
     if result == cast[pointer](-1): result = nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
-    when reallyOsDealloc: discard munmap(p, csize size)
+    when reallyOsDealloc: discard munmap(p, cast[csize_t](size))
 
 elif defined(windows):
   const

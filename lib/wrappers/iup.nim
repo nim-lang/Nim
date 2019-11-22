@@ -57,7 +57,7 @@ type
 
   Icallback* = proc (arg: PIhandle): cint {.cdecl.}
 
-#                      pre-defineded dialogs
+#                      pre-defined dialogs
 proc fileDlg*: PIhandle {.importc: "IupFileDlg", dynlib: dllname, cdecl.}
 proc messageDlg*: PIhandle {.importc: "IupMessageDlg", dynlib: dllname, cdecl.}
 proc colorDlg*: PIhandle {.importc: "IupColorDlg", dynlib: dllname, cdecl.}

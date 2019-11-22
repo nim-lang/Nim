@@ -439,7 +439,7 @@ proc getStackTrace(e: ref Exception): string =
 proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
   ## Returns the attached stack trace to the exception ``e`` as
   ## a ``seq``. This is not yet available for the JS backend.
-  when not defined(gcDestructors):
+  when not defined(nimSeqsV2):
     shallowCopy(result, e.trace)
   else:
     result = move(e.trace)
@@ -484,7 +484,9 @@ when defined(cpp) and appType != "lib" and
 
     var msg = "Unknown error in unexpected exception handler"
     try:
+      {.emit"#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
+      {.emit"#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
@@ -492,6 +494,10 @@ when defined(cpp) and appType != "lib" and
       msg = "Error: unhandled cpp exception: " & $e.what()
     except:
       msg = "Error: unhandled unknown cpp exception"
+
+    {.emit"#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
+    msg = "Error: unhandled unknown cpp exception"
+    {.emit"#endif".}
 
     when defined(genode):
       # stderr not available by default, use the LOG session
@@ -525,12 +531,12 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     when defined(memtracker):
       logPendingOps()
     when hasSomeStackTrace:
-      GC_disable()
+      when not usesDestructors: GC_disable()
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
       processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
       showErrorMessage(buf)
-      GC_enable()
+      when not usesDestructors: GC_enable()
     else:
       var msg: cstring
       template asgn(y) =

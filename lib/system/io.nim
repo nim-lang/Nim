@@ -83,16 +83,12 @@ proc c_feof(f: File): cint {.
   importc: "feof", header: "<stdio.h>".}
 
 when not declared(c_fwrite):
-  proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
+  proc c_fwrite(buf: pointer, size, n: csize_t, f: File): cint {.
     importc: "fwrite", header: "<stdio.h>".}
-  proc c_fwrite(buf: pointer, size, n: int, f: File): cint {.
-    importc: "fwrite", header: "<stdio.h>", deprecated: "csize is now uint".}
 
 # C routine that is used here:
-proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
+proc c_fread(buf: pointer, size, n: csize_t, f: File): csize_t {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
-proc c_fread(buf: pointer, size, n: int, f: File): int {.
-  importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect], deprecated: "csize is now uint".}
 when defined(windows):
   when not defined(amd64):
     proc c_fseek(f: File, offset: int64, whence: cint): cint {.
@@ -111,18 +107,16 @@ else:
     importc: "ftello", header: "<stdio.h>", tags: [].}
 proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
-proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
+proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize_t): cint {.
   importc: "setvbuf", header: "<stdio.h>", tags: [].}
-proc c_setvbuf(f: File, buf: pointer, mode: cint, size: int): cint {.
-  importc: "setvbuf", header: "<stdio.h>", tags: [], deprecated: "csize is now uint".}
 
 proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
 
-## When running nim in android app stdout goes no where, so echo gets ignored
-## To redreict echo to the android logcat use -d:androidNDK
+## When running nim in android app, stdout goes nowhere, so echo gets ignored
+## To redirect echo to the android logcat, use -d:androidNDK
 when defined(androidNDK):
   const ANDROID_LOG_VERBOSE = 2.cint
   proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
@@ -159,7 +153,7 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  result = int c_fread(buffer, 1, csize len, f)
+  result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
   if result != len: checkErr(f)
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
@@ -191,7 +185,7 @@ proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## writes the bytes of buffer pointed to by the parameter `buffer` to the
   ## file `f`. Returns the number of actual written bytes, which may be less
   ## than `len` in case of an error.
-  result = c_fwrite(buffer, 1, csize len, f)
+  result = cast[int](c_fwrite(buffer, 1, cast[csize_t](len), f))
   checkErr(f)
 
 proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
@@ -302,10 +296,8 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
   ## character(s) are not part of the returned string. Returns ``false``
   ## if the end of the file has been reached, ``true`` otherwise. If
   ## ``false`` is returned `line` contains no new data.
-  proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
+  proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
-  proc c_memchr(s: pointer, c: cint, n: int): pointer {.
-    importc: "memchr", header: "<string.h>", deprecated: "csize is now uint".}
 
   var pos = 0
 
@@ -320,7 +312,7 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
 
     var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
-    let m = c_memchr(addr line.string[pos], '\L'.ord, csize sp)
+    let m = c_memchr(addr line.string[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
@@ -544,7 +536,7 @@ proc open*(f: var File, filename: string,
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
-      discard c_setvbuf(f, nil, IOFBF, bufSize.cint)
+      discard c_setvbuf(f, nil, IOFBF, cast[csize_t](bufSize))
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
 
@@ -630,7 +622,7 @@ when declared(stdout):
         when defined(windows):
           writeWindows(stdout, s)
         else:
-          discard c_fwrite(s.cstring, s.len, 1, stdout)
+          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
       const linefeed = "\n"
       discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
       discard c_fflush(stdout)
@@ -674,7 +666,7 @@ proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
   var f: File
   if open(f, filename):
     try:
-      result = readAll(f).TaintedString
+      result = readAll(f)
     finally:
       close(f)
   else:
@@ -693,7 +685,7 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
-proc writeFile*(filename: string, content: openArray[byte]) =
+proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.

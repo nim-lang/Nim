@@ -8,7 +8,7 @@ proc convertReturns(node, retFutureSym: NimNode): NimNode {.compileTime.} =
     result = newCall(newIdentNode("complete"), retFutureSym, node[0])
   else:
     result = node
-    for i in 0 .. <node.len:
+    for i in 0 ..< node.len:
       result[i] = convertReturns(node[i], retFutureSym)
 
 macro async2(prc: untyped): untyped =
@@ -51,7 +51,7 @@ macro async2(prc: untyped): untyped =
   result = prc
 
   # Remove the 'closure' pragma.
-  for i in 0 .. <result[4].len:
+  for i in 0 ..< result[4].len:
     if result[4][i].ident == !"async":
       result[4].del(i)
 

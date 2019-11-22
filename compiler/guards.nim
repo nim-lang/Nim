@@ -436,7 +436,7 @@ proc sameTree*(a, b: PNode): bool =
       if not result and a.sym.magic != mNone:
         result = a.sym.magic == b.sym.magic or sameOpr(a.sym, b.sym)
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType: result = a.typ == b.typ

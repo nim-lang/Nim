@@ -16,7 +16,8 @@
 
 const
   CycleIncrease = 2 # is a multiplicative increase
-  InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
+  InitialCycleThreshold = when defined(nimCycleBreaker): high(int)
+                          else: 4*1024*1024 # X MB because cycle checking is slow
   InitialZctThreshold = 500  # we collect garbage if the ZCT's size
                              # reaches this threshold
                              # this seems to be a good value
@@ -680,7 +681,8 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   garbage collection that is used by Nim. For more information, please see the documentation of
   `CLANG_NO_SANITIZE_ADDRESS` in `lib/nimbase.h`.
  ]#
-proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl, codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
+proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl,
+    codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
   forEachStackSlot(gch, gcMark)
 
 proc collectZCT(gch: var GcHeap): bool =
@@ -790,6 +792,12 @@ proc collectCT(gch: var GcHeap) =
       markForDebug(gch)
     collectCTBody(gch)
     gch.zctThreshold = max(InitialZctThreshold, gch.zct.len * CycleIncrease)
+
+proc GC_collectZct*() =
+  ## Collect the ZCT (zero count table). Unstable, experimental API for
+  ## testing purposes.
+  ## DO NOT USE!
+  collectCTBody(gch)
 
 when withRealTime:
   proc toNano(x: int): Nanos {.inline.} =

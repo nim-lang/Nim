@@ -48,6 +48,7 @@ type
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
     structStmtFmt: string, # Format for struct statement
+    produceAsm: string,   # Format how to produce assembler listings
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -58,13 +59,16 @@ type
 template compiler(name, settings: untyped): untyped =
   proc name: TInfoCC {.compileTime.} = settings
 
+const
+  gnuAsmListing = "-Wa,-acdl=$asmfile -g -fverbose-asm -masm=intel"
+
 # GNU C and C++ Compiler
 compiler gcc:
   result = (
     name: "gcc",
     objExt: "o",
-    optSpeed: " -O3 ",
-    optSize: " -Os ",
+    optSpeed: " -O3 -fno-ident",
+    optSize: " -Os -fno-ident",
     compilerExe: "gcc",
     cppCompiler: "g++",
     compileTmpl: "-c $options $include -o $objfile $file",
@@ -80,6 +84,7 @@ compiler gcc:
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -105,6 +110,7 @@ compiler nintendoSwitchGCC:
     pic: "-fPIE",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -138,7 +144,7 @@ compiler vcc:
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c$vccplatform$options $include /Fo$objfile $file",
+    compileTmpl: "/c$vccplatform $options $include /Fo$objfile $file",
     buildGui: " /link /SUBSYSTEM:WINDOWS ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
@@ -151,6 +157,7 @@ compiler vcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "/Fa$asmfile",
     props: {hasCpp, hasAssume, hasDeclspec})
 
 compiler clangcl:
@@ -196,6 +203,7 @@ compiler lcc:
     pic: "",
     asmStmtFrmt: "_asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Borland C Compiler
@@ -220,6 +228,7 @@ compiler bcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
@@ -245,6 +254,7 @@ compiler dmc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Watcom C Compiler
@@ -269,6 +279,7 @@ compiler wcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Tiny C Compiler
@@ -293,6 +304,7 @@ compiler tcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasSwitchRange, hasComputedGoto})
 
 # Pelles C Compiler
@@ -318,6 +330,7 @@ compiler pcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Your C Compiler
@@ -342,6 +355,7 @@ compiler ucc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 const
@@ -572,7 +586,8 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
            elif optMixedMode in conf.globalOptions and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
            else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
-proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): string =
+proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
+                         isMainFile = false; produceOutput = false): string =
   var c = conf.cCompiler
   var options = cFileSpecificOptions(conf, cfile.nimname)
   var exe = getConfigVar(conf, c, ".exe")
@@ -614,19 +629,30 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
 
   # D files are required by nintendo switch libs for
   # compilation. They are basically a list of all includes.
-  let dfile = objfile.changeFileExt(".d").quoteShell()
+  let dfile = objfile.changeFileExt(".d").quoteShell
 
-  objfile = quoteShell(objfile)
   let cfsh = quoteShell(cf)
   result = quoteShell(compilePattern % [
     "dfile", dfile,
-    "file", cfsh, "objfile", objfile, "options", options,
+    "file", cfsh, "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf).string,
     "lib", conf.libpath.string])
+
+  if optProduceAsm in conf.globalOptions:
+    if CC[conf.cCompiler].produceAsm.len > 0:
+      let asmfile = objfile.changeFileExt(".asm").quoteShell
+      addOpt(result, CC[conf.cCompiler].produceAsm % ["asmfile", asmfile])
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Produced assembler here: " & asmfile)
+    else:
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Couldn't produce assembler listing " &
+          "for the selected C compiler: " & CC[conf.cCompiler].name)
+
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
     "dfile", dfile,
-    "file", cfsh, "objfile", objfile,
+    "file", cfsh, "objfile", quoteShell(objfile),
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
     "lib", quoteShell(conf.libpath),
@@ -664,7 +690,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
     c.flags.incl CfileFlag.Cached
   else:
     # make sure Nim keeps recompiling the external file on reruns
-    # if compilation is not successful  
+    # if compilation is not successful
     discard tryRemoveFile(c.obj.string)
   conf.toCompile.add(c)
 
@@ -680,7 +706,7 @@ proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var
   for it in list:
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
-    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1)
+    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1, produceOutput=true)
     inc currIdx
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)

@@ -35,7 +35,7 @@
 ##   # nan   (use `complex` module)
 ##
 ## This module is available for the `JavaScript target
-## <backends.html#the-javascript-target>`_.
+## <backends.html#backends-the-javascript-target>`_.
 ##
 ## **See also:**
 ## * `complex module<complex.html>`_ for complex numbers and their
@@ -43,11 +43,13 @@
 ## * `rationals module<rationals.html>`_ for rational numbers and their
 ##   mathematical operations
 ## * `fenv module<fenv.html>`_ for handling of floating-point rounding
-##   and exceptions (overflow, zero-devide, etc.)
+##   and exceptions (overflow, zero-divide, etc.)
 ## * `random module<random.html>`_ for fast and tiny random number generator
 ## * `mersenne module<mersenne.html>`_ for Mersenne twister random number generator
 ## * `stats module<stats.html>`_ for statistical analysis
 ## * `strformat module<strformat.html>`_ for formatting floats for print
+## * `system module<system.html>`_ Some very basic and trivial math operators
+##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
 include "system/inclrtl"
@@ -1060,6 +1062,19 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
     x -= y
   y shl shift
 
+proc gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
+  ## Computes the greatest common (positive) divisor of the elements of ``x``.
+  ##
+  ## See also:
+  ## * `gcd proc <#gcd,T,T>`_ for integer version
+  runnableExamples:
+    doAssert gcd(@[13.5, 9.0]) == 4.5
+  result = x[0]
+  var i = 1
+  while i < x.len:
+    result = gcd(result, x[i])
+    inc(i)
+
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
   ##
@@ -1070,7 +1085,18 @@ proc lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
   x div gcd(x, y) * y
 
-
+proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
+  ## Computes the least common multiple of the elements of ``x``.
+  ##
+  ## See also:
+  ## * `gcd proc <#gcd,T,T>`_ for integer version
+  runnableExamples:
+    doAssert lcm(@[24, 30]) == 120
+  result = x[0]
+  var i = 1
+  while i < x.len:
+    result = lcm(result, x[i])
+    inc(i)
 
 when isMainModule and not defined(JS) and not windowsCC89:
   # Check for no side effect annotation

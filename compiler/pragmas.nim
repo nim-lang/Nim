@@ -10,7 +10,7 @@
 # This module implements semantic checking for pragmas
 
 import
-  os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
+  os, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
@@ -20,7 +20,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
@@ -62,11 +62,11 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wPartial, wExplain, wPackage}
   fieldPragmas* = declPragmas + {
-    wGuard, wBitsize} - {wExportNims, wNodecl} # why exclude these?
+    wGuard, wBitsize, wCursor} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
@@ -418,14 +418,7 @@ proc processOption(c: PContext, n: PNode, resOptions: var TOptions) =
 proc processPush(c: PContext, n: PNode, start: int) =
   if n.sons[start-1].kind in nkPragmaCallKinds:
     localError(c.config, n.info, "'push' cannot have arguments")
-  var x = newOptionEntry(c.config)
-  var y = c.optionStack[^1]
-  x.options = c.config.options
-  x.defaultCC = y.defaultCC
-  x.dynlib = y.dynlib
-  x.notes = c.config.notes
-  x.features = c.features
-  c.optionStack.add(x)
+  var x = pushOptionEntry(c)
   for i in start ..< len(n):
     if not tryProcessOption(c, n.sons[i], c.config.options):
       # simply store it somewhere:
@@ -444,10 +437,7 @@ proc processPop(c: PContext, n: PNode) =
   if c.optionStack.len <= 1:
     localError(c.config, n.info, "{.pop.} without a corresponding {.push.}")
   else:
-    c.config.options = c.optionStack[^1].options
-    c.config.notes = c.optionStack[^1].notes
-    c.features = c.optionStack[^1].features
-    c.optionStack.setLen(c.optionStack.len - 1)
+    popOptionEntry(c)
   when defined(debugOptions):
     echo c.config $ n.info, " POP config is now ", c.config.options
 
@@ -733,7 +723,6 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     return n
 
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
-
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
     return n
@@ -749,7 +738,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,
-                  comesFromPush, isStatement: bool) : bool =
+                  comesFromPush, isStatement: bool): bool =
   var it = n.sons[i]
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it.sons[0] else: it
   if key.kind == nkBracketExpr:
@@ -814,13 +803,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         setExternName(c, sym, name, it.info)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
-      of wAlign:
-        if sym.typ == nil: invalidPragma(c, it)
-        var align = expectIntLit(c, it)
-        if (not isPowerOfTwo(align) and align != 0) or align >% high(int16):
-          localError(c.config, it.info, "power of two expected")
-        else:
-          sym.typ.align = align.int16
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
@@ -833,6 +815,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           sym.typ.align = floatInt64Align(c.config)
         else:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
+      of wAlign:
+        let alignment = expectIntLit(c, it)
+        if alignment == 0:
+          discard
+        elif isPowerOfTwo(alignment):
+          sym.alignment = max(sym.alignment, alignment)
+        else:
+          localError(c.config, it.info, "power of two or 0 expected")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
@@ -844,6 +834,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wVolatile:
         noVal(c, it)
         incl(sym.flags, sfVolatile)
+      of wCursor:
+        noVal(c, it)
+        incl(sym.flags, sfCursor)
       of wRegister:
         noVal(c, it)
         incl(sym.flags, sfRegister)

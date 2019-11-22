@@ -150,11 +150,18 @@ proc createObj*(g: ModuleGraph; owner: PSym, info: TLineInfo; final=true): PType
   s.typ = result
   result.sym = s
 
+template fieldCheck {.dirty.} =
+  when false:
+    if tfCheckedForDestructor in obj.flags:
+      echo "missed field ", field.name.s
+      writeStackTrace()
+
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
   field.position = len(obj.n)
   addSon(obj.n, newSymNode(field))
   propagateToOwner(obj, field.typ)
+  fieldCheck()
 
 proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   # returns a[].field as a node
@@ -208,6 +215,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   propagateToOwner(obj, t)
   field.position = len(obj.n)
   addSon(obj.n, newSymNode(field))
+  fieldCheck()
 
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.id)

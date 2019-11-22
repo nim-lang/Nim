@@ -1121,9 +1121,16 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
     if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
-  of tyGenericInvocation, tyGenericBody, tySequence,
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink, tyUncheckedArray,
-     tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt, tyOwned:
+  of tyBuiltInTypeClass:
+    assert a.len == 1
+    assert a[0].len == 0
+    assert b.len == 1
+    assert b[0].len == 0
+    result = a[0].kind == b[0].kind
+  of tyGenericInvocation, tyGenericBody, tySequence, tyOpenArray, tySet, tyRef,
+     tyPtr, tyVar, tyLent, tySink, tyUncheckedArray, tyArray, tyProc, tyVarargs,
+     tyOrdinal, tyCompositeTypeClass, tyUserTypeClass, tyUserTypeClassInst,
+     tyAnd, tyOr, tyNot, tyAnything, tyOpt, tyOwned:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c)

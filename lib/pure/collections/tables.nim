@@ -134,7 +134,8 @@
 ##   # 'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
 ##
 ## The same could have been achieved by manually iterating over a container
-## and increasing each key's value with `inc proc<#inc,CountTable[A],A,int>`_:
+## and increasing each key's value with `inc proc
+## <#inc,CountTable[A],A,Positive>`_:
 ##
 ## .. code-block::
 ##   import tables
@@ -504,7 +505,7 @@ proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
   ## See also:
-  ## * `take proc<#take,Table[A,B],A,B>`_
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
   ## * `clear proc<#clear,Table[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
@@ -515,7 +516,7 @@ proc del*[A, B](t: var Table[A, B], key: A) =
 
   delImpl()
 
-proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
+proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -528,11 +529,11 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
     var
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
       i: int
-    doAssert a.take('b', i) == true
+    doAssert a.pop('b', i) == true
     doAssert a == {'a': 5, 'c': 13}.toTable
     doAssert i == 9
     i = 0
-    doAssert a.take('z', i) == false
+    doAssert a.pop('z', i) == false
     doAssert a == {'a': 5, 'c': 13}.toTable
     doAssert i == 0
 
@@ -543,12 +544,17 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
     val = move(t.data[index].val)
     delImplIdx(t, index)
 
+proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool {.inline.} =
+  ## Alias for:
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
+  pop(t, key, val)
+
 proc clear*[A, B](t: var Table[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
   ## * `del proc<#del,Table[A,B],A>`_
-  ## * `take proc<#take,Table[A,B],A,B>`_
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
     doAssert len(a) == 3
@@ -1000,7 +1006,7 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
   ## **If duplicate keys were added, this may need to be called multiple times.**
   ##
   ## See also:
-  ## * `take proc<#take,TableRef[A,B],A,B>`_
+  ## * `pop proc<#pop,TableRef[A,B],A,B>`_
   ## * `clear proc<#clear,TableRef[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
@@ -1011,7 +1017,7 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
+proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -1026,22 +1032,27 @@ proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
     var
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
       i: int
-    doAssert a.take('b', i) == true
+    doAssert a.pop('b', i) == true
     doAssert a == {'a': 5, 'c': 13}.newTable
     doAssert i == 9
     i = 0
-    doAssert a.take('z', i) == false
+    doAssert a.pop('z', i) == false
     doAssert a == {'a': 5, 'c': 13}.newTable
     doAssert i == 0
 
-  result = t[].take(key, val)
+  result = t[].pop(key, val)
+
+proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool {.inline.} =
+  ## Alias for:
+  ## * `pop proc<#pop,TableRef[A,B],A,B>`_
+  pop(t, key, val)
 
 proc clear*[A, B](t: TableRef[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
   ## * `del proc<#del,Table[A,B],A>`_
-  ## * `take proc<#take,Table[A,B],A,B>`_
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
     doAssert len(a) == 3
@@ -1487,6 +1498,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## O(n) complexity.
   ##
   ## See also:
+  ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
   ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
@@ -1512,11 +1524,42 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
         rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
+proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
+  runnableExamples:
+    var
+      a = {'c': 5, 'b': 9, 'a': 13}.toOrderedTable
+      i: int
+    doAssert a.pop('b', i) == true
+    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
+    doAssert i == 9
+    i = 0
+    doAssert a.pop('z', i) == false
+    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
+    doAssert i == 0
+
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = index >= 0
+  if result:
+    val = move(t.data[index].val)
+    del(t, key)
+
 proc clear*[A, B](t: var OrderedTable[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
   ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     doAssert len(a) == 3
@@ -1941,7 +1984,7 @@ proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
-proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
+proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
   ## See also:
@@ -1955,11 +1998,34 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc clear*[A, B](t: var OrderedTableRef[A, B]) =
+proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## See also:
+  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
+  ## * `clear proc<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
+  runnableExamples:
+    var
+      a = {'c': 5, 'b': 9, 'a': 13}.newOrderedTable
+      i: int
+    doAssert a.pop('b', i) == true
+    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
+    doAssert i == 9
+    i = 0
+    doAssert a.pop('z', i) == false
+    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
+    doAssert i == 0
+
+  pop(t[], key, val)
+
+proc clear*[A, B](t: OrderedTableRef[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     doAssert len(a) == 3
@@ -2168,6 +2234,19 @@ proc enlarge[A](t: var CountTable[A]) =
     if t.data[i].val != 0: ctRawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
+proc remove[A](t: var CountTable[A], key: A) =
+  var n: seq[tuple[key: A, val: int]]
+  newSeq(n, len(t.data))
+  var removed: bool
+  for i in countup(0, high(t.data)):
+    if t.data[i].val != 0:
+      if t.data[i].key != key:
+        ctRawInsert(t, n, t.data[i].key, t.data[i].val)
+      else:
+        removed = true
+  swap(t.data, n)
+  if removed: dec(t.counter)
+
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
@@ -2236,7 +2315,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
+  ## * `inc proc<#inc,CountTable[A],A,Positive>`_ for incrementing a
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
@@ -2321,8 +2400,57 @@ proc len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
+proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `pop proc<#pop,CountTable[A],A,int>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('c')
+    assert a == toCountTable("aa")
+
+  remove(t, key)
+
+proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    var i = 0
+    assert a.pop('b', i)
+    assert i == 3
+    i = 99
+    assert not a.pop('b', i)
+    assert i == 99
+
+  var index = rawGet(t, key)
+  result = index >= 0
+  if result:
+    val = move(t.data[index].val)
+    remove(t, key)
+
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `pop proc<#pop,CountTable[A],A,int>`_
   clearImpl()
   t.isSorted = false
 
@@ -2611,9 +2739,36 @@ proc len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
+proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `pop proc<#pop,CountTableRef[A],A,int>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  del(t[], key)
+
+proc pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  pop(t[], key, val)
+
 proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
-  clearImpl()
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `pop proc<#pop,CountTableRef[A],A,int>`_
+  clear(t[])
 
 proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
@@ -3005,10 +3160,10 @@ when isMainModule:
     doAssert d.mgetOrPut("a", 6) == 3
 
     var x = 99
-    doAssert e.take("a", x) == false
+    doAssert e.pop("a", x) == false
     doAssert x == 99
     e["a"] = 77
-    doAssert e.take("a", x)
+    doAssert e.pop("a", x)
     doAssert x == 77
 
   block orderedTableWithoutInit:

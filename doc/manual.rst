@@ -1482,7 +1482,8 @@ order. The *names* of the fields also have to be identical.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
-of the assignment operator is described in `type-bound-operations-operator`_.
+of the assignment operator is described `here
+<manual_experimental.html#type-bound-operations>`_.
 
 .. code-block:: nim
 
@@ -2132,7 +2133,7 @@ conversions from ``string`` to ``SQL`` are allowed:
 Now we have compile-time checking against SQL injection attacks.  Since
 ``"".SQL`` is transformed to ``SQL("")`` no new syntax is needed for nice
 looking ``SQL`` string literals. The hypothetical ``SQL`` type actually
-exists in the library as the `TSqlQuery type <db_sqlite.html#TSqlQuery>`_ of
+exists in the library as the `SqlQuery type <db_common.html#SqlQuery>`_ of
 modules like `db_sqlite <db_sqlite.html>`_.
 
 
@@ -2643,7 +2644,7 @@ tuple[x: A, y: B, ...]          (default(A), default(B), ...)
                                 (analogous for objects)
 array[0..., T]                  [default(T), ...]
 range[T]                        default(T); this may be out of the valid range
-T = enum                        cast[T](0); this may be an invalid value
+T = enum                        cast[T]\(0); this may be an invalid value
 ============================    ==============================================
 
 
@@ -3187,6 +3188,7 @@ has lots of advantages:
 
 Type conversions
 ----------------
+
 Syntactically a `type conversion` is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
@@ -3205,6 +3207,19 @@ A type conversion can also be used to disambiguate overloaded routines:
 
   let procVar = (proc(x: string))(p)
   procVar("a")
+
+Since operations on unsigned numbers wrap around and are unchecked so are
+type conversion to unsigned integers and between unsigned integers. The
+rationale for this is mostly better interoperability with the C Programming
+language when algorithms are ported from C to Nim.
+
+Exception: Values that are converted to an unsigned type at compile time
+are checked so that code like ``byte(-1)`` does not compile.
+
+**Note**: Historically the operations
+were unchecked and the conversions were sometimes checked but starting with
+the revision 1.0.4 of this document and the language implementation the
+conversions too are now *always unchecked*.
 
 
 Type casts
@@ -3484,8 +3499,8 @@ more argument in this case:
   assert x == y
 
 The command invocation syntax also can't have complex expressions as arguments.
-For example: (`anonymous procs`_), ``if``, ``case`` or ``try``.
-Function calls with no arguments still needs () to
+For example: (`anonymous procs <#procedures-anonymous-procs>`_), ``if``,
+``case`` or ``try``. Function calls with no arguments still needs () to
 distinguish between a call and the function itself as a first class value.
 
 
@@ -3505,13 +3520,13 @@ Creating closures in loops
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since closures capture local variables by reference it is often not wanted
-behavior inside loop bodies. See `closureScope <system.html#closureScope>`_
-for details on how to change this behavior.
+behavior inside loop bodies. See `closureScope
+<system.html#closureScope.t,untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
 
-Unnamed procedures can be used as lambda expressions to pass into other 
+Unnamed procedures can be used as lambda expressions to pass into other
 procedures:
 
 .. code-block:: nim
@@ -3522,8 +3537,8 @@ procedures:
 
 
 Procs as expressions can appear both as nested procs and inside top level
-executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro 
-which enables a more succinct syntax for anonymous procedures resembling 
+executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
+which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
 
 
@@ -3696,7 +3711,7 @@ type.
 
   method eval(e: Expression): int {.base.} =
     # override this base method
-    quit "to override!"
+    raise newException(CatchableError, "Method without implementation override")
 
   method eval(e: Literal): int = return e.x
 
@@ -5085,6 +5100,25 @@ The problem here is that the compiler already decided that ``something()`` as
 an iterator is not callable in this context before ``toSeq`` gets its
 chance to convert it into a sequence.
 
+It is also not possible to use fully qualified identifiers with module
+symbol in method call syntax. The order in which the dot operator
+binds to symbols prohibits this.
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+   import sequtils
+
+   var myItems = @[1,3,3,7]
+   let N1 = count(myItems, 3) # OK
+   let N2 = sequtils.count(myItems, 3) # fully qualified, OK
+   let N3 = myItems.count(3) # OK
+   let N4 = myItems.sequtils.count(3) # illegal, `myItems.sequtils` can't be resolved
+
+This means that when for some reason a procedure needs a
+disambiguation through the module name, the call needs to be
+written in function call syntax.
 
 Macros
 ======
@@ -5895,9 +5929,9 @@ or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
 
-As a special semantic rule, the built-in `debugEcho <system.html#debugEcho>`_
-pretends to be free of side effects, so that it can be used for debugging
-routines marked as ``noSideEffect``.
+As a special semantic rule, the built-in `debugEcho
+<system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects,
+so that it can be used for debugging routines marked as ``noSideEffect``.
 
 ``func`` is syntactic sugar for a proc with no side effects:
 
@@ -6168,7 +6202,8 @@ factor.
 immediate pragma
 ----------------
 
-The immediate pragma is obsolete. See `Typed vs untyped parameters`_.
+The immediate pragma is obsolete. See `Typed vs untyped parameters
+<#templates-typed-vs-untyped-parameters>`_.
 
 
 compilation option pragmas
@@ -6223,6 +6258,25 @@ but are used to override the settings temporarily. Example:
   # speed critical
   # ... some code ...
   {.pop.} # restore old settings
+
+`push/pop`:idx: can switch on/off some standard library pragmas, example:
+
+.. code-block:: nim
+  {.push inline.}
+  proc thisIsInlined(): int = 42
+  func willBeInlined(): float = 42.0
+  {.pop.}
+  proc notInlined(): int = 9
+
+  {.push discardable, boundChecks: off, compileTime, noSideEffect, experimental.}
+  template example(): string = "https://nim-lang.org"
+  {.pop.}
+
+  {.push deprecated, hint[LineTooLong]: off, used, stackTrace: off.}
+  proc sample(): bool = true
+  {.pop.}
+
+For third party pragmas it depends on its implementation, but uses the same syntax.
 
 
 register pragma
@@ -6331,12 +6385,18 @@ is uncertain (it may be removed any time).
 Example:
 
 .. code-block:: nim
+  import threadpool
   {.experimental: "parallel".}
+
+  proc threadedEcho(s: string, i: int) =
+    echo(s, " ", $i)
 
   proc useParallel() =
     parallel:
       for i in 0..4:
-        echo "echo in parallel"
+        spawn threadedEcho("echo in parallel", i)
+
+  useParallel()
 
 
 As a top level statement, the experimental pragma enables a feature for the
@@ -6386,6 +6446,39 @@ generates:
   struct mybitfield {
     unsigned int flag:1;
   };
+
+
+Align pragma
+------------
+
+The `align`:idx: pragma is for variables and object field members. It
+modifies the alignment requirement of the entity being declared. The
+argument must be a constant power of 2. Valid non-zero
+alignments that are weaker than nother align pragmas on the same
+declaration are ignored. Alignments that are weaker that the
+alignment requirement of the type are ignored.
+
+.. code-block:: Nim
+
+   type
+     sseType = object
+       sseData {.align(16).}: array[4,float32]
+
+     # every object will be aligned to 128-byte boundary
+     Data = object
+       x: char
+       cacheline {.align(128).}: array[128, char] # over-aligned array of char,
+
+   proc main() =
+     echo "sizeof(Data) = ", sizeof(Data), " (1 byte + 127 bytes padding + 128-byte array)"
+     # output: sizeof(Data) = 256 (1 byte + 127 bytes padding + 128-byte array)
+     echo "alignment of sseType is ", alignof(sseType)
+     # output: alignment of sseType is 16
+     var d {.align(2048).}: Data # this instance of data is aligned even stricter
+
+   main()
+
+This pragma has no effect for the JS backend.
 
 
 Volatile pragma
@@ -7013,7 +7106,7 @@ is not set to C, other pragmas are available:
 
  * `importcpp <manual.html#implementation-specific-pragmas-importcpp-pragma>`_
  * `importobjc <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
- * `importjs <manul.html#implementation-specific-pragmas-importjs-pragma>`_
+ * `importjs <manual.html#implementation-specific-pragmas-importjs-pragma>`_
 
 .. code-block:: Nim
   proc p(s: cstring) {.importc: "prefix$1".}
