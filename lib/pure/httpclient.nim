@@ -175,6 +175,8 @@
 ##    let client = newHttpClient(maxRedirects = 0)
 ##
 
+include "system/inclrtl"
+
 import net, strutils, uri, parseutils, base64, os, mimetypes,
   math, random, httpcore, times, tables, streams, std/monotimes
 import asyncnet, asyncdispatch, asyncfile
@@ -296,6 +298,17 @@ proc newProxy*(url: string, auth = ""): Proxy =
 proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
+
+
+proc `$`*(data: MultipartData): string {.since: (1, 1).} =
+  ## convert MultipartData to string so it's human readable when echo
+  ## see https://github.com/nim-lang/Nim/issues/11863
+  const prefixLen = "Content-Disposition: form-data; ".len
+  for pos, item in data.content:
+    result &= "------------------------------  "
+    result.addInt pos
+    result &= "  ------------------------------\n"
+    result &= item[prefixLen .. item.high]
 
 proc add*(p: var MultipartData, name, content: string, filename: string = "",
           contentType: string = "") =
