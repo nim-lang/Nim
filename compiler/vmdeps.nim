@@ -76,7 +76,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     newNodeIT(kind, if t.n.isNil: info else: t.n.info, t)
   template newIdentDefs(n,t): untyped =
     var id = newNodeX(nkIdentDefs)
-    id.add n  # name
+    id.add newIdentNode(n.sym.name, n.sym.info) # name
     id.add mapTypeToAst(t, info)  # type
     id.add newNodeI(nkEmpty, info)  # no assigned value
     id
