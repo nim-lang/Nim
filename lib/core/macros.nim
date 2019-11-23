@@ -1675,3 +1675,30 @@ when defined(nimMacrosSizealignof):
 
 proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.
+
+macro capture*(locals: openArray[typed], body: untyped): untyped =
+  ## Useful when creating a closure in a loop to capture some local loop variables 
+  ## by their current iteration values. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   import strformat
+  ##   var myClosure : proc()
+  ##   # without capture:
+  ##   for i in 5..7:
+  ##     for j in 7..9:      
+  ##       if i * j == 42:         
+  ##         myClosure = proc () = echo fmt"{i} * {j} = 42"
+  ##   myClosure() # outputs 7 * 9 == 42. `i` & `j` are changed after closure creation
+  ##   # with capture:
+  ##   for i in 5..7:
+  ##     for j in 7..9:      
+  ##       if i * j == 42:         
+  ##         capture [i, j]:
+  ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
+  ##   myClosure() # output 6 * 7 == 42
+  var params = @[newEmptyNode()]
+  for arg in locals:
+    params.add(newIdentDefs(ident(arg.strVal), getTypeImpl(arg)))
+  result = newNimNode(nnkCall)
+  result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
+  for arg in locals:  result.add(arg)
