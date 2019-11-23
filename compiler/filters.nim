@@ -20,7 +20,7 @@ proc invalidPragma(conf: ConfigRef; n: PNode) =
 proc getArg(conf: ConfigRef; n: PNode, name: string, pos: int): PNode =
   result = nil
   if n.kind in {nkEmpty..nkNilLit}: return
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     if n[i].kind == nkExprEqExpr:
       if n[i][0].kind != nkIdent: invalidPragma(conf, n)
       if cmpIgnoreStyle(n[i][0].ident.s, name) == 0:

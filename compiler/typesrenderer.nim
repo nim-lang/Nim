@@ -57,7 +57,7 @@ proc renderType(n: PNode): string =
       assert params.kind == nkFormalParams
       assert params.len > 0
       result = "proc("
-      for i in 1 ..< params.len: result.add(renderType(params[i]) & ',')
+      for i in 1..<params.len: result.add(renderType(params[i]) & ',')
       result[^1] = ')'
     else:
       result = "proc"
@@ -66,17 +66,17 @@ proc renderType(n: PNode): string =
     let typePos = n.len - 2
     let typeStr = renderType(n[typePos])
     result = typeStr
-    for i in 1 ..< typePos:
+    for i in 1..<typePos:
       assert n[i].kind == nkIdent
       result.add(',' & typeStr)
   of nkTupleTy:
     result = "tuple["
-    for i in 0 ..< n.len: result.add(renderType(n[i]) & ',')
+    for i in 0..<n.len: result.add(renderType(n[i]) & ',')
     result[^1] = ']'
   of nkBracketExpr:
     assert n.len >= 2
     result = renderType(n[0]) & '['
-    for i in 1 ..< n.len: result.add(renderType(n[i]) & ',')
+    for i in 1..<n.len: result.add(renderType(n[i]) & ',')
     result[^1] = ']'
   else: result = ""
 
@@ -89,7 +89,7 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
   ## generator does include the information.
   case n.kind
   of nkFormalParams:
-    for i in 1 ..< n.len: renderParamTypes(found, n[i])
+    for i in 1..<n.len: renderParamTypes(found, n[i])
   of nkIdentDefs:
     # These are parameter names + type + default value node.
     let typePos = n.len - 2
@@ -100,7 +100,7 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
       let typ = n[typePos+1].typ
       if not typ.isNil: typeStr = typeToString(typ, preferExported)
       if typeStr.len < 1: return
-    for i in 0 ..< typePos:
+    for i in 0..<typePos:
       found.add(typeStr)
   else:
     found.add($n)

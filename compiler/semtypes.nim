@@ -77,7 +77,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   var symbols: TStrTable
   if isPure: initStrTable(symbols)
   var hasNull = false
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     if n[i].kind == nkEmpty: continue
     case n[i].kind
     of nkEnumFieldDef:
@@ -426,7 +426,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   result.n = newNodeI(nkRecList, n.info)
   var check = initIntSet()
   var counter = 0
-  for i in ord(n.kind == nkBracketExpr) ..< n.len:
+  for i in ord(n.kind == nkBracketExpr)..<n.len:
     var a = n[i]
     if (a.kind != nkIdentDefs): illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -437,7 +437,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       typ = errorType(c)
     if a[^1].kind != nkEmpty:
       localError(c.config, a[^1].info, errInitHereNotAllowed)
-    for j in 0 ..< a.len - 2:
+    for j in 0..<a.len - 2:
       var field = newSymG(skField, a[j], c)
       field.typ = typ
       field.position = counter
@@ -495,8 +495,8 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
-  for i in 1 .. branchIndex:
-    for j in 0 .. t[i].len - 2:
+  for i in 1..branchIndex:
+    for j in 0..<t[i].len - 1:
       if i == branchIndex and j == currentEx: break
       if overlap(t[i][j].skipConv, ex):
         localError(c.config, ex.info, errDuplicateCaseLabel)
@@ -543,7 +543,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
     else:
       # constant sets and arrays are allowed:
       var r = semConstExpr(c, b)
-      if r.kind in {nkCurly, nkBracket} and r.len == 0  and branch.len==2:
+      if r.kind in {nkCurly, nkBracket} and r.len == 0 and branch.len == 2:
         # discarding ``{}`` and ``[]`` branches silently
         delSon(branch, 0)
         return
@@ -562,14 +562,14 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         branch[i] = semCaseBranchSetElem(c, t, r[0], covered)
 
         # other elements have to be added to ``branch``
-        for j in 1 ..< r.len:
+        for j in 1..<r.len:
           branch.add(semCaseBranchSetElem(c, t, r[j], covered))
           # caution! last son of branch must be the actions to execute:
           swap(branch[^2], branch[^1])
     checkForOverlap(c, t, i, branchIndex)
 
   # Elements added above needs to be checked for overlaps.
-  for i in lastIndex.succ..(branch.len - 2):
+  for i in lastIndex.succ..<branch.len - 1:
     checkForOverlap(c, t, i, branchIndex)
 
 proc toCover(c: PContext, t: PType): Int128 =
@@ -594,14 +594,14 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
 
 proc formatMissingEnums(n: PNode): string =
   var coveredCases = initIntSet()
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let ofBranch = n[i]
-    for j in 0 ..< ofBranch.len - 1:
+    for j in 0..<ofBranch.len - 1:
       let child = ofBranch[j]
       if child.kind == nkIntLit:
         coveredCases.incl(child.intVal.int)
       elif child.kind == nkRange:
-        for k in child[0].intVal.int .. child[1].intVal.int:
+        for k in child[0].intVal.int..child[1].intVal.int:
           coveredCases.incl k
   for child in n[0].typ.n.sons:
     if child.sym.position notin coveredCases:
@@ -640,7 +640,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   elif lengthOrd(c.config, typ) > 0x00007FFF:
     localError(c.config, n.info, "len($1) must be less than 32768" % a[0].sym.name.s)
 
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     var b = copyTree(n[i])
     a.add b
     case n[i].kind
@@ -669,7 +669,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
   case n.kind
   of nkRecWhen:
     var branch: PNode = nil   # the branch to take
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       var it = n[i]
       if it == nil: illFormedAst(n, c.config)
       var idx = 1
@@ -706,7 +706,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
   of nkRecList:
     # attempt to keep the nesting at a sane level:
     var a = if father.kind == nkRecList: father else: copyNode(n)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       semRecordNodeAux(c, n[i], check, pos, a, rectype)
     if a != father: father.add a
   of nkIdentDefs:
@@ -725,7 +725,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       propagateToOwner(rectype, typ)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
-    for i in 0 .. n.len-3:
+    for i in 0..<n.len-2:
       var f = semIdentWithPragma(c, skField, n[i], {sfExported})
       let info = if n[i].kind == nkPostfix:
                    n[i][1].info
@@ -764,13 +764,13 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
   of nkRecCase:
     if (n[0].kind != nkSym): internalError(c.config, n.info, "addInheritedFieldsAux")
     addInheritedFieldsAux(c, check, pos, n[0])
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         addInheritedFieldsAux(c, check, pos, lastSon(n[i]))
       else: internalError(c.config, n.info, "addInheritedFieldsAux(record case branch)")
   of nkRecList, nkRecWhen, nkElifBranch, nkElse:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       addInheritedFieldsAux(c, check, pos, n[i])
   of nkSym:
     incl(check, n.sym.name.id)
@@ -860,7 +860,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     var isNilable = false
     var isOwned = false
     # check every except the last is an object:
-    for i in isCall .. n.len-2:
+    for i in isCall..<n.len-1:
       let ni = n[i]
       if ni.kind == nkNilLit:
         isNilable = true
@@ -936,7 +936,7 @@ proc addImplicitGeneric(c: PContext; typeClass: PType, typId: PIdent;
   let finalTypId = if typId != nil: typId
                     else: getIdent(c.cache, paramName & ":type")
   # is this a bindOnce type class already present in the param list?
-  for i in 0 ..< genericParams.len:
+  for i in 0..<genericParams.len:
     if genericParams[i].sym.name.id == finalTypId.id:
       return genericParams[i].typ
 
@@ -1014,7 +1014,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(c, typ, paramTypId, info, genericParams, paramName)
     else:
-      for i in 0 ..< paramType.len:
+      for i in 0..<paramType.len:
         if paramType[i] == paramType:
           globalError(c.config, info, errIllegalRecursionInTypeX % typeToString(paramType))
         var lifted = recurse(paramType[i])
@@ -1026,7 +1026,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = newTypeS(tyGenericInvocation, c)
     result.rawAddSon(paramType)
 
-    for i in 0 .. paramType.len - 2:
+    for i in 0..<paramType.len - 1:
       if paramType[i].kind == tyStatic:
         var staticCopy = paramType[i].exactReplica
         staticCopy.flags.incl tfInferrableStatic
@@ -1052,7 +1052,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       cp.kind = tyUserTypeClassInst
       return addImplicitGeneric(c, cp, paramTypId, info, genericParams, paramName)
 
-    for i in 1 .. paramType.len-2:
+    for i in 1..<paramType.len-1:
       var lifted = recurse(paramType[i])
       if lifted != nil:
         paramType[i] = lifted
@@ -1066,7 +1066,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       #result.shouldHaveMeta
 
   of tyGenericInvocation:
-    for i in 1 ..< paramType.len:
+    for i in 1..<paramType.len:
       #if paramType[i].kind != tyTypeDesc:
       let lifted = recurse(paramType[i])
       if lifted != nil: paramType[i] = lifted
@@ -1128,7 +1128,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var check = initIntSet()
   var counter = 0
 
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     var a = n[i]
     if a.kind != nkIdentDefs:
       # for some generic instantiations the passed ':env' parameter
@@ -1200,7 +1200,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       continue
 
-    for j in 0 ..< a.len-2:
+    for j in 0..<a.len-2:
       var arg = newSymG(skParam, a[j], c)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
         let param = strTableGet(c.signatures, arg.name)
@@ -1292,7 +1292,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1, c.config)
-  for i in 0 ..< n.len - 1:
+  for i in 0..<n.len - 1:
     n[i] = semStmt(c, n[i], {})
   if n.len > 0:
     result = semTypeNode(c, n[^1], prev)
@@ -1356,7 +1356,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     else: addSonSkipIntLit(result, typ)
 
   if t.kind == tyForward:
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       var elem = semGenericParamInInvocation(c, n[i])
       addToResult(elem)
     return
@@ -1379,7 +1379,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
     var isConcrete = true
 
-    for i in 1 ..< m.call.len:
+    for i in 1..<m.call.len:
       var typ = m.call[i].typ
       # is this a 'typedesc' *parameter*? If so, use the typedesc type,
       # unstripped.
@@ -1686,7 +1686,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeNode(c, n[0], nil)
       if result != nil:
         result = copyType(result, getCurrOwner(c), false)
-        for i in 1 ..< n.len:
+        for i in 1..<n.len:
           result.rawAddSon(semTypeNode(c, n[i], nil))
     of mDistinct:
       result = newOrPrevType(tyDistinct, prev, c)
@@ -1924,7 +1924,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
   if n.kind != nkGenericParams:
     illFormedAst(n, c.config)
     return
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     var a = n[i]
     if a.kind != nkIdentDefs: illFormedAst(n, c.config)
     var def = a[^1]
@@ -1959,7 +1959,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
 
     typ.flags.incl tfGenericTypeParam
 
-    for j in 0 ..< a.len-2:
+    for j in 0..<a.len-2:
       let finalType = if j == 0: typ
                       else: copyType(typ, typ.owner, false)
                       # it's important the we create an unique

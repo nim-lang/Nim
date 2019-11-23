@@ -201,7 +201,7 @@ proc copyValue(src: PNode): PNode =
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
     newSeq(result.sons, src.len)
-    for i in 0 ..< src.len:
+    for i in 0..<src.len:
       result[i] = copyValue(src[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
@@ -358,7 +358,7 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
 
   # Traverse the stack starting from the end in order to execute the blocks in
   # the intended order
-  for i in 1 .. f.safePoints.len:
+  for i in 1..f.safePoints.len:
     var pc = f.safePoints[^i]
     # Skip the `except` blocks
     while c.code[pc].opcode == opcExcept:
@@ -473,7 +473,7 @@ template handleJmpBack() {.dirty.} =
 proc recSetFlagIsRef(arg: PNode) =
   if arg.kind notin {nkStrLit..nkTripleStrLit}:
     arg.flags.incl(nfIsRef)
-  for i in 0 ..< arg.safeLen:
+  for i in 0..<arg.safeLen:
     arg[i].recSetFlagIsRef
 
 proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
@@ -481,7 +481,7 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
   let oldLen = node.len
   setLen(node.sons, newLen)
   if oldLen < newLen:
-    for i in oldLen ..< newLen:
+    for i in oldLen..<newLen:
       node[i] = getNullValue(typ[0], info, c.config)
 
 const
@@ -815,7 +815,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       b.add regs[rb].regToNode
       var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
-      for i in 0 ..< r.len: regs[ra].node.add r[i]
+      for i in 0..<r.len: regs[ra].node.add r[i]
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
@@ -1149,7 +1149,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         newSeq(newFrame.slots, prc.offset+ord(isClosure))
         if not isEmptyType(prc.typ[0]):
           putIntoReg(newFrame.slots[0], getNullValue(prc.typ[0], prc.info, c.config))
-        for i in 1 .. rc-1:
+        for i in 1..rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
           newFrame.slots[rc].kind = rkNode
@@ -1166,7 +1166,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             c.module
         var macroCall = newNodeI(nkCall, c.debug[pc])
         macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1:
+        for i in 1..rc-1:
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
@@ -1197,7 +1197,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in 0 .. branch.len - 2:
+      for j in 0..<branch.len - 1:
         if overlap(regs[ra].regToNode, branch[j]):
           cond = true
           break
@@ -1284,7 +1284,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node = newNodeI(nkBracket, c.debug[pc])
       regs[ra].node.typ = typ
       newSeq(regs[ra].node.sons, count)
-      for i in 0 ..< count:
+      for i in 0..<count:
         regs[ra].node[i] = getNullValue(typ[0], c.debug[pc], c.config)
     of opcNewStr:
       decodeB(rkNode)
@@ -1454,7 +1454,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif u.kind in {nkEmpty..nkNilLit}:
         stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
-        for i in 0 ..< x.len: u.add(x[i])
+        for i in 0..<x.len: u.add(x[i])
       regs[ra].node = u
     of opcNKind:
       decodeB(rkInt)
@@ -1841,7 +1841,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNDel:
       decodeBC(rkNode)
       let bb = regs[rb].intVal.int
-      for i in 0 ..< regs[rc].intVal.int:
+      for i in 0..<regs[rc].intVal.int:
         delSon(regs[ra].node, bb)
     of opcGenSym:
       decodeBC(rkNode)
@@ -2079,7 +2079,7 @@ proc evalConstExprAux(module: PSym;
   when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
-  #for i in 0 ..< c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  #for i in 0..<c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
 
@@ -2129,7 +2129,7 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
-  for i in 0 ..< gp.len:
+  for i in 0..<gp.len:
     let genericParam = gp[i].sym
     let posInCall = macroSym.typ.len + i
     if posInCall < call.len:
@@ -2185,7 +2185,7 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
     tos.slots[i] = setupMacroParam(n[i], sym.typ[i])
 
   let gp = sym.ast[genericParamsPos]
-  for i in 0 ..< gp.len:
+  for i in 0..<gp.len:
     let idx = sym.typ.len + i
     if idx < n.len:
       tos.slots[idx] = setupMacroParam(n[idx], gp[i].sym.typ)
@@ -2195,7 +2195,7 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
       localError(c.config, n.info, "expected " & $gp.len &
                  " generic parameter(s)")
   # temporary storage:
-  #for i in L ..< maxSlots: tos.slots[i] = newNode(nkEmpty)
+  #for i in L..<maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")

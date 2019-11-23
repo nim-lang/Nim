@@ -191,7 +191,7 @@ proc registerAdditionalOps*(c: PCtx) =
     let ePos = a.getInt(2).int
     let arr = a.getNode(0)
     var bytes = newSeq[byte](arr.len)
-    for i in 0 ..< arr.len:
+    for i in 0..<arr.len:
       bytes[i] = byte(arr[i].intVal and 0xff)
 
     var res = hashes.hash(bytes, sPos, ePos)

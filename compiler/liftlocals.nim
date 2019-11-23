@@ -44,12 +44,12 @@ proc liftLocals(n: PNode; i: int; c: var Ctx) =
       n[i] = lookupOrAdd(c, it.sym, it.info)
   of procDefs, nkTypeSection: discard
   else:
-    for i in 0 ..< it.safeLen:
+    for i in 0..<it.safeLen:
       liftLocals(it, i, c)
 
 proc lookupParam(params, dest: PNode): PSym =
   if dest.kind != nkIdent: return nil
-  for i in 1 ..< params.len:
+  for i in 1..<params.len:
     if params[i].kind == nkSym and params[i].sym.name.id == dest.ident.id:
       return params[i].sym
 

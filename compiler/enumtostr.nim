@@ -22,7 +22,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   caseStmt.add(newSymNode dest)
 
   # copy the branches over, but replace the fields with the for loop body:
-  for i in 0 ..< t.n.len:
+  for i in 0..<t.n.len:
     assert(t.n[i].kind == nkSym)
     var field = t.n[i].sym
     let val = if field.ast == nil: field.name.s else: field.ast.strVal
@@ -33,7 +33,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   body.add(caseStmt)
 
   var n = newNodeI(nkProcDef, info, bodyPos+2)
-  for i in 0 ..< n.len: n[i] = newNodeI(nkEmpty, info)
+  for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
   n[namePos] = newSymNode(result)
   n[paramsPos] = result.typ.n
   n[bodyPos] = body
@@ -77,10 +77,10 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
 
   let subObj = searchObjCase(t.n, field)
   doAssert subObj != nil
-  for i in 1 ..< subObj.len:
+  for i in 1..<subObj.len:
     let ofBranch = subObj[i]
     var newBranch = newNodeI(ofBranch.kind, ofBranch.info)
-    for j in 0..ofBranch.len-2:
+    for j in 0..<ofBranch.len-1:
       newBranch.add ofBranch[j]
 
     newBranch.add newTree(nkStmtList, newTree(nkFastAsgn, newSymNode(res), newIntNode(nkInt8Lit, i)))
@@ -89,7 +89,7 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   body.add(caseStmt)
 
   var n = newNodeI(nkProcDef, info, bodyPos+2)
-  for i in 0 ..< n.len: n[i] = newNodeI(nkEmpty, info)
+  for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
   n[namePos] = newSymNode(result)
   n[paramsPos] = result.typ.n
   n[bodyPos] = body

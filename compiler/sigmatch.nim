@@ -229,7 +229,7 @@ proc sumGeneric(t: PType): int =
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
       result += ord(t.kind in {tyGenericInvocation, tyAnd})
-      for i in 0 ..< t.len:
+      for i in 0..<t.len:
         if t[i] != nil:
           result += sumGeneric(t[i])
       break
@@ -249,7 +249,7 @@ proc sumGeneric(t: PType): int =
 proc complexDisambiguation(a, b: PType): int =
   # 'a' matches better if *every* argument matches better or equal than 'b'.
   var winner = 0
-  for i in 1 ..< min(a.len, b.len):
+  for i in 1..<min(a.len, b.len):
     let x = a[i].sumGeneric
     let y = b[i].sumGeneric
     #if ggDebug:
@@ -269,8 +269,8 @@ proc complexDisambiguation(a, b: PType): int =
   result = winner
   when false:
     var x, y: int
-    for i in 1 ..< a.len: x += a[i].sumGeneric
-    for i in 1 ..< b.len: y += b[i].sumGeneric
+    for i in 1..<a.len: x += a[i].sumGeneric
+    for i in 1..<b.len: y += b[i].sumGeneric
     result = x - y
 
 proc writeMatches*(c: TCandidate) =
@@ -305,7 +305,7 @@ proc cmpCandidates*(a, b: TCandidate): int =
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
     result = typeToString(arg[0].typ, prefer)
-    for i in 1 ..< arg.len:
+    for i in 1..<arg.len:
       result.add(" | ")
       result.add typeToString(arg[i].typ, prefer)
   elif arg.typ == nil:
@@ -316,7 +316,7 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
 proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
                    prefer: TPreferedDesc = preferName): string =
   result = ""
-  for i in startIdx ..< n.len:
+  for i in startIdx..<n.len:
     var arg = n[i]
     if n[i].kind == nkExprEqExpr:
       result.add(renderTree(n[i][0]))
@@ -440,7 +440,7 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
 proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
   if fGenericOrigin != nil and last.kind == tyGenericInst and
      last.len-1 == fGenericOrigin.len:
-    for i in 1 ..< fGenericOrigin.len:
+    for i in 1..<fGenericOrigin.len:
       let x = PType(idTableGet(c.bindings, fGenericOrigin[i]))
       if x == nil:
         put(c, fGenericOrigin[i], last[i])
@@ -522,12 +522,12 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
                      else: 1
-    for i in firstField ..< f.len:
+    for i in firstField..<f.len:
       var m = typeRel(c, f[i], a[i])
       if m < isSubtype: return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
-      for i in 0 ..< f.n.len:
+      for i in 0..<f.n.len:
         # check field names:
         if f.n[i].kind != nkSym: return isNone
         elif a.n[i].kind != nkSym: return isNone
@@ -552,7 +552,7 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ## .. code-block:: nim
+  ##..code-block:: nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
   ## And we want to match: myMap(@[1,2,3], innerProc)
@@ -617,7 +617,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
     # Note: We have to do unification for the parameters before the
     # return type!
-    for i in 1 ..< f.len:
+    for i in 1..<f.len:
       checkParam(f[i], a[i])
 
     if f[0] != nil:
@@ -697,7 +697,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var typeParams: seq[(PSym, PType)]
 
   if ff.kind == tyUserTypeClassInst:
-    for i in 1 ..< (ff.len - 1):
+    for i in 1..<(ff.len - 1):
       var
         typeParamName = ff.base[i-1].sym.name
         typ = ff[i]
@@ -1325,7 +1325,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     if a.kind == f.kind:
       # ptr[R, T] can be passed to ptr[T], but not the other way round:
       if a.len < f.len: return isNone
-      for i in 0..f.len-2:
+      for i in 0..<f.len-1:
         if typeRel(c, f[i], a[i]) == isNone: return isNone
       result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
       subtypeCheck()
@@ -1416,7 +1416,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # YYYY
         result = isEqual
 
-        for i in 1 .. rootf.len-2:
+        for i in 1..<rootf.len-1:
           let ff = rootf[i]
           let aa = roota[i]
           let res = typeRel(c, ff, aa, nextFlags)
@@ -1498,7 +1498,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       discard
     elif x.kind == tyGenericInst and f[0] == x[0] and
           x.len - 1 == f.len:
-      for i in 1 ..< f.len:
+      for i in 1..<f.len:
         if x[i].kind == tyGenericParam:
           internalError(c.c.graph.config, "wrong instantiated type!")
         elif typeRel(c, f[i], x[i]) <= isSubtype:
@@ -1538,7 +1538,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # var it1 = internalFind(root, 312) # cannot instantiate: 'D'
         #
         # we steal the generic parameters from the tyGenericBody:
-        for i in 1 ..< f.len:
+        for i in 1..<f.len:
           let x = PType(idTableGet(c.bindings, genericBody[i-1]))
           if x == nil:
             discard "maybe fine (for eg. a==tyNil)"
@@ -1643,7 +1643,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let roota = a.skipGenericAlias
       let rootf = f.lastSon.skipGenericAlias
       if a.kind == tyGenericInst and roota.base == rootf.base:
-        for i in 1 .. rootf.len-2:
+        for i in 1..<rootf.len-1:
           let ff = rootf[i]
           let aa = roota[i]
           result = typeRel(c, ff, aa)
@@ -1876,7 +1876,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
-  for i in 0 ..< c.converters.len:
+  for i in 0..<c.converters.len:
     var src = c.converters[i].typ[1]
     var dest = c.converters[i].typ[0]
     # for generic type converters we need to check 'src <- a' before
@@ -2182,7 +2182,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
     var best = -1
-    for i in 0 ..< arg.len:
+    for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                                   skIterator, skMacro, skTemplate}:
         copyCandidate(z, m)
@@ -2241,7 +2241,7 @@ proc setSon(father: PNode, at: int, son: PNode) =
     setLen(father.sons, at + 1)
   father[at] = son
   # insert potential 'void' parameters:
-  #for i in oldLen ..< at:
+  #for i in oldLen..<at:
   #  father[i] = newNodeIT(nkEmpty, son.info, getSysType(tyVoid))
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
@@ -2500,7 +2500,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every
   # argument has been sem'checked:
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     n[i] = prepareOperand(c, n[i])
 
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =

@@ -165,8 +165,7 @@ proc pushOwner*(c: PContext; owner: PSym) =
   c.graph.owners.add(owner)
 
 proc popOwner*(c: PContext) =
-  var length = c.graph.owners.len
-  if length > 0: setLen(c.graph.owners, length - 1)
+  if c.graph.owners.len > 0: setLen(c.graph.owners, c.graph.owners.len - 1)
   else: internalError(c.config, "popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
@@ -250,7 +249,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.features = graph.config.features
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
-  for i in 0 ..< sq.len:
+  for i in 0..<sq.len:
     if sq[i].id == s.id: return
   sq.add s
 

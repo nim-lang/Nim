@@ -31,7 +31,7 @@ proc hashTree(n: PNode): Hash =
   of nkStrLit..nkTripleStrLit:
     result = result !& hash(n.strVal)
   else:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result = result !& hashTree(n[i])
 
 proc treesEquivalent(a, b: PNode): bool =
@@ -47,7 +47,7 @@ proc treesEquivalent(a, b: PNode): bool =
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     else:
       if a.len == b.len:
-        for i in 0 ..< a.len:
+        for i in 0..<a.len:
           if not treesEquivalent(a[i], b[i]): return
         result = true
     if result: result = sameTypeOrNil(a.typ, b.typ)
@@ -84,7 +84,7 @@ proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
   else:
     if mustRehash(t.data.len, t.counter):
       newSeq(n, t.data.len * GrowthFactor)
-      for i in 0 .. high(t.data):
+      for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)
@@ -101,7 +101,7 @@ proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int =
   else:
     if mustRehash(t.data.len, t.counter):
       newSeq(n, t.data.len * GrowthFactor)
-      for i in 0 .. high(t.data):
+      for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)

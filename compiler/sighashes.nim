@@ -93,7 +93,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
 
   case t.kind
   of tyGenericInvocation:
-    for i in 0 ..< t.len:
+    for i in 0..<t.len:
       c.hashType t[i], flags
   of tyDistinct:
     if CoDistinct in flags:
@@ -110,7 +110,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       # We cannot trust the `lastSon` to hold a properly populated and unique
       # value for each instantiation, so we hash the generic parameters here:
       let normalizedType = t.skipGenericAlias
-      for i in 0 .. normalizedType.len - 2:
+      for i in 0..<normalizedType.len - 1:
         c.hashType t[i], flags
     else:
       c.hashType t.lastSon, flags
@@ -132,7 +132,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       let inst = t.typeInst
       t.typeInst = nil
       assert inst.kind == tyGenericInst
-      for i in 0 .. inst.len - 2:
+      for i in 0..<inst.len - 1:
         c.hashType inst[i], flags
       t.typeInst = inst
       return
@@ -181,14 +181,14 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     c &= char(t.kind)
     if t.n != nil and CoType notin flags:
       assert(t.n.len == t.len)
-      for i in 0 ..< t.n.len:
+      for i in 0..<t.n.len:
         assert(t.n[i].kind == nkSym)
         c &= t.n[i].sym.name.s
         c &= ':'
         c.hashType(t[i], flags+{CoIgnoreRange})
         c &= ','
     else:
-      for i in 0 ..< t.len: c.hashType t[i], flags+{CoIgnoreRange}
+      for i in 0..<t.len: c.hashType t[i], flags+{CoIgnoreRange}
   of tyRange:
     if CoIgnoreRange notin flags:
       c &= char(t.kind)

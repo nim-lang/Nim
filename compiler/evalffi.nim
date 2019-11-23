@@ -138,13 +138,13 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer)
 proc getField(conf: ConfigRef, n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result = getField(conf, n[i], position)
       if result != nil: return
   of nkRecCase:
     result = getField(conf, n[0], position)
     if result != nil: return
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = getField(conf, lastSon(n[i]), position)
@@ -158,7 +158,7 @@ proc packObject(conf: ConfigRef, x: PNode, typ: PType, res: pointer) =
   internalAssert conf, x.kind in {nkObjConstr, nkPar, nkTupleConstr}
   # compute the field's offsets:
   discard getSize(conf, typ)
-  for i in ord(x.kind == nkObjConstr) ..< x.len:
+  for i in ord(x.kind == nkObjConstr)..<x.len:
     var it = x[i]
     if it.kind == nkExprColonExpr:
       internalAssert conf, it[0].kind == nkSym
@@ -229,7 +229,7 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
       awr(pointer, res +! sizeof(pointer))
   of tyArray:
     let baseSize = getSize(conf, typ[1])
-    for i in 0 ..< v.len:
+    for i in 0..<v.len:
       pack(conf, v[i], typ[1], res +! i * baseSize)
   of tyObject, tyTuple:
     packObject(conf, v, typ, res)
@@ -245,7 +245,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode
 proc unpackObjectAdd(conf: ConfigRef, x: pointer, n, result: PNode) =
   case n.kind
   of nkRecList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       unpackObjectAdd(conf, x, n[i], result)
   of nkRecCase:
     globalError(conf, result.info, "case objects cannot be unpacked")
@@ -275,7 +275,7 @@ proc unpackObject(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
       globalError(conf, n.info, "cannot map value from FFI")
     if typ.n.isNil:
       globalError(conf, n.info, "cannot unpack unnamed tuple")
-    for i in ord(n.kind == nkObjConstr) ..< n.len:
+    for i in ord(n.kind == nkObjConstr)..<n.len:
       var it = n[i]
       if it.kind == nkExprColonExpr:
         internalAssert conf, it[0].kind == nkSym
@@ -295,7 +295,7 @@ proc unpackArray(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     if result.kind != nkBracket:
       globalError(conf, n.info, "cannot map value from FFI")
   let baseSize = getSize(conf, typ[1])
-  for i in 0 ..< result.len:
+  for i in 0..<result.len:
     result[i] = unpack(conf, x +! i * baseSize, typ[1], result[i])
 
 proc canonNodeKind(k: TNodeKind): TNodeKind =
@@ -424,7 +424,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
   var cif: TCif
   var sig: TParamList
   # use the arguments' types for varargs support:
-  for i in 1..call.len-1:
+  for i in 1..<call.len:
     sig[i-1] = mapType(conf, call[i].typ)
     if sig[i-1].isNil:
       globalError(conf, call.info, "cannot map FFI type")
@@ -436,7 +436,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
 
   var args: TArgList
   let fn = cast[pointer](call[0].intVal)
-  for i in 1 .. call.len-1:
+  for i in 1..<call.len:
     var t = call[i].typ
     args[i-1] = alloc0(packSize(conf, call[i], t))
     pack(conf, call[i], t, args[i-1])
@@ -452,7 +452,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
     result.info = call.info
 
   if retVal != nil: dealloc retVal
-  for i in 1 .. call.len-1:
+  for i in 1..<call.len:
     call[i] = unpack(conf, args[i-1], typ[i], call[i])
     dealloc args[i-1]
 
@@ -478,7 +478,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
 
   var cargs: TArgList
   let fn = cast[pointer](fn.intVal)
-  for i in 0 .. len-1:
+  for i in 0..len-1:
     let t = args[i+start].typ
     cargs[i] = alloc0(packSize(conf, args[i+start], t))
     pack(conf, args[i+start], t, cargs[i])
@@ -494,7 +494,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
     result.info = info
 
   if retVal != nil: dealloc retVal
-  for i in 0 .. len-1:
+  for i in 0..len-1:
     let t = args[i+start].typ
     args[i+start] = unpack(conf, cargs[i], t, args[i+start])
     dealloc cargs[i]

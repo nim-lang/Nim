@@ -54,7 +54,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
     newSons(result, n.len)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result[i] = instFieldLoopBody(c, n[i], forLoop)
 
 type
@@ -92,7 +92,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     access[1] = newSymNode(typ[0].sym, forLoop.info)
     caseStmt.add(semExprWithType(c.c, access))
     # copy the branches over, but replace the fields with the for loop body:
-    for i in 1 ..< typ.len:
+    for i in 1..<typ.len:
       var branch = copyTree(typ[i])
       branch[^1] = newNodeI(nkStmtList, forLoop.info)
       semForObjectFields(c, typ[i].lastSon, forLoop, branch[^1])
@@ -127,7 +127,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   if tupleTypeA.kind notin {tyTuple, tyObject}:
     localError(c.config, n.info, errGenerated, "no object or tuple type")
     return result
-  for i in 1..call.len-1:
+  for i in 1..<call.len:
     var tupleTypeB = skipTypes(call[i].typ, skippedTypesForFields)
     if not sameType(tupleTypeA, tupleTypeB):
       typeMismatch(c.config, call[i].info, tupleTypeA, tupleTypeB)

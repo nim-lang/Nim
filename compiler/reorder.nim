@@ -35,7 +35,7 @@ proc newDepN(id: int, pnode: PNode): DepN =
 
 proc accQuoted(cache: IdentCache; n: PNode): PIdent =
   var id = ""
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     let x = n[i]
     case x.kind
     of nkIdent: id.add(x.ident.s)
@@ -75,8 +75,8 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkLetSection, nkVarSection, nkUsingStmt:
     for a in n:
       if a.kind in {nkIdentDefs, nkVarTuple}:
-        for j in 0 .. a.len-3: decl(a[j])
-        for j in a.len-2..a.len-1: deps(a[j])
+        for j in 0..<a.len-2: decl(a[j])
+        for j in a.len-2..<a.len: deps(a[j])
   of nkConstSection, nkTypeSection:
     for a in n:
       if a.len >= 3:

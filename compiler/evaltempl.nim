@@ -68,7 +68,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in 0 ..< templ.len:
+      for i in 0..<templ.len:
         evalTemplateAux(templ[i], actual, c, res)
       result.add res
     else:
@@ -82,7 +82,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       c.isDeclarative = true
       isDeclarative = true
     var res = copyNode(c, templ, actual)
-    for i in 0 ..< templ.len:
+    for i in 0..<templ.len:
       evalTemplateAux(templ[i], actual, c, res)
     result.add res
     if isDeclarative: c.isDeclarative = false
@@ -122,12 +122,12 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
                 n.renderTree)
 
   result = newNodeI(nkArgList, n.info)
-  for i in 1 .. givenRegularParams:
+  for i in 1..givenRegularParams:
     result.add n[i]
 
   # handle parameters with default values, which were
   # not supplied by the user
-  for i in givenRegularParams+1 .. expectedRegularParams:
+  for i in givenRegularParams+1..expectedRegularParams:
     let default = s.typ.n[i].sym.ast
     if default.isNil or default.kind == nkEmpty:
       localError(conf, n.info, errWrongNumberOfArguments)
@@ -136,7 +136,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
       result.add default.copyTree
 
   # add any generic parameters
-  for i in 1 .. genericParams:
+  for i in 1..genericParams:
     result.add n[givenRegularParams + i]
 
 # to prevent endless recursion in template instantiation
@@ -196,7 +196,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
       result.info = n.info
-    for i in 0 ..< safeLen(body):
+    for i in 0..<safeLen(body):
       evalTemplateAux(body[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)

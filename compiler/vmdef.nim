@@ -21,7 +21,7 @@ const
 
 type
   TRegister* = range[0..255]
-  TDest* = range[-1 .. 255]
+  TDest* = range[-1..255]
   TInstr* = distinct uint32
 
   TOpcode* = enum

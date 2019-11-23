@@ -1145,17 +1145,17 @@ const                         # for all kind of hash tables:
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
-  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
   newSeq(dest.data, src.data.len)
-  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
   setLen(dest.data, src.data.len)
-  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
   when defined(nimNoNilSeqs):
@@ -1361,7 +1361,7 @@ proc assignType*(dest, src: PType) =
     else:
       dest.sym = src.sym
   newSons(dest, src.len)
-  for i in 0 ..< src.len: dest[i] = src[i]
+  for i in 0..<src.len: dest[i] = src[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1515,9 +1515,8 @@ proc delSon*(father: PNode, idx: int) =
     if father.len == 0: return
   else:
     if isNil(father.sons): return
-  var length = father.len
-  for i in idx .. length - 2: father[i] = father[i + 1]
-  setLen(father.sons, length - 1)
+  for i in idx..<father.len - 1: father[i] = father[i + 1]
+  father.sons.setLen(father.len - 1)
 
 proc copyNode*(src: PNode): PNode =
   # does not copy its sons!
@@ -1578,17 +1577,17 @@ proc copyTree*(src: PNode): PNode =
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
     newSeq(result.sons, src.len)
-    for i in 0 ..< src.len:
+    for i in 0..<src.len:
       result[i] = copyTree(src[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     if n[i].kind == kind:
       return true
   result = false
 
 proc hasNilSon*(n: PNode): bool =
-  for i in 0 ..< safeLen(n):
+  for i in 0..<safeLen(n):
     if n[i] == nil:
       return true
     elif hasNilSon(n[i]):
@@ -1600,14 +1599,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if n.kind in kinds or containsNode(n[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if (n[i].kind == kind) or hasSubnodeWith(n[i], kind):
         return true
     result = false
@@ -1704,7 +1703,7 @@ proc requiredParams*(s: PSym): int =
   # Returns the number of required params (without default values)
   # XXX: Perhaps we can store this in the `offset` field of the
   # symbol instead?
-  for i in 1 ..< s.typ.len:
+  for i in 1..<s.typ.len:
     if s.typ.n[i].sym.ast != nil:
       return i - 1
   return s.typ.len - 1
@@ -1734,7 +1733,7 @@ proc makeStmtList*(n: PNode): PNode =
 
 proc skipStmtList*(n: PNode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr}:
-    for i in 0 .. n.len-2:
+    for i in 0..<n.len-1:
       if n[i].kind notin {nkEmpty, nkCommentStmt}: return n
     result = n.lastSon
   else:
@@ -1791,7 +1790,7 @@ when false:
   proc containsNil*(n: PNode): bool =
     # only for debugging
     if n.isNil: return true
-    for i in 0 ..< n.safeLen:
+    for i in 0..<n.safeLen:
       if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}

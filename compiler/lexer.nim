@@ -768,7 +768,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
 proc newString(s: cstring, len: int): string =
   ## XXX, how come there is no support for this?
   result = newString(len)
-  for i in 0 ..< len:
+  for i in 0..<len:
     result[i] = s[i]
 
 proc handleCRLF(L: var TLexer, pos: int): int =
@@ -1350,7 +1350,7 @@ proc getPrecedence*(ident: PIdent): int =
   initToken(tok)
   tok.ident = ident
   tok.tokType =
-    if tok.ident.id in ord(tokKeywordLow) - ord(tkSymbol) .. ord(tokKeywordHigh) - ord(tkSymbol):
+    if tok.ident.id in ord(tokKeywordLow) - ord(tkSymbol)..ord(tokKeywordHigh) - ord(tkSymbol):
       TTokType(tok.ident.id + ord(tkSymbol))
     else: tkOpr
   getPrecedence(tok, false)

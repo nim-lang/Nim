@@ -331,7 +331,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
       addAbiCheck(m, typ, result)
 
 proc pushType(m: BModule, typ: PType) =
-  for i in 0 .. high(m.typeStack):
+  for i in 0..high(m.typeStack):
     # pointer equality is good enough here:
     if m.typeStack[i] == typ: return
   m.typeStack.add(typ)
@@ -451,7 +451,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     rettype = ~"void"
   else:
     rettype = getTypeDescAux(m, t[0], check)
-  for i in 1 ..< t.n.len:
+  for i in 1..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
@@ -512,7 +512,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result.add(genRecordFieldsAux(m, n[i], rectype, check))
   of nkRecCase:
     if n[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
@@ -520,7 +520,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody: Rope = nil
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         let k = lastSon(n[i])
@@ -637,7 +637,7 @@ proc getTupleDesc(m: BModule, typ: PType, name: Rope,
                   check: var IntSet): Rope =
   result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = nil
-  for i in 0 ..< typ.len:
+  for i in 0..<typ.len:
     desc.addf("$1 Field$2;$n",
          [getTypeDescAux(m, typ[i], check), rope(i)])
   if desc == nil: result.add("char dummy;\L")
@@ -751,7 +751,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           let owner = hashOwner(t.sym)
           if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
             var vals: seq[(string, int)] = @[]
-            for i in 0 ..< t.n.len:
+            for i in 0..<t.n.len:
               assert(t.n[i].kind == nkSym)
               let field = t.n[i].sym
               vals.add((field.name.s, field.position.int))
@@ -850,7 +850,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         result.add cppName.data.substr(chunkStart)
       else:
         result = cppName & "<"
-        for i in 1 .. origTyp.len-2:
+        for i in 1..<origTyp.len-1:
           if i > 1: result.add(" COMMA ")
           addResultType(origTyp[i])
         result.add("> ")
@@ -1075,7 +1075,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
     elif n.len > 0:
       var tmp = getTempName(m) & "_" & $n.len
       genTNimNodeArray(m, tmp, rope(n.len))
-      for i in 0 ..< n.len:
+      for i in 0..<n.len:
         var tmp2 = getNimNode(m)
         m.s[cfsTypeInit3].addf("$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
         genObjectFields(m, typ, origType, n[i], tmp2, info)
@@ -1100,7 +1100,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
                            makeCString(field.name.s),
                            tmp, rope(L)])
     m.s[cfsData].addf("TNimNode* $1[$2];$n", [tmp, rope(L+1)])
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       var b = n[i]           # branch
       var tmp2 = getNimNode(m)
       genObjectFields(m, typ, origType, lastSon(b), tmp2, info)
@@ -1108,7 +1108,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
       of nkOfBranch:
         if b.len < 2:
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in 0 .. b.len - 2:
+        for j in 0..<b.len - 1:
           if b[j].kind == nkRange:
             var x = toInt(getOrdValue(b[j][0]))
             var y = toInt(getOrdValue(b[j][1]))
@@ -1157,11 +1157,10 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo
 proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, rope("0"), info)
   var expr = getNimNode(m)
-  var length = typ.len
-  if length > 0:
-    var tmp = getTempName(m) & "_" & $length
-    genTNimNodeArray(m, tmp, rope(length))
-    for i in 0 ..< length:
+  if typ.len > 0:
+    var tmp = getTempName(m) & "_" & $typ.len
+    genTNimNodeArray(m, tmp, rope(typ.len))
+    for i in 0..<typ.len:
       var a = typ[i]
       var tmp2 = getNimNode(m)
       m.s[cfsTypeInit3].addf("$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
@@ -1171,10 +1170,10 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
           "$1.name = \"Field$3\";$n",
            [tmp2, getTypeDesc(m, origType), rope(i), genTypeInfo(m, a, info)])
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n",
-         [expr, rope(length), tmp])
+         [expr, rope(typ.len), tmp])
   else:
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2;$n",
-         [expr, rope(length)])
+         [expr, rope(typ.len)])
   m.s[cfsTypeInit3].addf("$1.node = &$2;$n", [tiNameForHcr(m, name), expr])
 
 proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
@@ -1183,13 +1182,12 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   # anyway. We generate a cstring array and a loop over it. Exceptional
   # positions will be reset after the loop.
   genTypeInfoAux(m, typ, typ, name, info)
-  var length = typ.n.len
-  var nodePtrs = getTempName(m) & "_" & $length
-  genTNimNodeArray(m, nodePtrs, rope(length))
+  var nodePtrs = getTempName(m) & "_" & $typ.n.len
+  genTNimNodeArray(m, nodePtrs, rope(typ.n.len))
   var enumNames, specialCases: Rope
   var firstNimNode = m.typeNodes
   var hasHoles = false
-  for i in 0 ..< length:
+  for i in 0..<typ.n.len:
     assert(typ.n[i].kind == nkSym)
     var field = typ.n[i].sym
     var elemNode = getNimNode(m)
@@ -1198,7 +1196,7 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
       enumNames.add(makeCString(field.name.s))
     else:
       enumNames.add(makeCString(field.ast.strVal))
-    if i < length - 1: enumNames.add(", \L")
+    if i < typ.n.len - 1: enumNames.add(", \L")
     if field.position != i or tfEnumHasHoles in typ.flags:
       specialCases.addf("$1.offset = $2;$n", [elemNode, rope(field.position)])
       hasHoles = true
@@ -1206,15 +1204,15 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   var counter = getTempName(m)
   m.s[cfsTypeInit1].addf("NI $1;$n", [counter])
   m.s[cfsTypeInit1].addf("static char* NIM_CONST $1[$2] = {$n$3};$n",
-       [enumArray, rope(length), enumNames])
+       [enumArray, rope(typ.n.len), enumNames])
   m.s[cfsTypeInit3].addf("for ($1 = 0; $1 < $2; $1++) {$n" &
       "$3[$1+$4].kind = 1;$n" & "$3[$1+$4].offset = $1;$n" &
       "$3[$1+$4].name = $5[$1];$n" & "$6[$1] = &$3[$1+$4];$n" & "}$n", [counter,
-      rope(length), m.typeNodesName, rope(firstNimNode), enumArray, nodePtrs])
+      rope(typ.n.len), m.typeNodesName, rope(firstNimNode), enumArray, nodePtrs])
   m.s[cfsTypeInit3].add(specialCases)
   m.s[cfsTypeInit3].addf(
        "$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n$4.node = &$1;$n",
-       [getNimNode(m), rope(length), nodePtrs, tiNameForHcr(m, name)])
+       [getNimNode(m), rope(typ.n.len), nodePtrs, tiNameForHcr(m, name)])
   if hasHoles:
     # 1 << 2 is {ntfEnumHole}
     m.s[cfsTypeInit3].addf("$1.flags = 1<<2;$n", [tiNameForHcr(m, name)])

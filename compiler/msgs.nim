@@ -27,7 +27,7 @@ proc makeCString*(s: string): Rope =
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   res.add("\"")
-  for i in 0 ..< s.len:
+  for i in 0..<s.len:
     if (i + 1) mod MaxLineLength == 0:
       res.add("\"\L\"")
     toCChar(s[i], res)
@@ -373,7 +373,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
   const instantiationOfFrom = "template/generic instantiation of `$1` from here"
   var info = lastinfo
-  for i in 0 ..< conf.m.msgContext.len:
+  for i in 0..<conf.m.msgContext.len:
     let context = conf.m.msgContext[i]
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:

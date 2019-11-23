@@ -120,7 +120,7 @@ proc hashType(c: var MD5Context, t: PType) =
 
   case t.kind
   of tyGenericBody, tyGenericInst, tyGenericInvocation:
-    for i in 0 ..< t.len-ord(t.kind != tyGenericInvocation):
+    for i in 0..<t.len-ord(t.kind != tyGenericInvocation):
       c.hashType t[i]
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
@@ -128,7 +128,7 @@ proc hashType(c: var MD5Context, t: PType) =
   of tyUserTypeClassInst:
     let body = t.base
     c.hashSym body.sym
-    for i in 1 .. t.len - 2:
+    for i in 1..<t.len-1:
       c.hashType t[i]
   of tyFromExpr:
     c.hashTree(t.n)
@@ -138,14 +138,14 @@ proc hashType(c: var MD5Context, t: PType) =
   of tyTuple:
     if t.n != nil:
       assert(t.n.len == t.len)
-      for i in 0 ..< t.n.len:
+      for i in 0..<t.n.len:
         assert(t.n[i].kind == nkSym)
         c &= t.n[i].sym.name.s
         c &= ":"
         c.hashType(t[i])
         c &= ","
     else:
-      for i in 0 ..< t.len: c.hashType t[i]
+      for i in 0..<t.len: c.hashType t[i]
   of tyRange:
     c.hashTree(t.n)
     c.hashType(t[0])
@@ -238,7 +238,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       encodeNode(w, n.info, n[i], result)
   result.add(')')
 
@@ -304,7 +304,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     result.add('=')
     encodeVInt(t.align, result)
   encodeLoc(w, t.loc, result)
-  for i in 0 ..< t.len:
+  for i in 0..<t.len:
     if t[i] == nil:
       result.add("^()")
     else:

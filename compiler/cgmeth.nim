@@ -48,7 +48,7 @@ proc methodCall*(n: PNode; conf: ConfigRef): PNode =
   if disp != nil:
     result[0].sym = disp
     # change the arguments to up/downcasts to fit the dispatcher's parameters:
-    for i in 1 ..< result.len:
+    for i in 1..<result.len:
       result[i] = genConv(result[i], disp.typ[i], true, conf)
   else:
     localError(conf, n.info, "'" & $result[0] & "' lacks a dispatcher")
@@ -61,7 +61,7 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
   if a.typ.len != b.typ.len:
     return
 
-  for i in 1 ..< a.typ.len:
+  for i in 1..<a.typ.len:
     var aa = a.typ[i]
     var bb = b.typ[i]
     while true:
@@ -159,7 +159,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
 
 proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
   var witness: PSym
-  for i in 0 ..< g.methods.len:
+  for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
     of Yes:
@@ -191,13 +191,13 @@ proc relevantCol(methods: seq[PSym], col: int): bool =
   # returns true iff the position is relevant
   var t = methods[0].typ[col].skipTypes(skipPtrs)
   if t.kind == tyObject:
-    for i in 1 .. high(methods):
+    for i in 1..high(methods):
       let t2 = skipTypes(methods[i].typ[col], skipPtrs)
       if not sameType(t2, t):
         return true
 
 proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
-  for col in 1 ..< a.typ.len:
+  for col in 1..<a.typ.len:
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ[col], skipPtrs)
       var bb = skipTypes(b.typ[col], skipPtrs)
@@ -214,7 +214,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
     if h > n: break
   while true:
     h = h div 3
-    for i in h ..< n:
+    for i in h..<n:
       var v = a[i]
       var j = i
       while cmpSignatures(a[j - h], v, relevantCols) >= 0:
@@ -233,16 +233,16 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
   var ands = getSysMagic(g, unknownLineInfo(), "and", mAnd)
   var iss = getSysMagic(g, unknownLineInfo(), "of", mOf)
   let boolType = getSysType(g, unknownLineInfo(), tyBool)
-  for col in 1 ..< paramLen:
+  for col in 1..<paramLen:
     if contains(relevantCols, col):
       let param = base.typ.n[col].sym
       if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
         nilchecks.add newTree(nkCall,
             newSymNode(getCompilerProc(g, "chckNilDisp")), newSymNode(param))
-  for meth in 0 .. high(methods):
+  for meth in 0..high(methods):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
-    for col in 1 ..< paramLen:
+    for col in 1..<paramLen:
       if contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, boolType)
         isn.add newSymNode(iss)
@@ -260,7 +260,7 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
     let retTyp = base.typ[0]
     let call = newNodeIT(nkCall, base.info, retTyp)
     call.add newSymNode(curr)
-    for col in 1 ..< paramLen:
+    for col in 1..<paramLen:
       call.add genConv(newSymNode(base.typ.n[col].sym),
                            curr.typ[col], false, g.config)
     var ret: PNode
@@ -285,9 +285,9 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
-  for bucket in 0 ..< g.methods.len:
+  for bucket in 0..<g.methods.len:
     var relevantCols = initIntSet()
-    for col in 1 ..< g.methods[bucket].methods[0].typ.len:
+    for col in 1..<g.methods[bucket].methods[0].typ.len:
       if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
       if optMultiMethods notin g.config.globalOptions:
         # if multi-methods are not enabled, we are interested only in the first field

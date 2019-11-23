@@ -15,7 +15,7 @@ import
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if procA.len != procB.len: return false
-  for i in 0 ..< procA.len:
+  for i in 0..<procA.len:
     if procA[i].kind != nkSym:
       return false
     if procB[i].kind != nkSym:
@@ -95,10 +95,9 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool =
-    var length = child.len
     result = false
-    if length == parent.len:
-      for i in 1 ..< length:
+    if child.len == parent.len:
+      for i in 1..<child.len:
         var m = child[i].sym
         var n = parent[i].sym
         assert((m.kind == skParam) and (n.kind == skParam))

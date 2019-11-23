@@ -43,7 +43,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(cache, name, m, t, info)
-  for i in 0 ..< t.len:
+  for i in 0..<t.len:
     if t[i] == nil:
       let void = atomicTypeX(cache, "void", mVoid, t, info)
       void.typ = newType(tyVoid, t.owner)
@@ -59,7 +59,7 @@ proc objectNode(cache: IdentCache; n: PNode): PNode =
     result.add newNodeI(nkEmpty, n.info)  # no assigned value
   else:
     result = copyNode(n)
-    for i in 0 ..< n.safeLen:
+    for i in 0..<n.safeLen:
       result.add objectNode(cache, n[i])
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
@@ -122,7 +122,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    for i in 0 ..< t.len:
+    for i in 0..<t.len:
       result.add mapTypeToAst(t[i], info)
   of tyGenericInst:
     if inst:
@@ -132,7 +132,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
         result = newNodeX(nkBracketExpr)
         #result.add mapTypeToAst(t.lastSon, info)
         result.add mapTypeToAst(t[0], info)
-        for i in 1 ..< t.len-1:
+        for i in 1..<t.len-1:
           result.add mapTypeToAst(t[i], info)
     else:
       result = mapTypeToAstX(cache, t.lastSon, info, inst, allowRecursion)

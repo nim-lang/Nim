@@ -157,7 +157,7 @@ proc `&`*(a: string, b: Rope): Rope =
 
 proc `&`*(a: openArray[Rope]): Rope =
   ## the concatenation operator for an openarray of ropes.
-  for i in 0 .. high(a): result = result & a[i]
+  for i in 0..high(a): result = result & a[i]
 
 proc add*(a: var Rope, b: Rope) =
   ## adds `b` to the rope `a`.
@@ -206,17 +206,16 @@ proc `$`*(r: Rope): string =
 
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
-  for i in 0 .. high(a): result = result & a[i]
+  for i in 0..high(a): result = result & a[i]
 
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
 
 proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
-  var length = frmt.len
   result = nil
   var num = 0
-  while i < length:
+  while i < frmt.len:
     if frmt[i] == '$':
       inc(i)                  # skip '$'
       case frmt[i]
@@ -262,7 +261,7 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
       else:
         doAssert false, "invalid format string: " & frmt
     var start = i
-    while i < length:
+    while i < frmt.len:
       if frmt[i] != '$': inc(i)
       else: break
     if i - 1 >= start:
@@ -301,9 +300,8 @@ proc equalsFile*(r: Rope, f: File): bool =
 
   for s in leaves(r):
     var spos = 0
-    let slen = s.len
-    rtotal += slen
-    while spos < slen:
+    rtotal += s.len
+    while spos < s.len:
       if bpos == blen:
         # Read more data
         bpos = 0
@@ -312,7 +310,7 @@ proc equalsFile*(r: Rope, f: File): bool =
         if blen == 0:  # no more data in file
           result = false
           return
-      let n = min(blen - bpos, slen - spos)
+      let n = min(blen - bpos, s.len - spos)
       # TODO There's gotta be a better way of comparing here...
       if not equalMem(addr(buf[bpos]), cast[pointer](cast[int](cstring(s))+spos), n):
         result = false

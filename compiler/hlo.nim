@@ -75,7 +75,7 @@ proc hlo(c: PContext, n: PNode): PNode =
     result = applyPatterns(c, n)
     if result == n:
       # no optimization applied, try subtrees:
-      for i in 0 ..< safeLen(result):
+      for i in 0..<safeLen(result):
         let a = result[i]
         let h = hlo(c, a)
         if h != a: result[i] = h

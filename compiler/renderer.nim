@@ -82,7 +82,7 @@ when defined(nimpretty):
       result = (n.info.line.int, n.info.line.int + countLines(n.comment))
     else:
       result = (n.info.line.int, n.info.line.int)
-    for i in 0 ..< safeLen(n):
+    for i in 0..<safeLen(n):
       let (currMin, currMax) = minmaxLine(n[i])
       if currMin < result[0]: result[0] = currMin
       if currMax > result[1]: result[1] = currMax
@@ -109,11 +109,10 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.config = config
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
-  var length = g.tokens.len
-  setLen(g.tokens, length + 1)
-  g.tokens[length].kind = kind
-  g.tokens[length].length = int16(s.len)
-  g.tokens[length].sym = sym
+  setLen(g.tokens, g.tokens.len + 1)
+  g.tokens[^1].kind = kind
+  g.tokens[^1].length = int16(s.len)
+  g.tokens[^1].sym = sym
   g.buf.add(s)
 
 proc addPendingNL(g: var TSrcGen) =
@@ -264,7 +263,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   put(g, kind, str)
 
 proc containsNL(s: string): bool =
-  for i in 0 ..< s.len:
+  for i in 0..<s.len:
     case s[i]
     of '\x0D', '\x0A':
       return true
@@ -273,9 +272,8 @@ proc containsNL(s: string): bool =
   result = false
 
 proc pushCom(g: var TSrcGen, n: PNode) =
-  var length = g.comStack.len
-  setLen(g.comStack, length + 1)
-  g.comStack[length] = n
+  setLen(g.comStack, g.comStack.len + 1)
+  g.comStack[^1] = n
 
 proc popAllComs(g: var TSrcGen) =
   setLen(g.comStack, 0)
@@ -304,7 +302,7 @@ proc gcom(g: var TSrcGen, n: PNode) =
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
-  for i in 0 .. high(g.comStack): gcom(g, g.comStack[i])
+  for i in 0..high(g.comStack): gcom(g, g.comStack[i])
   popAllComs(g)
 
 proc lsub(g: TSrcGen; n: PNode): int
@@ -398,7 +396,7 @@ proc atom(g: TSrcGen; n: PNode): string =
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in start .. n.len + theEnd:
+  for i in start..n.len + theEnd:
     let param = n[i]
     if nfDefaultParam notin param.flags:
       inc(result, lsub(g, param))
@@ -409,7 +407,7 @@ proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
-  for i in start .. n.len + theEnd: inc(result, lsub(g, n[i]))
+  for i in start..n.len + theEnd: inc(result, lsub(g, n[i]))
 
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
@@ -558,7 +556,7 @@ proc hasCom(n: PNode): bool =
   case n.kind
   of nkEmpty..nkNilLit: discard
   else:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if hasCom(n[i]): return true
 
 proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
@@ -567,7 +565,7 @@ proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
                theEnd: int = - 1, separator = tkComma) =
-  for i in start .. n.len + theEnd:
+  for i in start..n.len + theEnd:
     var c = i < n.len + theEnd
     var sublen = lsub(g, n[i]) + ord(c)
     if not fits(g, sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
@@ -602,7 +600,7 @@ proc gsemicolon(g: var TSrcGen, n: PNode, start: int = 0, theEnd: int = - 1) =
 
 proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
            theEnd: int = - 1) =
-  for i in start .. n.len + theEnd: gsub(g, n[i], c)
+  for i in start..n.len + theEnd: gsub(g, n[i], c)
 
 proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
               k: string) =
@@ -610,7 +608,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
   putWithSpace(g, kind, k)
   gcoms(g)
   indentNL(g)
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     optNL(g)
     gsub(g, n[i], c)
     gcoms(g)
@@ -620,7 +618,7 @@ proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
   result = n.comment.len > 0
   if not result:
     # check further
-    for i in start .. n.len + theEnd:
+    for i in start..n.len + theEnd:
       if (lsub(g, n[i]) > MaxLineLen):
         result = true
         break
@@ -629,7 +627,7 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
   if n.kind == nkEmpty: return
   if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
     if doIndent: indentNL(g)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if i > 0:
         optNL(g, n[i-1], n[i])
       else:
@@ -664,8 +662,7 @@ proc gif(g: var TSrcGen, n: PNode) =
     incl(c.flags, rfLongMode)
   gcoms(g)                    # a good place for comments
   gstmts(g, n[0][1], c)
-  var length = n.len
-  for i in 1 ..< length:
+  for i in 1..<n.len:
     optNL(g)
     gsub(g, n[i], c)
 
@@ -1052,7 +1049,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkClosedSymChoice, nkOpenSymChoice:
     if renderIds in g.flags:
       put(g, tkParLe, "(")
-      for i in 0 ..< n.len:
+      for i in 0..<n.len:
         if i > 0: put(g, tkOpr, "|")
         if n[i].kind == nkSym:
           let s = n[i].sym
@@ -1173,7 +1170,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkAccQuoted:
     put(g, tkAccent, "`")
     if n.len > 0: gsub(g, n[0])
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       put(g, tkSpaces, Space)
       gsub(g, n[i])
     put(g, tkAccent, "`")
@@ -1251,7 +1248,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkObject, "object")
   of nkRecList:
     indentNL(g)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       optNL(g)
       gsub(g, n[i], c)
       gcoms(g)
@@ -1346,7 +1343,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     if n.len > 1:
       gcoms(g)
       indentNL(g)
-      for i in 0 ..< n.len:
+      for i in 0..<n.len:
         optNL(g)
         gsub(g, n[i])
         gcoms(g)
@@ -1551,7 +1548,7 @@ proc renderModule*(n: PNode, infile, outfile: string,
     g: TSrcGen
   initSrcGen(g, renderFlags, conf)
   g.fid = fid
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     gsub(g, n[i])
     optNL(g)
     case n[i].kind
@@ -1572,7 +1569,7 @@ proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
 proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string) =
   if r.idx < r.tokens.len:
     kind = r.tokens[r.idx].kind
-    var length = r.tokens[r.idx].length.int
+    let length = r.tokens[r.idx].length.int
     literal = substr(r.buf, r.pos, r.pos + length - 1)
     inc(r.pos, length)
     inc(r.idx)

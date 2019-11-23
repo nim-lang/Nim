@@ -104,7 +104,7 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
     result = $chr(toInt64(x) and 0xff)
   of tyEnum:
     var n = t.n
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if n[i].kind != nkSym: internalError(g.config, a.info, "ordinalValToString")
       var field = n[i].sym
       if field.position == x:
@@ -372,7 +372,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
 
 proc getConstIfExpr(c: PSym, n: PNode; g: ModuleGraph): PNode =
   result = nil
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     var it = n[i]
     if it.len == 2:
       var e = getConstExpr(c, it[0], g)
@@ -513,7 +513,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
   var field = n[1].sym
-  for i in ord(x.kind == nkObjConstr) ..< x.len:
+  for i in ord(x.kind == nkObjConstr)..<x.len:
     var it = x[i]
     if it.kind != nkExprColonExpr:
       # lookup per index:
@@ -528,7 +528,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
 proc foldConStrStr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
   result.strVal = ""
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let a = getConstExpr(m, n[i], g)
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
@@ -684,7 +684,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     result.add b
   #of nkObjConstr:
   #  result = copyTree(n)
-  #  for i in 1 ..< n.len:
+  #  for i in 1..<n.len:
   #    var a = getConstExpr(m, n[i][1])
   #    if a == nil: return nil
   #    result[i][1] = a

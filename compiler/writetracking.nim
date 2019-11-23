@@ -79,7 +79,7 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
         if typ.kind != tyProc: typ = nil
         else: assert(typ.len == typ.n.len)
 
-      for i in 1 ..< n.len:
+      for i in 1..<n.len:
         let it = n[i]
         if typ != nil and i < typ.len:
           assert(typ.n[i].kind == nkSym)
@@ -108,7 +108,7 @@ proc addAsgn(a: var Assignment; dest, src: PNode; destInfo: set[RootInfo]) =
   #echo "ADDING ", dest.info, " ", a.destInfo
 
 proc srcHasSym(a: Assignment; x: ptr TSym): bool =
-  for i in 0 ..< a.srcNoTc:
+  for i in 0..<a.srcNoTc:
     if a.src[i] == x: return true
 
 proc returnsNewExpr*(n: PNode): NewLocation =
@@ -123,7 +123,7 @@ proc returnsNewExpr*(n: PNode): NewLocation =
   of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure,
       nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt, nkHiddenTryStmt:
     result = newLit
-    for i in ord(n.kind == nkObjConstr) ..< n.len:
+    for i in ord(n.kind == nkObjConstr)..<n.len:
       let x = returnsNewExpr(n[i])
       case x
       of newNone: return newNone
@@ -148,9 +148,8 @@ proc deps(w: var W; dest, src: PNode; destInfo: set[RootInfo]) =
   # rule out obviously innocent assignments like 'somebool = true'
   if dest.kind == nkSym and retNew == newLit: discard
   else:
-    let L = w.assignments.len
-    w.assignments.setLen(L+1)
-    addAsgn(w.assignments[L], dest, src, destInfo)
+    w.assignments.setLen(w.assignments.len+1)
+    addAsgn(w.assignments[^1], dest, src, destInfo)
 
 proc depsArgs(w: var W; n: PNode) =
   if n[0].typ.isNil: return
@@ -158,7 +157,7 @@ proc depsArgs(w: var W; n: PNode) =
   if typ.kind != tyProc: return
   # echo n.info, " ", n, " ", w.owner.name.s, " ", typeToString(typ)
   assert(typ.len == typ.n.len)
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let it = n[i]
     if i < typ.len:
       assert(typ.n[i].kind == nkSym)
@@ -181,15 +180,15 @@ proc deps(w: var W; n: PNode) =
       if last.kind == nkEmpty: continue
       if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
         if child.len-2 != last.len: return
-        for i in 0 .. child.len-3:
+        for i in 0..<child.len-2:
           deps(w, child[i], last[i], {})
       else:
-        for i in 0 .. child.len-3:
+        for i in 0..<child.len-2:
           deps(w, child[i], last, {})
   of nkAsgn, nkFastAsgn:
     deps(w, n[0], n[1], {})
   else:
-    for i in 0 ..< n.safeLen:
+    for i in 0..<n.safeLen:
       deps(w, n[i])
     if n.kind in nkCallKinds:
       if getMagic(n) in {mNew, mNewFinalize, mNewSeq}:
@@ -215,10 +214,10 @@ proc possibleAliases(w: var W; result: var seq[ptr TSym]) =
       let a = addr(w.assignments[i])
       #if a.srcHasSym(x):
       #  # y = f(..., x, ...)
-      #  for i in 0 ..< a.destNoTc: addNoDup a.dest[i]
+      #  for i in 0..<a.destNoTc: addNoDup a.dest[i]
       if a.destNoTc > 0 and a.dest[0] == x and rootIsSym in a.destInfo:
         # x = f(..., y, ....)
-        for i in 0 ..< a.srcNoTc: addNoDup a.src[i]
+        for i in 0..<a.srcNoTc: addNoDup a.src[i]
 
 proc markWriteOrEscape(w: var W; conf: ConfigRef) =
   ## Both 'writes' and 'escapes' effects ultimately only care
@@ -226,7 +225,7 @@ proc markWriteOrEscape(w: var W; conf: ConfigRef) =
   ## However, due to aliasing, even locals that might not look as parameters
   ## have to count as parameters if they can alias a parameter:
   ##
-  ## .. code-block:: nim
+  ##..code-block:: nim
   ##   proc modifies(n: Node) {.writes: [n].} =
   ##     let x = n
   ##     x.data = "abc"

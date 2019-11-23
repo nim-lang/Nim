@@ -174,7 +174,7 @@ const
     ]
 
 proc findStr*(a: openArray[string], s: string): int =
-  for i in low(a) .. high(a):
+  for i in low(a)..high(a):
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1

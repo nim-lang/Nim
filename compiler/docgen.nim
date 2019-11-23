@@ -180,7 +180,7 @@ template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArra
   else: dest.addf(tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
-  for i in 0 .. high(varnames):
+  for i in 0..high(varnames):
     if cmpIgnoreStyle(varnames[i], id) == 0:
       return i
   result = -1
@@ -258,7 +258,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
-      for i in 0 ..< n.len:
+      for i in 0..<n.len:
         result = genRecCommentAux(d, n[i])
         if result != nil: return
   else:
@@ -286,7 +286,7 @@ proc getPlainDocstring(n: PNode): string =
   if startsWith(n.comment, "##"):
     result = n.comment
   if result.len < 1:
-    for i in 0 ..< safeLen(n):
+    for i in 0..<safeLen(n):
       result = getPlainDocstring(n[i])
       if result.len > 0: return
 
@@ -464,7 +464,7 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
         nodeToHighlightedHtml(d, b, dest, {}, nil)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
   else: discard
-  for i in 0 ..< n.safeLen:
+  for i in 0..<n.safeLen:
     getAllRunnableExamplesRec(d, n[i], orig, dest)
 
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
@@ -527,7 +527,7 @@ proc getRstName(n: PNode): PRstNode =
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
   of nkAccQuoted:
     result = getRstName(n[0])
-    for i in 1 ..< n.len: result.text.add(getRstName(n[i]).text)
+    for i in 1..<n.len: result.text.add(getRstName(n[i]).text)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getRstName(n[0])
   else:
@@ -679,7 +679,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       let cwd = canonicalizePath(d.conf, getCurrentDir())
       var path = toFullPath(d.conf, n.info)
       if path.startsWith(cwd):
-        path = path[cwd.len+1 .. ^1].replace('\\', '/')
+        path = path[cwd.len+1..^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
       let defaultBranch =
@@ -806,7 +806,7 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
 
     # warning: hack ahead:
     var effects = newNodeI(nkBracket, n.info, real.len)
-    for i in 0 ..< real.len:
+    for i in 0..<real.len:
       var t = typeToString(real[i].typ)
       if t.startsWith("ref "): t = substr(t, 4)
       effects[i] = newIdentNode(getIdent(cache, t), n.info)
@@ -821,7 +821,7 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
   let params = s.typ.n
 
   var effects = newNodeI(nkBracket, n.info)
-  for i in 1 ..< params.len:
+  for i in 1..<params.len:
     if params[i].kind == nkSym and flag in params[i].sym.flags:
       effects.add params[i]
 
@@ -871,13 +871,13 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< n.len: generateDoc(d, n[i], orig)
+    for i in 0..<n.len: generateDoc(d, n[i], orig)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
@@ -925,13 +925,13 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       generateJson(d, n[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
@@ -968,13 +968,13 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
     when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         r.add genTagsItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       generateTags(d, n[i], r)
   of nkWhenStmt:
     # generate documentation for the first branch only:
@@ -1004,12 +1004,12 @@ proc genOutFile(d: PDoc): Rope =
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
-  for i in low(TSymKind) .. high(TSymKind):
+  for i in low(TSymKind)..high(TSymKind):
     genSection(d, i)
     toc.add(d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in low(TSymKind) .. high(TSymKind): code.add(d.section[i])
+  for i in low(TSymKind)..high(TSymKind): code.add(d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:

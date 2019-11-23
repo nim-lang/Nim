@@ -152,7 +152,7 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
       # indirect call: assume side effect:
       return seSideEffect
     # we need to check n[0] too: (FwithSideEffectButReturnsProcWithout)(args)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       let ret = checkForSideEffects(n[i])
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
@@ -163,7 +163,7 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
   else:
     # assume no side effect:
     result = seNoSideEffect
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       let ret = checkForSideEffects(n[i])
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:

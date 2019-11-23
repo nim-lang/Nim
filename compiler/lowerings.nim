@@ -68,7 +68,7 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   result.add(v)
 
   result.add newAsgnStmt(tempAsNode, value)
-  for i in 0 .. n.len-3:
+  for i in 0..<n.len-2:
     if n[i].kind == nkSym: v.addVar(n[i])
     result.add newAsgnStmt(n[i], newTupleAccess(g, tempAsNode, i))
 
@@ -114,7 +114,7 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   result.add(v)
 
   let lhs = n[0]
-  for i in 0 .. lhs.len-1:
+  for i in 0..<lhs.len:
     result.add newAsgnStmt(lhs[i], newTupleAccessRaw(tempAsNode, i))
 
 proc lowerSwap*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
@@ -187,14 +187,14 @@ proc lookupInRecord(n: PNode, id: int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result = lookupInRecord(n[i], id)
       if result != nil: return
   of nkRecCase:
     if n[0].kind != nkSym: return
     result = lookupInRecord(n[0], id)
     if result != nil: return
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n[i]), id)
@@ -329,7 +329,7 @@ proc callCodegenProc*(g: ModuleGraph; name: string;
     if arg2 != nil: result.add arg2
     if arg3 != nil: result.add arg3
     if optionalArgs != nil:
-      for i in 1..optionalArgs.len-3:
+      for i in 1..<optionalArgs.len-2:
         result.add optionalArgs[i]
     result.typ = sym.typ[0]
 

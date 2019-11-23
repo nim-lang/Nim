@@ -254,7 +254,7 @@ proc canon*(n: PNode; o: Operators): PNode =
   # XXX for now only the new code in 'semparallel' uses this
   if n.safeLen >= 1:
     result = shallowCopy(n)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result[i] = canon(n[i], o)
   elif n.kind == nkSym and n.sym.kind == skLet and
       n.sym.astdef.getMagic in (someEq + someAdd + someMul + someMin +
@@ -443,7 +443,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkEmpty, nkNilLit: result = true
     else:
       if a.len == b.len:
-        for i in 0 ..< a.len:
+        for i in 0..<a.len:
           if not sameTree(a[i], b[i]): return
         result = true
 
@@ -881,7 +881,7 @@ proc replaceSubTree(n, x, by: PNode): PNode =
     result = by
   elif hasSubTree(n, x):
     result = shallowCopy(n)
-    for i in 0 .. safeLen(n)-1:
+    for i in 0..safeLen(n)-1:
       result[i] = replaceSubTree(n[i], x, by)
   else:
     result = n
@@ -971,7 +971,7 @@ proc settype(n: PNode): PType =
 proc buildOf(it, loc: PNode; o: Operators): PNode =
   var s = newNodeI(nkCurly, it.info, it.len-1)
   s.typ = settype(loc)
-  for i in 0..it.len-2: s[i] = it[i]
+  for i in 0..<it.len-1: s[i] = it[i]
   result = newNodeI(nkCall, it.info, 3)
   result[0] = newSymNode(o.opContains)
   result[1] = s
@@ -979,11 +979,11 @@ proc buildOf(it, loc: PNode; o: Operators): PNode =
 
 proc buildElse(n: PNode; o: Operators): PNode =
   var s = newNodeIT(nkCurly, n.info, settype(n[0]))
-  for i in 1..n.len-2:
+  for i in 1..<n.len-1:
     let branch = n[i]
     assert branch.kind != nkElse
     if branch.kind == nkOfBranch:
-      for j in 0..branch.len-2:
+      for j in 0..<branch.len-1:
         s.add(branch[j])
   result = newNodeI(nkCall, n.info, 3)
   result[0] = newSymNode(o.opContains)
@@ -1042,7 +1042,7 @@ proc buildProperFieldCheck(access, check: PNode; o: Operators): PNode =
     result = buildProperFieldCheck(access, check[1], o).neg(o)
 
 proc checkFieldAccess*(m: TModel, n: PNode; conf: ConfigRef) =
-  for i in 1..n.len-1:
+  for i in 1..<n.len:
     let check = buildProperFieldCheck(n[0], n[i], m.o)
     if check != nil and m.doesImply(check) != impYes:
       message(conf, n.info, warnProveField, renderTree(n[0])); break

@@ -275,7 +275,7 @@ template wholeSymTab(cond, section: untyped) {.dirty.} =
                                  pm, c.inTypeContext > 0, scopeN))
 
 proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var Suggestions) =
-  for i in 0 ..< list.len:
+  for i in 0..<list.len:
     if list[i].kind == nkSym:
       suggestField(c, list[i].sym, f, info, outputs)
     #else: InternalError(list.info, "getSymFromList")
@@ -283,11 +283,11 @@ proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var S
 proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   case n.kind
   of nkRecList:
-    for i in 0 ..< n.len: suggestObject(c, n[i], f, info, outputs)
+    for i in 0..<n.len: suggestObject(c, n[i], f, info, outputs)
   of nkRecCase:
     if n.len > 0:
       suggestObject(c, n[0], f, info, outputs)
-      for i in 1 ..< n.len: suggestObject(c, lastSon(n[i]), f, info, outputs)
+      for i in 1..<n.len: suggestObject(c, lastSon(n[i]), f, info, outputs)
   of nkSym: suggestField(c, n.sym, f, info, outputs)
   else: discard
 
@@ -598,7 +598,7 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
       var x = safeSemExpr(c, n[0])
       if x.kind == nkEmpty or x.typ == nil: x = n[0]
       a.add x
-      for i in 1..n.len-1:
+      for i in 1..<n.len:
         # use as many typed arguments as possible:
         var x = safeSemExpr(c, n[i])
         if x.kind == nkEmpty or x.typ == nil: break

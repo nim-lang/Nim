@@ -441,7 +441,7 @@ proc genIf(c: var Con, n: PNode) =
   ]#
   let oldLen = c.forks.len
   var endings: seq[TPosition] = @[]
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     var it = n[i]
     c.gen(it[0])
     if it.len == 2:
@@ -482,7 +482,7 @@ proc genCase(c: var Con; n: PNode) =
   var endings: seq[TPosition] = @[]
   let oldLen = c.forks.len
   c.gen(n[0])
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let it = n[i]
     if it.len == 1:
       c.gen(it[0])
@@ -520,10 +520,9 @@ proc genTry(c: var Con; n: PNode) =
   setLen(c.tryStmtFixups, oldFixups)
 
   #c.patch(elsePos)
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let it = n[i]
     if it.kind != nkFinally:
-      var blen = it.len
       let endExcept = c.forkI(it)
       c.gen(it.lastSon)
       endings.add(c.gotoI(it))
@@ -728,7 +727,7 @@ proc genVarSection(c: var Con; n: PNode) =
       discard
     elif a.kind == nkVarTuple:
       gen(c, a.lastSon)
-      for i in 0 .. a.len-3: genDef(c, a[i])
+      for i in 0..<a.len-2: genDef(c, a[i])
     else:
       gen(c, a.lastSon)
       if a.lastSon.kind != nkEmpty:

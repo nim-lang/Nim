@@ -17,7 +17,7 @@ proc inSet*(s: PNode, elem: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "inSet")
     return false
-  for i in 0 ..< s.len:
+  for i in 0..<s.len:
     if s[i].kind == nkRange:
       if leValue(s[i][0], elem) and
           leValue(elem, s[i][1]):
@@ -47,7 +47,7 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "SomeInSet")
     return false
-  for i in 0 ..< s.len:
+  for i in 0..<s.len:
     if s[i].kind == nkRange:
       if leValue(s[i][0], b) and leValue(b, s[i][1]) or
           leValue(s[i][0], a) and leValue(a, s[i][1]):
@@ -62,7 +62,7 @@ proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
   var first, j: Int128
   first = firstOrd(conf, s.typ[0])
   bitSetInit(b, int(getSize(conf, s.typ)))
-  for i in 0 ..< s.len:
+  for i in 0..<s.len:
     if s[i].kind == nkRange:
       j = getOrdValue(s[i][0], first)
       while j <= getOrdValue(s[i][1], first):
@@ -132,7 +132,7 @@ proc equalSets*(conf: ConfigRef; a, b: PNode): bool =
 proc complement*(conf: ConfigRef; a: PNode): PNode =
   var x: TBitSet
   toBitSet(conf, a, x)
-  for i in 0 .. high(x): x[i] = not x[i]
+  for i in 0..high(x): x[i] = not x[i]
   result = toTreeSet(conf, x, a.typ, a.info)
 
 proc deduplicate*(conf: ConfigRef; a: PNode): PNode =
@@ -149,7 +149,7 @@ proc setHasRange*(s: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
     return false
-  for i in 0 ..< s.len:
+  for i in 0..<s.len:
     if s[i].kind == nkRange:
       return true
   result = false

@@ -160,14 +160,14 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result = lookupInRecord(n[i], field)
       if result != nil: return
   of nkRecCase:
     if (n[0].kind != nkSym): return nil
     result = lookupInRecord(n[0], field)
     if result != nil: return
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n[i]), field)
@@ -183,7 +183,7 @@ proc getModule*(s: PSym): PSym =
   while result != nil and result.kind != skModule: result = result.owner
 
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
-  for i in start ..< list.len:
+  for i in start..<list.len:
     if list[i].kind == nkSym:
       result = list[i].sym
       if result.name.id == ident.id: return
@@ -221,11 +221,11 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## gensym'ed and then they have '`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
   ##
-  ## .. code-block:: nim
+  ##..code-block:: nim
   ##
   ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
-  for i in 1 ..< list.len:
+  for i in 1..<list.len:
     let it = list[i].sym
     if it.name.id == ident.id or
         sameIgnoreBacktickGensymInfo(it.name.s, ident.s): return it
@@ -254,7 +254,7 @@ proc makeYamlString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = "\""
-  for i in 0 ..< s.len:
+  for i in 0..<s.len:
     if (i + 1) mod MaxLineLength == 0:
       res.add('\"')
       res.add("\n")
@@ -329,7 +329,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
   else:
     if n.len > 0:
       sonsRope = rope("[")
-      for i in 0 ..< n.len:
+      for i in 0..<n.len:
         if i > 0: sonsRope.add(",")
         sonsRope.addf("$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n[i],
             marker, indent + 4, maxRecDepth - 1)])
@@ -378,7 +378,7 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
       else:
         if n.len > 0:
           result.addf(",$N$1\"sons\": [", [istr])
-          for i in 0 ..< n.len:
+          for i in 0..<n.len:
             if i > 0: result.add(",")
             result.addf("$N$1$2", [rspaces(indent + 4), treeToYamlAux(conf, n[i],
                 marker, indent + 4, maxRecDepth - 1)])
@@ -427,7 +427,7 @@ proc indentLess(this: var DebugPrinter) =
 proc newlineAndIndent(this: var DebugPrinter) =
   this.res.add "\n"
   this.currentLine += 1
-  for i in 0 ..< this.indent:
+  for i in 0..<this.indent:
     this.res.add ' '
 
 proc openCurly(this: var DebugPrinter) =
@@ -566,7 +566,7 @@ proc value(this: var DebugPrinter; value: PType) =
   if value.len > 0:
     this.key "sons"
     this.openBracket
-    for i in 0 ..< value.len:
+    for i in 0..<value.len:
       this.value value[i]
       if i != value.len - 1:
         this.comma
@@ -619,7 +619,7 @@ proc value(this: var DebugPrinter; value: PNode) =
     if value.len > 0:
       this.key "sons"
       this.openBracket
-      for i in 0 ..< value.len:
+      for i in 0..<value.len:
         this.value value[i]
         if i != value.len - 1:
           this.comma
@@ -678,7 +678,7 @@ proc objectSetRawInsert(data: var TObjectSeq, obj: RootRef) =
 proc objectSetEnlarge(t: var TObjectSet) =
   var n: TObjectSeq
   newSeq(n, t.data.len * GrowthFactor)
-  for i in 0 .. high(t.data):
+  for i in 0..high(t.data):
     if t.data[i] != nil: objectSetRawInsert(n, t.data[i])
   swap(t.data, n)
 
@@ -740,7 +740,7 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
 proc strTableEnlarge(t: var TStrTable) =
   var n: seq[PSym]
   newSeq(n, t.data.len * GrowthFactor)
-  for i in 0 .. high(t.data):
+  for i in 0..high(t.data):
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
   swap(t.data, n)
 
@@ -876,7 +876,7 @@ iterator items*(tab: TStrTable): PSym =
     s = nextIter(it, tab)
 
 proc hasEmptySlot(data: TIdPairSeq): bool =
-  for h in 0 .. high(data):
+  for h in 0..high(data):
     if data[h].key == nil:
       return true
   result = false
@@ -931,7 +931,7 @@ proc idTablePut(t: var TIdTable, key: PIdObj, val: RootRef) =
   else:
     if mustRehash(t.data.len, t.counter):
       newSeq(n, t.data.len * GrowthFactor)
-      for i in 0 .. high(t.data):
+      for i in 0..high(t.data):
         if t.data[i].key != nil:
           idTableRawInsert(n, t.data[i].key, t.data[i].val)
       assert(hasEmptySlot(n))
@@ -940,7 +940,7 @@ proc idTablePut(t: var TIdTable, key: PIdObj, val: RootRef) =
     inc(t.counter)
 
 iterator idTablePairs*(t: TIdTable): tuple[key: PIdObj, val: RootRef] =
-  for i in 0 .. high(t.data):
+  for i in 0..high(t.data):
     if not isNil(t.data[i].key): yield (t.data[i].key, t.data[i].val)
 
 proc idNodeTableRawGet(t: TIdNodeTable, key: PIdObj): int =
@@ -977,7 +977,7 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
     if mustRehash(t.data.len, t.counter):
       var n: TIdNodePairSeq
       newSeq(n, t.data.len * GrowthFactor)
-      for i in 0 .. high(t.data):
+      for i in 0..high(t.data):
         if t.data[i].key != nil:
           idNodeTableRawInsert(n, t.data[i].key, t.data[i].val)
       swap(t.data, n)
@@ -985,13 +985,13 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
     inc(t.counter)
 
 iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
-  for i in 0 .. high(t.data):
+  for i in 0..high(t.data):
     if not isNil(t.data[i].key): yield (t.data[i].key, t.data[i].val)
 
 proc initIITable(x: var TIITable) =
   x.counter = 0
   newSeq(x.data, StartSize)
-  for i in 0 ..< StartSize: x.data[i].key = InvalidKey
+  for i in 0..<StartSize: x.data[i].key = InvalidKey
 
 proc iiTableRawGet(t: TIITable, key: int): int =
   var h: Hash
@@ -1025,8 +1025,8 @@ proc iiTablePut(t: var TIITable, key, val: int) =
     if mustRehash(t.data.len, t.counter):
       var n: TIIPairSeq
       newSeq(n, t.data.len * GrowthFactor)
-      for i in 0 .. high(n): n[i].key = InvalidKey
-      for i in 0 .. high(t.data):
+      for i in 0..high(n): n[i].key = InvalidKey
+      for i in 0..high(t.data):
         if t.data[i].key != InvalidKey:
           iiTableRawInsert(n, t.data[i].key, t.data[i].val)
       swap(t.data, n)

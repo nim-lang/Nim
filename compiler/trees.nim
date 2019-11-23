@@ -45,7 +45,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if a.len == b.len:
-        for i in 0 ..< a.len:
+        for i in 0..<a.len:
           if not exprStructuralEquivalent(a[i], b[i],
                                           strictSymEquality): return
         result = true
@@ -69,7 +69,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if a.len == b.len:
-        for i in 0 ..< a.len:
+        for i in 0..<a.len:
           if not sameTree(a[i], b[i]): return
         result = true
 
@@ -97,7 +97,7 @@ proc isDeepConstExpr*(n: PNode): bool =
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n[1])
   of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
-    for i in ord(n.kind == nkObjConstr) ..< n.len:
+    for i in ord(n.kind == nkObjConstr)..<n.len:
       if not isDeepConstExpr(n[i]): return false
     if n.typ.isNil: result = true
     else:
@@ -127,7 +127,7 @@ proc findPragma*(n: PNode, which: TSpecialWord): PNode =
         return son
 
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
       result = it[1]
@@ -150,4 +150,4 @@ proc flattenStmts*(n: PNode): PNode =
 
 proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
   result = newNodeI(k, n.info, b-a+1)
-  for i in 0 .. b-a: result[i] = n[i+a]
+  for i in 0..b-a: result[i] = n[i+a]

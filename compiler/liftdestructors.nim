@@ -39,7 +39,7 @@ proc at(a, i: PNode, elemType: PType): PNode =
   result.typ = elemType
 
 proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  for i in 0 ..< t.len:
+  for i in 0..<t.len:
     let lit = lowerings.newIntLit(c.g, x.info, i)
     fillBody(c, t[i], body, x.at(lit, t[i]), y.at(lit, t[i]))
 
@@ -90,7 +90,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     caseStmt.add(access)
     var emptyBranches = 0
     # copy the branches over, but replace the fields with the for loop body:
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       var branch = copyTree(n[i])
       branch[^1] = newNodeI(nkStmtList, c.info)
 
@@ -658,7 +658,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     fillBody(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
-  for i in 0 ..< n.len: n[i] = newNodeI(nkEmpty, info)
+  for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
   n[namePos] = newSymNode(result)
   n[paramsPos] = result.typ.n
   n[bodyPos] = body

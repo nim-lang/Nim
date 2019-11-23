@@ -107,7 +107,7 @@ proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
 proc pragmaAsm*(c: PContext, n: PNode): char =
   result = '\0'
   if n != nil:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       let it = n[i]
       if it.kind in nkPragmaCallKinds and it.len == 2 and it[0].kind == nkIdent:
         case whichKeyword(it[0].ident)
@@ -212,7 +212,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   var v: string
   if n[1].kind == nkIdent: v = n[1].ident.s
   else: v = expectStrLit(c, n)
-  for m in low(TMagic) .. high(TMagic):
+  for m in low(TMagic)..high(TMagic):
     if substr($m, 1) == v:
       s.magic = m
       break
@@ -419,7 +419,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   if n[start-1].kind in nkPragmaCallKinds:
     localError(c.config, n.info, "'push' cannot have arguments")
   var x = pushOptionEntry(c)
-  for i in start ..< n.len:
+  for i in start..<n.len:
     if not tryProcessOption(c, n[i], c.config.options):
       # simply store it somewhere:
       if x.otherPragmas.isNil:
@@ -630,7 +630,7 @@ proc pragmaLockStmt(c: PContext; it: PNode) =
     if n.kind != nkBracket:
       localError(c.config, n.info, errGenerated, "locks pragma takes a list of expressions")
     else:
-      for i in 0 ..< n.len:
+      for i in 0..<n.len:
         n[i] = c.semExpr(c, n[i])
 
 proc pragmaLocks(c: PContext, it: PNode): TLockLevel =

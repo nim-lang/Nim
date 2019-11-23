@@ -16,11 +16,11 @@ import
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result = getPragmaStmt(n[i], w)
       if result != nil: break
   of nkPragma:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if whichPragma(n[i]) == w: return n[i]
   else: discard
 
@@ -33,7 +33,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     # we have to use the same bitwidth
     # as the target CPU
     var b = 0'u64
-    for i in 0 ..< s.len:
+    for i in 0..<s.len:
       b = b + uint(s[i])
       b = b + (b shl 10)
       b = b xor (b shr 6)
@@ -43,7 +43,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     result = cast[Hash](b)
   else:
     var a = 0'u32
-    for i in 0 ..< s.len:
+    for i in 0..<s.len:
       a = a + uint32(s[i])
       a = a + (a shl 10)
       a = a xor (a shr 6)
@@ -70,7 +70,7 @@ proc mangle*(name: string): string =
   template special(x) =
     result.add x
     requiresUnderscore = true
-  for i in start..(name.len-1):
+  for i in start..<name.len:
     let c = name[i]
     case c
     of 'a'..'z', '0'..'9', 'A'..'Z':

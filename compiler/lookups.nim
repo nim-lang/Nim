@@ -105,7 +105,7 @@ when declared(echo):
     var i = 0
     for scope in walkScopes(c.currentScope):
       echo "scope ", i
-      for h in 0 .. high(scope.symbols.data):
+      for h in 0..high(scope.symbols.data):
         if scope.symbols.data[h] != nil:
           echo scope.symbols.data[h].name.s
       if i == limit: break

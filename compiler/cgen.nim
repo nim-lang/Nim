@@ -122,7 +122,6 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   args.expectKind nnkBracket
   # echo "ropecg ", newLit(frmt).repr, ", ", args.repr
   var i = 0
-  var length = frmt.len
   result = nnkStmtListExpr.newTree()
 
   result.add quote do:
@@ -142,7 +141,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
       result.add newCall(ident "add", resVar, newLit(strLit))
       strLit.setLen 0
 
-  while i < length:
+  while i < frmt.len:
     if frmt[i] == '$':
       inc(i)                  # skip '$'
       case frmt[i]
@@ -159,7 +158,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
         while true:
           j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
-          if i >= length or not (frmt[i] in {'0'..'9'}): break
+          if i >= frmt.len or not (frmt[i] in {'0'..'9'}): break
         num = j
         if j > args.len:
           error("ropes: invalid format string " & newLit(frmt).repr & " args.len: " & $args.len)
@@ -195,7 +194,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
       flushStrLit()
       result.add newCall(formatValue, resVar, newCall(ident"cgsym", m, ident))
     var start = i
-    while i < length:
+    while i < frmt.len:
       if frmt[i] != '$' and frmt[i] != '#': inc(i)
       else: break
     if i - 1 >= start:
@@ -206,7 +205,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
 
 proc indentLine(p: BProc, r: Rope): Rope =
   result = r
-  for i in 0 ..< p.blocks.len:
+  for i in 0..<p.blocks.len:
     prepend(result, "\t".rope)
 
 template appcg(m: BModule, c: var Rope, frmt: FormatStr,
@@ -655,7 +654,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       libCandidates(lib.path.strVal, s)
       rawMessage(m.config, hintDependency, lib.path.strVal)
       var loadlib: Rope = nil
-      for i in 0 .. high(s):
+      for i in 0..high(s):
         inc(m.labels)
         if i > 0: loadlib.add("||")
         let n = newStrNode(nkStrLit, s[i])
@@ -707,7 +706,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     var a: TLoc
     initLocExpr(m.initProc, n[0], a)
     var params = rdLoc(a) & "("
-    for i in 1 .. n.len-2:
+    for i in 1..<n.len-1:
       initLocExpr(m.initProc, n[i], a)
       params.add(rdLoc(a))
       params.add(", ")
@@ -998,7 +997,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
 
-  for i in 1 ..< prc.typ.n.len:
+  for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param, prc.typ[0])
@@ -1706,7 +1705,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     result.add("#define nimfr_(x, y)\n#define nimln_(x, y)\n")
   result.add(genSectionEnd(cfsFrameDefines, m.config))
 
-  for i in cfsForwardTypes .. cfsProcs:
+  for i in cfsForwardTypes..cfsProcs:
     if m.s[i].len > 0:
       moduleIsEmpty = false
       result.add(genSectionStart(i, m.config))
@@ -1803,7 +1802,7 @@ proc writeHeader(m: BModule) =
   generateHeaders(m)
 
   generateThreadLocalStorage(m)
-  for i in cfsHeaders .. cfsProcs:
+  for i in cfsHeaders..cfsProcs:
     result.add(genSectionStart(i, m.config))
     result.add(m.s[i])
     result.add(genSectionEnd(i, m.config))

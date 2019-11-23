@@ -17,22 +17,20 @@ proc genTypeInfo(p: PProc, typ: PType): Rope
 proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
   var
     s, u: Rope
-    length: int
     field: PSym
     b: PNode
   result = nil
   case n.kind
   of nkRecList:
-    length = n.len
-    if length == 1:
+    if n.len == 1:
       result = genObjectFields(p, typ, n[0])
     else:
       s = nil
-      for i in 0 ..< length:
+      for i in 0..<n.len:
         if i > 0: s.add(", \L")
         s.add(genObjectFields(p, typ, n[i]))
       result = ("{kind: 2, len: $1, offset: 0, " &
-          "typ: null, name: null, sons: [$2]}") % [rope(length), s]
+          "typ: null, name: null, sons: [$2]}") % [rope(n.len), s]
   of nkSym:
     field = n.sym
     s = genTypeInfo(p, field.typ)
@@ -41,18 +39,17 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
                    [mangleName(p.module, field), s,
                     makeJSString(field.name.s)]
   of nkRecCase:
-    length = n.len
     if (n[0].kind != nkSym): internalError(p.config, n.info, "genObjectFields")
     field = n[0].sym
     s = genTypeInfo(p, field.typ)
-    for i in 1 ..< length:
+    for i in 1..<n.len:
       b = n[i]           # branch
       u = nil
       case b.kind
       of nkOfBranch:
         if b.len < 2:
           internalError(p.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in 0 .. b.len - 2:
+        for j in 0..<b.len - 1:
           if u != nil: u.add(", ")
           if b[j].kind == nkRange:
             u.addf("[$1, $2]", [rope(getOrdValue(b[j][0])),
@@ -88,7 +85,7 @@ proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
 
 proc genTupleFields(p: PProc, typ: PType): Rope =
   var s: Rope = nil
-  for i in 0 ..< typ.len:
+  for i in 0..<typ.len:
     if i > 0: s.add(", \L")
     s.addf("{kind: 1, offset: \"Field$1\", len: 0, " &
            "typ: $2, name: \"Field$1\", sons: null}",
@@ -105,9 +102,8 @@ proc genTupleInfo(p: PProc, typ: PType, name: Rope) =
   p.g.typeInfo.addf("$1.node = NNI$2;$n", [name, rope(typ.id)])
 
 proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
-  let length = typ.n.len
   var s: Rope = nil
-  for i in 0 ..< length:
+  for i in 0..<typ.n.len:
     if (typ.n[i].kind != nkSym): internalError(p.config, typ.n.info, "genEnumInfo")
     let field = typ.n[i].sym
     if i > 0: s.add(", \L")
@@ -115,7 +111,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
     s.addf("\"$1\": {kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}",
          [rope(field.position), name, makeJSString(extName)])
   var n = ("var NNI$1 = {kind: 2, offset: 0, typ: null, " &
-      "name: null, len: $2, sons: {$3}};$n") % [rope(typ.id), rope(length), s]
+      "name: null, len: $2, sons: {$3}};$n") % [rope(typ.id), rope(typ.n.len), s]
   s = ("var $1 = {size: 0, kind: $2, base: null, node: null, " &
        "finalizer: null};$n") % [name, rope(ord(typ.kind))]
   prepend(p.g.typeInfo, s)

@@ -11,7 +11,7 @@
 
 proc leftAppearsOnRightSide(le, ri: PNode): bool =
   if le != nil:
-    for i in 1 ..< ri.len:
+    for i in 1..<ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
 
@@ -89,7 +89,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     if skipped:
       q = skipConv(n)
       while q.kind == nkStmtListExpr and q.len > 0:
-        for i in 0..q.len-2:
+        for i in 0..<q.len-1:
           genStmts(p, q[i])
         q = q.lastSon
     var b, c: TLoc
@@ -210,8 +210,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var typ = skipTypes(ri[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
   assert(typ.len == typ.n.len)
-  var length = ri.len
-  for i in 1 ..< length:
+  for i in 1..<ri.len:
     genParamLoop(params)
   var callee = rdLoc(op)
   if p.hcrOn and ri[0].kind == nkSym:
@@ -234,8 +233,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = ri.len
-  for i in 1 ..< length:
+  for i in 1..<ri.len:
     assert(typ.len == typ.n.len)
     genParamLoop(pl)
 
@@ -395,7 +393,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
     case pat[i]
     of '@':
       var first = true
-      for k in j ..< ri.len:
+      for k in j..<ri.len:
         let arg = genOtherArg(p, ri, k, typ)
         if arg.len > 0:
           if not first:
@@ -412,7 +410,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
           result.add(~"(")
           if 1 < ri.len:
             result.add genOtherArg(p, ri, 1, typ)
-          for k in j+1 ..< ri.len:
+          for k in j+1..<ri.len:
             result.add(~", ")
             result.add genOtherArg(p, ri, k, typ)
           result.add(~")")
@@ -451,7 +449,6 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = ri.len
   assert(typ.len == typ.n.len)
   # don't call '$' here for efficiency:
   let pat = ri[0].sym.loc.r.data
@@ -485,7 +482,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
       pl.add(genThisArg(p, ri, 1, typ))
     pl.add(op.r)
     var params: Rope
-    for i in 2 ..< length:
+    for i in 2..<ri.len:
       if params != nil: params.add(~", ")
       assert(typ.len == typ.n.len)
       params.add(genOtherArg(p, ri, i, typ))
@@ -499,7 +496,6 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = ri.len
   assert(typ.len == typ.n.len)
 
   # don't call '$' here for efficiency:
@@ -509,19 +505,19 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   if ' ' in pat:
     start = 1
     pl.add(op.r)
-    if length > 1:
+    if ri.len > 1:
       pl.add(~": ")
       pl.add(genArg(p, ri[1], typ.n[1].sym, ri))
       start = 2
   else:
-    if length > 1:
+    if ri.len > 1:
       pl.add(genArg(p, ri[1], typ.n[1].sym, ri))
       pl.add(~" ")
     pl.add(op.r)
-    if length > 2:
+    if ri.len > 2:
       pl.add(~": ")
       pl.add(genArg(p, ri[2], typ.n[2].sym, ri))
-  for i in start ..< length:
+  for i in start..<ri.len:
     assert(typ.len == typ.n.len)
     if i >= typ.len:
       internalError(p.config, ri.info, "varargs for objective C method?")

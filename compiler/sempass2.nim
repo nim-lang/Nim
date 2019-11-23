@@ -305,7 +305,7 @@ proc createTag(g: ModuleGraph; n: PNode): PNode =
 proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
   assert e.kind != nkRaiseStmt
   var aa = a.exc
-  for i in a.bottom ..< aa.len:
+  for i in a.bottom..<aa.len:
     if sameType(a.graph.excType(aa[i]), a.graph.excType(e)):
       if not useLineInfo or a.config.cmd == cmdDoc: return
       elif aa[i].info == e.info: return
@@ -313,7 +313,7 @@ proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
 
 proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
   var aa = a.tags
-  for i in 0 ..< aa.len:
+  for i in 0..<aa.len:
     if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)):
       if not useLineInfo or a.config.cmd == cmdDoc: return
       elif aa[i].info == e.info: return
@@ -375,15 +375,14 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   var hasFinally = false
 
   # Collect the exceptions caught by the except branches
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let b = n[i]
-    let blen = b.len
     if b.kind == nkExceptBranch:
       inc branches
-      if blen == 1:
+      if b.len == 1:
         catchesAll(tracked)
       else:
-        for j in 0 .. blen - 2:
+        for j in 0..<b.len - 1:
           if b[j].isInfixAs():
             assert(b[j][1].kind == nkType)
             catches(tracked, b[j][1].typ)
@@ -393,7 +392,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
     else:
       assert b.kind == nkFinally
   # Add any other exception raised in the except bodies
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let b = n[i]
     if b.kind == nkExceptBranch:
       setLen(tracked.init, oldState)
@@ -426,7 +425,7 @@ proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
 proc trackPragmaStmt(tracked: PEffects, n: PNode) =
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     var it = n[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:
@@ -596,7 +595,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
     if interesting:
       setLen(tracked.guards.s, oldFacts)
       addCaseBranchFacts(tracked.guards, n, i)
-    for i in 0 ..< branch.len:
+    for i in 0..<branch.len:
       track(tracked, branch[i])
     if not breaksBlock(branch.lastSon): inc toCover
     for i in oldState..<tracked.init.len:
@@ -630,7 +629,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
     if branch.len > 1:
       addFact(tracked.guards, branch[0])
     setLen(tracked.init, oldState)
-    for i in 0 ..< branch.len:
+    for i in 0..<branch.len:
       track(tracked, branch[i])
     if not breaksBlock(branch.lastSon): inc toCover
     for i in oldState..<tracked.init.len:
@@ -698,7 +697,7 @@ proc track(tracked: PEffects, n: PNode) =
       n[0].info = n.info
       #throws(tracked.exc, n[0])
       addEffect(tracked, n[0], useLineInfo=false)
-      for i in 0 ..< safeLen(n):
+      for i in 0..<safeLen(n):
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
     else:
@@ -743,7 +742,7 @@ proc track(tracked: PEffects, n: PNode) =
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1 ..< n.len: trackOperand(tracked, n[i], paramType(op, i), a)
+      for i in 1..<n.len: trackOperand(tracked, n[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n[1]
@@ -759,11 +758,11 @@ proc track(tracked: PEffects, n: PNode) =
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
-    for i in 0 ..< safeLen(n):
+    for i in 0..<safeLen(n):
       track(tracked, n[i])
   of nkDotExpr:
     guardDotAccess(tracked, n)
-    for i in 0 ..< n.len: track(tracked, n[i])
+    for i in 0..<n.len: track(tracked, n[i])
   of nkCheckedFieldExpr:
     track(tracked, n[0])
     if warnProveField in tracked.config.notes:
@@ -787,17 +786,17 @@ proc track(tracked: PEffects, n: PNode) =
       if tracked.owner.kind != skMacro:
         if child.kind == nkVarTuple:
           createTypeBoundOps(tracked, child[^1].typ, child.info)
-          for i in 0..child.len-3:
+          for i in 0..<child.len-2:
             createTypeBoundOps(tracked, child[i].typ, child.info)
         else:
           createTypeBoundOps(tracked, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
-        for i in 0 .. child.len-3:
+        for i in 0..<child.len-2:
           initVar(tracked, child[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child[i], last)
           notNilCheck(tracked, last, child[i].typ)
       elif child.kind == nkVarTuple and last.kind != nkEmpty:
-        for i in 0 .. child.len-2:
+        for i in 0..<child.len-1:
           if child[i].kind == nkEmpty or
             child[i].kind == nkSym and child[i].sym.name.s == "_":
             continue
@@ -830,7 +829,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len
-    for i in 0 .. n.len-3:
+    for i in 0..<n.len-2:
       let it = n[i]
       track(tracked, it)
       if tracked.owner.kind != skMacro:
@@ -851,7 +850,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkObjConstr:
     when false: track(tracked, n[0])
     let oldFacts = tracked.guards.s.len
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       let x = n[i]
       track(tracked, x)
       if x[0].kind == nkSym and sfDiscriminant in x[0].sym.flags:
@@ -865,7 +864,7 @@ proc track(tracked: PEffects, n: PNode) =
     let oldLockLevel = tracked.currLockLevel
     var enforcedGcSafety = false
     var enforceNoSideEffects = false
-    for i in 0 ..< pragmaList.len:
+    for i in 0..<pragmaList.len:
       let pragma = whichPragma(pragmaList[i])
       if pragma == wLocks:
         lockLocations(tracked, pragmaList[i])
@@ -888,11 +887,11 @@ proc track(tracked: PEffects, n: PNode) =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.len == 1: track(tracked, n[0])
   of nkBracket:
-    for i in 0 ..< safeLen(n): track(tracked, n[i])
+    for i in 0..<safeLen(n): track(tracked, n[i])
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n.typ, n.info)
   else:
-    for i in 0 ..< safeLen(n): track(tracked, n[i])
+    for i in 0..<safeLen(n): track(tracked, n[i])
 
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   result = safeInheritanceDiff(g.excType(real), spec.typ) <= 0
@@ -904,7 +903,7 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
   var used = initIntSet()
   for r in items(real):
     block search:
-      for s in 0 ..< spec.len:
+      for s in 0..<spec.len:
         if effectPredicate(g, spec[s], r):
           used.incl(s)
           break search
@@ -914,7 +913,7 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
       popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
-    for s in 0 ..< spec.len:
+    for s in 0..<spec.len:
       if not used.contains(s):
         message(g.config, spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
 
@@ -994,7 +993,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   if s.kind != skMacro:
     let params = s.typ.n
-    for i in 1 ..< params.len:
+    for i in 1..<params.len:
       let param = params[i].sym
       if isSinkTypeForParam(param.typ):
         createTypeBoundOps(t.graph, t.c, param.typ, param.info)

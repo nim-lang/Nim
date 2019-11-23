@@ -34,14 +34,14 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   let b = Backend(g.graph.backend)
   case n.kind
   of nkImportStmt:
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       var imported = getModuleName(g.config, n[i])
       addDependencyAux(b, g.module.name.s, imported)
   of nkFromStmt, nkImportExceptStmt:
     var imported = getModuleName(g.config, n[0])
     addDependencyAux(b, g.module.name.s, imported)
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr:
-    for i in 0 ..< n.len: discard addDotDependency(c, n[i])
+    for i in 0..<n.len: discard addDotDependency(c, n[i])
   else:
     discard
 

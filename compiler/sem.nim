@@ -382,7 +382,7 @@ when false:
   # hopefully not required:
   proc resetSemFlag(n: PNode) =
     excl n.flags, nfSem
-    for i in 0 ..< n.safeLen:
+    for i in 0..<n.safeLen:
       resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
@@ -496,7 +496,7 @@ proc semConceptBody(c: PContext, n: PNode): PNode
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
-  for i in c.lastGenericIdx ..< c.generics.len:
+  for i in c.lastGenericIdx..<c.generics.len:
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast[bodyPos] == nil:

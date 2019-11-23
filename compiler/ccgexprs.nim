@@ -98,13 +98,13 @@ proc genLiteral(p: BProc, n: PNode): Rope =
 
 proc bitSetToWord(s: TBitSet, size: int): BiggestUInt =
   result = 0
-  for j in 0 ..< size:
+  for j in 0..<size:
     if j < s.len: result = result or (BiggestUInt(s[j]) shl (j * 8))
 
 proc genRawSetData(cs: TBitSet, size: int): Rope =
   if size > 8:
     var res = "{\n"
-    for i in 0 ..< size:
+    for i in 0..<size:
       res.add "0x"
       res.add "0123456789abcdef"[cs[i] div 16]
       res.add "0123456789abcdef"[cs[i] mod 16]
@@ -217,7 +217,7 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       flags
   let t = skipTypes(dest.t, abstractInst).getUniqueType()
-  for i in 0 ..< t.len:
+  for i in 0..<t.len:
     let t = t[i]
     let field = "Field$1" % [i.rope]
     genAssignment(p, optAsgnLoc(dest, t, field),
@@ -797,7 +797,7 @@ proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
 proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
   var test, u, v: TLoc
-  for i in 1 ..< e.len:
+  for i in 1..<e.len:
     var it = e[i]
     assert(it.kind in nkCallKinds)
     assert(it[0].kind == nkSym)
@@ -962,7 +962,7 @@ proc isSimpleExpr(n: PNode): bool =
       if not isSimpleExpr(c): return false
     result = true
   of nkStmtListExpr:
-    for i in 0..n.len-2:
+    for i in 0..<n.len-1:
       if n[i].kind notin {nkCommentStmt, nkEmpty}: return false
     result = isSimpleExpr(n.lastSon)
   else:
@@ -1087,7 +1087,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in 0 .. e.len - 2:
+  for i in 0..<e.len - 1:
     # compute the length expression:
     initLocExpr(p, e[i + 1], a)
     if skipTypes(e[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -1126,7 +1126,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e[1], dest)
-  for i in 0 .. e.len - 3:
+  for i in 0..<e.len - 2:
     # compute the length expression:
     initLocExpr(p, e[i + 2], a)
     if skipTypes(e[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -1361,7 +1361,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     r = rdLoc(d)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
-  for i in 1 ..< e.len:
+  for i in 1..<e.len:
     let it = e[i]
     var tmp2: TLoc
     tmp2.r = r
@@ -1410,7 +1410,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     # generate call to newSeq before adding the elements per hand:
     genNewSeqAux(p, dest[], l,
       optNilSeqs notin p.options and n.len == 0)
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), intLiteral(i), dataField(p)])
     arr.storage = OnHeap            # we know that sequences are on the heap
@@ -1442,7 +1442,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   initLocExpr(p, n[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
-    for i in 0 ..< L:
+    for i in 0..<L:
       initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
       elem.r = ropecg(p.module, "$1$3[$2]", [rdLoc(d), intLiteral(i), dataField(p)])
       elem.storage = OnHeap # we know that sequences are on the heap
@@ -1759,10 +1759,9 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
                e[2]
     initLocExpr(p, ea, a)
     initLoc(b, locExpr, e, OnUnknown)
-    var length = e[1].len
-    if length > 0:
+    if e[1].len > 0:
       b.r = rope("(")
-      for i in 0 ..< length:
+      for i in 0..<e[1].len:
         let it = e[1][i]
         if it.kind == nkRange:
           initLocExpr(p, it[0], x)
@@ -1772,7 +1771,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
         else:
           initLocExpr(p, it, x)
           b.r.addf("$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
-        if i < length - 1: b.r.add(" || ")
+        if i < e[1].len - 1: b.r.add(" || ")
       b.r.add(")")
     else:
       # handle the case of an empty set
@@ -2322,7 +2321,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     if d.k == locNone: getTemp(p, t, d)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       var it = n[i]
       if it.kind == nkExprColonExpr: it = it[1]
       initLoc(rec, locExpr, it, d.storage)
@@ -2364,7 +2363,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n[i], arr)
@@ -2380,7 +2379,7 @@ template genStmtListExprImpl(exprOrStmt) {.dirty.} =
       sfSystemModule notin p.module.module.flags and
       optStackTrace in p.prc.options
   var frameName: Rope = nil
-  for i in 0 .. n.len - 2:
+  for i in 0..<n.len - 1:
     let it = n[i]
     if it.kind == nkComesFrom:
       if hasNimFrame and frameName == nil:
@@ -2459,7 +2458,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       r.add("->Sup")
     else:
       r.add(".Sup")
-    for i in 2 .. abs(inheritanceDiff(dest, src)): r.add(".Sup")
+    for i in 2..abs(inheritanceDiff(dest, src)): r.add(".Sup")
     if isRef:
       # it can happen that we end up generating '&&x->Sup' here, so we pack
       # the '&x->Sup' into a temporary and then those address is taken
@@ -2728,7 +2727,7 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       result = rope"{}"
   of tyTuple:
     result = rope"{"
-    for i in 0 ..< typ.len:
+    for i in 0..<typ.len:
       if i > 0: result.add ", "
       result.add getDefaultValue(p, typ[i], info)
     result.add "}"
@@ -2747,7 +2746,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
       getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj[0], cons, result, count)
-    for i in 1 ..< obj.len:
+    for i in 1..<obj.len:
       getNullValueAux(p, t, lastSon(obj[i]), cons, result, count)
   of nkSym:
     if count > 0: result.add ", "
@@ -2796,7 +2795,7 @@ proc genConstObjConstr(p: BProc; n: PNode): Rope =
 
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   result = rope("{")
-  for i in 0 ..< n.len - 1:
+  for i in 0..<n.len - 1:
     result.addf("$1,$n", [genNamedConstExpr(p, n[i])])
   if n.len > 0:
     result.add(genNamedConstExpr(p, n[^1]))
@@ -2807,7 +2806,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
   if n.len > 0:
     # array part needs extra curlies:
     data.add(", {")
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       if i > 0: data.addf(",$n", [])
       data.add genConstExpr(p, n[i])
     data.add("}")
@@ -2827,7 +2826,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
 
 proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
   var data = rope"{"
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     if i > 0: data.addf(",$n", [])
     data.add genConstExpr(p, n[i])
   data.add("}")

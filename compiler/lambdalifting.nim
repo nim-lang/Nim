@@ -941,7 +941,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
     let closure = op.lastSon
     if closure.kind == nkClosure:
       call[0] = closure
-      for i in 0 .. op.len-2:
+      for i in 0..<op.len-1:
         result.add op[i]
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
@@ -954,7 +954,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
   var vpart = newNodeI(if body.len == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0 ..< body.len-2:
+  for i in 0..<body.len-2:
     if body[i].kind == nkSym:
       body[i].sym.kind = skLet
     vpart.add body[i]

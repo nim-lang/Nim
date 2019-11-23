@@ -37,34 +37,34 @@ template eq(a, b): bool = cmp(a, b) == 0
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   var x = b.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
+    for j in 0..<x.entries:
       if j+1 == x.entries or less(key, x.keys[j+1]):
         x = x.links[j]
         break
   assert(not x.isInternal)
-  for j in 0 ..< x.entries:
+  for j in 0..<x.entries:
     if eq(key, x.keys[j]): return x.vals[j]
 
 proc contains*[Key, Val](b: BTree[Key, Val], key: Key): bool =
   var x = b.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
+    for j in 0..<x.entries:
       if j+1 == x.entries or less(key, x.keys[j+1]):
         x = x.links[j]
         break
   assert(not x.isInternal)
-  for j in 0 ..< x.entries:
+  for j in 0..<x.entries:
     if eq(key, x.keys[j]): return true
   return false
 
 proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
-  for j in 0 ..< Mhalf:
+  for j in 0..<Mhalf:
     result.keys[j] = h.keys[Mhalf + j]
   if h.isInternal:
-    for j in 0 ..< Mhalf:
+    for j in 0..<Mhalf:
       result.links[j] = h.links[Mhalf + j]
   else:
-    for j in 0 ..< Mhalf:
+    for j in 0..<Mhalf:
       shallowCopy(result.vals[j], h.vals[Mhalf + j])
 
 proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =

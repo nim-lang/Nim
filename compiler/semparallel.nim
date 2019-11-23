@@ -92,10 +92,9 @@ proc lookupSlot(c: AnalysisCtx; s: PSym): int =
 proc getSlot(c: var AnalysisCtx; v: PSym): ptr MonotonicVar =
   let s = lookupSlot(c, v)
   if s >= 0: return addr(c.locals[s])
-  let L = c.locals.len
-  c.locals.setLen(L+1)
-  c.locals[L].v = v
-  return addr(c.locals[L])
+  c.locals.setLen(c.locals.len+1)
+  c.locals[^1].v = v
+  return addr(c.locals[^1])
 
 proc gatherArgs(c: var AnalysisCtx; n: PNode) =
   for i in 0..<n.safeLen:
@@ -123,7 +122,7 @@ proc checkLocal(c: AnalysisCtx; n: PNode) =
     if s >= 0 and c.locals[s].stride != nil:
       localError(c.graph.config, n.info, "invalid usage of counter after increment")
   else:
-    for i in 0 ..< n.safeLen: checkLocal(c, n[i])
+    for i in 0..<n.safeLen: checkLocal(c, n[i])
 
 template `?`(x): untyped = x.renderTree
 
@@ -184,7 +183,7 @@ proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
   else:
-    for i in 0 ..< n.safeLen: result += stride(c, n[i])
+    for i in 0..<n.safeLen: result += stride(c, n[i])
 
 proc subStride(c: AnalysisCtx; n: PNode): PNode =
   # substitute with stride:
@@ -196,7 +195,7 @@ proc subStride(c: AnalysisCtx; n: PNode): PNode =
       result = n
   elif n.safeLen > 0:
     result = shallowCopy(n)
-    for i in 0 ..< n.len: result[i] = subStride(c, n[i])
+    for i in 0..<n.len: result[i] = subStride(c, n[i])
   else:
     result = n
 
@@ -216,8 +215,8 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
   #
   # Or even worse:
   #   while true:
-  #     spawn f(a[i+1 .. i+3])
-  #     spawn f(a[i+4 .. i+5])
+  #     spawn f(a[i+1..i+3])
+  #     spawn f(a[i+4..i+5])
   #     inc i, 4
   # Prove that i*k*stride + 3 != i*k'*stride + 5
   # For the correct example this amounts to
@@ -226,15 +225,15 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
   # For now, we don't try to prove things like that at all, even though it'd
   # be feasible for many useful examples. Instead we attach the slice to
   # a spawn and if the attached spawns differ, we bail out:
-  for i in 0 .. high(c.slices):
-    for j in i+1 .. high(c.slices):
+  for i in 0..high(c.slices):
+    for j in i+1..high(c.slices):
       let x = c.slices[i]
       let y = c.slices[j]
       if x.spawnId != y.spawnId and guards.sameTree(x.x, y.x):
         if not x.inLoop or not y.inLoop:
           # XXX strictly speaking, 'or' is not correct here and it needs to
           # be 'and'. However this prevents too many obviously correct programs
-          # like f(a[0..x]); for i in x+1 .. a.high: f(a[i])
+          # like f(a[0..x]); for i in x+1..a.high: f(a[i])
           overlap(c.guards, c.graph.config, x.a, x.b, y.a, y.b)
         elif (let k = simpleSlice(x.a, x.b); let m = simpleSlice(y.a, y.b);
               k >= 0 and m >= 0):
@@ -255,7 +254,7 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
 proc analyse(c: var AnalysisCtx; n: PNode)
 
 proc analyseSons(c: var AnalysisCtx; n: PNode) =
-  for i in 0 ..< safeLen(n): analyse(c, n[i])
+  for i in 0..<safeLen(n): analyse(c, n[i])
 
 proc min(a, b: PNode): PNode =
   if a.isNil: result = b
@@ -301,7 +300,7 @@ proc analyseCase(c: var AnalysisCtx; n: PNode) =
     let branch = n[i]
     setLen(c.guards.s, oldFacts)
     addCaseBranchFacts(c.guards, n, i)
-    for i in 0 ..< branch.len:
+    for i in 0..<branch.len:
       analyse(c, branch[i])
   setLen(c.guards.s, oldFacts)
 
@@ -318,7 +317,7 @@ proc analyseIf(c: var AnalysisCtx; n: PNode) =
       addFactNeg(c.guards, canon(n[j][0], c.guards.o))
     if branch.len > 1:
       addFact(c.guards, canon(branch[0], c.guards.o))
-    for i in 0 ..< branch.len:
+    for i in 0..<branch.len:
       analyse(c, branch[i])
   setLen(c.guards.s, oldFacts)
 
@@ -365,7 +364,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
           gatherArgs(c, value[1])
           analyseSons(c, value[1])
       if value.kind != nkEmpty:
-        for j in 0 .. it.len-3:
+        for j in 0..<it.len-2:
           if it[j].isLocal:
             let slot = c.getSlot(it[j].sym)
             if slot.lower.isNil: slot.lower = value
@@ -412,7 +411,7 @@ proc transformSlices(g: ModuleGraph; n: PNode): PNode =
       return result
   if n.safeLen > 0:
     result = shallowCopy(n)
-    for i in 0 ..< n.len:
+    for i in 0..<n.len:
       result[i] = transformSlices(g, n[i])
   else:
     result = n
@@ -420,7 +419,7 @@ proc transformSlices(g: ModuleGraph; n: PNode): PNode =
 proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode
 proc transformSpawnSons(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     result[i] = transformSpawn(g, owner, n[i], barrier)
 
 proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =

@@ -67,21 +67,21 @@ proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
 
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
                 module: PSym) =
-  for i in 0 ..< g.passes.len:
+  for i in 0..<g.passes.len:
     if not isNil(g.passes[i].open):
       a[i] = g.passes[i].open(g, module)
     else: a[i] = nil
 
 proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
-  for i in 0 ..< graph.passes.len:
+  for i in 0..<graph.passes.len:
     if not isNil(graph.passes[i].close): m = graph.passes[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline
   var m = n
-  for i in 0 ..< graph.passes.len:
+  for i in 0..<graph.passes.len:
     if not isNil(graph.passes[i].process):
       m = graph.passes[i].process(a[i], m)
       if isNil(m): return false
@@ -135,7 +135,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
   prepareConfigNotes(graph, module)
   if module.id < 0:
     # new module caching mechanism:
-    for i in 0 ..< graph.passes.len:
+    for i in 0..<graph.passes.len:
       if not isNil(graph.passes[i].open) and not graph.passes[i].isFrontend:
         a[i] = graph.passes[i].open(graph, module)
       else:
@@ -144,14 +144,14 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     if not graph.stopCompile():
       let n = loadNode(graph, module)
       var m = n
-      for i in 0 ..< graph.passes.len:
+      for i in 0..<graph.passes.len:
         if not isNil(graph.passes[i].process) and not graph.passes[i].isFrontend:
           m = graph.passes[i].process(a[i], m)
           if isNil(m):
             break
 
     var m: PNode = nil
-    for i in 0 ..< graph.passes.len:
+    for i in 0..<graph.passes.len:
       if not isNil(graph.passes[i].close) and not graph.passes[i].isFrontend:
         m = graph.passes[i].close(graph, a[i], m)
       a[i] = nil

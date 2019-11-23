@@ -16,7 +16,7 @@
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
 #
-# .. code-block:: nim
+#..code-block:: nim
 #   let s = a & b  # no matter what, create fresh node
 #   s = a & b  # no matter what, keep the node
 #
@@ -207,14 +207,14 @@ proc getFreeRegister(cc: PCtx; k: TSlotKind; start: int): TRegister =
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
   # for e.g. mNAdd[Multiple]:
-  for i in start .. c.maxSlots-1:
+  for i in start..c.maxSlots-1:
     if c.slots[i].kind == k and not c.slots[i].inUse:
       c.slots[i].inUse = true
       return TRegister(i)
 
   # if register pressure is high, we re-use more aggressively:
   if c.maxSlots >= high(TRegister):
-    for i in start .. c.maxSlots-1:
+    for i in start..c.maxSlots-1:
       if not c.slots[i].inUse:
         c.slots[i] = (inUse: true, kind: k)
         return TRegister(i)
@@ -248,22 +248,22 @@ proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
   let c = cc.prc
   if c.maxSlots >= HighRegisterPressure or c.maxSlots+n >= high(TRegister):
-    for i in 0 .. c.maxSlots-n:
+    for i in 0..c.maxSlots-n:
       if not c.slots[i].inUse:
         block search:
-          for j in i+1 .. i+n-1:
+          for j in i+1..i+n-1:
             if c.slots[j].inUse: break search
           result = TRegister(i)
-          for k in result .. result+n-1: c.slots[k] = (inUse: true, kind: kind)
+          for k in result..result+n-1: c.slots[k] = (inUse: true, kind: kind)
           return
   if c.maxSlots+n >= high(TRegister):
     globalError(cc.config, cc.bestEffort, "VM problem: too many registers required")
   result = TRegister(c.maxSlots)
   inc c.maxSlots, n
-  for k in result .. result+n-1: c.slots[k] = (inUse: true, kind: kind)
+  for k in result..result+n-1: c.slots[k] = (inUse: true, kind: kind)
 
 proc freeTempRange(c: PCtx; start: TRegister, n: int) =
-  for i in start .. start+n-1: c.freeTemp(TRegister(i))
+  for i in start..start+n-1: c.freeTemp(TRegister(i))
 
 template withTemp(tmp, typ, body: untyped) {.dirty.} =
   var tmp = getTemp(c, typ)
@@ -348,7 +348,7 @@ proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
   withBlock(n[0].sym):
     c.gen(n[1], dest)
 
-  for i in oldRegisterCount ..< c.prc.maxSlots:
+  for i in oldRegisterCount..<c.prc.maxSlots:
     #if c.prc.slots[i].kind in {slotFixedVar, slotFixedLet}:
     if i != dest:
       when not defined(release):
@@ -387,7 +387,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
   #  Lend:
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     var it = n[i]
     if it.len == 2:
       withTemp(tmp, it[0].typ):
@@ -457,13 +457,13 @@ proc sameConstant*(a, b: PNode): bool =
     of nkEmpty: result = true
     else:
       if a.len == b.len:
-        for i in 0 ..< a.len:
+        for i in 0..<a.len:
           if not sameConstant(a[i], b[i]): return
         result = true
 
 proc genLiteral(c: PCtx; n: PNode): int =
   # types do not matter here:
-  for i in 0 ..< c.constants.len:
+  for i in 0..<c.constants.len:
     if sameConstant(c.constants[i], n): return i
   result = rawGenLiteral(c, n)
 
@@ -492,7 +492,7 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
     c.gen(n[0], tmp)
     # branch tmp, codeIdx
     # fjmp   elseLabel
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       let it = n[i]
       if it.len == 1:
         # else stmt:
@@ -525,17 +525,16 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   let jumpToFinally = c.xjmp(n, opcJmp, 0)
   # This signals where the body ends and where the exception handling begins
   c.patch(ehPos)
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let it = n[i]
     if it.kind != nkFinally:
-      var blen = it.len
       # first opcExcept contains the end label of the 'except' block:
       let endExcept = c.xjmp(it, opcExcept, 0)
-      for j in 0 .. blen - 2:
+      for j in 0..<it.len - 1:
         assert(it[j].kind == nkType)
         let typ = it[j].typ.skipTypes(abstractPtrs-{tyTypeDesc})
         c.gABx(it, opcExcept, 0, c.genType(typ))
-      if blen == 1:
+      if it.len == 1:
         # general except section:
         c.gABx(it, opcExcept, 0, 0)
       c.gen(it.lastSon, dest)
@@ -795,7 +794,7 @@ proc genUnaryStmt(c: PCtx; n: PNode; opc: TOpcode) =
 proc genVarargsABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   if dest < 0: dest = getTemp(c, n.typ)
   var x = c.getTempRange(n.len-1, slotTempStr)
-  for i in 1..n.len-1:
+  for i in 1..<n.len:
     var r: TRegister = x+i-1
     c.gen(n[i], r)
   c.gABC(n, opc, dest, x, n.len-1)
@@ -1764,10 +1763,10 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     getNullValueAux(b, b.n, result, conf, currPosition)
   case obj.kind
   of nkRecList:
-    for i in 0 ..< obj.len: getNullValueAux(nil, obj[i], result, conf, currPosition)
+    for i in 0..<obj.len: getNullValueAux(nil, obj[i], result, conf, currPosition)
   of nkRecCase:
     getNullValueAux(nil, obj[0], result, conf, currPosition)
-    for i in 1 ..< obj.len:
+    for i in 1..<obj.len:
       getNullValueAux(nil, lastSon(obj[i]), result, conf, currPosition)
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info)
@@ -1808,11 +1807,11 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     getNullValueAux(t, t.n, result, conf, currPosition)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in 0 ..< toInt(lengthOrd(conf, t)):
+    for i in 0..<toInt(lengthOrd(conf, t)):
       result.add getNullValue(elemType(t), info, conf)
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
-    for i in 0 ..< t.len:
+    for i in 0..<t.len:
       result.add getNullValue(t[i], info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
@@ -1829,7 +1828,7 @@ proc genVarSection(c: PCtx; n: PNode) =
     if a.kind == nkCommentStmt: continue
     #assert(a[0].kind == nkSym) can happen for transformed vars
     if a.kind == nkVarTuple:
-      for i in 0 .. a.len-3:
+      for i in 0..<a.len-2:
         if a[i].kind == nkSym:
           if not a[i].sym.isGlobal: setSlot(c, a[i].sym)
           checkCanEval(c, a[i])
@@ -1957,22 +1956,18 @@ proc genProc*(c: PCtx; s: PSym): int
 proc matches(s: PSym; x: string): bool =
   let y = x.split('.')
   var s = s
-  var L = y.len-1
-  while L >= 0:
-    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+  for i in 1..y.len:
+    if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
       return false
     s = s.owner
-    dec L
   result = true
 
 proc matches(s: PSym; y: varargs[string]): bool =
   var s = s
-  var L = y.len-1
-  while L >= 0:
-    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+  for i in 1..y.len:
+    if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
       return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
-    dec L
   result = true
 
 proc procIsCallback(c: PCtx; s: PSym): bool =
@@ -2081,7 +2076,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     # XXX Fix this bug properly, lexim triggers it
     for x in n: gen(c, x)
   of nkStmtListExpr:
-    for i in 0 ..< n.len-1: gen(c, n[i])
+    for i in 0..<n.len-1: gen(c, n[i])
     gen(c, n[^1], dest, flags)
   of nkPragmaBlock:
     gen(c, n.lastSon, dest, flags)
@@ -2192,7 +2187,7 @@ proc genGenericParams(c: PCtx; gp: PNode) =
 
 proc optimizeJumps(c: PCtx; start: int) =
   const maxIterations = 10
-  for i in start ..< c.code.len:
+  for i in start..<c.code.len:
     let opc = c.code[i].opcode
     case opc
     of opcTJmp, opcFJmp:
