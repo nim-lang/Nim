@@ -123,7 +123,7 @@ proc checkLocal(c: AnalysisCtx; n: PNode) =
     if s >= 0 and c.locals[s].stride != nil:
       localError(c.graph.config, n.info, "invalid usage of counter after increment")
   else:
-    for i in 0 ..< n.safeLen: checkLocal(c, n.sons[i])
+    for i in 0 ..< n.safeLen: checkLocal(c, n[i])
 
 template `?`(x): untyped = x.renderTree
 
@@ -184,7 +184,7 @@ proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
   else:
-    for i in 0 ..< n.safeLen: result += stride(c, n.sons[i])
+    for i in 0 ..< n.safeLen: result += stride(c, n[i])
 
 proc subStride(c: AnalysisCtx; n: PNode): PNode =
   # substitute with stride:
@@ -196,7 +196,7 @@ proc subStride(c: AnalysisCtx; n: PNode): PNode =
       result = n
   elif n.safeLen > 0:
     result = shallowCopy(n)
-    for i in 0 ..< n.len: result.sons[i] = subStride(c, n.sons[i])
+    for i in 0 ..< n.len: result[i] = subStride(c, n[i])
   else:
     result = n
 
@@ -295,31 +295,31 @@ proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
     analyseSons(c, n)
 
 proc analyseCase(c: var AnalysisCtx; n: PNode) =
-  analyse(c, n.sons[0])
+  analyse(c, n[0])
   let oldFacts = c.guards.s.len
   for i in 1..<n.len:
-    let branch = n.sons[i]
+    let branch = n[i]
     setLen(c.guards.s, oldFacts)
     addCaseBranchFacts(c.guards, n, i)
     for i in 0 ..< branch.len:
-      analyse(c, branch.sons[i])
+      analyse(c, branch[i])
   setLen(c.guards.s, oldFacts)
 
 proc analyseIf(c: var AnalysisCtx; n: PNode) =
-  analyse(c, n.sons[0].sons[0])
+  analyse(c, n[0][0])
   let oldFacts = c.guards.s.len
-  addFact(c.guards, canon(n.sons[0].sons[0], c.guards.o))
+  addFact(c.guards, canon(n[0][0], c.guards.o))
 
-  analyse(c, n.sons[0].sons[1])
+  analyse(c, n[0][1])
   for i in 1..<n.len:
-    let branch = n.sons[i]
+    let branch = n[i]
     setLen(c.guards.s, oldFacts)
     for j in 0..i-1:
-      addFactNeg(c.guards, canon(n.sons[j].sons[0], c.guards.o))
+      addFactNeg(c.guards, canon(n[j][0], c.guards.o))
     if branch.len > 1:
-      addFact(c.guards, canon(branch.sons[0], c.guards.o))
+      addFact(c.guards, canon(branch[0], c.guards.o))
     for i in 0 ..< branch.len:
-      analyse(c, branch.sons[i])
+      analyse(c, branch[i])
   setLen(c.guards.s, oldFacts)
 
 proc analyse(c: var AnalysisCtx; n: PNode) =
@@ -374,22 +374,22 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
   of nkCaseStmt: analyseCase(c, n)
   of nkWhen, nkIfStmt, nkIfExpr: analyseIf(c, n)
   of nkWhileStmt:
-    analyse(c, n.sons[0])
+    analyse(c, n[0])
     # 'while true' loop?
     inc c.inLoop
-    if isTrue(n.sons[0]):
-      analyseSons(c, n.sons[1])
+    if isTrue(n[0]):
+      analyseSons(c, n[1])
     else:
       # loop may never execute:
       let oldState = c.locals.len
       let oldFacts = c.guards.s.len
-      addFact(c.guards, canon(n.sons[0], c.guards.o))
-      analyse(c, n.sons[1])
+      addFact(c.guards, canon(n[0], c.guards.o))
+      analyse(c, n[1])
       setLen(c.locals, oldState)
       setLen(c.guards.s, oldFacts)
       # we know after the loop the negation holds:
-      if not hasSubnodeWith(n.sons[1], nkBreakStmt):
-        addFactNeg(c.guards, canon(n.sons[0], c.guards.o))
+      if not hasSubnodeWith(n[1], nkBreakStmt):
+        addFactNeg(c.guards, canon(n[0], c.guards.o))
     dec c.inLoop
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkConstSection, nkPragma, nkFuncDef:
@@ -413,7 +413,7 @@ proc transformSlices(g: ModuleGraph; n: PNode): PNode =
   if n.safeLen > 0:
     result = shallowCopy(n)
     for i in 0 ..< n.len:
-      result.sons[i] = transformSlices(g, n.sons[i])
+      result[i] = transformSlices(g, n[i])
   else:
     result = n
 
@@ -421,7 +421,7 @@ proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode
 proc transformSpawnSons(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
   for i in 0 ..< n.len:
-    result.sons[i] = transformSpawn(g, owner, n.sons[i], barrier)
+    result[i] = transformSpawn(g, owner, n[i], barrier)
 
 proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
   case n.kind
@@ -435,16 +435,16 @@ proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
           result.add n
-        let t = b[1][0].typ.sons[0]
+        let t = b[1][0].typ[0]
         if spawnResult(t, true) == srByVar:
           result.add wrapProcForSpawn(g, owner, m, b.typ, barrier, it[0])
-          it.sons[it.len-1] = newNodeI(nkEmpty, it.info)
+          it[^1] = newNodeI(nkEmpty, it.info)
         else:
-          it.sons[it.len-1] = wrapProcForSpawn(g, owner, m, b.typ, barrier, nil)
+          it[^1] = wrapProcForSpawn(g, owner, m, b.typ, barrier, nil)
     if result.isNil: result = n
   of nkAsgn, nkFastAsgn:
     let b = n[1]
-    if getMagic(b) == mSpawn and (let t = b[1][0].typ.sons[0];
+    if getMagic(b) == mSpawn and (let t = b[1][0].typ[0];
         spawnResult(t, true) == srByVar):
       let m = transformSlices(g, b)
       return wrapProcForSpawn(g, owner, m, b.typ, barrier, n[0])

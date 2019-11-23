@@ -157,7 +157,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     pushSym(w, n.sym)
   else:
     for i in 0 ..< len(n):
-      encodeNode(g, n.info, n.sons[i], result)
+      encodeNode(g, n.info, n[i], result)
   add(result, ')')
 
 proc encodeLoc(g: ModuleGraph; loc: TLoc, result: var string) =
@@ -245,12 +245,12 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     encodeVInt(t.typeInst.uniqueId, result)
     pushType(w, t.typeInst)
   for i in 0 ..< len(t):
-    if t.sons[i] == nil:
+    if t[i] == nil:
       add(result, "^()")
     else:
       add(result, '^')
-      encodeVInt(t.sons[i].uniqueId, result)
-      pushType(w, t.sons[i])
+      encodeVInt(t[i].uniqueId, result)
+      pushType(w, t[i])
 
 proc encodeLib(g: ModuleGraph, lib: PLib, info: TLineInfo, result: var string) =
   add(result, '|')

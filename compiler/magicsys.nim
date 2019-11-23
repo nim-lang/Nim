@@ -40,7 +40,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
   while r != nil:
     if r.magic == m:
       # prefer the tyInt variant:
-      if r.typ.sons[0] != nil and r.typ.sons[0].kind == tyInt: return r
+      if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
       result = r
     r = nextIdentIter(ti, g.systemModule.tab)
   if result != nil: return result

@@ -1041,7 +1041,7 @@ proc safeArrLen*(n: PNode): int {.inline.} =
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = len(n)
 
-proc add*(father, son: PNode) =
+proc add*(father, son: Indexable) =
   assert son != nil
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
@@ -1286,12 +1286,6 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
   result = newNodeI(nkStrLit, info)
   result.strVal = strVal
 
-proc addSon*(father, son: PNode) =
-  assert son != nil
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
-
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                  params,
                  name, pattern, genericParams,
@@ -1367,7 +1361,7 @@ proc assignType*(dest, src: PType) =
     else:
       dest.sym = src.sym
   newSons(dest, len(src))
-  for i in 0 ..< len(src): dest.sons[i] = src.sons[i]
+  for i in 0 ..< len(src): dest[i] = src[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1522,7 +1516,7 @@ proc delSon*(father: PNode, idx: int) =
   else:
     if isNil(father.sons): return
   var length = len(father)
-  for i in idx .. length - 2: father.sons[i] = father.sons[i + 1]
+  for i in idx .. length - 2: father[i] = father[i + 1]
   setLen(father.sons, length - 1)
 
 proc copyNode*(src: PNode): PNode =
@@ -1585,19 +1579,19 @@ proc copyTree*(src: PNode): PNode =
   else:
     newSeq(result.sons, len(src))
     for i in 0 ..< len(src):
-      result.sons[i] = copyTree(src.sons[i])
+      result[i] = copyTree(src[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   for i in 0 ..< len(n):
-    if n.sons[i].kind == kind:
+    if n[i].kind == kind:
       return true
   result = false
 
 proc hasNilSon*(n: PNode): bool =
   for i in 0 ..< safeLen(n):
-    if n.sons[i] == nil:
+    if n[i] == nil:
       return true
-    elif hasNilSon(n.sons[i]):
+    elif hasNilSon(n[i]):
       return true
   result = false
 
@@ -1607,14 +1601,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
     for i in 0 ..< len(n):
-      if n.kind in kinds or containsNode(n.sons[i], kinds): return true
+      if n.kind in kinds or containsNode(n[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
     for i in 0 ..< len(n):
-      if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
+      if (n[i].kind == kind) or hasSubnodeWith(n[i], kind):
         return true
     result = false
 
@@ -1716,13 +1710,13 @@ proc requiredParams*(s: PSym): int =
   return s.typ.len - 1
 
 proc hasPattern*(s: PSym): bool {.inline.} =
-  result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
+  result = isRoutine(s) and s.ast[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
-  for i in 0..<n.safeLen: yield n.sons[i]
+  for i in 0..<n.safeLen: yield n[i]
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
-  for i in 0..<n.safeLen: yield (i, n.sons[i])
+  for i in 0..<n.safeLen: yield (i, n[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
@@ -1831,11 +1825,11 @@ proc newProcType*(info: TLineInfo; owner: PSym): PType =
   # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
   # the effects are now stored in there too ... this is a bit hacky, but as
   # usual we desperately try to save memory:
-  addSon(result.n, newNodeI(nkEffectList, info))
+  result.n.add newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1
-  addSon(procType.n, newSymNode(param))
+  procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
 template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]

@@ -102,7 +102,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   of nkStrLit..nkTripleStrLit:
     c &= n.strVal
   else:
-    for i in 0..<n.len: hashTree(c, n.sons[i])
+    for i in 0..<n.len: hashTree(c, n[i])
 
 proc hashType(c: var MD5Context, t: PType) =
   # modelled after 'typeToString'
@@ -121,7 +121,7 @@ proc hashType(c: var MD5Context, t: PType) =
   case t.kind
   of tyGenericBody, tyGenericInst, tyGenericInvocation:
     for i in 0 ..< len(t)-ord(t.kind != tyGenericInvocation):
-      c.hashType t.sons[i]
+      c.hashType t[i]
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
     c &= t.sym.owner.name.s
@@ -129,35 +129,35 @@ proc hashType(c: var MD5Context, t: PType) =
     let body = t.base
     c.hashSym body.sym
     for i in 1 .. len(t) - 2:
-      c.hashType t.sons[i]
+      c.hashType t[i]
   of tyFromExpr:
     c.hashTree(t.n)
   of tyArray:
-    c.hashTree(t.sons[0].n)
-    c.hashType(t.sons[1])
+    c.hashTree(t[0].n)
+    c.hashType(t[1])
   of tyTuple:
     if t.n != nil:
       assert(len(t.n) == len(t))
       for i in 0 ..< len(t.n):
-        assert(t.n.sons[i].kind == nkSym)
-        c &= t.n.sons[i].sym.name.s
+        assert(t.n[i].kind == nkSym)
+        c &= t.n[i].sym.name.s
         c &= ":"
-        c.hashType(t.sons[i])
+        c.hashType(t[i])
         c &= ","
     else:
-      for i in 0 ..< len(t): c.hashType t.sons[i]
+      for i in 0 ..< len(t): c.hashType t[i]
   of tyRange:
     c.hashTree(t.n)
-    c.hashType(t.sons[0])
+    c.hashType(t[0])
   of tyProc:
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
-    for i in 0..<t.len: c.hashType(t.sons[i])
+    for i in 0..<t.len: c.hashType(t[i])
     md5Update(c, cast[cstring](addr(t.callConv)), 1)
 
     if tfNoSideEffect in t.flags: c &= ".noSideEffect"
     if tfThread in t.flags: c &= ".thread"
   else:
-    for i in 0..<t.len: c.hashType(t.sons[i])
+    for i in 0..<t.len: c.hashType(t[i])
   if tfNotNil in t.flags: c &= "not nil"
 
 proc canonConst(n: PNode): TUid =
@@ -239,7 +239,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     pushSym(w, n.sym)
   else:
     for i in 0 ..< len(n):
-      encodeNode(w, n.info, n.sons[i], result)
+      encodeNode(w, n.info, n[i], result)
   add(result, ')')
 
 proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
@@ -305,12 +305,12 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     encodeVInt(t.align, result)
   encodeLoc(w, t.loc, result)
   for i in 0 ..< len(t):
-    if t.sons[i] == nil:
+    if t[i] == nil:
       add(result, "^()")
     else:
       add(result, '^')
-      encodeVInt(t.sons[i].id, result)
-      pushType(w, t.sons[i])
+      encodeVInt(t[i].id, result)
+      pushType(w, t[i])
 
 proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   add(result, '|')

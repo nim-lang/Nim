@@ -237,7 +237,7 @@ proc toStmtList(n: PNode): PNode =
 proc addGotoOut(n: PNode, gotoOut: PNode): PNode =
   # Make sure `n` is a stmtlist, and ends with `gotoOut`
   result = toStmtList(n)
-  if result.len == 0 or result.sons[^1].kind != nkGotoState:
+  if result.len == 0 or result[^1].kind != nkGotoState:
     result.add(gotoOut)
 
 proc newTempVar(ctx: var Ctx, typ: PType): PSym =
@@ -401,7 +401,7 @@ proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
   var n = n
   while n.kind == nkStmtListExpr:
     result.s.sons.add(n.sons)
-    result.s.sons.setLen(result.s.sons.len - 1) # delete last son
+    result.s.sons.setLen(result.s.len - 1) # delete last son
     n = n[^1]
 
   result.res = n
@@ -1038,11 +1038,11 @@ proc transformStateAssignments(ctx: var Ctx, n: PNode): PNode =
       result.add(ctx.newStateAssgn(stateFromGotoState(n[1])))
 
       var retStmt = newNodeI(nkReturnStmt, n.info)
-      if n[0].sons[0].kind != nkEmpty:
-        var a = newNodeI(nkAsgn, n[0].sons[0].info)
-        var retVal = n[0].sons[0] #liftCapturedVars(n.sons[0], owner, d, c)
-        addSon(a, newSymNode(getClosureIterResult(ctx.g, ctx.fn)))
-        addSon(a, retVal)
+      if n[0][0].kind != nkEmpty:
+        var a = newNodeI(nkAsgn, n[0][0].info)
+        var retVal = n[0][0] #liftCapturedVars(n[0], owner, d, c)
+        a.add newSymNode(getClosureIterResult(ctx.g, ctx.fn))
+        a.add retVal
         retStmt.add(a)
       else:
         retStmt.add(ctx.g.emptyNode)

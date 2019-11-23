@@ -46,7 +46,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     else:
       if len(a) == len(b):
         for i in 0 ..< len(a):
-          if not exprStructuralEquivalent(a.sons[i], b.sons[i],
+          if not exprStructuralEquivalent(a[i], b[i],
                                           strictSymEquality): return
         result = true
 
@@ -70,14 +70,14 @@ proc sameTree*(a, b: PNode): bool =
     else:
       if len(a) == len(b):
         for i in 0 ..< len(a):
-          if not sameTree(a.sons[i], b.sons[i]): return
+          if not sameTree(a[i], b[i]): return
         result = true
 
 proc getMagic*(op: PNode): TMagic =
   case op.kind
   of nkCallKinds:
-    case op.sons[0].kind
-    of nkSym: result = op.sons[0].sym.magic
+    case op[0].kind
+    of nkSym: result = op[0].sym.magic
     else: result = mNone
   else: result = mNone
 
@@ -95,10 +95,10 @@ proc isDeepConstExpr*(n: PNode): bool =
   of nkCharLit..nkNilLit:
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
-    result = isDeepConstExpr(n.sons[1])
+    result = isDeepConstExpr(n[1])
   of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
     for i in ord(n.kind == nkObjConstr) ..< n.len:
-      if not isDeepConstExpr(n.sons[i]): return false
+      if not isDeepConstExpr(n[i]): return false
     if n.typ.isNil: result = true
     else:
       let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
@@ -117,7 +117,7 @@ proc isRange*(n: PNode): bool {.inline.} =
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =
-  let key = if n.kind in nkPragmaCallKinds and n.len > 0: n.sons[0] else: n
+  let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
@@ -128,12 +128,12 @@ proc findPragma*(n: PNode, which: TSpecialWord): PNode =
 
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
   for i in 0 ..< len(n):
-    var it = n.sons[i]
+    var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
-      result = it.sons[1]
+      result = it[1]
       if result.kind notin {nkCurly, nkBracket}:
         result = newNodeI(nkCurly, result.info)
-        result.add(it.sons[1])
+        result.add(it[1])
       return
 
 proc unnestStmts(n, result: PNode) =
@@ -146,8 +146,8 @@ proc flattenStmts*(n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   unnestStmts(n, result)
   if result.len == 1:
-    result = result.sons[0]
+    result = result[0]
 
 proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
   result = newNodeI(k, n.info, b-a+1)
-  for i in 0 .. b-a: result.sons[i] = n.sons[i+a]
+  for i in 0 .. b-a: result[i] = n[i+a]

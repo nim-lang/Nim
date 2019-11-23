@@ -116,9 +116,9 @@ proc skipConvAndClosure*(n: PNode): PNode =
     case result.kind
     of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64,
        nkClosure:
-      result = result.sons[0]
+      result = result[0]
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-      result = result.sons[1]
+      result = result[1]
     else: break
 
 proc sameValue*(a, b: PNode): bool =
@@ -161,16 +161,16 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
   case n.kind
   of nkRecList:
     for i in 0 ..< len(n):
-      result = lookupInRecord(n.sons[i], field)
+      result = lookupInRecord(n[i], field)
       if result != nil: return
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): return nil
-    result = lookupInRecord(n.sons[0], field)
+    if (n[0].kind != nkSym): return nil
+    result = lookupInRecord(n[0], field)
     if result != nil: return
     for i in 1 ..< len(n):
-      case n.sons[i].kind
+      case n[i].kind
       of nkOfBranch, nkElse:
-        result = lookupInRecord(lastSon(n.sons[i]), field)
+        result = lookupInRecord(lastSon(n[i]), field)
         if result != nil: return
       else: return nil
   of nkSym:
@@ -184,8 +184,8 @@ proc getModule*(s: PSym): PSym =
 
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
   for i in start ..< len(list):
-    if list.sons[i].kind == nkSym:
-      result = list.sons[i].sym
+    if list[i].kind == nkSym:
+      result = list[i].sym
       if result.name.id == ident.id: return
     else: return nil
   result = nil
@@ -331,7 +331,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
       sonsRope = rope("[")
       for i in 0 ..< len(n):
         if i > 0: add(sonsRope, ",")
-        addf(sonsRope, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n.sons[i],
+        addf(sonsRope, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n[i],
             marker, indent + 4, maxRecDepth - 1)])
       addf(sonsRope, "$N$1]", [rspaces(indent + 2)])
     else:
@@ -380,7 +380,7 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in 0 ..< len(n):
             if i > 0: add(result, ",")
-            addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(conf, n.sons[i],
+            addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(conf, n[i],
                 marker, indent + 4, maxRecDepth - 1)])
           addf(result, "$N$1]", [istr])
       addf(result, ",$N$1\"typ\": $2",
@@ -567,7 +567,7 @@ proc value(this: var DebugPrinter; value: PType) =
     this.key "sons"
     this.openBracket
     for i in 0 ..< len(value):
-      this.value value.sons[i]
+      this.value value[i]
       if i != len(value) - 1:
         this.comma
     this.closeBracket
@@ -620,7 +620,7 @@ proc value(this: var DebugPrinter; value: PNode) =
       this.key "sons"
       this.openBracket
       for i in 0 ..< len(value):
-        this.value value.sons[i]
+        this.value value[i]
         if i != len(value) - 1:
           this.comma
       this.closeBracket

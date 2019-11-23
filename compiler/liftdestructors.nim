@@ -34,28 +34,28 @@ proc createTypeBoundOps*(g: ModuleGraph; c: PContext; orig: PType; info: TLineIn
 
 proc at(a, i: PNode, elemType: PType): PNode =
   result = newNodeI(nkBracketExpr, a.info, 2)
-  result.sons[0] = a
-  result.sons[1] = i
+  result[0] = a
+  result[1] = i
   result.typ = elemType
 
 proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   for i in 0 ..< t.len:
     let lit = lowerings.newIntLit(c.g, x.info, i)
-    fillBody(c, t.sons[i], body, x.at(lit, t.sons[i]), y.at(lit, t.sons[i]))
+    fillBody(c, t[i], body, x.at(lit, t[i]), y.at(lit, t[i]))
 
 proc dotField(x: PNode, f: PSym): PNode =
   result = newNodeI(nkDotExpr, x.info, 2)
   if x.typ.skipTypes(abstractInst).kind == tyVar:
-    result.sons[0] = x.newDeref
+    result[0] = x.newDeref
   else:
-    result.sons[0] = x
-  result.sons[1] = newSymNode(f, x.info)
+    result[0] = x
+  result[1] = newSymNode(f, x.info)
   result.typ = f.typ
 
 proc newAsgnStmt(le, ri: PNode): PNode =
   result = newNodeI(nkAsgn, le.info, 2)
-  result.sons[0] = le
-  result.sons[1] = ri
+  result[0] = le
+  result[1] = ri
 
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind != attachedDestructor:
@@ -92,11 +92,10 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     # copy the branches over, but replace the fields with the for loop body:
     for i in 1 ..< n.len:
       var branch = copyTree(n[i])
-      let L = branch.len
-      branch.sons[L-1] = newNodeI(nkStmtList, c.info)
+      branch[^1] = newNodeI(nkStmtList, c.info)
 
-      fillBodyObj(c, n[i].lastSon, branch.sons[L-1], x, y)
-      if branch.sons[L-1].len == 0: inc emptyBranches
+      fillBodyObj(c, n[i].lastSon, branch[^1], x, y)
+      if branch[^1].len == 0: inc emptyBranches
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
       body.add(caseStmt)
@@ -106,17 +105,17 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     illFormedAstLocal(n, c.g.config)
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
-  if t.len > 0 and t.sons[0] != nil:
-    fillBodyObjT(c, skipTypes(t.sons[0], abstractPtrs), body, x, y)
+  if t.len > 0 and t[0] != nil:
+    fillBodyObjT(c, skipTypes(t[0], abstractPtrs), body, x, y)
   fillBodyObj(c, t.n, body, x, y)
 
 proc genAddr(g: ModuleGraph; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
     checkSonsLen(x, 1, g.config)
-    result = x.sons[0]
+    result = x[0]
   else:
     result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ))
-    addSon(result, x)
+    result.add x
 
 proc newAsgnCall(g: ModuleGraph; op: PSym; x, y: PNode): PNode =
   #if sfError in op.flags:
@@ -127,12 +126,12 @@ proc newAsgnCall(g: ModuleGraph; op: PSym; x, y: PNode): PNode =
   result.add y
 
 proc newOpCall(op: PSym; x: PNode): PNode =
-  result = newNodeIT(nkCall, x.info, op.typ.sons[0])
+  result = newNodeIT(nkCall, x.info, op.typ[0])
   result.add(newSymNode(op))
   result.add x
 
 proc destructorCall(g: ModuleGraph; op: PSym; x: PNode): PNode =
-  result = newNodeIT(nkCall, x.info, op.typ.sons[0])
+  result = newNodeIT(nkCall, x.info, op.typ[0])
   result.add(newSymNode(op))
   result.add genAddr(g, x)
 
@@ -246,10 +245,10 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
 
 proc addVar(father, v, value: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
-  vpart.sons[0] = v
-  vpart.sons[1] = newNodeI(nkEmpty, v.info)
-  vpart.sons[2] = value
-  addSon(father, vpart)
+  vpart[0] = v
+  vpart[1] = newNodeI(nkEmpty, v.info)
+  vpart[2] = value
+  father.add vpart
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.fn, c.info)
@@ -271,8 +270,8 @@ proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
   let cmp = genBuiltin(c.g, mLtI, "<", i)
   cmp.add genLen(c.g, dest)
   cmp.typ = getSysType(c.g, c.info, tyBool)
-  result.sons[0] = cmp
-  result.sons[1] = newNodeI(nkStmtList, c.info)
+  result[0] = cmp
+  result[1] = newNodeI(nkStmtList, c.info)
 
 proc genIf(c: var TLiftCtx; cond, action: PNode): PNode =
   result = newTree(nkIfStmt, newTree(nkElifBranch, cond, action))
@@ -306,9 +305,9 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let i = declareCounter(c, body, toInt64(firstOrd(c.g.config, t)))
   let whileLoop = genWhileLoop(c, i, x)
   let elemType = t.lastSon
-  fillBody(c, elemType, whileLoop.sons[1], x.at(i, elemType),
+  fillBody(c, elemType, whileLoop[1], x.at(i, elemType),
                                            y.at(i, elemType))
-  addIncStmt(c, whileLoop.sons[1], i)
+  addIncStmt(c, whileLoop[1], i)
   body.add whileLoop
 
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -481,8 +480,8 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # have to go through some indirection; we delegate this to the codegen:
     let call = newNodeI(nkCall, c.info, 2)
     call.typ = t
-    call.sons[0] = newSymNode(createMagic(c.g, "deepCopy", mDeepCopy))
-    call.sons[1] = y
+    call[0] = newSymNode(createMagic(c.g, "deepCopy", mDeepCopy))
+    call[1] = y
     body.add newAsgnStmt(x, call)
   elif (optOwnedRefs in c.g.config.globalOptions and
       optRefCheck in c.g.config.options) or c.g.config.selectedGC == gcDestructors:
@@ -587,7 +586,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
-      fillBody(c, t.sons[0], body, x, y)
+      fillBody(c, t[0], body, x, y)
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
@@ -659,10 +658,10 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     fillBody(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
-  for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
-  n.sons[namePos] = newSymNode(result)
-  n.sons[paramsPos] = result.typ.n
-  n.sons[bodyPos] = body
+  for i in 0 ..< n.len: n[i] = newNodeI(nkEmpty, info)
+  n[namePos] = newSymNode(result)
+  n[paramsPos] = result.typ.n
+  n[bodyPos] = body
   result.ast = n
   incl result.flags, sfFromGeneric
   incl result.flags, sfGeneratedOp
@@ -682,7 +681,7 @@ proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo) =
           internalError(g.config, info, "resolved destructor is generic")
         if t.destructor.magic == mDestroy:
           internalError(g.config, info, "patching mDestroy with mDestroy?")
-        n.sons[0] = newSymNode(t.destructor)
+        n[0] = newSymNode(t.destructor)
   for x in n: patchBody(g, c, x, info)
 
 template inst(field, t) =

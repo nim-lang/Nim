@@ -12,14 +12,14 @@
 proc hlo(c: PContext, n: PNode): PNode
 
 proc evalPattern(c: PContext, n, orig: PNode): PNode =
-  internalAssert c.config, n.kind == nkCall and n.sons[0].kind == nkSym
+  internalAssert c.config, n.kind == nkCall and n[0].kind == nkSym
   # we need to ensure that the resulting AST is semchecked. However, it's
   # awful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
   var rule: string
   if optHints in c.config.options and hintPattern in c.config.notes:
     rule = renderTree(n, {renderNoComments})
-  let s = n.sons[0].sym
+  let s = n[0].sym
   case s.kind
   of skMacro:
     result = semMacroExpr(c, n, orig, s)
@@ -50,7 +50,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
         c.patterns[i] = nil
         if x.kind == nkStmtList:
           assert x.len == 3
-          x.sons[1] = evalPattern(c, x.sons[1], result)
+          x[1] = evalPattern(c, x[1], result)
           result = flattenStmts(x)
         else:
           result = evalPattern(c, x, result)
@@ -68,17 +68,17 @@ proc hlo(c: PContext, n: PNode): PNode =
     result = n
   else:
     if n.kind in {nkFastAsgn, nkAsgn, nkIdentDefs, nkVarTuple} and
-        n.sons[0].kind == nkSym and
-        {sfGlobal, sfPure} * n.sons[0].sym.flags == {sfGlobal, sfPure}:
+        n[0].kind == nkSym and
+        {sfGlobal, sfPure} * n[0].sym.flags == {sfGlobal, sfPure}:
       # do not optimize 'var g {.global} = re(...)' again!
       return n
     result = applyPatterns(c, n)
     if result == n:
       # no optimization applied, try subtrees:
       for i in 0 ..< safeLen(result):
-        let a = result.sons[i]
+        let a = result[i]
         let h = hlo(c, a)
-        if h != a: result.sons[i] = h
+        if h != a: result[i] = h
     else:
       # perform type checking, so that the replacement still fits:
       if isEmptyType(n.typ) and isEmptyType(result.typ):

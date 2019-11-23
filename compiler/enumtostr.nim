@@ -13,7 +13,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   result.typ = newType(tyProc, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
-  addSon(result.typ.n, newNodeI(nkEffectList, info))
+  result.typ.n.add newNodeI(nkEffectList, info)
 
   result.typ.addParam dest
 
@@ -33,11 +33,11 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   body.add(caseStmt)
 
   var n = newNodeI(nkProcDef, info, bodyPos+2)
-  for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
-  n.sons[namePos] = newSymNode(result)
-  n.sons[paramsPos] = result.typ.n
-  n.sons[bodyPos] = body
-  n.sons[resultPos] = newSymNode(res)
+  for i in 0 ..< n.len: n[i] = newNodeI(nkEmpty, info)
+  n[namePos] = newSymNode(result)
+  n[paramsPos] = result.typ.n
+  n[bodyPos] = body
+  n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flags, sfFromGeneric
 
@@ -67,7 +67,7 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   result.typ = newType(tyProc, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
-  addSon(result.typ.n, newNodeI(nkEffectList, info))
+  result.typ.n.add newNodeI(nkEffectList, info)
 
   result.typ.addParam dest
 
@@ -89,10 +89,10 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   body.add(caseStmt)
 
   var n = newNodeI(nkProcDef, info, bodyPos+2)
-  for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
-  n.sons[namePos] = newSymNode(result)
-  n.sons[paramsPos] = result.typ.n
-  n.sons[bodyPos] = body
-  n.sons[resultPos] = newSymNode(res)
+  for i in 0 ..< n.len: n[i] = newNodeI(nkEmpty, info)
+  n[namePos] = newSymNode(result)
+  n[paramsPos] = result.typ.n
+  n[bodyPos] = body
+  n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flags, sfFromGeneric

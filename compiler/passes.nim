@@ -104,7 +104,7 @@ proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNod
       var importStmt = newNodeI(nodeKind, m.info)
       var str = newStrNode(nkStrLit, module)
       str.info = m.info
-      importStmt.addSon str
+      importStmt.add str
       if not processTopLevelStmt(graph, importStmt, a): break
 
 const

@@ -19,15 +19,15 @@ proc getField(n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
     for i in 0 ..< len(n):
-      result = getField(n.sons[i], position)
+      result = getField(n[i], position)
       if result != nil: return
   of nkRecCase:
-    result = getField(n.sons[0], position)
+    result = getField(n[0], position)
     if result != nil: return
     for i in 1 ..< len(n):
-      case n.sons[i].kind
+      case n[i].kind
       of nkOfBranch, nkElse:
-        result = getField(lastSon(n.sons[i]), position)
+        result = getField(lastSon(n[i]), position)
         if result != nil: return
       else: discard
   of nkSym:
@@ -41,13 +41,13 @@ proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet; conf: Con
   let start = 1
   for i in start ..< len(x):
     if i > start: s.add(", ")
-    var it = x.sons[i]
+    var it = x[i]
     if it.kind == nkExprColonExpr:
-      if it.sons[0].kind == nkSym:
-        let field = it.sons[0].sym
+      if it[0].kind == nkSym:
+        let field = it[0].sym
         s.add(escapeJson(field.name.s))
         s.add(": ")
-        storeAny(s, field.typ, it.sons[1], stored, conf)
+        storeAny(s, field.typ, it[1], stored, conf)
     elif typ.n != nil:
       let field = getField(typ.n, i)
       s.add(escapeJson(field.name.s))
@@ -57,7 +57,7 @@ proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet; conf: Con
 proc skipColon*(n: PNode): PNode =
   result = n
   if n.kind == nkExprColonExpr:
-    result = n.sons[1]
+    result = n[1]
 
 proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
               conf: ConfigRef) =
@@ -84,7 +84,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       if i > 0: s.add(", ")
       s.add("\"Field" & $i)
       s.add("\": ")
-      storeAny(s, t.sons[i], a[i].skipColon, stored, conf)
+      storeAny(s, t[i], a[i].skipColon, stored, conf)
     s.add("}")
   of tyObject:
     s.add("{")
@@ -203,7 +203,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       if i >= t.len:
         raiseParseErr(p, "too many fields to tuple type " & typeToString(t))
-      result.add loadAny(p, t.sons[i], tab, cache, conf)
+      result.add loadAny(p, t[i], tab, cache, conf)
       inc i
     if p.kind == jsonObjectEnd: next(p)
     else: raiseParseErr(p, "'}' end of object expected")
@@ -221,12 +221,12 @@ proc loadAny(p: var JsonParser, t: PType,
         raiseParseErr(p, "unknown field for object of type " & typeToString(t))
       next(p)
       let pos = field.position + 1
-      if pos >= result.sons.len:
+      if pos >= result.len:
         setLen(result.sons, pos + 1)
       let fieldNode = newNode(nkExprColonExpr)
-      fieldNode.addSon(newSymNode(newSym(skField, ident, nil, unknownLineInfo())))
-      fieldNode.addSon(loadAny(p, field.typ, tab, cache, conf))
-      result.sons[pos] = fieldNode
+      fieldNode.add newSymNode(newSym(skField, ident, nil, unknownLineInfo()))
+      fieldNode.add loadAny(p, field.typ, tab, cache, conf)
+      result[pos] = fieldNode
     if p.kind == jsonObjectEnd: next(p)
     else: raiseParseErr(p, "'}' end of object expected")
   of tySet:

@@ -19,7 +19,7 @@ proc renderPlainSymbolName*(n: PNode): string =
   ## for the HTML hyperlinks.
   case n.kind
   of nkPostfix, nkAccQuoted:
-    result = renderPlainSymbolName(n[n.len-1])
+    result = renderPlainSymbolName(n[^1])
   of nkIdent:
     result = n.ident.s
   of nkSym:
@@ -58,7 +58,7 @@ proc renderType(n: PNode): string =
       assert len(params) > 0
       result = "proc("
       for i in 1 ..< len(params): result.add(renderType(params[i]) & ',')
-      result[len(result)-1] = ')'
+      result[^1] = ')'
     else:
       result = "proc"
   of nkIdentDefs:
@@ -72,12 +72,12 @@ proc renderType(n: PNode): string =
   of nkTupleTy:
     result = "tuple["
     for i in 0 ..< len(n): result.add(renderType(n[i]) & ',')
-    result[len(result)-1] = ']'
+    result[^1] = ']'
   of nkBracketExpr:
     assert len(n) >= 2
     result = renderType(n[0]) & '['
     for i in 1 ..< len(n): result.add(renderType(n[i]) & ',')
-    result[len(result)-1] = ']'
+    result[^1] = ']'
   else: result = ""
 
 

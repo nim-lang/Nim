@@ -60,16 +60,16 @@ proc sameTrees*(a, b: PNode): bool =
     else:
       if len(a) == len(b):
         for i in 0 ..< len(a):
-          if not sameTrees(a.sons[i], b.sons[i]): return
+          if not sameTrees(a[i], b[i]): return
         result = true
 
 proc inSymChoice(sc, x: PNode): bool =
   if sc.kind == nkClosedSymChoice:
     for i in 0..<sc.len:
-      if sc.sons[i].sym == x.sym: return true
+      if sc[i].sym == x.sym: return true
   elif sc.kind == nkOpenSymChoice:
     # same name suffices for open sym choices!
-    result = sc.sons[0].sym.name.id == x.sym.name.id
+    result = sc[0].sym.name.id == x.sym.name.id
 
 proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   # check param constraints first here as this is quite optimized:
@@ -86,7 +86,7 @@ proc isPatternParam(c: PPatternContext, p: PNode): bool {.inline.} =
 
 proc matchChoice(c: PPatternContext, p, n: PNode): bool =
   for i in 1 ..< p.len:
-    if matches(c, p.sons[i], n): return true
+    if matches(c, p[i], n): return true
 
 proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
   var pp = getLazy(c, param)
@@ -103,7 +103,7 @@ proc gather(c: PPatternContext, param: PSym, n: PNode) =
     pp.add(n)
   else:
     pp = newNodeI(nkArgList, n.info, 1)
-    pp.sons[0] = n
+    pp[0] = n
     putLazy(c, param, pp)
 
 proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
@@ -111,24 +111,24 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
   proc matchStarAux(c: PPatternContext, op, n, arglist: PNode,
                     rpn: bool): bool =
     result = true
-    if n.kind in nkCallKinds and matches(c, op.sons[1], n.sons[0]):
+    if n.kind in nkCallKinds and matches(c, op[1], n[0]):
       for i in 1..len(n)-1:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
-      if rpn: arglist.add(n.sons[0])
-    elif n.kind == nkHiddenStdConv and n.sons[1].kind == nkBracket:
-      let n = n.sons[1]
+      if rpn: arglist.add(n[0])
+    elif n.kind == nkHiddenStdConv and n[1].kind == nkBracket:
+      let n = n[1]
       for i in 0..<n.len:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
-    elif checkTypes(c, p.sons[2].sym, n):
+    elif checkTypes(c, p[2].sym, n):
       add(arglist, n)
     else:
       result = false
 
   if n.kind notin nkCallKinds: return false
-  if matches(c, p.sons[1], n.sons[0]):
+  if matches(c, p[1], n[0]):
     var arglist = newNodeI(nkArgList, n.info)
     if matchStarAux(c, p, n, arglist, rpn):
-      result = bindOrCheck(c, p.sons[2].sym, arglist)
+      result = bindOrCheck(c, p[2].sym, arglist)
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
   let n = skipHidden(n)
@@ -146,24 +146,24 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     elif matches(c, p, n.sym.ast): result = true
   elif p.kind == nkPattern:
     # pattern operators: | *
-    let opr = p.sons[0].ident.s
+    let opr = p[0].ident.s
     case opr
     of "|": result = matchChoice(c, p, n)
     of "*": result = matchNested(c, p, n, rpn=false)
     of "**": result = matchNested(c, p, n, rpn=true)
-    of "~": result = not matches(c, p.sons[1], n)
+    of "~": result = not matches(c, p[1], n)
     else: doAssert(false, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) =
     #   add(a, b)
   elif p.kind == nkCurlyExpr:
-    if p.sons[1].kind == nkPrefix:
-      if matches(c, p.sons[0], n):
-        gather(c, p.sons[1].sons[1].sym, n)
+    if p[1].kind == nkPrefix:
+      if matches(c, p[0], n):
+        gather(c, p[1][1].sym, n)
         result = true
     else:
-      assert isPatternParam(c, p.sons[1])
-      if matches(c, p.sons[0], n):
-        result = bindOrCheck(c, p.sons[1].sym, n)
+      assert isPatternParam(c, p[1])
+      if matches(c, p[0], n):
+        result = bindOrCheck(c, p[1].sym, n)
   elif sameKinds(p, n):
     case p.kind
     of nkSym: result = p.sym == n.sym
@@ -182,34 +182,34 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
         var arglist: PNode
         if plen <= len(n):
           for i in 0 .. plen - 2:
-            if not matches(c, p.sons[i], n.sons[i]): return
+            if not matches(c, p[i], n[i]): return
           if plen == len(n) and lastSon(n).kind == nkHiddenStdConv and
-              lastSon(n).sons[1].kind == nkBracket:
+              lastSon(n)[1].kind == nkBracket:
             # unpack varargs:
-            let n = lastSon(n).sons[1]
+            let n = lastSon(n)[1]
             arglist = newNodeI(nkArgList, n.info, n.len)
-            for i in 0..<n.len: arglist.sons[i] = n.sons[i]
+            for i in 0..<n.len: arglist[i] = n[i]
           else:
             arglist = newNodeI(nkArgList, n.info, len(n) - plen + 1)
             # f(1, 2, 3)
             # p(X)
             for i in 0 .. len(n) - plen:
-              arglist.sons[i] = n.sons[i + plen - 1]
+              arglist[i] = n[i + plen - 1]
           return bindOrCheck(c, v.sym, arglist)
         elif plen-1 == len(n):
           for i in 0 .. plen - 2:
-            if not matches(c, p.sons[i], n.sons[i]): return
+            if not matches(c, p[i], n[i]): return
           arglist = newNodeI(nkArgList, n.info)
           return bindOrCheck(c, v.sym, arglist)
       if plen == len(n):
         for i in 0 ..< len(p):
-          if not matches(c, p.sons[i], n.sons[i]): return
+          if not matches(c, p[i], n[i]): return
         result = true
 
 proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
   proc matchRange(c: PPatternContext, p, n: PNode, i: int): bool =
     for j in 0 ..< p.len:
-      if not matches(c, p.sons[j], n.sons[i+j]):
+      if not matches(c, p[j], n[i+j]):
         # we need to undo any bindings:
         when defined(nimNoNilSeqs):
           c.mapping = @[]
@@ -226,9 +226,9 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
       if matchRange(c, p, n, i):
         c.subMatch = true
         result = newNodeI(nkStmtList, n.info, 3)
-        result.sons[0] = extractRange(nkStmtList, n, 0, i-1)
-        result.sons[1] = extractRange(nkStmtList, n, i, i+p.len-1)
-        result.sons[2] = extractRange(nkStmtList, n, i+p.len, n.len-1)
+        result[0] = extractRange(nkStmtList, n, 0, i-1)
+        result[1] = extractRange(nkStmtList, n, i, i+p.len-1)
+        result[2] = extractRange(nkStmtList, n, i+p.len, n.len-1)
         break
   elif matches(c, p, n):
     result = n
@@ -236,14 +236,14 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
 proc aliasAnalysisRequested(params: PNode): bool =
   if params.len >= 2:
     for i in 1 ..< params.len:
-      let param = params.sons[i].sym
+      let param = params[i].sym
       if whichAlias(param) != aqNone: return true
 
 proc addToArgList(result, n: PNode) =
   if n.typ != nil and n.typ.kind != tyTyped:
     if n.kind != nkArgList: result.add(n)
     else:
-      for i in 0 ..< n.len: result.add(n.sons[i])
+      for i in 0 ..< n.len: result.add(n[i])
 
 proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ## returns a tree to semcheck if the rule triggered; nil otherwise
@@ -251,7 +251,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ctx.owner = s
   ctx.c = c
   ctx.formals = len(s.typ)-1
-  var m = matchStmtList(ctx, s.ast.sons[patternPos], n)
+  var m = matchStmtList(ctx, s.ast[patternPos], n)
   if isNil(m): return nil
   # each parameter should have been bound; we simply setup a call and
   # let semantic checking deal with the rest :-)
@@ -263,7 +263,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   if requiresAA:
     args = newNodeI(nkArgList, n.info)
   for i in 1 ..< params.len:
-    let param = params.sons[i].sym
+    let param = params[i].sym
     let x = getLazy(ctx, param)
     # couldn't bind parameter:
     if isNil(x): return nil
@@ -272,8 +272,8 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   # perform alias analysis here:
   if requiresAA:
     for i in 1 ..< params.len:
-      var rs = result.sons[i]
-      let param = params.sons[i].sym
+      var rs = result[i]
+      let param = params[i].sym
       case whichAlias(param)
       of aqNone: discard
       of aqShouldAlias:
@@ -298,5 +298,5 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   markUsed(c, n.info, s)
   if ctx.subMatch:
     assert m.len == 3
-    m.sons[1] = result
+    m[1] = result
     result = m

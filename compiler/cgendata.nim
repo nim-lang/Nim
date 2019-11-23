@@ -172,7 +172,7 @@ proc includeHeader*(this: BModule; header: string) =
 
 proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # section in the current block
-  result = p.blocks[p.blocks.len-1].sections[s]
+  result = p.blocks[^1].sections[s]
 
 proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections

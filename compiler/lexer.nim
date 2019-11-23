@@ -947,15 +947,14 @@ proc getPrecedence*(tok: TToken, strongSpaces: bool): int =
 
   case tok.tokType
   of tkOpr:
-    let L = tok.ident.s.len
     let relevantChar = tok.ident.s[0]
 
     # arrow like?
-    if L > 1 and tok.ident.s[L-1] == '>' and
-      tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
+    if tok.ident.s.len > 1 and tok.ident.s[^1] == '>' and
+      tok.ident.s[^2] in {'-', '~', '='}: return considerStrongSpaces(1)
 
     template considerAsgn(value: untyped) =
-      result = if tok.ident.s[L-1] == '=': 1 else: value
+      result = if tok.ident.s[^1] == '=': 1 else: value
 
     case relevantChar
     of '$', '^': considerAsgn(10)

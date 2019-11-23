@@ -543,7 +543,7 @@ proc shortenDir*(conf: ConfigRef; dir: string): string {.
   result = dir
 
 proc removeTrailingDirSep*(path: string): string =
-  if (len(path) > 0) and (path[len(path) - 1] == DirSep):
+  if (len(path) > 0) and (path[^1] == DirSep):
     result = substr(path, 0, len(path) - 2)
   else:
     result = path

@@ -91,7 +91,7 @@ template wrapDangerous(op, modop) {.dirty.} =
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
-               else: a.currentException.sons[3].skipColon.strVal)
+               else: a.currentException[3].skipColon.strVal)
 
 proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, a.currentException)

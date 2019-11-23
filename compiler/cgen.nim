@@ -343,9 +343,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     if not takeAddr: r = "(*$1)" % [r]
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s.sons[0] != nil:
+      while s.kind == tyObject and s[0] != nil:
         add(r, ".Sup")
-        s = skipTypes(s.sons[0], skipPtrs)
+        s = skipTypes(s[0], skipPtrs)
     linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t, a.lode.info)])
   of frEmbedded:
     if optTinyRtti in p.config.globalOptions:
@@ -360,9 +360,9 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     if not takeAddr: r = "(*$1)" % [r]
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
-      while s.kind == tyObject and s.sons[0] != nil and s.sym.magic != mException:
+      while s.kind == tyObject and s[0] != nil and s.sym.magic != mException:
         add(r, ".Sup")
-        s = skipTypes(s.sons[0], skipPtrs)
+        s = skipTypes(s[0], skipPtrs)
     linefmt(p, section, "$1.name = $2;$n", [r, makeCString(t.skipTypes(abstractInst).sym.name.s)])
 
 type
@@ -714,7 +714,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
     let load = "\t$1 = ($2) ($3$4));$n" %
         [tmp, getTypeDesc(m, sym.typ), params, makeCString($extname)]
     var last = lastSon(n)
-    if last.kind == nkHiddenStdConv: last = last.sons[1]
+    if last.kind == nkHiddenStdConv: last = last[1]
     internalAssert(m.config, last.kind == nkStrLit)
     let idx = last.strVal
     if idx.len == 0:
@@ -963,12 +963,12 @@ proc genProcAux(m: BModule, prc: PSym) =
   if sfInjectDestructors in prc.flags:
     procBody = injectDestructorCalls(m.g.graph, prc, procBody)
 
-  if sfPure notin prc.flags and prc.typ.sons[0] != nil:
+  if sfPure notin prc.flags and prc.typ[0] != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
-    let resNode = prc.ast.sons[resultPos]
+    let resNode = prc.ast[resultPos]
     let res = resNode.sym # get result symbol
-    if not isInvalidReturnType(m.config, prc.typ.sons[0]):
+    if not isInvalidReturnType(m.config, prc.typ[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
@@ -999,7 +999,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         res.loc.storage = OnUnknown
 
   for i in 1 ..< len(prc.typ.n):
-    let param = prc.typ.n.sons[i].sym
+    let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)

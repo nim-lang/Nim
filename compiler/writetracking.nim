@@ -58,32 +58,32 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
       result.add(cast[ptr TSym](n.sym))
   of nkHiddenDeref, nkDerefExpr:
     incl(info, rootIsHeapAccess)
-    allRoots(n.sons[0], result, info)
+    allRoots(n[0], result, info)
   of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr,
       nkHiddenAddr, nkObjUpConv, nkObjDownConv:
-    allRoots(n.sons[0], result, info)
+    allRoots(n[0], result, info)
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkConv,
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
     allRoots(n.lastSon, result, info)
   of nkCallKinds:
     if getMagic(n) == mSlice:
-      allRoots(n.sons[1], result, info)
+      allRoots(n[1], result, info)
     else:
       # we do significantly better here by using the available escape
       # information:
-      if n.sons[0].typ.isNil: return
-      var typ = n.sons[0].typ
+      if n[0].typ.isNil: return
+      var typ = n[0].typ
       if typ != nil:
         typ = skipTypes(typ, abstractInst)
         if typ.kind != tyProc: typ = nil
         else: assert(len(typ) == len(typ.n))
 
       for i in 1 ..< n.len:
-        let it = n.sons[i]
+        let it = n[i]
         if typ != nil and i < len(typ):
-          assert(typ.n.sons[i].kind == nkSym)
-          let paramType = typ.n.sons[i]
+          assert(typ.n[i].kind == nkSym)
+          let paramType = typ.n[i]
           if paramType.typ.isCompileTimeOnly: continue
           if sfEscapes in paramType.sym.flags or paramType.typ.kind == tyVar:
             allRoots(it, result, info)
@@ -91,7 +91,7 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
           allRoots(it, result, info)
   else:
     for i in 0..<n.safeLen:
-      allRoots(n.sons[i], result, info)
+      allRoots(n[i], result, info)
 
 proc addAsgn(a: var Assignment; dest, src: PNode; destInfo: set[RootInfo]) =
   a.dest = @[]
@@ -124,13 +124,13 @@ proc returnsNewExpr*(n: PNode): NewLocation =
       nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt, nkHiddenTryStmt:
     result = newLit
     for i in ord(n.kind == nkObjConstr) ..< n.len:
-      let x = returnsNewExpr(n.sons[i])
+      let x = returnsNewExpr(n[i])
       case x
       of newNone: return newNone
       of newLit: discard
       of newCall: result = newCall
   of nkCallKinds:
-    if n.sons[0].typ != nil and tfReturnsNew in n.sons[0].typ.flags:
+    if n[0].typ != nil and tfReturnsNew in n[0].typ.flags:
       result = newCall
   else:
     result = newNone
@@ -153,16 +153,16 @@ proc deps(w: var W; dest, src: PNode; destInfo: set[RootInfo]) =
     addAsgn(w.assignments[L], dest, src, destInfo)
 
 proc depsArgs(w: var W; n: PNode) =
-  if n.sons[0].typ.isNil: return
-  var typ = skipTypes(n.sons[0].typ, abstractInst)
+  if n[0].typ.isNil: return
+  var typ = skipTypes(n[0].typ, abstractInst)
   if typ.kind != tyProc: return
   # echo n.info, " ", n, " ", w.owner.name.s, " ", typeToString(typ)
   assert(len(typ) == len(typ.n))
   for i in 1 ..< n.len:
-    let it = n.sons[i]
+    let it = n[i]
     if i < len(typ):
-      assert(typ.n.sons[i].kind == nkSym)
-      let paramType = typ.n.sons[i]
+      assert(typ.n[i].kind == nkSym)
+      let paramType = typ.n[i]
       if paramType.typ.isCompileTimeOnly: continue
       var destInfo: set[RootInfo] = {}
       if sfWrittenTo in paramType.sym.flags or paramType.typ.kind == tyVar:
@@ -182,19 +182,19 @@ proc deps(w: var W; n: PNode) =
       if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
         if child.len-2 != last.len: return
         for i in 0 .. child.len-3:
-          deps(w, child.sons[i], last.sons[i], {})
+          deps(w, child[i], last[i], {})
       else:
         for i in 0 .. child.len-3:
-          deps(w, child.sons[i], last, {})
+          deps(w, child[i], last, {})
   of nkAsgn, nkFastAsgn:
-    deps(w, n.sons[0], n.sons[1], {})
+    deps(w, n[0], n[1], {})
   else:
     for i in 0 ..< n.safeLen:
-      deps(w, n.sons[i])
+      deps(w, n[i])
     if n.kind in nkCallKinds:
       if getMagic(n) in {mNew, mNewFinalize, mNewSeq}:
         # may not look like an assignment, but it is:
-        deps(w, n.sons[1], newNodeIT(nkObjConstr, n.info, n.sons[1].typ), {})
+        deps(w, n[1], newNodeIT(nkObjConstr, n.info, n[1].typ), {})
       else:
         depsArgs(w, n)
 
@@ -271,6 +271,6 @@ proc trackWrites*(owner: PSym; body: PNode; conf: ConfigRef) =
   deps(w, body)
   # Phase 2: Compute the 'writes' and 'escapes' effects:
   markWriteOrEscape(w, conf)
-  if w.returnsNew != asgnOther and not isEmptyType(owner.typ.sons[0]) and
-      containsGarbageCollectedRef(owner.typ.sons[0]):
+  if w.returnsNew != asgnOther and not isEmptyType(owner.typ[0]) and
+      containsGarbageCollectedRef(owner.typ[0]):
     incl(owner.typ.flags, tfReturnsNew)

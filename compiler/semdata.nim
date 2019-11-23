@@ -203,7 +203,7 @@ proc considerGenSyms*(c: PContext; n: PNode) =
       n.sym = s
   else:
     for i in 0..<n.safeLen:
-      considerGenSyms(c, n.sons[i])
+      considerGenSyms(c, n[i])
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
@@ -250,11 +250,9 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.features = graph.config.features
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
-  var L = len(sq)
-  for i in 0 ..< L:
+  for i in 0 ..< sq.len:
     if sq[i].id == s.id: return
-  setLen(sq, L + 1)
-  sq[L] = s
+  sq.add s
 
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
@@ -407,8 +405,8 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =
   let intType = if intType != nil: intType else: getSysType(c.graph, info, tyInt)
   var n = newNodeI(nkRange, info)
-  addSon(n, newIntTypeNode(first, intType))
-  addSon(n, newIntTypeNode(last, intType))
+  n.add newIntTypeNode(first, intType)
+  n.add newIntTypeNode(last, intType)
   result = newTypeS(tyRange, c)
   result.n = n
   addSonSkipIntLit(result, intType) # basetype of range

@@ -32,7 +32,7 @@ proc hashTree(n: PNode): Hash =
     result = result !& hash(n.strVal)
   else:
     for i in 0 ..< len(n):
-      result = result !& hashTree(n.sons[i])
+      result = result !& hashTree(n[i])
 
 proc treesEquivalent(a, b: PNode): bool =
   if a == b:
@@ -48,7 +48,7 @@ proc treesEquivalent(a, b: PNode): bool =
     else:
       if len(a) == len(b):
         for i in 0 ..< len(a):
-          if not treesEquivalent(a.sons[i], b.sons[i]): return
+          if not treesEquivalent(a[i], b[i]): return
         result = true
     if result: result = sameTypeOrNil(a.typ, b.typ)
 

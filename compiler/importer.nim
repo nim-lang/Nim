@@ -48,7 +48,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
       for j in 0 ..< len(etyp.n):
-        var e = etyp.n.sons[j].sym
+        var e = etyp.n[j].sym
         if e.kind != skEnumField:
           internalError(c.config, s.info, "rawImportSymbol")
           # BUGFIX: because of aliases for enums the symbol may already
@@ -126,17 +126,17 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym) =
     localError(c.config, n.info, "'export except' not implemented")
   else:
     for i in 0..safeLen(n)-1:
-      importForwarded(c, n.sons[i], exceptSet, fromMod)
+      importForwarded(c, n[i], exceptSet, fromMod)
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
   result = realModule
   c.unusedImports.add((realModule, n.info))
   if n.kind != nkImportAs: discard
-  elif n.len != 2 or n.sons[1].kind != nkIdent:
+  elif n.len != 2 or n[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")
-  elif n.sons[1].ident.id != realModule.name.id:
+  elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, n.sons[1].ident, realModule.info,
+    result = createModuleAlias(realModule, n[1].ident, realModule.info,
                                c.config.options)
 
 proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
@@ -178,8 +178,8 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
 proc transformImportAs(c: PContext; n: PNode): PNode =
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     result = newNodeI(nkImportAs, n.info)
-    result.add n.sons[1]
-    result.add n.sons[2]
+    result.add n[1]
+    result.add n[2]
   else:
     result = n
 
@@ -196,7 +196,7 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   for i in 0 ..< len(n):
-    let it = n.sons[i]
+    let it = n[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
       let sep = it[0]
       let dir = it[1]
@@ -206,13 +206,13 @@ proc evalImport*(c: PContext, n: PNode): PNode =
       imp.add sep # dummy entry, replaced in the loop
       for x in it[2]:
         # transform `a/b/[c as d]` to `/a/b/c as d`
-        if x.kind == nkInfix and x.sons[0].ident.s == "as":
+        if x.kind == nkInfix and x[0].ident.s == "as":
           let impAs = copyTree(x)
-          imp.sons[2] = x.sons[1]
-          impAs.sons[1] = imp
+          imp[2] = x[1]
+          impAs[1] = imp
           impMod(c, imp, result)
         else:
-          imp.sons[2] = x
+          imp[2] = x
           impMod(c, imp, result)
     else:
       impMod(c, it, result)
@@ -220,22 +220,22 @@ proc evalImport*(c: PContext, n: PNode): PNode =
 proc evalFrom*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n.sons[0] = transformImportAs(c, n.sons[0])
-  var m = myImportModule(c, n.sons[0], result)
+  n[0] = transformImportAs(c, n[0])
+  var m = myImportModule(c, n[0], result)
   if m != nil:
-    n.sons[0] = newSymNode(m)
+    n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
     for i in 1 ..< len(n):
-      if n.sons[i].kind != nkNilLit:
-        importSymbol(c, n.sons[i], m)
+      if n[i].kind != nkNilLit:
+        importSymbol(c, n[i], m)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n.sons[0] = transformImportAs(c, n.sons[0])
-  var m = myImportModule(c, n.sons[0], result)
+  n[0] = transformImportAs(c, n[0])
+  var m = myImportModule(c, n[0], result)
   if m != nil:
-    n.sons[0] = newSymNode(m)
+    n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
     importAllSymbolsExcept(c, m, readExceptSet(c, n))
     #importForwarded(c, m.ast, exceptSet, m)

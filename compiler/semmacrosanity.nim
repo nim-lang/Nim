@@ -17,16 +17,16 @@ proc ithField(n: PNode, field: var int): PSym =
   case n.kind
   of nkRecList:
     for i in 0 ..< len(n):
-      result = ithField(n.sons[i], field)
+      result = ithField(n[i], field)
       if result != nil: return
   of nkRecCase:
-    if n.sons[0].kind != nkSym: return
-    result = ithField(n.sons[0], field)
+    if n[0].kind != nkSym: return
+    result = ithField(n[0], field)
     if result != nil: return
     for i in 1 ..< len(n):
-      case n.sons[i].kind
+      case n[i].kind
       of nkOfBranch, nkElse:
-        result = ithField(lastSon(n.sons[i]), field)
+        result = ithField(lastSon(n[i]), field)
         if result != nil: return
       else: discard
   of nkSym:
@@ -35,12 +35,12 @@ proc ithField(n: PNode, field: var int): PSym =
   else: discard
 
 proc ithField(t: PType, field: var int): PSym =
-  var base = t.sons[0]
+  var base = t[0]
   while base != nil:
     let b = skipTypes(base, skipPtrs)
     result = ithField(b.n, field)
     if result != nil: return result
-    base = b.sons[0]
+    base = b[0]
   result = ithField(t.n, field)
 
 proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
@@ -57,14 +57,14 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
       if field.isNil:
         globalError conf, n.info, "invalid field at index " & $i
       else:
-        internalAssert(conf, n.sons[i].kind == nkExprColonExpr)
-        annotateType(n.sons[i].sons[1], field.typ, conf)
+        internalAssert(conf, n[i].kind == nkExprColonExpr)
+        annotateType(n[i][1], field.typ, conf)
   of nkPar, nkTupleConstr:
     if x.kind == tyTuple:
       n.typ = t
       for i in 0 ..< n.len:
         if i >= x.len: globalError conf, n.info, "invalid field at index " & $i
-        else: annotateType(n.sons[i], x.sons[i], conf)
+        else: annotateType(n[i], x[i], conf)
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ = t
     else:

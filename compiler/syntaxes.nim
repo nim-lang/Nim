@@ -97,8 +97,8 @@ proc getParser(conf: ConfigRef; n: PNode; ident: PIdent): TParserKind =
   localError(conf, n.info, "unknown parser: " & ident.s)
 
 proc getCallee(conf: ConfigRef; n: PNode): PIdent =
-  if n.kind in nkCallKinds and n.sons[0].kind == nkIdent:
-    result = n.sons[0].ident
+  if n.kind in nkCallKinds and n[0].kind == nkIdent:
+    result = n[0].ident
   elif n.kind == nkIdent:
     result = n.ident
   else:
@@ -132,12 +132,12 @@ proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
   if n.kind == nkEmpty: return
   if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "|":
     for i in 1 .. 2:
-      if n.sons[i].kind == nkInfix:
-        result = evalPipe(p, n.sons[i], filename, result)
+      if n[i].kind == nkInfix:
+        result = evalPipe(p, n[i], filename, result)
       else:
-        result = applyFilter(p, n.sons[i], filename, result)
+        result = applyFilter(p, n[i], filename, result)
   elif n.kind == nkStmtList:
-    result = evalPipe(p, n.sons[0], filename, result)
+    result = evalPipe(p, n[0], filename, result)
   else:
     result = applyFilter(p, n, filename, result)
 

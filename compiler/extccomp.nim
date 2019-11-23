@@ -435,7 +435,7 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
-  if len(dest) == 0 or dest[len(dest)-1] != ' ': add(dest, " ")
+  if len(dest) == 0 or dest[^1] != ' ': add(dest, " ")
   add(dest, src)
 
 proc addLinkOption*(conf: ConfigRef; option: string) =

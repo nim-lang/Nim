@@ -79,10 +79,10 @@ proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
   ## returns object alignment
   case n.kind
   of nkRecCase:
-    assert(n.sons[0].kind == nkSym)
-    result = computeSubObjectAlign(conf, n.sons[0])
+    assert(n[0].kind == nkSym)
+    result = computeSubObjectAlign(conf, n[0])
     for i in 1 ..< len(n):
-      let child = n.sons[i]
+      let child = n[i]
       case child.kind
       of nkOfBranch, nkElse:
         let align = computeSubObjectAlign(conf, child.lastSon)
@@ -94,7 +94,7 @@ proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
   of nkRecList:
     result = 1
     for i, child in n.sons:
-      let align = computeSubObjectAlign(conf, n.sons[i])
+      let align = computeSubObjectAlign(conf, n[i])
       if align < 0:
         return align
       result = max(result, align)
@@ -120,16 +120,16 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
     raiseIllegalTypeRecursion()
   case n.kind
   of nkRecCase:
-    assert(n.sons[0].kind == nkSym)
-    computeObjectOffsetsFoldFunction(conf, n.sons[0], packed, accum)
+    assert(n[0].kind == nkSym)
+    computeObjectOffsetsFoldFunction(conf, n[0], packed, accum)
     var maxChildAlign: int = if accum.offset == szUnknownSize: szUnknownSize else: 1
     if not packed:
       for i in 1 ..< len(n):
-        let child = n.sons[i]
+        let child = n[i]
         case child.kind
         of nkOfBranch, nkElse:
           # offset parameter cannot be known yet, it needs to know the alignment first
-          let align = int(computeSubObjectAlign(conf, n.sons[i].lastSon))
+          let align = int(computeSubObjectAlign(conf, n[i].lastSon))
           maxChildAlign = alignmentMax(maxChildAlign, align)
         else:
           internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
@@ -143,7 +143,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
       let accumRoot = accum # copy, because each branch should start af the same offset
       for i in 1 ..< len(n):
         var branchAccum = accumRoot
-        computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, packed, branchAccum)
+        computeObjectOffsetsFoldFunction(conf, n[i].lastSon, packed, branchAccum)
         accum.mergeBranch(branchAccum)
   of nkRecList:
     for i, child in n.sons:
@@ -255,14 +255,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = conf.target.ptrSize
 
   of tyArray:
-    computeSizeAlign(conf, typ.sons[1])
-    let elemSize = typ.sons[1].size
+    computeSizeAlign(conf, typ[1])
+    let elemSize = typ[1].size
     if elemSize < 0:
       typ.size = elemSize
       typ.align = int16(elemSize)
     else:
-      typ.size = toInt64Checked(lengthOrd(conf, typ.sons[0]) * int32(elemSize), szTooBigSize)
-      typ.align = typ.sons[1].align
+      typ.size = toInt64Checked(lengthOrd(conf, typ[0]) * int32(elemSize), szTooBigSize)
+      typ.align = typ[1].align
 
   of tyUncheckedArray:
     let base = typ.lastSon
@@ -289,11 +289,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.size = 8
         typ.align = int16(conf.floatInt64Align)
   of tySet:
-    if typ.sons[0].kind == tyGenericParam:
+    if typ[0].kind == tyGenericParam:
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
     else:
-      let length = toInt64(lengthOrd(conf, typ.sons[0]))
+      let length = toInt64(lengthOrd(conf, typ[0]))
       if length <= 8:
         typ.size = 1
         typ.align = 1
@@ -313,16 +313,16 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.size = align(length, 8) div 8 + 1
         typ.align = int16(conf.floatInt64Align)
   of tyRange:
-    computeSizeAlign(conf, typ.sons[0])
-    typ.size = typ.sons[0].size
-    typ.align = typ.sons[0].align
-    typ.paddingAtEnd = typ.sons[0].paddingAtEnd
+    computeSizeAlign(conf, typ[0])
+    typ.size = typ[0].size
+    typ.align = typ[0].align
+    typ.paddingAtEnd = typ[0].paddingAtEnd
 
   of tyTuple:
     try:
       var accum = OffsetAccum(maxAlign: 1)
       for i in 0 ..< len(typ):
-        let child = typ.sons[i]
+        let child = typ[i]
         computeSizeAlign(conf, child)
         accum.align(child.align)
         if typ.n != nil: # is named tuple (has field symbols)?
@@ -340,11 +340,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   of tyObject:
     try:
       var accum =
-        if typ.sons[0] != nil:
+        if typ[0] != nil:
           # compute header size
-          var st = typ.sons[0]
+          var st = typ[0]
           while st.kind in skipPtrs:
-            st = st.sons[^1]
+            st = st[^1]
           computeSizeAlign(conf, st)
           if conf.cmd == cmdCompileToCpp:
             OffsetAccum(

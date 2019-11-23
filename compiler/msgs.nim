@@ -155,9 +155,8 @@ proc popInfoContext*(conf: ConfigRef) =
   setLen(conf.m.msgContext, len(conf.m.msgContext) - 1)
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
-  let L = conf.m.msgContext.len
-  let i = if index < 0: L + index else: index
-  if i >=% L: result = unknownLineInfo()
+  let i = if index < 0: conf.m.msgContext.len + index else: index
+  if i >=% conf.m.msgContext.len: result = unknownLineInfo()
   else: result = conf.m.msgContext[i].info
 
 const

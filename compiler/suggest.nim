@@ -49,12 +49,12 @@ proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
   if n.comment.len > 0: return n
   if n.kind in {nkStmtList, nkStmtListExpr, nkObjectTy, nkRecList} and n.len > 0:
-    result = findDocComment(n.sons[0])
+    result = findDocComment(n[0])
     if result != nil: return
     if n.len > 1:
-      result = findDocComment(n.sons[1])
+      result = findDocComment(n[1])
   elif n.kind in {nkAsgn, nkFastAsgn} and n.len == 2:
-    result = findDocComment(n.sons[1])
+    result = findDocComment(n[1])
 
 proc extractDocComment(s: PSym): string =
   var n = findDocComment(s.ast)
@@ -256,7 +256,7 @@ proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var 
 
 proc getQuality(s: PSym): range[0..100] =
   if s.typ != nil and s.typ.len > 1:
-    var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+    var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
     if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
   return 100
@@ -276,25 +276,24 @@ template wholeSymTab(cond, section: untyped) {.dirty.} =
 
 proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   for i in 0 ..< len(list):
-    if list.sons[i].kind == nkSym:
-      suggestField(c, list.sons[i].sym, f, info, outputs)
+    if list[i].kind == nkSym:
+      suggestField(c, list[i].sym, f, info, outputs)
     #else: InternalError(list.info, "getSymFromList")
 
 proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n): suggestObject(c, n.sons[i], f, info, outputs)
+    for i in 0 ..< len(n): suggestObject(c, n[i], f, info, outputs)
   of nkRecCase:
-    var L = len(n)
-    if L > 0:
-      suggestObject(c, n.sons[0], f, info, outputs)
-      for i in 1 ..< L: suggestObject(c, lastSon(n.sons[i]), f, info, outputs)
+    if n.len > 0:
+      suggestObject(c, n[0], f, info, outputs)
+      for i in 1 ..< n.len: suggestObject(c, lastSon(n[i]), f, info, outputs)
   of nkSym: suggestField(c, n.sym, f, info, outputs)
   else: discard
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool =
-  var op = if n.kind in nkCallKinds: n.sons[0] else: n
-  if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op.sons[0]
+  var op = if n.kind in nkCallKinds: n[0] else: n
+  if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op[0]
   var opr: PIdent
   case op.kind
   of nkSym: opr = op.sym.name
@@ -322,17 +321,17 @@ proc suggestVar(c: PContext, n: PNode, outputs: var Suggestions) =
   wholeSymTab(nameFits(c, it, n), ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
-  if s.typ != nil and len(s.typ) > 1 and s.typ.sons[1] != nil:
+  if s.typ != nil and len(s.typ) > 1 and s.typ[1] != nil:
     # special rule: if system and some weird generic match via 'tyUntyped'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion
     let m = s.getModule()
     if m != nil and sfSystemModule in m.flags:
       if s.kind == skType: return
-      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+      var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return
-    result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
+    result = sigmatch.argtypeMatches(c, s.typ[1], firstArg)
 
 proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Suggestions) =
   assert typ != nil
@@ -395,7 +394,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
     var t = typ
     while t != nil:
       suggestSymList(c, t.n, field, n.info, outputs)
-      t = t.sons[0]
+      t = t[0]
     suggestOperations(c, n, field, typ, outputs)
   else:
     let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
@@ -404,8 +403,8 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
       var t = typ
       while true:
         suggestObject(c, t.n, field, n.info, outputs)
-        if t.sons[0] == nil: break
-        t = skipTypes(t.sons[0], skipPtrs)
+        if t[0] == nil: break
+        t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, field, n.info, outputs)
     suggestOperations(c, n, field, orig, outputs)
@@ -571,7 +570,7 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
 
 proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
   if n.kind == nkDotExpr:
-    var obj = safeSemExpr(c, n.sons[0])
+    var obj = safeSemExpr(c, n[0])
     # it can happen that errnously we have collected the fieldname
     # of the next line, so we check the 'field' is actually on the same
     # line as the object to prevent this from happening:
@@ -596,14 +595,14 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
   elif c.config.ideCmd == ideCon:
     if n.kind in nkCallKinds:
       var a = copyNode(n)
-      var x = safeSemExpr(c, n.sons[0])
-      if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
-      addSon(a, x)
+      var x = safeSemExpr(c, n[0])
+      if x.kind == nkEmpty or x.typ == nil: x = n[0]
+      a.add x
       for i in 1..len(n)-1:
         # use as many typed arguments as possible:
-        var x = safeSemExpr(c, n.sons[i])
+        var x = safeSemExpr(c, n[i])
         if x.kind == nkEmpty or x.typ == nil: break
-        addSon(a, x)
+        a.add x
       suggestCall(c, a, n, outputs)
     elif n.kind in nkIdentKinds:
       var x = safeSemExpr(c, n)
