@@ -75,7 +75,7 @@ proc parseLine(p: var TTmplParser) =
     let d = j
     var keyw = ""
     while j < len and p.x[j] in PatternChars:
-      add(keyw, p.x[j])
+      keyw.add(p.x[j])
       inc(j)
 
     scanPar(p, j)

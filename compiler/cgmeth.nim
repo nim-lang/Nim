@@ -163,7 +163,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
     let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s, multimethods = optMultiMethods in g.config.globalOptions)
     of Yes:
-      add(g.methods[i].methods, s)
+      g.methods[i].methods.add(s)
       attachDispatcher(s, disp.ast[dispatcherPos])
       fixupDispatcher(s, disp, g.config)
       #echo "fixup ", disp.name.s, " ", disp.id
@@ -177,7 +177,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
     of Invalid:
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
-  add(g.methods, (methods: @[s], dispatcher: createDispatcher(s)))
+  g.methods.add((methods: @[s], dispatcher: createDispatcher(s)))
   #echo "adding ", s.info
   #if fromCache:
   #  internalError(s.info, "no method dispatcher found")

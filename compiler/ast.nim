@@ -1045,7 +1045,7 @@ proc add*(father, son: Indexable) =
   assert son != nil
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
+  father.sons.add(son)
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
 template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
@@ -1497,18 +1497,18 @@ proc propagateToOwner*(owner, elem: PType) =
 proc rawAddSon*(father, son: PType) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
+  father.sons.add(son)
   if not son.isNil: propagateToOwner(father, son)
 
 proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
+  father.sons.add(son)
 
 proc addSonNilAllowed*(father, son: PNode) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
+  father.sons.add(son)
 
 proc delSon*(father: PNode, idx: int) =
   when defined(nimNoNilSeqs):

@@ -120,7 +120,7 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       for i in 0..<n.len:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
     elif checkTypes(c, p[2].sym, n):
-      add(arglist, n)
+      arglist.add(n)
     else:
       result = false
 
@@ -154,7 +154,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of "~": result = not matches(c, p[1], n)
     else: doAssert(false, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) =
-    #   add(a, b)
+    #   a.add(b)
   elif p.kind == nkCurlyExpr:
     if p[1].kind == nkPrefix:
       if matches(c, p[0], n):

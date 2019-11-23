@@ -46,7 +46,7 @@ proc patternError(n: PNode; conf: ConfigRef) =
   localError(conf, n.info, "illformed AST: " & renderTree(n, {renderNoComments}))
 
 proc add(code: var TPatternCode, op: TOpcode) {.inline.} =
-  add(code, chr(ord(op)))
+  code.add chr(ord(op))
 
 proc whichAlias*(p: PSym): TAliasRequest =
   if p.constraint != nil:

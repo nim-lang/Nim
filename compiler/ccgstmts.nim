@@ -152,7 +152,7 @@ proc blockBody(b: var TBlock): Rope =
 proc endBlock(p: BProc, blockEnd: Rope) =
   let topBlock = p.blocks.len-1
   # the block is merged into the parent block
-  add(p.blocks[topBlock-1].sections[cpsStmts], p.blocks[topBlock].blockBody)
+  p.blocks[topBlock-1].sections[cpsStmts].add(p.blocks[topBlock].blockBody)
   setLen(p.blocks, topBlock)
   # this is done after the block is popped so $n is
   # properly indented when pretty printing is enabled
@@ -326,7 +326,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
         for i in 1..<value.len:
           if params != nil: params.add(~", ")
           assert(len(typ) == len(typ.n))
-          add(params, genOtherArg(p, value, i, typ))
+          params.add(genOtherArg(p, value, i, typ))
         if params == nil:
           lineF(p, cpsStmts, "$#;$n", [decl])
         else:
@@ -422,9 +422,9 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
             [rdLoc(a), lelse])
       if p.module.compileToCpp:
         # avoid "jump to label crosses initialization" error:
-        add(p.s(cpsStmts), "{")
+        p.s(cpsStmts).add "{"
         expr(p, it[1], d)
-        add(p.s(cpsStmts), "}")
+        p.s(cpsStmts).add "}"
       else:
         expr(p, it[1], d)
       endBlock(p)
@@ -924,7 +924,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   discard cgsym(p.module, "popCurrentExceptionEx")
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  add(p.nestedTryStmts, (fin, false))
+  p.nestedTryStmts.add((fin, false))
   startBlock(p, "try {$n")
   expr(p, t[0], d)
   endBlock(p)
@@ -1023,7 +1023,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     startBlock(p, "if ($1.status == 0) {$n", [safePoint])
   let length = len(t)
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  add(p.nestedTryStmts, (fin, quirkyExceptions))
+  p.nestedTryStmts.add((fin, quirkyExceptions))
   expr(p, t[0], d)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
@@ -1054,7 +1054,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
       var orExpr: Rope = nil
       for j in 0 .. blen - 2:
         assert(t[i][j].kind == nkType)
-        if orExpr != nil: add(orExpr, "||")
+        if orExpr != nil: orExpr.add("||")
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
@@ -1118,12 +1118,12 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         if x[j] in {'"', ':'}:
           # don't modify the line if already in quotes or
           # some clobber register list:
-          add(result, x); add(result, "\L")
+          result.add(x); result.add("\L")
         else:
           # ignore empty lines
-          add(result, "\"")
-          add(result, x)
-          add(result, "\\n\"\n")
+          result.add("\"")
+          result.add(x)
+          result.add("\\n\"\n")
   else:
     res.add("\L")
     result = res.rope
@@ -1137,9 +1137,9 @@ proc genAsmStmt(p: BProc, t: PNode) =
   # work:
   if p.prc == nil:
     # top level asm statement?
-    add(p.module.s[cfsProcHeaders], runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s]))
+    p.module.s[cfsProcHeaders].add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
   else:
-    add(p.s(cpsStmts), indentLine(p, runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])))
+    p.s(cpsStmts).add indentLine(p, runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s]))
 
 proc determineSection(n: PNode): TCFileSection =
   result = cfsProcHeaders
@@ -1155,7 +1155,7 @@ proc genEmit(p: BProc, t: PNode) =
     # top level emit pragma?
     let section = determineSection(t[1])
     genCLineDir(p.module.s[section], t.info, p.config)
-    add(p.module.s[section], s)
+    p.module.s[section].add(s)
   else:
     genLineDir(p, t)
     line(p, cpsStmts, s)

@@ -135,13 +135,13 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
     for i in 1 ..< len(n):
       let p = n[i]
       if p.kind == nkSym:
-        add(result, p.sym.name.s)
-        add(result, ": ")
-        add(result, typeToString(p.sym.typ, prefer))
-        if i != len(n)-1: add(result, ", ")
+        result.add(p.sym.name.s)
+        result.add(": ")
+        result.add(typeToString(p.sym.typ, prefer))
+        if i != len(n)-1: result.add(", ")
       else:
         result.add renderTree(p)
-    add(result, ')')
+    result.add(')')
     if n[0].typ != nil:
       result.add(": " & typeToString(n[0].typ, prefer))
   if getDeclarationPath:
@@ -514,15 +514,15 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyGenericInst, tyGenericInvocation:
       result = typeToString(t[0]) & '['
       for i in 1 ..< len(t)-ord(t.kind != tyGenericInvocation):
-        if i > 1: add(result, ", ")
-        add(result, typeToString(t[i], preferGenericArg))
-      add(result, ']')
+        if i > 1: result.add(", ")
+        result.add(typeToString(t[i], preferGenericArg))
+      result.add(']')
     of tyGenericBody:
       result = typeToString(t.lastSon) & '['
       for i in 0 .. len(t)-2:
-        if i > 0: add(result, ", ")
-        add(result, typeToString(t[i], preferTypeName))
-      add(result, ']')
+        if i > 0: result.add(", ")
+        result.add(typeToString(t[i], preferTypeName))
+      result.add(']')
     of tyTypeDesc:
       if t[0].kind == tyNone: result = "typedesc"
       else: result = "type " & typeToString(t[0])
@@ -561,8 +561,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       let body = t.base
       result = body.sym.name.s & "["
       for i in 1 .. len(t) - 2:
-        if i > 1: add(result, ", ")
-        add(result, typeToString(t[i]))
+        if i > 1: result.add(", ")
+        result.add(typeToString(t[i]))
       result.add "]"
     of tyAnd:
       for i, son in t.sons:
@@ -613,26 +613,26 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         assert(len(t.n) == len(t))
         for i in 0 ..< len(t.n):
           assert(t.n[i].kind == nkSym)
-          add(result, t.n[i].sym.name.s & ": " & typeToString(t[i]))
-          if i < len(t.n) - 1: add(result, ", ")
-        add(result, ']')
+          result.add(t.n[i].sym.name.s & ": " & typeToString(t[i]))
+          if i < len(t.n) - 1: result.add(", ")
+        result.add(']')
       elif len(t) == 0:
         result = "tuple[]"
       else:
         if prefer == preferTypeName: result = "("
         else: result = "tuple of ("
         for i in 0 ..< len(t):
-          add(result, typeToString(t[i]))
-          if i < len(t) - 1: add(result, ", ")
-        add(result, ')')
+          result.add(typeToString(t[i]))
+          if i < len(t) - 1: result.add(", ")
+        result.add(')')
     of tyPtr, tyRef, tyVar, tyLent:
       result = typeToStr[t.kind]
       if t.len >= 2:
         setLen(result, result.len-1)
         result.add '['
         for i in 0 ..< len(t):
-          add(result, typeToString(t[i]))
-          if i < len(t) - 1: add(result, ", ")
+          result.add(typeToString(t[i]))
+          if i < len(t) - 1: result.add(", ")
         result.add ']'
       else:
         result.add typeToString(t[0])
@@ -656,23 +656,23 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result.add "("
       for i in 1 ..< len(t):
         if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
-          add(result, t.n[i].sym.name.s)
-          add(result, ": ")
-        add(result, typeToString(t[i]))
-        if i < len(t) - 1: add(result, ", ")
-      add(result, ')')
-      if t.len > 0 and t[0] != nil: add(result, ": " & typeToString(t[0]))
+          result.add(t.n[i].sym.name.s)
+          result.add(": ")
+        result.add(typeToString(t[i]))
+        if i < len(t) - 1: result.add(", ")
+      result.add(')')
+      if t.len > 0 and t[0] != nil: result.add(": " & typeToString(t[0]))
       var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
       if tfNoSideEffect in t.flags:
         addSep(prag)
-        add(prag, "noSideEffect")
+        prag.add("noSideEffect")
       if tfThread in t.flags:
         addSep(prag)
-        add(prag, "gcsafe")
+        prag.add("gcsafe")
       if t.lockLevel.ord != UnspecifiedLockLevel.ord:
         addSep(prag)
-        add(prag, "locks: " & $t.lockLevel)
-      if len(prag) != 0: add(result, "{." & prag & ".}")
+        prag.add("locks: " & $t.lockLevel)
+      if len(prag) != 0: result.add("{." & prag & ".}")
     of tyVarargs:
       result = typeToStr[t.kind] % typeToString(t[0])
     of tySink:

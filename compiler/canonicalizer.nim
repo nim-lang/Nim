@@ -240,33 +240,33 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
   else:
     for i in 0 ..< len(n):
       encodeNode(w, n.info, n[i], result)
-  add(result, ')')
+  result.add(')')
 
 proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
   if loc.s != low(loc.s):
-    add(result, '*')
+    result.add('*')
     encodeVInt(ord(loc.s), result)
   if loc.flags != {}:
-    add(result, '$')
+    result.add('$')
     encodeVInt(cast[int32](loc.flags), result)
   if loc.t != nil:
-    add(result, '^')
+    result.add('^')
     encodeVInt(cast[int32](loc.t.id), result)
     pushType(w, loc.t)
   if loc.r != nil:
-    add(result, '!')
+    result.add('!')
     encodeStr($loc.r, result)
   if loc.a != 0:
-    add(result, '?')
+    result.add('?')
     encodeVInt(loc.a, result)
   if oldLen + 1 == result.len:
     # no data was necessary, so remove the '<' again:
     setLen(result, oldLen)
   else:
-    add(result, '>')
+    result.add('>')
 
 proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t == nil:
@@ -277,47 +277,47 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.kind == tyForward: internalError("encodeType: tyForward")
   # for the new rodfile viewer we use a preceding [ so that the data section
   # can easily be disambiguated:
-  add(result, '[')
+  result.add('[')
   encodeVInt(ord(t.kind), result)
-  add(result, '+')
+  result.add('+')
   encodeVInt(t.id, result)
   if t.n != nil:
     encodeNode(w, unknownLineInfo(), t.n, result)
   if t.flags != {}:
-    add(result, '$')
+    result.add('$')
     encodeVInt(cast[int32](t.flags), result)
   if t.callConv != low(t.callConv):
-    add(result, '?')
+    result.add('?')
     encodeVInt(ord(t.callConv), result)
   if t.owner != nil:
-    add(result, '*')
+    result.add('*')
     encodeVInt(t.owner.id, result)
     pushSym(w, t.owner)
   if t.sym != nil:
-    add(result, '&')
+    result.add('&')
     encodeVInt(t.sym.id, result)
     pushSym(w, t.sym)
   if t.size != - 1:
-    add(result, '/')
+    result.add('/')
     encodeVBiggestInt(t.size, result)
   if t.align != - 1:
-    add(result, '=')
+    result.add('=')
     encodeVInt(t.align, result)
   encodeLoc(w, t.loc, result)
   for i in 0 ..< len(t):
     if t[i] == nil:
-      add(result, "^()")
+      result.add("^()")
     else:
-      add(result, '^')
+      result.add('^')
       encodeVInt(t[i].id, result)
       pushType(w, t[i])
 
 proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
-  add(result, '|')
+  result.add('|')
   encodeVInt(ord(lib.kind), result)
-  add(result, '|')
+  result.add('|')
   encodeStr($lib.name, result)
-  add(result, '|')
+  result.add('|')
   encodeNode(w, info, lib.path, result)
 
 proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
@@ -363,7 +363,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   encodeLoc(w, s.loc, result)
   if s.annex != nil: encodeLib(w, s.annex, s.info, result)
   if s.constraint != nil:
-    add(result, '#')
+    result.add('#')
     encodeNode(w, unknownLineInfo(), s.constraint, result)
   # lazy loading will soon reload the ast lazily, so the ast needs to be
   # the last entry of a symbol:

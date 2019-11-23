@@ -123,7 +123,7 @@ proc addSonSkipIntLit*(father, son: PType) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit
-  add(father.sons, s)
+  father.sons.add(s)
   propagateToOwner(father, s)
 
 proc setIntLitType*(g: ModuleGraph; result: PNode) =

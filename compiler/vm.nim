@@ -73,14 +73,14 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     var line = toLinenumber(info)
     var col = toColumn(info)
     if line > 0:
-      add(s, '(')
-      add(s, $line)
-      add(s, ", ")
-      add(s, $(col + ColOffset))
-      add(s, ')')
+      s.add('(')
+      s.add($line)
+      s.add(", ")
+      s.add($(col + ColOffset))
+      s.add(')')
     if x.prc != nil:
-      for k in 1..max(1, 25-s.len): add(s, ' ')
-      add(s, x.prc.name.s)
+      for k in 1..max(1, 25-s.len): s.add(' ')
+      s.add(x.prc.name.s)
     msgWriteln(c.config, s)
 
 proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,

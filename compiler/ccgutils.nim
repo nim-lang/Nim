@@ -74,14 +74,14 @@ proc mangle*(name: string): string =
     let c = name[i]
     case c
     of 'a'..'z', '0'..'9', 'A'..'Z':
-      add(result, c)
+      result.add(c)
     of '_':
       # we generate names like 'foo_9' for scope disambiguations and so
       # disallow this here:
       if i > 0 and i < name.len-1 and name[i+1] in Digits:
         discard
       else:
-        add(result, c)
+        result.add(c)
     of '$': special "dollar"
     of '%': special "percent"
     of '&': special "amp"
@@ -102,7 +102,7 @@ proc mangle*(name: string): string =
     of '@': special "at"
     of '|': special "bar"
     else:
-      add(result, "X" & toHex(ord(c), 2))
+      result.add("X" & toHex(ord(c), 2))
       requiresUnderscore = true
   if requiresUnderscore:
     result.add "_"

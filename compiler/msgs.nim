@@ -26,13 +26,13 @@ proc makeCString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
-  add(res, "\"")
+  res.add("\"")
   for i in 0 ..< len(s):
     if (i + 1) mod MaxLineLength == 0:
-      add(res, "\"\L\"")
+      res.add("\"\L\"")
     toCChar(s[i], res)
-  add(res, '\"')
-  add(result, rope(res))
+  res.add('\"')
+  result.add(rope(res))
 
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =

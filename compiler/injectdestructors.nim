@@ -259,7 +259,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   vpart[0] = tempAsNode
   vpart[1] = c.emptyNode
   vpart[2] = n
-  add(v, vpart)
+  v.add(vpart)
 
   result.add v
   result.add genWasMoved(skipConv(n), c)

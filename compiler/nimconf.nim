@@ -168,38 +168,38 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
   confTok(L, tok, config, condStack)             # skip symbol
   var val = ""
   while tok.tokType == tkDot:
-    add(s, '.')
+    s.add('.')
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
-    add(s, $tok)
+    s.add($tok)
     confTok(L, tok, config, condStack)
   if tok.tokType == tkBracketLe:
     # BUGFIX: val, not s!
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
-    add(val, '[')
-    add(val, $tok)
+    val.add('[')
+    val.add($tok)
     confTok(L, tok, config, condStack)
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
     else: lexMessage(L, errGenerated, "expected closing ']'")
-    add(val, ']')
+    val.add(']')
   let percent = tok.ident != nil and tok.ident.s == "%="
   if tok.tokType in {tkColon, tkEquals} or percent:
-    if len(val) > 0: add(val, ':')
+    if len(val) > 0: val.add(':')
     confTok(L, tok, config, condStack)           # skip ':' or '=' or '%'
     checkSymbol(L, tok)
-    add(val, $tok)
+    val.add($tok)
     confTok(L, tok, config, condStack)           # skip symbol
     if tok.tokType in {tkColon, tkEquals}:
-      add(val, $tok) # add the :
+      val.add($tok) # add the :
       confTok(L, tok, config, condStack)           # skip symbol
       checkSymbol(L, tok)
-      add(val, $tok) # add the token after it
+      val.add($tok) # add the token after it
       confTok(L, tok, config, condStack)           # skip symbol
     while tok.ident != nil and tok.ident.s == "&":
       confTok(L, tok, config, condStack)
       checkSymbol(L, tok)
-      add(val, $tok)
+      val.add($tok)
       confTok(L, tok, config, condStack)
   if percent:
     processSwitch(s, strtabs.`%`(val, config.configVars,
@@ -245,7 +245,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
   template readConfigFile(path) =
     let configPath = path
     if readConfigFile(configPath, cache, conf):
-      add(configFiles, configPath)
+      configFiles.add(configPath)
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))

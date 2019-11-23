@@ -131,7 +131,7 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
   if i < len(switch) and switch[i] == '-': inc(i)
   while i < len(switch):
     case switch[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': add(cmd, switch[i])
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': cmd.add(switch[i])
     else: break
     inc(i)
   if i >= len(switch): arg = ""
@@ -182,7 +182,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     isBracket = true
     inc(i)
   while i < len(arg) and (arg[i] notin {':', '=', ']'}):
-    add(id, arg[i])
+    id.add(arg[i])
     inc(i)
   if isBracket:
     if i < len(arg) and arg[i] == ']': inc(i)

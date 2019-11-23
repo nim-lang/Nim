@@ -319,8 +319,8 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
   for i in startIdx ..< n.len:
     var arg = n[i]
     if n[i].kind == nkExprEqExpr:
-      add(result, renderTree(n[i][0]))
-      add(result, ": ")
+      result.add(renderTree(n[i][0]))
+      result.add(": ")
       if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
         # XXX we really need to 'tryExpr' here!
         arg = c.semOperand(c, n[i][1])
@@ -333,8 +333,8 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
         arg = c.semOperand(c, n[i])
         n[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
-    add(result, argTypeToString(arg, prefer))
-    if i != len(n) - 1: add(result, ", ")
+    result.add(argTypeToString(arg, prefer))
+    if i != len(n) - 1: result.add(", ")
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation

@@ -176,8 +176,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
-  if conf.cmd != cmdRst2tex: addf(dest, xml, args)
-  else: addf(dest, tex, args)
+  if conf.cmd != cmdRst2tex: dest.addf(xml, args)
+  else: dest.addf(tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
   for i in 0 .. high(varnames):
@@ -196,11 +196,11 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
       inc(i)                  # skip '$'
       case frmt[i]
       of '#':
-        add(result, varvalues[num])
+        result.add(varvalues[num])
         inc(num)
         inc(i)
       of '$':
-        add(result, "$")
+        result.add("$")
         inc(i)
       of '0'..'9':
         var j = 0
@@ -211,21 +211,21 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
         if j > high(varvalues) + 1:
           rawMessage(conf, errGenerated, "Invalid format string; too many $s: " & frmt)
         num = j
-        add(result, varvalues[j - 1])
+        result.add(varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF':
         var id = ""
         while true:
-          add(id, frmt[i])
+          id.add(frmt[i])
           inc(i)
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break
         var idx = getVarIdx(varnames, id)
-        if idx >= 0: add(result, varvalues[idx])
+        if idx >= 0: result.add(varvalues[idx])
         else: rawMessage(conf, errGenerated, "unknown substition variable: " & id)
       of '{':
         var id = ""
         inc(i)
         while i < frmt.len and frmt[i] != '}':
-          add(id, frmt[i])
+          id.add(frmt[i])
           inc(i)
         if i >= frmt.len:
           rawMessage(conf, errGenerated, "expected closing '}'")
@@ -233,15 +233,15 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
           inc(i)                # skip }
         # search for the variable:
         let idx = getVarIdx(varnames, id)
-        if idx >= 0: add(result, varvalues[idx])
+        if idx >= 0: result.add(varvalues[idx])
         else: rawMessage(conf, errGenerated, "unknown substition variable: " & id)
       else:
-        add(result, "$")
+        result.add("$")
     var start = i
     while i < frmt.len:
       if frmt[i] != '$': inc(i)
       else: break
-    if i - 1 >= start: add(result, substr(frmt, start, i - 1))
+    if i - 1 >= start: result.add(substr(frmt, start, i - 1))
 
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
@@ -357,7 +357,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
               "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
     of tkSpaces, tkInvalid:
-      add(result, literal)
+      result.add(literal)
     of tkCurlyDotLe:
       dispA(d.conf, result, "<span>" & # This span is required for the JS to work properly
         """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
@@ -691,7 +691,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
           ["path", "line", "url", "commit", "devel"], [rope path.string,
           rope($n.info.line), rope gitUrl, rope commit, rope develBranch])])
 
-  add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
+  d.section[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc", "deprecationMsg"],
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
@@ -714,7 +714,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       setIndexTerm(d[], external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
         xmltree.escape(getPlainDocstring(e).docstringSummary))
 
-  add(d.toc[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
+  d.toc[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
     [rope(getName(d, nameNode, d.splitAfter)), result, comm,
@@ -764,7 +764,7 @@ proc traceDeps(d: PDoc, it: PNode) =
       traceDeps(d, a)
   elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
     let external = externalDep(d, it.sym)
-    if d.section[k] != nil: add(d.section[k], ", ")
+    if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [rope esc(d.target, changeFileExt(external, "")),
@@ -774,7 +774,7 @@ proc exportSym(d: PDoc; s: PSym) =
   const k = exportSection
   if s.kind == skModule and belongsToPackage(d.conf, s):
     let external = externalDep(d, s)
-    if d.section[k] != nil: add(d.section[k], ", ")
+    if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [rope esc(d.target, changeFileExt(external, "")),
@@ -783,7 +783,7 @@ proc exportSym(d: PDoc; s: PSym) =
     let module = originatingModule(s)
     if belongsToPackage(d.conf, module):
       let external = externalDep(d, module)
-      if d.section[k] != nil: add(d.section[k], ", ")
+      if d.section[k] != nil: d.section[k].add(", ")
       # XXX proper anchor generation here
       dispA(d.conf, d.section[k],
             "<a href=\"$2#$1\"><span class=\"Identifier\">$1</span></a>",
@@ -851,8 +851,8 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
-    add(d.modDeprecationMsg, genDeprecationMsg(d, pragmaNode))
-  of nkCommentStmt: add(d.modDesc, genComment(d, n))
+    d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
+  of nkCommentStmt: d.modDesc.add(genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n[namePos], skProc)
@@ -892,7 +892,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
   of nkCallKinds:
     var comm: Rope = nil
     getAllRunnableExamples(d, n, comm)
-    if comm != nil: add(d.modDesc, comm)
+    if comm != nil: d.modDesc.add(comm)
   else: discard
 
 proc add(d: PDoc; j: JsonNode) =
@@ -904,7 +904,7 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
     if includeComments:
       d.add %*{"comment": genComment(d, n)}
     else:
-      add(d.modDesc, genComment(d, n))
+      d.modDesc.add(genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skProc)
@@ -1006,10 +1006,10 @@ proc genOutFile(d: PDoc): Rope =
   var toc = tmp.rope
   for i in low(TSymKind) .. high(TSymKind):
     genSection(d, i)
-    add(toc, d.toc[i])
+    toc.add(d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in low(TSymKind) .. high(TSymKind): add(code, d.section[i])
+  for i in low(TSymKind) .. high(TSymKind): code.add(d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:

@@ -360,36 +360,36 @@ proc transformYield(c: PTransf, n: PNode): PNode =
           for j in 0 ..< len(c.transCon.forStmt[i])-1:
             let lhs = c.transCon.forStmt[i][j]
             let rhs = transform(c, newTupleAccess(c.graph, v, j))
-            add(result, asgnTo(lhs, rhs))
+            result.add(asgnTo(lhs, rhs))
         else:
           let lhs = c.transCon.forStmt[i]
           let rhs = transform(c, v)
-          add(result, asgnTo(lhs, rhs))
+          result.add(asgnTo(lhs, rhs))
     else:
       # Unpack the tuple into the loop variables
       # XXX: BUG: what if `n` is an expression with side-effects?
       for i in 0 .. len(c.transCon.forStmt) - 3:
         let lhs = c.transCon.forStmt[i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
-        add(result, asgnTo(lhs, rhs))
+        result.add(asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt[0].kind == nkVarTuple:
       for i in 0 ..< len(c.transCon.forStmt[0])-1:
         let lhs = c.transCon.forStmt[0][i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
-        add(result, asgnTo(lhs, rhs))
+        result.add(asgnTo(lhs, rhs))
     else:
       let lhs = c.transCon.forStmt[0]
       let rhs = transform(c, e)
-      add(result, asgnTo(lhs, rhs))
+      result.add(asgnTo(lhs, rhs))
 
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
     # common case
-    add(result, c.transCon.forLoopBody)
+    result.add(c.transCon.forLoopBody)
   else:
     # we need to introduce new local variables:
-    add(result, introduceNewLocalVars(c, c.transCon.forLoopBody))
+    result.add(introduceNewLocalVars(c, c.transCon.forLoopBody))
   if result.len > 0:
     var changeNode = result[0]
     changeNode.info = c.transCon.forStmt.info
@@ -609,7 +609,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
       addVar(v, copyTree(n[i])) # declare new vars
-  add(stmtList, v)
+  stmtList.add(v)
 
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
   # iterator!
@@ -642,7 +642,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, t, formal.info)
       addVar(v, temp)
-      add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
@@ -653,13 +653,13 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       addSonSkipIntLit(typ, formal.typ[0])
       var temp = newTemp(c, typ, formal.info)
       addVar(v, temp)
-      add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg))
+      stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
 
   let body = transformBody(c.graph, iter, true)
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
-  add(stmtList, transform(c, body))
+  stmtList.add(transform(c, body))
   #findWrongOwners(c, stmtList.pnode)
   dec(c.inlining)
   popInfoContext(c.graph.config)
@@ -698,7 +698,7 @@ proc transformCase(c: PTransf, n: PNode): PNode =
     # fix a stupid code gen bug by normalizing:
     var elseBranch = newTransNode(nkElse, n.info, 1)
     elseBranch[0] = newTransNode(nkNilLit, n.info, 0)
-    add(result, elseBranch)
+    result.add(elseBranch)
 
 proc transformArrayAccess(c: PTransf, n: PNode): PNode =
   # XXX this is really bad; transf should use a proper AST visitor
@@ -740,7 +740,7 @@ proc transformCall(c: PTransf, n: PNode): PNode =
   let magic = getMagic(n)
   if op != nil and op.magic != mNone and n.len >= 3:
     result = newTransNode(nkCall, n, 0)
-    add(result, transform(c, n[0]))
+    result.add(transform(c, n[0]))
     var j = 1
     while j < len(n):
       var a = transform(c, n[j])
@@ -751,7 +751,7 @@ proc transformCall(c: PTransf, n: PNode): PNode =
           if not isConstExpr(b): break
           a = evalOp(op.magic, n, a, b, nil, c.graph)
           inc(j)
-      add(result, a)
+      result.add(a)
     if len(result) == 2: result = result[1]
   elif magic == mAddr:
     result = newTransNode(nkAddr, n, 1)
@@ -823,7 +823,7 @@ proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
   var op = getMergeOp(n)
   if (op != nil) and (op.magic != mNone) and (len(n) >= 3):
     result = newNodeIT(nkCall, n.info, n.typ)
-    add(result, n[0])
+    result.add(n[0])
     var args = newNode(nkArgList)
     flattenTreeAux(args, n, op)
     var j = 0
@@ -836,7 +836,7 @@ proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
           if not isConstExpr(b): break
           a = evalOp(op.magic, result, a, b, nil, g)
           inc(j)
-      add(result, a)
+      result.add(a)
     if len(result) == 2: result = result[1]
   else:
     var cnst = getConstExpr(c, n, g)
@@ -945,7 +945,7 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkContinueStmt:
     result = newNodeI(nkBreakStmt, n.info)
     var labl = c.contSyms[c.contSyms.high]
-    add(result, newSymNode(labl))
+    result.add(newSymNode(labl))
   of nkBreakStmt: result = transformBreak(c, n)
   of nkCallKinds:
     result = transformCall(c, n)

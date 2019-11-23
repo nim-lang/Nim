@@ -109,8 +109,8 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   var line = newStringOfCap(120)
   var triples = 0
   while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line):
-    add(s.s, line)
-    add(s.s, "\n")
+    s.s.add(line)
+    s.s.add("\n")
     inc triples, countTriples(line)
     if not continueLine(line, (triples and 1) == 1): break
   inc(s.lineOffset)
@@ -149,7 +149,7 @@ proc llStreamReadLine*(s: PLLStream, line: var string): bool =
         inc(s.rd)
         break
       else:
-        add(line, s.s[s.rd])
+        line.add(s.s[s.rd])
         inc(s.rd)
     result = line.len > 0 or s.rd < len(s.s)
   of llsFile:
@@ -162,7 +162,7 @@ proc llStreamWrite*(s: PLLStream, data: string) =
   of llsNone, llsStdIn:
     discard
   of llsString:
-    add(s.s, data)
+    s.s.add(data)
     inc(s.wr, len(data))
   of llsFile:
     write(s.f, data)
@@ -177,7 +177,7 @@ proc llStreamWrite*(s: PLLStream, data: char) =
   of llsNone, llsStdIn:
     discard
   of llsString:
-    add(s.s, data)
+    s.s.add(data)
     inc(s.wr)
   of llsFile:
     c = data

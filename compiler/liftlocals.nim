@@ -30,10 +30,10 @@ proc lookupOrAdd(c: var Ctx; s: PSym; info: TLineInfo): PNode =
   let field = addUniqueField(c.objType, s, c.cache)
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = c.objType
-  add(deref, newSymNode(c.partialParam, info))
+  deref.add(newSymNode(c.partialParam, info))
   result = newNodeI(nkDotExpr, info)
-  add(result, deref)
-  add(result, newSymNode(field))
+  result.add(deref)
+  result.add(newSymNode(field))
   result.typ = field.typ
 
 proc liftLocals(n: PNode; i: int; c: var Ctx) =

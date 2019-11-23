@@ -162,7 +162,7 @@ proc getCurrOwner*(c: PContext): PSym =
   result = c.graph.owners[^1]
 
 proc pushOwner*(c: PContext; owner: PSym) =
-  add(c.graph.owners, owner)
+  c.graph.owners.add(owner)
 
 proc popOwner*(c: PContext) =
   var length = len(c.graph.owners)
@@ -432,7 +432,7 @@ proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
-  add(c.p.caseContext, (caseNode, 0))
+  c.p.caseContext.add((caseNode, 0))
 
 proc popCaseContext*(c: PContext) =
   discard pop(c.p.caseContext)

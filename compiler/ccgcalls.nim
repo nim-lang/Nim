@@ -34,18 +34,18 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           discard "resetLoc(p, d)"
-        add(pl, addrLoc(p.config, d))
-        add(pl, ~");$n")
+        pl.add(addrLoc(p.config, d))
+        pl.add(~");$n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
-        add(pl, addrLoc(p.config, tmp))
-        add(pl, ~");$n")
+        pl.add(addrLoc(p.config, tmp))
+        pl.add(~");$n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
-      add(pl, ~")")
+      pl.add(~")")
       if p.module.compileToCpp:
         if lfSingleUse in d.flags:
           # do not generate spurious temporaries for C++! For C we're better off
@@ -71,7 +71,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
   else:
-    add(pl, ~");$n")
+    pl.add(~");$n")
     line(p, cpsStmts, pl)
 
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
@@ -190,11 +190,11 @@ template genParamLoop(params) {.dirty.} =
     assert(typ.n[i].kind == nkSym)
     let paramType = typ.n[i]
     if not paramType.typ.isCompileTimeOnly:
-      if params != nil: add(params, ~", ")
-      add(params, genArg(p, ri[i], paramType.sym, ri))
+      if params != nil: params.add(~", ")
+      params.add(genArg(p, ri[i], paramType.sym, ri))
   else:
-    if params != nil: add(params, ~", ")
-    add(params, genArgNoParam(p, ri[i]))
+    if params != nil: params.add(~", ")
+    params.add(genArgNoParam(p, ri[i]))
 
 proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
   if sym.flags * {sfImportc, sfNonReloadable} == {} and sym.loc.k == locProc and
@@ -248,7 +248,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   let rawProc = getRawProcType(p, typ)
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ[0]):
-      if len(ri) > 1: add(pl, ~", ")
+      if len(ri) > 1: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
@@ -257,12 +257,12 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           discard "resetLoc(p, d)"
-        add(pl, addrLoc(p.config, d))
+        pl.add(addrLoc(p.config, d))
         genCallPattern()
       else:
         var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
-        add(pl, addrLoc(p.config, tmp))
+        pl.add(addrLoc(p.config, tmp))
         genCallPattern()
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
@@ -443,7 +443,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
         if pat[i] notin {'@', '#', '\''}: inc(i)
         else: break
       if i - 1 >= start:
-        add(result, substr(pat, start, i - 1))
+        result.add(substr(pat, start, i - 1))
 
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
@@ -476,19 +476,19 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
     else:
-      add(pl, ~";$n")
+      pl.add(~";$n")
       line(p, cpsStmts, pl)
   else:
     var pl: Rope = nil
     #var param = typ.n[1].sym
     if 1 < ri.len:
-      add(pl, genThisArg(p, ri, 1, typ))
-    add(pl, op.r)
+      pl.add(genThisArg(p, ri, 1, typ))
+    pl.add(op.r)
     var params: Rope
     for i in 2 ..< length:
       if params != nil: params.add(~", ")
       assert(len(typ) == len(typ.n))
-      add(params, genOtherArg(p, ri, i, typ))
+      params.add(genOtherArg(p, ri, i, typ))
     fixupCall(p, le, ri, d, pl, params)
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
@@ -508,49 +508,49 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   var start = 3
   if ' ' in pat:
     start = 1
-    add(pl, op.r)
+    pl.add(op.r)
     if length > 1:
-      add(pl, ~": ")
-      add(pl, genArg(p, ri[1], typ.n[1].sym, ri))
+      pl.add(~": ")
+      pl.add(genArg(p, ri[1], typ.n[1].sym, ri))
       start = 2
   else:
     if length > 1:
-      add(pl, genArg(p, ri[1], typ.n[1].sym, ri))
-      add(pl, ~" ")
-    add(pl, op.r)
+      pl.add(genArg(p, ri[1], typ.n[1].sym, ri))
+      pl.add(~" ")
+    pl.add(op.r)
     if length > 2:
-      add(pl, ~": ")
-      add(pl, genArg(p, ri[2], typ.n[2].sym, ri))
+      pl.add(~": ")
+      pl.add(genArg(p, ri[2], typ.n[2].sym, ri))
   for i in start ..< length:
     assert(len(typ) == len(typ.n))
     if i >= len(typ):
       internalError(p.config, ri.info, "varargs for objective C method?")
     assert(typ.n[i].kind == nkSym)
     var param = typ.n[i].sym
-    add(pl, ~" ")
-    add(pl, param.name.s)
-    add(pl, ~": ")
-    add(pl, genArg(p, ri[i], param, ri))
+    pl.add(~" ")
+    pl.add(param.name.s)
+    pl.add(~": ")
+    pl.add(genArg(p, ri[i], param, ri))
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ[0]):
-      if len(ri) > 1: add(pl, ~" ")
+      if len(ri) > 1: pl.add(~" ")
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
         if d.k == locNone: getTemp(p, typ[0], d, needsInit=true)
-        add(pl, ~"Result: ")
-        add(pl, addrLoc(p.config, d))
-        add(pl, ~"];$n")
+        pl.add(~"Result: ")
+        pl.add(addrLoc(p.config, d))
+        pl.add(~"];$n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ[0], tmp, needsInit=true)
-        add(pl, addrLoc(p.config, tmp))
-        add(pl, ~"];$n")
+        pl.add(addrLoc(p.config, tmp))
+        pl.add(~"];$n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
-      add(pl, ~"]")
+      pl.add(~"]")
       if d.k == locNone: getTemp(p, typ[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
@@ -558,7 +558,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
-    add(pl, ~"];$n")
+    pl.add(~"];$n")
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =

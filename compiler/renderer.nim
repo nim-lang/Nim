@@ -114,7 +114,7 @@ proc addTok(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
   g.tokens[length].kind = kind
   g.tokens[length].length = int16(len(s))
   g.tokens[length].sym = sym
-  add(g.buf, s)
+  g.buf.add(s)
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
@@ -201,7 +201,7 @@ proc putComment(g: var TSrcGen, s: string) =
       inc(i)
       optNL(g, ind)
     of ' ', '\x09':
-      add(com, s[i])
+      com.add(s[i])
       inc(i)
     else:
       # we may break the comment into a multi-line comment if the line
@@ -214,7 +214,7 @@ proc putComment(g: var TSrcGen, s: string) =
         optNL(g, ind)
         com = "## "
       while i <= hi and s[i] > ' ':
-        add(com, s[i])
+        com.add(s[i])
         inc(i)
   put(g, tkComment, com)
   optNL(g)
@@ -259,7 +259,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
       inc(i)
       optNL(g, 0)
     else:
-      add(str, s[i])
+      str.add(s[i])
       inc(i)
   put(g, kind, str)
 

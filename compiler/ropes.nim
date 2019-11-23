@@ -202,7 +202,7 @@ proc `$`*(r: Rope): string =
   ## converts a rope back to a string.
   result = newString(r.len)
   setLen(result, 0)
-  for s in leaves(r): add(result, s)
+  for s in leaves(r): result.add(s)
 
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
@@ -221,11 +221,11 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
       inc(i)                  # skip '$'
       case frmt[i]
       of '$':
-        add(result, "$")
+        result.add("$")
         inc(i)
       of '#':
         inc(i)
-        add(result, args[num])
+        result.add(args[num])
         inc(num)
       of '0'..'9':
         var j = 0
@@ -237,7 +237,7 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
         if j > high(args) + 1:
           doAssert false, "invalid format string: " & frmt
         else:
-          add(result, args[j-1])
+          result.add(args[j-1])
       of '{':
         inc(i)
         var j = 0
@@ -252,12 +252,12 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
         if j > high(args) + 1:
           doAssert false, "invalid format string: " & frmt
         else:
-          add(result, args[j-1])
+          result.add(args[j-1])
       of 'n':
-        add(result, "\n")
+        result.add("\n")
         inc(i)
       of 'N':
-        add(result, "\n")
+        result.add("\n")
         inc(i)
       else:
         doAssert false, "invalid format string: " & frmt
@@ -266,7 +266,7 @@ proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
       if frmt[i] != '$': inc(i)
       else: break
     if i - 1 >= start:
-      add(result, substr(frmt, start, i - 1))
+      result.add(substr(frmt, start, i - 1))
   assert(ropeInvariant(result))
 
 proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
@@ -274,7 +274,7 @@ proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
 
 template addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
   ## shortcut for ``add(c, frmt % args)``.
-  add(c, frmt % args)
+  c.add(frmt % args)
 
 when true:
   template `~`*(r: string): Rope = r % []

@@ -159,8 +159,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     for i in 1 ..< n.len:
       var p = n[i]
       if p.kind == nkSym:
-        add(errProto, typeToString(p.sym.typ, preferName))
-        if i != n.len-1: add(errProto, ", ")
+        errProto.add(typeToString(p.sym.typ, preferName))
+        if i != n.len-1: errProto.add(", ")
       # else: ignore internal error as we're already in error handling mode
     if errProto == proto:
       prefer = preferModuleInfo
@@ -185,11 +185,11 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       inc skipped
       continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
-      add(candidates, renderTree(err.sym.ast,
+      candidates.add(renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
     else:
-      add(candidates, getProcHeader(c.config, err.sym, prefer))
-    add(candidates, "\n")
+      candidates.add(getProcHeader(c.config, err.sym, prefer))
+    candidates.add("\n")
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
@@ -255,10 +255,10 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
   var result = errTypeMismatch
-  add(result, describeArgs(c, n, 1, prefer))
-  add(result, '>')
+  result.add(describeArgs(c, n, 1, prefer))
+  result.add('>')
   if candidates != "":
-    add(result, "\n" & errButExpected & "\n" & candidates)
+    result.add("\n" & errButExpected & "\n" & candidates)
   localError(c.config, n.info, result & "\nexpression: " & $n)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
@@ -406,9 +406,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       # don't cascade errors
       var args = "("
       for i in 1 ..< len(n):
-        if i > 1: add(args, ", ")
-        add(args, typeToString(n[i].typ))
-      add(args, ")")
+        if i > 1: args.add(", ")
+        args.add(typeToString(n[i].typ))
+      args.add(")")
 
       localError(c.config, n.info, errAmbiguousCallXYZ % [
         getProcHeader(c.config, result.calleeSym),

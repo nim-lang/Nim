@@ -919,14 +919,14 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
         var hasErrorType = false
         var msg = "type mismatch: got <"
         for i in 1 ..< len(n):
-          if i > 1: add(msg, ", ")
+          if i > 1: msg.add(", ")
           let nt = n[i].typ
-          add(msg, typeToString(nt))
+          msg.add(typeToString(nt))
           if nt.kind == tyError:
             hasErrorType = true
             break
         if not hasErrorType:
-          add(msg, ">\nbut expected one of: \n" &
+          msg.add(">\nbut expected one of: \n" &
               typeToString(n[0].typ))
           localError(c.config, n.info, msg)
         return errorNode(c, n)
@@ -974,11 +974,11 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
   var e = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "echo"))
   if e != nil:
-    add(result, newSymNode(e))
+    result.add(newSymNode(e))
   else:
     localError(c.config, n.info, "system needs: echo")
-    add(result, errorNode(c, n))
-  add(result, n)
+    result.add(errorNode(c, n))
+  result.add(n)
   result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
@@ -1655,7 +1655,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     a = semSubscript(c, a, {efLValue})
     if a == nil:
       result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "[]="))
-      add(result, n[1])
+      result.add(n[1])
       if mode == noOverloadedSubscript:
         bracketNotFoundError(c, result)
         return n
@@ -1665,7 +1665,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
     result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "{}="))
-    add(result, n[1])
+    result.add(n[1])
     return semExprNoType(c, result)
   of nkPar, nkTupleConstr:
     if a.len >= 2:

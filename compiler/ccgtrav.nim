@@ -168,8 +168,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   m.s[cfsProcs].add(generatedProc)
 
   if hcrOn:
-    addf(m.s[cfsProcHeaders], "N_NIMCALL_PTR(void, $1)(void*, NI);\n", [result])
-    addf(m.s[cfsDynLibInit], "\t$1 = (N_NIMCALL_PTR(void, )(void*, NI)) hcrRegisterProc($3, \"$1\", (void*)$2);\n",
+    m.s[cfsProcHeaders].addf("N_NIMCALL_PTR(void, $1)(void*, NI);\n", [result])
+    m.s[cfsDynLibInit].addf("\t$1 = (N_NIMCALL_PTR(void, )(void*, NI)) hcrRegisterProc($3, \"$1\", (void*)$2);\n",
          [result, markerName, getModuleDllPath(m)])
 
 proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
