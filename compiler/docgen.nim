@@ -401,6 +401,10 @@ proc runAllExamples(d: PDoc) =
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples.nim"))
   writeFile(outp, d.examples)
+  let nimsFilename = d.filename.changeFileExt"" & ".nims"
+  if fileExists(nimsFilename):
+    let outputNims = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" & "_examples.nims"))
+    writeFile(outputNims, readFile(nimsFilename))
   let backend = if isDefined(d.conf, "js"): "js"
                 elif isDefined(d.conf, "cpp"): "cpp"
                 elif isDefined(d.conf, "objc"): "objc"
