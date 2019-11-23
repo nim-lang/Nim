@@ -3826,11 +3826,6 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
-  proc addInt*(result: var string; x: int64) =
-    result.add $x
-
-  proc addFloat*(result: var string; x: float) =
-    result.add $x
 
   when defined(JS) and not defined(nimscript):
     include "system/jssys"
@@ -3841,6 +3836,12 @@ elif defined(JS):
       if x < y: return -1
       return 1
 
+when defined(JS) or defined(nimscript):
+  proc addInt*(result: var string; x: int64) =
+    result.add $x
+
+  proc addFloat*(result: var string; x: float) =
+    result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.

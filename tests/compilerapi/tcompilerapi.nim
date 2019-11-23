@@ -1,5 +1,6 @@
 discard """
   output: '''top level statements are executed!
+(ival: 10, fval: 2.0)
 2.0
 my secret
 11
