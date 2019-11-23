@@ -167,7 +167,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
   initIdTable(c.bindings)
   if binding != nil and callee.kind in routineKinds:
     var typeParams = callee.ast[genericParamsPos]
-    for i in 1..min(len(typeParams), len(binding)-1):
+    for i in 1..min(typeParams.len, binding.len-1):
       var formalTypeParam = typeParams[i-1].typ
       var bound = binding[i].typ
       if bound != nil:
@@ -334,7 +334,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
         n[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
     result.add(argTypeToString(arg, prefer))
-    if i != len(n) - 1: result.add(", ")
+    if i != n.len - 1: result.add(", ")
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType,
               flags: TTypeRelFlags = {}): TTypeRelation
@@ -440,7 +440,7 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
 proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
   if fGenericOrigin != nil and last.kind == tyGenericInst and
      last.len-1 == fGenericOrigin.len:
-    for i in 1 ..< len(fGenericOrigin):
+    for i in 1 ..< fGenericOrigin.len:
       let x = PType(idTableGet(c.bindings, fGenericOrigin[i]))
       if x == nil:
         put(c, fGenericOrigin[i], last[i])
@@ -518,16 +518,16 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
   if sameType(f, a):
     result = isEqual
-  elif len(a) == len(f):
+  elif a.len == f.len:
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
                      else: 1
-    for i in firstField ..< len(f):
+    for i in firstField ..< f.len:
       var m = typeRel(c, f[i], a[i])
       if m < isSubtype: return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
-      for i in 0 ..< len(f.n):
+      for i in 0 ..< f.n.len:
         # check field names:
         if f.n[i].kind != nkSym: return isNone
         elif a.n[i].kind != nkSym: return isNone
@@ -607,7 +607,7 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
-    if len(f) != len(a): return
+    if f.len != a.len: return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
 
@@ -1497,8 +1497,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       # simply no match for now:
       discard
     elif x.kind == tyGenericInst and f[0] == x[0] and
-          len(x) - 1 == len(f):
-      for i in 1 ..< len(f):
+          x.len - 1 == f.len:
+      for i in 1 ..< f.len:
         if x[i].kind == tyGenericParam:
           internalError(c.c.graph.config, "wrong instantiated type!")
         elif typeRel(c, f[i], x[i]) <= isSubtype:
@@ -1506,7 +1506,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if f[i].kind != tyTypeDesc: return
       result = isGeneric
     elif x.kind == tyGenericInst and isGenericSubtype(c, x, f, depth, f) and
-          (len(x) - 1 == len(f)):
+          (x.len - 1 == f.len):
       # do not recurse here in order to not K bind twice for this code:
       #
       # type
@@ -1538,7 +1538,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # var it1 = internalFind(root, 312) # cannot instantiate: 'D'
         #
         # we steal the generic parameters from the tyGenericBody:
-        for i in 1 ..< len(f):
+        for i in 1 ..< f.len:
           let x = PType(idTableGet(c.bindings, genericBody[i-1]))
           if x == nil:
             discard "maybe fine (for eg. a==tyNil)"
@@ -1876,7 +1876,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
-  for i in 0 ..< len(c.converters):
+  for i in 0 ..< c.converters.len:
     var src = c.converters[i].typ[1]
     var dest = c.converters[i].typ[0]
     # for generic type converters we need to check 'src <- a' before
@@ -2523,7 +2523,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
   var f = 1
-  while f < len(m.callee.n):
+  while f < m.callee.n.len:
     var formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:

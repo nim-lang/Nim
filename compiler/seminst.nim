@@ -14,11 +14,11 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   template rec(n) = addObjFieldsToLocalScope(c, n)
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       rec n[i]
   of nkRecCase:
     if n.len > 0: rec n[0]
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       if n[i].kind in {nkOfBranch, nkElse}: rec lastSon(n[i])
   of nkSym:
     let f = n.sym

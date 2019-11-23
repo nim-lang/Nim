@@ -35,7 +35,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         result = newStrNode(nkStrLit, fieldName)
         return
     # other fields:
-    for i in ord(c.replaceByFieldName)..<len(forLoop)-2:
+    for i in ord(c.replaceByFieldName)..<forLoop.len-2:
       if ident.id == considerQuotedIdent(c.c, forLoop[i]).id:
         var call = forLoop[^2]
         var tupl = call[i+1-ord(c.replaceByFieldName)]
@@ -53,8 +53,8 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
       localError(c.c.config, n.info,
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
-    newSons(result, len(n))
-    for i in 0 ..< len(n):
+    newSons(result, n.len)
+    for i in 0 ..< n.len:
       result[i] = instFieldLoopBody(c, n[i], forLoop)
 
 type
@@ -118,7 +118,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   result[1] = stmts
 
   var call = n[^2]
-  if len(n)-2 != len(call)-1 + ord(m==mFieldPairs):
+  if n.len-2 != call.len-1 + ord(m==mFieldPairs):
     localError(c.config, n.info, errWrongNumberOfVariables)
     return result
 
@@ -135,7 +135,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:
     var loopBody = n[^1]
-    for i in 0..<len(tupleTypeA):
+    for i in 0..<tupleTypeA.len:
       openScope(c)
       var fc: TFieldInstCtx
       fc.tupleType = tupleTypeA

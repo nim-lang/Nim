@@ -93,7 +93,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
 
   case t.kind
   of tyGenericInvocation:
-    for i in 0 ..< len(t):
+    for i in 0 ..< t.len:
       c.hashType t[i], flags
   of tyDistinct:
     if CoDistinct in flags:
@@ -180,15 +180,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyTuple:
     c &= char(t.kind)
     if t.n != nil and CoType notin flags:
-      assert(len(t.n) == len(t))
-      for i in 0 ..< len(t.n):
+      assert(t.n.len == t.len)
+      for i in 0 ..< t.n.len:
         assert(t.n[i].kind == nkSym)
         c &= t.n[i].sym.name.s
         c &= ':'
         c.hashType(t[i], flags+{CoIgnoreRange})
         c &= ','
     else:
-      for i in 0 ..< len(t): c.hashType t[i], flags+{CoIgnoreRange}
+      for i in 0 ..< t.len: c.hashType t[i], flags+{CoIgnoreRange}
   of tyRange:
     if CoIgnoreRange notin flags:
       c &= char(t.kind)

@@ -275,7 +275,7 @@ template wholeSymTab(cond, section: untyped) {.dirty.} =
                                  pm, c.inTypeContext > 0, scopeN))
 
 proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var Suggestions) =
-  for i in 0 ..< len(list):
+  for i in 0 ..< list.len:
     if list[i].kind == nkSym:
       suggestField(c, list[i].sym, f, info, outputs)
     #else: InternalError(list.info, "getSymFromList")
@@ -283,7 +283,7 @@ proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var S
 proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n): suggestObject(c, n[i], f, info, outputs)
+    for i in 0 ..< n.len: suggestObject(c, n[i], f, info, outputs)
   of nkRecCase:
     if n.len > 0:
       suggestObject(c, n[0], f, info, outputs)
@@ -321,7 +321,7 @@ proc suggestVar(c: PContext, n: PNode, outputs: var Suggestions) =
   wholeSymTab(nameFits(c, it, n), ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
-  if s.typ != nil and len(s.typ) > 1 and s.typ[1] != nil:
+  if s.typ != nil and s.typ.len > 1 and s.typ[1] != nil:
     # special rule: if system and some weird generic match via 'tyUntyped'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion
@@ -455,7 +455,7 @@ proc findUsages(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
 
 when defined(nimsuggest):
   proc listUsages*(conf: ConfigRef; s: PSym) =
-    #echo "usages ", len(s.allUsages)
+    #echo "usages ", s.allUsages.len
     for info in s.allUsages:
       let x = if info == s.info and info.col == s.info.col: ideDef else: ideUse
       suggestResult(conf, symToSuggest(conf, s, isLocal=false, x, info, 100, PrefixMatch.None, false, 0))
@@ -598,7 +598,7 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
       var x = safeSemExpr(c, n[0])
       if x.kind == nkEmpty or x.typ == nil: x = n[0]
       a.add x
-      for i in 1..len(n)-1:
+      for i in 1..n.len-1:
         # use as many typed arguments as possible:
         var x = safeSemExpr(c, n[i])
         if x.kind == nkEmpty or x.typ == nil: break

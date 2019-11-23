@@ -22,14 +22,14 @@ proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
   result = arNo
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result = isPartOfAux(n[i], b, marker)
       if result == arYes: return
   of nkRecCase:
     assert(n[0].kind == nkSym)
     result = isPartOfAux(n[0], b, marker)
     if result == arYes: return
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = isPartOfAux(lastSon(n[i]), b, marker)
@@ -52,7 +52,7 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = isPartOfAux(lastSon(a), b, marker)
   of tyArray, tySet, tyTuple:
-    for i in 0 ..< len(a):
+    for i in 0 ..< a.len:
       result = isPartOfAux(a[i], b, marker)
       if result == arYes: return
   else: discard
@@ -108,7 +108,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           result = arMaybe
     of nkBracketExpr:
       result = isPartOf(a[0], b[0])
-      if len(a) >= 2 and len(b) >= 2:
+      if a.len >= 2 and b.len >= 2:
         # array accesses:
         if result == arYes and isDeepConstExpr(a[1]) and isDeepConstExpr(b[1]):
           # we know it's the same array and we have 2 constant indexes;

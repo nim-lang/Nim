@@ -536,15 +536,15 @@ proc shortenDir*(conf: ConfigRef; dir: string): string {.
   ## returns the interesting part of a dir
   var prefix = conf.projectPath.string & DirSep
   if startsWith(dir, prefix):
-    return substr(dir, len(prefix))
+    return substr(dir, prefix.len)
   prefix = getPrefixDir(conf).string & DirSep
   if startsWith(dir, prefix):
-    return substr(dir, len(prefix))
+    return substr(dir, prefix.len)
   result = dir
 
 proc removeTrailingDirSep*(path: string): string =
-  if (len(path) > 0) and (path[^1] == DirSep):
-    result = substr(path, 0, len(path) - 2)
+  if (path.len > 0) and (path[^1] == DirSep):
+    result = substr(path, 0, path.len - 2)
   else:
     result = path
 

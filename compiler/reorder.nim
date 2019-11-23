@@ -97,7 +97,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkOpenSymChoice, nkClosedSymChoice:
     uses.incl n[0].sym.name.id
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
-    for i in 0..<len(n): computeDeps(cache, n[i], declares, uses, topLevel)
+    for i in 0..<n.len: computeDeps(cache, n[i], declares, uses, topLevel)
   of nkPragma:
     let a = n[0]
     if a.kind == nkExprColonExpr and a[0].kind == nkIdent and

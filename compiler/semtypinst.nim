@@ -169,7 +169,7 @@ proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
     discard
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       var it = n[i]
       if it == nil: illFormedAst(n, cl.c.config)
       case it.kind
@@ -209,7 +209,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNode(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       var it = n[i]
       if it == nil: illFormedAst(n, cl.c.config)
       case it.kind
@@ -234,7 +234,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
   else:
-    var length = len(n)
+    var length = n.len
     if length > 0:
       newSons(result, length)
       if start > 0:
@@ -331,7 +331,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     when defined(reportCacheHits):
       echo "Generic instantiation cached ", typeToString(result), " for ", typeToString(t)
     return
-  for i in 1 ..< len(t):
+  for i in 1 ..< t.len:
     var x = t[i]
     if x.kind in {tyGenericParam}:
       x = lookupTypeVar(cl, x)
@@ -371,14 +371,14 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var typeMapLayer = newTypeMapLayer(cl)
   cl.typeMap = addr(typeMapLayer)
 
-  for i in 1 ..< len(t):
+  for i in 1 ..< t.len:
     var x = replaceTypeVarsT(cl, t[i])
     assert x.kind != tyGenericInvocation
     header[i] = x
     propagateToOwner(header, x)
     cl.typeMap.put(body[i-1], x)
 
-  for i in 1 ..< len(t):
+  for i in 1 ..< t.len:
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAddSon(result, header[i])
@@ -586,7 +586,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       #if not cl.allowMetaTypes:
       idTablePut(cl.localCache, t, result)
 
-      for i in 0 ..< len(result):
+      for i in 0 ..< result.len:
         if result[i] != nil:
           if result[i].kind == tyGenericBody:
             localError(cl.c.config, if t.sym != nil: t.sym.info else: cl.info,
@@ -679,10 +679,10 @@ proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
     recomputeFieldPositions(b, b.n, currPosition)
   case obj.kind
   of nkRecList:
-    for i in 0 ..< len(obj): recomputeFieldPositions(nil, obj[i], currPosition)
+    for i in 0 ..< obj.len: recomputeFieldPositions(nil, obj[i], currPosition)
   of nkRecCase:
     recomputeFieldPositions(nil, obj[0], currPosition)
-    for i in 1 ..< len(obj):
+    for i in 1 ..< obj.len:
       recomputeFieldPositions(nil, lastSon(obj[i]), currPosition)
   of nkSym:
     obj.sym.position = currPosition

@@ -33,7 +33,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     # we have to use the same bitwidth
     # as the target CPU
     var b = 0'u64
-    for i in 0 ..< len(s):
+    for i in 0 ..< s.len:
       b = b + uint(s[i])
       b = b + (b shl 10)
       b = b xor (b shr 6)
@@ -43,7 +43,7 @@ proc hashString*(conf: ConfigRef; s: string): BiggestInt =
     result = cast[Hash](b)
   else:
     var a = 0'u32
-    for i in 0 ..< len(s):
+    for i in 0 ..< s.len:
       a = a + uint32(s[i])
       a = a + (a shl 10)
       a = a xor (a shr 6)

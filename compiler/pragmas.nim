@@ -107,7 +107,7 @@ proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
 proc pragmaAsm*(c: PContext, n: PNode): char =
   result = '\0'
   if n != nil:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       let it = n[i]
       if it.kind in nkPragmaCallKinds and it.len == 2 and it[0].kind == nkIdent:
         case whichKeyword(it[0].ident)
@@ -304,7 +304,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
       sym.typ.callConv = ccCDecl
 
 proc processNote(c: PContext, n: PNode) =
-  if n.kind in nkPragmaCallKinds and len(n) == 2 and
+  if n.kind in nkPragmaCallKinds and n.len == 2 and
       n[0].kind == nkBracketExpr and
       n[0].len == 2 and
       n[0][1].kind == nkIdent and n[0][0].kind == nkIdent:
@@ -419,7 +419,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   if n[start-1].kind in nkPragmaCallKinds:
     localError(c.config, n.info, "'push' cannot have arguments")
   var x = pushOptionEntry(c)
-  for i in start ..< len(n):
+  for i in start ..< n.len:
     if not tryProcessOption(c, n[i], c.config.options):
       # simply store it somewhere:
       if x.otherPragmas.isNil:

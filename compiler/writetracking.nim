@@ -77,11 +77,11 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
       if typ != nil:
         typ = skipTypes(typ, abstractInst)
         if typ.kind != tyProc: typ = nil
-        else: assert(len(typ) == len(typ.n))
+        else: assert(typ.len == typ.n.len)
 
       for i in 1 ..< n.len:
         let it = n[i]
-        if typ != nil and i < len(typ):
+        if typ != nil and i < typ.len:
           assert(typ.n[i].kind == nkSym)
           let paramType = typ.n[i]
           if paramType.typ.isCompileTimeOnly: continue
@@ -157,10 +157,10 @@ proc depsArgs(w: var W; n: PNode) =
   var typ = skipTypes(n[0].typ, abstractInst)
   if typ.kind != tyProc: return
   # echo n.info, " ", n, " ", w.owner.name.s, " ", typeToString(typ)
-  assert(len(typ) == len(typ.n))
+  assert(typ.len == typ.n.len)
   for i in 1 ..< n.len:
     let it = n[i]
-    if i < len(typ):
+    if i < typ.len:
       assert(typ.n[i].kind == nkSym)
       let paramType = typ.n[i]
       if paramType.typ.isCompileTimeOnly: continue
@@ -211,7 +211,7 @@ proc possibleAliases(w: var W; result: var seq[ptr TSym]) =
   while todo < result.len:
     let x = result[todo]
     inc todo
-    for i in 0..<len(w.assignments):
+    for i in 0..<w.assignments.len:
       let a = addr(w.assignments[i])
       #if a.srcHasSym(x):
       #  # y = f(..., x, ...)
@@ -239,7 +239,7 @@ proc markWriteOrEscape(w: var W; conf: ConfigRef) =
   ## A write then looks like ``p[] = x``.
   ## An escape looks like ``p[] = q`` or more generally
   ## like ``p[] = f(q)`` where ``f`` can forward ``q``.
-  for i in 0..<len(w.assignments):
+  for i in 0..<w.assignments.len:
     let a = addr(w.assignments[i])
     if a.destInfo != {}:
       possibleAliases(w, a.dest)

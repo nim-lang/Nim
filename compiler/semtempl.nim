@@ -34,7 +34,7 @@ type
     spNone, spGenSym, spInject
 
 proc symBinding(n: PNode): TSymBinding =
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     var it = n[i]
     var key = if it.kind == nkExprColonExpr: it[0] else: it
     if key.kind == nkIdent:
@@ -207,7 +207,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     else:
       replaceIdentBySym(c.c, n, ident)
   else:
-    if (n.kind == nkPragmaExpr and len(n) >= 2 and n[1].kind == nkPragma):
+    if (n.kind == nkPragmaExpr and n.len >= 2 and n[1].kind == nkPragma):
       let pragmaNode = n[1]
       for i in 0..<pragmaNode.len:
         openScope(c)
@@ -314,7 +314,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   closeScope(c)
 
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
-  for i in start ..< len(n):
+  for i in start ..< n.len:
     var a = n[i]
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a, c.c.config)
@@ -325,7 +325,7 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
     when defined(nimsuggest):
       dec c.c.inTypeContext
     a[^1] = semTemplBody(c, a[^1])
-    for j in 0 ..< len(a)-2:
+    for j in 0 ..< a.len-2:
       addLocalDecl(c, a[j], symKind)
 
 proc semPattern(c: PContext, n: PNode): PNode
@@ -370,7 +370,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkEmpty, nkSym..nkNilLit, nkComesFrom:
     discard
   of nkIfStmt:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       var it = n[i]
       if it.len == 2:
         openScope(c)
@@ -381,25 +381,25 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         n[i] = semTemplBodyScope(c, it)
   of nkWhileStmt:
     openScope(c)
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       n[i] = semTemplBody(c, n[i])
     closeScope(c)
   of nkCaseStmt:
     openScope(c)
     n[0] = semTemplBody(c, n[0])
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       var a = n[i]
       checkMinSonsLen(a, 1, c.c.config)
-      for j in 0 ..< len(a)-1:
+      for j in 0 ..< a.len-1:
         a[j] = semTemplBody(c, a[j])
       a[^1] = semTemplBodyScope(c, a[^1])
     closeScope(c)
   of nkForStmt, nkParForStmt:
     openScope(c)
     n[^2] = semTemplBody(c, n[^2])
-    for i in 0 ..< len(n) - 2:
+    for i in 0 ..< n.len - 2:
       if n[i].kind == nkVarTuple:
-        for j in 0 ..< len(n[i])-1:
+        for j in 0 ..< n[i].len-1:
           addLocalDecl(c, n[i][j], skForVar)
       else:
         addLocalDecl(c, n[i], skForVar)
@@ -424,11 +424,11 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkTryStmt, nkHiddenTryStmt:
     checkMinSonsLen(n, 2, c.c.config)
     n[0] = semTemplBodyScope(c, n[0])
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       var a = n[i]
       checkMinSonsLen(a, 1, c.c.config)
       openScope(c)
-      for j in 0 ..< len(a)-1:
+      for j in 0 ..< a.len-1:
         if a[j].isInfixAs():
           addLocalDecl(c, a[j][2], skLet)
           a[j][1] = semTemplBody(c, a[j][1])
@@ -443,7 +443,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     n[0] = semTemplBody(c, n[0])
     semTemplSomeDecl(c, n, skParam, 1)
   of nkConstSection:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       var a = n[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkConstDef): illFormedAst(a, c.c.config)
@@ -452,13 +452,13 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       a[1] = semTemplBody(c, a[1])
       a[2] = semTemplBody(c, a[2])
   of nkTypeSection:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       var a = n[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkTypeDef): illFormedAst(a, c.c.config)
       checkSonsLen(a, 3, c.c.config)
       addLocalDecl(c, a[0], skType)
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       var a = n[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkTypeDef): illFormedAst(a, c.c.config)
@@ -592,7 +592,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
       if s != nil and contains(c.toBind, s.id):
         return symChoice(c.c, n, s, scClosed)
     result = n
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result[i] = semTemplBodyDirty(c, n[i])
 
 proc semTemplateDef(c: PContext, n: PNode): PNode =
@@ -637,7 +637,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       param.flags.incl sfTemplateParam
       param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
-    if len(gp) > 0:
+    if gp.len > 0:
       if n[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
         n[genericParamsPos] = gp
@@ -750,7 +750,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     if stupidStmtListExpr(n):
       result = semPatternBody(c, n.lastSon)
     else:
-      for i in 0 ..< len(n):
+      for i in 0 ..< n.len:
         result[i] = semPatternBody(c, n[i])
   of nkCallKinds:
     let s = qualifiedLookUp(c.c, n[0], {})
@@ -783,7 +783,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
         result[1] = semPatternBody(c, n[1])
         return
 
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result[i] = semPatternBody(c, n[i])
   else:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
@@ -799,7 +799,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     of nkPar:
       if n.len == 1: return semPatternBody(c, n[0])
     else: discard
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result[i] = semPatternBody(c, n[i])
 
 proc semPattern(c: PContext, n: PNode): PNode =

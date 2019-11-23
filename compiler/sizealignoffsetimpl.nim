@@ -81,7 +81,7 @@ proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
   of nkRecCase:
     assert(n[0].kind == nkSym)
     result = computeSubObjectAlign(conf, n[0])
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       let child = n[i]
       case child.kind
       of nkOfBranch, nkElse:
@@ -124,7 +124,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
     computeObjectOffsetsFoldFunction(conf, n[0], packed, accum)
     var maxChildAlign: int = if accum.offset == szUnknownSize: szUnknownSize else: 1
     if not packed:
-      for i in 1 ..< len(n):
+      for i in 1 ..< n.len:
         let child = n[i]
         case child.kind
         of nkOfBranch, nkElse:
@@ -141,7 +141,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
       # the union neds to be aligned first, before the offsets can be assigned
       accum.align(maxChildAlign)
       let accumRoot = accum # copy, because each branch should start af the same offset
-      for i in 1 ..< len(n):
+      for i in 1 ..< n.len:
         var branchAccum = accumRoot
         computeObjectOffsetsFoldFunction(conf, n[i].lastSon, packed, branchAccum)
         accum.mergeBranch(branchAccum)
@@ -321,7 +321,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   of tyTuple:
     try:
       var accum = OffsetAccum(maxAlign: 1)
-      for i in 0 ..< len(typ):
+      for i in 0 ..< typ.len:
         let child = typ[i]
         computeSizeAlign(conf, child)
         accum.align(child.align)

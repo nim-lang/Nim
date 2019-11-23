@@ -258,7 +258,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
-      for i in 0 ..< len(n):
+      for i in 0 ..< n.len:
         result = genRecCommentAux(d, n[i])
         if result != nil: return
   else:
@@ -572,7 +572,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   of skTemplate: result.add(".t")
   of skConverter: result.add(".c")
   else: discard
-  if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
+  if n.len > paramsPos and n[paramsPos].kind == nkFormalParams:
     let params = renderParamTypes(n[paramsPos])
     if params.len > 0:
       result.add(defaultParamSeparator)
@@ -871,13 +871,13 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< len(n): generateDoc(d, n[i], orig)
+    for i in 0 ..< n.len: generateDoc(d, n[i], orig)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n[0][0]):
@@ -925,13 +925,13 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       generateJson(d, n[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
@@ -968,13 +968,13 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
     when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         r.add genTagsItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       generateTags(d, n[i], r)
   of nkWhenStmt:
     # generate documentation for the first branch only:

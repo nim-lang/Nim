@@ -104,7 +104,7 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
     result = $chr(toInt64(x) and 0xff)
   of tyEnum:
     var n = t.n
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       if n[i].kind != nkSym: internalError(g.config, a.info, "ordinalValToString")
       var field = n[i].sym
       if field.position == x:
@@ -194,7 +194,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     elif a.kind in {nkStrLit..nkTripleStrLit}:
       result = newIntNodeT(toInt128(a.strVal.len), n, g)
     else:
-      result = newIntNodeT(toInt128(len(a)), n, g)
+      result = newIntNodeT(toInt128(a.len), n, g)
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   # XXX: Hides overflow/underflow
   of mAbsI: result = foldAbs(getInt(a), n, g)
@@ -372,7 +372,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
 
 proc getConstIfExpr(c: PSym, n: PNode; g: ModuleGraph): PNode =
   result = nil
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     var it = n[i]
     if it.len == 2:
       var e = getConstExpr(c, it[0], g)
@@ -401,16 +401,16 @@ proc leValueConv*(a, b: PNode): bool =
   else: result = false # internalError(a.info, "leValueConv")
 
 proc magicCall(m: PSym, n: PNode; g: ModuleGraph): PNode =
-  if len(n) <= 1: return
+  if n.len <= 1: return
 
   var s = n[0].sym
   var a = getConstExpr(m, n[1], g)
   var b, c: PNode
   if a == nil: return
-  if len(n) > 2:
+  if n.len > 2:
     b = getConstExpr(m, n[2], g)
     if b == nil: return
-    if len(n) > 3:
+    if n.len > 3:
       c = getConstExpr(m, n[3], g)
       if c == nil: return
   result = evalOp(s.magic, n, a, b, c, g)
@@ -488,23 +488,23 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
   var idx = toInt64(getOrdValue(y))
   case x.kind
   of nkPar, nkTupleConstr:
-    if idx >= 0 and idx < len(x):
+    if idx >= 0 and idx < x.len:
       result = x.sons[idx]
       if result.kind == nkExprColonExpr: result = result[1]
     else:
-      localError(g.config, n.info, formatErrorIndexBound(idx, len(x)-1) & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkBracket:
     idx = idx - toInt64(firstOrd(g.config, x.typ))
     if idx >= 0 and idx < x.len: result = x[int(idx)]
     else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkStrLit..nkTripleStrLit:
     result = newNodeIT(nkCharLit, x.info, n.typ)
-    if idx >= 0 and idx < len(x.strVal):
+    if idx >= 0 and idx < x.strVal.len:
       result.intVal = ord(x.strVal[int(idx)])
-    elif idx == len(x.strVal) and optLaxStrings in g.config.options:
+    elif idx == x.strVal.len and optLaxStrings in g.config.options:
       discard
     else:
-      localError(g.config, n.info, formatErrorIndexBound(idx, len(x.strVal)-1) & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, x.strVal.len-1) & $n)
   else: discard
 
 proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
@@ -513,7 +513,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
   var field = n[1].sym
-  for i in ord(x.kind == nkObjConstr) ..< len(x):
+  for i in ord(x.kind == nkObjConstr) ..< x.len:
     var it = x[i]
     if it.kind != nkExprColonExpr:
       # lookup per index:
@@ -528,7 +528,7 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
 proc foldConStrStr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
   result.strVal = ""
-  for i in 1 ..< len(n):
+  for i in 1 ..< n.len:
     let a = getConstExpr(m, n[i], g)
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
@@ -630,12 +630,12 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           var a = getArrayConstr(m, n[1], g)
           if a.kind == nkBracket:
             # we can optimize it away:
-            result = newIntNodeT(toInt128(len(a)-1), n, g)
+            result = newIntNodeT(toInt128(a.len-1), n, g)
       of mLengthOpenArray:
         var a = getArrayConstr(m, n[1], g)
         if a.kind == nkBracket:
           # we can optimize it away! This fixes the bug ``len(134)``.
-          result = newIntNodeT(toInt128(len(a)), n, g)
+          result = newIntNodeT(toInt128(a.len), n, g)
         else:
           result = magicCall(m, n, g)
       of mLengthArray:
@@ -684,7 +684,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     result.add b
   #of nkObjConstr:
   #  result = copyTree(n)
-  #  for i in 1 ..< len(n):
+  #  for i in 1 ..< n.len:
   #    var a = getConstExpr(m, n[i][1])
   #    if a == nil: return nil
   #    result[i][1] = a
@@ -692,7 +692,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   of nkPar, nkTupleConstr:
     # tuple constructor
     result = copyNode(n)
-    if (len(n) > 0) and (n[0].kind == nkExprColonExpr):
+    if (n.len > 0) and (n[0].kind == nkExprColonExpr):
       for i, expr in n.pairs:
         let exprNew = copyNode(expr) # nkExprColonExpr
         exprNew.add expr[0]

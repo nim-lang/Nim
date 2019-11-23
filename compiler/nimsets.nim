@@ -17,7 +17,7 @@ proc inSet*(s: PNode, elem: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "inSet")
     return false
-  for i in 0 ..< len(s):
+  for i in 0 ..< s.len:
     if s[i].kind == nkRange:
       if leValue(s[i][0], elem) and
           leValue(elem, s[i][1]):
@@ -47,7 +47,7 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "SomeInSet")
     return false
-  for i in 0 ..< len(s):
+  for i in 0 ..< s.len:
     if s[i].kind == nkRange:
       if leValue(s[i][0], b) and leValue(b, s[i][1]) or
           leValue(s[i][0], a) and leValue(a, s[i][1]):
@@ -62,7 +62,7 @@ proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
   var first, j: Int128
   first = firstOrd(conf, s.typ[0])
   bitSetInit(b, int(getSize(conf, s.typ)))
-  for i in 0 ..< len(s):
+  for i in 0 ..< s.len:
     if s[i].kind == nkRange:
       j = getOrdValue(s[i][0], first)
       while j <= getOrdValue(s[i][1], first):
@@ -82,13 +82,13 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
   result.typ = settype
   result.info = info
   e = 0
-  while e < len(s) * ElemSize:
+  while e < s.len * ElemSize:
     if bitSetIn(s, e):
       a = e
       b = e
       while true:
         inc(b)
-        if (b >= len(s) * ElemSize) or not bitSetIn(s, b): break
+        if (b >= s.len * ElemSize) or not bitSetIn(s, b): break
       dec(b)
       let aa = newIntTypeNode(a + first, elemType)
       aa.info = info
@@ -149,7 +149,7 @@ proc setHasRange*(s: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
     return false
-  for i in 0 ..< len(s):
+  for i in 0 ..< s.len:
     if s[i].kind == nkRange:
       return true
   result = false

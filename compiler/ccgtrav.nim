@@ -28,7 +28,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
   if n == nil: return
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       genTraverseProc(c, accessor, n[i], typ)
   of nkRecCase:
     if (n[0].kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
@@ -38,7 +38,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if disc.loc.t == nil:
       internalError(c.p.config, n.info, "genTraverseProc()")
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       let branch = n[i]
       assert branch.kind in {nkOfBranch, nkElse}
       if branch.kind == nkOfBranch:
@@ -87,14 +87,14 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     else:
       lineF(p, cpsStmts, "}$n", [])
   of tyObject:
-    for i in 0 ..< len(typ):
+    for i in 0 ..< typ.len:
       var x = typ[i]
       if x != nil: x = x.skipTypes(skipPtrs)
       genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
-    for i in 0 ..< len(typ):
+    for i in 0 ..< typ.len:
       genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", [accessor, i]), typ[i])
   of tyRef:
     lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])

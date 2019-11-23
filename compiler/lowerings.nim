@@ -159,7 +159,7 @@ template fieldCheck {.dirty.} =
 
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
-  field.position = len(obj.n)
+  field.position = obj.n.len
   obj.n.add newSymNode(field)
   propagateToOwner(obj, field.typ)
   fieldCheck()
@@ -187,14 +187,14 @@ proc lookupInRecord(n: PNode, id: int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result = lookupInRecord(n[i], id)
       if result != nil: return
   of nkRecCase:
     if n[0].kind != nkSym: return
     result = lookupInRecord(n[0], id)
     if result != nil: return
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n[i]), id)
@@ -214,7 +214,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   field.typ = t
   assert t.kind != tyTyped
   propagateToOwner(obj, t)
-  field.position = len(obj.n)
+  field.position = obj.n.len
   obj.n.add newSymNode(field)
   fieldCheck()
 
@@ -228,7 +228,7 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable
     field.typ = t
     assert t.kind != tyTyped
     propagateToOwner(obj, t)
-    field.position = len(obj.n)
+    field.position = obj.n.len
     obj.n.add newSymNode(field)
     result = field
 

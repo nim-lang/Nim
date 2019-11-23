@@ -953,8 +953,8 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
   # setup loopBody:
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
-  var vpart = newNodeI(if len(body) == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0 ..< len(body)-2:
+  var vpart = newNodeI(if body.len == 3: nkIdentDefs else: nkVarTuple, body.info)
+  for i in 0 ..< body.len-2:
     if body[i].kind == nkSym:
       body[i].sym.kind = skLet
     vpart.add body[i]

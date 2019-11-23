@@ -387,7 +387,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
   #  Lend:
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     var it = n[i]
     if it.len == 2:
       withTemp(tmp, it[0].typ):
@@ -400,7 +400,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
           elsePos = c.xjmp(it[0], opcFJmp, tmp) # if false
       c.clearDest(n, dest)
       c.gen(it[1], dest) # then part
-      if i < len(n)-1:
+      if i < n.len-1:
         endings.add(c.xjmp(it[1], opcJmp, 0))
       c.patch(elsePos)
     else:
@@ -456,8 +456,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkType, nkNilLit: result = a.typ == b.typ
     of nkEmpty: result = true
     else:
-      if len(a) == len(b):
-        for i in 0 ..< len(a):
+      if a.len == b.len:
+        for i in 0 ..< a.len:
           if not sameConstant(a[i], b[i]): return
         result = true
 
@@ -502,7 +502,7 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
         c.gABx(it, opcBranch, tmp, b)
         let elsePos = c.xjmp(it.lastSon, opcFJmp, tmp)
         c.gen(it.lastSon, dest)
-        if i < len(n)-1:
+        if i < n.len-1:
           endings.add(c.xjmp(it.lastSon, opcJmp, 0))
         c.patch(elsePos)
       c.clearDest(n, dest)
@@ -528,7 +528,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   for i in 1 ..< n.len:
     let it = n[i]
     if it.kind != nkFinally:
-      var blen = len(it)
+      var blen = it.len
       # first opcExcept contains the end label of the 'except' block:
       let endExcept = c.xjmp(it, opcExcept, 0)
       for j in 0 .. blen - 2:
@@ -540,7 +540,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
         c.gABx(it, opcExcept, 0, 0)
       c.gen(it.lastSon, dest)
       c.clearDest(n, dest)
-      if i < len(n):
+      if i < n.len:
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
   let fin = lastSon(n)
@@ -587,7 +587,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n[0].typ, abstractInst)
   for i in 0..<n.len:
-    #if i > 0 and i < len(fntyp):
+    #if i > 0 and i < fntyp.len:
     #  let paramType = fntyp.n[i]
     #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
@@ -1764,10 +1764,10 @@ proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currP
     getNullValueAux(b, b.n, result, conf, currPosition)
   case obj.kind
   of nkRecList:
-    for i in 0 ..< len(obj): getNullValueAux(nil, obj[i], result, conf, currPosition)
+    for i in 0 ..< obj.len: getNullValueAux(nil, obj[i], result, conf, currPosition)
   of nkRecCase:
     getNullValueAux(nil, obj[0], result, conf, currPosition)
-    for i in 1 ..< len(obj):
+    for i in 1 ..< obj.len:
       getNullValueAux(nil, lastSon(obj[i]), result, conf, currPosition)
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info)
@@ -1812,7 +1812,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result.add getNullValue(elemType(t), info, conf)
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
-    for i in 0 ..< len(t):
+    for i in 0 ..< t.len:
       result.add getNullValue(t[i], info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)

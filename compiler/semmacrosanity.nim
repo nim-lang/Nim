@@ -16,14 +16,14 @@ proc ithField(n: PNode, field: var int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result = ithField(n[i], field)
       if result != nil: return
   of nkRecCase:
     if n[0].kind != nkSym: return
     result = ithField(n[0], field)
     if result != nil: return
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = ithField(lastSon(n[i]), field)

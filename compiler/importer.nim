@@ -47,7 +47,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
   if s.kind == skType:
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
-      for j in 0 ..< len(etyp.n):
+      for j in 0 ..< etyp.n.len:
         var e = etyp.n[j].sym
         if e.kind != skEnumField:
           internalError(c.config, s.info, "rawImportSymbol")
@@ -195,7 +195,7 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
 
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     let it = n[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
       let sep = it[0]
@@ -225,7 +225,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   if m != nil:
     n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       if n[i].kind != nkNilLit:
         importSymbol(c, n[i], m)
 

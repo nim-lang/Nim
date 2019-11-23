@@ -114,7 +114,7 @@ proc parseDirective(L: var TLexer, tok: var TToken; config: ConfigRef; condStack
   ppGetTok(L, tok)            # skip @
   case whichKeyword(tok.ident)
   of wIf:
-    setLen(condStack, len(condStack) + 1)
+    setLen(condStack, condStack.len + 1)
     let res = evalppIf(L, tok, config)
     condStack[high(condStack)] = res
     if not res: jumpToDirective(L, tok, jdElseEndif, config, condStack)
@@ -185,7 +185,7 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     val.add(']')
   let percent = tok.ident != nil and tok.ident.s == "%="
   if tok.tokType in {tkColon, tkEquals} or percent:
-    if len(val) > 0: val.add(':')
+    if val.len > 0: val.add(':')
     confTok(L, tok, config, condStack)           # skip ':' or '=' or '%'
     checkSymbol(L, tok)
     val.add($tok)
@@ -221,7 +221,7 @@ proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
     var condStack: seq[bool] = @[]
     confTok(L, tok, config, condStack)           # read in the first token
     while tok.tokType != tkEof: parseAssignment(L, tok, config, condStack)
-    if len(condStack) > 0: lexMessage(L, errGenerated, "expected @end")
+    if condStack.len > 0: lexMessage(L, errGenerated, "expected @end")
     closeLexer(L)
     return true
 

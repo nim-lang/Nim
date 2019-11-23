@@ -186,7 +186,7 @@ proc genArgNoParam(p: BProc, n: PNode): Rope =
     result = rdLoc(a)
 
 template genParamLoop(params) {.dirty.} =
-  if i < len(typ):
+  if i < typ.len:
     assert(typ.n[i].kind == nkSym)
     let paramType = typ.n[i]
     if not paramType.typ.isCompileTimeOnly:
@@ -209,8 +209,8 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
-  assert(len(typ) == len(typ.n))
-  var length = len(ri)
+  assert(typ.len == typ.n.len)
+  var length = ri.len
   for i in 1 ..< length:
     genParamLoop(params)
   var callee = rdLoc(op)
@@ -234,9 +234,9 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = len(ri)
+  var length = ri.len
   for i in 1 ..< length:
-    assert(len(typ) == len(typ.n))
+    assert(typ.len == typ.n.len)
     genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
@@ -248,7 +248,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   let rawProc = getRawProcType(p, typ)
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ[0]):
-      if len(ri) > 1: pl.add(~", ")
+      if ri.len > 1: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
@@ -280,7 +280,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genCallPattern()
 
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
-  if i < len(typ):
+  if i < typ.len:
     # 'var T' is 'T&' in C++. This means we ignore the request of
     # any nkHiddenAddr when it's a 'var T'.
     let paramType = typ.n[i]
@@ -357,7 +357,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   # for better or worse c2nim translates the 'this' argument to a 'var T'.
   # However manual wrappers may also use 'ptr T'. In any case we support both
   # for convenience.
-  internalAssert p.config, i < len(typ)
+  internalAssert p.config, i < typ.len
   assert(typ.n[i].kind == nkSym)
   # if the parameter is lying (tyVar) and thus we required an additional deref,
   # skip the deref:
@@ -451,8 +451,8 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = len(ri)
-  assert(len(typ) == len(typ.n))
+  var length = ri.len
+  assert(typ.len == typ.n.len)
   # don't call '$' here for efficiency:
   let pat = ri[0].sym.loc.r.data
   internalAssert p.config, pat.len > 0
@@ -487,7 +487,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     var params: Rope
     for i in 2 ..< length:
       if params != nil: params.add(~", ")
-      assert(len(typ) == len(typ.n))
+      assert(typ.len == typ.n.len)
       params.add(genOtherArg(p, ri, i, typ))
     fixupCall(p, le, ri, d, pl, params)
 
@@ -499,8 +499,8 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = len(ri)
-  assert(len(typ) == len(typ.n))
+  var length = ri.len
+  assert(typ.len == typ.n.len)
 
   # don't call '$' here for efficiency:
   let pat = ri[0].sym.loc.r.data
@@ -522,8 +522,8 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       pl.add(~": ")
       pl.add(genArg(p, ri[2], typ.n[2].sym, ri))
   for i in start ..< length:
-    assert(len(typ) == len(typ.n))
-    if i >= len(typ):
+    assert(typ.len == typ.n.len)
+    if i >= typ.len:
       internalError(p.config, ri.info, "varargs for objective C method?")
     assert(typ.n[i].kind == nkSym)
     var param = typ.n[i].sym
@@ -533,7 +533,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(genArg(p, ri[i], param, ri))
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ[0]):
-      if len(ri) > 1: pl.add(~" ")
+      if ri.len > 1: pl.add(~" ")
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:

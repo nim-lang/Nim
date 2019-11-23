@@ -293,7 +293,7 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semOf(c: PContext, n: PNode): PNode =
-  if len(n) == 3:
+  if n.len == 3:
     n[1] = semExprWithType(c, n[1])
     n[2] = semExprWithType(c, n[2], {efDetermineType})
     #restoreOldStyleType(n[1])

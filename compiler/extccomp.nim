@@ -435,7 +435,7 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
-  if len(dest) == 0 or dest[^1] != ' ': dest.add(" ")
+  if dest.len == 0 or dest[^1] != ' ': dest.add(" ")
   dest.add(src)
 
 proc addLinkOption*(conf: ConfigRef; option: string) =
@@ -457,7 +457,7 @@ proc initVars*(conf: ConfigRef) =
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
-  if len(conf.cCompilerPath) == 0:
+  if conf.cCompilerPath.len == 0:
     conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
 
 proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
@@ -741,7 +741,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                                             "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
-    if len(linkerExe) == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
+    if linkerExe.len == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe

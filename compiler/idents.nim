@@ -97,11 +97,11 @@ proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIden
     result.id = id
 
 proc getIdent*(ic: IdentCache; identifier: string): PIdent =
-  result = getIdent(ic, cstring(identifier), len(identifier),
+  result = getIdent(ic, cstring(identifier), identifier.len,
                     hashIgnoreStyle(identifier))
 
 proc getIdent*(ic: IdentCache; identifier: string, h: Hash): PIdent =
-  result = getIdent(ic, cstring(identifier), len(identifier), h)
+  result = getIdent(ic, cstring(identifier), identifier.len, h)
 
 proc newIdentCache*(): IdentCache =
   result = IdentCache()

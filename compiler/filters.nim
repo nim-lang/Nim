@@ -20,7 +20,7 @@ proc invalidPragma(conf: ConfigRef; n: PNode) =
 proc getArg(conf: ConfigRef; n: PNode, name: string, pos: int): PNode =
   result = nil
   if n.kind in {nkEmpty..nkNilLit}: return
-  for i in 1 ..< len(n):
+  for i in 1 ..< n.len:
     if n[i].kind == nkExprEqExpr:
       if n[i][0].kind != nkIdent: invalidPragma(conf, n)
       if cmpIgnoreStyle(n[i][0].ident.s, name) == 0:
@@ -55,7 +55,7 @@ proc filterStrip*(conf: ConfigRef; stdin: PLLStream, filename: AbsoluteFile, cal
   var line = newStringOfCap(80)
   while llStreamReadLine(stdin, line):
     var stripped = strip(line, leading, trailing)
-    if len(pattern) == 0 or startsWith(stripped, pattern):
+    if pattern.len == 0 or startsWith(stripped, pattern):
       llStreamWriteln(result, stripped)
     else:
       llStreamWriteln(result, line)
@@ -63,7 +63,7 @@ proc filterStrip*(conf: ConfigRef; stdin: PLLStream, filename: AbsoluteFile, cal
 
 proc filterReplace*(conf: ConfigRef; stdin: PLLStream, filename: AbsoluteFile, call: PNode): PLLStream =
   var sub = strArg(conf, call, "sub", 1, "")
-  if len(sub) == 0: invalidPragma(conf, call)
+  if sub.len == 0: invalidPragma(conf, call)
   var by = strArg(conf, call, "by", 2, "")
   result = llStreamOpen("")
   var line = newStringOfCap(80)

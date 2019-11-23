@@ -122,7 +122,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
   args.expectKind nnkBracket
   # echo "ropecg ", newLit(frmt).repr, ", ", args.repr
   var i = 0
-  var length = len(frmt)
+  var length = frmt.len
   result = nnkStmtListExpr.newTree()
 
   result.add quote do:
@@ -161,7 +161,7 @@ macro ropecg(m: BModule, frmt: static[FormatStr], args: untyped): Rope =
           inc(i)
           if i >= length or not (frmt[i] in {'0'..'9'}): break
         num = j
-        if j > len(args):
+        if j > args.len:
           error("ropes: invalid format string " & newLit(frmt).repr & " args.len: " & $args.len)
 
         flushStrLit()
@@ -998,7 +998,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
 
-  for i in 1 ..< len(prc.typ.n):
+  for i in 1 ..< prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param, prc.typ[0])

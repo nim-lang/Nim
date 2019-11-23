@@ -44,8 +44,8 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkCommentStmt: result = a.comment == b.comment
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if len(a) == len(b):
-        for i in 0 ..< len(a):
+      if a.len == b.len:
+        for i in 0 ..< a.len:
           if not exprStructuralEquivalent(a[i], b[i],
                                           strictSymEquality): return
         result = true
@@ -68,8 +68,8 @@ proc sameTree*(a, b: PNode): bool =
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if len(a) == len(b):
-        for i in 0 ..< len(a):
+      if a.len == b.len:
+        for i in 0 ..< a.len:
           if not sameTree(a[i], b[i]): return
         result = true
 
@@ -127,7 +127,7 @@ proc findPragma*(n: PNode, which: TSpecialWord): PNode =
         return son
 
 proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     var it = n[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
       result = it[1]

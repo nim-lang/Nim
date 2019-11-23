@@ -451,7 +451,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     rettype = ~"void"
   else:
     rettype = getTypeDescAux(m, t[0], check)
-  for i in 1 ..< len(t.n):
+  for i in 1 ..< t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
@@ -512,7 +512,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result.add(genRecordFieldsAux(m, n[i], rectype, check))
   of nkRecCase:
     if n[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
@@ -520,7 +520,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody: Rope = nil
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         let k = lastSon(n[i])
@@ -637,7 +637,7 @@ proc getTupleDesc(m: BModule, typ: PType, name: Rope,
                   check: var IntSet): Rope =
   result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = nil
-  for i in 0 ..< len(typ):
+  for i in 0 ..< typ.len:
     desc.addf("$1 Field$2;$n",
          [getTypeDescAux(m, typ[i], check), rope(i)])
   if desc == nil: result.add("char dummy;\L")
@@ -926,7 +926,7 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
 proc finishTypeDescriptions(m: BModule) =
   var i = 0
   var check = initIntSet()
-  while i < len(m.typeStack):
+  while i < m.typeStack.len:
     let t = m.typeStack[i]
     if optSeqDestructors in m.config.globalOptions and t.skipTypes(abstractInst).kind == tySequence:
       seqV2ContentType(m, t, check)
@@ -1031,7 +1031,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
                     info: TLineInfo) =
   var base: Rope
-  if len(typ) > 0 and typ.lastSon != nil:
+  if typ.len > 0 and typ.lastSon != nil:
     var x = typ.lastSon
     if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
     if typ.kind == tyPtr and x.kind == tyObject and incompleteType(x):
@@ -1100,15 +1100,15 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
                            makeCString(field.name.s),
                            tmp, rope(L)])
     m.s[cfsData].addf("TNimNode* $1[$2];$n", [tmp, rope(L+1)])
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       var b = n[i]           # branch
       var tmp2 = getNimNode(m)
       genObjectFields(m, typ, origType, lastSon(b), tmp2, info)
       case b.kind
       of nkOfBranch:
-        if len(b) < 2:
+        if b.len < 2:
           internalError(m.config, b.info, "genObjectFields; nkOfBranch broken")
-        for j in 0 .. len(b) - 2:
+        for j in 0 .. b.len - 2:
           if b[j].kind == nkRange:
             var x = toInt(getOrdValue(b[j][0]))
             var y = toInt(getOrdValue(b[j][1]))
@@ -1157,7 +1157,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo
 proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAuxBase(m, typ, typ, name, rope("0"), info)
   var expr = getNimNode(m)
-  var length = len(typ)
+  var length = typ.len
   if length > 0:
     var tmp = getTempName(m) & "_" & $length
     genTNimNodeArray(m, tmp, rope(length))
@@ -1183,7 +1183,7 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   # anyway. We generate a cstring array and a loop over it. Exceptional
   # positions will be reset after the loop.
   genTypeInfoAux(m, typ, typ, name, info)
-  var length = len(typ.n)
+  var length = typ.n.len
   var nodePtrs = getTempName(m) & "_" & $length
   genTNimNodeArray(m, nodePtrs, rope(length))
   var enumNames, specialCases: Rope

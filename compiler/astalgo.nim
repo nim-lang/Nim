@@ -160,14 +160,14 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result = lookupInRecord(n[i], field)
       if result != nil: return
   of nkRecCase:
     if (n[0].kind != nkSym): return nil
     result = lookupInRecord(n[0], field)
     if result != nil: return
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n[i]), field)
@@ -183,7 +183,7 @@ proc getModule*(s: PSym): PSym =
   while result != nil and result.kind != skModule: result = result.owner
 
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
-  for i in start ..< len(list):
+  for i in start ..< list.len:
     if list[i].kind == nkSym:
       result = list[i].sym
       if result.name.id == ident.id: return
@@ -225,7 +225,7 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ##
   ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
-  for i in 1 ..< len(list):
+  for i in 1 ..< list.len:
     let it = list[i].sym
     if it.name.id == ident.id or
         sameIgnoreBacktickGensymInfo(it.name.s, ident.s): return it
@@ -327,9 +327,9 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     sonsRope = "\"$1 @$2\"" % [rope($n.kind), rope(
         strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
   else:
-    if len(n) > 0:
+    if n.len > 0:
       sonsRope = rope("[")
-      for i in 0 ..< len(n):
+      for i in 0 ..< n.len:
         if i > 0: sonsRope.add(",")
         sonsRope.addf("$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n[i],
             marker, indent + 4, maxRecDepth - 1)])
@@ -376,9 +376,9 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
         else:
           result.addf(",$N$1\"ident\": null", [istr])
       else:
-        if len(n) > 0:
+        if n.len > 0:
           result.addf(",$N$1\"sons\": [", [istr])
-          for i in 0 ..< len(n):
+          for i in 0 ..< n.len:
             if i > 0: result.add(",")
             result.addf("$N$1$2", [rspaces(indent + 4), treeToYamlAux(conf, n[i],
                 marker, indent + 4, maxRecDepth - 1)])
@@ -563,12 +563,12 @@ proc value(this: var DebugPrinter; value: PType) =
     this.key "n"
     this.value value.n
 
-  if len(value) > 0:
+  if value.len > 0:
     this.key "sons"
     this.openBracket
-    for i in 0 ..< len(value):
+    for i in 0 ..< value.len:
       this.value value[i]
-      if i != len(value) - 1:
+      if i != value.len - 1:
         this.comma
     this.closeBracket
 
@@ -616,12 +616,12 @@ proc value(this: var DebugPrinter; value: PNode) =
     if this.renderSymType and value.typ != nil:
       this.key "typ"
       this.value value.typ
-    if len(value) > 0:
+    if value.len > 0:
       this.key "sons"
       this.openBracket
-      for i in 0 ..< len(value):
+      for i in 0 ..< value.len:
         this.value value[i]
-        if i != len(value) - 1:
+        if i != value.len - 1:
           this.comma
       this.closeBracket
 
@@ -677,13 +677,13 @@ proc objectSetRawInsert(data: var TObjectSeq, obj: RootRef) =
 
 proc objectSetEnlarge(t: var TObjectSet) =
   var n: TObjectSeq
-  newSeq(n, len(t.data) * GrowthFactor)
+  newSeq(n, t.data.len * GrowthFactor)
   for i in 0 .. high(t.data):
     if t.data[i] != nil: objectSetRawInsert(n, t.data[i])
   swap(t.data, n)
 
 proc objectSetIncl*(t: var TObjectSet, obj: RootRef) =
-  if mustRehash(len(t.data), t.counter): objectSetEnlarge(t)
+  if mustRehash(t.data.len, t.counter): objectSetEnlarge(t)
   objectSetRawInsert(t.data, obj)
   inc(t.counter)
 
@@ -696,7 +696,7 @@ proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
     if it == obj:
       return true             # found it
     h = nextTry(h, high(t.data))
-  if mustRehash(len(t.data), t.counter):
+  if mustRehash(t.data.len, t.counter):
     objectSetEnlarge(t)
     objectSetRawInsert(t.data, obj)
   else:
@@ -739,13 +739,13 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
 
 proc strTableEnlarge(t: var TStrTable) =
   var n: seq[PSym]
-  newSeq(n, len(t.data) * GrowthFactor)
+  newSeq(n, t.data.len * GrowthFactor)
   for i in 0 .. high(t.data):
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
   swap(t.data, n)
 
 proc strTableAdd*(t: var TStrTable, n: PSym) =
-  if mustRehash(len(t.data), t.counter): strTableEnlarge(t)
+  if mustRehash(t.data.len, t.counter): strTableEnlarge(t)
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
@@ -772,7 +772,7 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
     if not onConflictKeepOld:
       t.data[replaceSlot] = n # overwrite it with newer definition!
     return t.data[replaceSlot] # found it
-  elif mustRehash(len(t.data), t.counter):
+  elif mustRehash(t.data.len, t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
   else:
@@ -929,8 +929,8 @@ proc idTablePut(t: var TIdTable, key: PIdObj, val: RootRef) =
     assert(t.data[index].key != nil)
     t.data[index].val = val
   else:
-    if mustRehash(len(t.data), t.counter):
-      newSeq(n, len(t.data) * GrowthFactor)
+    if mustRehash(t.data.len, t.counter):
+      newSeq(n, t.data.len * GrowthFactor)
       for i in 0 .. high(t.data):
         if t.data[i].key != nil:
           idTableRawInsert(n, t.data[i].key, t.data[i].val)
@@ -974,9 +974,9 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
     assert(t.data[index].key != nil)
     t.data[index].val = val
   else:
-    if mustRehash(len(t.data), t.counter):
+    if mustRehash(t.data.len, t.counter):
       var n: TIdNodePairSeq
-      newSeq(n, len(t.data) * GrowthFactor)
+      newSeq(n, t.data.len * GrowthFactor)
       for i in 0 .. high(t.data):
         if t.data[i].key != nil:
           idNodeTableRawInsert(n, t.data[i].key, t.data[i].val)
@@ -1022,9 +1022,9 @@ proc iiTablePut(t: var TIITable, key, val: int) =
     assert(t.data[index].key != InvalidKey)
     t.data[index].val = val
   else:
-    if mustRehash(len(t.data), t.counter):
+    if mustRehash(t.data.len, t.counter):
       var n: TIIPairSeq
-      newSeq(n, len(t.data) * GrowthFactor)
+      newSeq(n, t.data.len * GrowthFactor)
       for i in 0 .. high(n): n[i].key = InvalidKey
       for i in 0 .. high(t.data):
         if t.data[i].key != InvalidKey:

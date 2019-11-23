@@ -67,7 +67,7 @@ type
                           # better stack trace generation
     nkDotCall,            # used to temporarily flag a nkCall node;
                           # this is used
-                          # for transforming ``s.len`` to ``len(s)``
+                          # for transforming ``s.len`` to ``s.len``
 
     nkCommand,            # a call like ``p 2, 4`` without parenthesis
     nkCall,               # a call like p(x, y) or an operation like +(a, b)
@@ -1025,21 +1025,21 @@ type Indexable = PNode | PType
 
 proc len*(n: Indexable): int {.inline.} =
   when defined(nimNoNilSeqs):
-    result = len(n.sons)
+    result = n.sons.len
   else:
     if isNil(n.sons): result = 0
-    else: result = len(n.sons)
+    else: result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
   if n.kind in {nkNone..nkNilLit}: result = 0
-  else: result = len(n)
+  else: result = n.len
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
-  if n.kind in {nkStrLit..nkTripleStrLit}:result = len(n.strVal)
+  if n.kind in {nkStrLit..nkTripleStrLit}:result = n.strVal.len
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
-  else: result = len(n)
+  else: result = n.len
 
 proc add*(father, son: Indexable) =
   assert son != nil
@@ -1144,17 +1144,17 @@ const                         # for all kind of hash tables:
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
-  setLen(dest.data, len(src.data))
+  setLen(dest.data, src.data.len)
   for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
-  newSeq(dest.data, len(src.data))
+  newSeq(dest.data, src.data.len)
   for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
-  setLen(dest.data, len(src.data))
+  setLen(dest.data, src.data.len)
   for i in 0 .. high(src.data): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
@@ -1360,8 +1360,8 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, len(src))
-  for i in 0 ..< len(src): dest[i] = src[i]
+  newSons(dest, src.len)
+  for i in 0 ..< src.len: dest[i] = src[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1515,7 +1515,7 @@ proc delSon*(father: PNode, idx: int) =
     if father.len == 0: return
   else:
     if isNil(father.sons): return
-  var length = len(father)
+  var length = father.len
   for i in idx .. length - 2: father[i] = father[i + 1]
   setLen(father.sons, length - 1)
 
@@ -1556,7 +1556,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, len(src))
+  else: newSeq(result.sons, src.len)
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
@@ -1577,12 +1577,12 @@ proc copyTree*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, len(src))
-    for i in 0 ..< len(src):
+    newSeq(result.sons, src.len)
+    for i in 0 ..< src.len:
       result[i] = copyTree(src[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     if n[i].kind == kind:
       return true
   result = false
@@ -1600,14 +1600,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       if n.kind in kinds or containsNode(n[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       if (n[i].kind == kind) or hasSubnodeWith(n[i], kind):
         return true
     result = false

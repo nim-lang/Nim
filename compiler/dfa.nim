@@ -441,7 +441,7 @@ proc genIf(c: var Con, n: PNode) =
   ]#
   let oldLen = c.forks.len
   var endings: seq[TPosition] = @[]
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     var it = n[i]
     c.gen(it[0])
     if it.len == 2:
@@ -523,7 +523,7 @@ proc genTry(c: var Con; n: PNode) =
   for i in 1 ..< n.len:
     let it = n[i]
     if it.kind != nkFinally:
-      var blen = len(it)
+      var blen = it.len
       let endExcept = c.forkI(it)
       c.gen(it.lastSon)
       endings.add(c.gotoI(it))

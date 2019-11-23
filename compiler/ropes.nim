@@ -79,7 +79,7 @@ proc len*(a: Rope): int =
 
 proc newRope(data: string = ""): Rope =
   new(result)
-  result.L = -len(data)
+  result.L = -data.len
   result.data = data
 
 when not compileOption("threads"):
@@ -213,7 +213,7 @@ proc prepend*(a: var Rope, b: string) = a = b & a
 
 proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
-  var length = len(frmt)
+  var length = frmt.len
   result = nil
   var num = 0
   while i < length:

@@ -200,8 +200,8 @@ proc copyValue(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, len(src))
-    for i in 0 ..< len(src):
+    newSeq(result.sons, src.len)
+    for i in 0 ..< src.len:
       result[i] = copyValue(src[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
@@ -815,7 +815,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       b.add regs[rb].regToNode
       var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
-      for i in 0 ..< len(r): regs[ra].node.add r[i]
+      for i in 0 ..< r.len: regs[ra].node.add r[i]
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
@@ -1197,7 +1197,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in 0 .. len(branch) - 2:
+      for j in 0 .. branch.len - 2:
         if overlap(regs[ra].regToNode, branch[j]):
           cond = true
           break
@@ -1629,7 +1629,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
-      elif len(ast) != 1:
+      elif ast.len != 1:
         c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
           "expected expression, but got multiple statements")
       else:

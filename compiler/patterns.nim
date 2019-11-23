@@ -58,8 +58,8 @@ proc sameTrees*(a, b: PNode): bool =
     of nkEmpty, nkNilLit: result = true
     of nkType: result = sameTypeOrNil(a.typ, b.typ)
     else:
-      if len(a) == len(b):
-        for i in 0 ..< len(a):
+      if a.len == b.len:
+        for i in 0 ..< a.len:
           if not sameTrees(a[i], b[i]): return
         result = true
 
@@ -112,7 +112,7 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
                     rpn: bool): bool =
     result = true
     if n.kind in nkCallKinds and matches(c, op[1], n[0]):
-      for i in 1..len(n)-1:
+      for i in 1..n.len-1:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
       if rpn: arglist.add(n[0])
     elif n.kind == nkHiddenStdConv and n[1].kind == nkBracket:
@@ -174,35 +174,35 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of nkEmpty, nkNilLit, nkType:
       result = true
     else:
-      var plen = len(p)
+      var plen = p.len
       # special rule for p(X) ~ f(...); this also works for stuff like
       # partial case statements, etc! - Not really ... :-/
       let v = lastSon(p)
       if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
         var arglist: PNode
-        if plen <= len(n):
+        if plen <= n.len:
           for i in 0 .. plen - 2:
             if not matches(c, p[i], n[i]): return
-          if plen == len(n) and lastSon(n).kind == nkHiddenStdConv and
+          if plen == n.len and lastSon(n).kind == nkHiddenStdConv and
               lastSon(n)[1].kind == nkBracket:
             # unpack varargs:
             let n = lastSon(n)[1]
             arglist = newNodeI(nkArgList, n.info, n.len)
             for i in 0..<n.len: arglist[i] = n[i]
           else:
-            arglist = newNodeI(nkArgList, n.info, len(n) - plen + 1)
+            arglist = newNodeI(nkArgList, n.info, n.len - plen + 1)
             # f(1, 2, 3)
             # p(X)
-            for i in 0 .. len(n) - plen:
+            for i in 0 .. n.len - plen:
               arglist[i] = n[i + plen - 1]
           return bindOrCheck(c, v.sym, arglist)
-        elif plen-1 == len(n):
+        elif plen-1 == n.len:
           for i in 0 .. plen - 2:
             if not matches(c, p[i], n[i]): return
           arglist = newNodeI(nkArgList, n.info)
           return bindOrCheck(c, v.sym, arglist)
-      if plen == len(n):
-        for i in 0 ..< len(p):
+      if plen == n.len:
+        for i in 0 ..< p.len:
           if not matches(c, p[i], n[i]): return
         result = true
 
@@ -250,7 +250,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   var ctx: TPatternContext
   ctx.owner = s
   ctx.c = c
-  ctx.formals = len(s.typ)-1
+  ctx.formals = s.typ.len-1
   var m = matchStmtList(ctx, s.ast[patternPos], n)
   if isNil(m): return nil
   # each parameter should have been bound; we simply setup a call and

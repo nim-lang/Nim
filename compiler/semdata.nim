@@ -165,7 +165,7 @@ proc pushOwner*(c: PContext; owner: PSym) =
   c.graph.owners.add(owner)
 
 proc popOwner*(c: PContext) =
-  var length = len(c.graph.owners)
+  var length = c.graph.owners.len
   if length > 0: setLen(c.graph.owners, length - 1)
   else: internalError(c.config, "popOwner")
 
@@ -423,10 +423,10 @@ proc illFormedAstLocal*(n: PNode; conf: ConfigRef) =
   localError(conf, n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc checkSonsLen*(n: PNode, length: int; conf: ConfigRef) =
-  if len(n) != length: illFormedAst(n, conf)
+  if n.len != length: illFormedAst(n, conf)
 
 proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
-  if len(n) < length: illFormedAst(n, conf)
+  if n.len < length: illFormedAst(n, conf)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2

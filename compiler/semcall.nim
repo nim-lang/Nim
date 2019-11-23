@@ -405,7 +405,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     elif c.config.errorCounter == 0:
       # don't cascade errors
       var args = "("
-      for i in 1 ..< len(n):
+      for i in 1 ..< n.len:
         if i > 1: args.add(", ")
         args.add(typeToString(n[i].typ))
       args.add(")")
@@ -578,7 +578,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   # binding has to stay 'nil' for this to work!
   initCandidate(c, m, s, nil)
 
-  for i in 1..len(n)-1:
+  for i in 1..n.len-1:
     let formal = s.ast[genericParamsPos][i-1].typ
     var arg = n[i].typ
     # try transforming the argument into a static one before feeding it into
@@ -600,7 +600,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
-  for i in 1..len(n)-1:
+  for i in 1..n.len-1:
     let e = semExpr(c, n[i])
     if e.typ == nil:
       n[i].typ = errorType(c)
@@ -623,7 +623,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
     # It's good enough for now.
     result = newNodeI(a.kind, getCallLineInfo(n))
-    for i in 0 ..< len(a):
+    for i in 0 ..< a.len:
       var candidate = a[i].sym
       if candidate.kind in {skProc, skMethod, skConverter,
                             skFunc, skIterator}:

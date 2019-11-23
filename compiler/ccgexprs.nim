@@ -99,7 +99,7 @@ proc genLiteral(p: BProc, n: PNode): Rope =
 proc bitSetToWord(s: TBitSet, size: int): BiggestUInt =
   result = 0
   for j in 0 ..< size:
-    if j < len(s): result = result or (BiggestUInt(s[j]) shl (j * 8))
+    if j < s.len: result = result or (BiggestUInt(s[j]) shl (j * 8))
 
 proc genRawSetData(cs: TBitSet, size: int): Rope =
   if size > 8:
@@ -797,7 +797,7 @@ proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
 proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
   var test, u, v: TLoc
-  for i in 1 ..< len(e):
+  for i in 1 ..< e.len:
     var it = e[i]
     assert(it.kind in nkCallKinds)
     assert(it[0].kind == nkSym)
@@ -1087,7 +1087,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in 0 .. len(e) - 2:
+  for i in 0 .. e.len - 2:
     # compute the length expression:
     initLocExpr(p, e[i + 1], a)
     if skipTypes(e[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -1095,7 +1095,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
       appends.add(ropecg(p.module, "#appendChar($1, $2);$n", [strLoc(p, tmp), rdLoc(a)]))
     else:
       if e[i + 1].kind in {nkStrLit..nkTripleStrLit}:
-        inc(L, len(e[i + 1].strVal))
+        inc(L, e[i + 1].strVal.len)
       else:
         lens.add(lenExpr(p, a))
         lens.add(" + ")
@@ -1126,7 +1126,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e[1], dest)
-  for i in 0 .. len(e) - 3:
+  for i in 0 .. e.len - 3:
     # compute the length expression:
     initLocExpr(p, e[i + 2], a)
     if skipTypes(e[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -1135,7 +1135,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
                         [strLoc(p, dest), rdLoc(a)]))
     else:
       if e[i + 2].kind in {nkStrLit..nkTripleStrLit}:
-        inc(L, len(e[i + 2].strVal))
+        inc(L, e[i + 2].strVal.len)
       else:
         lens.add(lenExpr(p, a))
         lens.add(" + ")
@@ -1400,7 +1400,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   elif d.k == locNone:
     getTemp(p, n.typ, d)
 
-  let l = intLiteral(len(n))
+  let l = intLiteral(n.len)
   if optSeqDestructors in p.config.globalOptions:
     let seqtype = n.typ
     linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
@@ -1410,7 +1410,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     # generate call to newSeq before adding the elements per hand:
     genNewSeqAux(p, dest[], l,
       optNilSeqs notin p.options and n.len == 0)
-  for i in 0 ..< len(n):
+  for i in 0 ..< n.len:
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), intLiteral(i), dataField(p)])
     arr.storage = OnHeap            # we know that sequences are on the heap
@@ -1726,7 +1726,7 @@ proc fewCmps(conf: ConfigRef; s: PNode): bool =
   elif elemType(s.typ).kind in {tyInt, tyInt16..tyInt64}:
     result = true             # better not emit the set if int is basetype!
   else:
-    result = len(s) <= 8  # 8 seems to be a good value
+    result = s.len <= 8  # 8 seems to be a good value
 
 template binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
   putIntoDest(p, d, e, frmt % [rdLoc(a), rdSetElemLoc(p.config, b, a.t)])
@@ -1759,7 +1759,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
                e[2]
     initLocExpr(p, ea, a)
     initLoc(b, locExpr, e, OnUnknown)
-    var length = len(e[1])
+    var length = e[1].len
     if length > 0:
       b.r = rope("(")
       for i in 0 ..< length:
@@ -2322,7 +2322,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     if d.k == locNone: getTemp(p, t, d)
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       var it = n[i]
       if it.kind == nkExprColonExpr: it = it[1]
       initLoc(rec, locExpr, it, d.storage)
@@ -2364,7 +2364,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n[i], arr)
@@ -2747,7 +2747,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
       getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj[0], cons, result, count)
-    for i in 1 ..< len(obj):
+    for i in 1 ..< obj.len:
       getNullValueAux(p, t, lastSon(obj[i]), cons, result, count)
   of nkSym:
     if count > 0: result.add ", "
@@ -2839,8 +2839,8 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
     "static const struct {$n" &
     "  NI cap; void* allocator; $1 data[$2];$n" &
     "} $3 = {$2, NIM_NIL, $4};$n", [
-    getTypeDesc(p.module, base), len(n), payload, data])
-  result = "{$1, ($2*)&$3}" % [rope(len(n)), getSeqPayloadType(p.module, t), payload]
+    getTypeDesc(p.module, base), n.len, payload, data])
+  result = "{$1, ($2*)&$3}" % [rope(n.len), getSeqPayloadType(p.module, t), payload]
 
 proc genConstExpr(p: BProc, n: PNode): Rope =
   case n.kind

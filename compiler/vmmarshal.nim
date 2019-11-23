@@ -18,13 +18,13 @@ proc ptrToInt(x: PNode): int {.inline.} =
 proc getField(n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0 ..< n.len:
       result = getField(n[i], position)
       if result != nil: return
   of nkRecCase:
     result = getField(n[0], position)
     if result != nil: return
-    for i in 1 ..< len(n):
+    for i in 1 ..< n.len:
       case n[i].kind
       of nkOfBranch, nkElse:
         result = getField(lastSon(n[i]), position)
@@ -39,7 +39,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet; conf: Confi
 proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet; conf: ConfigRef) =
   assert x.kind == nkObjConstr
   let start = 1
-  for i in start ..< len(x):
+  for i in start ..< x.len:
     if i > start: s.add(", ")
     var it = x[i]
     if it.kind == nkExprColonExpr:
