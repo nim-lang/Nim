@@ -112,7 +112,7 @@ template encodeInternal(s: typed): untyped =
 
   result.setLen(outputIndex)
 
-proc encode*[T: SomeInteger|char](s: openarray[T]): string =
+proc encode*[T: SomeInteger|char](s: openArray[T]): string =
   ## Encodes `s` into base64 representation.
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
@@ -186,7 +186,7 @@ proc decode*(s: string): string =
     return (size * 3 div 4) + 6
 
   template inputChar(x: untyped) =
-    let x = int decode_table[ord(s[inputIndex])]
+    let x = int decodeTable[ord(s[inputIndex])]
     inc inputIndex
     if x == invalidChar:
       raise newException(ValueError,

@@ -257,7 +257,7 @@ when (NimMajor, NimMinor) >= (1, 1):
       doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
 
     expectKind call, nnkCallKinds
-    let tmp = gensym(nskVar, "outplaceResult")
+    let tmp = genSym(nskVar, "outplaceResult")
     var callsons = call[0..^1]
     callsons.insert(tmp, inplaceArgPosition)
     result = newTree(nnkStmtListExpr,
