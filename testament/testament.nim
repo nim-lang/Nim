@@ -246,7 +246,7 @@ proc `$`(x: TResults): string =
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, successOrig: TResultEnum) =
   # test.name is easier to find than test.name.extractFilename
-  # A bit hacky but simple and works with tests/testament/tshouldfail.nim
+  # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
   name.add " " & $target & test.options
 
