@@ -327,7 +327,7 @@ else:
       var s {.noinit.}: CpuSet
       cpusetZero(s)
       cpusetIncl(cpu.cint, s)
-      setAffinity(t.sys, sizeof(s), s)
+      setAffinity(t.sys, csize_t(sizeof(s)), s)
 
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)

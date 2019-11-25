@@ -60,7 +60,6 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
   incl(temp.flags, sfFromGeneric)
-  incl(temp.flags, sfCursor)
 
   var v = newNodeI(nkVarSection, value.info)
   let tempAsNode = newSymNode(temp)
