@@ -116,9 +116,9 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   ## stores the result into register `a`
   ## The node is needed for debug information
   assert opc.ord < 255
-  let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
-                           (b.uint32 shl 16'u32) or
-                           (c.uint32 shl 24'u32)).TInstr
+  let ins = (opc.TInstrType or (a.TInstrType shl regAShift) or
+                           (b.TInstrType shl regBShift) or
+                           (c.TInstrType shl regCShift)).TInstr
   when false:
     if ctx.code.len == 43:
       writeStackTrace()
@@ -131,9 +131,9 @@ proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
   # and stores the output value into `a`.
   # `imm` is signed and must be within [-128, 127]
   if imm >= -128 and imm <= 127:
-    let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
-                             (b.uint32 shl 16'u32) or
-                             (imm+byteExcess).uint32 shl 24'u32).TInstr
+    let ins = (opc.TInstrType or (a.TInstrType shl regAShift) or
+                             (b.TInstrType shl regBShift) or
+                             (imm+byteExcess).TInstrType shl regCShift).TInstr
     c.code.add(ins)
     c.debug.add(n.info)
   else:
@@ -142,20 +142,20 @@ proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
 
 proc gABx(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0; bx: int) =
   # Applies `opc` to `bx` and stores it into register `a`
-  # `bx` must be signed and in the range [-32768, 32767]
+  # `bx` must be signed and in the range [regBxMin, regBxMax]
   when false:
     if c.code.len == 43:
       writeStackTrace()
       echo "generating ", opc
 
-  if bx >= -32768 and bx <= 32767:
-    let ins = (opc.uint32 or a.uint32 shl 8'u32 or
-              (bx+wordExcess).uint32 shl 16'u32).TInstr
+  if bx >= regBxMin-1 and bx <= regBxMax:
+    let ins = (opc.TInstrType or a.TInstrType shl regAShift or
+              (bx+wordExcess).TInstrType shl regBxShift).TInstr
     c.code.add(ins)
     c.debug.add(n.info)
   else:
     localError(c.config, n.info,
-      "VM: immediate value does not fit into an int16")
+      "VM: immediate value does not fit into regBx")
 
 proc xjmp(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0): TPosition =
   #assert opc in {opcJmp, opcFJmp, opcTJmp}
@@ -168,7 +168,7 @@ proc genLabel(c: PCtx): TPosition =
 
 proc jmpBack(c: PCtx, n: PNode, p = TPosition(0)) =
   let dist = p.int - c.code.len
-  internalAssert(c.config, -0x7fff < dist and dist < 0x7fff)
+  internalAssert(c.config, regBxMin < dist and dist < regBxMax)
   gABx(c, n, opcJmpBack, 0, dist)
 
 proc patch(c: PCtx, p: TPosition) =
@@ -176,11 +176,11 @@ proc patch(c: PCtx, p: TPosition) =
   let p = p.int
   let diff = c.code.len - p
   #c.jumpTargets.incl(c.code.len)
-  internalAssert(c.config, -0x7fff < diff and diff < 0x7fff)
+  internalAssert(c.config, regBxMin < diff and diff < regBxMax)
   let oldInstr = c.code[p]
   # opcode and regA stay the same:
-  c.code[p] = ((oldInstr.uint32 and 0xffff'u32).uint32 or
-               uint32(diff+wordExcess) shl 16'u32).TInstr
+  c.code[p] = ((oldInstr.TInstrType and regBxMask).TInstrType or
+               TInstrType(diff+wordExcess) shl regBxShift).TInstr
 
 proc getSlotKind(t: PType): TSlotKind =
   case t.skipTypes(abstractRange-{tyTypeDesc}).kind
@@ -440,7 +440,7 @@ proc rawGenLiteral(c: PCtx; n: PNode): int =
   #assert(n.kind != nkCall)
   n.flags.incl nfAllConst
   c.constants.add n.canonValue
-  internalAssert c.config, result < 0x7fff
+  internalAssert c.config, result < regBxMax
 
 proc sameConstant*(a, b: PNode): bool =
   result = false
@@ -513,7 +513,7 @@ proc genType(c: PCtx; typ: PType): int =
     if sameType(t, typ): return i
   result = c.types.len
   c.types.add(typ)
-  internalAssert(c.config, result <= 0x7fff)
+  internalAssert(c.config, result <= regBxMax)
 
 proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
@@ -2179,11 +2179,11 @@ proc genParams(c: PCtx; params: PNode) =
   c.prc.maxSlots = max(params.len, 1)
 
 proc finalJumpTarget(c: PCtx; pc, diff: int) =
-  internalAssert(c.config, -0x7fff < diff and diff < 0x7fff)
+  internalAssert(c.config, regBxMin < diff and diff < regBxMax)
   let oldInstr = c.code[pc]
   # opcode and regA stay the same:
-  c.code[pc] = ((oldInstr.uint32 and 0xffff'u32).uint32 or
-                uint32(diff+wordExcess) shl 16'u32).TInstr
+  c.code[pc] = ((oldInstr.TInstrType and ((regOMask shl regOShift) or (regAMask shl regAShift))).TInstrType or
+                TInstrType(diff+wordExcess) shl regBxShift).TInstr
 
 proc genGenericParams(c: PCtx; gp: PNode) =
   var base = c.prc.maxSlots
