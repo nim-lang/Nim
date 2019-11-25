@@ -1037,15 +1037,16 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       pastStart = true
     lit "\L"
 
-  proc nimfiles(conf: ConfigRef; f: File) =
+  proc depfiles(conf: ConfigRef; f: File) =
     var i = 0
     for it in conf.m.fileInfos:
-      if isAbsolute(it.fullPath.string):
+      let path = it.fullPath.string
+      if isAbsolute(path): # TODO: else?
         if i > 0: lit "],\L"
         lit "["
-        str it.fullPath.string
+        str path
         lit ", "
-        str $secureHashFile(it.fullPath.string)
+        str $secureHashFile(path)
         inc i
     lit "]\L"
 
@@ -1069,8 +1070,8 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
-      lit ",\L\"nimfiles\":[\L"
-      nimfiles(conf, f)
+      lit ",\L\"depfiles\":[\L"
+      depfiles(conf, f)
       lit "],\L\"nimexe\": \L"
       str hashNimExe()
       lit "\L"
@@ -1085,22 +1086,22 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
   result = false
   try:
     let data = json.parseFile(jsonFile.string)
-    if not data.hasKey("nimfiles") or not data.hasKey("cmdline"):
+    if not data.hasKey("depfiles") or not data.hasKey("cmdline"):
       return true
     let oldCmdLine = data["cmdline"].getStr
     if conf.commandLine != oldCmdLine:
       return true
     if hashNimExe() != data["nimexe"].getStr:
       return true
-    let nimfilesPairs = data["nimfiles"]
-    doAssert nimfilesPairs.kind == JArray
-    for p in nimfilesPairs:
+    let depfilesPairs = data["depfiles"]
+    doAssert depfilesPairs.kind == JArray
+    for p in depfilesPairs:
       doAssert p.kind == JArray
       # >= 2 for forwards compatibility with potential later .json files:
       doAssert p.len >= 2
-      let nimFilename = p[0].getStr
+      let depFilename = p[0].getStr
       let oldHashValue = p[1].getStr
-      let newHashValue = $secureHashFile(nimFilename)
+      let newHashValue = $secureHashFile(depFilename)
       if oldHashValue != newHashValue:
         return true
   except IOError, OSError, ValueError:
