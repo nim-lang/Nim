@@ -7113,7 +7113,7 @@ spelled*:
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma has been abused in the past to also work in the
-js backand for js objects and functions. : Other backends do provide
+js backend for js objects and functions. : Other backends do provide
 the same feature under the same name. Also, when the target language
 is not set to C, other pragmas are available:
 
