@@ -4,11 +4,11 @@ discard """
 """
 
 const expected = """
-tfailedassert_stacktrace.nim(35) tfailedassert_stacktrace
-tfailedassert_stacktrace.nim(34) foo
-assertions.nim(*)       failedAssertImpl
-assertions.nim(*)       raiseAssert
-fatal.nim(*)            sysFatal"""
+tassert_c.nim(35)        tassert_c
+tassert_c.nim(34)        foo
+assertions.nim(27)       failedAssertImpl
+assertions.nim(20)       raiseAssert
+fatal.nim(39)            sysFatal"""
 
 proc tmatch(x, p: string): bool =
   var i = 0
