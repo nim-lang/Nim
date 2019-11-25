@@ -550,7 +550,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     let sname = mangleRecFieldName(m, field)
     fillLoc(field.loc, locField, n, sname, OnUnknown)
     if field.alignment > 0:
-      result.addf "alignas($1) ", [rope(field.alignment)]
+      result.addf "NIM_ALIGN($1) ", [rope(field.alignment)]
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:

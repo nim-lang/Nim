@@ -46,7 +46,7 @@ const
     wWarnings, wHints,
     wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
-    wPassl, wPassc,
+    wPassl, wPassc, wLocalPassc,
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
@@ -998,6 +998,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         let s = expectStrLit(c, it)
         extccomp.addCompileOption(c.config, s)
         recordPragma(c, it, "passc", s)
+      of wLocalPassc:
+        assert sym != nil and sym.kind == skModule
+        let s = expectStrLit(c, it)
+        extccomp.addLocalCompileOption(c.config, s, toFullPathConsiderDirty(c.config, sym.info.fileIndex))
+        recordPragma(c, it, "localpassl", s)
       of wPush:
         processPush(c, n, i + 1)
         result = true

@@ -218,6 +218,10 @@ proc makeClosure*(g: ModuleGraph; prc: PSym; env: PNode; info: TLineInfo): PNode
     if env.skipConv.kind == nkClosure:
       localError(g.config, info, "internal error: taking closure of closure")
     result.add(env)
+  #if isClosureIterator(result.typ):
+  createTypeBoundOps(g, nil, result.typ, info)
+  if tfHasAsgn in result.typ.flags or optSeqDestructors in g.config.globalOptions:
+    prc.flags.incl sfInjectDestructors
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   # XXX optimization: Only lift the variable if it lives across
@@ -236,8 +240,7 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; owner: PSym) =
   createTypeBoundOps(g, nil, refType.lastSon, info)
   createTypeBoundOps(g, nil, refType, info)
-  if (tfHasAsgn in refType.flags) or
-      optSeqDestructors in g.config.globalOptions:
+  if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
     owner.flags.incl sfInjectDestructors
 
 proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
@@ -604,6 +607,9 @@ proc rawClosureCreation(owner: PSym;
         let fieldAccess = indirectAccess(env, local, env.info)
         # add ``env.param = param``
         result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
+        createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info)
+        if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
+          owner.flags.incl sfInjectDestructors
 
   let upField = lookupInRecord(env.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
@@ -627,6 +633,7 @@ proc finishClosureCreation(owner: PSym; d: DetectionPass; c: LiftingPass;
     assert unowned != nil
     let nilLit = newNodeIT(nkNilLit, info, unowned.typ)
     res.add newAsgnStmt(unowned, nilLit, info)
+    createTypeBoundOpsLL(d.graph, unowned.typ, info, owner)
 
 proc closureCreationForIter(iter: PNode;
                             d: DetectionPass; c: var LiftingPass): PNode =

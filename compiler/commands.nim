@@ -626,6 +626,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
+  of "asm":
+    processOnOffSwitchG(conf, {optProduceAsm}, arg, pass, info)
   of "genmapping":
     processOnOffSwitchG(conf, {optGenMapping}, arg, pass, info)
   of "os":

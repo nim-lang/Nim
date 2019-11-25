@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils, sequtils, times
+  lineinfos, std / sha1, streams, pathutils, sequtils, times, strtabs
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -48,6 +48,7 @@ type
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
     structStmtFmt: string, # Format for struct statement
+    produceAsm: string,   # Format how to produce assembler listings
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -57,6 +58,9 @@ type
 
 template compiler(name, settings: untyped): untyped =
   proc name: TInfoCC {.compileTime.} = settings
+
+const
+  gnuAsmListing = "-Wa,-acdl=$asmfile -g -fverbose-asm -masm=intel"
 
 # GNU C and C++ Compiler
 compiler gcc:
@@ -80,6 +84,7 @@ compiler gcc:
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -105,6 +110,7 @@ compiler nintendoSwitchGCC:
     pic: "-fPIE",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -151,6 +157,7 @@ compiler vcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "/Fa$asmfile",
     props: {hasCpp, hasAssume, hasDeclspec})
 
 compiler clangcl:
@@ -196,6 +203,7 @@ compiler lcc:
     pic: "",
     asmStmtFrmt: "_asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Borland C Compiler
@@ -220,6 +228,7 @@ compiler bcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
@@ -245,6 +254,7 @@ compiler dmc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Watcom C Compiler
@@ -269,6 +279,7 @@ compiler wcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Tiny C Compiler
@@ -293,6 +304,7 @@ compiler tcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasSwitchRange, hasComputedGoto})
 
 # Pelles C Compiler
@@ -318,6 +330,7 @@ compiler pcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Your C Compiler
@@ -342,6 +355,7 @@ compiler ucc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 const
@@ -457,6 +471,13 @@ proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
 
+proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
+  let key = completeCfilePath(conf, withPackageName(conf, nimfile)).string
+  var value = conf.cfileSpecificOptions.getOrDefault(key)
+  if strutils.find(value, option, 0) < 0:
+    addOpt(value, option)
+    conf.cfileSpecificOptions[key] = value
+
 proc resetCompilationLists*(conf: ConfigRef) =
   conf.toCompile.setLen 0
   ## XXX: we must associate these with their originating module
@@ -509,8 +530,10 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
-proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
+proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
+  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
+
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
       addOpt(result, option)
@@ -531,7 +554,7 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
 
 proc getCompileOptions(conf: ConfigRef): string =
-  result = cFileSpecificOptions(conf, "__dummy__")
+  result = cFileSpecificOptions(conf, "__dummy__", "__dummy__")
 
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
@@ -572,9 +595,12 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
            elif optMixedMode in conf.globalOptions and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
            else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
-proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): string =
+proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
+                         isMainFile = false; produceOutput = false): string =
   var c = conf.cCompiler
-  var options = cFileSpecificOptions(conf, cfile.nimname)
+  # We produce files like module.nim.cpp, so the absolute Nim filename is not
+  # cfile.name but `cfile.cname.changeFileExt("")`:
+  var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
@@ -614,19 +640,30 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
 
   # D files are required by nintendo switch libs for
   # compilation. They are basically a list of all includes.
-  let dfile = objfile.changeFileExt(".d").quoteShell()
+  let dfile = objfile.changeFileExt(".d").quoteShell
 
-  objfile = quoteShell(objfile)
   let cfsh = quoteShell(cf)
   result = quoteShell(compilePattern % [
     "dfile", dfile,
-    "file", cfsh, "objfile", objfile, "options", options,
+    "file", cfsh, "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf).string,
     "lib", conf.libpath.string])
+
+  if optProduceAsm in conf.globalOptions:
+    if CC[conf.cCompiler].produceAsm.len > 0:
+      let asmfile = objfile.changeFileExt(".asm").quoteShell
+      addOpt(result, CC[conf.cCompiler].produceAsm % ["asmfile", asmfile])
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Produced assembler here: " & asmfile)
+    else:
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Couldn't produce assembler listing " &
+          "for the selected C compiler: " & CC[conf.cCompiler].name)
+
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
     "dfile", dfile,
-    "file", cfsh, "objfile", objfile,
+    "file", cfsh, "objfile", quoteShell(objfile),
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
     "lib", quoteShell(conf.libpath),
@@ -680,7 +717,7 @@ proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var
   for it in list:
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
-    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1)
+    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1, produceOutput=true)
     inc currIdx
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
@@ -1000,15 +1037,16 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       pastStart = true
     lit "\L"
 
-  proc nimfiles(conf: ConfigRef; f: File) =
+  proc depfiles(conf: ConfigRef; f: File) =
     var i = 0
     for it in conf.m.fileInfos:
-      if isAbsolute(it.fullPath.string):
+      let path = it.fullPath.string
+      if isAbsolute(path): # TODO: else?
         if i > 0: lit "],\L"
         lit "["
-        str it.fullPath.string
+        str path
         lit ", "
-        str $secureHashFile(it.fullPath.string)
+        str $secureHashFile(path)
         inc i
     lit "]\L"
 
@@ -1032,8 +1070,8 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
-      lit ",\L\"nimfiles\":[\L"
-      nimfiles(conf, f)
+      lit ",\L\"depfiles\":[\L"
+      depfiles(conf, f)
       lit "],\L\"nimexe\": \L"
       str hashNimExe()
       lit "\L"
@@ -1048,22 +1086,22 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
   result = false
   try:
     let data = json.parseFile(jsonFile.string)
-    if not data.hasKey("nimfiles") or not data.hasKey("cmdline"):
+    if not data.hasKey("depfiles") or not data.hasKey("cmdline"):
       return true
     let oldCmdLine = data["cmdline"].getStr
     if conf.commandLine != oldCmdLine:
       return true
     if hashNimExe() != data["nimexe"].getStr:
       return true
-    let nimfilesPairs = data["nimfiles"]
-    doAssert nimfilesPairs.kind == JArray
-    for p in nimfilesPairs:
+    let depfilesPairs = data["depfiles"]
+    doAssert depfilesPairs.kind == JArray
+    for p in depfilesPairs:
       doAssert p.kind == JArray
       # >= 2 for forwards compatibility with potential later .json files:
       doAssert p.len >= 2
-      let nimFilename = p[0].getStr
+      let depFilename = p[0].getStr
       let oldHashValue = p[1].getStr
-      let newHashValue = $secureHashFile(nimFilename)
+      let newHashValue = $secureHashFile(depFilename)
       if oldHashValue != newHashValue:
         return true
   except IOError, OSError, ValueError:

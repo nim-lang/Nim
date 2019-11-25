@@ -134,6 +134,14 @@ doAssert fmt"{nat:3o}" == "100"
 doAssert fmt"{nat:3x}" == " 40"
 doAssert fmt"{nat:3X}" == " 40"
 
+# bug #12612
+proc my_proc =
+  const value = "value"
+  const a = &"{value}"
+  assert a == value
+
+my_proc()
+
 block:
   template fmt(pattern: string; openCloseChar: char): untyped =
     fmt(pattern, openCloseChar, openCloseChar)

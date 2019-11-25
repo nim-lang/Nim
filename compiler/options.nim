@@ -89,6 +89,7 @@ type                          # please make sure we have under 32 options
     optMultiMethods
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
+    optProduceAsm             # produce assembler code
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -146,6 +147,10 @@ type
       ## Allows to modify a NimNode where the type has already been
       ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
+    checkUnsignedConversions
+      ## Historically and especially in version 1.0.0 of the language
+      ## conversions to unsigned numbers were checked. In 1.0.4 they
+      ## are not anymore.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -234,7 +239,7 @@ type
     outFile*: RelativeFile
     outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
-    dllOverrides, moduleOverrides*: StringTableRef
+    dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
@@ -342,6 +347,7 @@ proc newConfigRef*(): ConfigRef =
     libpath: AbsoluteDir"", nimcacheDir: AbsoluteDir"",
     dllOverrides: newStringTable(modeCaseInsensitive),
     moduleOverrides: newStringTable(modeStyleInsensitive),
+    cfileSpecificOptions: newStringTable(modeCaseSensitive),
     projectName: "", # holds a name like 'nim'
     projectPath: AbsoluteDir"", # holds a path like /home/alice/projects/nim/compiler/
     projectFull: AbsoluteFile"", # projectPath/projectName
