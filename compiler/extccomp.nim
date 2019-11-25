@@ -1039,7 +1039,8 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
   proc depfiles(conf: ConfigRef; f: File) =
     var i = 0
-    template process(path) =
+    for it in conf.m.fileInfos:
+      let path = it.fullPath.string
       if isAbsolute(path): # TODO: else?
         if i > 0: lit "],\L"
         lit "["
@@ -1047,10 +1048,6 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
         lit ", "
         str $secureHashFile(path)
         inc i
-    for it in conf.m.fileInfos:
-      process(it.fullPath.string)
-    for it in conf.m.extraFileDeps:
-      process(it)
     lit "]\L"
 
 
