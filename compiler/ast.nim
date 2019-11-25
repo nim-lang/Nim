@@ -67,7 +67,7 @@ type
                           # better stack trace generation
     nkDotCall,            # used to temporarily flag a nkCall node;
                           # this is used
-                          # for transforming ``s.len`` to ``s.len``
+                          # for transforming ``s.len`` to ``len(s)``
 
     nkCommand,            # a call like ``p 2, 4`` without parenthesis
     nkCall,               # a call like p(x, y) or an operation like +(a, b)
