@@ -17,6 +17,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
+    conf.m.extraFileDeps.add filename
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
   except IOError:

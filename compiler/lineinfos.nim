@@ -261,6 +261,7 @@ type
     filenameToIndexTbl*: Table[string, FileIndex]
     fileInfos*: seq[TFileInfo]
     systemFileIdx*: FileIndex
+    extraFileDeps*: seq[string]
 
 
 proc initMsgConfig*(): MsgConfig =
