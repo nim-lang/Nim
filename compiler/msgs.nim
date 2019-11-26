@@ -332,7 +332,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
-proc log*(s: string) {.procvar.} =
+proc log*(s: string) =
   var f: File
   if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)

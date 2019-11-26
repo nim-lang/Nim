@@ -2583,7 +2583,7 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
     res != nil and m.convMatches == 0 and m.intConvMatches in [0, 256]
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
-                      op: TTypeAttachedOp; col: int): PSym {.procvar.} =
+                      op: TTypeAttachedOp; col: int): PSym =
   var m: TCandidate
   initCandidate(c, m, dc.typ)
   if col >= dc.typ.len:

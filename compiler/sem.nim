@@ -28,9 +28,8 @@ when not defined(leanCompiler):
 
 # implementation
 
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.procvar.}
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.
-  procvar.}
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode

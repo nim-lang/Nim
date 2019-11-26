@@ -168,7 +168,7 @@ proc setupParsers*(p: var TParsers; fileIdx: FileIndex; cache: IdentCache;
   openParsers(p, fileIdx, llStreamOpen(f), cache, config)
   result = true
 
-proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode {.procvar.} =
+proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode =
   var p: TParsers
   if setupParsers(p, fileIdx, cache, config):
     result = parseAll(p)

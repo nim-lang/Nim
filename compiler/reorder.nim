@@ -136,7 +136,7 @@ proc hasIncludes(n:PNode): bool =
     if a.kind == nkIncludeStmt:
       return true
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
   result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(FileIndex s.position, fileIdx)
