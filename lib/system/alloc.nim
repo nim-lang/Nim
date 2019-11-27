@@ -137,10 +137,10 @@ const
   ]
 
 proc msbit(x: uint32): int {.inline.} =
-  let a = if x <= 0xff_ff:
+  let a = if x <= 0xff_ff'u32:
             (if x <= 0xff: 0 else: 8)
           else:
-            (if x <= 0xff_ff_ff: 16 else: 24)
+            (if x <= 0xff_ff_ff'u32: 16 else: 24)
   result = int(fsLookupTable[byte(x shr a)]) + a
 
 proc lsbit(x: uint32): int {.inline.} =
