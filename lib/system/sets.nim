@@ -19,7 +19,7 @@ proc countBits32(n: uint32): int {.compilerproc.} =
   var v = uint32(n)
   v = v - ((v shr 1'u32) and 0x55555555'u32)
   v = (v and 0x33333333'u32) + ((v shr 2'u32) and 0x33333333'u32)
-  result = (((v + (v shr 4'u32) and 0xF0F0F0F'u32) * 0x1010101) shr 24'u32).int
+  result = (((v + (v shr 4'u32) and 0xF0F0F0F'u32) * 0x1010101'u32) shr 24'u32).int
 
 proc countBits64(n: uint64): int {.compilerproc, inline.} =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
