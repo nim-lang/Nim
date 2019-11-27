@@ -9,7 +9,7 @@
 
 import
   os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils
+  prefixmatches, pathutils, sequtils
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
@@ -234,6 +234,7 @@ type
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
     packageCache*: StringTableRef
+    nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
@@ -586,6 +587,17 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "nimcache", getNimcacheDir(conf).string])
   if "~/" in result:
     result = result.replace("~/", home & '/')
+
+proc nimbleSubs*(conf: ConfigRef; p: string): seq[string] =
+  let pl = p.toLowerAscii
+  if "$nimblepath" in pl or "$nimbledir" in pl:
+    var res: OrderedSet[string]
+    for np in conf.nimblePaths:
+      let np = removeTrailingDirSep(np.string)
+      res.incl(p % ["nimblepath", np, "nimbledir", np])
+    result = toSeq(res.items)
+  else:
+    result.add p
 
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
