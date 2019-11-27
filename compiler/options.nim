@@ -595,7 +595,7 @@ proc nimbleSubs*(conf: ConfigRef; p: string): seq[string] =
       let nimblePath = removeTrailingDirSep(nimblePath.string)
       let p = p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
       if p notin result:
-        result.add p
+        result.insert(p, 0)
   else:
     result.add p
 
