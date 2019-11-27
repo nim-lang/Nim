@@ -9,7 +9,7 @@
 
 import
   os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils, sequtils
+  prefixmatches, pathutils
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
@@ -591,11 +591,11 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
 proc nimbleSubs*(conf: ConfigRef; p: string): seq[string] =
   let pl = p.toLowerAscii
   if "$nimblepath" in pl or "$nimbledir" in pl:
-    var res: OrderedSet[string]
-    for np in conf.nimblePaths:
-      let np = removeTrailingDirSep(np.string)
-      res.incl(p % ["nimblepath", np, "nimbledir", np])
-    result = toSeq(res.items)
+    for nimblePath in conf.nimblePaths:
+      let nimblePath = removeTrailingDirSep(nimblePath.string)
+      let p = p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
+      if p notin result:
+        result.add p
   else:
     result.add p
 
