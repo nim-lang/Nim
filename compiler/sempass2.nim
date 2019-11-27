@@ -692,6 +692,8 @@ proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkSym:
     useVar(tracked, n)
+    if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
+      tracked.owner.flags.incl sfInjectDestructors
   of nkRaiseStmt:
     if n[0].kind != nkEmpty:
       n.sons[0].info = n.info
@@ -709,11 +711,11 @@ proc track(tracked: PEffects, n: PNode) =
     # p's effects are ours too:
     var a = n.sons[0]
     let op = a.typ
-    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
-      return
     if n.typ != nil:
       if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         createTypeBoundOps(tracked, n.typ, n.info)
+    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
+      return
     if a.kind == nkCast and a[1].typ.kind == tyProc:
       a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
@@ -757,6 +759,7 @@ proc track(tracked: PEffects, n: PNode) =
       # check required for 'nim check':
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
+        createTypeBoundOps(tracked, n[1].typ, n.info)
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:
@@ -855,6 +858,8 @@ proc track(tracked: PEffects, n: PNode) =
       if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards.s, oldFacts)
+    if tracked.owner.kind != skMacro:
+      createTypeBoundOps(tracked, n.typ, n.info)
   of nkPragmaBlock:
     let pragmaList = n.sons[0]
     let oldLocked = tracked.locked.len
@@ -883,6 +888,10 @@ proc track(tracked: PEffects, n: PNode) =
     if n.len == 2: track(tracked, n.sons[1])
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.len == 1: track(tracked, n.sons[0])
+  of nkBracket:
+    for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
+    if tracked.owner.kind != skMacro:
+      createTypeBoundOps(tracked, n.typ, n.info)
   else:
     for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
 

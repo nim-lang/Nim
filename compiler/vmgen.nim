@@ -220,9 +220,9 @@ proc getFreeRegister(cc: PCtx; k: TSlotKind; start: int): TRegister =
         return TRegister(i)
   if c.maxSlots >= high(TRegister):
     globalError(cc.config, cc.bestEffort, "VM problem: too many registers required")
-  result = TRegister(c.maxSlots)
-  c.slots[c.maxSlots] = (inUse: true, kind: k)
-  inc c.maxSlots
+  result = TRegister(max(c.maxSlots, start))
+  c.slots[result] = (inUse: true, kind: k)
+  c.maxSlots = result + 1
 
 proc getTemp(cc: PCtx; tt: PType): TRegister =
   let typ = tt.skipTypesOrNil({tyStatic})
@@ -1483,7 +1483,10 @@ proc checkCanEval(c: PCtx; n: PNode) =
   if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
-    cannotEval(c, n)
+    # little hack ahead for bug #12612: assume gensym'ed variables
+    # are in the right scope:
+    if sfGenSym in s.flags and c.prc.sym == nil: discard
+    else: cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
     cannotEval(c, n)
@@ -1558,7 +1561,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     else:
       if s.kind == skForVar: c.setSlot s
       internalAssert c.config, s.position > 0 or (s.position == 0 and
-                                        s.kind in {skParam,skResult})
+                                        s.kind in {skParam, skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
       assert le.typ != nil
       if needsAdditionalCopy(le) and s.kind in {skResult, skVar, skParam}:
@@ -1638,7 +1641,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   else:
     if s.kind == skForVar and c.mode == emRepl: c.setSlot(s)
     if s.position > 0 or (s.position == 0 and
-                          s.kind in {skParam,skResult}):
+                          s.kind in {skParam, skResult}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
         internalAssert(c.config, c.prc.slots[dest].kind < slotSomeTemp)

@@ -190,8 +190,8 @@ proc decode*(s: string): string =
     inc inputIndex
     if x == invalidChar:
       raise newException(ValueError,
-        "Invalid base64 format character " & repr(s[inputIndex]) &
-        " at location " & $inputIndex & ".")
+        "Invalid base64 format character `" & s[inputIndex] &
+        "` (ord " & $s[inputIndex].ord & ") at location " & $inputIndex & ".")
 
   template outputChar(x: untyped) =
     result[outputIndex] = char(x and 255)

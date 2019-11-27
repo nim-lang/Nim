@@ -68,6 +68,7 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
     atomicInc head(p).rc
   else:
     inc head(p).rc
+    #cprintf("[INCREF] %p\n", p)
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
@@ -113,13 +114,15 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
       if atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) == 0:
         result = true
       else:
-        if atomicDec(head(p).rc) <= 0:
-          result = true
+        discard atomicDec(head(p).rc)
     else:
       if head(p).rc == 0:
         result = true
+        #cprintf("[DESTROY] %p\n", p)
       else:
         dec head(p).rc
+        # According to Lins it's correct to do nothing else here.
+        #cprintf("[DeCREF] %p\n", p)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
@@ -131,6 +134,18 @@ proc GC_unref*[T](x: ref T) =
 proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
   if x != nil: nimIncRef(cast[pointer](x))
+
+template GC_fullCollect* =
+  ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+  discard
+
+template setupForeignThreadGc* =
+  ## With ``--gc:arc`` a nop.
+  discard
+
+template tearDownForeignThreadGc* =
+  ## With ``--gc:arc`` a nop.
+  discard
 
 proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}

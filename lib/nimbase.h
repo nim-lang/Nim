@@ -256,7 +256,6 @@ __clang__
 
 #include <limits.h>
 #include <stddef.h>
-#include <stdalign.h>
 
 /* C99 compiler? */
 #if (defined(__STD_VERSION__) && (__STD_VERSION__ >= 199901))
@@ -465,6 +464,12 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  define NIM_EXTERNC extern "C"
 #else
 #  define NIM_EXTERNC
+#endif
+
+#if defined(_MSC_VER)
+#  define NIM_ALIGN(x)  __declspec(align(x))
+#else
+#  define NIM_ALIGN(x)  __attribute__((aligned(x)))
 #endif
 
 /* ---------------- platform specific includes ----------------------- */

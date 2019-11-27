@@ -40,7 +40,8 @@ const
     "coroutines",
     "osproc",
     "shouldfail",
-    "dir with space"
+    "dir with space",
+    "destructor"
   ]
 
 proc isTestFile*(file: string): bool =
@@ -176,6 +177,11 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " -d:release", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat)
+    when filename != "gctest":
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " --gc:arc", cat)
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " --gc:arc -d:release", cat)
 
   template testWithoutBoehm(filename: untyped) =
     testWithoutMs filename

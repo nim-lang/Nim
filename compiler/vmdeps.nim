@@ -8,6 +8,7 @@
 #
 
 import ast, types, msgs, os, options, idents, lineinfos
+from pathutils import AbsoluteFile
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
@@ -17,6 +18,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
+    discard conf.fileInfoIdx(AbsoluteFile filename)
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
   except IOError:

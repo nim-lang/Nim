@@ -1206,7 +1206,8 @@ proc parseHexStr*(s: string): string {.noSideEffect, procvar,
   for pos, c in s:
     let val = hexCharToValueMap[ord(c)].ord
     if val == 17:
-      raise newException(ValueError, "Invalid hex char " & repr(c))
+      raise newException(ValueError, "Invalid hex char `" &
+                         c & "` (ord " & $c.ord & ")")
     if pos mod 2 == 0:
       buf = val
     else:

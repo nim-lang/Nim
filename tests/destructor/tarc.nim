@@ -4,7 +4,7 @@ discard """
 Success
 @["a", "b", "c"]
 0'''
-  cmd: '''nim c --gc:destructors $file'''
+  cmd: '''nim c --gc:arc $file'''
 """
 
 import os
@@ -43,9 +43,50 @@ proc tlazyList =
   var x = LazyList(c: proc () = echo(dep))
   x.c()
 
-let startMem = getOccupiedMem()
-tlazyList()
+type
+  Foo = ref object
 
+proc tleakingNewStmt =
+  var x: Foo
+  for i in 0..10:
+    new(x)
+
+iterator infinite(): int {.closure.} =
+  var i = 0
+  while true:
+    yield i
+    inc i
+
+iterator take(it: iterator (): int, numToTake: int): int {.closure.} =
+  var i = 0
+  for x in it():
+    if i >= numToTake:
+      break
+    yield x
+    inc i
+
+proc take3 =
+  for x in infinite.take(3):
+    discard
+
+
+type
+  A = ref object of RootObj
+    x: int
+
+  B = ref object of A
+    more: string
+
+proc inheritanceBug(param: string) =
+  var s: (A, A)
+  s[0] = B(more: "a" & param)
+  s[1] = B(more: "a" & param)
+
+let startMem = getOccupiedMem()
+take3()
+tlazyList()
+inheritanceBug("whatever")
 mkManyLeaks()
 tsimpleClosureIterator()
+tleakingNewStmt()
 echo getOccupiedMem() - startMem

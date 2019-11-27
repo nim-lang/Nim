@@ -886,6 +886,10 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       t.flags.incl tfHasOwned
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
+    #if result.kind == tyRef and c.config.selectedGC == gcDestructors:
+    #  result.flags.incl tfHasAsgn
+    # XXX Something like this is a good idea but it should be done
+    # in sempass2!
 
 proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,
@@ -1766,8 +1770,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       onUse(n.info, n.sym)
     else:
       if s.kind != skError:
-        localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
-          [s.name.s, substr($s.kind, 2)])
+        if s.typ == nil:
+          localError(c.config, n.info, "type expected, but symbol '$1' has no type." % [s.name.s])
+        else:
+          localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
+            [s.name.s, substr($s.kind, 2)])
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
   of nkTupleTy: result = semTuple(c, n, prev)

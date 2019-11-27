@@ -3188,6 +3188,7 @@ has lots of advantages:
 
 Type conversions
 ----------------
+
 Syntactically a `type conversion` is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
@@ -3206,6 +3207,19 @@ A type conversion can also be used to disambiguate overloaded routines:
 
   let procVar = (proc(x: string))(p)
   procVar("a")
+
+Since operations on unsigned numbers wrap around and are unchecked so are
+type conversion to unsigned integers and between unsigned integers. The
+rationale for this is mostly better interoperability with the C Programming
+language when algorithms are ported from C to Nim.
+
+Exception: Values that are converted to an unsigned type at compile time
+are checked so that code like ``byte(-1)`` does not compile.
+
+**Note**: Historically the operations
+were unchecked and the conversions were sometimes checked but starting with
+the revision 1.0.4 of this document and the language implementation the
+conversions too are now *always unchecked*.
 
 
 Type casts
@@ -6433,38 +6447,39 @@ generates:
     unsigned int flag:1;
   };
 
-Alignas pragma
---------------
 
-The ``alignas`` pragma is for variables and object field members. It
-modifies the alignment requirement of the thing being declared. The
-argument must be a constant power of 2 or 0.  Valid non-zero
-alignments that are weaker than another alignas pragmas on the same
-declaration are ignored.  Alignments that are weaker that the
-alignment requirement of the type are ignored. ``alignas(0)`` is
-always ignored.
+Align pragma
+------------
+
+The `align`:idx: pragma is for variables and object field members. It
+modifies the alignment requirement of the entity being declared. The
+argument must be a constant power of 2. Valid non-zero
+alignments that are weaker than nother align pragmas on the same
+declaration are ignored. Alignments that are weaker that the
+alignment requirement of the type are ignored.
 
 .. code-block:: Nim
 
    type
      sseType = object
-       sseData {.alignas(16).}: array[4,float32]
+       sseData {.align(16).}: array[4,float32]
 
      # every object will be aligned to 128-byte boundary
      Data = object
        x: char
-       cacheline {.alignas(128).}: array[128, char] # over-aligned array of char,
+       cacheline {.align(128).}: array[128, char] # over-aligned array of char,
 
    proc main() =
      echo "sizeof(Data) = ", sizeof(Data), " (1 byte + 127 bytes padding + 128-byte array)"
      # output: sizeof(Data) = 256 (1 byte + 127 bytes padding + 128-byte array)
      echo "alignment of sseType is ", alignof(sseType)
      # output: alignment of sseType is 16
-     var d {.alignas(2048).}: Data # this instance of data is aligned even stricter
+     var d {.align(2048).}: Data # this instance of data is aligned even stricter
 
    main()
 
-This pragma has no effect on nimvm or the js backend.
+This pragma has no effect for the JS backend.
+
 
 Volatile pragma
 ---------------
@@ -6545,18 +6560,31 @@ The ``link`` pragma can be used to link an additional file with the project:
 
 PassC pragma
 ------------
-The ``passC`` pragma can be used to pass additional parameters to the C
-compiler like you would using the commandline switch ``--passC``:
+The ``passc`` pragma can be used to pass additional parameters to the C
+compiler like you would using the commandline switch ``--passc``:
 
 .. code-block:: Nim
-  {.passC: "-Wall -Werror".}
+  {.passc: "-Wall -Werror".}
 
 Note that you can use ``gorge`` from the `system module <system.html>`_ to
 embed parameters from an external command that will be executed
 during semantic analysis:
 
 .. code-block:: Nim
-  {.passC: gorge("pkg-config --cflags sdl").}
+  {.passc: gorge("pkg-config --cflags sdl").}
+
+
+LocalPassc pragma
+-----------------
+The ``localPassc`` pragma can be used to pass additional parameters to the C
+compiler, but only for the C/C++ file that is produced from the Nim module
+the pragma resides in:
+
+.. code-block:: Nim
+  # Module A.nim
+  # Produces: A.nim.cpp
+  {.localPassc: "-Wall -Werror".} # Passed when compiling A.nim.cpp
+
 
 PassL pragma
 ------------
@@ -6677,15 +6705,6 @@ pragmas this allows *sloppy* interfacing with libraries written in C++:
 The compiler needs to be told to generate C++ (command ``cpp``) for
 this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
-
-
-ImportJs pragma
----------------
-
-Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
-the ``importjs`` pragma can be used to import Javascript methods or
-symbols in general. The generated code then uses the Javascript method
-calling syntax: ``obj.method(arg)``.
 
 Namespaces
 ~~~~~~~~~~
@@ -6867,6 +6886,15 @@ Produces:
 .. code-block:: C
 
   std::vector<int>::iterator x;
+
+
+ImportJs pragma
+---------------
+
+Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+the ``importjs`` pragma can be used to import Javascript methods or
+symbols in general. The generated code then uses the Javascript method
+calling syntax: ``obj.method(arg)``.
 
 
 ImportObjC pragma
@@ -7085,7 +7113,7 @@ spelled*:
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma has been abused in the past to also work in the
-js backand for js objects and functions. : Other backends do provide
+js backend for js objects and functions. : Other backends do provide
 the same feature under the same name. Also, when the target language
 is not set to C, other pragmas are available:
 

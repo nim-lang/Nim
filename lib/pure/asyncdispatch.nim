@@ -1838,15 +1838,17 @@ proc send*(socket: AsyncFD, data: string,
   ## Sends ``data`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   var retFuture = newFuture[void]("send")
-
-  let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
-  sendFut.callback =
-    proc () =
-      keepAlive(data)
-      if sendFut.failed:
-        retFuture.fail(sendFut.error)
-      else:
-        retFuture.complete()
+  if data.len > 0:
+    let sendFut = socket.send(unsafeAddr data[0], data.len, flags)
+    sendFut.callback =
+      proc () =
+        keepAlive(data)
+        if sendFut.failed:
+          retFuture.fail(sendFut.error)
+        else:
+          retFuture.complete()
+  else:
+    retFuture.complete()
 
   return retFuture
 

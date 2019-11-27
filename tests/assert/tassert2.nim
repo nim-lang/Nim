@@ -8,7 +8,7 @@ test5:ok
 test6:ok
 test7:ok
 -1
-tfailedassert.nim
+tassert2.nim
 test8:ok
 test9:ok
 test10:ok
@@ -29,17 +29,17 @@ echo("")
 try:
   doAssert(false, "msg1") # doAssert test
 except AssertionError as e:
-  checkMsg(e.msg, "tfailedassert.nim(30, 11) `false` msg1", "test1")
+  checkMsg(e.msg, "tassert2.nim(30, 11) `false` msg1", "test1")
 
 try:
   assert false, "msg2"  # assert test
 except AssertionError as e:
-  checkMsg(e.msg, "tfailedassert.nim(35, 10) `false` msg2", "test2")
+  checkMsg(e.msg, "tassert2.nim(35, 10) `false` msg2", "test2")
 
 try:
   assert false # assert test with no msg
 except AssertionError as e:
-  checkMsg(e.msg, "tfailedassert.nim(40, 10) `false` ", "test3")
+  checkMsg(e.msg, "tassert2.nim(40, 10) `false` ", "test3")
 
 try:
   let a = 1
@@ -80,12 +80,12 @@ block:
   proc bar: int =
     # local overrides that are active only in this proc
     onFailedAssert(msg):
-      checkMsg(msg, "tfailedassert.nim(85, 11) `false` first assertion from bar", "test6")
+      checkMsg(msg, "tassert2.nim(85, 11) `false` first assertion from bar", "test6")
 
     assert(false, "first assertion from bar")
 
     onFailedAssert(msg):
-      checkMsg(msg, "tfailedassert.nim(91, 11) `false` second assertion from bar", "test7")
+      checkMsg(msg, "tassert2.nim(91, 11) `false` second assertion from bar", "test7")
       return -1
 
     assert(false, "second assertion from bar")
@@ -98,7 +98,7 @@ block:
   except:
     let e = EMyError(getCurrentException())
     echo e.lineinfo.filename
-    checkMsg(e.msg, "tfailedassert.nim(77, 11) `false` assertion from foo", "test8")
+    checkMsg(e.msg, "tassert2.nim(77, 11) `false` assertion from foo", "test8")
 
 block: ## checks for issue https://github.com/nim-lang/Nim/issues/8518
   template fun(a: string): string =
@@ -109,14 +109,14 @@ block: ## checks for issue https://github.com/nim-lang/Nim/issues/8518
     doAssert fun("foo1") == fun("foo2"), "mymsg"
   except AssertionError as e:
     # used to expand out the template instantiaiton, sometimes filling hundreds of lines
-    checkMsg(e.msg, """tfailedassert.nim(109, 14) `fun("foo1") == fun("foo2")` mymsg""", "test9")
+    checkMsg(e.msg, """tassert2.nim(109, 14) `fun("foo1") == fun("foo2")` mymsg""", "test9")
 
 block: ## checks for issue https://github.com/nim-lang/Nim/issues/9301
   try:
     doAssert 1 + 1 == 3
   except AssertionError as e:
     # used to const fold as false
-    checkMsg(e.msg, "tfailedassert.nim(116, 14) `1 + 1 == 3` ", "test10")
+    checkMsg(e.msg, "tassert2.nim(116, 14) `1 + 1 == 3` ", "test10")
 
 block: ## checks AST isnt' transformed as it used to
   let a = 1
@@ -124,4 +124,4 @@ block: ## checks AST isnt' transformed as it used to
     doAssert a > 1
   except AssertionError as e:
     # used to rewrite as `1 < a`
-    checkMsg(e.msg, "tfailedassert.nim(124, 14) `a > 1` ", "test11")
+    checkMsg(e.msg, "tassert2.nim(124, 14) `a > 1` ", "test11")
