@@ -8,14 +8,6 @@
   versions. The documentation was improved to acknowledge this special case.
   See https://github.com/nim-lang/RFCs/issues/175 for more details. (#12688)
 
-- added 'since' template for further stdlib additions
-
-- added valgrind support for 64-bit Linux to the CIs and testament (#12646)
-
-- refactoring: --newruntime consists of 3 different switches
-
-- Refactor injectdestructors (#12295)
-
 - Add `or detectOs(Manjaro)` (#12587)
 
 - --os:ios needs to imply defined(macosx) (#12585)
