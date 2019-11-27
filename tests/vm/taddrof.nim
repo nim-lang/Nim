@@ -6,6 +6,7 @@ true
 [MyObjectRef(123, 321), nil, nil, nil]
 ['A', '\x00', '\x00', '\x00']
 MyObjectRef(123, 321)
+(key: 8, val: 0)
 '''
 output: '''
 true
@@ -90,3 +91,20 @@ proc test() =
 test()
 static:
   test()
+
+type T = object
+  f: seq[tuple[key, val: int]]
+
+proc foo(s: var seq[tuple[key, val: int]]; i: int) =
+  s[i].key = 4*i
+  # r4 = addr(s[i])
+  # r4[0] = 4*i
+
+proc bar() =
+  var s: T
+  s.f = newSeq[tuple[key, val: int]](3)
+  foo(s.f, 2)
+  echo s.f[2]
+
+static:
+  bar()
