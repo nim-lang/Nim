@@ -341,6 +341,8 @@ when defined(windows) or defined(nimdoc):
         addr lpNumberOfBytesTransferred, addr lpCompletionKey,
         cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
     result = true
+    when defined(gcDestructors):
+      GC_ref(customOverlapped)
 
     # http://stackoverflow.com/a/12277264/492186
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
