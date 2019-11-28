@@ -129,6 +129,10 @@ proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
 proc nimblePath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   addPathRec(conf, path.string, info)
   addNimblePath(conf, path.string, info)
+  let i = conf.nimblePaths.find(path)
+  if i != -1:
+    conf.nimblePaths.delete(i)
+  conf.nimblePaths.insert(path, 0)
 
 when isMainModule:
   proc v(s: string): Version = s.newVersion

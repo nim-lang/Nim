@@ -367,8 +367,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   case switch.normalize
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
-    addPath(conf, if pass == passPP: processCfgPath(conf, arg, info)
-                  else: processPath(conf, arg, info), info)
+    for path in nimbleSubs(conf, arg):
+      addPath(conf, if pass == passPP: processCfgPath(conf, path, info)
+                    else: processPath(conf, path, info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and optNoNimblePath notin conf.globalOptions:

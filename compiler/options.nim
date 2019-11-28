@@ -234,6 +234,7 @@ type
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
     packageCache*: StringTableRef
+    nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
@@ -586,6 +587,15 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "nimcache", getNimcacheDir(conf).string])
   if "~/" in result:
     result = result.replace("~/", home & '/')
+
+iterator nimbleSubs*(conf: ConfigRef; p: string): string =
+  let pl = p.toLowerAscii
+  if "$nimblepath" in pl or "$nimbledir" in pl:
+    for i in countdown(conf.nimblePaths.len-1, 0):
+      let nimblePath = removeTrailingDirSep(conf.nimblePaths[i].string)
+      yield p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
+  else:
+    yield p
 
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
