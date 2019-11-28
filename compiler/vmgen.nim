@@ -2130,7 +2130,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
   else:
-    globalError(c.config, n.info, "cannot generate VM code for " & $n)
+    if n.typ != nil and n.typ.isCompileTimeOnly:
+      genTypeLit(c, n.typ, dest)
+    else:
+      globalError(c.config, n.info, "cannot generate VM code for " & $n)
 
 proc removeLastEof(c: PCtx) =
   let last = c.code.len-1
