@@ -90,7 +90,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
+proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: string = ""): tuple[
                 cmdLine: string,
                 output: TaintedString,
                 exitCode: int] {.tags:
@@ -465,7 +465,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
           if exitCode != expected.exitCode:
             r.addResult(test, target, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
-                              bufB, reExitCodesDiffer)
+                              bufB, reExitcodesDiffer)
           elif (expected.outputCheck == ocEqual and expected.output != bufB) or
               (expected.outputCheck == ocSubstr and expected.output notin bufB):
             given.err = reOutputsDiffer
@@ -522,7 +522,7 @@ proc testC(r: var TResults, test: TTest, action: TTestAction) =
   elif action == actionRun:
     let exeFile = changeFileExt(test.name, ExeExt)
     var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
-    if exitCode != 0: given.err = reExitCodesDiffer
+    if exitCode != 0: given.err = reExitcodesDiffer
   if given.err == reSuccess: inc(r.passed)
 
 proc testExec(r: var TResults, test: TTest) =
@@ -535,7 +535,7 @@ proc testExec(r: var TResults, test: TTest) =
   if errC == 0:
     given.err = reSuccess
   else:
-    given.err = reExitCodesDiffer
+    given.err = reExitcodesDiffer
     given.msg = outp.string
 
   if given.err == reSuccess: inc(r.passed)
@@ -599,8 +599,8 @@ proc loadSkipFrom(name: string): seq[string] =
       result.add sline
 
 proc main() =
-  os.putenv "NIMTEST_COLOR", "never"
-  os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
+  os.putEnv "NIMTEST_COLOR", "never"
+  os.putEnv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
   backend.open()
   var optPrintResults = false
@@ -612,7 +612,7 @@ proc main() =
 
   var p = initOptParser()
   p.next()
-  while p.kind in {cmdLongoption, cmdShortOption}:
+  while p.kind in {cmdLongOption, cmdShortOption}:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
