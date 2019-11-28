@@ -286,7 +286,7 @@ proc swapCaseAscii*(s: string): string {.noSideEffect, procvar,
   ## Converts string `s` where all the upper case letters are lower case and vice versa.
   ##
   ## This works only for the letters ``A-Za-z``.
-  ##
+  ## 
   ## See also:
   ## * `swapCaseAscii proc<#swapCaseAscii,char>`_
   runnableExamples:
