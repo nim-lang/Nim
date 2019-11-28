@@ -1417,12 +1417,11 @@ proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
     gen(c, m, dest, flags)
     return
 
-  let af = if n[0].kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr}: {gfNode}
-           else: {gfNodeAddr}
-  let newflags = flags-{gfNode, gfNodeAddr}+af
+  let newflags = flags-{gfNode}+{gfNodeAddr}
 
-  if isGlobal(n.sons[0]):
-    gen(c, n.sons[0], dest, flags+af)
+  if isGlobal(n.sons[0]) or n[0].kind in {nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}:
+    # checking for this pattern:  addr(obj.field) / addr(array[i])
+    gen(c, n.sons[0], dest, newflags)
   else:
     let tmp = c.genx(n.sons[0], newflags)
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1663,7 +1662,9 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   let a = c.genx(n.sons[0], flags)
   let b = c.genIndex(n.sons[1], n.sons[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
-  if needsRegLoad():
+  if opc == opcLdArr and {gfNodeAddr} * flags != {}:
+    c.gABC(n, opcLdArrAddr, dest, a, b)
+  elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
     c.gABC(n, opcNodeToReg, dest, cc)
@@ -1679,7 +1680,9 @@ proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let a = c.genx(n.sons[0], flags)
   let b = genField(c, n.sons[1])
   if dest < 0: dest = c.getTemp(n.typ)
-  if needsRegLoad():
+  if {gfNodeAddr} * flags != {}:
+    c.gABC(n, opcLdObjAddr, dest, a, b)
+  elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opcLdObj, cc, a, b)
     c.gABC(n, opcNodeToReg, dest, cc)
@@ -1733,7 +1736,10 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   # Load the content now
   if dest < 0: dest = c.getTemp(n.typ)
   let fieldPos = genField(c, field)
-  if needsRegLoad():
+
+  if {gfNodeAddr} * flags != {}:
+    c.gABC(n, opcLdObjAddr, dest, objR, fieldPos)
+  elif needsRegLoad():
     var cc = c.getTemp(accessExpr.typ)
     c.gABC(n, opcLdObj, cc, objR, fieldPos)
     c.gABC(n, opcNodeToReg, dest, cc)

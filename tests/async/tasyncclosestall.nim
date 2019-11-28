@@ -14,7 +14,7 @@ else:
 # even when the socket is closed.
 const
   port = Port(50726)
-  timeout = 5000
+  timeout = 8000
 
 var sent = 0
 

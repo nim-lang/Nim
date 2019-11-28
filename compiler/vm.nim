@@ -606,6 +606,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = src.sons[idx]
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+    of opcLdArrAddr:
+      # a = addr(b[c])
+      decodeBC(rkNodeAddr)
+      if regs[rc].intVal > high(int):
+        stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
+      let idx = regs[rc].intVal.int
+      let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
+      if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
+        regs[ra].nodeAddr = addr src.sons[idx]
+      else:
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
@@ -643,9 +654,25 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         let n = src.sons[rc]
         regs[ra].node = n
+    of opcLdObjAddr:
+      # a = addr(b.c)
+      decodeBC(rkNodeAddr)
+      let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
+      case src.kind
+      of nkEmpty..nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      of nkObjConstr:
+        let n = src.sons[rc + 1]
+        if n.kind == nkExprColonExpr:
+          regs[ra].nodeAddr = addr n.sons[1]
+        else:
+          regs[ra].nodeAddr = addr src.sons[rc + 1]
+      else:
+        regs[ra].nodeAddr = addr src.sons[rc]
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)
+      assert regs[ra].node != nil
       let shiftedRb = rb + ord(regs[ra].node.kind == nkObjConstr)
       let dest = regs[ra].node
       if dest.kind == nkNilLit:
