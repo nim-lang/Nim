@@ -263,6 +263,36 @@ proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
     doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
+proc swapCaseAscii*(c: char): char {.noSideEffect, procvar,
+  rtl, extern: "nsuSwapCaseAsciiChar".} =
+  ## Returns the swapped case version of character ``c``.
+  ##
+  ## This works only for the letters ``A-Za-z``.
+  ##
+  ## See also:
+  ## * `swapCaseAscii proc<#swapCaseAscii,string>`_ for converting a string
+  runnableExamples:
+    doAssert swapCaseAscii('A') == 'a'
+    doAssert swapCaseAscii('e') == 'E'
+  if c in {'A'..'Z'}:
+    result = chr(ord(c) + (ord('a') - ord('A')))
+  else if c in {'a'..'z'}:
+    result = chr(ord(c) - (ord('a') - ord('A')))
+  else:
+    result = c
+
+proc swapCaseAscii*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuSwapCaseAsciiStr".} =
+  ## Converts string `s` where all the upper case letters are lower case and vice versa.
+  ##
+  ## This works only for the letters ``A-Za-z``.
+  ##
+  ## See also:
+  ## * `swapCaseAscii proc<#swapCaseAscii,char>`_
+  runnableExamples:
+    doAssert toUpperAscii("FooBar!") == "fOObAR!"
+  toImpl swapCaseAscii
+
 proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of string `s` into upper case.
