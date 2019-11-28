@@ -123,7 +123,7 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
       idTablePut(symMap, s, x)
       n.sym = x
   else:
-    for i in 0..<safeLen(n): freshGenSyms(n[i], owner, orig, symMap)
+    for i in 0..<n.safeLen: freshGenSyms(n[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 

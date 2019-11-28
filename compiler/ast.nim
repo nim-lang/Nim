@@ -1587,7 +1587,7 @@ proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   result = false
 
 proc hasNilSon*(n: PNode): bool =
-  for i in 0..<safeLen(n):
+  for i in 0..<n.safeLen:
     if n[i] == nil:
       return true
     elif hasNilSon(n[i]):

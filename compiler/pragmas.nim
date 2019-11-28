@@ -1152,7 +1152,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
 
 proc overwriteLineInfo(n: PNode; info: TLineInfo) =
   n.info = info
-  for i in 0..<safeLen(n):
+  for i in 0..<n.safeLen:
     overwriteLineInfo(n[i], info)
 
 proc mergePragmas(n, pragmas: PNode) =

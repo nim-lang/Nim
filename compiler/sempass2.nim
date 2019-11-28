@@ -697,7 +697,7 @@ proc track(tracked: PEffects, n: PNode) =
       n[0].info = n.info
       #throws(tracked.exc, n[0])
       addEffect(tracked, n[0], useLineInfo=false)
-      for i in 0..<safeLen(n):
+      for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
     else:
@@ -758,7 +758,7 @@ proc track(tracked: PEffects, n: PNode) =
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       track(tracked, n[i])
   of nkDotExpr:
     guardDotAccess(tracked, n)
@@ -887,11 +887,11 @@ proc track(tracked: PEffects, n: PNode) =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.len == 1: track(tracked, n[0])
   of nkBracket:
-    for i in 0..<safeLen(n): track(tracked, n[i])
+    for i in 0..<n.safeLen: track(tracked, n[i])
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n.typ, n.info)
   else:
-    for i in 0..<safeLen(n): track(tracked, n[i])
+    for i in 0..<n.safeLen: track(tracked, n[i])
 
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
   result = safeInheritanceDiff(g.excType(real), spec.typ) <= 0

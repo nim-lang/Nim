@@ -450,7 +450,7 @@ proc sameTree*(a, b: PNode): bool =
 proc hasSubTree(n, x: PNode): bool =
   if n.sameTree(x): result = true
   else:
-    for i in 0..safeLen(n)-1:
+    for i in 0..n.safeLen-1:
       if hasSubTree(n[i], x): return true
 
 proc invalidateFacts*(m: var TModel, n: PNode) =
@@ -881,7 +881,7 @@ proc replaceSubTree(n, x, by: PNode): PNode =
     result = by
   elif hasSubTree(n, x):
     result = shallowCopy(n)
-    for i in 0..safeLen(n)-1:
+    for i in 0..n.safeLen-1:
       result[i] = replaceSubTree(n[i], x, by)
   else:
     result = n

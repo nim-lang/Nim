@@ -608,8 +608,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   if a.kind == nkSym:
     # common case; check the only candidate has the right
     # number of generic type parameters:
-    if safeLen(s.ast[genericParamsPos]) != n.len-1:
-      let expected = safeLen(s.ast[genericParamsPos])
+    if s.ast[genericParamsPos].safeLen != n.len-1:
+      let expected = s.ast[genericParamsPos].safeLen
       localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
          "'; got " & $(n.len-1) & " type(s) but expected " & $expected)
       return n
@@ -626,7 +626,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
                             skFunc, skIterator}:
         # it suffices that the candidate has the proper number of generic
         # type parameters:
-        if safeLen(candidate.ast[genericParamsPos]) == n.len-1:
+        if candidate.ast[genericParamsPos].safeLen == n.len-1:
           let x = explicitGenericSym(c, n, candidate)
           if x != nil: result.add(x)
     # get rid of nkClosedSymChoice if not ambiguous:

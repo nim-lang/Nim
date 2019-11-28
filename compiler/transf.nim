@@ -568,7 +568,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
       internalError(c.graph.config, x.info, "bah " & x.sym.name.s & " " &
         x.sym.owner.name.s & " " & getCurrOwner(c).name.s)
   else:
-    for i in 0..<safeLen(n): findWrongOwners(c, n[i])
+    for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)

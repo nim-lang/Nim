@@ -50,7 +50,7 @@ proc whichType(d: PDoc; n: PNode): PSym =
     if d.types.strTableContains(n.sym):
       result = n.sym
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       let x = whichType(d, n[i])
       if x != nil: return x
 
@@ -286,7 +286,7 @@ proc getPlainDocstring(n: PNode): string =
   if startsWith(n.comment, "##"):
     result = n.comment
   if result.len < 1:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       result = getPlainDocstring(n[i])
       if result.len > 0: return
 

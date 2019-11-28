@@ -109,7 +109,7 @@ proc setOffsetsToUnknown(n: PNode) =
   if n.kind == nkSym and n.sym.kind == skField:
     n.sym.offset = szUnknownSize
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       setOffsetsToUnknown(n[i])
 
 proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, accum: var OffsetAccum) =

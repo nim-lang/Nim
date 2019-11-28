@@ -196,7 +196,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
       result.info = n.info
-    for i in 0..<safeLen(body):
+    for i in 0..<body.safeLen:
       evalTemplateAux(body[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)

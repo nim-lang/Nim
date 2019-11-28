@@ -82,7 +82,7 @@ when defined(nimpretty):
       result = (n.info.line.int, n.info.line.int + countLines(n.comment))
     else:
       result = (n.info.line.int, n.info.line.int)
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       let (currMin, currMax) = minmaxLine(n[i])
       if currMin < result[0]: result[0] = currMin
       if currMax > result[1]: result[1] = currMax

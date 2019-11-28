@@ -941,7 +941,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
       else:
         allPathsInBranch(it.lastSon)
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       allPathsInBranch(n[i])
 
 proc getProcTypeCast(m: BModule, prc: PSym): Rope =

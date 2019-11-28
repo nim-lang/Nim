@@ -125,7 +125,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym) =
   of nkExportExceptStmt:
     localError(c.config, n.info, "'export except' not implemented")
   else:
-    for i in 0..safeLen(n)-1:
+    for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod)
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =

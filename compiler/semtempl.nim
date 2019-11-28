@@ -272,7 +272,7 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         onUse(n.info, s)
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       result[i] = semRoutineInTemplName(c, n[i])
 
 proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =

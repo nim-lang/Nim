@@ -277,7 +277,7 @@ when false:
 
 proc hasCycle(n: PNode): bool =
   incl n.flags, nfNone
-  for i in 0..<safeLen(n):
+  for i in 0..<n.safeLen:
     if nfNone in n[i].flags or hasCycle(n[i]):
       result = true
       break

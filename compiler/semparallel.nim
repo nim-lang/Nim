@@ -254,7 +254,7 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
 proc analyse(c: var AnalysisCtx; n: PNode)
 
 proc analyseSons(c: var AnalysisCtx; n: PNode) =
-  for i in 0..<safeLen(n): analyse(c, n[i])
+  for i in 0..<n.safeLen: analyse(c, n[i])
 
 proc min(a, b: PNode): PNode =
   if a.isNil: result = b

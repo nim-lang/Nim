@@ -45,7 +45,7 @@ proc counterInTree(n, loop: PNode; counter: PSym): bool =
     for it in n:
       if counterInTree(it.lastSon): return true
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       if counterInTree(n[i], loop, counter): return true
 
 proc copyExcept(n: PNode, x, dest: PNode) =

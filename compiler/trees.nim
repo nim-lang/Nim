@@ -87,7 +87,7 @@ proc isConstExpr*(n: PNode): bool =
 
 proc isCaseObj*(n: PNode): bool =
   if n.kind == nkRecCase: return true
-  for i in 0..<safeLen(n):
+  for i in 0..<n.safeLen:
     if n[i].isCaseObj: return true
 
 proc isDeepConstExpr*(n: PNode): bool =

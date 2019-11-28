@@ -105,9 +105,9 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
         # user defined pragma
         decl(a[1])
     else:
-      for i in 0..<safeLen(n): deps(n[i])
+      for i in 0..<n.safeLen: deps(n[i])
   else:
-    for i in 0..<safeLen(n): deps(n[i])
+    for i in 0..<n.safeLen: deps(n[i])
 
 proc cleanPath(s: string): string =
   # Here paths may have the form A / B or "A/B"

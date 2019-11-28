@@ -685,7 +685,7 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       injectDefaultCalls(n[i], c)
 
 proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =
