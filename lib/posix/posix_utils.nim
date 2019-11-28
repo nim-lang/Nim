@@ -100,7 +100,7 @@ proc mkdtemp*(prefix: string): string =
   return $tmpl
 
 when defined(amd64):
-  proc getDiskUsage*(path: string): tuple[total: uint, used: uint, free: uint] {.inline.} =
+  proc getDiskUsage*(path: string): tuple[total: uint64, used: uint64, free: uint64] {.inline.} =
     ## Convenience proc for ``statvfs`` to get disk usage statistics in bytes.
     ## This proc is available for 64 Bit architectures and operating systems.
     ##
@@ -109,4 +109,4 @@ when defined(amd64):
     ##
     var t = Statvfs()
     discard statvfs(path, t)
-    (total: uint(t.f_blocks * t.f_frsize), used: uint((t.f_blocks - t.f_bfree) * t.f_frsize), free: uint(t.f_bavail * t.f_frsize))
+    (total: uint64(t.f_blocks * t.f_frsize), used: uint64((t.f_blocks - t.f_bfree) * t.f_frsize), free: uint64(t.f_bavail * t.f_frsize))
