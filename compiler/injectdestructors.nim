@@ -259,7 +259,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   vpart[0] = tempAsNode
   vpart[1] = c.emptyNode
   vpart[2] = n
-  add(v, vpart)
+  v.add(vpart)
 
   result.add v
   result.add genWasMoved(skipConv(n), c)
@@ -685,7 +685,7 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       injectDefaultCalls(n[i], c)
 
 proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =

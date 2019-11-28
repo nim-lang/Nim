@@ -70,7 +70,7 @@ proc compileCCode*(ccode: string) =
 
 proc run*(args: string) =
   var s = @[cstring(gProjectName)] & map(split(args), proc(x: string): cstring = cstring(x))
-  var err = tinyc.run(gTinyC, cint(len(s)), cast[cstringArray](addr(s[0]))) != 0'i32
+  var err = tinyc.run(gTinyC, cint(s.len), cast[cstringArray](addr(s[0]))) != 0'i32
   closeCCState(gTinyC)
   if err: rawMessage(errExecutionOfProgramFailed, "")
 

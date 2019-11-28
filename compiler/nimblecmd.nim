@@ -48,7 +48,7 @@ proc `<`*(ver: Version, ver2: Version): bool =
   # Handling for normal versions such as "0.1.0" or "1.0".
   var sVer = string(ver).split('.')
   var sVer2 = string(ver2).split('.')
-  for i in 0..max(sVer.len, sVer2.len)-1:
+  for i in 0..<max(sVer.len, sVer2.len):
     var sVerI = 0
     if i < sVer.len:
       discard parseInt(sVer[i], sVerI)
@@ -82,7 +82,7 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
       result.name = p
       return
 
-  result.name = p[0 .. sepIdx - 1]
+  result.name = p[0..sepIdx - 1]
   result.version = p.substr(sepIdx + 1)
 
 proc addPackage(conf: ConfigRef; packages: StringTableRef, p: string; info: TLineInfo) =

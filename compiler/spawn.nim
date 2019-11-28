@@ -16,7 +16,7 @@ from trees import getMagic
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
   result.add a
-  result.typ = a.typ.sons[0]
+  result.typ = a.typ[0]
 
 # we have 4 cases to consider:
 # - a void proc --> nothing to do
@@ -60,18 +60,18 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   incl(result.flags, sfFromGeneric)
 
   var vpart = newNodeI(nkIdentDefs, varSection.info, 3)
-  vpart.sons[0] = newSymNode(result)
-  vpart.sons[1] = newNodeI(nkEmpty, varSection.info)
-  vpart.sons[2] = if varInit.isNil: v else: vpart[1]
+  vpart[0] = newSymNode(result)
+  vpart[1] = newNodeI(nkEmpty, varSection.info)
+  vpart[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
     if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
       varInit.add newFastAsgnStmt(newSymNode(result), v)
     else:
       let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
-      deepCopyCall.sons[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
-      deepCopyCall.sons[1] = newSymNode(result)
-      deepCopyCall.sons[2] = v
+      deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
+      deepCopyCall[1] = newSymNode(result)
+      deepCopyCall[2] = v
       varInit.add deepCopyCall
 
 discard """
@@ -137,16 +137,16 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = fv.typ.sons[1].flowVarKind
+    let fk = fv.typ[1].flowVarKind
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
-        typeToString(fv.typ.sons[1]))
+        typeToString(fv.typ[1]))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       if fk == fvGC: "data" else: "blob", fv.info, g.cache), call)
     if fk == fvGC:
       let incRefCall = newNodeI(nkCall, fv.info, 2)
-      incRefCall.sons[0] = newSymNode(getSysMagic(g, fv.info, "GCref", mGCref))
-      incRefCall.sons[1] = indirectAccess(threadLocalProm.newSymNode,
+      incRefCall[0] = newSymNode(getSysMagic(g, fv.info, "GCref", mGCref))
+      incRefCall[1] = indirectAccess(threadLocalProm.newSymNode,
                                           "data", fv.info, g.cache)
       body.add incRefCall
     if barrier == nil:
@@ -196,7 +196,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; scratchOb
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
   let tmpName = getIdent(g.cache, genPrefix)
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
@@ -225,11 +225,11 @@ proc getRoot*(n: PNode): PSym =
       result = n.sym
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = getRoot(n.sons[0])
+    result = getRoot(n[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = getRoot(n.sons[1])
+    result = getRoot(n[1])
   of nkCallKinds:
-    if getMagic(n) == mSlice: result = getRoot(n.sons[1])
+    if getMagic(n) == mSlice: result = getRoot(n[1])
   else: discard
 
 proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchObj: PSym;
@@ -239,7 +239,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
   let tmpName = getIdent(g.cache, genPrefix)
   # we need to copy the foreign scratch object fields into local variables
   # for correctness: These are called 'threadLocal' here.
-  for i in 1 ..< n.len:
+  for i in 1..<n.len:
     let n = n[i]
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
@@ -253,8 +253,8 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
       # important special case: we always create a zero-copy slice:
       let slice = newNodeI(nkCall, n.info, 4)
       slice.typ = n.typ
-      slice.sons[0] = newSymNode(createMagic(g, "slice", mSlice))
-      slice.sons[0].typ = getSysType(g, n.info, tyInt) # fake type
+      slice[0] = newSymNode(createMagic(g, "slice", mSlice))
+      slice[0].typ = getSysType(g, n.info, tyInt) # fake type
       var fieldB = newSym(skField, tmpName, objType.owner, n.info, g.config.options)
       fieldB.typ = getSysType(g, n.info, tyInt)
       objType.addField(fieldB, g.cache)
@@ -274,7 +274,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
         let threadLocal = addLocalVar(g, varSection,nil, objType.owner, fieldA.typ,
                                       indirectAccess(castExpr, fieldA, n.info),
                                       useShallowCopy=true)
-        slice.sons[2] = threadLocal.newSymNode
+        slice[2] = threadLocal.newSymNode
       else:
         let a = genAddrOf(n)
         field.typ = a.typ
@@ -282,14 +282,14 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
         result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), genHigh(g, n))
 
-        slice.sons[2] = newIntLit(g, n.info, 0)
+        slice[2] = newIntLit(g, n.info, 0)
       # the array itself does not need to go through a thread local variable:
-      slice.sons[1] = genDeref(indirectAccess(castExpr, field, n.info))
+      slice[1] = genDeref(indirectAccess(castExpr, field, n.info))
 
       let threadLocal = addLocalVar(g, varSection,nil, objType.owner, fieldB.typ,
                                     indirectAccess(castExpr, fieldB, n.info),
                                     useShallowCopy=true)
-      slice.sons[3] = threadLocal.newSymNode
+      slice[3] = threadLocal.newSymNode
       call.add slice
     elif (let size = computeSize(g.config, argType); size < 0 or size > 16) and
         n.getRoot != nil:
@@ -358,7 +358,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     result.add varSectionB
 
   var call = newNodeIT(nkCall, n.info, n.typ)
-  var fn = n.sons[0]
+  var fn = n[0]
   # templates and macros are in fact valid here due to the nature of
   # the transformation:
   if fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure):

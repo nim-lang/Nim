@@ -162,7 +162,7 @@ proc castToUInt64*(arg: Int128): uint64 =
   cast[uint64](bitconcat(arg.udata[1], arg.udata[0]))
 
 proc addToHex(result: var string; arg: uint32) =
-  for i in 0 ..< 8:
+  for i in 0..<8:
     let idx = (arg shr ((7-i) * 4)) and 0xf
     result.add "0123456789abcdef"[idx]
 
@@ -430,7 +430,7 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
   # Uses shift-subtract algorithm to divide dividend by denominator. The
   # remainder will be left in dividend.
-  for i in 0 .. shift:
+  for i in 0..shift:
     quotient = quotient shl 1
     if dividend >= denominator:
       dividend = dividend - denominator
@@ -492,7 +492,7 @@ proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
     pos += 1
 
   result = Zero
-  while pos < arg.len and arg[pos] in '0' .. '9':
+  while pos < arg.len and arg[pos] in '0'..'9':
     result = result * Ten
     result.inc(uint32(arg[pos]) - uint32('0'))
     pos += 1
@@ -652,8 +652,8 @@ when isMainModule:
   d[37] = parseDecimalInt128("10000000000000000000000000000000000000")
   d[38] = parseDecimalInt128("100000000000000000000000000000000000000")
 
-  for i in 0 ..< d.len:
-    for j in 0 ..< d.len:
+  for i in 0..<d.len:
+    for j in 0..<d.len:
       doAssert(cmp(d[i], d[j]) == cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == d[i+j]
@@ -670,8 +670,8 @@ when isMainModule:
   for it in d.mitems:
     it = -it
 
-  for i in 0 ..< d.len:
-    for j in 0 ..< d.len:
+  for i in 0..<d.len:
+    for j in 0..<d.len:
       doAssert(cmp(d[i], d[j]) == -cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == -d[i+j]

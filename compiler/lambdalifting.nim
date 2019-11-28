@@ -128,8 +128,8 @@ proc newCall(a: PSym, b: PNode): PNode =
 
 proc createClosureIterStateType*(g: ModuleGraph; iter: PSym): PType =
   var n = newNodeI(nkRange, iter.info)
-  addSon(n, newIntNode(nkIntLit, -1))
-  addSon(n, newIntNode(nkIntLit, 0))
+  n.add newIntNode(nkIntLit, -1)
+  n.add newIntNode(nkIntLit, 0)
   result = newType(tyRange, iter)
   result.n = n
   var intType = nilOrSysInt(g)
@@ -148,27 +148,27 @@ proc createEnvObj(g: ModuleGraph; owner: PSym; info: TLineInfo): PType =
 
 proc getClosureIterResult*(g: ModuleGraph; iter: PSym): PSym =
   if resultPos < iter.ast.len:
-    result = iter.ast.sons[resultPos].sym
+    result = iter.ast[resultPos].sym
   else:
     # XXX a bit hacky:
     result = newSym(skResult, getIdent(g.cache, ":result"), iter, iter.info, {})
-    result.typ = iter.typ.sons[0]
+    result.typ = iter.typ[0]
     incl(result.flags, sfUsed)
     iter.ast.add newSymNode(result)
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   assert param.kind == skParam
-  var params = routine.ast.sons[paramsPos]
+  var params = routine.ast[paramsPos]
   # -1 is correct here as param.position is 0 based but we have at position 0
   # some nkEffect node:
   param.position = routine.typ.n.len-1
-  addSon(params, newSymNode(param))
+  params.add newSymNode(param)
   #incl(routine.typ.flags, tfCapturesEnv)
   assert sfFromGeneric in param.flags
   #echo "produced environment: ", param.id, " for ", routine.id
 
 proc getHiddenParam(g: ModuleGraph; routine: PSym): PSym =
-  let params = routine.ast.sons[paramsPos]
+  let params = routine.ast[paramsPos]
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
     result = hidden.sym
@@ -179,7 +179,7 @@ proc getHiddenParam(g: ModuleGraph; routine: PSym): PSym =
     result = routine
 
 proc getEnvParam*(routine: PSym): PSym =
-  let params = routine.ast.sons[paramsPos]
+  let params = routine.ast[paramsPos]
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.name.s == paramName:
     result = hidden.sym
@@ -206,8 +206,8 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   # which is however the only case when we generate an assignment in the first
   # place.
   result = newNodeI(nkAsgn, info, 2)
-  result.sons[0] = le
-  result.sons[1] = ri
+  result[0] = le
+  result[1] = ri
 
 proc makeClosure*(g: ModuleGraph; prc: PSym; env: PNode; info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
@@ -255,7 +255,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   var env: PNode
   if owner.isIterator:
     let it = getHiddenParam(g, owner)
-    addUniqueField(it.typ.skipTypes({tyOwned}).sons[0], hp, g.cache)
+    addUniqueField(it.typ.skipTypes({tyOwned})[0], hp, g.cache)
     env = indirectAccess(newSymNode(it), hp, hp.info)
   else:
     let e = newSym(skLet, iter.name, owner, n.info)
@@ -520,7 +520,7 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   if not envParam.isNil:
     var access = newSymNode(envParam)
     while true:
-      let obj = access.typ.sons[0]
+      let obj = access.typ[0]
       assert obj.kind == tyObject
       let field = getFieldFromObj(obj, s)
       if field != nil:
@@ -539,7 +539,7 @@ proc newEnvVar(cache: IdentCache; owner: PSym; typ: PType; info: TLineInfo): PNo
   when false:
     if owner.kind == skIterator and owner.typ.callConv == ccClosure:
       let it = getHiddenParam(owner)
-      addUniqueField(it.typ.sons[0], v)
+      addUniqueField(it.typ[0], v)
       result = indirectAccess(newSymNode(it), v, v.info)
     else:
       result = newSymNode(v)
@@ -679,7 +679,7 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
     result = n
 
 proc getStateField*(g: ModuleGraph; owner: PSym): PSym =
-  getHiddenParam(g, owner).typ.skipTypes({tyOwned, tyRef, tyPtr}).n.sons[0].sym
+  getHiddenParam(g, owner).typ.skipTypes({tyOwned, tyRef, tyPtr}).n[0].sym
 
 proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
                       c: var LiftingPass): PNode
@@ -748,13 +748,13 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     discard
   of nkClosure:
     if n[1].kind == nkNilLit:
-      n.sons[0] = liftCapturedVars(n[0], owner, d, c)
-      let x = n.sons[0].skipConv
+      n[0] = liftCapturedVars(n[0], owner, d, c)
+      let x = n[0].skipConv
       if x.kind == nkClosure:
         #localError(n.info, "internal error: closure to closure created")
         # now we know better, so patch it:
-        n.sons[0] = x.sons[0]
-        n.sons[1] = x.sons[1]
+        n[0] = x[0]
+        n[1] = x[1]
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let oldInContainer = c.inContainer
@@ -765,29 +765,29 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       c.inContainer = oldInContainer
   of nkHiddenStdConv:
     if n.len == 2:
-      n.sons[1] = liftCapturedVars(n[1], owner, d, c)
+      n[1] = liftCapturedVars(n[1], owner, d, c)
       if n[1].kind == nkClosure: result = n[1]
   of nkReturnStmt:
     if n[0].kind in {nkAsgn, nkFastAsgn}:
       # we have a `result = result` expression produced by the closure
       # transform, let's not touch the LHS in order to make the lifting pass
       # correct when `result` is lifted
-      n[0].sons[1] = liftCapturedVars(n[0].sons[1], owner, d, c)
+      n[0][1] = liftCapturedVars(n[0][1], owner, d, c)
     else:
-      n.sons[0] = liftCapturedVars(n[0], owner, d, c)
+      n[0] = liftCapturedVars(n[0], owner, d, c)
   of nkTypeOfExpr:
     result = n
   else:
     if owner.isIterator:
       if nfLL in n.flags:
         # special case 'when nimVm' due to bug #3636:
-        n.sons[1] = liftCapturedVars(n[1], owner, d, c)
+        n[1] = liftCapturedVars(n[1], owner, d, c)
         return
 
     let inContainer = n.kind in {nkObjConstr, nkBracket}
     if inContainer: inc c.inContainer
     for i in 0..<n.len:
-      n.sons[i] = liftCapturedVars(n[i], owner, d, c)
+      n[i] = liftCapturedVars(n[i], owner, d, c)
     if inContainer: dec c.inContainer
 
 # ------------------ old stuff -------------------------------------------
@@ -911,11 +911,10 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
         ...
     """
   if liftingHarmful(g.config, owner): return body
-  var L = body.len
-  if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
+  if not (body.kind == nkForStmt and body[^2].kind in nkCallKinds):
     localError(g.config, body.info, "ignored invalid for loop")
     return body
-  var call = body[L-2]
+  var call = body[^2]
 
   result = newNodeI(nkStmtList, body.info)
 
@@ -941,34 +940,34 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon
     if closure.kind == nkClosure:
-      call.sons[0] = closure
-      for i in 0 .. op.len-2:
+      call[0] = closure
+      for i in 0..<op.len-1:
         result.add op[i]
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
-  whileLoop.sons[0] = newIntTypeNode(1, getSysType(g, body.info, tyBool))
-  whileLoop.sons[1] = loopBody
+  whileLoop[0] = newIntTypeNode(1, getSysType(g, body.info, tyBool))
+  whileLoop[1] = loopBody
   result.add whileLoop
 
   # setup loopBody:
   # gather vars in a tuple:
   var v2 = newNodeI(nkLetSection, body.info)
-  var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
-  for i in 0 .. L-3:
+  var vpart = newNodeI(if body.len == 3: nkIdentDefs else: nkVarTuple, body.info)
+  for i in 0..<body.len-2:
     if body[i].kind == nkSym:
       body[i].sym.kind = skLet
-    addSon(vpart, body[i])
+    vpart.add body[i]
 
-  addSon(vpart, newNodeI(nkEmpty, body.info)) # no explicit type
+  vpart.add newNodeI(nkEmpty, body.info) # no explicit type
   if not env.isNil:
-    call.sons[0] = makeClosure(g, call.sons[0].sym, env.newSymNode, body.info)
-  addSon(vpart, call)
-  addSon(v2, vpart)
+    call[0] = makeClosure(g, call[0].sym, env.newSymNode, body.info)
+  vpart.add call
+  v2.add vpart
 
-  loopBody.sons[0] = v2
+  loopBody[0] = v2
   var bs = newNodeI(nkBreakState, body.info)
-  bs.addSon(call.sons[0])
+  bs.add call[0]
 
   let ibs = newNodeI(nkIfStmt, body.info)
   let elifBranch = newNodeI(nkElifBranch, body.info)
@@ -980,5 +979,5 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
   elifBranch.add(br)
   ibs.add(elifBranch)
 
-  loopBody.sons[1] = ibs
-  loopBody.sons[2] = body[L-1]
+  loopBody[1] = ibs
+  loopBody[2] = body[^1]

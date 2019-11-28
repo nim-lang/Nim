@@ -110,7 +110,7 @@ proc writeCommandLineUsage*(conf: ConfigRef) =
   msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
 
 proc addPrefix(switch: string): string =
-  if len(switch) <= 1: result = "-" & switch
+  if switch.len <= 1: result = "-" & switch
   else: result = "--" & switch
 
 const
@@ -127,14 +127,14 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
                  info: TLineInfo) =
   cmd = ""
   var i = 0
-  if i < len(switch) and switch[i] == '-': inc(i)
-  if i < len(switch) and switch[i] == '-': inc(i)
-  while i < len(switch):
+  if i < switch.len and switch[i] == '-': inc(i)
+  if i < switch.len and switch[i] == '-': inc(i)
+  while i < switch.len:
     case switch[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': add(cmd, switch[i])
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': cmd.add(switch[i])
     else: break
     inc(i)
-  if i >= len(switch): arg = ""
+  if i >= switch.len: arg = ""
   # cmd:arg => (cmd,arg)
   elif switch[i] in {':', '='}: arg = substr(switch, i + 1)
   # cmd[sub]:rest => (cmd,[sub]:rest)
@@ -178,17 +178,17 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   var i = 0
   var n = hintMin
   var isBracket = false
-  if i < len(arg) and arg[i] == '[':
+  if i < arg.len and arg[i] == '[':
     isBracket = true
     inc(i)
-  while i < len(arg) and (arg[i] notin {':', '=', ']'}):
-    add(id, arg[i])
+  while i < arg.len and (arg[i] notin {':', '=', ']'}):
+    id.add(arg[i])
     inc(i)
   if isBracket:
-    if i < len(arg) and arg[i] == ']': inc(i)
+    if i < arg.len and arg[i] == ']': inc(i)
     else: invalidCmdLineOption(conf, pass, orig, info)
 
-  if i < len(arg) and (arg[i] in {':', '='}): inc(i)
+  if i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
   if state == wHint:
     let x = findStr(lineinfos.HintsToStr, id)

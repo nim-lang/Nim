@@ -42,5 +42,5 @@ proc iterToProcImpl*(c: PContext, n: PNode): PNode =
               pattern = c.graph.emptyNode, genericParams = c.graph.emptyNode,
               pragmas = orig[pragmasPos], exceptions = c.graph.emptyNode)
 
-  prc.ast.add iter.sym.ast.sons[resultPos]
+  prc.ast.add iter.sym.ast[resultPos]
   addInterfaceDecl(c, prc)

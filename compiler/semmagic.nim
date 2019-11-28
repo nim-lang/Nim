@@ -43,7 +43,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc skipAddr(n: PNode): PNode {.inline.} =
-  (if n.kind == nkHiddenAddr: n.sons[0] else: n)
+  (if n.kind == nkHiddenAddr: n[0] else: n)
 
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = newNodeI(nkBracketExpr, n.info)
@@ -51,7 +51,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = semSubscript(c, result, flags)
   if result.isNil:
     let x = copyTree(n)
-    x.sons[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
+    x[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
     bracketNotFoundError(c, x)
     #localError(c.config, n.info, "could not resolve: " & $n)
     result = n
@@ -60,16 +60,16 @@ proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
   let b = newNodeI(nkBracketExpr, n.info)
   b.add(n[1].skipAddr)
-  for i in 2..n.len-2: b.add(n[i])
+  for i in 2..<n.len-1: b.add(n[i])
   result = newNodeI(nkAsgn, n.info, 2)
-  result.sons[0] = b
-  result.sons[1] = n.lastSon
+  result[0] = b
+  result[1] = n.lastSon
   result = semAsgn(c, result, noOverloadedSubscript)
 
 proc semAsgnOpr(c: PContext; n: PNode): PNode =
   result = newNodeI(nkAsgn, n.info, 2)
-  result.sons[0] = n[1]
-  result.sons[1] = n[2]
+  result[0] = n[1]
+  result[1] = n[2]
   result = semAsgn(c, result, noOverloadedAsgn)
 
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -84,8 +84,8 @@ proc expectIntLit(c: PContext, n: PNode): int =
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkTupleConstr, n.info, n.typ)
-  let idx = expectIntLit(c, n.sons[1])
-  let useFullPaths = expectIntLit(c, n.sons[2])
+  let idx = expectIntLit(c, n[1])
+  let useFullPaths = expectIntLit(c, n[2])
   let info = getInfoContext(c.config, idx)
   var filename = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
   filename.strVal = if useFullPaths != 0: toFullPath(c.config, info) else: toFilename(c.config, info)
@@ -118,7 +118,7 @@ proc uninstantiate(t: PType): PType =
   result = case t.kind
     of tyMagicGenerics: t
     of tyUserDefinedGenerics: t.base
-    of tyCompositeTypeClass: uninstantiate t.sons[1]
+    of tyCompositeTypeClass: uninstantiate t[1]
     else: t
 
 proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym): PNode =
@@ -128,7 +128,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   var operand = operand.skipTypes(skippedTypes)
 
   template operand2: PType =
-    traitCall.sons[2].typ.skipTypes({tyTypeDesc})
+    traitCall[2].typ.skipTypes({tyTypeDesc})
 
   template typeWithSonsResult(kind, sons): PNode =
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
@@ -143,8 +143,8 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     return typeWithSonsResult(tyNot, @[operand])
   of "typeToString":
     var prefer = preferTypeName
-    if traitCall.sons.len >= 2:
-      let preferStr = traitCall.sons[2].strVal
+    if traitCall.len >= 2:
+      let preferStr = traitCall[2].strVal
       prefer = parseEnum[TPreferedDesc](preferStr)
     result = newStrNode(nkStrLit, operand.typeToString(prefer))
     result.typ = newType(tyString, context)
@@ -178,7 +178,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2, c.config)
-  let t = n.sons[1].typ
+  let t = n[1].typ
   internalAssert c.config, t != nil and t.kind == tyTypeDesc
   if t.len > 0:
     # This is either a type known to sem or a typedesc
@@ -190,7 +190,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
-  let parType = n.sons[1].typ
+  let parType = n[1].typ
   if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   elif parType.kind == tySet:
@@ -203,17 +203,17 @@ proc semOrd(c: PContext, n: PNode): PNode =
 
 proc semBindSym(c: PContext, n: PNode): PNode =
   result = copyNode(n)
-  result.add(n.sons[0])
+  result.add(n[0])
 
-  let sl = semConstExpr(c, n.sons[1])
+  let sl = semConstExpr(c, n[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    localError(c.config, n.sons[1].info, errStringLiteralExpected)
+    localError(c.config, n[1].info, errStringLiteralExpected)
     return errorNode(c, n)
 
-  let isMixin = semConstExpr(c, n.sons[2])
+  let isMixin = semConstExpr(c, n[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
-    localError(c.config, n.sons[2].info, errConstExprExpected)
+    localError(c.config, n[2].info, errConstExprExpected)
     return errorNode(c, n)
 
   let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
@@ -227,7 +227,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
       return sc
     result.add(sc)
   else:
-    errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
+    errorUndeclaredIdentifier(c, n[1].info, sl.strVal)
 
 proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode): PNode =
   if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit, nkIdent}:
@@ -293,15 +293,15 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semOf(c: PContext, n: PNode): PNode =
-  if len(n) == 3:
-    n.sons[1] = semExprWithType(c, n.sons[1])
-    n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
-    #restoreOldStyleType(n.sons[1])
-    #restoreOldStyleType(n.sons[2])
-    let a = skipTypes(n.sons[1].typ, abstractPtrs)
-    let b = skipTypes(n.sons[2].typ, abstractPtrs)
-    let x = skipTypes(n.sons[1].typ, abstractPtrs-{tyTypeDesc})
-    let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
+  if n.len == 3:
+    n[1] = semExprWithType(c, n[1])
+    n[2] = semExprWithType(c, n[2], {efDetermineType})
+    #restoreOldStyleType(n[1])
+    #restoreOldStyleType(n[2])
+    let a = skipTypes(n[1].typ, abstractPtrs)
+    let b = skipTypes(n[2].typ, abstractPtrs)
+    let x = skipTypes(n[1].typ, abstractPtrs-{tyTypeDesc})
+    let y = skipTypes(n[2].typ, abstractPtrs-{tyTypeDesc})
 
     if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
       localError(c.config, n.info, "'of' takes object types")
@@ -349,14 +349,13 @@ proc semUnown(c: PContext; n: PNode): PNode =
         for e in elems: result.rawAddSon(e)
       else:
         result = t
-    of tyOwned: result = t.sons[0]
+    of tyOwned: result = t[0]
     of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyLent,
        tyGenericInst, tyAlias:
-      let L = t.len-1
-      let b = unownedType(c, t[L])
-      if b != t[L]:
+      let b = unownedType(c, t[^1])
+      if b != t[^1]:
         result = copyType(t, t.owner, keepId = false)
-        result[L] = b
+        result[^1] = b
         result.flags.excl tfHasOwned
       else:
         result = t
@@ -366,7 +365,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
   result = copyTree(n[1])
   result.typ = unownedType(c, result.typ)
   # little hack for injectdestructors.nim (see bug #11350):
-  #result.sons[0].typ = nil
+  #result[0].typ = nil
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
@@ -437,7 +436,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
     if t.destructor != nil:
-      result.sons[0] = newSymNode(t.destructor)
+      result[0] = newSymNode(t.destructor)
   of mUnown:
     result = semUnown(c, n)
   else: result = n
