@@ -2,9 +2,6 @@ discard """
   outputsub: "no leak: "
 """
 
-when declared(GC_setMaxPause):
-  GC_setMaxPause 2_000
-
 type
   TExpr {.inheritable.} = object ## abstract base class for an expression
   PLiteral = ref TLiteral
