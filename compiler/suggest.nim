@@ -304,8 +304,7 @@ proc nameFits(c: PContext, s: PSym, n: PNode): bool =
 proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
   case candidate.kind
   of OverloadableSyms:
-    var m: TCandidate
-    initCandidate(c, m, candidate, nil)
+    var m = newCandidate(c, candidate, nil)
     sigmatch.partialMatch(c, n, nOrig, m)
     result = m.state != csNoMatch
   else:

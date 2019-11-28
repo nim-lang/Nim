@@ -1846,8 +1846,7 @@ when false:
       echo f, " <- ", aOrig, " res ", result
 
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
-  var m: TCandidate
-  initCandidate(c, m, f)
+  var m = newCandidate(c, f)
   result = typeRel(m, f, a)
 
 proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
@@ -2174,10 +2173,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     # this correctly is inefficient. We have to copy `m` here to be able to
     # roll back the side effects of the unification algorithm.
     let c = m.c
-    var x, y, z: TCandidate
-    initCandidate(c, x, m.callee)
-    initCandidate(c, y, m.callee)
-    initCandidate(c, z, m.callee)
+    var
+      x = newCandidate(c, m.callee)
+      y = newCandidate(c, m.callee)
+      z = newCandidate(c, m.callee)
     x.calleeSym = m.calleeSym
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
@@ -2228,8 +2227,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # only one valid interpretation found:
       markUsed(m.c, arg.info, arg[best].sym)
       onUse(arg.info, arg[best].sym)
-      result = paramTypesMatchAux(m, f, arg[best].typ, arg[best],
-                                  argOrig)
+      result = paramTypesMatchAux(m, f, arg[best].typ, arg[best], argOrig)
   when false:
     if m.calleeSym != nil and m.calleeSym.name.s == "[]":
       echo m.c.config $ arg.info, " for ", m.calleeSym.name.s, " ", m.c.config $ m.calleeSym.info
@@ -2522,8 +2520,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
-  var f = 1
-  while f < m.callee.n.len:
+  for f in 1..<m.callee.n.len:
     var formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
@@ -2563,15 +2560,13 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
             put(m, formal.typ, defaultValue.typ)
         defaultValue.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, defaultValue)
-    inc(f)
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
     for t in m.inferredTypes:
       if t.len > 1: t.sons.setLen 1
 
 proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
-  var m: TCandidate
-  initCandidate(c, m, f)
+  var m = newCandidate(c, f)
   let res = paramTypesMatch(m, f, a, c.graph.emptyNode, nil)
   #instantiateGenericConverters(c, res, m)
   # XXX this is used by patterns.nim too; I think it's better to not
@@ -2584,8 +2579,7 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
                       op: TTypeAttachedOp; col: int): PSym =
-  var m: TCandidate
-  initCandidate(c, m, dc.typ)
+  var m = newCandidate(c, dc.typ)
   if col >= dc.typ.len:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
     return nil
@@ -2660,8 +2654,7 @@ tests:
     T2.sym.position = 1
 
     setup:
-      var c: TCandidate
-      initCandidate(nil, c, nil)
+      var c = newCandidate(nil, nil)
 
     template yes(x, y) =
       test astToStr(x) & " is " & astToStr(y):

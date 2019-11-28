@@ -432,16 +432,14 @@ proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
       instGenericConvertersArg(c, n[i], x)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
-  var m: TCandidate
-  initCandidate(c, m, f)
+  var m = newCandidate(c, f)
   result = paramTypesMatch(m, f, a, arg, nil)
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode =
-  var m: TCandidate
-  initCandidate(c, m, formal)
+  var m = newCandidate(c, formal)
   m.coerceDistincts = coerceDistincts
   result = paramTypesMatch(m, formal, arg.typ, arg, nil)
   if m.genericConverter and result != nil:
@@ -574,9 +572,8 @@ proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   result = n
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
-  var m: TCandidate
   # binding has to stay 'nil' for this to work!
-  initCandidate(c, m, s, nil)
+  var m = newCandidate(c, s, nil)
 
   for i in 1..<n.len:
     let formal = s.ast[genericParamsPos][i-1].typ

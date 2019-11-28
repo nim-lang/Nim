@@ -397,8 +397,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
       res = false
   else:
     maybeLiftType(t2, c, n.info)
-    var m: TCandidate
-    initCandidate(c, m, t2)
+    var m = newCandidate(c, t2)
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
