@@ -404,7 +404,7 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind == attachedDeepCopy:
-    # a big problem is that we don't know the enviroment's type here, so we
+    # a big problem is that we don't know the environment's type here, so we
     # have to go through some indirection; we delegate this to the codegen:
     let call = newNodeI(nkCall, c.info, 2)
     call.typ = t

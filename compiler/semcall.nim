@@ -304,7 +304,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       # in a concept, eg:
       #   ExplainedConcept {.explain.} = concept x
       #     x.foo is int
-      # We coudl use: `(c.config $ n.sons[1].info)` to get more context.
+      # We could use: `(c.config $ n.sons[1].info)` to get more context.
       discard
     else:
       typeHint = " for type " & getProcHeader(c.config, sym)

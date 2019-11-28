@@ -118,7 +118,7 @@ block: ## checks for issue https://github.com/nim-lang/Nim/issues/9301
     # used to const fold as false
     checkMsg(e.msg, "tfailedassert.nim(116, 14) `1 + 1 == 3` ", "test10")
 
-block: ## checks AST isnt' transformed as it used to
+block: ## checks AST isn't transformed as it used to
   let a = 1
   try:
     doAssert a > 1
