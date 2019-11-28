@@ -216,7 +216,7 @@ The solution is to **re-play** the module's top level statements.
 This solves the problem without having to special case the logic
 that fills the internal seqs which are affected by the pragmas.
 
-In fact, this decribes how the AST should be stored in the database,
+In fact, this describes how the AST should be stored in the database,
 as a "shallow" tree. Let's assume we compile module ``m`` with the
 following contents:
 
