@@ -280,10 +280,10 @@ proc fileError(msg: string) =
 
 
 when not defined(ssl):
-  type SSLContext = ref object
-var defaultSslContext {.threadvar.}: SSLContext
+  type SslContext = ref object
+var defaultSslContext {.threadvar.}: SslContext
 
-proc getDefaultSSL(): SSLContext =
+proc getDefaultSSL(): SslContext =
   result = defaultSslContext
   when defined(ssl):
     if result == nil:
