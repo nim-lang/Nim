@@ -19,6 +19,8 @@ import
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes
 
+from trees import exprStructuralEquivalent
+
 type
   Con = object
     owner: PSym
@@ -461,6 +463,35 @@ proc isCursor(n: PNode): bool =
   else:
     result = false
 
+proc cycleCheck(n: PNode; c: var Con) =
+  if c.graph.config.selectedGC != gcDestructors: return
+  var value = n[1]
+  if value.kind == nkClosure:
+    value = value[1]
+  if value.kind == nkNilLit: return
+  let destTyp = n[0].typ.skipTypes(abstractInst)
+  if destTyp.kind != tyRef and not (destTyp.kind == tyProc and destTyp.callConv == ccClosure):
+    return
+
+  var x = n[0]
+  var field: PNode = nil
+  while true:
+    if x.kind == nkDotExpr:
+      if field == nil: field = x[1]
+      x = x[0]
+    elif x.kind in {nkBracketExpr, nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref}:
+      x = x[0]
+    else:
+      break
+    if exprStructuralEquivalent(x, value, strictSymEquality = true):
+      let msg =
+        if field != nil:
+          "'$#' creates an uncollectable ref cycle; annotate '$#' with .cursor" % [$n, $field]
+        else:
+          "'$#' creates an uncollectable ref cycle" % [$n]
+      message(c.graph.config, n.info, warnCycleCreated, msg)
+      break
+
 proc p(n: PNode; c: var Con; consumed = false): PNode =
   case n.kind
   of nkCallKinds:
@@ -544,6 +575,8 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
       if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
         result = newNodeI(nkEmpty, n.info)
       else:
+        if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
+          cycleCheck(n, c)
         result = moveOrCopy(n[0], n[1], c)
     else:
       result = copyNode(n)

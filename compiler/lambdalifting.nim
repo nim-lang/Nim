@@ -366,13 +366,15 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
     if upField.typ.skipTypes({tyOwned, tyRef, tyPtr}) != fieldType.skipTypes({tyOwned, tyRef, tyPtr}):
       localError(c.graph.config, dep.info, "internal error: up references do not agree")
 
-    if c.graph.config.selectedGC == gcDestructors and sfCursor notin upField.flags:
-      localError(c.graph.config, dep.info, "internal error: up reference is not a .cursor")
+    when false:
+      if c.graph.config.selectedGC == gcDestructors and sfCursor notin upField.flags:
+        localError(c.graph.config, dep.info, "internal error: up reference is not a .cursor")
   else:
     let result = newSym(skField, upIdent, obj.owner, obj.owner.info)
     result.typ = fieldType
-    if c.graph.config.selectedGC == gcDestructors:
-      result.flags.incl sfCursor
+    when false:
+      if c.graph.config.selectedGC == gcDestructors:
+        result.flags.incl sfCursor
     rawAddField(obj, result)
 
 discard """
