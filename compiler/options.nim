@@ -588,16 +588,14 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
   if "~/" in result:
     result = result.replace("~/", home & '/')
 
-proc nimbleSubs*(conf: ConfigRef; p: string): seq[string] =
+iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   let pl = p.toLowerAscii
   if "$nimblepath" in pl or "$nimbledir" in pl:
-    for nimblePath in conf.nimblePaths:
-      let nimblePath = removeTrailingDirSep(nimblePath.string)
-      let p = p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
-      if p notin result:
-        result.insert(p, 0)
+    for i in countdown(conf.nimblePaths.len-1, 0):
+      let nimblePath = removeTrailingDirSep(conf.nimblePaths[i].string)
+      yield p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
   else:
-    result.add p
+    yield p
 
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
