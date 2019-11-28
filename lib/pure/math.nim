@@ -87,7 +87,9 @@ proc fac*(n: int): int =
     doAssert fac(4) == 24
     doAssert fac(10) == 3628800
   const factTable =
-    when sizeof(int) == 4:
+    when sizeof(int) == 2:
+      createFactTable[5]()
+    elif sizeof(int) == 4:
       createFactTable[13]()
     else:
       createFactTable[21]()
