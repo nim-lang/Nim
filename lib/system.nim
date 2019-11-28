@@ -3870,6 +3870,12 @@ elif defined(JS):
       if x < y: return -1
       return 1
 
+when defined(JS) or defined(nimscript):
+  proc addInt*(result: var string; x: int64) =
+    result.add $x
+
+  proc addFloat*(result: var string; x: float) =
+    result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.
@@ -4551,12 +4557,12 @@ type
 
 when defined(genode):
   var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
-      ## Hook into the Genode component bootstrap process.
-      ##
-      ## This hook is called after all globals are initialized.
-      ## When this hook is set the component will not automatically exit,
-      ## call ``quit`` explicitly to do so. This is the only available method
-      ## of accessing the initial Genode environment.
+    ## Hook into the Genode component bootstrap process.
+    ##
+    ## This hook is called after all globals are initialized.
+    ## When this hook is set the component will not automatically exit,
+    ## call ``quit`` explicitly to do so. This is the only available method
+    ## of accessing the initial Genode environment.
 
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
     ## Procedure called during ``Component::construct`` by the loader.
