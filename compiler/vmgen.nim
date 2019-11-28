@@ -1717,8 +1717,13 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
   # If the check fails let the user know
   let lab1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
   c.freeTemp(rs)
-  # Not ideal but will do for the moment
-  c.gABC(n, opcQuit)
+  let strType = getSysType(c.graph, n.info, tyString)
+  var fieldNameRegister: TDest = c.getTemp(strType)
+  let strLit = newStrNode($accessExpr[1], accessExpr[1].info)
+  strLit.typ = strType
+  c.genLit(strLit, fieldNameRegister)
+  c.gABC(n, opcInvalidField, fieldNameRegister)
+  c.freeTemp(fieldNameRegister)
   c.patch(lab1)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
