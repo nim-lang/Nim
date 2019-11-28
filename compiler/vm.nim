@@ -280,7 +280,7 @@ type
     ExceptionGotoUnhandled
 
 proc findExceptionHandler(c: PCtx, f: PStackFrame, exc: PNode):
-  tuple[why: ExceptionGoto, where: int] =
+    tuple[why: ExceptionGoto, where: int] =
   let raisedType = exc.typ.skipTypes(abstractPtrs)
 
   while f.safePoints.len > 0:
@@ -1345,9 +1345,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
-        msgQuit(int8(toInt(getOrdValue(regs[ra].regToNode))))
+        msgQuit(int8(toInt(getOrdValue(regs[ra].regToNode, onError = toInt128(1)))))
       else:
         return TFullReg(kind: rkNone)
+    of opcInvalidField:
+      stackTrace(c, tos, pc, errFieldXNotFound & regs[ra].node.strVal)
     of opcSetLenStr:
       decodeB(rkNode)
       #createStrKeepNode regs[ra]
