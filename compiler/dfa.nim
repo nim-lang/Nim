@@ -572,16 +572,6 @@ const
                 nkObjDownConv, nkObjUpConv}
   PathKinds1 = {nkHiddenStdConv, nkHiddenSubConv}
 
-proc getRoot(n: PNode): PNode =
-  result = n
-  while true:
-    case result.kind
-    of PathKinds0:
-      result = result[0]
-    of PathKinds1:
-      result = result[1]
-    else: break
-
 proc skipConvDfa*(n: PNode): PNode =
   result = n
   while true:
@@ -593,7 +583,17 @@ proc skipConvDfa*(n: PNode): PNode =
     else: break
 
 proc genUse(c: var Con; orig: PNode) =
-  let n = dfa.getRoot(orig)
+  var n = orig
+  while true:
+    case n.kind
+    of PathKinds0 - {nkBracketExpr}:
+      n = n[0]
+    of nkBracketExpr:
+      gen(c, n[1])
+      n = n[0]
+    of PathKinds1:
+      n = n[1]
+    else: break
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use, sym: if orig != n: nil else: n.sym)
 
@@ -673,6 +673,21 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   # lower level C++ optimizer to specialize this code.
 
 proc genDef(c: var Con; n: PNode) =
+  var m = n
+  # XXX do something about this duplicated logic here.
+  while true:
+    case m.kind
+    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
+        nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
+      m = m[0]
+    of nkBracketExpr:
+      gen(c, m[1])
+      m = m[0]
+    of nkHiddenDeref, nkDerefExpr:
+      m = m[0]
+    else:
+      break
+
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: n, kind: def, sym: n.sym)
   elif isAnalysableFieldAccess(n, c.owner):
