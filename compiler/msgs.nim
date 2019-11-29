@@ -81,6 +81,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     pseudoPath = true
 
   if conf.m.filenameToIndexTbl.hasKey(canon.string):
+    isKnownFile = true
     result = conf.m.filenameToIndexTbl[canon.string]
   else:
     isKnownFile = false
