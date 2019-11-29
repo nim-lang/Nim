@@ -230,7 +230,7 @@ proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Raises a ``ValueError`` if the parsing fails or the value is not a correctly
   ## formatted time.
   var lastModifiedHeader = response.headers.getOrDefault("last-modified")
-  result = parse(lastModifiedHeader, "dd, dd MMM yyyy HH:mm:ss Z")
+  result = parse(lastModifiedHeader, "ddd, dd MMM yyyy HH:mm:ss 'GMT'", utc())
 
 proc body*(response: Response): string =
   ## Retrieves the specified response's body.
