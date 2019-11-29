@@ -1120,7 +1120,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n[^1], c)
   of nkVarTuple:
     put(g, tkParLe, "(")
-    gcomma(g, n, 0, -3)
+    gcomma(g, n, 0, -2)
     put(g, tkParRi, ")")
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
