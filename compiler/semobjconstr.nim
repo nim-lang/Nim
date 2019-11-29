@@ -48,7 +48,7 @@ proc invalidObjConstr(c: PContext, n: PNode) =
 proc locateFieldInInitExpr(c: PContext, field: PSym, initExpr: PNode): PNode =
   # Returns the assignment nkExprColonExpr node or nil
   let fieldId = field.name.id
-  for i in 1 ..< initExpr.len:
+  for i in 1..<initExpr.len:
     let assignment = initExpr[i]
     if assignment.kind != nkExprColonExpr:
       invalidObjConstr(c, assignment)
@@ -70,13 +70,13 @@ proc semConstrField(c: PContext, flags: TExprFlags,
     var initValue = semExprFlagDispatched(c, assignment[1], flags)
     if initValue != nil:
       initValue = fitNode(c, field.typ, initValue, assignment.info)
-    assignment.sons[0] = newSymNode(field)
-    assignment.sons[1] = initValue
+    assignment[0] = newSymNode(field)
+    assignment[1] = initValue
     assignment.flags.incl nfSem
     return initValue
 
 proc caseBranchMatchesExpr(branch, matched: PNode): bool =
-  for i in 0 .. branch.len-2:
+  for i in 0..<branch.len-1:
     if branch[i].kind == nkRange:
       if overlap(branch[i], matched): return true
     elif exprStructuralEquivalent(branch[i], matched):
@@ -86,11 +86,11 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 
 template processBranchVals(b, op) =
   if b.kind != nkElifBranch:
-    for i in 0 .. b.len-2:
+    for i in 0..<b.len-1:
       if b[i].kind == nkIntLit:
         result.op(b[i].intVal.int)
       elif b[i].kind == nkRange:
-        for i in b[i][0].intVal .. b[i][1].intVal:
+        for i in b[i][0].intVal..b[i][1].intVal:
           result.op(i.int)
 
 proc allPossibleValues(c: PContext, t: PType): IntSet =
@@ -100,7 +100,7 @@ proc allPossibleValues(c: PContext, t: PType): IntSet =
     for field in t.n.sons:
       result.incl(field.sym.position)
   else:
-    for i in toInt64(firstOrd(c.config, t)) .. toInt64(lastOrd(c.config, t)):
+    for i in toInt64(firstOrd(c.config, t))..toInt64(lastOrd(c.config, t)):
       result.incl(i.int)
 
 proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
@@ -109,15 +109,15 @@ proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
     result = initIntSet()
     processBranchVals(caseNode[caseIdx], incl)
   else:
-    result = allPossibleValues(c, caseNode.sons[0].typ)
-    for i in 1 .. caseNode.len-2:
+    result = allPossibleValues(c, caseNode[0].typ)
+    for i in 1..<caseNode.len-1:
       processBranchVals(caseNode[i], excl)
 
 proc rangeTypVals(rangeTyp: PType): IntSet =
   assert rangeTyp.kind == tyRange
-  let (a, b) = (rangeTyp.n.sons[0].intVal, rangeTyp.n.sons[1].intVal)
+  let (a, b) = (rangeTyp.n[0].intVal, rangeTyp.n[1].intVal)
   result = initIntSet()
-  for it in a .. b:
+  for it in a..b:
     result.incl(it.int)
 
 proc formatUnsafeBranchVals(t: PType, diffVals: IntSet): string =
@@ -127,8 +127,8 @@ proc formatUnsafeBranchVals(t: PType, diffVals: IntSet): string =
     if t.kind in {tyEnum, tyBool}:
       var i = 0
       for val in diffVals:
-        while t.n.sons[i].sym.position < val: inc(i)
-        strs.add(t.n.sons[i].sym.name.s)
+        while t.n[i].sym.position < val: inc(i)
+        strs.add(t.n[i].sym.name.s)
     else:
       for val in diffVals:
         strs.add($val)
@@ -145,7 +145,7 @@ proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
   # XXX: Perhaps this proc already exists somewhere
   let endsWithElse = caseExpr[^1].kind == nkElse
-  for i in 1 .. caseExpr.len - 1 - int(endsWithElse):
+  for i in 1..<caseExpr.len - int(endsWithElse):
     if caseExpr[i].caseBranchMatchesExpr(matched):
       return caseExpr[i]
 
@@ -203,19 +203,19 @@ proc semConstructFields(c: PContext, recNode: PNode,
   of nkRecCase:
     template fieldsPresentInBranch(branchIdx: int): string =
       let branch = recNode[branchIdx]
-      let fields = branch[branch.len - 1]
+      let fields = branch[^1]
       fieldsPresentInInitExpr(c, fields, initExpr)
 
     template checkMissingFields(branchNode: PNode) =
       if branchNode != nil:
-        let fields = branchNode[branchNode.len - 1]
+        let fields = branchNode[^1]
         checkForMissingFields(c, fields, initExpr)
 
-    let discriminator = recNode.sons[0]
+    let discriminator = recNode[0]
     internalAssert c.config, discriminator.kind == nkSym
     var selectedBranch = -1
 
-    for i in 1 ..< recNode.len:
+    for i in 1..<recNode.len:
       let innerRecords = recNode[i][^1]
       let status = semConstructFields(c, innerRecords, initExpr, flags)
       if status notin {initNone, initUnknown}:
@@ -252,7 +252,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         localError(c.config, discriminatorVal.info, ("possible values " &
           "$2are in conflict with discriminator values for " &
           "selected object branch $1.") % [$selectedBranch,
-          formatUnsafeBranchVals(recNode.sons[0].typ, valsDiff)])
+          formatUnsafeBranchVals(recNode[0].typ, valsDiff)])
 
       let branchNode = recNode[selectedBranch]
       let flags = flags*{efAllowDestructor} + {efPreferStatic,
@@ -264,7 +264,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         if discriminatorVal.kind notin nkLiterals and (
             not isOrdinalType(discriminatorVal.typ, true) or
             lengthOrd(c.config, discriminatorVal.typ) > MaxSetElements or
-            lengthOrd(c.config, recNode.sons[0].typ) > MaxSetElements):
+            lengthOrd(c.config, recNode[0].typ) > MaxSetElements):
           localError(c.config, discriminatorVal.info,
             "branch initialization with a runtime discriminator only " &
             "supports ordinal types with 2^16 elements or less.")
@@ -305,7 +305,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
             failedBranch = selectedBranch
         else:
           # With an else clause, check that all other branches don't match:
-          for i in 1 .. (recNode.len - 2):
+          for i in 1..<recNode.len - 1:
             if recNode[i].caseBranchMatchesExpr(discriminatorVal):
               failedBranch = i
               break
@@ -345,7 +345,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         else:
           # All bets are off. If any of the branches has a mandatory
           # fields we must produce an error:
-          for i in 1 ..< recNode.len: checkMissingFields recNode[i]
+          for i in 1..<recNode.len: checkMissingFields recNode[i]
 
   of nkSym:
     let field = recNode.sym
@@ -364,12 +364,12 @@ proc semConstructType(c: PContext, initExpr: PNode,
     mergeInitStatus(result, status)
     if status in {initPartial, initNone, initUnknown}:
       checkForMissingFields c, t.n, initExpr
-    let base = t.sons[0]
+    let base = t[0]
     if base == nil: break
     t = skipTypes(base, skipPtrs)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  var t = semTypeNode(c, n.sons[0], nil)
+  var t = semTypeNode(c, n[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
 
@@ -379,7 +379,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
-    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink, tyOwned})
+    t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
     if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
       # we have to watch out, there are also 'owned proc' types that can be used
@@ -418,7 +418,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       let id = considerQuotedIdent(c, field[0])
       # This node was not processed. There are two possible reasons:
       # 1) It was shadowed by a field with the same name on the left
-      for j in 1 ..< i:
+      for j in 1..<i:
         let prevId = considerQuotedIdent(c, result[j][0])
         if prevId.id == id.id:
           localError(c.config, field.info, errFieldInitTwice % id.s)

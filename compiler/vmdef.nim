@@ -21,7 +21,7 @@ const
 
 type
   TRegister* = range[0..255]
-  TDest* = range[-1 .. 255]
+  TDest* = range[-1..255]
   TInstr* = distinct uint32
 
   TOpcode* = enum
@@ -42,8 +42,10 @@ type
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
+    opcLdArrAddr, # a = addr(b[c])
     opcWrArr,  # a[b] = c
     opcLdObj,  # a = b.c
+    opcLdObjAddr, # a = addr(b.c)
     opcWrObj,  # a.b = c
     opcAddrReg,
     opcAddrNode,

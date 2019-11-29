@@ -26,13 +26,13 @@ proc makeCString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
-  add(res, "\"")
-  for i in 0 ..< len(s):
+  res.add("\"")
+  for i in 0..<s.len:
     if (i + 1) mod MaxLineLength == 0:
-      add(res, "\"\L\"")
+      res.add("\"\L\"")
     toCChar(s[i], res)
-  add(res, '\"')
-  add(result, rope(res))
+  res.add('\"')
+  result.add(rope(res))
 
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
@@ -152,12 +152,11 @@ proc pushInfoContext*(conf: ConfigRef; info: TLineInfo; detail: string = "") =
   conf.m.msgContext.add((info, detail))
 
 proc popInfoContext*(conf: ConfigRef) =
-  setLen(conf.m.msgContext, len(conf.m.msgContext) - 1)
+  setLen(conf.m.msgContext, conf.m.msgContext.len - 1)
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
-  let L = conf.m.msgContext.len
-  let i = if index < 0: L + index else: index
-  if i >=% L: result = unknownLineInfo()
+  let i = if index < 0: conf.m.msgContext.len + index else: index
+  if i >=% conf.m.msgContext.len: result = unknownLineInfo()
   else: result = conf.m.msgContext[i].info
 
 const
@@ -333,7 +332,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
-proc log*(s: string) {.procvar.} =
+proc log*(s: string) =
   var f: File
   if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)
@@ -374,7 +373,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
   const instantiationOfFrom = "template/generic instantiation of `$1` from here"
   var info = lastinfo
-  for i in 0 ..< len(conf.m.msgContext):
+  for i in 0..<conf.m.msgContext.len:
     let context = conf.m.msgContext[i]
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
