@@ -1998,6 +1998,8 @@ when defined(boehmgc):
     const boehmLib = "libgc.dylib"
   elif defined(openbsd):
     const boehmLib = "libgc.so.4.0"
+  elif defined(freebsd):
+    const boehmLib = "libgc-threaded.so.1"
   else:
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
