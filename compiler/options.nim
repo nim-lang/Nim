@@ -552,9 +552,11 @@ proc removeTrailingDirSep*(path: string): string =
 proc disableNimblePath*(conf: ConfigRef) =
   incl conf.globalOptions, optNoNimblePath
   conf.lazyPaths.setLen(0)
+  conf.nimblePaths.setLen(0)
 
 proc clearNimblePath*(conf: ConfigRef) =
   conf.lazyPaths.setLen(0)
+  conf.nimblePaths.setLen(0)
 
 include packagehandling
 
