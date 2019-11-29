@@ -2,7 +2,7 @@ discard """
   output: '''
 Hello, console
 1 2 3
-1 'hi' 1.1'''
+'''
   disabled: "freebsd"
 """
 
