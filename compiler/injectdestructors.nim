@@ -443,7 +443,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     # produce temp creation
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = getTemp(c, arg.typ, arg.info)
-    let res = p(arg, c)
+    let res = p(arg, c, true)
     var sinkExpr = genSink(c, tmp, res)
     sinkExpr.add res
     result.add sinkExpr
@@ -506,6 +506,8 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
         result = newTree(nkStmtList, destroyOld, result)
     else:
       result[0] = pArg(result[0], c, isSink = false)
+    if not consumed:
+      result = ensureDestruction(result, c)
   of nkDiscardStmt: # Small optimization
     if n[0].kind != nkEmpty:
       n[0] = pArg(n[0], c, false)
@@ -544,7 +546,7 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
       var ri = it[^1]
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
-        result.add p(x, c)
+        result.add p(x, c, true)
       elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
         for j in 0..<it.len-2:
           let v = it[j]
@@ -581,7 +583,7 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
     else:
       result = copyNode(n)
       result.add n[0]
-      result.add p(n[1], c)
+      result.add p(n[1], c, true)
   of nkRaiseStmt:
     if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       if n[0].kind in nkCallKinds:

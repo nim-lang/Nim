@@ -13,7 +13,7 @@ import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos
 
 const
-  tfInstClearedFlags = {tfHasMeta, tfUnresolved}
+  tfInstClearedFlags = {tfHasMeta, tfUnresolved, tfHasAsgn}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
@@ -308,6 +308,8 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
     result.flags.excl tfInstClearedFlags
+  else:
+    result.flags.excl tfHasAsgn
   when false:
     if newDestructors:
       result.assignment = nil
