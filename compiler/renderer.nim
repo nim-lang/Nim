@@ -1119,12 +1119,17 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       putWithSpace(g, tkEquals, "=")
       gsub(g, n[^1], c)
   of nkVarTuple:
-    put(g, tkParLe, "(")
-    gcomma(g, n, 0, -2)
-    put(g, tkParRi, ")")
-    put(g, tkSpaces, Space)
-    putWithSpace(g, tkEquals, "=")
-    gsub(g, lastSon(n), c)
+    if n[0].kind == nkSym and n[0].sym.kind == skForVar:
+      put(g, tkParLe, "(")
+      gcomma(g, n, 0, -2)
+      put(g, tkParRi, ")")
+    else:
+      put(g, tkParLe, "(")
+      gcomma(g, n, 0, -3)
+      put(g, tkParRi, ")")
+      put(g, tkSpaces, Space)
+      putWithSpace(g, tkEquals, "=")
+      gsub(g, lastSon(n), c)
   of nkExprColonExpr:
     gsub(g, n, 0)
     putWithSpace(g, tkColon, ":")
