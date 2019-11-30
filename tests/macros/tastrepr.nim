@@ -2,26 +2,42 @@ discard """
 output: '''
 var data = @[(1, "one"), (2, "two")]
 for (i, d) in pairs(data):
-  echo [d]
+  discard
 for i, d in pairs(data):
-  echo [d]
+  discard
 for i, (x, y) in pairs(data):
-  echo [x, " -> ", y]
+  discard
+var (a, b) = (1, 2)
+
+var data = @[(1, "one"), (2, "two")]
+for (i, d) in pairs(data):
+  discard
+for i, d in pairs(data):
+  discard
+for i, (x, y) in pairs(data):
+  discard
 var (a, b) = (1, 2)
 '''
 """
 
 import macros
 
-macro foobar(arg: typed) =
+macro echoTypedRepr(arg: typed) =
   result = newCall(ident"echo", newLit(arg.repr))
 
-foobar:
+macro echoUntypedRepr(arg: untyped) =
+  result = newCall(ident"echo", newLit(arg.repr))
+
+template echoTypedAndUntypedRepr(arg: untyped) =
+  echoTypedRepr(arg)
+  echoUntypedRepr(arg)
+
+echoTypedAndUntypedRepr:
   var data = @[(1,"one"), (2,"two")]
-  for (i, d) in data.pairs:
-    echo d
-  for i, d in data.pairs:
-    echo d
-  for i, (x,y) in data.pairs:
-    echo x, " -> ", y
+  for (i, d) in pairs(data):
+    discard
+  for i, d in pairs(data):
+    discard
+  for i, (x,y) in pairs(data):
+    discard
   var (a,b) = (1,2)

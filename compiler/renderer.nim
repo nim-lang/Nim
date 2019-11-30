@@ -451,7 +451,11 @@ proc lsub(g: TSrcGen; n: PNode): int =
     result = lcomma(g, n, 0, - 3)
     if n[^2].kind != nkEmpty: result = result + lsub(g, n[^2]) + 2
     if n[^1].kind != nkEmpty: result = result + lsub(g, n[^1]) + 3
-  of nkVarTuple: result = lcomma(g, n, 0, - 3) + len("() = ") + lsub(g, lastSon(n))
+  of nkVarTuple:
+    if n[1].kind == nkEmpty:
+      result = lcomma(g, n, 0, - 2) + len("()")
+    else:
+      result = lcomma(g, n, 0, - 3) + len("() = ") + lsub(g, lastSon(n))
   of nkChckRangeF: result = len("chckRangeF") + 2 + lcomma(g, n)
   of nkChckRange64: result = len("chckRange64") + 2 + lcomma(g, n)
   of nkChckRange: result = len("chckRange") + 2 + lcomma(g, n)
@@ -1119,7 +1123,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       putWithSpace(g, tkEquals, "=")
       gsub(g, n[^1], c)
   of nkVarTuple:
-    if n[0].kind == nkSym and n[0].sym.kind == skForVar:
+    if n[^1].kind == nkEmpty:
       put(g, tkParLe, "(")
       gcomma(g, n, 0, -2)
       put(g, tkParRi, ")")
