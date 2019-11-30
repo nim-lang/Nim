@@ -382,7 +382,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   for i in 1..<t.len:
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
-    rawAddSon(result, header[i])
+    rawAddSon(result, header[i], propagateHasAsgn = false)
 
   if body.kind == tyError:
     return

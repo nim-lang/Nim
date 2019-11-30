@@ -170,6 +170,7 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
       op = canon.attachedOps[kind]
 
   if op == nil:
+    #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
@@ -629,11 +630,6 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
       result[i] = p(n[i], c, consumed)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
-  # unfortunately, this needs to be kept consistent with the cases
-  # we handle in the 'case of' statement below:
-  const movableNodeKinds = (nkCallKinds + {nkSym, nkTupleConstr, nkClosure, nkObjConstr,
-                                           nkBracket, nkBracketExpr, nkNilLit})
-
   case ri.kind
   of nkCallKinds:
     result = genSink(c, dest, ri)
@@ -678,16 +674,22 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest, ri)
       result.add p(ri, c, consumed = true)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
-    result = moveOrCopy(dest, ri[1], c)
-    if not sameType(ri.typ, ri[1].typ):
-      let copyRi = copyTree(ri)
-      copyRi[1] = result[^1]
-      result[^1] = copyRi
+    result = genSink(c, dest, ri)
+    result.add p(ri, c, consumed = true)
+    when false:
+      result = moveOrCopy(dest, ri[1], c)
+      if not sameType(ri.typ, ri[1].typ):
+        let copyRi = copyTree(ri)
+        copyRi[1] = result[^1]
+        result[^1] = copyRi
   of nkObjDownConv, nkObjUpConv:
-    result = moveOrCopy(dest, ri[0], c)
-    let copyRi = copyTree(ri)
-    copyRi[0] = result[^1]
-    result[^1] = copyRi
+    result = genSink(c, dest, ri)
+    result.add p(ri, c, consumed = true)
+    when false:
+      result = moveOrCopy(dest, ri[0], c)
+      let copyRi = copyTree(ri)
+      copyRi[0] = result[^1]
+      result[^1] = copyRi
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     handleNested(ri): moveOrCopy(dest, node, c)
   else:
