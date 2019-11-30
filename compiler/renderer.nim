@@ -452,7 +452,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
     if n[^2].kind != nkEmpty: result = result + lsub(g, n[^2]) + 2
     if n[^1].kind != nkEmpty: result = result + lsub(g, n[^1]) + 3
   of nkVarTuple:
-    if n[1].kind == nkEmpty:
+    if n[^1].kind == nkEmpty:
       result = lcomma(g, n, 0, - 2) + len("()")
     else:
       result = lcomma(g, n, 0, - 3) + len("() = ") + lsub(g, lastSon(n))
