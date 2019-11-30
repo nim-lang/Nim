@@ -289,6 +289,132 @@ used to get this output.
   if not (a != b):
     raise newException(AssertionError, $a & " != " & $b)
 
+
+Advanced Macro to allow Multi Body Macros
+-----------------------------------------
+
+Sometimes it is necessary to pass multiple blocks of code to a
+macro. While it is possible to pass an arbitrary amount of expression
+to a macro, the only argument that truly allows multi line blocks of
+code is the last argument. But we can introduce a macro that allows us
+to interpret individual sub-trees of the last parameter as if they were
+different arguments. Let me provide you with an example of what I
+mean.
+
+.. code-block:: nim
+
+  macro myMacro(body1,body2: untyped): untyped {.multiBodyMacro.} =
+    echo body1.lispRepr # (StmtList (Command (Ident "echo") (IntLit 1)))
+    echo body2.lispRepr # (StmtList (Command (Ident "echo") (IntLit 2)))
+
+  myMacro:
+    body1:
+      echo 1
+    body2:
+      echo 2
+
+The call of ``myMacro`` has actually just one argument. But this one
+argument contains two calls ``body1:...`` and ``body2:...``. Therefore
+the code above would normally not compile, because ``myMacro`` needs
+two arguments. But the pragma expression ``{.multiBodyMacro.}`` is
+itself a macro that transforms the macro definition of ``myMacro``
+into a definition with just one argument, and a processing block that
+initializes two variables, ``body1`` and ``body2`` with their
+corresponding sub-tree in the single argument. Here is the macro that
+does this processing.
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  import macros
+
+  proc expectIdent*(n: NimNode, name: string) {.compileTime.} =
+    if not eqIdent(n, name):
+      error("macro expects an identifier `" & name & "` here", n)
+
+  macro multiBodyMacro*(arg: untyped): untyped =
+    ## Transforms a macro definition so that it takes multiple named
+    ## arguments.
+
+    # ensure this pragma is applied to a macro definition
+    arg.expectKind nnkMacroDef
+    let formalParams = arg[3]
+    formalParams.expectKind nnkFormalParams
+
+    # Collect all parameters in ``varSectionIdentDefs``.
+    let varSectionIdentDefs = nnkIdentDefs.newTree
+    for i in 1 ..< len(formalParams):
+      let identDefs = formalParams[i]
+      identDefs.expectKind nnkIdentDefs
+      for j in 0 ..< len(identDefs) - 2:
+        let ident = identDefs[j]
+        ident.expectKind nnkIdent
+        varSectionIdentDefs.add ident
+
+      # Only ``untyped`` parameters without default value is
+      # supported. Ensure a proper error message is raised if something
+      # unexpected is in the ast.
+      identDefs[^1].expectKind nnkEmpty
+      identDefs[^2].expectIdent "untyped"
+
+    let ifStmt = nnkIfStmt.newTree()
+    # Generate the body of the loop that iterates the blocks and assigns their body
+    # to the local valiabls.
+    let bodySym = genSym(nskForVar, "body")
+    for param in varSectionIdentDefs:
+      ifStmt.add nnkElifBranch.newTree(
+        newCall(bindSym"eqIdent", nnkBracketExpr.newTree(bodySym, newLit(0)), newLit(param.strVal)),
+        nnkAsgn.newTree(param, nnkBracketExpr.newTree(bodySym, newLit(1)))
+      )
+
+    ifStmt.add newTree(nnkElse)
+    ifStmt[^1].add quote do:
+      error("unexpectecd section", `bodySym`[0])
+    # Finish the var section. The vars are all of type ``NimNode``.
+    varSectionIdentDefs.add bindSym"NimNode"
+    varSectionIdentDefs.add newEmptyNode()
+    # Generate new parameter list with single argument ``metabody``.
+    let newFormalParams = formalParams.copyNimNode
+    newFormalParams.add formalParams[0]
+    newFormalParams.add nnkIdentDefs.newTree(
+      ident"metabody", ident"untyped", newEmptyNode()
+    )
+    # Compose everything to the final macro definition.
+    let varSection = nnkVarSection.newTree(varSectionIdentDefs)
+    let oldBody = arg[6]
+    let body = quote do:
+      `varSection`
+      for `bodySym` in metabody:
+        `bodySym`.expectKind nnkCall
+        `bodySym`.expectLen 2
+        `ifStmt`
+      `oldBody`
+    result = nnkMacroDef.newTree(
+      arg[0],
+      arg[1],
+      arg[2],
+      newFormalParams,
+      arg[4],
+      arg[5],
+      body
+    )
+
+
+  # Some example usage of that macro.
+
+  macro myMacro(body1,body2: untyped): untyped {.multiBodyMacro.} =
+    doAssert body1.lispRepr == """(StmtList (Command (Ident "echo") (IntLit 1)))"""
+    doAssert body2.lispRepr == """(StmtList (Command (Ident "echo") (IntLit 2)))"""
+
+  # Some example usage of the macro written with the use of the
+  # ``multiBodyMacro`` macro.
+
+  myMacro:
+    body1:
+      echo 1
+    body2:
+      echo 2
+
 With Power Comes Responsibility
 -------------------------------
 
