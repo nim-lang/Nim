@@ -428,7 +428,15 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       handleNested(arg): pArg(node, c, isSink)
     elif arg.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
       result = copyTree(arg)
-      result[1] = pArg(arg[1], c, isSink = true)
+      if arg.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
+          arg[1].typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
+        # allow conversions from owned to unowned via this little hack:
+        let argTyp = arg[1].typ
+        arg[1].typ = arg.typ
+        result[1] = pArg(arg[1], c, isSink = true)
+        result[1].typ = argTyp
+      else:
+        result[1] = pArg(arg[1], c, isSink = true)
     elif arg.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(arg)
       result[0] = pArg(arg[0], c, isSink = true)
@@ -674,22 +682,24 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest, ri)
       result.add p(ri, c, consumed = true)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
-    result = genSink(c, dest, ri)
-    result.add p(ri, c, consumed = true)
     when false:
       result = moveOrCopy(dest, ri[1], c)
       if not sameType(ri.typ, ri[1].typ):
         let copyRi = copyTree(ri)
         copyRi[1] = result[^1]
         result[^1] = copyRi
+    else:
+      result = genSink(c, dest, ri)
+      result.add pArg(ri, c, true)
   of nkObjDownConv, nkObjUpConv:
-    result = genSink(c, dest, ri)
-    result.add p(ri, c, consumed = true)
     when false:
       result = moveOrCopy(dest, ri[0], c)
       let copyRi = copyTree(ri)
       copyRi[0] = result[^1]
       result[^1] = copyRi
+    else:
+      result = genSink(c, dest, ri)
+      result.add pArg(ri, c, true)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     handleNested(ri): moveOrCopy(dest, node, c)
   else:
