@@ -277,7 +277,13 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode
+type ProcessMode = enum
+  sinkArg       #consumed and behaveLikePARG
+  normalArg     #not consumed and behaveLikePARG
+  consumedThing #consumed and not behaveLikePARG
+  normalThing   #not consumed and not behaveLikePARG
+
+proc p(n: PNode; c: var Con; mode: ProcessMode = normalThing): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
 proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
@@ -427,18 +433,20 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
-  if behaveLikePARG:
-    if consumed:
+proc p(n: PNode; c: var Con; mode: ProcessMode = normalThing): PNode =
+  if mode == sinkArg:
       if n.kind in nkCallKinds:
         # recurse but skip the call expression in order to prevent
         # destructor injections: Rule 5.1 is different from rule 5.4!
         result = copyNode(n)
         let parameters = n[0].typ
         let L = if parameters != nil: parameters.len else: 0
-        result.add p(n[0], c, consumed = false, behaveLikePARG = true)
+        result.add p(n[0], c, normalArg)
         for i in 1..<n.len:
-          result.add p(n[i], c, i < L and isSinkTypeForParam(parameters[i]), behaveLikePARG = true)
+          if i < L and isSinkTypeForParam(parameters[i]):
+            result.add p(n[i], c, sinkArg)
+          else:
+            result.add p(n[i], c, normalArg)
       elif n.containsConstSeq:
         # const sequences are not mutable and so we need to pass a copy to the
         # sink parameter (bug #11524). Note that the string implementation is
@@ -452,9 +460,9 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
         result = copyTree(n)
         for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
           if n[i].kind == nkExprColonExpr:
-            result[i][1] = p(n[i][1], c, consumed = true, behaveLikePARG = true)
+            result[i][1] = p(n[i][1], c, sinkArg)
           else:
-            result[i] = p(n[i], c, consumed = true, behaveLikePARG = true)
+            result[i] = p(n[i], c, sinkArg)
         #if n.kind == nkClosure:
         #  result = handleClosureCall(result, c)
         # Not required here because the nkClosure will be consumed!
@@ -468,7 +476,7 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
         # to disable the destructor which we have not elided
         result = destructiveMoveVar(n, c)
       elif n.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr, nkIfStmt, nkCaseStmt}:
-        handleNested(n): p(node, c, consumed, behaveLikePARG = true)
+        handleNested(n): p(node, c, mode)
       elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
         result = copyTree(n)
         if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
@@ -476,34 +484,35 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
           # allow conversions from owned to unowned via this little hack:
           let nTyp = n[1].typ
           n[1].typ = n.typ
-          result[1] = p(n[1], c, consumed = true, behaveLikePARG = true)
+          result[1] = p(n[1], c, sinkArg)
           result[1].typ = nTyp
         else:
-          result[1] = p(n[1], c, consumed = true, behaveLikePARG = true)
+          result[1] = p(n[1], c, sinkArg)
       elif n.kind in {nkObjDownConv, nkObjUpConv}:
         result = copyTree(n)
-        result[0] = p(n[0], c, consumed = true, behaveLikePARG = true)
+        result[0] = p(n[0], c, sinkArg)
       else:
         # an object that is not temporary but passed to a 'sink' parameter
         # results in a copy.
         result = passCopyToSink(n, c)
-    elif n.kind == nkBracket:
+  elif mode == normalArg and n.kind == nkBracket:
       # Treat `f([...])` like `f(...)`
       result = copyNode(n)
       for son in n:
-        result.add p(son, c, isSinkTypeForParam(son.typ), behaveLikePARG = true)
-    elif n.kind in nkCallKinds and n.typ != nil and hasDestructor(n.typ):
+        if isSinkTypeForParam(son.typ):
+          result.add p(son, c, sinkArg)
+        else:
+          result.add p(son, c, normalArg)
+  elif mode == normalArg and n.kind in nkCallKinds and n.typ != nil and hasDestructor(n.typ):
       # produce temp creation
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let tmp = getTemp(c, n.typ, n.info)
-      let res = p(n, c, true)
+      let res = p(n, c, consumedThing)
       var sinkExpr = genSink(c, tmp, res)
       sinkExpr.add res
       result.add sinkExpr
       result.add tmp
       c.destroys.add genDestroy(c, tmp)
-    else:
-      result = p(n, c)
   else:
     case n.kind
     of nkCallKinds:
@@ -511,20 +520,23 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
       let L = if parameters != nil: parameters.len else: 0
       result = shallowCopy(n)
       for i in 1..<n.len:
-        result[i] = p(n[i], c, i < L and isSinkTypeForParam(parameters[i]), behaveLikePARG = true)
+        if i < L and isSinkTypeForParam(parameters[i]):
+          result[i] = p(n[i], c, sinkArg)
+        else:
+          result[i] = p(n[i], c, normalArg)
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
         result[0] = copyTree(n[0])
         if c.graph.config.selectedGC in {gcHooks, gcDestructors}:
           let destroyOld = genDestroy(c, result[1])
           result = newTree(nkStmtList, destroyOld, result)
       else:
-        result[0] = p(n[0], c, consumed = false, behaveLikePARG = true)
-      if not consumed:
+        result[0] = p(n[0], c, normalArg)
+      if mode in {normalArg, normalThing}:
         result = ensureDestruction(result, c)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
-        result[0] = p(n[0], c, consumed = false, behaveLikePARG = true)
+        result[0] = p(n[0], c, normalArg)
       else:
         result[0] = copyNode(n[0])
     of nkBracket:
@@ -532,16 +544,16 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
       for i in 0..<n.len:
         # everything that is passed to an array constructor is consumed,
         # so these all act like 'sink' parameters:
-        result[i] = p(n[i], c, consumed = true, behaveLikePARG = true)
-      if not consumed:
+        result[i] = p(n[i], c, sinkArg)
+      if mode in {normalArg, normalThing}:
         result = ensureDestruction(result, c)
     of nkObjConstr:
       result = copyTree(n)
       for i in 1..<n.len:
         # everything that is passed to an object constructor is consumed,
         # so these all act like 'sink' parameters:
-        result[i][1] = p(n[i][1], c, consumed = true, behaveLikePARG = true)
-      if not consumed:
+        result[i][1] = p(n[i][1], c, sinkArg)
+      if mode in {normalArg, normalThing}:
         result = ensureDestruction(result, c)
     of nkTupleConstr, nkClosure:
       result = copyTree(n)
@@ -549,10 +561,10 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
         # everything that is passed to an tuple constructor is consumed,
         # so these all act like 'sink' parameters:
         if n[i].kind == nkExprColonExpr:
-          result[i][1] = p(n[i][1], c, consumed = true, behaveLikePARG = true)
+          result[i][1] = p(n[i][1], c, sinkArg)
         else:
-          result[i] = p(n[i], c, consumed = true, behaveLikePARG = true)
-      if not consumed:
+          result[i] = p(n[i], c, sinkArg)
+      if mode in {normalArg, normalThing}:
         result = ensureDestruction(result, c)
     of nkVarSection, nkLetSection:
       # transform; var x = y to  var x; x op y  where op is a move or copy
@@ -561,7 +573,7 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
         var ri = it[^1]
         if it.kind == nkVarTuple and hasDestructor(ri.typ):
           let x = lowerTupleUnpacking(c.graph, it, c.owner)
-          result.add p(x, c, true)
+          result.add p(x, c, consumedThing)
         elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
           for j in 0..<it.len-2:
             let v = it[j]
@@ -598,7 +610,7 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
       else:
         result = copyNode(n)
         result.add copyTree(n[0])
-        result.add p(n[1], c, true)
+        result.add p(n[1], c, consumedThing)
     of nkRaiseStmt:
       if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
         if n[0].kind in nkCallKinds:
@@ -638,22 +650,22 @@ proc p(n: PNode; c: var Con; consumed = false, behaveLikePARG = false): PNode =
       result = copyTree(n)
       result[1][0] = p(result[1][0], c)
     of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt:
-      handleNested(n): p(node, c, consumed)
+      handleNested(n): p(node, c, mode)
     else:
       result = shallowCopy(n)
       for i in 0..<n.len:
-        result[i] = p(n[i], c, consumed)
+        result[i] = p(n[i], c, mode)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   case ri.kind
   of nkCallKinds:
     result = genSink(c, dest, ri)
-    result.add p(ri, c, consumed = true)
+    result.add p(ri, c, consumedThing)
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
       # unpacking of tuple: move out the elements
       result = genSink(c, dest, ri)
-      result.add p(ri, c, consumed = true)
+      result.add p(ri, c, consumedThing)
     elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
@@ -661,17 +673,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
-      result.add p(ri, c, consumed = true)
+      result.add p(ri, c, consumedThing)
   of nkBracket:
     # array constructor
     if ri.len > 0 and isDangerousSeq(ri.typ):
       result = genCopy(c, dest, ri)
     else:
       result = genSink(c, dest, ri)
-    result.add p(ri, c, consumed = true)
+    result.add p(ri, c, consumedThing)
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
     result = genSink(c, dest, ri)
-    result.add p(ri, c, consumed = true)
+    result.add p(ri, c, consumedThing)
   of nkSym:
     if isSinkParam(ri.sym):
       # Rule 3: `=sink`(x, z); wasMoved(z)
@@ -687,7 +699,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
-      result.add p(ri, c, consumed = true)
+      result.add p(ri, c, consumedThing)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
     when false:
       result = moveOrCopy(dest, ri[1], c)
@@ -697,7 +709,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         result[^1] = copyRi
     else:
       result = genSink(c, dest, ri)
-      result.add p(ri, c, true, behaveLikePARG = true)
+      result.add p(ri, c, sinkArg)
   of nkObjDownConv, nkObjUpConv:
     when false:
       result = moveOrCopy(dest, ri[0], c)
@@ -706,7 +718,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result[^1] = copyRi
     else:
       result = genSink(c, dest, ri)
-      result.add p(ri, c, true, behaveLikePARG = true)
+      result.add p(ri, c, sinkArg)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     handleNested(ri): moveOrCopy(dest, node, c)
   else:
@@ -718,7 +730,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
-      result.add p(ri, c, consumed = true)
+      result.add p(ri, c, consumedThing)
 
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:
