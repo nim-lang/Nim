@@ -251,22 +251,25 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   # XXX: Strictly speaking we can only move if there is a ``=sink`` defined
   # or if no ``=sink`` is defined and also no assignment.
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+  if not hasDestructor(n.typ):
+    result = copyTree(n)
+  else:
+    result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
-  var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
-  temp.typ = n.typ
-  var v = newNodeI(nkLetSection, n.info)
-  let tempAsNode = newSymNode(temp)
+    var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
+    temp.typ = n.typ
+    var v = newNodeI(nkLetSection, n.info)
+    let tempAsNode = newSymNode(temp)
 
-  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
-  vpart[0] = tempAsNode
-  vpart[1] = c.emptyNode
-  vpart[2] = n
-  v.add(vpart)
+    var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
+    vpart[0] = tempAsNode
+    vpart[1] = c.emptyNode
+    vpart[2] = n
+    v.add(vpart)
 
-  result.add v
-  result.add genWasMoved(skipConv(n), c)
-  result.add tempAsNode
+    result.add v
+    result.add genWasMoved(skipConv(n), c)
+    result.add tempAsNode
 
 proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
   assert s.kind == nkSym and s.sym.kind == skParam
@@ -281,22 +284,25 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  let tmp = getTemp(c, n.typ, n.info)
-  # XXX This is only required if we are in a loop. Since we move temporaries
-  # out of loops we need to mark it as 'wasMoved'.
-  result.add genWasMoved(tmp, c)
-  if hasDestructor(n.typ):
-    var m = genCopy(c, tmp, n)
-    m.add p(n, c)
-    result.add m
-    if isLValue(n) and not isClosureEnv(n):
-      message(c.graph.config, n.info, hintPerformance,
-        ("passing '$1' to a sink parameter introduces an implicit copy; " &
-        "use 'move($1)' to prevent it") % $n)
+  if not hasDestructor(n.typ):
+    result = copyTree(n)
   else:
-    result.add newTree(nkAsgn, tmp, p(n, c))
-  result.add tmp
+    result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+    let tmp = getTemp(c, n.typ, n.info)
+    # XXX This is only required if we are in a loop. Since we move temporaries
+    # out of loops we need to mark it as 'wasMoved'.
+    result.add genWasMoved(tmp, c)
+    if hasDestructor(n.typ):
+      var m = genCopy(c, tmp, n)
+      m.add p(n, c)
+      result.add m
+      if isLValue(n) and not isClosureEnv(n):
+        message(c.graph.config, n.info, hintPerformance,
+          ("passing '$1' to a sink parameter introduces an implicit copy; " &
+          "use 'move($1)' to prevent it") % $n)
+    else:
+      result.add newTree(nkAsgn, tmp, p(n, c))
+    result.add tmp
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst)
