@@ -13,7 +13,7 @@ import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos
 
 const
-  tfInstClearedFlags = {tfHasMeta, tfUnresolved, tfHasAsgn}
+  tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
