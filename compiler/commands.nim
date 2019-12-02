@@ -395,12 +395,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.nimcacheDir = processPath(conf, arg, info, true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    let f = splitFile(arg.expandTilde)
+    let path = processPath(conf, arg, info, true).string
+    let f = splitFile(path)
     conf.outFile = RelativeFile f.name & f.ext
     conf.outDir = toAbsoluteDir f.dir
   of "outdir":
     expectArg(conf, switch, arg, pass, info)
-    conf.outDir = toAbsoluteDir arg.expandTilde
+    conf.outDir = processPath(conf, arg, info, true)
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
