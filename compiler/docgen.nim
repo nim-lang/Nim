@@ -50,12 +50,12 @@ proc whichType(d: PDoc; n: PNode): PSym =
     if d.types.strTableContains(n.sym):
       result = n.sym
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       let x = whichType(d, n[i])
       if x != nil: return x
 
 proc attachToType(d: PDoc; p: PSym): PSym =
-  let params = p.ast.sons[paramsPos]
+  let params = p.ast[paramsPos]
   template check(i) =
     result = whichType(d, params[i])
     if result != nil: return result
@@ -68,7 +68,7 @@ proc attachToType(d: PDoc; p: PSym): PSym =
 
 template declareClosures =
   proc compilerMsgHandler(filename: string, line, col: int,
-                          msgKind: rst.MsgKind, arg: string) {.procvar, gcsafe.} =
+                          msgKind: rst.MsgKind, arg: string) {.gcsafe.} =
     # translate msg kind:
     var k: TMsgKind
     case msgKind
@@ -85,7 +85,7 @@ template declareClosures =
     {.gcsafe.}:
       globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
-  proc docgenFindFile(s: string): string {.procvar, gcsafe.} =
+  proc docgenFindFile(s: string): string {.gcsafe.} =
     result = options.findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
@@ -176,11 +176,11 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
-  if conf.cmd != cmdRst2tex: addf(dest, xml, args)
-  else: addf(dest, tex, args)
+  if conf.cmd != cmdRst2tex: dest.addf(xml, args)
+  else: dest.addf(tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
-  for i in 0 .. high(varnames):
+  for i in 0..high(varnames):
     if cmpIgnoreStyle(varnames[i], id) == 0:
       return i
   result = -1
@@ -189,44 +189,43 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
                          varnames: openArray[string],
                          varvalues: openArray[Rope]): Rope =
   var i = 0
-  var L = len(frmt)
   result = nil
   var num = 0
-  while i < L:
+  while i < frmt.len:
     if frmt[i] == '$':
       inc(i)                  # skip '$'
       case frmt[i]
       of '#':
-        add(result, varvalues[num])
+        result.add(varvalues[num])
         inc(num)
         inc(i)
       of '$':
-        add(result, "$")
+        result.add("$")
         inc(i)
       of '0'..'9':
         var j = 0
         while true:
           j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
-          if (i > L + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
+          if (i > frmt.len + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
         if j > high(varvalues) + 1:
           rawMessage(conf, errGenerated, "Invalid format string; too many $s: " & frmt)
         num = j
-        add(result, varvalues[j - 1])
+        result.add(varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF':
         var id = ""
         while true:
-          add(id, frmt[i])
+          id.add(frmt[i])
           inc(i)
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break
         var idx = getVarIdx(varnames, id)
-        if idx >= 0: add(result, varvalues[idx])
+        if idx >= 0: result.add(varvalues[idx])
         else: rawMessage(conf, errGenerated, "unknown substition variable: " & id)
       of '{':
         var id = ""
         inc(i)
         while i < frmt.len and frmt[i] != '}':
-          add(id, frmt[i])
+          id.add(frmt[i])
           inc(i)
         if i >= frmt.len:
           rawMessage(conf, errGenerated, "expected closing '}'")
@@ -234,15 +233,15 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
           inc(i)                # skip }
         # search for the variable:
         let idx = getVarIdx(varnames, id)
-        if idx >= 0: add(result, varvalues[idx])
+        if idx >= 0: result.add(varvalues[idx])
         else: rawMessage(conf, errGenerated, "unknown substition variable: " & id)
       else:
-        add(result, "$")
+        result.add("$")
     var start = i
-    while i < L:
+    while i < frmt.len:
       if frmt[i] != '$': inc(i)
       else: break
-    if i - 1 >= start: add(result, substr(frmt, start, i - 1))
+    if i - 1 >= start: result.add(substr(frmt, start, i - 1))
 
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
@@ -259,8 +258,8 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
-      for i in 0 ..< len(n):
-        result = genRecCommentAux(d, n.sons[i])
+      for i in 0..<n.len:
+        result = genRecCommentAux(d, n[i])
         if result != nil: return
   else:
     when defined(nimNoNilSeqs): n.comment = ""
@@ -287,8 +286,8 @@ proc getPlainDocstring(n: PNode): string =
   if startsWith(n.comment, "##"):
     result = n.comment
   if result.len < 1:
-    for i in 0 ..< safeLen(n):
-      result = getPlainDocstring(n.sons[i])
+    for i in 0..<n.safeLen:
+      result = getPlainDocstring(n[i])
       if result.len > 0: return
 
 proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
@@ -358,7 +357,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
               "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
     of tkSpaces, tkInvalid:
-      add(result, literal)
+      result.add(literal)
     of tkCurlyDotLe:
       dispA(d.conf, result, "<span>" & # This span is required for the JS to work properly
         """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
@@ -465,7 +464,7 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
         nodeToHighlightedHtml(d, b, dest, {}, nil)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
   else: discard
-  for i in 0 ..< n.safeLen:
+  for i in 0..<n.safeLen:
     getAllRunnableExamplesRec(d, n[i], orig, dest)
 
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
@@ -474,8 +473,8 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
   if n.kind == nkPostfix:
-    if n.len == 2 and n.sons[0].kind == nkIdent:
-      var v = n.sons[0].ident
+    if n.len == 2 and n[0].kind == nkIdent:
+      var v = n[0].ident
       result = v.id == ord(wStar) or v.id == ord(wMinus)
   elif n.kind == nkSym:
     # we cannot generate code for forwarded symbols here as we have no
@@ -488,12 +487,12 @@ proc isVisible(d: PDoc; n: PNode): bool =
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:
-    result = isVisible(d, n.sons[0])
+    result = isVisible(d, n[0])
 
 proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   case n.kind
-  of nkPostfix: result = getName(d, n.sons[1], splitAfter)
-  of nkPragmaExpr: result = getName(d, n.sons[0], splitAfter)
+  of nkPostfix: result = getName(d, n[1], splitAfter)
+  of nkPragmaExpr: result = getName(d, n[0], splitAfter)
   of nkSym: result = esc(d.target, n.sym.renderDefinitionName, splitAfter)
   of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
   of nkAccQuoted:
@@ -507,8 +506,8 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
 
 proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
   case n.kind
-  of nkPostfix: result = getNameIdent(cache, n.sons[1])
-  of nkPragmaExpr: result = getNameIdent(cache, n.sons[0])
+  of nkPostfix: result = getNameIdent(cache, n[1])
+  of nkPragmaExpr: result = getNameIdent(cache, n[0])
   of nkSym: result = n.sym.name
   of nkIdent: result = n.ident
   of nkAccQuoted:
@@ -522,13 +521,13 @@ proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
 
 proc getRstName(n: PNode): PRstNode =
   case n.kind
-  of nkPostfix: result = getRstName(n.sons[1])
-  of nkPragmaExpr: result = getRstName(n.sons[0])
+  of nkPostfix: result = getRstName(n[1])
+  of nkPragmaExpr: result = getRstName(n[0])
   of nkSym: result = newRstNode(rnLeaf, n.sym.renderDefinitionName)
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
   of nkAccQuoted:
-    result = getRstName(n.sons[0])
-    for i in 1 ..< n.len: result.text.add(getRstName(n[i]).text)
+    result = getRstName(n[0])
+    for i in 1..<n.len: result.text.add(getRstName(n[i]).text)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getRstName(n[0])
   else:
@@ -573,7 +572,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   of skTemplate: result.add(".t")
   of skConverter: result.add(".c")
   else: discard
-  if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
+  if n.len > paramsPos and n[paramsPos].kind == nkFormalParams:
     let params = renderParamTypes(n[paramsPos])
     if params.len > 0:
       result.add(defaultParamSeparator)
@@ -653,8 +652,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     plainName.add(literal)
 
   var pragmaNode: PNode = nil
-  if n.isCallable and n.sons[pragmasPos].kind != nkEmpty:
-    pragmaNode = findPragma(n.sons[pragmasPos], wDeprecated)
+  if n.isCallable and n[pragmasPos].kind != nkEmpty:
+    pragmaNode = findPragma(n[pragmasPos], wDeprecated)
 
   inc(d.id)
   let
@@ -680,7 +679,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       let cwd = canonicalizePath(d.conf, getCurrentDir())
       var path = toFullPath(d.conf, n.info)
       if path.startsWith(cwd):
-        path = path[cwd.len+1 .. ^1].replace('\\', '/')
+        path = path[cwd.len+1..^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
       let defaultBranch =
@@ -692,7 +691,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
           ["path", "line", "url", "commit", "devel"], [rope path.string,
           rope($n.info.line), rope gitUrl, rope commit, rope develBranch])])
 
-  add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
+  d.section[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc", "deprecationMsg"],
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
@@ -715,7 +714,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       setIndexTerm(d[], external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
         xmltree.escape(getPlainDocstring(e).docstringSummary))
 
-  add(d.toc[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
+  d.toc[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
     [rope(getName(d, nameNode, d.splitAfter)), result, comm,
@@ -761,11 +760,11 @@ proc traceDeps(d: PDoc, it: PNode) =
     a.add dir
     a.add sep # dummy entry, replaced in the loop
     for x in it[2]:
-      a.sons[2] = x
+      a[2] = x
       traceDeps(d, a)
   elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
     let external = externalDep(d, it.sym)
-    if d.section[k] != nil: add(d.section[k], ", ")
+    if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [rope esc(d.target, changeFileExt(external, "")),
@@ -775,7 +774,7 @@ proc exportSym(d: PDoc; s: PSym) =
   const k = exportSection
   if s.kind == skModule and belongsToPackage(d.conf, s):
     let external = externalDep(d, s)
-    if d.section[k] != nil: add(d.section[k], ", ")
+    if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [rope esc(d.target, changeFileExt(external, "")),
@@ -784,7 +783,7 @@ proc exportSym(d: PDoc; s: PSym) =
     let module = originatingModule(s)
     if belongsToPackage(d.conf, module):
       let external = externalDep(d, module)
-      if d.section[k] != nil: add(d.section[k], ", ")
+      if d.section[k] != nil: d.section[k].add(", ")
       # XXX proper anchor generation here
       dispA(d.conf, d.section[k],
             "<a href=\"$2#$1\"><span class=\"Identifier\">$1</span></a>",
@@ -792,37 +791,37 @@ proc exportSym(d: PDoc; s: PSym) =
             rope changeFileExt(external, "html")])
 
 proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
-  let s = n.sons[namePos].sym
+  let s = n[namePos].sym
   if tfReturnsNew in s.typ.flags:
     result = newIdentNode(getIdent(cache, "new"), n.info)
 
 proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
   let spec = effectSpec(x, effectType)
   if isNil(spec):
-    let s = n.sons[namePos].sym
+    let s = n[namePos].sym
 
-    let actual = s.typ.n.sons[0]
+    let actual = s.typ.n[0]
     if actual.len != effectListLen: return
-    let real = actual.sons[idx]
+    let real = actual[idx]
 
     # warning: hack ahead:
     var effects = newNodeI(nkBracket, n.info, real.len)
-    for i in 0 ..< real.len:
+    for i in 0..<real.len:
       var t = typeToString(real[i].typ)
       if t.startsWith("ref "): t = substr(t, 4)
-      effects.sons[i] = newIdentNode(getIdent(cache, t), n.info)
+      effects[i] = newIdentNode(getIdent(cache, t), n.info)
       # set the type so that the following analysis doesn't screw up:
-      effects.sons[i].typ = real[i].typ
+      effects[i].typ = real[i].typ
 
     result = newNode(nkExprColonExpr, n.info, @[
       newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects])
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
-  let s = n.sons[namePos].sym
+  let s = n[namePos].sym
   let params = s.typ.n
 
   var effects = newNodeI(nkBracket, n.info)
-  for i in 1 ..< params.len:
+  for i in 1..<params.len:
     if params[i].kind == nkSym and flag in params[i].sym.flags:
       effects.add params[i]
 
@@ -831,8 +830,8 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
       newIdentNode(getIdent(cache, pragmaName), n.info), effects])
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
-  if n.sons[namePos].kind != nkSym: return
-  let pragmas = n.sons[pragmasPos]
+  if n[namePos].kind != nkSym: return
+  let pragmas = n[pragmasPos]
   let p1 = documentEffect(cache, n, pragmas, wRaises, exceptionEffects)
   let p2 = documentEffect(cache, n, pragmas, wTags, tagEffects)
   let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
@@ -841,59 +840,59 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
 
   if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
     if pragmas.kind == nkEmpty:
-      n.sons[pragmasPos] = newNodeI(nkPragma, n.info)
-    if p1 != nil: n.sons[pragmasPos].add p1
-    if p2 != nil: n.sons[pragmasPos].add p2
-    if p3 != nil: n.sons[pragmasPos].add p3
-    if p4 != nil: n.sons[pragmasPos].add p4
-    if p5 != nil: n.sons[pragmasPos].add p5
+      n[pragmasPos] = newNodeI(nkPragma, n.info)
+    if p1 != nil: n[pragmasPos].add p1
+    if p2 != nil: n[pragmasPos].add p2
+    if p3 != nil: n[pragmasPos].add p3
+    if p4 != nil: n[pragmasPos].add p4
+    if p5 != nil: n[pragmasPos].add p5
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
-    add(d.modDeprecationMsg, genDeprecationMsg(d, pragmaNode))
-  of nkCommentStmt: add(d.modDesc, genComment(d, n))
+    d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
+  of nkCommentStmt: d.modDesc.add(genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skProc)
+    genItem(d, n, n[namePos], skProc)
   of nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skFunc)
+    genItem(d, n, n[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skMethod)
+    genItem(d, n, n[namePos], skMethod)
   of nkIteratorDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skIterator)
-  of nkMacroDef: genItem(d, n, n.sons[namePos], skMacro)
-  of nkTemplateDef: genItem(d, n, n.sons[namePos], skTemplate)
+    genItem(d, n, n[namePos], skIterator)
+  of nkMacroDef: genItem(d, n, n[namePos], skMacro)
+  of nkTemplateDef: genItem(d, n, n[namePos], skTemplate)
   of nkConverterDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skConverter)
+    genItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< len(n):
-      if n.sons[i].kind != nkCommentStmt:
+    for i in 0..<n.len:
+      if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
-        genItem(d, n.sons[i], n.sons[i].sons[0],
+        genItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< len(n): generateDoc(d, n.sons[i], orig)
+    for i in 0..<n.len: generateDoc(d, n[i], orig)
   of nkWhenStmt:
     # generate documentation for the first branch only:
-    if not checkForFalse(n.sons[0].sons[0]):
-      generateDoc(d, lastSon(n.sons[0]), orig)
+    if not checkForFalse(n[0][0]):
+      generateDoc(d, lastSon(n[0]), orig)
   of nkImportStmt:
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
       if it.kind == nkSym: exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
-  of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
+  of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
     var comm: Rope = nil
     getAllRunnableExamples(d, n, comm)
-    if comm != nil: add(d.modDesc, comm)
+    if comm != nil: d.modDesc.add(comm)
   else: discard
 
 proc add(d: PDoc; j: JsonNode) =
@@ -905,39 +904,39 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
     if includeComments:
       d.add %*{"comment": genComment(d, n)}
     else:
-      add(d.modDesc, genComment(d, n))
+      d.modDesc.add(genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n.sons[namePos], skProc)
+    d.add genJsonItem(d, n, n[namePos], skProc)
   of nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n.sons[namePos], skFunc)
+    d.add genJsonItem(d, n, n[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n.sons[namePos], skMethod)
+    d.add genJsonItem(d, n, n[namePos], skMethod)
   of nkIteratorDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n.sons[namePos], skIterator)
+    d.add genJsonItem(d, n, n[namePos], skIterator)
   of nkMacroDef:
-    d.add genJsonItem(d, n, n.sons[namePos], skMacro)
+    d.add genJsonItem(d, n, n[namePos], skMacro)
   of nkTemplateDef:
-    d.add genJsonItem(d, n, n.sons[namePos], skTemplate)
+    d.add genJsonItem(d, n, n[namePos], skTemplate)
   of nkConverterDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n.sons[namePos], skConverter)
+    d.add genJsonItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< len(n):
-      if n.sons[i].kind != nkCommentStmt:
+    for i in 0..<n.len:
+      if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
-        d.add genJsonItem(d, n.sons[i], n.sons[i].sons[0],
+        d.add genJsonItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< len(n):
-      generateJson(d, n.sons[i], includeComments)
+    for i in 0..<n.len:
+      generateJson(d, n[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
-    if not checkForFalse(n.sons[0].sons[0]):
-      generateJson(d, lastSon(n.sons[0]), includeComments)
+    if not checkForFalse(n[0][0]):
+      generateJson(d, lastSon(n[0]), includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -951,36 +950,36 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
       r.add stripped
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    r.add genTagsItem(d, n, n.sons[namePos], skProc)
+    r.add genTagsItem(d, n, n[namePos], skProc)
   of nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    r.add genTagsItem(d, n, n.sons[namePos], skFunc)
+    r.add genTagsItem(d, n, n[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    r.add genTagsItem(d, n, n.sons[namePos], skMethod)
+    r.add genTagsItem(d, n, n[namePos], skMethod)
   of nkIteratorDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    r.add genTagsItem(d, n, n.sons[namePos], skIterator)
+    r.add genTagsItem(d, n, n[namePos], skIterator)
   of nkMacroDef:
-    r.add genTagsItem(d, n, n.sons[namePos], skMacro)
+    r.add genTagsItem(d, n, n[namePos], skMacro)
   of nkTemplateDef:
-    r.add genTagsItem(d, n, n.sons[namePos], skTemplate)
+    r.add genTagsItem(d, n, n[namePos], skTemplate)
   of nkConverterDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    r.add genTagsItem(d, n, n.sons[namePos], skConverter)
+    r.add genTagsItem(d, n, n[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in 0 ..< len(n):
-      if n.sons[i].kind != nkCommentStmt:
+    for i in 0..<n.len:
+      if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
-        r.add genTagsItem(d, n.sons[i], n.sons[i].sons[0],
+        r.add genTagsItem(d, n[i], n[i][0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in 0 ..< len(n):
-      generateTags(d, n.sons[i], r)
+    for i in 0..<n.len:
+      generateTags(d, n[i], r)
   of nkWhenStmt:
     # generate documentation for the first branch only:
-    if not checkForFalse(n.sons[0].sons[0]):
-      generateTags(d, lastSon(n.sons[0]), r)
+    if not checkForFalse(n[0][0]):
+      generateTags(d, lastSon(n[0]), r)
   else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
@@ -1005,12 +1004,12 @@ proc genOutFile(d: PDoc): Rope =
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
-  for i in low(TSymKind) .. high(TSymKind):
+  for i in low(TSymKind)..high(TSymKind):
     genSection(d, i)
-    add(toc, d.toc[i])
+    toc.add(d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in low(TSymKind) .. high(TSymKind): add(code, d.section[i])
+  for i in low(TSymKind)..high(TSymKind): code.add(d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:

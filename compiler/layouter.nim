@@ -146,7 +146,7 @@ proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
 
 proc lenOfNextTokens(em: Emitter; pos: int): int =
   result = 0
-  for i in 1 ..< em.tokens.len-pos:
+  for i in 1..<em.tokens.len-pos:
     if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
     inc result, em.tokens[pos+i].len
 
@@ -570,7 +570,7 @@ proc endsWith(em: Emitter; k: varargs[string]): bool =
   return true
 
 proc rfind(em: Emitter, t: string): int =
-  for i in 1 .. 5:
+  for i in 1..5:
     if em.tokens[^i] == t:
       return i
 

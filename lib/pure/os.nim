@@ -2722,7 +2722,8 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
           result.setLen(0) # error!
           break
       else:
-        result.setLen(pathLength)
+        # trim the trailing null byte, as the result is a string not a cstring
+        result.setLen(pathLength-1)
         break
 
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):

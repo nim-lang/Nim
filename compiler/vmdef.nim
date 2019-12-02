@@ -12,17 +12,42 @@
 
 import ast, idents, options, modulegraphs, lineinfos
 
+type TInstrType* = uint32
+
 const
+  regOBits = 8 # Opcode
+  regABits = 8
+  regBBits = 8
+  regCBits = 8
+  regBxBits = 16
+
   byteExcess* = 128 # we use excess-K for immediates
-  wordExcess* = 32768
 
   MaxLoopIterations* = 10_000_000 # max iterations of all loops
 
+# Calculate register shifts, masks and ranges
+
+const
+  regOShift* = 0.TInstrType
+  regAShift* = (regOShift + regOBits)
+  regBShift* = (regAShift + regABits)
+  regCShift* = (regBShift + regBBits)
+  regBxShift* = (regAShift + regABits)
+
+  regOMask*  = ((1.TInstrType shl regOBits) - 1)
+  regAMask*  = ((1.TInstrType shl regABits) - 1)
+  regBMask*  = ((1.TInstrType shl regBBits) - 1)
+  regCMask*  = ((1.TInstrType shl regCBits) - 1)
+  regBxMask* = ((1.TInstrType shl regBxBits) - 1)
+
+  wordExcess* = 1 shl (regBxBits-1)
+  regBxMin* = -wordExcess+1
+  regBxMax* =  wordExcess-1
 
 type
-  TRegister* = range[0..255]
-  TDest* = range[-1 .. 255]
-  TInstr* = distinct uint32
+  TRegister* = range[0..regAMask.int]
+  TDest* = range[-1..regAMask.int]
+  TInstr* = distinct TInstrType
 
   TOpcode* = enum
     opcEof,         # end of code
@@ -74,7 +99,7 @@ type
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,
-    opcQuit,
+    opcQuit, opcInvalidField,
     opcNarrowS, opcNarrowU,
     opcSignExtend,
 
@@ -254,10 +279,10 @@ const
 # flag is used to signal opcSeqLen if node is NimNode.
 const nimNodeFlag* = 16
 
-template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
-template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
-template regB*(x: TInstr): TRegister = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
-template regC*(x: TInstr): TRegister = TRegister(x.uint32 shr 24'u32)
-template regBx*(x: TInstr): int = (x.uint32 shr 16'u32).int
+template opcode*(x: TInstr): TOpcode = TOpcode(x.TInstrType shr regOShift and regOMask)
+template regA*(x: TInstr): TRegister = TRegister(x.TInstrType shr regAShift and regAMask)
+template regB*(x: TInstr): TRegister = TRegister(x.TInstrType shr regBShift and regBMask)
+template regC*(x: TInstr): TRegister = TRegister(x.TInstrType shr regCShift and regCMask)
+template regBx*(x: TInstr): int = (x.TInstrType shr regBxShift and regBxMask).int
 
 template jmpDiff*(x: TInstr): int = regBx(x) - wordExcess

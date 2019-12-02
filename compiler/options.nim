@@ -234,6 +234,7 @@ type
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
     packageCache*: StringTableRef
+    nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
@@ -536,24 +537,26 @@ proc shortenDir*(conf: ConfigRef; dir: string): string {.
   ## returns the interesting part of a dir
   var prefix = conf.projectPath.string & DirSep
   if startsWith(dir, prefix):
-    return substr(dir, len(prefix))
+    return substr(dir, prefix.len)
   prefix = getPrefixDir(conf).string & DirSep
   if startsWith(dir, prefix):
-    return substr(dir, len(prefix))
+    return substr(dir, prefix.len)
   result = dir
 
 proc removeTrailingDirSep*(path: string): string =
-  if (len(path) > 0) and (path[len(path) - 1] == DirSep):
-    result = substr(path, 0, len(path) - 2)
+  if (path.len > 0) and (path[^1] == DirSep):
+    result = substr(path, 0, path.len - 2)
   else:
     result = path
 
 proc disableNimblePath*(conf: ConfigRef) =
   incl conf.globalOptions, optNoNimblePath
   conf.lazyPaths.setLen(0)
+  conf.nimblePaths.setLen(0)
 
 proc clearNimblePath*(conf: ConfigRef) =
   conf.lazyPaths.setLen(0)
+  conf.nimblePaths.setLen(0)
 
 include packagehandling
 
@@ -586,6 +589,15 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "nimcache", getNimcacheDir(conf).string])
   if "~/" in result:
     result = result.replace("~/", home & '/')
+
+iterator nimbleSubs*(conf: ConfigRef; p: string): string =
+  let pl = p.toLowerAscii
+  if "$nimblepath" in pl or "$nimbledir" in pl:
+    for i in countdown(conf.nimblePaths.len-1, 0):
+      let nimblePath = removeTrailingDirSep(conf.nimblePaths[i].string)
+      yield p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
+  else:
+    yield p
 
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
@@ -633,7 +645,7 @@ template patchModule(conf: ConfigRef) {.dirty.} =
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = AbsoluteFile(ov)
 
-proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile {.procvar.} =
+proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
     result = if f.existsFile: AbsoluteFile(f) else: AbsoluteFile""
   else:

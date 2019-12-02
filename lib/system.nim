@@ -1998,6 +1998,8 @@ when defined(boehmgc):
     const boehmLib = "libgc.dylib"
   elif defined(openbsd):
     const boehmLib = "libgc.so.4.0"
+  elif defined(freebsd):
+    const boehmLib = "libgc-threaded.so.1"
   else:
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
@@ -3827,11 +3829,6 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
-  proc addInt*(result: var string; x: int64) =
-    result.add $x
-
-  proc addFloat*(result: var string; x: float) =
-    result.add $x
 
   when defined(JS) and not defined(nimscript):
     include "system/jssys"
@@ -3842,6 +3839,12 @@ elif defined(JS):
       if x < y: return -1
       return 1
 
+when defined(JS) or defined(nimscript):
+  proc addInt*(result: var string; x: int64) =
+    result.add $x
+
+  proc addFloat*(result: var string; x: float) =
+    result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.

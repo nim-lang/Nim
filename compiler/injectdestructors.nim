@@ -19,6 +19,8 @@ import
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes
 
+from trees import exprStructuralEquivalent
+
 type
   Con = object
     owner: PSym
@@ -237,7 +239,7 @@ proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
   result.add(newSymNode(createMagic(c.graph, "wasMoved", mWasMoved)))
-  result.add n #mWasMoved does not take the address
+  result.add copyTree(n) #mWasMoved does not take the address
 
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
@@ -259,7 +261,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   vpart[0] = tempAsNode
   vpart[1] = c.emptyNode
   vpart[2] = n
-  add(v, vpart)
+  v.add(vpart)
 
   result.add v
   result.add genWasMoved(skipConv(n), c)
@@ -399,6 +401,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       # different and can deal with 'const string sunk into var'.
       result = passCopyToSink(arg, c)
     elif arg.kind in nkLiterals:
+      # literals are save to share accross ASTs (for now!)
       result = arg # literal to sink parameter: nothing to do
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure}:
       # object construction to sink parameter: nothing to do
@@ -461,24 +464,56 @@ proc isCursor(n: PNode): bool =
   else:
     result = false
 
+proc cycleCheck(n: PNode; c: var Con) =
+  if c.graph.config.selectedGC != gcDestructors: return
+  var value = n[1]
+  if value.kind == nkClosure:
+    value = value[1]
+  if value.kind == nkNilLit: return
+  let destTyp = n[0].typ.skipTypes(abstractInst)
+  if destTyp.kind != tyRef and not (destTyp.kind == tyProc and destTyp.callConv == ccClosure):
+    return
+
+  var x = n[0]
+  var field: PNode = nil
+  while true:
+    if x.kind == nkDotExpr:
+      if field == nil: field = x[1]
+      x = x[0]
+    elif x.kind in {nkBracketExpr, nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref}:
+      x = x[0]
+    else:
+      break
+    if exprStructuralEquivalent(x, value, strictSymEquality = true):
+      let msg =
+        if field != nil:
+          "'$#' creates an uncollectable ref cycle; annotate '$#' with .cursor" % [$n, $field]
+        else:
+          "'$#' creates an uncollectable ref cycle" % [$n]
+      message(c.graph.config, n.info, warnCycleCreated, msg)
+      break
+
 proc p(n: PNode; c: var Con; consumed = false): PNode =
   case n.kind
   of nkCallKinds:
     let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
+    result = shallowCopy(n)
     for i in 1..<n.len:
-      n[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
-    result = n
-    if result[0].kind == nkSym and result[0].sym.magic in {mNew, mNewFinalize}:
+      result[i] = pArg(n[i], c, i < L and isSinkTypeForParam(parameters[i]))
+    if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
+      result[0] = copyTree(n[0])
       if c.graph.config.selectedGC in {gcHooks, gcDestructors}:
         let destroyOld = genDestroy(c, result[1])
         result = newTree(nkStmtList, destroyOld, result)
     else:
-      result[0] = pArg(result[0], c, isSink = false)
+      result[0] = pArg(n[0], c, isSink = false)
   of nkDiscardStmt: # Small optimization
+    result = shallowCopy(n)
     if n[0].kind != nkEmpty:
-      n[0] = pArg(n[0], c, false)
-    result = n
+      result[0] = pArg(n[0], c, false)
+    else:
+      result[0] = copyNode(n[0])
   of nkBracket:
     result = copyTree(n)
     for i in 0..<n.len:
@@ -544,10 +579,12 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
       if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
         result = newNodeI(nkEmpty, n.info)
       else:
+        if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
+          cycleCheck(n, c)
         result = moveOrCopy(n[0], n[1], c)
     else:
       result = copyNode(n)
-      result.add n[0]
+      result.add copyTree(n[0])
       result.add p(n[1], c)
   of nkRaiseStmt:
     if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
@@ -685,7 +722,7 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
   else:
-    for i in 0..<safeLen(n):
+    for i in 0..<n.safeLen:
       injectDefaultCalls(n[i], c)
 
 proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =

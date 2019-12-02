@@ -534,10 +534,10 @@ proc toPretty(result: var string, node: SexpNode, indent = 2, ml = true,
     result.add(escapeJson(node.str))
   of SInt:
     if lstArr: result.indent(currIndent)
-    result.add(node.num)
+    result.addInt(node.num)
   of SFloat:
     if lstArr: result.indent(currIndent)
-    result.add(node.fnum)
+    result.addFloat(node.fnum)
   of SNil:
     if lstArr: result.indent(currIndent)
     result.add("nil")

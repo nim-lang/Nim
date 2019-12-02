@@ -84,3 +84,5 @@ megatest.nim
 /outputGotten.txt
 
 /lib/pure/*.js
+
+!/.builds/

@@ -50,9 +50,9 @@ const
 proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
     result = nil
-    add(result, "\n/*\t")
-    add(result, CFileSectionNames[fs])
-    add(result, ":*/\n")
+    result.add("\n/*\t")
+    result.add(CFileSectionNames[fs])
+    result.add(":*/\n")
 
 proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
@@ -61,9 +61,9 @@ proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
 proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
     result = rope("")
-    add(result, "\n/*\t")
-    add(result, CProcSectionNames[ps])
-    add(result, ":*/\n")
+    result.add("\n/*\t")
+    result.add(CProcSectionNames[ps])
+    result.add(":*/\n")
 
 proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
