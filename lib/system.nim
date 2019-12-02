@@ -3671,8 +3671,6 @@ when not defined(JS): #and not defined(nimscript):
         prev: PSafePoint # points to next safe point ON THE STACK
         status: int
         context: C_JmpBuf
-        hasRaiseAction: bool
-        raiseAction: proc (e: ref Exception): bool {.closure.}
       SafePoint = TSafePoint
 
   when declared(initAllocator):

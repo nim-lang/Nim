@@ -103,7 +103,6 @@ proc pushGcFrame*(s: GcFrame) {.compilerRtl, inl.} =
   gcFramePtr = s
 
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
-  s.hasRaiseAction = false
   s.prev = excHandler
   excHandler = s
 
@@ -340,8 +339,7 @@ proc nimLeaveFinally() {.compilerRtl.} =
   else:
     template e: untyped = currException
     if excHandler != nil:
-      if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
-        c_longjmp(excHandler.context, 1)
+      c_longjmp(excHandler.context, 1)
     else:
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
@@ -400,9 +398,8 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     pushCurrentException(e)
   else:
     if excHandler != nil:
-      if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
-        pushCurrentException(e)
-        c_longjmp(excHandler.context, 1)
+      pushCurrentException(e)
+      c_longjmp(excHandler.context, 1)
     else:
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
