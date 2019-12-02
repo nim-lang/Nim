@@ -110,12 +110,14 @@ proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
 proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
-proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
+proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
   e.up = currException
   currException = e
+  #showErrorMessage "A"
 
 proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
+  #showErrorMessage "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
@@ -332,7 +334,54 @@ template unhandled(buf, body) =
   else:
     body
 
-proc raiseExceptionAux(e: ref Exception) =
+proc nimLeaveFinally() {.compilerRtl.} =
+  when defined(cpp) and not defined(noCppExceptions):
+    {.emit: "throw;".}
+  else:
+    template e: untyped = currException
+    if excHandler != nil:
+      if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
+        c_longjmp(excHandler.context, 1)
+    else:
+      when hasSomeStackTrace:
+        var buf = newStringOfCap(2000)
+        if e.trace.len == 0: rawWriteStackTrace(buf)
+        else: add(buf, $e.trace)
+        add(buf, "Error: unhandled exception: ")
+        add(buf, e.msg)
+        add(buf, " [")
+        add(buf, $e.name)
+        add(buf, "]\n")
+        unhandled(buf):
+          showErrorMessage(buf)
+          quitOrDebug()
+        `=destroy`(buf)
+      else:
+        # ugly, but avoids heap allocations :-)
+        template xadd(buf, s, slen) =
+          if L + slen < high(buf):
+            copyMem(addr(buf[L]), cstring(s), slen)
+            inc L, slen
+        template add(buf, s) =
+          xadd(buf, s, s.len)
+        var buf: array[0..2000, char]
+        var L = 0
+        if e.trace.len != 0:
+          add(buf, $e.trace) # gc allocation
+        add(buf, "Error: unhandled exception: ")
+        add(buf, e.msg)
+        add(buf, " [")
+        xadd(buf, e.name, e.name.len)
+        add(buf, "]\n")
+        when defined(nimNoArrayToCstringConversion):
+          template tbuf(): untyped = addr buf
+        else:
+          template tbuf(): untyped = buf
+        unhandled(tbuf()):
+          showErrorMessage(tbuf())
+          quitOrDebug()
+
+proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
@@ -367,6 +416,7 @@ proc raiseExceptionAux(e: ref Exception) =
         unhandled(buf):
           showErrorMessage(buf)
           quitOrDebug()
+        `=destroy`(buf)
       else:
         # ugly, but avoids heap allocations :-)
         template xadd(buf, s, slen) =
@@ -392,7 +442,8 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
+proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring,
+                      line: int) {.compilerRtl, nodestroy.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     if e.trace.len == 0:
@@ -406,7 +457,7 @@ proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line
       e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
   raiseExceptionAux(e)
 
-proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+proc raiseException(e: sink(ref Exception), ename: cstring) {.compilerRtl.} =
   raiseExceptionEx(e, ename, nil, nil, 0)
 
 proc reraiseException() {.compilerRtl.} =

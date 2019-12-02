@@ -3773,11 +3773,15 @@ when not defined(JS): #and not defined(nimscript):
       ## Retrieves the current exception; if there is none, `nil` is returned.
       result = currException
 
+    proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
+      # .nodestroy here so that we do not produce a write barrier as the
+      # C codegen only uses it in a borrowed way:
+      result = currException
+
     proc getCurrentExceptionMsg*(): string {.inline, benign.} =
       ## Retrieves the error message that was attached to the current
       ## exception; if there is none, `""` is returned.
-      var e = getCurrentException()
-      return if e == nil: "" else: e.msg
+      return if currException == nil: "" else: currException.msg
 
     proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
       ## Sets the current exception.

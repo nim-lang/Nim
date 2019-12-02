@@ -621,7 +621,10 @@ proc p(n: PNode; c: var Con; consumed = false): PNode =
         result.add newTree(nkRaiseStmt, tmp)
     else:
       result = copyNode(n)
-      result.add p(n[0], c)
+      if n[0].kind != nkEmpty:
+        result.add pArg(n[0], c, true)
+      else:
+        result.add copyNode(n[0])
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef,
       nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt, nkExportStmt,
