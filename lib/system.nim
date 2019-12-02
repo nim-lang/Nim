@@ -3216,6 +3216,9 @@ proc `<`*[T: tuple](x, y: T): bool =
 const
   usesDestructors = defined(gcDestructors) or defined(gcHooks)
 
+when not usesDestructors:
+  {.pragma: nodestroy.}
+
 when not defined(nimscript) and hasAlloc:
   type
     GC_Strategy* = enum  ## The strategy the GC should use for the application.
