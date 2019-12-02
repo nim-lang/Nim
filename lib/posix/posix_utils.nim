@@ -102,7 +102,6 @@ proc mkdtemp*(prefix: string): string =
 
 proc getDiskUsage*(path: string): tuple[total: uint64, used: uint64, free: uint64] {.inline.} =
   ## Convenience proc for ``statvfs`` to get disk usage statistics in bytes.
-  ## This proc is available for 64 Bit architectures and operating systems.
   ##
   ## .. code-block:: nim
   ##   echo getDiskUsage(".") ## (total: ..., used: ..., free: ...)
