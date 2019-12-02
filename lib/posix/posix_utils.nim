@@ -108,4 +108,4 @@ proc getDiskUsage*(path: string): tuple[total: uint64, used: uint64, free: uint6
   ##
   var t = Statvfs()
   if statvfs(path, t) != 0.cint: raise newException(OSError, $strerror(errno))
-  (total: uint64(t.f_blocks * t.f_frsize), used: uint64((t.f_blocks - t.f_bfree) * t.f_frsize), free: uint64(t.f_bavail * t.f_frsize))
+  result = (total: t.f_blocks.uint64 * t.f_frsize.uint64, used: uint64(t.f_blocks.uint64 - t.f_bfree.uint64) * t.f_frsize.uint64, free: t.f_bavail.uint64 * t.f_frsize.uint64)
