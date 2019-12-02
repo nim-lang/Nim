@@ -280,7 +280,7 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
 type ProcessMode = enum
   normal
   consumed
-  sinked
+  sinkArg
 
 proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
@@ -439,7 +439,7 @@ proc cycleCheck(n: PNode; c: var Con) =
 proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt, nkWhen}:
     handleNested(n): p(node, c, mode)
-  elif mode == sinked:
+  elif mode == sinkArg:
     if n.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
       # sink parameter (bug #11524). Note that the string implementation is
@@ -453,7 +453,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
       sinkParamIsLastReadCheck(c, n)
       result = destructiveMoveVar(n, c)
     elif isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
-      # it is the last read, can be sinked. We need to reset the memory
+      # it is the last read, can be sinkArg. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c)
     elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
@@ -463,13 +463,13 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
         # allow conversions from owned to unowned via this little hack:
         let nTyp = n[1].typ
         n[1].typ = n.typ
-        result[1] = p(n[1], c, sinked)
+        result[1] = p(n[1], c, sinkArg)
         result[1].typ = nTyp
       else:
-        result[1] = p(n[1], c, sinked)
+        result[1] = p(n[1], c, sinkArg)
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
-      result[0] = p(n[0], c, sinked)
+      result[0] = p(n[0], c, sinkArg)
     else:
       # copy objects that are not temporary but passed to a 'sink' parameter
       result = passCopyToSink(n, c)
@@ -479,7 +479,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
       result = copyTree(n)
       for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
         let m = if mode == normal: normal
-                else: sinked
+                else: sinkArg
         if n[i].kind == nkExprColonExpr:
           result[i][1] = p(n[i][1], c, m)
         else:
@@ -490,7 +490,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
       result = shallowCopy(n)
       for i in 1..<n.len:
         if i < L and isSinkTypeForParam(parameters[i]):
-          result[i] = p(n[i], c, sinked)
+          result[i] = p(n[i], c, sinkArg)
         else:
           result[i] = p(n[i], c, normal)
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
@@ -573,7 +573,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
       else:
         result = copyNode(n)
         if n[0].kind != nkEmpty:
-          result.add p(n[0], c, sinked)
+          result.add p(n[0], c, sinkArg)
         else:
           result.add copyNode(n[0])
     of nkWhileStmt:
@@ -645,7 +645,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         result[^1] = copyRi
     else:
       result = genSink(c, dest, ri)
-      result.add p(ri, c, sinked)
+      result.add p(ri, c, sinkArg)
   of nkObjDownConv, nkObjUpConv:
     when false:
       result = moveOrCopy(dest, ri[0], c)
@@ -654,7 +654,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result[^1] = copyRi
     else:
       result = genSink(c, dest, ri)
-      result.add p(ri, c, sinked)
+      result.add p(ri, c, sinkArg)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     handleNested(ri): moveOrCopy(dest, node, c)
   else:
