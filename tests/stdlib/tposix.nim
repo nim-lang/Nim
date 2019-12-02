@@ -19,14 +19,13 @@ when not defined(windows):
   writeLine(stdout, u.machine)
 
 
-  when defined(amd64):
-    block:
-      # lib/posix/posix_utils.nim
-      let diskInfo = posix_utils.getDiskUsage(".")
-      doAssert diskInfo is tuple
-      doAssert diskInfo[0] is uint64
-      doAssert diskInfo[1] is uint64
-      doAssert diskInfo[2] is uint64
-      doAssert diskInfo.total > 0.uint64
-      doAssert diskInfo.used > 0.uint64
-      doAssert diskInfo.free > 0.uint64
+  block:
+    # lib/posix/posix_utils.nim
+    let diskInfo = posix_utils.getDiskUsage(".")
+    doAssert diskInfo is tuple
+    doAssert diskInfo[0] is uint64
+    doAssert diskInfo[1] is uint64
+    doAssert diskInfo[2] is uint64
+    doAssert diskInfo.total > 0.uint64
+    doAssert diskInfo.used > 0.uint64
+    doAssert diskInfo.free > 0.uint64
