@@ -374,6 +374,10 @@ template handleNested(n: untyped, processCall: untyped) =
         branch.add if node.typ == nil: p(node, c) #noreturn
                    else: processCall
       result.add branch
+  of nkWhen: # This should be a "when nimvm" node.
+    result = copyTree(n)
+    template node: untyped = n[1][0]
+    result[1][0] = processCall
   else: assert(false)
 
 proc ensureDestruction(arg: PNode; c: var Con): PNode =
@@ -433,12 +437,45 @@ proc cycleCheck(n: PNode; c: var Con) =
       break
 
 proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
-  if mode == sinkArg and n.containsConstSeq:
+  if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt, nkWhen}:
+      handleNested(n): p(node, c, mode)
+  elif mode == sinkArg:
+    if n.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
       # sink parameter (bug #11524). Note that the string implementation is
       # different and can deal with 'const string sunk into var'.
       result = passCopyToSink(n, c)
-  elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure}:
+    elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure} + nkCallKinds + nkLiterals:
+      result = p(n, c, consumedThing)
+    elif n.kind == nkSym and isSinkParam(n.sym):
+      # Sinked params can be consumed only once. We need to reset the memory
+      # to disable the destructor which we have not elided
+      sinkParamIsLastReadCheck(c, n)
+      result = destructiveMoveVar(n, c)
+    elif isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
+      # it is the last read, can be sinked. We need to reset the memory
+      # to disable the destructor which we have not elided
+      result = destructiveMoveVar(n, c)
+    elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
+      result = copyTree(n)
+      if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
+          n[1].typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
+        # allow conversions from owned to unowned via this little hack:
+        let nTyp = n[1].typ
+        n[1].typ = n.typ
+        result[1] = p(n[1], c, sinkArg)
+        result[1].typ = nTyp
+      else:
+        result[1] = p(n[1], c, sinkArg)
+    elif n.kind in {nkObjDownConv, nkObjUpConv}:
+      result = copyTree(n)
+      result[0] = p(n[0], c, sinkArg)
+    else:
+      # copy objects that are not temporary but passed to a 'sink' parameter
+      result = passCopyToSink(n, c)
+  else:
+    case n.kind
+    of nkBracket, nkObjConstr, nkTupleConstr, nkClosure:
       result = copyTree(n)
       for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
         let mm = if mode == normal: normal
@@ -447,7 +484,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
           result[i][1] = p(n[i][1], c, mm)
         else:
           result[i] = p(n[i], c, mm)
-  elif n.kind in nkCallKinds:
+    of nkCallKinds:
       let parameters = n[0].typ
       let L = if parameters != nil: parameters.len else: 0
       result = shallowCopy(n)
@@ -466,46 +503,6 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
 
       if mode == normal:
         result = ensureDestruction(result, c)
-  elif mode == sinkArg:
-      if n.kind in nkLiterals:
-        # literals are save to share accross ASTs (for now!)
-        result = n
-      elif n.kind == nkSym and isSinkParam(n.sym):
-        # Sinked params can be consumed only once. We need to reset the memory
-        # to disable the destructor which we have not elided
-        sinkParamIsLastReadCheck(c, n)
-        result = destructiveMoveVar(n, c)
-      elif isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
-        # it is the last read, can be sinked. We need to reset the memory
-        # to disable the destructor which we have not elided
-        result = destructiveMoveVar(n, c)
-      elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
-        result = copyTree(n)
-        if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
-            n[1].typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
-          # allow conversions from owned to unowned via this little hack:
-          let nTyp = n[1].typ
-          n[1].typ = n.typ
-          result[1] = p(n[1], c, sinkArg)
-          result[1].typ = nTyp
-        else:
-          result[1] = p(n[1], c, sinkArg)
-      elif n.kind in {nkObjDownConv, nkObjUpConv}:
-        result = copyTree(n)
-        result[0] = p(n[0], c, sinkArg)
-      elif n.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr, nkIfStmt, nkCaseStmt}:
-        handleNested(n): p(node, c, mode)
-      else:
-        # an object that is not temporary but passed to a 'sink' parameter
-        # results in a copy.
-        result = passCopyToSink(n, c)
-  elif n.kind in {nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
-       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
-       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakStmt, nkBreakState}:
-     result = n
-  else:
-    case n.kind
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
@@ -592,11 +589,11 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
       result.add p(n[0], c)
       result.add p(n[1], c)
       dec c.inLoop
-    of nkWhen: # This should be a "when nimvm" node.
-      result = copyTree(n)
-      result[1][0] = p(result[1][0], c)
-    of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt:
-      handleNested(n): p(node, c, mode)
+    of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
+       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakStmt, nkBreakState:
+      result = n
     else:
       result = shallowCopy(n)
       for i in 0..<n.len:
