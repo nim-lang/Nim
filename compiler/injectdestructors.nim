@@ -279,11 +279,10 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
 
 type ProcessMode = enum
   sinkArg       #consumed and behaveLikePARG
-  normalArg     #not consumed and behaveLikePARG
   consumedThing #consumed and not behaveLikePARG
-  normalThing   #not consumed and not behaveLikePARG
+  normal        #not consumed and not behaveLikePARG
 
-proc p(n: PNode; c: var Con; mode: ProcessMode = normalThing): PNode
+proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
 proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
@@ -433,39 +432,44 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc p(n: PNode; c: var Con; mode: ProcessMode = normalThing): PNode =
-  if mode == sinkArg:
-      if n.kind in nkCallKinds:
-        # recurse but skip the call expression in order to prevent
-        # destructor injections: Rule 5.1 is different from rule 5.4!
-        result = copyNode(n)
-        let parameters = n[0].typ
-        let L = if parameters != nil: parameters.len else: 0
-        result.add p(n[0], c, normalArg)
-        for i in 1..<n.len:
-          if i < L and isSinkTypeForParam(parameters[i]):
-            result.add p(n[i], c, sinkArg)
-          else:
-            result.add p(n[i], c, normalArg)
-      elif n.containsConstSeq:
-        # const sequences are not mutable and so we need to pass a copy to the
-        # sink parameter (bug #11524). Note that the string implementation is
-        # different and can deal with 'const string sunk into var'.
-        result = passCopyToSink(n, c)
-      elif n.kind in nkLiterals:
+proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
+  if mode == sinkArg and n.containsConstSeq:
+      # const sequences are not mutable and so we need to pass a copy to the
+      # sink parameter (bug #11524). Note that the string implementation is
+      # different and can deal with 'const string sunk into var'.
+      result = passCopyToSink(n, c)
+  elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure}:
+      result = copyTree(n)
+      for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
+        let mm = if mode == normal: normal
+                 else: sinkArg
+        if n[i].kind == nkExprColonExpr:
+          result[i][1] = p(n[i][1], c, mm)
+        else:
+          result[i] = p(n[i], c, mm)
+  elif n.kind in nkCallKinds:
+      let parameters = n[0].typ
+      let L = if parameters != nil: parameters.len else: 0
+      result = shallowCopy(n)
+      for i in 1..<n.len:
+        if i < L and isSinkTypeForParam(parameters[i]):
+          result[i] = p(n[i], c, sinkArg)
+        else:
+          result[i] = p(n[i], c, normal)
+      if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
+        result[0] = copyTree(n[0])
+        if c.graph.config.selectedGC in {gcHooks, gcDestructors}:
+          let destroyOld = genDestroy(c, result[1])
+          result = newTree(nkStmtList, destroyOld, result)
+      else:
+        result[0] = p(n[0], c, normal)
+
+      if mode == normal:
+        result = ensureDestruction(result, c)
+  elif mode == sinkArg:
+      if n.kind in nkLiterals:
         # literals are save to share accross ASTs (for now!)
-        result = n # literal to sink parameter: nothing to do
-      elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure}:
-        # object construction to sink parameter: nothing to do
-        result = copyTree(n)
-        for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
-          if n[i].kind == nkExprColonExpr:
-            result[i][1] = p(n[i][1], c, sinkArg)
-          else:
-            result[i] = p(n[i], c, sinkArg)
-        #if n.kind == nkClosure:
-        #  result = handleClosureCall(result, c)
-        # Not required here because the nkClosure will be consumed!
+        result = n
       elif n.kind == nkSym and isSinkParam(n.sym):
         # Sinked params can be consumed only once. We need to reset the memory
         # to disable the destructor which we have not elided
@@ -475,8 +479,6 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normalThing): PNode =
         # it is the last read, can be sinked. We need to reset the memory
         # to disable the destructor which we have not elided
         result = destructiveMoveVar(n, c)
-      elif n.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr, nkIfStmt, nkCaseStmt}:
-        handleNested(n): p(node, c, mode)
       elif n.kind in {nkHiddenSubConv, nkHiddenStdConv, nkConv}:
         result = copyTree(n)
         if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
@@ -491,81 +493,25 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normalThing): PNode =
       elif n.kind in {nkObjDownConv, nkObjUpConv}:
         result = copyTree(n)
         result[0] = p(n[0], c, sinkArg)
+      elif n.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt, nkIfExpr, nkIfStmt, nkCaseStmt}:
+        handleNested(n): p(node, c, mode)
       else:
         # an object that is not temporary but passed to a 'sink' parameter
         # results in a copy.
         result = passCopyToSink(n, c)
-  elif mode == normalArg and n.kind == nkBracket:
-      # Treat `f([...])` like `f(...)`
-      result = copyNode(n)
-      for son in n:
-        if isSinkTypeForParam(son.typ):
-          result.add p(son, c, sinkArg)
-        else:
-          result.add p(son, c, normalArg)
-  elif mode == normalArg and n.kind in nkCallKinds and n.typ != nil and hasDestructor(n.typ):
-      # produce temp creation
-      result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-      let tmp = getTemp(c, n.typ, n.info)
-      let res = p(n, c, consumedThing)
-      var sinkExpr = genSink(c, tmp, res)
-      sinkExpr.add res
-      result.add sinkExpr
-      result.add tmp
-      c.destroys.add genDestroy(c, tmp)
+  elif n.kind in {nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
+       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakStmt, nkBreakState}:
+     result = n
   else:
     case n.kind
-    of nkCallKinds:
-      let parameters = n[0].typ
-      let L = if parameters != nil: parameters.len else: 0
-      result = shallowCopy(n)
-      for i in 1..<n.len:
-        if i < L and isSinkTypeForParam(parameters[i]):
-          result[i] = p(n[i], c, sinkArg)
-        else:
-          result[i] = p(n[i], c, normalArg)
-      if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
-        result[0] = copyTree(n[0])
-        if c.graph.config.selectedGC in {gcHooks, gcDestructors}:
-          let destroyOld = genDestroy(c, result[1])
-          result = newTree(nkStmtList, destroyOld, result)
-      else:
-        result[0] = p(n[0], c, normalArg)
-      if mode in {normalArg, normalThing}:
-        result = ensureDestruction(result, c)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
-        result[0] = p(n[0], c, normalArg)
+        result[0] = p(n[0], c, normal)
       else:
         result[0] = copyNode(n[0])
-    of nkBracket:
-      result = copyTree(n)
-      for i in 0..<n.len:
-        # everything that is passed to an array constructor is consumed,
-        # so these all act like 'sink' parameters:
-        result[i] = p(n[i], c, sinkArg)
-      if mode in {normalArg, normalThing}:
-        result = ensureDestruction(result, c)
-    of nkObjConstr:
-      result = copyTree(n)
-      for i in 1..<n.len:
-        # everything that is passed to an object constructor is consumed,
-        # so these all act like 'sink' parameters:
-        result[i][1] = p(n[i][1], c, sinkArg)
-      if mode in {normalArg, normalThing}:
-        result = ensureDestruction(result, c)
-    of nkTupleConstr, nkClosure:
-      result = copyTree(n)
-      for i in ord(n.kind == nkClosure)..<n.len:
-        # everything that is passed to an tuple constructor is consumed,
-        # so these all act like 'sink' parameters:
-        if n[i].kind == nkExprColonExpr:
-          result[i][1] = p(n[i][1], c, sinkArg)
-        else:
-          result[i] = p(n[i], c, sinkArg)
-      if mode in {normalArg, normalThing}:
-        result = ensureDestruction(result, c)
     of nkVarSection, nkLetSection:
       # transform; var x = y to  var x; x op y  where op is a move or copy
       result = newNodeI(nkStmtList, n.info)
@@ -707,7 +653,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         let copyRi = copyTree(ri)
         copyRi[1] = result[^1]
         result[^1] = copyRi
-    else:
+    else: #Can we do the following on everything???
       result = genSink(c, dest, ri)
       result.add p(ri, c, sinkArg)
   of nkObjDownConv, nkObjUpConv:
