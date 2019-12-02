@@ -7,17 +7,20 @@ proc other =
   raise newException(ValueError, "stuff happening")
 
 proc indirectViaProcCall =
+  var correct = 0
   for i in 1 .. 20:
     try:
       other()
     except:
-      discard
+      let x = getCurrentException()
+      correct += ord(x of ValueError)
+  doAssert correct == 20
 
 proc direct =
   for i in 1 .. 20:
     try:
       raise newException(ValueError, "stuff happening")
-    except:
+    except ValueError:
       discard
 
 let mem = getOccupiedMem()
