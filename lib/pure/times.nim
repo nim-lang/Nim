@@ -2440,7 +2440,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
 
 proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
   ## Converts a `Time` value to a string representation. It will use the local
-  ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  ## time zone and use the format ``yyyy-MM-dd'T'HH:mm:sszzz``.
   runnableExamples:
     let dt = initDateTime(01, mJan, 1970, 00, 00, 00, local())
     let tm = dt.toTime()
