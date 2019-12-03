@@ -579,9 +579,7 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "projectname", conf.projectName,
     "projectpath", conf.projectPath.string,
     "projectdir", conf.projectPath.string,
-    "nimcache", getNimcacheDir(conf).string])
-  if "~/" in result:
-    result = result.replace("~/", home & '/')
+    "nimcache", getNimcacheDir(conf).string]).expandTilde
 
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
