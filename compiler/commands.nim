@@ -392,16 +392,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.lazyPaths.keepItIf(it != path)
   of "nimcache":
     expectArg(conf, switch, arg, pass, info)
-    conf.nimcacheDir = processPath(conf, arg, info, true)
+    conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    let path = processPath(conf, arg, info, true).string
-    let f = splitFile(path)
+    let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
     conf.outFile = RelativeFile f.name & f.ext
     conf.outDir = toAbsoluteDir f.dir
   of "outdir":
     expectArg(conf, switch, arg, pass, info)
-    conf.outDir = processPath(conf, arg, info, true)
+    conf.outDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
