@@ -641,7 +641,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  if conf.cmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
+  if conf.cmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM, cmdNone}:
     return false
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
