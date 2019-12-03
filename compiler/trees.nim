@@ -102,7 +102,7 @@ proc isDeepConstExpr*(n: PNode): bool =
     if n.typ.isNil: result = true
     else:
       let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
-      if t.kind in {tyRef, tyPtr}: return false
+      if t.kind in {tyRef, tyPtr} or tfUnion in t.flags: return false
       if t.kind != tyObject or not isCaseObj(t.n):
         result = true
   else: discard

@@ -2790,7 +2790,8 @@ proc genConstObjConstr(p: BProc; n: PNode; isConst: bool): Rope =
   #if not isObjLackingTypeField(t) and not p.module.compileToCpp:
   #  result.addf("{$1}", [genTypeInfo(p.module, t)])
   #  inc count
-  getNullValueAuxT(p, t, t, t.n, n, result, count, isConst)
+  if t.kind == tyObject:
+    getNullValueAuxT(p, t, t, t.n, n, result, count, isConst)
   if p.module.compileToCpp:
     result = "{$1}$n" % [result]
 
