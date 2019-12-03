@@ -586,9 +586,7 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "projectname", conf.projectName,
     "projectpath", conf.projectPath.string,
     "projectdir", conf.projectPath.string,
-    "nimcache", getNimcacheDir(conf).string])
-  if "~/" in result:
-    result = result.replace("~/", home & '/')
+    "nimcache", getNimcacheDir(conf).string]).expandTilde
 
 iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   let pl = p.toLowerAscii
