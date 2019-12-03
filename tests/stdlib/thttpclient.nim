@@ -165,8 +165,73 @@ proc ipv6Test() =
   serverFd.closeSocket()
   client.close()
 
+proc newProxyTest() =
+  block:
+    let proxy = newProxy("127.0.0.1:1234")
+    doAssert proxy.url.scheme == ""
+    doAssert proxy.url.username == ""
+    doAssert proxy.url.password == ""
+    doAssert proxy.url.hostname == "127.0.0.1"
+    doAssert proxy.url.port == "1234"
+    doAssert proxy.url.path == ""
+    doAssert proxy.auth == ""
+
+  block:
+    let proxy = newProxy("localhost:1234", auth="user:psw")
+    doAssert proxy.url.scheme == ""
+    doAssert proxy.url.username == ""
+    doAssert proxy.url.password == ""
+    doAssert proxy.url.hostname == "localhost"
+    doAssert proxy.url.port == "1234"
+    doAssert proxy.url.path == ""
+    doAssert proxy.auth == "user:psw"
+
+  block:
+    let proxy = newProxy("http://localhost:1234")
+    doAssert proxy.url.scheme == "http"
+    doAssert proxy.url.username == ""
+    doAssert proxy.url.password == ""
+    doAssert proxy.url.hostname == "localhost"
+    doAssert proxy.url.port == "1234"
+    doAssert proxy.url.path == ""
+    doAssert proxy.auth == ""
+
+  block:
+    let proxy = newProxy("http://user:psw@localhost:1234/")
+    doAssert proxy.url.scheme == "http"
+    doAssert proxy.url.username == "user"
+    doAssert proxy.url.password == "psw"
+    doAssert proxy.url.hostname == "localhost"
+    doAssert proxy.url.port == "1234"
+    doAssert proxy.url.path == ""
+    doAssert proxy.auth == "user:psw"
+
+  block:
+    let proxy = newProxy("http://user:psw@localhost:1234/entry")
+    doAssert proxy.url.scheme == "http"
+    doAssert proxy.url.username == "user"
+    doAssert proxy.url.password == "psw"
+    doAssert proxy.url.hostname == "localhost"
+    doAssert proxy.url.port == "1234"
+    doAssert proxy.url.path == ""
+    doAssert proxy.auth == "user:psw"
+
+  block:
+    let proxy = newProxy("localhost")
+    doAssert proxy.url.hostname == "localhost"
+    doAssert proxy.url.port == "80"
+
+  block:
+    try:
+      let proxy = newProxy("/localhost")
+      doAssert false, "ValueError should have been raised."
+    except ValueError:
+      discard
+
 ipv6Test()
 syncTest()
 waitFor(asyncTest())
+
+newProxyTest()
 
 echo "OK"

@@ -123,6 +123,9 @@ echo f
   retrieving the verified certificate chain of the peer we are connected to
   through an SSL-wrapped `Socket`/`AsyncSocket`.
 - Added `distinctBase` overload for values: `assert 12.MyInt.distinctBase == 12`
+- Added `httpclient.parseProxy` to parse http and https proxy settings, it
+  also helps to improve `httpclient.newProxy`'s implementation more correctly.
+
 
 ## Library changes
 
