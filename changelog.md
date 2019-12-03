@@ -41,6 +41,9 @@
   `sorted` does.
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
 
+- Added `sugar.capture` for capturing some local loop variables when creating a closure.
+  This is an enhanced version of `closureScope`.
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
