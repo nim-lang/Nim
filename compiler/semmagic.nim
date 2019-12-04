@@ -147,11 +147,11 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       let preferStr = traitCall.sons[2].strVal
       prefer = parseEnum[TPreferedDesc](preferStr)
     result = newStrNode(nkStrLit, operand.typeToString(prefer))
-    result.typ = newType(tyString, context)
+    result.typ = getSysType(c.graph, traitCall[1].info, tyString)
     result.info = traitCall.info
   of "name", "$":
     result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
-    result.typ = newType(tyString, context)
+    result.typ = getSysType(c.graph, traitCall[1].info, tyString)
     result.info = traitCall.info
   of "arity":
     result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
