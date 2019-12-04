@@ -307,7 +307,10 @@ proc getRow*(db: DbConn, query: SqlQuery,
     if row != nil:
       for i in 0..L-1:
         setLen(result[i], 0)
-        add(result[i], $row[i])
+        if row[i] == nil:
+          add(result[i], cstring(""))
+        else:
+          add(result[i], row[i])
     properFreeResult(sqlres, row)
 
 proc getAllRows*(db: DbConn, query: SqlQuery,
