@@ -148,6 +148,11 @@ template osrelease(): untyped = cmdRelease("cat /etc/os-release", osRes)
 template release(): untyped = cmdRelease("lsb_release -d", releaseRes)
 template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
 
+proc detectOsWithAllCmd(d: Distribution): bool =
+  let dd = toLowerAscii($d)
+  result = dd in toLowerAscii(osrelease()) or dd in toLowerAscii(release()) or
+            dd in toLowerAscii(uname()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
+
 proc detectOsImpl(d: Distribution): bool =
   case d
   of Distribution.Windows: ## some version of Windows
@@ -157,7 +162,7 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Linux: result = defined(linux)
   of Distribution.BSD: result = defined(bsd)
   else:
-    if defined(linux):
+    when defined(linux):
       case d
   of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
         Distribution.OpenBSD, Distribution.Debian, Distribution.Fedora,
@@ -182,9 +187,9 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Haiku:
     result = defined(haiku)
   else:
-    let dd = toLowerAscii($d)
-        result = dd in toLowerAscii(osrelease()) or dd in toLowerAscii(release()) or
-                  dd in toLowerAscii(uname()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
+        result = detectOsWithAllCmd(d)
+    else:
+      result = detectOsWithAllCmd(d)
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
