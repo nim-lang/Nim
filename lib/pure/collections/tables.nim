@@ -1496,6 +1496,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
 
+  if t.counter == 0: return
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
