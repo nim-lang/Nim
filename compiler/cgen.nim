@@ -553,7 +553,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         else:
           decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
       p.module.s[cfsVars].add(decl)
-  if p.withinLoop > 0:
+  if p.withinLoop > 0 and value == nil:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
 
