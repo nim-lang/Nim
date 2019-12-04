@@ -164,30 +164,30 @@ proc detectOsImpl(d: Distribution): bool =
   else:
     when defined(linux):
       case d
-  of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
+      of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
         Distribution.OpenBSD, Distribution.Debian, Distribution.Fedora,
         Distribution.OpenMandriva, Distribution.CentOS:
         result = $d in osrelease()
-  of Distribution.RedHat:
+      of Distribution.RedHat:
         result = "Red Hat" in osrelease()
       of Distribution.Elementary:
         result = "elementary OS" in toLowerAscii(osrelease())
-  of Distribution.ArchLinux:
-    result = "arch" in toLowerAscii(uname())
-  of Distribution.NixOS:
-    result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
-    # Check if this is a Nix build or NixOS environment
-  of Distribution.OpenSUSE:
-    result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
-  of Distribution.GoboLinux:
-    result = "-Gobo " in uname()
-  of Distribution.Solaris:
-    let uname = toLowerAscii(uname())
-    result = ("sun" in uname) or ("solaris" in uname)
-  of Distribution.Haiku:
-    result = defined(haiku)
-  else:
-        result = detectOsWithAllCmd(d)
+      of Distribution.ArchLinux:
+        result = "arch" in toLowerAscii(uname())
+      of Distribution.NixOS:
+        result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
+        # Check if this is a Nix build or NixOS environment
+      of Distribution.OpenSUSE:
+        result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
+      of Distribution.GoboLinux:
+        result = "-Gobo " in uname()
+      of Distribution.Solaris:
+        let uname = toLowerAscii(uname())
+        result = ("sun" in uname) or ("solaris" in uname)
+      of Distribution.Haiku:
+        result = defined(haiku)
+      else:
+          result = detectOsWithAllCmd(d)
     else:
       result = detectOsWithAllCmd(d)
 
