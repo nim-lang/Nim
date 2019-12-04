@@ -187,7 +187,7 @@ proc detectOsImpl(d: Distribution): bool =
       of Distribution.Haiku:
         result = defined(haiku)
       else:
-          result = detectOsWithAllCmd(d)
+        result = detectOsWithAllCmd(d)
     else:
       result = detectOsWithAllCmd(d)
 
