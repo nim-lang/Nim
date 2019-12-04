@@ -698,7 +698,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   else:
     raise newException(IOError, "cannot open: " & filename)
 
-proc readLines*(filename: string, n = 1.Natural): seq[TaintedString] =
+proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   ## read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
   ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
