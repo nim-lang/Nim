@@ -134,6 +134,12 @@ var varkind = k4
 
 reject: # not immutable.
   case varkind
+  of k1, k2, k3: discard KindObj(kind: varkind, i32: 1)
+  of k4: discard KindObj(kind: varkind, f32: 2.0)
+  else: discard KindObj(kind: varkind, str: "3")
+
+reject: # complete bogus
+  case varkind
   of k1, k2, k3: discard KindObj(varkind: kind, i32: 1)
   of k4: discard KindObj(varkind: kind, f32: 2.0)
   else: discard KindObj(varkind: kind, str: "3")

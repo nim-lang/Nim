@@ -65,7 +65,7 @@ accept TObj()
 accept TObj(choice: A)
 reject TObj(choice: A, bc: 10)  # bc is in the wrong branch
 accept TObj(choice: B, bc: 20)
-reject TObj(a: 10)              # branch selected without providing discriminator
+accept TObj(a: 10)              # branch selected with the default value "low(T)" of the discriminator
 reject TObj(choice: x, a: 10)   # the discrimantor must be a compile-time value when a branch is selected
 accept TObj(choice: x)          # it's OK to use run-time value when a branch is not selected
 accept TObj(choice: F, f: "")   # match an else clause

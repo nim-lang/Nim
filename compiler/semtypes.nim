@@ -596,7 +596,7 @@ proc getIntSetOfType(c: PContext, t: PType): IntSet =
   result = initIntSet()
   if t.enumHasHoles:
     let t = t.skipTypes(abstractRange)
-    for field in t.n.sons:
+    for field in t.n:
       result.incl(field.sym.position)
   else:
     assert(lengthOrd(c.config, t) <= BiggestInt(MaxSetElements))
@@ -607,7 +607,7 @@ iterator processBranchVals(b: PNode): int =
   assert b.kind in {nkOfBranch, nkElifBranch, nkElse}
   if b.kind == nkOfBranch:
     for i in 0..<b.len-1:
-      if b[i].kind == nkIntLit:
+      if b[i].kind in {nkIntLit..nkUInt64Lit}:
         yield b[i].intVal.int
       elif b[i].kind == nkRange:
         for i in b[i][0].intVal..b[i][1].intVal:
@@ -742,11 +742,6 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     if a != father: father.add a
   of nkIdentDefs:
     checkMinSonsLen(n, 3, c.config)
-    var a: PNode
-    if father.kind != nkRecList and n.len >= 4: a = newNodeI(nkRecList, n.info)
-    else: a = newNodeI(nkEmpty, n.info)
-    if n[^1].kind != nkEmpty:
-      localError(c.config, n[^1].info, errInitHereNotAllowed)
     var typ: PType
     if n[^2].kind == nkEmpty:
       localError(c.config, n.info, errTypeExpected)
@@ -754,6 +749,8 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     else:
       typ = semTypeNode(c, n[^2], nil)
       propagateToOwner(rectype, typ)
+    var a: PNode = if father.kind != nkRecList and n.len > 3: newNodeI(nkRecList, n.info)
+                   else: newNodeI(nkEmpty, n.info)
     var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
                      else: rectype.sym
     for i in 0..<n.len-2:
@@ -774,6 +771,12 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       inc(pos)
       if containsOrIncl(check, f.name.id):
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
+      var fSym = newSymNode(f)
+      if n[^1].kind != nkEmpty:
+        n[^1] = semConstExpr(c, n[^1])
+        fSym.sym.ast = n[^1]
+      elif typ.kind in {tyRange, tyOrdinal}: #Node flag? Handle embedded objects?
+        fSym.sym.ast = semConstExpr(c, newIntNode(nkIntLit, firstOrd(c.config, typ)))
       if a.kind == nkEmpty: father.add newSymNode(f)
       else: a.add newSymNode(f)
       styleCheckDef(c.config, f)

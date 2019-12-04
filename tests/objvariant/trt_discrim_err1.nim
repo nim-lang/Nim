@@ -1,5 +1,5 @@
 discard """
-  errormsg: "branch initialization with a runtime discriminator is not supported inside of an `elif` branch."
+  errormsg: "runtime discriminator could select multiple branches, so you can't initialize these fields: green"
   line: 16
 """
 type

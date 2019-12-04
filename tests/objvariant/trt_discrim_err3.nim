@@ -1,5 +1,5 @@
 discard """
-  errormsg: "runtime discriminator must be immutable if branch fields are initialized, a 'let' binding is required."
+  errormsg: "runtime discriminator could select multiple branches, so you can't initialize these fields: i32"
   line: 16
 """
 

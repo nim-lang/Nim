@@ -1639,7 +1639,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   else:
     if s.kind == skForVar and c.mode == emRepl: c.setSlot(s)
     if s.position > 0 or (s.position == 0 and
-                          s.kind in {skParam, skResult}):
+                          s.kind in {skParam, skResult, skTemp}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
         internalAssert(c.config, c.prc.slots[dest].kind < slotSomeTemp)

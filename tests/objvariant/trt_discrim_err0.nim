@@ -1,5 +1,5 @@
 discard """
-  errormsg: "possible values {k1, k3, k4} are in conflict with discriminator values for selected object branch 3"
+  errormsg: "runtime discriminator could select multiple branches, so you can't initialize these fields: str"
   line: 17
 """
 
