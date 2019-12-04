@@ -90,20 +90,27 @@ proc isCaseObj*(n: PNode): bool =
   for i in 0..<n.safeLen:
     if n[i].isCaseObj: return true
 
-proc isDeepConstExpr*(n: PNode): bool =
+proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
   case n.kind
   of nkCharLit..nkNilLit:
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
-    result = isDeepConstExpr(n[1])
+    result = isDeepConstExpr(n[1], preventInheritance)
   of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
     for i in ord(n.kind == nkObjConstr)..<n.len:
-      if not isDeepConstExpr(n[i]): return false
+      if not isDeepConstExpr(n[i], preventInheritance): return false
     if n.typ.isNil: result = true
     else:
       let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
       if t.kind in {tyRef, tyPtr} or tfUnion in t.flags: return false
-      if t.kind != tyObject or not isCaseObj(t.n):
+      if t.kind == tyObject:
+        if preventInheritance and t[0] != nil:
+          result = false
+        elif isCaseObj(t.n):
+          result = false
+        else:
+          result = true
+      else:
         result = true
   else: discard
 

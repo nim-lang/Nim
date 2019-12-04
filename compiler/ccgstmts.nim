@@ -275,7 +275,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
 proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
     result = nil
-  elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value) and
+  elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
       not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     result = genBracedInit(p, value, isConst = false)

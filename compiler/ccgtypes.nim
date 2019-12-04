@@ -598,7 +598,6 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   result.add name
 
   if typ.kind == tyObject:
-
     if typ[0] == nil:
       if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags:
         appcg(m, result, " {$n", [])
