@@ -10,6 +10,8 @@
 ## This module implements nice syntactic sugar based on Nim's
 ## macro system.
 
+include system/inclrtl
+
 import macros
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
@@ -180,32 +182,30 @@ macro distinctBase*(T: typedesc): untyped =
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
 
-macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1).} =
-  ## Useful when creating a closure in a loop to capture some local loop variables
-  ## by their current iteration values. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   import strformat
-  ##   var myClosure : proc()
-  ##   # without capture:
-  ##   for i in 5..7:
-  ##     for j in 7..9:
-  ##       if i * j == 42:
-  ##         myClosure = proc () = echo fmt"{i} * {j} = 42"
-  ##   myClosure() # outputs 7 * 9 == 42. `i` & `j` are changed after closure creation
-  ##   # with capture:
-  ##   for i in 5..7:
-  ##     for j in 7..9:
-  ##       if i * j == 42:
-  ##         capture [i, j]:
-  ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
-  ##   myClosure() # output 6 * 7 == 42
-  var params = @[newEmptyNode()]
-  for arg in locals:
-    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeImpl arg))
-  result = newNimNode(nnkCall)
-  result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
-  for arg in locals:  result.add(arg)
+since (1, 1):
+  macro capture*(locals: openArray[typed], body: untyped): untyped =
+    ## Useful when creating a closure in a loop to capture some local loop variables
+    ## by their current iteration values. Example:
+    ##
+    ## .. code-block:: Nim
+    ##   import strformat, sequtils, sugar
+    ##   var myClosure : proc()
+    ##   for i in 5..7:
+    ##     for j in 7..9:
+    ##       if i * j == 42:
+    ##         capture [i, j]:
+    ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
+    ##   myClosure() # output: 6 * 7 == 42
+    ##   let m = @[proc (s: string): string = "to " & s, proc (s: string): string = "not to " & s]
+    ##   var l = m.mapIt(capture([it], proc (s: string): string = it(s)))
+    ##   let r = l.mapIt(it("be"))
+    ##   echo r[0] & ", or " & r[1] # output: to be, or not to be
+    var params = @[newIdentNode("auto")]
+    for arg in locals:
+      params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeImpl arg))
+    result = newNimNode(nnkCall)
+    result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
+    for arg in locals: result.add(arg)
 
 when (NimMajor, NimMinor) >= (1, 1):
   macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T =
