@@ -3413,7 +3413,10 @@ elif hasAlloc:
   proc add*(x: var string, y: cstring) =
     var i = 0
     while y[i] != '\0':
-      add(x, y[i])
+      if y[i] == nil:
+        add(x, cstring(""))
+      else:
+        add(x, y[i])
       inc(i)
   {.pop.}
 
