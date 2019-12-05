@@ -1998,6 +1998,8 @@ when defined(boehmgc):
     const boehmLib = "libgc.dylib"
   elif defined(openbsd):
     const boehmLib = "libgc.so.4.0"
+  elif defined(freebsd):
+    const boehmLib = "libgc-threaded.so.1"
   else:
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
@@ -3413,9 +3415,10 @@ elif hasAlloc:
   {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) =
     var i = 0
-    while y[i] != '\0':
-      add(x, y[i])
-      inc(i)
+    if y != nil:
+      while y[i] != '\0':
+        add(x, y[i])
+        inc(i)
   {.pop.}
 
 when defined(nimvarargstyped):

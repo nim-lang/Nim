@@ -229,6 +229,8 @@ proc parseSpec*(filename: string): TSpec =
         of "32bit":
           if sizeof(int) == 4:
             result.err = reDisabled
+        of "freebsd":
+          when defined(freebsd): result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
