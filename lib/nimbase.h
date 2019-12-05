@@ -17,6 +17,7 @@ __DMC__
 __POCC__
 __TINYC__
 __clang__
+__AVR
 */
 
 
@@ -262,7 +263,7 @@ __clang__
 #  define HAVE_STDINT_H
 #endif
 
-#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__)
+#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__) || defined(__AVR)
 #  define HAVE_STDINT_H
 #endif
 
