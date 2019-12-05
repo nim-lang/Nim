@@ -13,10 +13,10 @@ static:
   writeFile(filename, mytext)
 const myfile_str = staticRead(filename)
 const myfile_str2 = readFile(filename)
-const myfile_str_seq = readLines(filename, 3)
+const myfile_str_seq = staticReadLines(filename, 3)
 
 static:
-  doAssert myfile_str == mytext
+  doAssert myfile_str == myte
   doAssert myfile_str2 == mytext
   doAssert myfile_str_seq[0] == "line1"
   doAssert myfile_str_seq[1] == "line2"
