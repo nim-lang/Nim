@@ -16,9 +16,9 @@ type TInstrType* = uint64
 
 const
   regOBits = 8 # Opcode
-  regABits = 8
-  regBBits = 8
-  regCBits = 8
+  regABits = 16
+  regBBits = 16
+  regCBits = 16
   regBxBits = 24
 
   byteExcess* = 128 # we use excess-K for immediates
