@@ -598,7 +598,6 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   result.add name
 
   if typ.kind == tyObject:
-
     if typ[0] == nil:
       if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags:
         appcg(m, result, " {$n", [])
@@ -1022,11 +1021,11 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
          [nameHcr])
 
   if m.hcrOn:
-    m.s[cfsVars].addf("static TNimType* $1;$n", [name])
+    m.s[cfsData].addf("static TNimType* $1;$n", [name])
     m.hcrCreateTypeInfosProc.addf("\thcrRegisterGlobal($2, \"$1\", sizeof(TNimType), NULL, (void**)&$1);$n",
          [name, getModuleDllPath(m, m.module)])
   else:
-    m.s[cfsVars].addf("TNimType $1;$n", [name])
+    m.s[cfsData].addf("TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1060,7 +1059,7 @@ proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
 
 proc genTNimNodeArray(m: BModule, name: Rope, size: Rope) =
   if m.hcrOn:
-    m.s[cfsVars].addf("static TNimNode** $1;$n", [name])
+    m.s[cfsData].addf("static TNimNode** $1;$n", [name])
     m.hcrCreateTypeInfosProc.addf("\thcrRegisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, NULL, (void**)&$1);$n",
          [name, size, getModuleDllPath(m, m.module)])
   else:
@@ -1245,11 +1244,11 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
 
 proc declareNimType(m: BModule, str: Rope, ownerModule: PSym) =
   if m.hcrOn:
-    m.s[cfsVars].addf("static TNimType* $1;$n", [str])
+    m.s[cfsData].addf("static TNimType* $1;$n", [str])
     m.s[cfsTypeInit1].addf("\t$1 = (TNimType*)hcrGetGlobal($2, \"$1\");$n",
           [str, getModuleDllPath(m, ownerModule)])
   else:
-    m.s[cfsVars].addf("extern TNimType $1;$n", [str])
+    m.s[cfsData].addf("extern TNimType $1;$n", [str])
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var res = "|"
@@ -1295,7 +1294,7 @@ proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo
     d = t.destructor.loc.r
   else:
     d = rope("NIM_NIL")
-  m.s[cfsVars].addf("TNimType $1;$n", [name])
+  m.s[cfsData].addf("TNimType $1;$n", [name])
   m.s[cfsTypeInit3].addf("$1.destructor = (void*)$2; $1.size = sizeof($3); $1.name = $4;$n", [
     name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
 

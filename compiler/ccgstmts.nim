@@ -92,7 +92,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     if sfCompileTime in v.flags: continue
     var traverseProc: Rope
     if sfGlobal in v.flags:
-      assignGlobalVar(p, vn)
+      assignGlobalVar(p, vn, nil)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
       traverseProc = getTraverseProc(p, v)
       if traverseProc != nil and not p.hcrOn:
@@ -270,6 +270,18 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
+proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
+
+proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
+  if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
+    result = nil
+  elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
+      p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
+    #echo "New code produced for ", v.name.s, " ", p.config $ value.info
+    result = genBracedInit(p, value, isConst = false)
+  else:
+    result = nil
+
 proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
@@ -277,6 +289,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     return
   var targetProc = p
   var traverseProc: Rope
+  let valueAsRope = potentialValueInit(p, v, value)
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         value.kind == nkEmpty and
@@ -285,22 +298,23 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     if sfPure in v.flags:
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
-    assignGlobalVar(targetProc, vn)
+    assignGlobalVar(targetProc, vn, valueAsRope)
     # XXX: be careful here.
     # Global variables should not be zeromem-ed within loops
     # (see bug #20).
     # That's why we are doing the construction inside the preInitProc.
     # genObjectInit relies on the C runtime's guarantees that
     # global variables will be initialized to zero.
-    var loc = v.loc
+    if valueAsRope == nil:
+      var loc = v.loc
 
-    # When the native TLS is unavailable, a global thread-local variable needs
-    # one more layer of indirection in order to access the TLS block.
-    # Only do this for complex types that may need a call to `objectInit`
-    if sfThread in v.flags and emulatedThreadVars(p.config) and
-      isComplexValueType(v.typ):
-      initLocExprSingleUse(p.module.preInitProc, vn, loc)
-    genObjectInit(p.module.preInitProc, cpsInit, v.typ, loc, true)
+      # When the native TLS is unavailable, a global thread-local variable needs
+      # one more layer of indirection in order to access the TLS block.
+      # Only do this for complex types that may need a call to `objectInit`
+      if sfThread in v.flags and emulatedThreadVars(p.config) and
+        isComplexValueType(v.typ):
+        initLocExprSingleUse(p.module.preInitProc, vn, loc)
+      genObjectInit(p.module.preInitProc, cpsInit, v.typ, loc, true)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
@@ -358,7 +372,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     startBlock(targetProc)
-  if value.kind != nkEmpty:
+  if value.kind != nkEmpty and valueAsRope == nil:
     genLineDir(targetProc, vn)
     loadInto(targetProc, vn, value, v.loc)
   if forHcr:

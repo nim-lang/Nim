@@ -509,7 +509,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
-proc assignGlobalVar(p: BProc, n: PNode) =
+proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
     fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
@@ -521,12 +521,16 @@ proc assignGlobalVar(p: BProc, n: PNode) =
       varInDynamicLib(q, s)
     else:
       s.loc.r = mangleDynLibProc(s)
+    if value != nil:
+      internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
   useHeader(p.module, s)
   if lfNoDecl in s.loc.flags: return
   if not containsOrIncl(p.module.declaredThings, s.id):
     if sfThread in s.flags:
       declareThreadVar(p.module, s, sfImportc in s.flags)
+      if value != nil:
+        internalError(p.config, n.info, ".threadvar variables cannot have a value")
     else:
       var decl: Rope = nil
       var td = getTypeDesc(p.module, s.loc.t)
@@ -539,11 +543,17 @@ proc assignGlobalVar(p: BProc, n: PNode) =
         if p.hcrOn: decl.add("*")
         if sfRegister in s.flags: decl.add(" register")
         if sfVolatile in s.flags: decl.add(" volatile")
-        decl.addf(" $1;$n", [s.loc.r])
+        if value != nil:
+          decl.addf(" $1 = $2;$n", [s.loc.r, value])
+        else:
+          decl.addf(" $1;$n", [s.loc.r])
       else:
-        decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
+        if value != nil:
+          decl = runtimeFormat(s.cgDeclFrmt & " = $#;$n", [td, s.loc.r, value])
+        else:
+          decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
       p.module.s[cfsVars].add(decl)
-  if p.withinLoop > 0:
+  if p.withinLoop > 0 and value == nil:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
 
@@ -1152,7 +1162,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   if q != nil and not containsOrIncl(q.declaredThings, sym.id):
     assert q.initProc.module == q
     q.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
-        [getTypeDesc(q, sym.typ), sym.loc.r, genConstExpr(q.initProc, sym.ast)])
+        [getTypeDesc(q, sym.typ), sym.loc.r, genBracedInit(q.initProc, sym.ast, isConst = true)])
   # declare header:
   if q != m and not containsOrIncl(m.declaredThings, sym.id):
     assert(sym.loc.r != nil)

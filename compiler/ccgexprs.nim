@@ -1313,7 +1313,6 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
                 genTypeInfo(p.module, seqtype, e.info), a.rdLoc]))
     gcUsage(p.config, e)
 
-proc genConstExpr(p: BProc, n: PNode): Rope
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
     let t = n.typ
@@ -1324,7 +1323,7 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
       # expression not found in the cache:
       inc(p.module.labels)
       p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
-           [getTypeDesc(p.module, t), d.r, genConstExpr(p, n)])
+           [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true)])
     result = true
   else:
     result = false
@@ -2340,7 +2339,7 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
     inc(p.module.labels)
     var tmp = "CNSTCLOSURE" & rope(p.module.labels)
     p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
-        [getTypeDesc(p.module, n.typ), tmp, genConstExpr(p, n)])
+        [getTypeDesc(p.module, n.typ), tmp, genBracedInit(p, n, isConst = true)])
     putIntoDest(p, d, n, tmp, OnStatic)
   else:
     var tmp, a, b: TLoc
@@ -2484,7 +2483,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
     # expression not found in the cache:
     inc(p.module.labels)
     p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
-         [getTypeDesc(p.module, t), tmp, genConstExpr(p, n)])
+         [getTypeDesc(p.module, t), tmp, genBracedInit(p, n, isConst = true)])
 
   if d.k == locNone:
     fillLoc(d, locData, n, tmp, OnStatic)
@@ -2697,9 +2696,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkBreakState: genBreakState(p, n, d)
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
-proc genNamedConstExpr(p: BProc, n: PNode): Rope =
-  if n.kind == nkExprColonExpr: result = genConstExpr(p, n[1])
-  else: result = genConstExpr(p, n)
+proc genNamedConstExpr(p: BProc, n: PNode; isConst: bool): Rope =
+  if n.kind == nkExprColonExpr: result = genBracedInit(p, n[1], isConst)
+  else: result = genBracedInit(p, n, isConst)
 
 proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   var t = skipTypes(typ, abstractRange+{tyOwned}-{tyTypeDesc})
@@ -2739,15 +2738,16 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
     globalError(p.config, info, "cannot create null element for: " & $t.kind)
 
 proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
-                     result: var Rope; count: var int) =
+                     result: var Rope; count: var int;
+                     isConst: bool) =
   case obj.kind
   of nkRecList:
     for it in obj.sons:
-      getNullValueAux(p, t, it, cons, result, count)
+      getNullValueAux(p, t, it, cons, result, count, isConst)
   of nkRecCase:
-    getNullValueAux(p, t, obj[0], cons, result, count)
+    getNullValueAux(p, t, obj[0], cons, result, count, isConst)
     for i in 1..<obj.len:
-      getNullValueAux(p, t, lastSon(obj[i]), cons, result, count)
+      getNullValueAux(p, t, lastSon(obj[i]), cons, result, count, isConst)
   of nkSym:
     if count > 0: result.add ", "
     inc count
@@ -2755,10 +2755,10 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
     for i in 1..<cons.len:
       if cons[i].kind == nkExprColonExpr:
         if cons[i][0].sym.name.id == field.name.id:
-          result.add genConstExpr(p, cons[i][1])
+          result.add genBracedInit(p, cons[i][1], isConst)
           return
       elif i == field.position:
-        result.add genConstExpr(p, cons[i])
+        result.add genBracedInit(p, cons[i], isConst)
         return
     # not found, produce default value:
     result.add getDefaultValue(p, field.typ, cons.info)
@@ -2766,49 +2766,51 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
     localError(p.config, cons.info, "cannot create null element for: " & $obj)
 
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode,
-                      result: var Rope; count: var int) =
+                      result: var Rope; count: var int;
+                      isConst: bool) =
   var base = t[0]
   let oldRes = result
   if not p.module.compileToCpp: result.add "{"
   let oldcount = count
   if base != nil:
     base = skipTypes(base, skipPtrs)
-    getNullValueAuxT(p, orig, base, base.n, cons, result, count)
+    getNullValueAuxT(p, orig, base, base.n, cons, result, count, isConst)
   elif not isObjLackingTypeField(t) and not p.module.compileToCpp:
     result.addf("$1", [genTypeInfo(p.module, orig, obj.info)])
     inc count
-  getNullValueAux(p, t, obj, cons, result, count)
+  getNullValueAux(p, t, obj, cons, result, count, isConst)
   # do not emit '{}' as that is not valid C:
   if oldcount == count: result = oldRes
   elif not p.module.compileToCpp: result.add "}"
 
-proc genConstObjConstr(p: BProc; n: PNode): Rope =
+proc genConstObjConstr(p: BProc; n: PNode; isConst: bool): Rope =
   result = nil
   let t = n.typ.skipTypes(abstractInstOwned)
   var count = 0
   #if not isObjLackingTypeField(t) and not p.module.compileToCpp:
   #  result.addf("{$1}", [genTypeInfo(p.module, t)])
   #  inc count
-  getNullValueAuxT(p, t, t, t.n, n, result, count)
+  if t.kind == tyObject:
+    getNullValueAuxT(p, t, t, t.n, n, result, count, isConst)
   if p.module.compileToCpp:
     result = "{$1}$n" % [result]
 
-proc genConstSimpleList(p: BProc, n: PNode): Rope =
+proc genConstSimpleList(p: BProc, n: PNode; isConst: bool): Rope =
   result = rope("{")
   for i in 0..<n.len - 1:
-    result.addf("$1,$n", [genNamedConstExpr(p, n[i])])
+    result.addf("$1,$n", [genNamedConstExpr(p, n[i], isConst)])
   if n.len > 0:
-    result.add(genNamedConstExpr(p, n[^1]))
+    result.add(genNamedConstExpr(p, n[^1], isConst))
   result.addf("}$n", [])
 
-proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
+proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   var data = "{{$1, $1 | NIM_STRLIT_FLAG}" % [n.len.rope]
   if n.len > 0:
     # array part needs extra curlies:
     data.add(", {")
     for i in 0..<n.len:
       if i > 0: data.addf(",$n", [])
-      data.add genConstExpr(p, n[i])
+      data.add genBracedInit(p, n[i], isConst)
     data.add("}")
   data.add("}")
 
@@ -2816,35 +2818,37 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
   let base = t.skipTypes(abstractInst)[0]
 
   appcg(p.module, cfsData,
-        "NIM_CONST struct {$n" &
+        "$5 struct {$n" &
         "  #TGenericSeq Sup;$n" &
         "  $1 data[$2];$n" &
         "} $3 = $4;$n", [
-        getTypeDesc(p.module, base), n.len, result, data])
+        getTypeDesc(p.module, base), n.len, result, data,
+        if isConst: "NIM_CONST" else: ""])
 
   result = "(($1)&$2)" % [getTypeDesc(p.module, t), result]
 
-proc genConstSeqV2(p: BProc, n: PNode, t: PType): Rope =
+proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   var data = rope"{"
   for i in 0..<n.len:
     if i > 0: data.addf(",$n", [])
-    data.add genConstExpr(p, n[i])
+    data.add genBracedInit(p, n[i], isConst)
   data.add("}")
 
   let payload = getTempName(p.module)
   let base = t.skipTypes(abstractInst)[0]
 
   appcg(p.module, cfsData,
-    "static const struct {$n" &
+    "static $5 struct {$n" &
     "  NI cap; void* allocator; $1 data[$2];$n" &
     "} $3 = {$2, NIM_NIL, $4};$n", [
-    getTypeDesc(p.module, base), n.len, payload, data])
+    getTypeDesc(p.module, base), n.len, payload, data,
+    if isConst: "const" else: ""])
   result = "{$1, ($2*)&$3}" % [rope(n.len), getSeqPayloadType(p.module, t), payload]
 
-proc genConstExpr(p: BProc, n: PNode): Rope =
+proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
-    result = genConstExpr(p, n[1])
+    result = genBracedInit(p, n[1], isConst)
   of nkCurly:
     var cs: TBitSet
     toBitSet(p.config, n, cs)
@@ -2853,9 +2857,9 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
     var t = skipTypes(n.typ, abstractInstOwned)
     if t.kind == tySequence:
       if optSeqDestructors in p.config.globalOptions:
-        result = genConstSeqV2(p, n, n.typ)
+        result = genConstSeqV2(p, n, n.typ, isConst)
       else:
-        result = genConstSeq(p, n, n.typ)
+        result = genConstSeq(p, n, n.typ, isConst)
     elif t.kind == tyProc and t.callConv == ccClosure and n.len > 1 and
          n[1].kind == nkNilLit:
       # Conversion: nimcall -> closure.
@@ -2872,12 +2876,12 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
         initLocExpr(p, n[0], d)
         result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, t, clHalfWithEnv), rdLoc(d)]
     else:
-      result = genConstSimpleList(p, n)
+      result = genConstSimpleList(p, n, isConst)
   of nkObjConstr:
-    result = genConstObjConstr(p, n)
+    result = genConstObjConstr(p, n, isConst)
   of nkStrLit..nkTripleStrLit:
     if optSeqDestructors in p.config.globalOptions:
-      result = genStringLiteralV2Const(p.module, n)
+      result = genStringLiteralV2Const(p.module, n, isConst)
     else:
       var d: TLoc
       initLocExpr(p, n, d)

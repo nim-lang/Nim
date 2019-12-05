@@ -53,29 +53,31 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
 
 # ------ Version 2: destructor based strings and seqs -----------------------
 
-proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope) =
-  m.s[cfsData].addf("static const struct {$n" &
+proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bool) =
+  m.s[cfsData].addf("static $4 struct {$n" &
        "  NI cap; void* allocator; NIM_CHAR data[$2+1];$n" &
        "} $1 = { $2, NIM_NIL, $3 };$n",
-       [result, rope(s.len), makeCString(s)])
+       [result, rope(s.len), makeCString(s),
+       rope(if isConst: "const" else: "")])
 
-proc genStringLiteralV2(m: BModule; n: PNode): Rope =
+proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool): Rope =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   if id == m.labels:
     let pureLit = getTempName(m)
-    genStringLiteralDataOnlyV2(m, n.strVal, pureLit)
+    genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
     result = getTempName(m)
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
     # string literal not found in the cache:
-    m.s[cfsData].addf("static const NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
-          [result, rope(n.strVal.len), pureLit])
+    m.s[cfsData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
+          [result, rope(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
   else:
     result = getTempName(m)
-    m.s[cfsData].addf("static const NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
-          [result, rope(n.strVal.len), m.tmpBase & rope(id)])
+    m.s[cfsData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
+          [result, rope(n.strVal.len), m.tmpBase & rope(id),
+          rope(if isConst: "const" else: "")])
 
-proc genStringLiteralV2Const(m: BModule; n: PNode): Rope =
+proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool): Rope =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   var pureLit: Rope
   if id == m.labels:
@@ -83,19 +85,20 @@ proc genStringLiteralV2Const(m: BModule; n: PNode): Rope =
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
     # string literal not found in the cache:
-    genStringLiteralDataOnlyV2(m, n.strVal, pureLit)
+    genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
   else:
     pureLit = m.tmpBase & rope(id)
   result = "{$1, (NimStrPayload*)&$2}" % [rope(n.strVal.len), pureLit]
 
 # ------ Version selector ---------------------------------------------------
 
-proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo): Rope =
+proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo;
+                              isConst: bool): Rope =
   case detectStrVersion(m)
   of 0, 1: result = genStringLiteralDataOnlyV1(m, s)
   of 2:
     result = getTempName(m)
-    genStringLiteralDataOnlyV2(m, s, result)
+    genStringLiteralDataOnlyV2(m, s, result, isConst)
   else:
     localError(m.config, info, "cannot determine how to produce code for string literal")
 
@@ -105,6 +108,6 @@ proc genNilStringLiteral(m: BModule; info: TLineInfo): Rope =
 proc genStringLiteral(m: BModule; n: PNode): Rope =
   case detectStrVersion(m)
   of 0, 1: result = genStringLiteralV1(m, n)
-  of 2: result = genStringLiteralV2(m, n)
+  of 2: result = genStringLiteralV2(m, n, isConst = true)
   else:
     localError(m.config, n.info, "cannot determine how to produce code for string literal")

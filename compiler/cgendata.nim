@@ -27,8 +27,8 @@ type
     cfsFieldInfo,             # section for field information
     cfsTypeInfo,              # section for type information
     cfsProcHeaders,           # section for C procs prototypes
-    cfsVars,                  # section for C variable declarations
     cfsData,                  # section for C constant data
+    cfsVars,                  # section for C variable declarations
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
     cfsDatInitProc,           # section for the C datInit proc
