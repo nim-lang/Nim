@@ -193,4 +193,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         if res != arNo:
           result = res
           if res == arYes: break
+    of nkBracket:
+      if b.len > 0:
+        result = isPartOf(a, b[0])
     else: discard
