@@ -70,6 +70,9 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
     inc head(p).rc
     #cprintf("[INCREF] %p\n", p)
 
+proc nimTraceRef(p: pointer) {.compilerRtl, inl.} =
+  discard
+
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
     when defined(nimOwnedEnabled):

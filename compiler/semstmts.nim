@@ -1590,44 +1590,52 @@ proc canonType(c: PContext, t: PType): PType =
   else:
     result = t
 
-proc semOverride(c: PContext, s: PSym, n: PNode) =
-  proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
-    var msg = "cannot bind another '" & prevOp.name.s & "' to: " & typeToString(obj)
-    if sfOverriden notin prevOp.flags:
-      msg.add "; previous declaration was constructed here implicitly: " & (c.config $ prevOp.info)
-    else:
-      msg.add "; previous declaration was here: " & (c.config $ prevOp.info)
-    localError(c.config, n.info, errGenerated, msg)
+proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
+  var msg = "cannot bind another '" & prevOp.name.s & "' to: " & typeToString(obj)
+  if sfOverriden notin prevOp.flags:
+    msg.add "; previous declaration was constructed here implicitly: " & (c.config $ prevOp.info)
+  else:
+    msg.add "; previous declaration was here: " & (c.config $ prevOp.info)
+  localError(c.config, info, errGenerated, msg)
 
+proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
+  let t = s.typ
+  var noError = false
+  let cond = if op == attachedDestructor:
+               t.len == 2 and t[0] == nil and t[1].kind == tyVar
+             else:
+               t.len >= 2 and t[0] == nil
+
+  if cond:
+    var obj = t[1].skipTypes({tyVar})
+    while true:
+      incl(obj.flags, tfHasAsgn)
+      if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+      elif obj.kind == tyGenericInvocation: obj = obj[0]
+      else: break
+    if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
+      obj = canonType(c, obj)
+      if obj.attachedOps[op] == s:
+        discard "forward declared destructor"
+      elif obj.attachedOps[op].isNil and tfCheckedForDestructor notin obj.flags:
+        obj.attachedOps[op] = s
+      else:
+        prevDestructor(c, obj.attachedOps[op], obj, n.info)
+      noError = true
+      if obj.owner.getModule != s.getModule:
+        localError(c.config, n.info, errGenerated,
+          "type bound operation `" & s.name.s & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+  if not noError and sfSystemModule notin s.owner.flags:
+    localError(c.config, n.info, errGenerated,
+      "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
+  incl(s.flags, sfUsed)
+  incl(s.flags, sfOverriden)
+
+proc semOverride(c: PContext, s: PSym, n: PNode) =
   let name = s.name.s.normalize
   case name
   of "=destroy":
-    let t = s.typ
-    var noError = false
-    if t.len == 2 and t[0] == nil and t[1].kind == tyVar:
-      var obj = t[1][0]
-      while true:
-        incl(obj.flags, tfHasAsgn)
-        if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
-        elif obj.kind == tyGenericInvocation: obj = obj[0]
-        else: break
-      if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
-        obj = canonType(c, obj)
-        if obj.attachedOps[attachedDestructor] == s:
-          discard "forward declared destructor"
-        elif obj.destructor.isNil and tfCheckedForDestructor notin obj.flags:
-          obj.attachedOps[attachedDestructor] = s
-        else:
-          prevDestructor(c, obj.destructor, obj, n.info)
-        noError = true
-        if obj.owner.getModule != s.getModule:
-          localError(c.config, n.info, errGenerated,
-            "type bound operation `=destroy` can be defined only in the same module with its type (" & obj.typeToString() & ")")
-    if not noError and sfSystemModule notin s.owner.flags:
-      localError(c.config, n.info, errGenerated,
-        "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
-    incl(s.flags, sfUsed)
-    incl(s.flags, sfOverriden)
+    bindTypeHook(c, s, n, attachedDestructor)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
         s.typ[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
@@ -1694,6 +1702,10 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     if sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
                 "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
+  of "=trace":
+    bindTypeHook(c, s, n, attachedTrace)
+  of "=dispose":
+    bindTypeHook(c, s, n, attachedDispose)
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,
