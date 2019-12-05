@@ -3412,12 +3412,12 @@ elif hasAlloc:
   {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) =
     var i = 0
-    while y[i] != '\0':
-      if y[i] == nil:
-        add(x, cstring(""))
-      else:
+    if y == nil:
+      add(x, "")
+    else:
+      while y[i] != '\0':
         add(x, y[i])
-      inc(i)
+        inc(i)
   {.pop.}
 
 when defined(nimvarargstyped):
