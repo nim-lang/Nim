@@ -173,10 +173,14 @@ proc detectOsImpl(d: Distribution): bool =
       of Distribution.Elementary:
         result = "elementary OS" in toLowerAscii(osrelease())
       of Distribution.ArchLinux:
+<<<<<<< HEAD
         result = "arch" in toLowerAscii(uname())
       of Distribution.NixOS:
         result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
         # Check if this is a Nix build or NixOS environment
+=======
+        result = "Arch Linux" in osrelease()
+>>>>>>> Fix Arch Linux detection.
       of Distribution.OpenSUSE:
         result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
       of Distribution.GoboLinux:
