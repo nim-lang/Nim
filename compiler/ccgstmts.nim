@@ -1073,7 +1073,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     # pretend we handled the exception in a 'finally' so that we don't
     # re-raise the unhandled one but instead keep the old one (it was
     # not popped either):
-    if not quirkyExceptions:
+    if not quirkyExceptions and getCompilerProc(p.module.g.graph, "nimLeaveFinally") != nil:
       linefmt(p, cpsStmts, "if ($1.status != 0) #nimLeaveFinally();$n", [safePoint])
     endBlock(p)
     discard pop(p.finallySafePoints)
