@@ -41,19 +41,25 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   result.ast = n
   incl result.flags, sfFromGeneric
 
-proc searchObjCase(obj: PNode; field: PSym): PNode =
+proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
   case obj.kind
   of nkSym:
     result = nil
   of nkElse, nkOfBranch:
-    result = searchObjCase(obj.lastSon, field)
+    result = searchObjCaseImpl(obj.lastSon, field)
   else:
     if obj.kind == nkRecCase and obj[0].kind == nkSym and obj[0].sym == field:
       result = obj
     else:
       for x in obj:
-        result = searchObjCase(x, field)
+        result = searchObjCaseImpl(x, field)
         if result != nil: break
+
+proc searchObjCase(t: PType; field: PSym): PNode =
+  result = searchObjCaseImpl(t.n, field)
+  if result == nil and t.len > 0:
+    result = searchObjCase(t[0].skipTypes({tyAlias, tyGenericInst, tyRef, tyPtr}), field)
+  doAssert result != nil
 
 proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph): PSym =
   result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), t.owner, info)
@@ -75,8 +81,7 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   var caseStmt = newNodeI(nkCaseStmt, info)
   caseStmt.add(newSymNode dest)
 
-  let subObj = searchObjCase(t.n, field)
-  doAssert subObj != nil
+  let subObj = searchObjCase(t, field)
   for i in 1..<subObj.len:
     let ofBranch = subObj[i]
     var newBranch = newNodeI(ofBranch.kind, ofBranch.info)
