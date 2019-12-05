@@ -1041,7 +1041,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
     genRestoreFrameAfterException(p)
   elif 1 < t.len and t[1].kind == nkExceptBranch:
-    startBlock(p, "if (#getCurrentException()) {$n")
+    startBlock(p, "if (#nimBorrowCurrentException()) {$n")
   else:
     startBlock(p)
   p.nestedTryStmts[^1].inExcept = true
@@ -1068,7 +1068,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
         else:
           genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
-        appcg(p.module, orExpr, "#isObj(#getCurrentException()->$1, $2)", [memberName, checkFor])
+        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
@@ -1082,7 +1082,14 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   endBlock(p) # end of else block
   if i < t.len and t[i].kind == nkFinally:
     p.finallySafePoints.add(safePoint)
-    genSimpleBlock(p, t[i][0])
+    startBlock(p)
+    genStmts(p, t[i][0])
+    # pretend we handled the exception in a 'finally' so that we don't
+    # re-raise the unhandled one but instead keep the old one (it was
+    # not popped either):
+    if not quirkyExceptions and getCompilerProc(p.module.g.graph, "nimLeaveFinally") != nil:
+      linefmt(p, cpsStmts, "if ($1.status != 0) #nimLeaveFinally();$n", [safePoint])
+    endBlock(p)
     discard pop(p.finallySafePoints)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])

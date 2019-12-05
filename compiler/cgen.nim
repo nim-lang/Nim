@@ -1884,7 +1884,7 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
     if not moduleHasChanged(m.g.graph, m.module):
       result = false
     elif not equalsFile(code, cfile.cname):
-      if false:
+      when false:
         #m.config.symbolFiles == readOnlySf: #isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
           copyFile(cfile.cname.string, cfile.cname.string & ".backup")

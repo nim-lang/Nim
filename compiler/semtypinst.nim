@@ -307,6 +307,8 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
     result.flags.excl tfInstClearedFlags
+  else:
+    result.flags.excl tfHasAsgn
   when false:
     if newDestructors:
       result.assignment = nil
@@ -380,7 +382,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   for i in 1..<t.len:
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
-    rawAddSon(result, header[i])
+    rawAddSon(result, header[i], propagateHasAsgn = false)
 
   if body.kind == tyError:
     return

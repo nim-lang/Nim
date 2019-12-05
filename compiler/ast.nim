@@ -1456,7 +1456,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
            t.kind == tyProc and t.callConv == ccClosure
 
-proc propagateToOwner*(owner, elem: PType) =
+proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   const HaveTheirOwnEmpty = {tySequence, tyOpt, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
   if tfNotNil in elem.flags:
@@ -1472,19 +1472,13 @@ proc propagateToOwner*(owner, elem: PType) =
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
 
-  if tfHasAsgn in elem.flags:
+  let mask = elem.flags * {tfHasAsgn, tfHasOwned}
+  if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
-      o2.flags.incl tfHasAsgn
-      owner.flags.incl tfHasAsgn
-
-  if tfHasOwned in elem.flags:
-    let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
-    if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
-      o2.flags.incl tfHasOwned
-      owner.flags.incl tfHasOwned
+      o2.flags.incl mask
+      owner.flags.incl mask
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
@@ -1494,11 +1488,11 @@ proc propagateToOwner*(owner, elem: PType) =
       # ensure this doesn't bite us in sempass2.
       owner.flags.incl tfHasGCedMem
 
-proc rawAddSon*(father, son: PType) =
+proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
   father.sons.add(son)
-  if not son.isNil: propagateToOwner(father, son)
+  if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
 proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
   when not defined(nimNoNilSeqs):
