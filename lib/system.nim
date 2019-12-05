@@ -3412,9 +3412,7 @@ elif hasAlloc:
   {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) =
     var i = 0
-    if y == nil:
-      add(x, "")
-    else:
+    if y != nil:
       while y[i] != '\0':
         add(x, y[i])
         inc(i)
