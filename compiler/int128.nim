@@ -335,7 +335,6 @@ proc `*`(a: Int128, b: uint32): Int128 =
   result.udata[3] = cast[uint32](tmp3) + cast[uint32](tmp2 shr 32)
 
 proc `*`*(a: Int128, b: int32): Int128 =
-  let isNegative = isNegative(a) xor isNegative(b)
   result = a * cast[uint32](abs(b))
   if b < 0:
     result = -result
@@ -356,8 +355,6 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs,rhs: Int128): Int128 =
-  let isNegative = isNegative(lhs) xor isNegative(rhs)
-
   let
     a = cast[uint64](lhs.udata[0])
     b = cast[uint64](lhs.udata[1])
@@ -378,9 +375,6 @@ proc `*`*(lhs,rhs: Int128): Int128 =
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result = result + toInt128(a32 * b00) shl 32
   result = result + toInt128(a00 * b32) shl 32
-
-  if isNegative != isNegative(result):
-    assert(false, "overflow")
 
 proc `*=`*(a: var Int128, b: Int128) =
   a = a * b
@@ -683,6 +677,9 @@ when isMainModule:
 
   var ma = 100'i64
   var mb = 13
+
+  doAssert toInt128(ma) * toInt128(0) == toInt128(0)
+  doAssert toInt128(-ma) * toInt128(0) == toInt128(0)
 
   # sign correctness
   doAssert divMod(toInt128( ma),toInt128( mb)) == (toInt128( ma div  mb), toInt128( ma mod  mb))
