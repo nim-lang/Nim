@@ -147,7 +147,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap1s(fileExists, osop)
     wrapDangerous(writeFile, ioop)
     wrap1s(readFile, ioop)
-    wrap2si(readLines, ioop)
+    wrap2si(staticReadLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
