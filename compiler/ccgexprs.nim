@@ -2533,7 +2533,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if {sfGlobal, sfThread} * sym.flags != {}:
         genVarPrototype(p.module, n)
         if sfCompileTime in sym.flags:
-          genSingleVar(p, sym, n, astdef(sym))
+          genSingleVar(p, sym, n, astdef(sym), sym.kind == skLet)
 
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
@@ -2637,7 +2637,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
 
   of nkEmpty: discard
   of nkWhileStmt: genWhileStmt(p, n)
-  of nkVarSection, nkLetSection: genVarStmt(p, n)
+  of nkVarSection: genVarStmt(p, n, false)
+  of nkLetSection: genVarStmt(p, n, true)
   of nkConstSection: discard  # consts generated lazily on use
   of nkForStmt: internalError(p.config, n.info, "for statement not eliminated")
   of nkCaseStmt: genCase(p, n, d)

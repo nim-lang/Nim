@@ -92,7 +92,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     if sfCompileTime in v.flags: continue
     var traverseProc: Rope
     if sfGlobal in v.flags:
-      assignGlobalVar(p, vn, nil)
+      assignGlobalVar(p, vn, nil, false)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
       traverseProc = getTraverseProc(p, v)
       if traverseProc != nil and not p.hcrOn:
@@ -282,7 +282,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   else:
     result = nil
 
-proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
+proc genSingleVar(p: BProc, v: PSym; vn, value: PNode; isConst: bool) =
   if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
     genGotoVar(p, value)
@@ -298,7 +298,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     if sfPure in v.flags:
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
-    assignGlobalVar(targetProc, vn, valueAsRope)
+    assignGlobalVar(targetProc, vn, valueAsRope, isConst)
     # XXX: be careful here.
     # Global variables should not be zeromem-ed within loops
     # (see bug #20).
@@ -378,10 +378,10 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   if forHcr:
     endBlock(targetProc)
 
-proc genSingleVar(p: BProc, a: PNode) =
+proc genSingleVar(p: BProc, a: PNode, isConst: bool) =
   let v = a[0].sym
   if sfCompileTime in v.flags: return
-  genSingleVar(p, v, a[0], a[2])
+  genSingleVar(p, v, a[0], a[2], isConst)
 
 proc genClosureVar(p: BProc, a: PNode) =
   var immediateAsgn = a[2].kind != nkEmpty
@@ -393,13 +393,13 @@ proc genClosureVar(p: BProc, a: PNode) =
   else:
     constructLoc(p, v)
 
-proc genVarStmt(p: BProc, n: PNode) =
+proc genVarStmt(p: BProc, n: PNode, isConst: bool) =
   for it in n.sons:
     if it.kind == nkCommentStmt: continue
     if it.kind == nkIdentDefs:
       # can be a lifted var nowadays ...
       if it[0].kind == nkSym:
-        genSingleVar(p, it)
+        genSingleVar(p, it, isConst)
       else:
         genClosureVar(p, it)
     else:

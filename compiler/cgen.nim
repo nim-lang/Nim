@@ -509,7 +509,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
-proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
+proc assignGlobalVar(p: BProc, n: PNode; value: Rope; isConst: bool) =
   let s = n.sym
   if s.loc.k == locNone:
     fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
@@ -539,6 +539,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
         if p.hcrOn: decl.add("static ")
         elif sfImportc in s.flags: decl.add("extern ")
+        elif isConst: decl.add("const ")
         decl.add(td)
         if p.hcrOn: decl.add("*")
         if sfRegister in s.flags: decl.add(" register")
