@@ -948,8 +948,6 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
     for it in n:
       if it.kind == nkFinally:
         result = allPathsAsgnResult(it.lastSon)
-      else:
-        allPathsInBranch(it.lastSon)
   else:
     for i in 0..<n.safeLen:
       allPathsInBranch(n[i])

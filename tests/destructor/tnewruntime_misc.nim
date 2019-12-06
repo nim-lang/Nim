@@ -7,6 +7,7 @@ axc
 0  new: 0
 ...
 destroying GenericObj[T] GenericObj[system.int]
+test
 '''
 """
 
@@ -117,3 +118,19 @@ proc main12() =
   echo "..."
 
 main12()
+
+#####################################################################
+## bug #12827
+type
+  MyObject = object
+    x: string
+    y: seq[string]
+    needs_ref: ref int
+
+proc xx(xml: string): MyObject =
+  let stream = xml
+  result.x  = xml
+  defer: echo stream
+
+ 
+discard xx("test")
