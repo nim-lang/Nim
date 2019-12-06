@@ -888,7 +888,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n.len == 1: track(tracked, n[0])
   of nkBracket:
     for i in 0..<n.safeLen: track(tracked, n[i])
-    if tracked.owner.kind != skMacro:
+    if tracked.owner.kind != skMacro and n.len > 0:
       createTypeBoundOps(tracked, n.typ, n.info)
   else:
     for i in 0..<n.safeLen: track(tracked, n[i])
