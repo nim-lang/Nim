@@ -231,7 +231,11 @@ proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
 proc writeField(n: var PNode, x: TFullReg) =
   case x.kind
   of rkNone: discard
-  of rkInt: n.intVal = x.intVal
+  of rkInt:
+    if n.kind == nkNilLit:
+      n[].reset
+      n.kind = nkIntLit # ideally, `nkPtrLit`
+    n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
   of rkNode: n = copyValue(x.node)
   of rkRegisterAddr: writeField(n, x.regAddr[])
