@@ -3112,6 +3112,8 @@ when not defined(js):
         destructor: pointer
         size: int
         name: cstring
+        traceImpl: proc (p, env: pointer) {.nimcall, benign.}
+        disposeImpl: proc (p: pointer) {.nimcall, benign.}
       PNimType = ptr TNimType
 
   when defined(nimSeqsV2) and not defined(nimscript):

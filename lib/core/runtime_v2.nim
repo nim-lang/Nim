@@ -1,3 +1,12 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2019 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 #[
 In this new runtime we simplify the object layouts a bit: The runtime type
 information is only accessed for the objects that have it and it's always
@@ -25,11 +34,28 @@ hash of ``package & "." & module & "." & name`` to save space.
 
 ]#
 
+const
+  rcIncrement = 0b1000 # so that lowest 3 bits are not touched
+  colGreen = 0b000
+  colYellow = 0b001
+  colRed = 0b010
+  jumpStackFlag = 0b100  # stored in jumpstack
+  rcShift = 3      # shift by rcShift to get the reference counter
+  colorMask = 0b011
+
+template color(c): untyped = c.rc and colorMask
+template setColor(c, col) =
+  when col == colGreen:
+    c.rc = c.rc and not colorMask
+  else:
+    c.rc = c.rc and not colorMask or col
+
 type
   RefHeader = object
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
+  Cell = ptr RefHeader
 
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
@@ -37,8 +63,8 @@ template `+!`(p: pointer, s: int): pointer =
 template `-!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) -% s)
 
-template head(p: pointer): ptr RefHeader =
-  cast[ptr RefHeader](cast[int](p) -% sizeof(RefHeader))
+template head(p: pointer): Cell =
+  cast[Cell](cast[int](p) -% sizeof(RefHeader))
 
 var allocs*: int
 
@@ -58,29 +84,21 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     inc allocs
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
-  when hasThreadSupport:
-    atomicDec head(p).rc
-  else:
-    dec head(p).rc
+  dec head(p).rc, rcIncrement
 
 proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
-  when hasThreadSupport:
-    atomicInc head(p).rc
-  else:
-    inc head(p).rc
-    #cprintf("[INCREF] %p\n", p)
+  inc head(p).rc, rcIncrement
+  #cprintf("[INCREF] %p\n", p)
 
-proc nimTraceRef(p: pointer) {.compilerRtl, inl.} =
-  discard
+proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
+  let h = head(p)
+  inc h.rc, rcIncrement
+  h.setColor colYellow # mark as potential cycle!
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
     when defined(nimOwnedEnabled):
-      when hasThreadSupport:
-        let hasDanglingRefs = atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) != 0
-      else:
-        let hasDanglingRefs = head(p).rc != 0
-      if hasDanglingRefs:
+      if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
         quit 1
     when defined(useMalloc):
@@ -111,21 +129,121 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
       cstderr.rawWrite "has destructor!\n"
   nimRawDispose(p)
 
+# Cycle collector based on Lins' Jump Stack and other ideas,
+# see for example:
+# https://pdfs.semanticscholar.org/f2b2/0d168acf38ff86305809a55ef2c5d6ebc787.pdf
+# Further refinement in 2008 by the notion of "critical links", see
+# "Cyclic reference counting" by Rafael Dueire Lins
+# R.D. Lins / Information Processing Letters 109 (2008) 71–78
+
+type
+  GcPhase = enum
+    doCollect,
+    doMarkRed,
+    doScanGreen
+
+  JumpStack = object
+    phase: GcPhase
+    L: int
+    a: array[200, (Cell, PNimType)]
+
+proc add(j: var JumpStack; c: Cell; t: PNimType) =
+  # XXX overflow handling here
+  j.a[j.L] = (c, t)
+  inc j.L
+
+proc pop(j: var JumpStack): (Cell, PNimType) =
+  result = j.a[j.L-1]
+  dec j.L
+
+proc trace(s: Cell; desc: PNimType; j: var JumpStack) {.inline.} =
+  var p = s -! sizeof(RefHeader)
+  desc.traceImpl(p, addr(j))
+
+proc free(s: Cell; desc: PNimType) {.inline.} =
+  var p = s -! sizeof(RefHeader)
+  desc.disposeImpl(p)
+
+proc collect(s: Cell; desc: PNimType; j: var JumpStack) =
+  if s.color == colRed:
+    s.setColor colGreen
+    trace(s, desc, j)
+    free(s, desc)
+
+proc markRed(s: Cell; desc: PNimType; j: var JumpStack) =
+  if s.color != colRed:
+    s.setColor colRed
+    trace(s, desc, j)
+
+proc scanGreen(s: Cell; desc: PNimType; j: var JumpStack) =
+  s.setColor colGreen
+  trace(s, desc, j)
+
+proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+  if p != nil:
+    var t = head(p)
+    var j = cast[ptr JumpStack](env)
+    case j.phase
+    of doCollect:
+      if t.color == colRed: collect(t, desc, j[])
+    of doMarkRed:
+      dec t.rc, rcIncrement
+      if (t.rc and not colorMask) >= 0 and (t.rc and jumpStackFlag) == 0:
+        t.rc = t.rc or jumpStackFlag
+        j[].add(t, desc)
+      markRed(t, desc, j[])
+    of doScanGreen:
+      if t.color != colGreen: scanGreen(t, desc, j[])
+      inc t.rc, rcIncrement
+
+proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
+  if p != nil:
+    let desc = cast[ptr PNimType](p)[]
+    nimTraceRef(p, desc, env)
+
+proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
+  if (s.rc and not colorMask) >= 0:
+    scanGreen(s, desc, j)
+    s.setColor colYellow
+  else:
+    j.phase = doScanGreen
+    while j.L > 0:
+      let (t, desc) = j.pop
+      if t.color == colRed and (t.rc and not colorMask) >= 0:
+        scanGreen(t, desc, j)
+        t.setColor colYellow
+    j.phase = doCollect
+    collect(s, desc, j)
+
+proc traceCycle(cell: Cell; desc: PNimType) {.noinline.} =
+  var j: JumpStack
+  j.phase = doMarkRed
+  markRed(cell, desc, j)
+  scan(cell, desc, j)
+
+proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
+  if p != nil:
+    var cell = head(p)
+    if (uint(cell.rc) shr rcShift) == 0:
+      result = true
+      #cprintf("[DESTROY] %p\n", p)
+    else:
+      let desc = cast[ptr PNimType](p)[]
+      dec cell.rc, rcIncrement
+      if cell.color == colYellow: traceCycle(cell, desc)
+      # According to Lins it's correct to do nothing else here.
+      #cprintf("[DeCREF] %p\n", p)
+
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
-    when hasThreadSupport:
-      if atomicLoadN(addr head(p).rc, ATOMIC_RELAXED) == 0:
-        result = true
-      else:
-        discard atomicDec(head(p).rc)
+    var cell = head(p)
+    if (uint(cell.rc) shr rcShift) == 0:
+      result = true
+      #cprintf("[DESTROY] %p\n", p)
     else:
-      if head(p).rc == 0:
-        result = true
-        #cprintf("[DESTROY] %p\n", p)
-      else:
-        dec head(p).rc
-        # According to Lins it's correct to do nothing else here.
-        #cprintf("[DeCREF] %p\n", p)
+      dec cell.rc, rcIncrement
+      # According to Lins it's correct to do nothing else here.
+      #cprintf("[DeCREF] %p\n", p)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
