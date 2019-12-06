@@ -478,7 +478,7 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~38)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~39)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -537,6 +537,7 @@ type
     tfContravariant   # contravariant generic param
     tfCheckedForDestructor # type was checked for having a destructor.
                            # If it has one, t.destructor is not nil.
+    tfAcyclic # object type was annotated as .acyclic
 
   TTypeFlags* = set[TTypeFlag]
 

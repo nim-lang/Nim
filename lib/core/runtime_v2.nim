@@ -234,6 +234,15 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
       # According to Lins it's correct to do nothing else here.
       #cprintf("[DeCREF] %p\n", p)
 
+proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl, inl.} =
+  if p != nil:
+    var cell = head(p)
+    if (uint(cell.rc) shr rcShift) == 0:
+      result = true
+    else:
+      dec cell.rc, rcIncrement
+      if cell.color == colYellow: traceCycle(cell, desc)
+
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)

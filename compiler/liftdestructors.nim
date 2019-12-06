@@ -401,7 +401,18 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
 
-  let cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
+  let isCyclic = types.canFormAcycle(t)
+
+  var cond: PNode
+  if isCyclic:
+    if isFinal(elemType):
+      let typInfo = genBuiltin(c.g, mGetTypeInfo, "getTypeInfo", newNodeIT(nkType, x.info, elemType))
+      typInfo.typ = getSysType(c.g, c.info, tyPointer)
+      cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicStatic", c.info, x, typInfo)
+    else:
+      cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicDyn", c.info, x)
+  else:
+    cond = callCodegenProc(c.g, "nimDecRefIsLast", c.info, x)
   cond.typ = getSysType(c.g, x.info, tyBool)
 
   case c.kind
@@ -409,7 +420,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedAsgn:
-    body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
+    body.add genIf(c, y, callCodegenProc(c.g,
+        if isCyclic: "nimIncRefCyclic" else: "nimIncRef", c.info, y))
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -419,14 +431,13 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
-    let typInfo =
-      if isFinal(elemType):
-        genBuiltin(c.g, mGetTypeInfo, "getTypeInfo", newNodeIT(nkType, x.info, elemType))
-      else:
-        # If the ref is polymorphic we have to account for this
-        genBuiltin(c.g, mAccessTypeInfo, "accessTypeInfo", x)
-    typInfo.typ = getSysType(c.g, c.info, tyPointer)
-    body.add callCodegenProc(c.g, "nimTraceRef", c.info, x, typInfo, y)
+    if isFinal(elemType):
+      let typInfo = genBuiltin(c.g, mGetTypeInfo, "getTypeInfo", newNodeIT(nkType, x.info, elemType))
+      typInfo.typ = getSysType(c.g, c.info, tyPointer)
+      body.add callCodegenProc(c.g, "nimTraceRef", c.info, x, typInfo, y)
+    else:
+      # If the ref is polymorphic we have to account for this
+      body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, x, y)
   of attachedDispose:
     # this is crucial! dispose is like =destroy but we don't follow refs
     # as that is dealt within the cycle collector.
@@ -682,12 +693,12 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   let dest = newSym(skParam, getIdent(g.cache, "dest"), result, info)
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"), result, info)
   var d: PNode
-  if kind notin {attachedTrace, attachedDispose}:
-    dest.typ = makeVarType(typ.owner, typ)
-    d = newDeref(newSymNode(dest))
-  else:
-    dest.typ = typ
-    d = newSymNode(dest)
+  #if kind notin {attachedTrace, attachedDispose}:
+  dest.typ = makeVarType(typ.owner, typ)
+  d = newDeref(newSymNode(dest))
+  #else:
+  #  dest.typ = typ
+  #  d = newSymNode(dest)
 
   if kind == attachedTrace:
     src.typ = getSysType(g, info, tyPointer)

@@ -1584,6 +1584,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   gcUsage(p.config, e)
 
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
+  discard cgsym(p.module, "TNimType")
   let t = e[1].typ
   putIntoDest(p, d, e, genTypeInfo(p.module, t, e.info))
 
