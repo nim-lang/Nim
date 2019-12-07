@@ -135,7 +135,7 @@ type
     fcInf,           ## value is positive infinity
     fcNegInf         ## value is negative infinity
 
-proc classify[T: float32|float64](x: T): FloatClass =
+proc classify*[T: float32|float64](x: T): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns ``x``'s class as specified by `FloatClass enum<#FloatClass>`_.
