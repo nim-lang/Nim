@@ -1474,11 +1474,17 @@ proc getOwner(c: PCtx): PSym =
   result = c.prc.sym
   if result.isNil: result = c.module
 
+proc importcCondVar*(s: PSym): bool {.inline.} =
+  # see also importcCond
+  if sfImportc in s.flags:
+    return s.kind in {skVar, skLet, skConst}
+
 proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
+  if s.importcCondVar: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     # little hack ahead for bug #12612: assume gensym'ed variables
@@ -1618,12 +1624,12 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   assert card(flags * {gfNodeAddr, gfNode}) < 2
   let s = n.sym
   if s.isGlobal:
-    if sfCompileTime in s.flags or c.mode == emRepl:
+    if sfCompileTime in s.flags or c.mode == emRepl or importcCondVar(s):
       discard
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if importcCond(s): c.importcSym(n.info, s)
+      if importcCond(s) or importcCondVar(s): c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
