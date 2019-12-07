@@ -1307,8 +1307,8 @@ proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) 
 
   m.s[cfsTypeInit3].addf("$1.destructor = (void*)$2; $1.size = sizeof($3);$n" &
     "$1.name = $4;$n" &
-    "$1.traceImpl = $5;$n" &
-    "$1.disposeImpl = $6;$n", [
+    "$1.traceImpl = (void*)$5;$n" &
+    "$1.disposeImpl = (void*)$6;$n", [
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
 

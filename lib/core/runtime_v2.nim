@@ -56,6 +56,8 @@ type
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
   Cell = ptr RefHeader
+  TraceProc = proc (p, env: pointer) {.nimcall, benign.}
+  DisposeProc = proc (p: pointer) {.nimcall, benign.}
 
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
@@ -158,11 +160,11 @@ proc pop(j: var JumpStack): (Cell, PNimType) =
 
 proc trace(s: Cell; desc: PNimType; j: var JumpStack) {.inline.} =
   var p = s -! sizeof(RefHeader)
-  desc.traceImpl(p, addr(j))
+  cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 proc free(s: Cell; desc: PNimType) {.inline.} =
   var p = s -! sizeof(RefHeader)
-  desc.disposeImpl(p)
+  cast[DisposeProc](desc.disposeImpl)(p)
 
 proc collect(s: Cell; desc: PNimType; j: var JumpStack) =
   if s.color == colRed:
