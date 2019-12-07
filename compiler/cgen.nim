@@ -539,7 +539,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope; isConst: bool) =
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
         if p.hcrOn: decl.add("static ")
         elif sfImportc in s.flags: decl.add("extern ")
-        elif isConst: decl.add("const ")
+        elif isConst and value != nil : decl.add("const ")
         decl.add(td)
         if p.hcrOn: decl.add("*")
         if sfRegister in s.flags: decl.add(" register")
