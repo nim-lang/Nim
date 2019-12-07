@@ -164,9 +164,10 @@ proc trace(s: Cell; desc: PNimType; j: var JumpStack) {.inline.} =
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 proc free(s: Cell; desc: PNimType) {.inline.} =
+  var p = s +! sizeof(RefHeader)
   if desc.disposeImpl != nil:
-    var p = s +! sizeof(RefHeader)
     cast[DisposeProc](desc.disposeImpl)(p)
+  nimRawDispose(p)
 
 proc collect(s: Cell; desc: PNimType; j: var JumpStack) =
   if s.color == colRed:
