@@ -159,12 +159,14 @@ proc pop(j: var JumpStack): (Cell, PNimType) =
   dec j.L
 
 proc trace(s: Cell; desc: PNimType; j: var JumpStack) {.inline.} =
-  var p = s +! sizeof(RefHeader)
-  cast[TraceProc](desc.traceImpl)(p, addr(j))
+  if desc.traceImpl != nil:
+    var p = s +! sizeof(RefHeader)
+    cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 proc free(s: Cell; desc: PNimType) {.inline.} =
-  var p = s +! sizeof(RefHeader)
-  cast[DisposeProc](desc.disposeImpl)(p)
+  if desc.disposeImpl != nil:
+    var p = s +! sizeof(RefHeader)
+    cast[DisposeProc](desc.disposeImpl)(p)
 
 proc collect(s: Cell; desc: PNimType; j: var JumpStack) =
   if s.color == colRed:
