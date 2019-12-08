@@ -192,6 +192,7 @@ proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
     of doCollect:
       if t.color == colRed: collect(t, desc, j[])
     of doMarkRed:
+      #cprintf("[Cycle dec] %p %ld\n", t, t.rc shr rcShift)
       dec t.rc, rcIncrement
       if (t.rc and not colorMask) >= 0 and (t.rc and jumpStackFlag) == 0:
         t.rc = t.rc or jumpStackFlag
@@ -200,6 +201,7 @@ proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
     of doScanGreen:
       if t.color != colGreen: scanGreen(t, desc, j[])
       inc t.rc, rcIncrement
+      #cprintf("[Cycle inc] %p %ld\n", t, t.rc shr rcShift)
 
 proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
   if p != nil:
@@ -207,11 +209,11 @@ proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
     nimTraceRef(p, desc, env)
 
 proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
+  j.phase = doScanGreen
   if (s.rc and not colorMask) >= 0:
     scanGreen(s, desc, j)
     s.setColor colYellow
   else:
-    j.phase = doScanGreen
     while j.L > 0:
       let (t, desc) = j.pop
       if t.color == colRed and (t.rc and not colorMask) >= 0:
@@ -229,20 +231,21 @@ proc traceCycle(cell: Cell; desc: PNimType) {.noinline.} =
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
-    if (uint(cell.rc) shr rcShift) == 0:
+    if (cell.rc and not colorMask) == 0:
       result = true
       #cprintf("[DESTROY] %p\n", p)
     else:
-      let desc = cast[ptr PNimType](p)[]
       dec cell.rc, rcIncrement
-      if cell.color == colYellow: traceCycle(cell, desc)
+      if cell.color == colYellow:
+        let desc = cast[ptr PNimType](p)[]
+        traceCycle(cell, desc)
       # According to Lins it's correct to do nothing else here.
       #cprintf("[DeCREF] %p\n", p)
 
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
-    if (uint(cell.rc) shr rcShift) == 0:
+    if (cell.rc and not colorMask) == 0:
       result = true
     else:
       dec cell.rc, rcIncrement
@@ -251,7 +254,7 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
-    if (uint(cell.rc) shr rcShift) == 0:
+    if (cell.rc and not colorMask) == 0:
       result = true
       #cprintf("[DESTROY] %p\n", p)
     else:
