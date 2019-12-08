@@ -1979,13 +1979,13 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       binaryUintExpr(p, n, r, "+", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
-      else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)")
+      else: binaryExpr(p, n, r, "addInt", "$1 = addInt($1, $2)")
   of ast.mDec:
     if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "-", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
-      else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)")
+      else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr:
     binaryExpr(p, n, r, "mnewString", "($1 == null ? $3 = mnewString($2) : $3.length = $2)")
   of mSetLengthSeq:
