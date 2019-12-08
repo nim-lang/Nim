@@ -36,7 +36,7 @@ const
   errRecursiveDependencyX = "recursive dependency: '$1'"
   errRecursiveDependencyIteratorX = "recursion is not supported in iterators: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
-  errCannotAssignMacroSymbol = "cannot assign macro symbol to $1 here. Forgot to invoke the macro with '()'?"
+  errCannotAssignMacroSymbol = "cannot assign $1 '$2' to '$3'. Did you mean to call the $1 with '()'?"
   errInvalidTypeDescAssign = "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
 
 proc semDiscard(c: PContext, n: PNode): PNode =
@@ -449,8 +449,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efAllowDestructor})
       if def.typ.kind == tyProc and def.kind == nkSym:
-        if def.sym.kind == skMacro:
-          localError(c.config, def.info, errCannotAssignMacroSymbol % "variable")
+        if def.sym.kind == skMacro or def.sym.kind == skTemplate:
+          localError(c.config, def.info, errCannotAssignMacroSymbol % [
+                          if def.sym.kind == skMacro: "macro" else: "template",
+                          def.sym.name.s, a[0].ident.s])
           def.typ = errorType(c)
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         # prevent the all too common 'var x = int' bug:
@@ -590,8 +592,10 @@ proc semConst(c: PContext, n: PNode): PNode =
     # don't evaluate here since the type compatibility check below may add a converter
     var def = semExprWithType(c, a[^1])
     if def.typ.kind == tyProc and def.kind == nkSym:
-      if def.sym.kind == skMacro:
-        localError(c.config, def.info, errCannotAssignMacroSymbol % "constant")
+      if def.sym.kind == skMacro or def.sym.kind == skTemplate:
+        localError(c.config, def.info, errCannotAssignMacroSymbol % [
+          if def.sym.kind == skMacro: "macro" else: "template",
+          def.sym.name.s, a[0].ident.s])
         def.typ = errorType(c)
     elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
       # prevent the all too common 'const x = int' bug:
