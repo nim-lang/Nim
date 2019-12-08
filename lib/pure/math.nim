@@ -156,11 +156,11 @@ proc classify*(x: float): FloatClass =
     if x > 0.0: return fcInf
     else: return fcNegInf
   if x != x: return fcNan
-  when sizeof(x) == 4:
-    if abs(x) < MinFloat32Normal:
-      return fcSubnormal
-  when sizeof(x) == 8:
+  when sizeof(float) == 8:
     if abs(x) < MinFloat64Normal:
+      return fcSubnormal
+  else:
+    if abs(x) < MinFloat32Normal:
       return fcSubnormal
   return fcNormal
 
