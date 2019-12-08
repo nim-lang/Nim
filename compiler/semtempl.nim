@@ -261,6 +261,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   else:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNode(s, n.info)
+    markUsed(c, n.info, s);
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n
