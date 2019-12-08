@@ -1135,7 +1135,7 @@ when defined(nimFixedForwardGeneric):
         when defined js:
           `tmpSym`.`kindSym` = kindTmp
         else:
-          when nimVm:
+          when nimvm:
             `tmpSym`.`kindSym` = kindTmp
           else:
             # fuck it, assign kind field anyway
