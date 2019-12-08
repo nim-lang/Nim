@@ -3679,7 +3679,7 @@ a syntax like:
   proc foo(other: Y; container: var X): var T from container
 
 Here ``var T from container`` explicitly exposes that the
-location is deviated from the second parameter (called
+location is derived from the second parameter (called
 'container' in this case). The syntax ``var T from p`` specifies a type
 ``varTy[T, 2]`` which is incompatible with ``varTy[T, 1]``.
 
