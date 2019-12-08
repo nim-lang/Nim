@@ -42,6 +42,7 @@ const
   jumpStackFlag = 0b100  # stored in jumpstack
   rcShift = 3      # shift by rcShift to get the reference counter
   colorMask = 0b011
+  rcMask = 0b111
 
 template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =
@@ -140,9 +141,9 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
 
 type
   GcPhase = enum
-    doCollect,
     doMarkRed,
-    doScanGreen
+    doScanGreen,
+    doCollect
 
   JumpStack = object
     phase: GcPhase
@@ -174,6 +175,7 @@ proc collect(s: Cell; desc: PNimType; j: var JumpStack) =
     s.setColor colGreen
     trace(s, desc, j)
     free(s, desc)
+    #cprintf("[Cycle free] %p %ld\n", s, s.rc shr rcShift)
 
 proc markRed(s: Cell; desc: PNimType; j: var JumpStack) =
   if s.color != colRed:
@@ -190,11 +192,11 @@ proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
     var j = cast[ptr JumpStack](env)
     case j.phase
     of doCollect:
-      if t.color == colRed: collect(t, desc, j[])
+      collect(t, desc, j[])
     of doMarkRed:
       #cprintf("[Cycle dec] %p %ld\n", t, t.rc shr rcShift)
       dec t.rc, rcIncrement
-      if (t.rc and not colorMask) >= 0 and (t.rc and jumpStackFlag) == 0:
+      if (t.rc and not rcMask) >= 0 and (t.rc and jumpStackFlag) == 0:
         t.rc = t.rc or jumpStackFlag
         j[].add(t, desc)
       markRed(t, desc, j[])
@@ -210,15 +212,16 @@ proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
 
 proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
   j.phase = doScanGreen
-  if (s.rc and not colorMask) >= 0:
+  if (s.rc and not rcMask) >= 0:
     scanGreen(s, desc, j)
     s.setColor colYellow
   else:
     while j.L > 0:
       let (t, desc) = j.pop
-      if t.color == colRed and (t.rc and not colorMask) >= 0:
+      if t.color == colRed and (t.rc and not rcMask) >= 0:
         scanGreen(t, desc, j)
         t.setColor colYellow
+        #cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
     j.phase = doCollect
     collect(s, desc, j)
 
@@ -231,7 +234,7 @@ proc traceCycle(cell: Cell; desc: PNimType) {.noinline.} =
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
-    if (cell.rc and not colorMask) == 0:
+    if (cell.rc and not rcMask) == 0:
       result = true
       #cprintf("[DESTROY] %p\n", p)
     else:
@@ -245,7 +248,7 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
-    if (cell.rc and not colorMask) == 0:
+    if (cell.rc and not rcMask) == 0:
       result = true
     else:
       dec cell.rc, rcIncrement
@@ -254,7 +257,7 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
-    if (cell.rc and not colorMask) == 0:
+    if (cell.rc and not rcMask) == 0:
       result = true
       #cprintf("[DESTROY] %p\n", p)
     else:
