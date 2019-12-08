@@ -117,10 +117,8 @@ const
                                              ## meaningful digits
                                              ## after the decimal point
                                              ## for Nim's ``float`` type.
-  MinFloat64Normal* = 2.225073858507201e-308 ## Smallest normal number for Nim's
-                                             ## ``float64`` type. (= 2^-1022).
-  MinFloat32Normal* = 1.175494350822288e-38  ## Smallest normal number for Nim's
-                                             ## ``float32`` type. (= 2^-126).
+  MinFloatNormal* = 2.225073858507201e-308   ## Smallest normal number for Nim's
+                                             ## ``float`` type. (= 2^-1022).
   RadPerDeg = PI / 180.0                     ## Number of radians per degree
 
 type
@@ -156,12 +154,8 @@ proc classify*(x: float): FloatClass =
     if x > 0.0: return fcInf
     else: return fcNegInf
   if x != x: return fcNan
-  when sizeof(float) == 8:
-    if abs(x) < MinFloat64Normal:
-      return fcSubnormal
-  else:
-    if abs(x) < MinFloat32Normal:
-      return fcSubnormal
+  if abs(x) < MinFloatNormal:
+    return fcSubnormal
   return fcNormal
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
