@@ -135,7 +135,7 @@ type
     fcInf,           ## value is positive infinity
     fcNegInf         ## value is negative infinity
 
-proc classify*[T: float32|float64](x: T): FloatClass =
+proc classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns ``x``'s class as specified by `FloatClass enum<#FloatClass>`_.
@@ -156,10 +156,10 @@ proc classify*[T: float32|float64](x: T): FloatClass =
     if x > 0.0: return fcInf
     else: return fcNegInf
   if x != x: return fcNan
-  when T is float32:
+  when sizeof(x) == 4:
     if abs(x) < MinFloat32Normal:
       return fcSubnormal
-  when T is float64:
+  when sizeof(x) == 8:
     if abs(x) < MinFloat64Normal:
       return fcSubnormal
   return fcNormal
