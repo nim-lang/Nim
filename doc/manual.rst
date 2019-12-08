@@ -4129,6 +4129,23 @@ error message from ``e``, and for such situations it is enough to use
   except:
     echo getCurrentExceptionMsg()
 
+Custom exceptions
+-----------------
+
+Is it possible to create custom exceptions. These make it easy to distinguish between exceptions raised by nim and those from your own code.
+
+A custom exception is a custom type:
+
+.. code-block:: nim
+  type
+    LoadError* = object of Exception
+  
+Ending the custom exception's name with ``Error`` is recommended.
+
+Custom exceptions can be raised like any others, e.g.:
+
+.. code-block:: nim
+  raise newException(LoadError, "Failed to load data")
 
 Defer statement
 ---------------
