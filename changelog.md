@@ -34,6 +34,7 @@
   delimiter instead of '{' and '}'.
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
+- To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
 
 
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
