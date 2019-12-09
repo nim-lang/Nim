@@ -148,6 +148,10 @@ proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
   result = optSeqDestructors in c.g.config.globalOptions and
     ({tfHasGCedMem, tfHasOwned} * t.flags != {} or t.isGCedMem)
 
+proc requiresDestructor(c: TLiftCtx; t: PType): bool {.inline.} =
+  result = optSeqDestructors in c.g.config.globalOptions and
+    containsGarbageCollectedRef(t)
+
 proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
   if c.c != nil and typeInst != nil:
     result = c.c.instTypeBoundOp(c.c, op, typeInst, c.info, attachedAsgn, 1)
@@ -208,7 +212,7 @@ proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
       op = instantiateGeneric(c, op, t, t.typeInst)
       t.attachedOps[attachedDestructor] = op
 
-  if op == nil and useNoGc(c, t):
+  if op == nil and (useNoGc(c, t) or requiresDestructor(c, t)):
     op = produceSym(c.g, c.c, t, attachedDestructor, c.info)
     doAssert op != nil
     doAssert op == t.destructor
