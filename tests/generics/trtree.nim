@@ -277,7 +277,7 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var (Node[M, D
     for i in 0 ..< result.numEntries:
       result.a[i].n.parent = result
 
-proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
+proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var (Node[M, D, RT, LT] | Leaf[M, D, RT, LT]); lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
   var n1, n2: type(n)
   var s1, s2: int
   new n1
@@ -341,7 +341,7 @@ proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var Node[M, D,
   n[] = n1[]
   return n2
 
-proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n)
+proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var (Node[M, D, RT, LT] | Leaf[M, D, RT, LT]); lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n)
 
 proc adjustTree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; l, ll: H[M, D, RT, LT]; hb: Box[D, RT]) =
   var n = l
@@ -357,7 +357,7 @@ proc adjustTree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; l, ll: H[M, D, RT, LT
       n.parent = t.root
       nn.parent = t.root
       t.root.numEntries = 1
-    let p = Node[M, D, RT, LT](n.parent)
+    var p = Node[M, D, RT, LT](n.parent)
     var i = 0
     while p.a[i].n != n:
       inc(i)
@@ -411,7 +411,7 @@ proc insert*[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; leaf: N[M, D, RT, LT] | 
     type NodeLeaf = Leaf[M, D, RT, LT]
   for d in leaf.b:
     assert d.a <= d.b
-  let l = NodeLeaf(chooseSubtree(t, leaf.b, level))
+  var l = NodeLeaf(chooseSubtree(t, leaf.b, level))
   if l.numEntries < l.a.len:
     l.a[l.numEntries] = leaf
     inc(l.numEntries)
@@ -426,7 +426,7 @@ proc insert*[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; leaf: N[M, D, RT, LT] | 
 # R*Tree insert procs
 proc rsinsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; leaf: N[M, D, RT, LT] | L[D, RT, LT]; level: int)
 
-proc reInsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]) =
+proc reInsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var (Node[M, D, RT, LT] | Leaf[M, D, RT, LT]); lx: L[D, RT, LT] | N[M, D, RT, LT]) =
   type NL = type(lx)
   var lx = lx
   var buf: type(n.a)
@@ -449,7 +449,7 @@ proc reInsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, R
   for i in M - t.p + 1 .. n.a.high:
     rsinsert(t, buf[i], n.level)
 
-proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
+proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var (Node[M, D, RT, LT] | Leaf[M, D, RT, LT]); lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
   if n.level != t.root.level and t.firstOverflow[n.level]:
     t.firstOverflow[n.level] = false
     reInsert(t, n, lx)
@@ -466,7 +466,7 @@ proc rsinsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; leaf: N[M, D, RT, L
   else:
     assert level == 0
     type NodeLeaf = Leaf[M, D, RT, LT]
-  let l = NodeLeaf(chooseSubtree(t, leaf.b, level))
+  var l = NodeLeaf(chooseSubtree(t, leaf.b, level))
   if l.numEntries < l.a.len:
     l.a[l.numEntries] = leaf
     inc(l.numEntries)
